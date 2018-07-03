@@ -2,8 +2,8 @@
 #ifndef INTERNALS_H
 #define INTERNALS_H
 
-#include "internal/exceptions.h"
-#include "internal/singleton.h"
+#include "internals/exceptions.h"
+#include "internals/singleton.h"
 
 #include <cstdint>
 
