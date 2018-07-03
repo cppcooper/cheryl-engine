@@ -8,7 +8,7 @@ namespace CherylE
         Singleton(...){}
         Singleton(const Singleton&) = delete;
     public:
-        static T& get(){
+        static T& getInstance(){
             static T instance;
             return instance;
         }
