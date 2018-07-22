@@ -1,16 +1,38 @@
+#pragma once
+#include <utility>
+
 namespace CherylE
 {
+    namespace detail{
+        void print_already_constructed_error();
+    }
+
+    template<class T, typename... Args>
+    static void construct(T& instance, Args... args){
+        instance = T {std::forward<Args>(args)...};
+    }
+
     template<class T>
     class Singleton{
     private:
-        Singleton(){}
-        //todo: remove, add to get(...)?
-        Singleton(...){}
-        Singleton(const Singleton&) = delete;
+        static T instance;
     public:
-        static T& getInstance(){
-            static T instance;
+        static T& get(){
             return instance;
         }
+
+        template<typename... Args>
+        static void construct_once(Args... args){
+            static bool called_once = false;
+            if(!called_once){
+                called_once = true;
+                construct(instance, args...); //should deduce types
+            } else {
+                print_already_constructed_error();
+            }
+        }
     };
+
+    template<class T>
+    T Singleton<T>::instance;
 }
