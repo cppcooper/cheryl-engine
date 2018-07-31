@@ -4,7 +4,7 @@
 namespace CherylE
 {
     namespace detail{
-        void print_already_constructed_error();
+        void print_already_constructed_error(const char* type_name = "");
     }
 
     template<class T, typename... Args>
@@ -28,7 +28,7 @@ namespace CherylE
                 called_once = true;
                 construct(instance, args...); //should deduce types
             } else {
-                print_already_constructed_error();
+                print_already_constructed_error(instance.TypeName());
             }
         }
     };
