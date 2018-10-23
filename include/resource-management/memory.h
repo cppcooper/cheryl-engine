@@ -12,6 +12,10 @@ namespace CherylE
     private:
         uint32_t default_alloc_size;
     public:
+        static const char* TypeName() const {
+            static const char* name = "MemoryMgr";
+            return name;
+        }
         void* get(size_t bytes);
         void put(void* ptr, size_t bytes);
         uint64_t length();
@@ -22,8 +26,11 @@ namespace CherylE
     class Allocator : public iAllocator
     {
     public:
-        void* get(size_t count) override {
-            Singleton<MemoryMgr>::getInstance().get(count * sizeof(T));
+        void *allocate(size_t count) override {
+            return Singleton<MemoryMgr>::getInstance().get(sizeof(T) * count);
+        }
+        void deallocate(void *ptr, size_t count) override {
+            Singleton<MemoryMgr>::getInstance().put(ptr, sizeof(T) * count);
         }
     };
 }
