@@ -16,20 +16,17 @@
         } else {
             classname = raw.substr(0,raw.rfind("::"));
         }
-        if(classname.find("<") != std::string::npos){
-            size_t pos = classname.find("class ");
-            do{
+        size_t pos = classname.find("class ");
+        if( pos != std::string::npos ){
+            while( pos != std::string::npos ){
                 classname.erase(pos,6);
                 pos = classname.find("class ");
-            } while( pos != std::string::npos );
-            pos = classname.find(" ");
-            if (pos == std::string::npos ){
-                return classname;
             }
-            do{
+            pos = classname.find(" ");
+            while( pos != std::string::npos ){
                 classname.erase(pos,1);
                 pos = classname.find(" ");
-            } while( pos != std::string::npos );
+            }
         }
         return classname;
     }
