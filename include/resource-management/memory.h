@@ -11,6 +11,20 @@ namespace CherylE
     {
     private:
         uint32_t default_alloc_size;
+        //std::set<pointer> MasterRecord
+        //std::unordered_multimap<available_length, pointer> OpenList
+        //unordered does not have `lower_bound` method
+
+        /*  data:
+                allocation
+                    -head
+                    -length
+
+                available allocation
+                    -pointer to master allocation
+                    -head
+                    -length
+        */
     public:
         static const char* TypeName() const {
             static const char* name = "MemoryMgr";
