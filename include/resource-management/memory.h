@@ -2,7 +2,6 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
-#include <unordered_set>
 #include "../internals.h"
 #include "../interfaces/allocator.h"
 
