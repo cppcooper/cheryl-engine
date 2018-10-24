@@ -10,20 +10,20 @@ namespace CherylE
 {
     class MemoryMgr
     {
+        TYPENAMEAVAILABLE_STATIC
     private:
         using ptr = uint64_t;
         using masterptr = ptr;
         using alloc = std::pair<ptr,uint32_t>;
         uint32_t default_alloc_size;
-        std::unordered_set<masterptr> MasterRecord; //tracks allocations to prevent memory leaks
-        std::multimap<uint32_t,std::pair<masterptr,ptr>> OpenList; //lookup table for available allocations
-        std::unordered_multimap<masterptr,alloc> ClosedList; //lookup table for sub-allocations
-        
+        //tracks allocations to prevent memory leaks
+        std::unordered_set<masterptr> MasterRecord;
+        //lookup table for available allocations
+        std::multimap<uint32_t,std::pair<masterptr,ptr>> OpenList;
+        //lookup table for sub-allocations
+        std::unordered_multimap<masterptr,alloc> ClosedList;
+
     public:
-        static const char* TypeName() const {
-            static const char* name = "MemoryMgr";
-            return name;
-        }
         void* get(size_t bytes);
         void put(void* ptr, size_t bytes);
         uint64_t length();
