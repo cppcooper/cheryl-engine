@@ -2,6 +2,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include <unordered_set>
 #include "../internals.h"
 #include "../interfaces/allocator.h"
 
@@ -12,8 +13,9 @@ namespace CherylE
     private:
         uint32_t default_alloc_size;
         //std::set<pointer> MasterRecord
-        //std::unordered_multimap<available_length, pointer> OpenList
-        //unordered does not have `lower_bound` method
+        //std::multimap<available_length, pointer> OpenList
+        std::unordered_set<uint64_t> MasterRecord;
+        std::multimap<uint32_t,uint64_t> OpenList;
 
         /*  data:
                 allocation
