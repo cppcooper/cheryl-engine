@@ -20,13 +20,17 @@ namespace CherylE
         //lookup table for available allocations
         std::multimap<uint32_t,std::pair<masterptr,ptr>> OpenList;
         //lookup table for sub-allocations
-        std::unordered_multimap<masterptr,alloc> ClosedList;
+        std::multimap<masterptr,alloc> ClosedList;
 
     public:
         void* get(size_t bytes);
+        uint32_t size(void* ptr);
+        bool resize(void* ptr, uint32_t bytes);
         void put(void* ptr, size_t bytes);
-        uint64_t length();
-        uint64_t size();
+        void put(void* ptr);
+        uint64_t free();
+        uint64_t used();
+        uint64_t total();
     };
 
     template<class T>
