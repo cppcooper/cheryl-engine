@@ -33,7 +33,13 @@ namespace CherylE
             : base_exception(location_, line_,"invalid args"){}
         invalid_args(const char* location_, uint32_t line_, const char* info_)
             : base_exception(location_, line_, info_){}
-    }
+    };
+
+    class failed_operation : public base_exception{
+    public:
+        failed_operation(const char* location_, uint32_t line_, const char* info_)
+            : base_exception(location_, line_, info_){}
+    };
 }
 
 std::ostream& operator<<(std::ostream &os, CherylE::base_exception &obj){
