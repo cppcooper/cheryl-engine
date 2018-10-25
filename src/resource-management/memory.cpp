@@ -2,7 +2,7 @@
 using namespace CherylE;
 
 void* MemoryMgr::get(size_t bytes) {
-    uint32_t remainder = 0;
+    size_tsize_t remainder = 0;
     uint64_t ptr = nullptr;
     auto iter = OpenList.lower_bound(bytes);
     if(iter != OpenList.end()){
@@ -33,10 +33,3 @@ void MemoryMgr::put(void *ptr, size_t bytes) {
 
 }
 
-uint64_t MemoryMgr::length(){
-    return 0;
-}
-
-uint64_t MemoryMgr::size(){
-    return 0;
-}
