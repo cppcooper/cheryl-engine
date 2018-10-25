@@ -2,7 +2,11 @@
 using namespace CherylE;
 
 void* MemoryMgr::get(size_t bytes) {
-    size_tsize_t remainder = 0;
+    return get(bytes,default_alloc_size);
+}
+
+void* MemoryMgr::get(size_t bytes, size_t alloc_size) {
+    size_t remainder = 0;
     uint64_t ptr = nullptr;
     auto iter = OpenList.lower_bound(bytes);
     if(iter != OpenList.end()){
@@ -16,8 +20,8 @@ void* MemoryMgr::get(size_t bytes) {
         ClosedList.emplace(ptr_pair.first,std::make_pair(ptr,bytes));
     }
     else{
-        remainder = bytes >= default_alloc_size ? 0 : default_alloc_size - bytes;
-        ptr = malloc(remainder != 0 ? default_alloc_size : bytes);
+        remainder = bytes >= alloc_size ? 0 : alloc_size - bytes;
+        ptr = malloc(remainder != 0 ? alloc_size : bytes);
         if (!ptr) {
             throw bad_alloc(__FUNCTION__,__LINE__);
         }
@@ -29,6 +33,9 @@ void* MemoryMgr::get(size_t bytes) {
     }
     return (void*)ptr;
 }
+
+
+
 void MemoryMgr::put(void *ptr, size_t bytes) {
 
 }

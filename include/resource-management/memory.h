@@ -11,9 +11,15 @@ namespace CherylE
     {
         TYPENAMEAVAILABLE_STATIC
     private:
-        using ptr = uint64_t;
         using masterptr = ptr;
+        using ptr = uint64_t;
         using alloc = std::pair<ptr,size_t>;
+        struct alloc_v2{
+            ptr master;
+            ptr head;
+            size_t master_size;
+            size_t head_size;
+        };
         size_t default_alloc_size;
         size_t m_free;
         size_t m_used;
@@ -44,6 +50,7 @@ namespace CherylE
     {
     public:
         void *allocate(size_t count) override {
+            //size_t alloc_size = Factory<T>::alloc_size??
             return Singleton<MemoryMgr>::getInstance().get(sizeof(T) * count);
         }
         void deallocate(void *ptr, size_t count) override {
