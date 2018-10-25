@@ -13,24 +13,30 @@ namespace CherylE
     private:
         using ptr = uint64_t;
         using masterptr = ptr;
-        using alloc = std::pair<ptr,uint32_t>;
-        uint32_t default_alloc_size;
+        using alloc = std::pair<ptr,size_t>;
+        size_t default_alloc_size;
+        size_t m_free;
+        size_t m_used;
+        size_t m_total;
         //tracks allocations to prevent memory leaks
         std::unordered_set<masterptr> MasterRecord;
         //lookup table for available allocations
-        std::multimap<uint32_t,std::pair<masterptr,ptr>> OpenList;
+        std::multimap<size_t,std::pair<masterptr,ptr>> OpenList;
         //lookup table for sub-allocations
         std::multimap<masterptr,alloc> ClosedList;
 
     public:
+        void set_default_alloc_size(size_t alloc_size){default_alloc_size=alloc_size;}
         void* get(size_t bytes);
-        uint32_t size(void* ptr);
-        bool resize(void* ptr, uint32_t bytes);
-        void put(void* ptr, size_t bytes);
+        void* get(size_t bytes, size_t alloc_size);
+        size_t size(void* ptr);
+        bool resize(void* ptr, size_t bytes);
         void put(void* ptr);
-        uint64_t free();
-        uint64_t used();
-        uint64_t total();
+        void put(void* ptr, size_t bytes);
+        //void update/cleanup --needs time data
+        size_t free()const{ return m_free; };
+        size_t used()const{ return m_used; };
+        size_t total()const{ return m_total; };
     };
 
     template<class T>
