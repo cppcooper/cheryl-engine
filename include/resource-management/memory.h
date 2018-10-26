@@ -13,8 +13,7 @@ namespace CherylE
     private:
         using masterptr = ptr;
         using ptr = uint64_t;
-        using alloc = std::pair<ptr,size_t>;
-        struct alloc_v2{
+        struct alloc{
             ptr master;
             ptr head;
             size_t master_size;
@@ -27,12 +26,13 @@ namespace CherylE
         //tracks allocations to prevent memory leaks
         std::unordered_set<masterptr> MasterRecord;
         //lookup table for available allocations
-        std::multimap<size_t,std::pair<masterptr,ptr>> OpenList;
+        std::multimap<size_t,alloc> OpenList;
         //lookup table for sub-allocations
         std::multimap<masterptr,alloc> ClosedList;
 
     public:
         void set_default_alloc_size(size_t alloc_size){default_alloc_size=alloc_size;}
+        //void* reserve(size_t bytes);
         void* get(size_t bytes);
         void* get(size_t bytes, size_t alloc_size);
         size_t size(void* ptr);

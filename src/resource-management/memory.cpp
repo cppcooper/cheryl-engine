@@ -9,6 +9,10 @@ void* MemoryMgr::get(size_t bytes, size_t alloc_size) {
     size_t remainder = 0;
     uint64_t ptr = nullptr;
     auto iter = OpenList.lower_bound(bytes);
+    //first hit //best hit
+
+
+
     if(iter != OpenList.end()){
         remainder = iter->first - bytes;
         auto ptr_pair = iter->second;
