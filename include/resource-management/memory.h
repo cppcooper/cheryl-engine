@@ -11,15 +11,18 @@ namespace CherylE
     {
         TYPENAMEAVAILABLE_STATIC
     private:
+        using ptr = void*;
         using masterptr = ptr;
-        using ptr = uint64_t;
         struct alloc{
             ptr master;
             ptr head;
             size_t master_size;
             size_t head_size;
         };
-        size_t default_alloc_size;
+        enum fitType{
+            bestFit,
+            worstFit
+        };
         size_t m_free;
         size_t m_used;
         size_t m_total;
@@ -30,15 +33,17 @@ namespace CherylE
         //lookup table for sub-allocations
         std::multimap<masterptr,alloc> ClosedList;
 
+    protected:
+        void* allocate(size_t bytes);
+
     public:
-        void set_default_alloc_size(size_t alloc_size){default_alloc_size=alloc_size;}
+        void pre_allocate(size_t bytes, size_t blocks = 1);
         //void* reserve(size_t bytes);
-        void* get(size_t bytes);
-        void* get(size_t bytes, size_t alloc_size);
-        size_t size(void* ptr);
-        bool resize(void* ptr, size_t bytes);
-        void put(void* ptr);
-        void put(void* ptr, size_t bytes);
+        void* get(size_t bytes, fitType fit = fitType::bestFit);
+        size_t size(void* p);
+        bool resize(void* p, size_t bytes);
+        void put(void* p);
+        void put(void* p, size_t bytes);
         //void update/cleanup --needs time data
         size_t free()const{ return m_free; };
         size_t used()const{ return m_used; };

@@ -1,46 +1,41 @@
 #include <resource-management/memory.h>
+#include <cstdlib>
 using namespace CherylE;
 
-void* MemoryMgr::get(size_t bytes) {
-    return get(bytes,default_alloc_size);
+void* MemoryMgr::allocate(size_t bytes) {
+    void* p = malloc(bytes);
+    if(!ptr){
+        throw bad_alloc(__FUNCTION__,__LINE__);
+    }
+    return p;
 }
 
-void* MemoryMgr::get(size_t bytes, size_t alloc_size) {
-    size_t remainder = 0;
-    uint64_t ptr = nullptr;
-    auto iter = OpenList.lower_bound(bytes);
-    //first hit //best hit
-
-
-
-    if(iter != OpenList.end()){
-        remainder = iter->first - bytes;
-        auto ptr_pair = iter->second;
-        ptr = ptr_pair.second;
-        OpenList.erase(iter);
-        if(remainder>0){
-            OpenList.emplace(remainder,ptr+bytes);
-        }
-        ClosedList.emplace(ptr_pair.first,std::make_pair(ptr,bytes));
+void MemoryMgr::pre_allocate(size_t bytes, size_t blocks) {
+    if (blocks < 1){
+        throw invalid_args(__FUNCTION__, __LINE__, "The number of allocated blocks cannot be less than 1.");
     }
-    else{
-        remainder = bytes >= alloc_size ? 0 : alloc_size - bytes;
-        ptr = malloc(remainder != 0 ? alloc_size : bytes);
-        if (!ptr) {
-            throw bad_alloc(__FUNCTION__,__LINE__);
+    for(int i = 0; i < blocks; ++i){
+        alloc a;
+        a.master = allocate(bytes);
+        a.head = a.master;
+        a.master_size = bytes;
+        a.head_size = bytes;
+        if(!MasterRecord.emplace(p).second){
+            throw failed_operation(__FUNCTION__, __LINE__, "New allocation is already recorded. This should never happen, something went wrong.");
         }
-        MasterRecord.emplace(ptr);
-        if(remainder>0){
-            OpenList.emplace(remainder,ptr+bytes);
-        }
-        ClosedList.emplace(ptr,std::make_pair(ptr,bytes));
+        OpenList.emplace(bytes,a);
     }
-    return (void*)ptr;
 }
 
+void* MemoryMgr::get(size_t bytes, fitType fit) {
+    if (fit == fitType::bestFit){
+        auto iter = OpenList.lower_bound(bytes); //best fit
+    } else if (fit == fitType::worstFit){
+        auto iter = OpenList.upper_bound(bytes);
+    }
+}
 
-
-void MemoryMgr::put(void *ptr, size_t bytes) {
+void MemoryMgr::put(void *p, size_t bytes) {
 
 }
 
