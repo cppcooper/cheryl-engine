@@ -19,10 +19,6 @@ namespace CherylE
             size_t master_size;
             size_t head_size;
         };
-        enum fitType{
-            bestFit,
-            worstFit
-        };
         size_t m_free;
         size_t m_used;
         size_t m_total;
@@ -34,11 +30,10 @@ namespace CherylE
         std::multimap<masterptr,alloc> ClosedList;
 
     protected:
-        void* allocate(size_t bytes);
+        alloc allocate(size_t bytes);
 
     public:
         void pre_allocate(size_t bytes, size_t blocks = 1);
-        //void* reserve(size_t bytes);
         void* get(size_t bytes, fitType fit = fitType::bestFit);
         size_t size(void* p);
         bool resize(void* p, size_t bytes);
@@ -48,6 +43,10 @@ namespace CherylE
         size_t free()const{ return m_free; };
         size_t used()const{ return m_used; };
         size_t total()const{ return m_total; };
+        enum fitType{
+            bestFit,
+            worstFit
+        };
     };
 
     template<class T>
