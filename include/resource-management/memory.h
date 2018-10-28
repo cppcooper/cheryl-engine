@@ -31,6 +31,9 @@ namespace CherylE
 
     protected:
         alloc allocate(size_t bytes);
+        using closed_iter = std::multimap<masterptr,alloc>::iterator;
+        void open_alloc(closed_iter iter, size_t bytes);
+        closed_iter find(void* p);
 
     public:
         void pre_allocate(size_t bytes, size_t blocks = 1);
