@@ -7,6 +7,10 @@
 
 namespace CherylE
 {
+    /* MemoryMgr
+    ************
+
+    */
     class MemoryMgr
     {
         TYPENAMEAVAILABLE_STATIC
@@ -36,6 +40,8 @@ namespace CherylE
         closed_iter find(void* p);
 
     public:
+        ~MemoryMgr();
+        void purge();
         void pre_allocate(size_t bytes, size_t blocks = 1);
         void* get(size_t bytes, fitType fit = fitType::bestFit);
         size_t size(void* p);
