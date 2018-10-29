@@ -6,6 +6,9 @@ using namespace CherylE;
     allocates the bytes rounded to the next power of two
 */
 alloc MemoryMgr::allocate(size_t &bytes) {
+    if(bytes < 1){
+        throw invalid_args(__FUNCTION__, __LINE__, "The number of allocated blocks cannot be less than 1.");
+    }
     bytes = nextPowerof2(bytes);
     void* p = malloc(bytes);
     if(!ptr){
@@ -95,7 +98,7 @@ closed_iter MemoryMgr::find(void* p){
     calling the method(M,N)
 */
 void MemoryMgr::pre_allocate(size_t bytes, size_t blocks) {
-    if (blocks < 1){
+    if(blocks < 1){
         throw invalid_args(__FUNCTION__, __LINE__, "The number of allocated blocks cannot be less than 1.");
     }
     for(int i = 0; i < blocks; ++i){
@@ -144,6 +147,78 @@ void* MemoryMgr::get(size_t bytes, fitType fit) {
     }
 }
 
+/* returns the allocation size of p
+    p does not need to be the head
+*/
+size_t MemoryMgr::size(void* p){
+    auto iter = find(p);
+    if(iter!=ClosedList.end()){
+        alloc a = iter->second;
+        if(p==a.head){
+            return a.head_size;
+        }
+        size_t front_size = p-a.head;
+        if(a.head_size > front_size){
+            return a.head_size-front_size;
+        }
+        throw failed_operation(__FUNCTION__, __LINE__, "Size underflow. It is unclear why this would ever happen.");
+    }
+    return 0;
+}
+
+/* attempts to resize allocation of p
+    returns false on fail, true otherwise
+*/
+bool MemoryMgr::resize(void* p, size_t bytes, bool allow_realloc){
+    if(bytes < 1){
+        throw invalid_args(__FUNCTION__, __LINE__, "Cannot resize allocation to less than 1 byte.");
+    }
+    auto iter1 = find(p);
+    if(iter1!=ClosedList.end() && p==iter1->second.head){
+        //p is a valid allocation
+        alloc a = iter1->second;
+        if(a.head_size>=bytes){
+            iter1->second.head_size = bytes;
+            a.head += bytes;
+            a.head_size -= bytes;
+            OpenList.emplace(bytes,a);
+            return true;
+        }
+        if(a.head+bytes <= a.master+a.master_size){
+            //p is a valid sub-allocation
+            auto range = std::make_pair(OpenList.lower_bound(bytes),OpenList.upper_bound(a.master_size));
+            for(auto iter2 = range.first; iter2 != range.second; ++iter2){
+                alloc b = iter2->second;
+                if(a.master==b.master){
+                    //valid allocation block
+                    if(b.head==a.head+a.head_size){
+                        //this is the sub-allocation we're looking for
+                        if(b.head_size>=bytes-a.head_size){
+                            //sub-allocation has enough available space
+                            iter1->second.head_size=bytes;
+                            OpenList.erase(iter2);
+                            size_t remainder = b.head_size-(bytes-a.head_size); //head_size - (new-old)
+                            if(remainder>0){
+                                b.head=a.head+a.head_size;
+                                b.head_size = remainder;
+                                OpenList.emplace(remainder,b);
+                            }
+                            return true;
+                        } else if (allow_realloc){
+                            //sub-allocation didn't have enough space
+                            void* p_new = realloc(p,bytes);
+                            if(p_new){
+                                return true;
+                            }
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
 
 /* attempts to put back an allocation
     searches the closed list for an allocation range wherein p belongs

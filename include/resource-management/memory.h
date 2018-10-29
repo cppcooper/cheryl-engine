@@ -39,7 +39,7 @@ namespace CherylE
         void pre_allocate(size_t bytes, size_t blocks = 1);
         void* get(size_t bytes, fitType fit = fitType::bestFit);
         size_t size(void* p);
-        bool resize(void* p, size_t bytes);
+        bool resize(void* p, size_t bytes, bool allow_realloc = false);
         void put(void* p);
         void put(void* p, size_t bytes);
         //void update/cleanup --needs time data
