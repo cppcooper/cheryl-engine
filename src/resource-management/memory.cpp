@@ -2,6 +2,21 @@
 #include <cstdlib>
 using namespace CherylE;
 
+/* class destructor
+    frees allocations
+*/
+MemoryMgr::~MemoryMgr(){
+    purge();
+}
+
+/* frees all allocations
+*/
+void MemoryMgr::purge(){
+    for(auto p : MasterRecord){
+        free(p);
+    }
+}
+
 /* protected method
     allocates the bytes rounded to the next power of two
 */
