@@ -56,9 +56,21 @@
 
 
 
-#define TYPENAMEAVAILABLE \
+#define TYPENAMEAVAILABLE_VIRTUAL \
 public: \
 virtual const char* TypeName() { \
+    static char name[256] = {}; \
+    static std::once_flag flag; \
+    std::call_once(flag, [&](){ \
+        __STRCPY__(name,ExtractClassName(__CEFUNCTION__).c_str()); \
+    });\
+    return name; \
+} \
+private: 
+
+#define TYPENAMEAVAILABLE_STATIC \
+public: \
+static const char* TypeName() { \
     static char name[256] = {}; \
     static std::once_flag flag; \
     std::call_once(flag, [&](){ \
