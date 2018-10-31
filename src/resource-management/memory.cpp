@@ -15,6 +15,12 @@ void MemoryMgr::purge(){
     for(auto p : MasterRecord){
         free(p);
     }
+    MasterRecord.clear();
+    OpenList.clear();
+    ClosedList.clear();
+    m_free = 0;
+    m_used = 0;
+    m_total = 0;
 }
 
 /* protected method
@@ -184,7 +190,7 @@ size_t MemoryMgr::size(void* p){
 /* attempts to resize allocation of p
     returns false on fail, true otherwise
 */
-bool MemoryMgr::resize(void* p, size_t bytes, bool allow_realloc){
+bool MemoryMgr::resize(void* &p, size_t bytes, bool allow_realloc){
     if(bytes < 1){
         throw invalid_args(__FUNCTION__, __LINE__, "Cannot resize allocation to less than 1 byte.");
     }
@@ -194,7 +200,7 @@ bool MemoryMgr::resize(void* p, size_t bytes, bool allow_realloc){
         alloc a = iter1->second;
         if(a.head_size>=bytes){
             //p is shrinking
-            iter1->second.head_size = bytes;
+            iter1->second.head_size = bytes; //update ClosedList
             a.head += bytes;
             a.head_size -= bytes;
             OpenList.emplace(a.head_size,a);
@@ -211,7 +217,7 @@ bool MemoryMgr::resize(void* p, size_t bytes, bool allow_realloc){
                         //this is the sub-allocation we're looking for
                         if(b.head_size>=bytes-a.head_size){
                             //sub-allocation has enough available space
-                            iter1->second.head_size=bytes;
+                            iter1->second.head_size=bytes; //update ClosedList
                             OpenList.erase(iter2);
                             size_t remainder = b.head_size-(bytes-a.head_size); //head_size - (new-old)
                             if(remainder>0){
@@ -222,11 +228,11 @@ bool MemoryMgr::resize(void* p, size_t bytes, bool allow_realloc){
                             return true;
                         } else if (allow_realloc){
                             //sub-allocation didn't have enough space
-                            void* p_new = realloc(p,bytes);
-                            if(p_new){
-                                return true;
-                            }
-                            return false;
+                            void* p_new = get(bytes);
+                            std::memcpy(p_new,p,a.head_size);
+                            open_alloc(iter1);
+                            p=p_new;
+                            return true;
                         }
                     }
                 }
@@ -244,11 +250,11 @@ void MemoryMgr::put(void* p){
     auto iter = find(p);
     if(iter!=ClosedList.end()){
         alloc a = iter->second;
-        if(p <= a.head+a.head_size-1){
-            if(p==a.head){
-                open_alloc(iter);
-                return;
-            }
+        if(p==a.head){
+            open_alloc(iter);
+            return;
+        }
+        if(p <= a.head+a.head_size-1){ //-1 is necessary?
             size_t front_size = p-a.head;
             size_t back_size = a.head_size-front_size;
             iter->second.head_size = front_size;
@@ -272,11 +278,11 @@ void MemoryMgr::put(void* p, size_t bytes) {
     auto iter = find(p);
     if(iter!=ClosedList.end()){
         alloc a = iter->second;
+        if(p==a.head && bytes==a.head_size){
+            open_alloc(iter);
+            return;
+        }
         if(p+bytes <= a.head+a.head_size){
-            if(p==a.head){
-                open_alloc(iter);
-                return;
-            }
             size_t front_size = p-a.head;
             size_t back_size = a.head_size-front_size-bytes;
             iter->second.head_size = front_size;
