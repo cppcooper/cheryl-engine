@@ -1,11 +1,9 @@
 #pragma once
-#ifndef _ACTOR_H
-#define _ACTOR_H
+#ifndef CEACTOR_H
+#define CEACTOR_H
 
-namespace CherylE
-{
-    class iActor
-    {
+namespace CherylE{
+    class iActor{
     public:
         virtual ~iActor();
         virtual void Reset() = 0;

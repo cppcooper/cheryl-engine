@@ -1,6 +1,6 @@
 #pragma once
-#ifndef _ASSET_H
-#define _ASSET_H
+#ifndef CEASSET_H
+#define CEASSET_H
 
 namespace CherylE{
     class iAsset{

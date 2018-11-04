@@ -1,19 +1,20 @@
 #pragma once
-#ifndef _GAMEMODULE_H_
-#define _GAMEMODULE_H_
+#ifndef CEGAMEMODULE_H_
+#define CEGAMEMODULE_H_
 
-class GameModule
-{
-public:
-    virtual void Init() {}
-    virtual void Deinit() {}
+namespace CherylE{
+    class GameModule{
+    public:
+        virtual void Init() {}
+        virtual void Deinit() {}
 
-    virtual void Process() {}
-    virtual void Update(double& seconds) {}
-    virtual void Buffer() {}
+        virtual void Process() {}
+        virtual void Update(double& seconds) {}
+        virtual void Buffer() {}
 
-    virtual void Draw() {} //Todo: Replace with below method
-    virtual void Output() {}
-};
+        virtual void Draw() {} //Todo: Replace with below method
+        virtual void Output() {}
+    };
+}
 
 #endif

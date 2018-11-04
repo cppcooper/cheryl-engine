@@ -1,6 +1,6 @@
 #pragma once
-#ifndef ALLOCATOR_H
-#define ALLOCATOR_H
+#ifndef CEALLOCATOR_H
+#define CEALLOCATOR_H
 
 namespace CherylE{
     class iAllocator{
