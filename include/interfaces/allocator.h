@@ -2,10 +2,8 @@
 #ifndef ALLOCATOR_H
 #define ALLOCATOR_H
 
-namespace CherylE
-{
-    class iAllocator
-    {
+namespace CherylE{
+    class iAllocator{
     public:
         virtual ~iAllocator();
         virtual void* allocate(size_t) = 0;

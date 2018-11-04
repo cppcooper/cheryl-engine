@@ -1,12 +1,8 @@
 #pragma once
+#include "../internals.h"
 #include <utility>
 
-namespace CherylE
-{
-    namespace detail{
-        void print_already_constructed_error(const char* type_name = "");
-    }
-
+namespace CherylE{
     template<class T, typename... Args>
     static void construct(T& instance, Args... args){
         instance = T {std::forward<Args>(args)...};

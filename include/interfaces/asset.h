@@ -2,10 +2,8 @@
 #ifndef _ASSET_H
 #define _ASSET_H
 
-namespace CherylE
-{
-    class iAsset
-    {
+namespace CherylE{
+    class iAsset{
     public:
         virtual ~iAsset();
         virtual void Reset() = 0;
