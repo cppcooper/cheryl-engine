@@ -3,7 +3,12 @@
 
 namespace CherylE{    
     template<class AssetType>
-    class AssetFactory : public iFactory<iAsset,AssetFactory>{
+    class AssetFactory :
+        public iFactory<iAsset,AssetFactory>,
+        public Singleton<AssetFactory<AssetType>>
+    {
+    protected:
+        AssetFactory(){/*factory with tracker*/}
     public:
         iAsset* create(){
             AssetType* p2 = AssetPool<AssetType>.get(1);
@@ -21,10 +26,15 @@ namespace CherylE{
     };
 
     template<class T>
-    class GenericFactory : public iFactory<void,GenericFactory>{
-    public:
+    class GenericFactory :
+        public iFactory<void,GenericFactory>,
+        public Singleton<GenericFactory<T>>
+    {
+    protected:
         static_assert(hasmethod(T,TypeName),"GenericFactory<T> requires T to implement the TypeName method to provide type safety.");
         static_assert(!isderived(iAsset,T),"Use AssetFactory for iAsset derived types.");
+        GenericFactory(){/*register with tracker*/}
+    public:
         //todo: implement methods
         void* create(){
             T* p = nullptr;
