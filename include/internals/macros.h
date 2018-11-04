@@ -1,9 +1,13 @@
 #pragma once
 #ifndef CE_MACROS_H
 #define CE_MACROS_H
-#include <mutex>
 #include <string>
 #include <cstring>
+
+#define isderived(base,type) std::is_base_of_v<base, type>
+#define ismethod(method) std::is_member_function_pointer_v<decltype(method)>
+#define hasmethod(type,method) std::is_member_function_pointer_v<decltype(&type::method)>
+//todo work for static methods #define hasmethod_any(type,method) std::enable_if<std::is_member_function_pointer_v<decltype(&type::method)>>
 
 #ifdef _MSC_VER
     #define __CEFUNCTION__ __FUNCTION__
