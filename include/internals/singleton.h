@@ -1,6 +1,5 @@
 #pragma once
 #include "../internals.h"
-#include <utility>
 
 namespace CherylE{
     template<class T, typename... Args>
@@ -10,10 +9,10 @@ namespace CherylE{
 
     template<class T>
     class Singleton{
-    private:
-        static T instance;
     public:
+        static_assert(hasmethod(T,TypeName),"In Singleton<T>, T must have the method TypeName, it needs to return a string.");
         static T& get(){
+            static T instance;
             return instance;
         }
 
@@ -22,13 +21,12 @@ namespace CherylE{
             static bool called_once = false;
             if(!called_once){
                 called_once = true;
-                construct(instance, args...); //should deduce types
+                construct(get(), args...); //should deduce types
             } else {
-                print_already_constructed_error(instance.TypeName());
+                char buffer[128];
+                snprintf(buffer,128,"Already constructed Singleton<%s>",get().TypeName());
+                throw bad_request(__FUNCTION__,__LINE__,buffer);
             }
         }
     };
-
-    template<class T>
-    T Singleton<T>::instance;
 }
