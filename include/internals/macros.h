@@ -4,6 +4,7 @@
 #include <string>
 #include <cstring>
 
+#define isclass(type) std::is_class_v<type>
 #define isderived(base,type) std::is_base_of_v<base, type>
 #define ismethod(method) std::is_member_function_pointer_v<decltype(method)>
 #define hasmethod(type,method) std::is_member_function_pointer_v<decltype(&type::method)>
