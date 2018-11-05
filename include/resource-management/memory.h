@@ -64,13 +64,6 @@ namespace CherylE
         /*returns all the bytes from p to p+X of the sub-allocation p belongs to*/
         void put(void* p, size_t bytes);
         //void update/cleanup --needs time data
-
-        /*returns how many bytes are available*/
-        size_t free()const{ return m_free; };
-        /*returns how many bytes are not available*/
-        size_t used()const{ return m_used; };
-        /*returns how many bytes are allocated*/
-        size_t total()const{ return m_total; };
         
         enum fitType{
             bestFit, /*get will return the nearest amount of available memory which fits the query*/
