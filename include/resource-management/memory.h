@@ -3,6 +3,7 @@
 #define MEMORY_H
 
 #include "../internals.h"
+#include "../interfaces/pool.h"
 #include "../interfaces/allocator.h"
 
 namespace CherylE
@@ -27,34 +28,21 @@ namespace CherylE
     When doing this it is best to consider values that will ideally result in high fragmentation.
     High fragmentation is desirable, as it means all operations can probably be performed.
     */
-    class MemoryMgr
-    {
+    class MemoryMgr : public iPool{
         TYPENAMEAVAILABLE_STATIC
     private:
-        using ptr = void*;
-        using masterptr = ptr;
         struct alloc{
             ptr master;
             ptr head;
             size_t master_size;
             size_t head_size;
         };
-        size_t m_free = 0;
-        size_t m_used = 0;
-        size_t m_total = 0;
-        //tracks allocations to prevent memory leaks
-        std::unordered_set<masterptr> MasterRecord;
-        //lookup table for available allocations
-        std::multimap<size_t,alloc> OpenList;
-        //lookup table for sub-allocations
-        std::multimap<masterptr,alloc> ClosedList;
-
     protected:
-        alloc allocate(size_t &bytes);
-        void open_alloc(closed_iter iter, size_t bytes);
         using closed_iter = std::multimap<masterptr,alloc>::iterator;
         using open_iter = std::multimap<size_t,alloc>::iterator;
-        closed_iter find(void* p);
+        alloc allocate(size_t &bytes);
+        void moveto_open(closed_iter iter, size_t bytes);
+        closed_iter find_closed(void* p);
 
     public:
         /*frees all memory*/
@@ -63,8 +51,10 @@ namespace CherylE
         void purge();
         /*allocates N blocks of M bytes [order of arguments: M,N]*/
         void pre_allocate(size_t bytes, size_t blocks = 1);
+        /*returns a sub-allocation of X bytes, returns the best fit*/
+        void* get(size_t bytes);
         /*returns a sub-allocation of X bytes, returns the first fit according to the fitType*/
-        void* get(size_t bytes, fitType fit = fitType::bestFit);
+        void* get(size_t bytes, fitType fit);
         /*finds the sub-allocation p belongs to and returns the number of bytes following after p*/
         size_t size(void* p);
         /*attempts to resize p to X bytes, performs a realloc on p if no other option is available (option disabled by default)*/

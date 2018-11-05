@@ -45,7 +45,7 @@ alloc MemoryMgr::allocate(size_t &bytes) {
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-void MemoryMgr::open_alloc(closed_iter iter, size_t bytes){
+void MemoryMgr::moveto_open(closed_iter iter, size_t bytes){
     alloc a = iter->second;
     size_t remainder = 0;
     if(bytes <= a.head_size){
@@ -69,7 +69,7 @@ void MemoryMgr::open_alloc(closed_iter iter, size_t bytes){
     attempts to find the iterator of the allocation p belongs to
     returns an iterator to end() if search fails
 */
-closed_iter MemoryMgr::find(void* p){
+closed_iter MemoryMgr::find_closed(void* p){
     /* Get first pair with a key not less than p
     -p is a masterptr
         search will land directly on the right pair
@@ -129,6 +129,14 @@ void MemoryMgr::pre_allocate(size_t bytes, size_t blocks) {
 }
 
 /* returns an allocation of the required size or greater
+    searches for the best fitting allocation
+    if none are found, it creates one
+*/
+void* MemoryMgr::get(size_t bytes){
+    return get(bytes,fitType::bestFit);
+}
+
+/* returns an allocation of the required size or greater
     searches for an allocation according to the desired fit type (best/worst)
     if none are found, it creates one
 */
@@ -172,7 +180,7 @@ void* MemoryMgr::get(size_t bytes, fitType fit) {
     p does not need to be the head
 */
 size_t MemoryMgr::size(void* p){
-    auto iter = find(p);
+    auto iter = find_closed(p);
     if(iter!=ClosedList.end()){
         alloc a = iter->second;
         if(p==a.head){
@@ -194,7 +202,7 @@ bool MemoryMgr::resize(void* &p, size_t bytes, bool allow_realloc){
     if(bytes < 1){
         throw invalid_args(__FUNCTION__, __LINE__, "Cannot resize allocation to less than 1 byte.");
     }
-    auto iter1 = find(p);
+    auto iter1 = find_closed(p);
     if(iter1!=ClosedList.end() && p==iter1->second.head){
         //p is a valid allocation
         alloc a = iter1->second;
@@ -230,7 +238,7 @@ bool MemoryMgr::resize(void* &p, size_t bytes, bool allow_realloc){
                             //sub-allocation didn't have enough space
                             void* p_new = get(bytes);
                             std::memcpy(p_new,p,a.head_size);
-                            open_alloc(iter1);
+                            moveto_open(iter1);
                             p=p_new;
                             return true;
                         }
@@ -247,11 +255,11 @@ bool MemoryMgr::resize(void* &p, size_t bytes, bool allow_realloc){
     if a valid range is found p to head+head_size is returned to the available memory
 */
 void MemoryMgr::put(void* p){
-    auto iter = find(p);
+    auto iter = find_closed(p);
     if(iter!=ClosedList.end()){
         alloc a = iter->second;
         if(p==a.head){
-            open_alloc(iter);
+            moveto_open(iter);
             return;
         }
         if(p <= a.head+a.head_size-1){ //-1 is necessary?
@@ -275,11 +283,11 @@ void MemoryMgr::put(void* p){
     if a valid range is found p to p+bytes is returned to the available memory
 */
 void MemoryMgr::put(void* p, size_t bytes) {
-    auto iter = find(p);
+    auto iter = find_closed(p);
     if(iter!=ClosedList.end()){
         alloc a = iter->second;
         if(p==a.head && bytes==a.head_size){
-            open_alloc(iter);
+            moveto_open(iter);
             return;
         }
         if(p+bytes <= a.head+a.head_size){
