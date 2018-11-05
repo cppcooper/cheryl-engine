@@ -9,6 +9,7 @@ namespace CherylE{
 
     template<class T>
     class Singleton{
+        TYPENAMEAVAILABLE_STATIC
     public:
         static_assert(hasmethod(T,TypeName),"In Singleton<T>, T must have the method TypeName, it needs to return a string.");
         static T& get(){
@@ -24,7 +25,7 @@ namespace CherylE{
                 construct(get(), args...); //should deduce types
             } else {
                 char buffer[128];
-                snprintf(buffer,128,"Already constructed Singleton<%s>",get().TypeName());
+                snprintf(buffer,128,"Already constructed %s",TypeName());
                 throw bad_request(__FUNCTION__,__LINE__,buffer);
             }
         }
