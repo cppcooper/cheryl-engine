@@ -65,55 +65,55 @@ void MemoryMgr::moveto_open(closed_iter iter, size_t bytes){
     }
 }
 
-/* protected method (searches ClosedList)
-    attempts to find the iterator of the allocation p belongs to
-    returns an iterator to end() if search fails
-*/
-closed_iter MemoryMgr::find_closed(void* p){
-    /* Get first pair with a key not less than p
-    -p is a masterptr
-        search will land directly on the right pair
-    -p is not a master pointer
-        -p is not the head of an allocation
-            must find the head
-        -p is the head of an allocation
-            must match p to pair.second.head
-    */
-    if(!ClosedList.empty()){
-        auto iter = ClosedList.find(p);
-        if(iter!=ClosedList.end()){
-            //we found an exact match
-            return iter;
-        }
-        iter = ClosedList.lower_bound(p);
-        if(iter!=ClosedList.begin()){
-            //we found something not less than what we're looking for
-            iter--;
-            void* mptr = iter->first; //p should mptr < p < mptr+master_size
-            if(mptr < p && p < mptr+iter->second.master_size){
-                //we just need to do a linear search now to find the right sub-allocation
-                while(true){
-                    if(mptr != iter->first){
-                        //we've gone too far
-                        return ClosedList.end();
-                    }
-                    alloc a = iter->second;
-                    if(p == a.head){
-                        return iter;
-                    } else if (a.head < p && p < a.head+a.head_size){
-                        //we found the sub-allocation that p is a sub-allocation of
-                        return iter;
-                    }
-                    if(iter==ClosedList.begin()){
-                        break;
-                    }
-                    iter--;
-                }
-            }
-        }
-    }
-    return ClosedList.end();
-}
+// /* protected method (searches ClosedList)
+//     attempts to find the iterator of the allocation p belongs to
+//     returns an iterator to end() if search fails
+// */
+// closed_iter MemoryMgr::find_closed(void* p){
+//     /* Get first pair with a key not less than p
+//     -p is a masterptr
+//         search will land directly on the right pair
+//     -p is not a master pointer
+//         -p is not the head of an allocation
+//             must find the head
+//         -p is the head of an allocation
+//             must match p to pair.second.head
+//     */
+//     if(!ClosedList.empty()){
+//         auto iter = ClosedList.find(p);
+//         if(iter!=ClosedList.end()){
+//             //we found an exact match
+//             return iter;
+//         }
+//         iter = ClosedList.lower_bound(p);
+//         if(iter!=ClosedList.begin()){
+//             //we found something not less than what we're looking for
+//             iter--;
+//             void* mptr = iter->first; //p should mptr < p < mptr+master_size
+//             if(mptr < p && p < mptr+iter->second.master_size){
+//                 //we just need to do a linear search now to find the right sub-allocation
+//                 while(true){
+//                     if(mptr != iter->first){
+//                         //we've gone too far
+//                         return ClosedList.end();
+//                     }
+//                     alloc a = iter->second;
+//                     if(p == a.head){
+//                         return iter;
+//                     } else if (a.head < p && p < a.head+a.head_size){
+//                         //we found the sub-allocation that p is a sub-allocation of
+//                         return iter;
+//                     }
+//                     if(iter==ClosedList.begin()){
+//                         break;
+//                     }
+//                     iter--;
+//                 }
+//             }
+//         }
+//     }
+//     return ClosedList.end();
+// }
 
 /* prepares N blocks of M sized memory allocations
     calling the method(M,N)
@@ -128,13 +128,6 @@ void MemoryMgr::pre_allocate(size_t bytes, size_t blocks) {
     }
 }
 
-/* returns an allocation of the required size or greater
-    searches for the best fitting allocation
-    if none are found, it creates one
-*/
-void* MemoryMgr::get(size_t bytes){
-    return get(bytes,fitType::bestFit);
-}
 
 /* returns an allocation of the required size or greater
     searches for an allocation according to the desired fit type (best/worst)
@@ -153,6 +146,7 @@ void* MemoryMgr::get(size_t bytes, fitType fit) {
             a = iter->second;
             OpenList.erase(iter);
         }else{
+            remainder = bytes;
             a = allocate(bytes);
         }
     } else if (fit == fitType::worstFit){
@@ -161,11 +155,13 @@ void* MemoryMgr::get(size_t bytes, fitType fit) {
             a = iter->second;
             OpenList.erase(iter);
         }else{
+            remainder = bytes;
             a = allocate(bytes);
         }
     }
-    remainder = bytes - a.head_size;
-    a.head_size -= remainder;
+    //if remainder != 0, allocated bytes may be larger than what was requested
+    remainder = remainder != 0 ? bytes - remainder : bytes - a.head_size;
+    a.head_size = bytes - remainder;
     m_used += bytes;
     m_free -= bytes;
     ClosedList.emplace(a.master,a);
@@ -215,7 +211,7 @@ bool MemoryMgr::resize(void* &p, size_t bytes, bool allow_realloc){
             return true;
         }
         if(a.head+bytes <= a.master+a.master_size){
-            //p is a valid sub-allocation
+            //p is a valid sub-allocation, there is enough space after it
             auto range = std::make_pair(OpenList.lower_bound(bytes),OpenList.upper_bound(a.master_size));
             for(auto iter2 = range.first; iter2 != range.second; ++iter2){
                 alloc b = iter2->second;

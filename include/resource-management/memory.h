@@ -30,20 +30,10 @@ namespace CherylE
     */
     class MemoryMgr : public iPool{
         TYPENAMEAVAILABLE_STATIC
-    private:
-        struct alloc{
-            ptr master;
-            ptr head;
-            size_t master_size;
-            size_t head_size;
-        };
     protected:
-        using closed_iter = std::multimap<masterptr,alloc>::iterator;
-        using open_iter = std::multimap<size_t,alloc>::iterator;
         alloc allocate(size_t &bytes);
         void moveto_open(closed_iter iter, size_t bytes);
         closed_iter find_closed(void* p);
-
     public:
         /*frees all memory*/
         ~MemoryMgr();
@@ -51,10 +41,8 @@ namespace CherylE
         void purge();
         /*allocates N blocks of M bytes [order of arguments: M,N]*/
         void pre_allocate(size_t bytes, size_t blocks = 1);
-        /*returns a sub-allocation of X bytes, returns the best fit*/
-        void* get(size_t bytes);
         /*returns a sub-allocation of X bytes, returns the first fit according to the fitType*/
-        void* get(size_t bytes, fitType fit);
+        void* get(size_t bytes, fitType fit = fitType::bestFit);
         /*finds the sub-allocation p belongs to and returns the number of bytes following after p*/
         size_t size(void* p);
         /*attempts to resize p to X bytes, performs a realloc on p if no other option is available (option disabled by default)*/
@@ -65,10 +53,7 @@ namespace CherylE
         void put(void* p, size_t bytes);
         //void update/cleanup --needs time data
         
-        enum fitType{
-            bestFit, /*get will return the nearest amount of available memory which fits the query*/
-            worstFit /*get will return the largest amount of available memory which fits the query*/
-        };
+
     };
 
     template<class T>
