@@ -6,13 +6,13 @@
 
 #define isclass(type) std::is_class_v<type>
 #define isderived(base,type) std::is_base_of_v<base, type>
-#define ismethod(method) std::is_member_function_pointer_v<decltype(method)>
+#define ismethodptr(method) std::is_member_function_pointer_v<decltype(method)>
 #define hasmethod(type,method) std::is_member_function_pointer_v<decltype(&type::method)>
 //todo work for static methods #define hasmethod_any(type,method) std::enable_if<std::is_member_function_pointer_v<decltype(&type::method)>>
 
 #ifdef _MSC_VER
     #define __CEFUNCTION__ __FUNCTION__
-    #define __STRCPY__ strcpy_s
+    #define CE_STRCPY strcpy_s
     inline std::string ExtractClassName(const char* func){
         std::string raw(func);
         std::string classname;
@@ -37,7 +37,7 @@
     }
 #else
     #define __CEFUNCTION__ __PRETTY_FUNCTION__
-    #define __STRCPY__ strcpy
+    #define CE_STRCPY strcpy
     inline std::string ExtractClassName(const char* func){
         std::string raw(func);
         std::string classname;
@@ -67,7 +67,7 @@ virtual const char* TypeName() { \
     static char name[256] = {}; \
     static std::once_flag flag; \
     std::call_once(flag, [&](){ \
-        __STRCPY__(name,ExtractClassName(__CEFUNCTION__).c_str()); \
+        CE_STRCPY(name,ExtractClassName(__CEFUNCTION__).c_str()); \
     });\
     return name; \
 } \
@@ -79,7 +79,7 @@ static const char* TypeName() { \
     static char name[256] = {}; \
     static std::once_flag flag; \
     std::call_once(flag, [&](){ \
-        __STRCPY__(name,ExtractClassName(__CEFUNCTION__).c_str()); \
+        CE_STRCPY(name,ExtractClassName(__CEFUNCTION__).c_str()); \
     });\
     return name; \
 } \
