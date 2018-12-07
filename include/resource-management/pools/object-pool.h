@@ -27,14 +27,14 @@ namespace CherylE{
     };
 
     // Part 2 - Implementation
-    template<class D, class B>
+    template<class D, class B> //done
     alloc ObjectPool<D,B>::allocate(size_t N){
         void* p = Singleton<MemoryMgr>::get().get(N * sizeof(D)); //exception when N=0
         alloc a{p,p,N,N};
         MasterRecord.emplace(p);
         OpenList.emplace(N,a);
     }
-    template<class D, class B>
+    template<class D, class B>//not done, probably done actually
     void ObjectPool<D,B>::moveto_open(closed_iter iter, size_t N){
         /* Method must look for touching allocations
         * On both sides.
@@ -49,6 +49,18 @@ namespace CherylE{
         } else {
             throw invalid_args(__FUNCTION__, __LINE__, "The objects returned must be less than or equal to the number allocated.");
         }
+
+        /*
+        verify usage, may need to write a comment about expectations of usage.
+        I don't think we use this method when the returned pointer is offset from the head.
+        In other words, these checks below are impossible.. we can perform these inside the put method however, if they are not already there
+
+        check left only  <==  remainder>0 && p == head
+        check right only <==  p-head == remainder
+        check nothing    <==  p-head != (0 || remainder)
+        */
+
+        size_t offset = 
         ClosedList.erase(iter);
         OpenList.emplace(N,a);
         if(remainder>0){
