@@ -12,7 +12,7 @@ namespace CherylE{
             /*returns size of array*/
             virtual size_t size(void* p) = 0;
             /*attempts to resize p to N elements, if allowed will reallocate if no other option is available*/
-            virtual bool resize(void* &p, size_t N, bool allow_realloc/* = false*/) = 0;
+            virtual resizeResult resize(void* &p, size_t N, bool allow_realloc/* = false*/) = 0;
             /*returns all the elements from p to the end of the array p belongs to*/
             virtual void put(void* p) = 0;
             /*returns all the elements from p to p+N of the array p belongs to*/
@@ -35,7 +35,7 @@ namespace CherylE{
             /*returns size of array from p onward*/
             virtual size_t size(typeinterface* p) = 0;
             /*attempts to resize p to N elements, if allowed will reallocate if no other option is available*/
-            virtual bool resize(typeinterface* &p, size_t N, bool allow_realloc/* = false*/) = 0;
+            virtual resizeResult resize(typeinterface* &p, size_t N, bool allow_realloc/* = false*/) = 0;
             /*returns all the elements from p to the end of the array p belongs to*/
             virtual void put(typeinterface* p) = 0;
             /*returns all the elements from p to p+N of the array p belongs to*/
