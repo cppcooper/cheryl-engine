@@ -32,8 +32,6 @@ namespace CherylE
         TYPENAMEAVAILABLE_STATIC
     protected:
         alloc allocate(size_t &bytes);
-        void moveto_open(closed_iter iter, size_t bytes);
-        closed_iter find_closed(void* p);
     public:
         /*frees all memory*/
         ~MemoryMgr();
@@ -46,7 +44,7 @@ namespace CherylE
         /*finds the sub-allocation p belongs to and returns the number of bytes following after p*/
         size_t size(void* p);
         /*attempts to resize p to X bytes, performs a realloc on p if no other option is available (option disabled by default)*/
-        bool resize(void* &p, size_t bytes, bool allow_realloc = false);
+        resizeResult resize(void* &p, size_t bytes, bool allow_realloc = false);
         /*returns all the bytes from p to the end of the sub-allocation p belongs to*/
         void put(void* p);
         /*returns all the bytes from p to p+X of the sub-allocation p belongs to*/
