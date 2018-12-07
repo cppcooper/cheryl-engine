@@ -19,6 +19,12 @@ namespace CherylE{
             bestFit, /*get will return the nearest amount of available memory which fits the query*/
             worstFit /*get will return the largest amount of available memory which fits the query*/
         };
+        enum resizeResult{
+            fail,
+            left,
+            right/*,
+            both/*probably not gonna ever use this*/
+        };
     protected:
         size_t m_free = 0;
         size_t m_used = 0;
@@ -32,12 +38,14 @@ namespace CherylE{
         //lookup table for sub-allocations
         std::multimap<ptr,alloc> ClosedList;
     protected:
-        virtual closed_iter find_closed(void* p);
+        virtual closed_iter find_closed(void* p); //needs override if not storing bytes
         virtual void add_open(const alloc &a);
         virtual void erase_open(openlist_iter &iter);
+        virtual void erase_open(open_iter &iter);
         virtual void moveto_open(closed_iter iter, size_t N); //needs override if not storing bytes
         virtual openlist_iter find_open(const alloc &a);
         virtual neighbours find_neighbours(void* p);
+        //virtual bool grow(void*)
     public:
         /*frees all memory*/
         virtual ~PoolAbstract(){

@@ -52,10 +52,10 @@ closed_iter PoolAbstract::find_closed(void* p){
 */
 void PoolAbstract::add_open(const alloc &a){
     auto result = OpenAllocations.emplace(a.head,a);
-    if(result.second){
+    if(!result.second){
         throw bad_request(__CEFUNCTION__,__LINE__,"Allocation already exists in OpenAllocations");
     }
-    if(OpenList.emplace(a.head_size,result.first).second){
+    if(!OpenList.emplace(a.head_size,result.first).second){
         throw bad_request(__CEFUNCTION__,__LINE__,"Allocation already exists in OpenList");
     }
 }
@@ -68,6 +68,21 @@ void PoolAbstract::erase_open(openlist_iter &iter){
         OpenList.erase(iter);
     }
     throw bad_request(__CEFUNCTION__,__LINE__,"")
+}
+
+/*
+*/
+void PoolAbstract::erase_open(open_iter &iter){
+    if(iter != OpenList.end()){
+        alloc a = iter->second;
+        auto iter2 = find_open(a);
+        if(iter2==OpenList.end()){
+            throw bad_request(__CEFUNCTION__,__LINE__,"Cannot find the OpenList iterator");
+        }
+        OpenAllocations.erase(iter);
+        OpenList.erase(iter2);
+    }
+    throw invalid_args(__CEFUNCTION__,__LINE__);
 }
 
 /* protected method
