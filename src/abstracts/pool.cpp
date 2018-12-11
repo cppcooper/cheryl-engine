@@ -1,15 +1,15 @@
 #include "abstracts/pool.h"
 
-inline bool inRange(const uintptr_t p, const uintptr_t r, const size_t s){
-    return (r <= p && p < r+s);
+inline bool inRange(const size_t ts, const uintptr_t p, const uintptr_t r, const size_t s){
+    return (r <= p && p < r+(ts*s);
 }
 
-inline bool inRange(const uintptr_t p, const size_t ps, const uintptr_t r, const size_t rs){
-    return (r <= p && p+ps <= r+rs);
+inline bool inRange(const size_t ts, const uintptr_t p, const size_t ps, const uintptr_t r, const size_t rs){
+    return (r <= p && p+(ts*ps) <= r+(ts*rs);
 }
 
-inline bool isAligned(const uintptr_t a, const uintptr_t b, const size_t bs){
-    return a == b+bs;
+inline bool isAligned(const size_t ts, const uintptr_t a, const uintptr_t b, const size_t bs){
+    return a == b+(ts*bs);
 }
 
 inline bool update(std::multimap<size_t,openalloc_iter> OpenList, openlist_iter iter, const alloc &a){
@@ -35,7 +35,7 @@ inline bool update(std::map<uintptr_t,alloc> ClosedList, closed_iter iter, const
 bool AbstractPool::isClosed(const uintptr_t p){
     auto iter = ClosedList.lower_bound(p);
     if(iter != ClosedList.end()){
-        return inRange(p,iter->second.head,iter->second.head_size);
+        return inRange(type_size, p,iter->second.head,iter->second.head_size);
     }
     return false;
 }
@@ -43,7 +43,7 @@ bool AbstractPool::isClosed(const uintptr_t p){
 bool AbstractPool::isOpen(const uintptr_t p){
     auto iter = OpenAllocations.lower_bound(p);
     if(iter != OpenAllocations.end()){
-        return inRange(p,iter->second.head,iter->second.head_size);
+        return inRange(type_size, p,iter->second.head,iter->second.head_size);
     }
     return false;
 }
@@ -51,12 +51,12 @@ bool AbstractPool::isOpen(const uintptr_t p){
 bool AbstractPool::merge(openlist_iter iter, const alloc &a){
     if(iter != OpenList.end()){
         alloc &b = iter->second->second;
-        if(isAligned(a.head,b.head,b.head_size)) {
+        if(isAligned(type_size, a.head, b.head, b.head_size)) {
             //merging in on the right
             b.head_size += a.head_size;
             return update(OpenList,iter,b);
         }
-        if(isAligned(b.head,a.head,a.head_size)){
+        if(isAligned(type_size, b.head, a.head, a.head_size)){
             //merging in on the left
             b.head = a.head;
             b.head_size += a.head_size;
@@ -132,7 +132,7 @@ bool AbstractPool::shrink(closed_iter p_iter, size_t N){
             auto right_al_iter = find_neighbours(b.head).second;
             if(right_al_iter != OpenAllocations.end()){
                 alloc &right = right_al_iter->second;
-                if(isAligned(right.head,b.head,b.head_size)){
+                if(isAligned(type_size, right.head, b.head, b.head_size)){
                     right.head = b.head;
                     right.head_size += b.head_size;
                     if(!update(OpenList,find_open(right),right)){
@@ -206,7 +206,7 @@ void AbstractPool::moveto_open(closed_iter iter){
 
     //todo: remember we might need to merge with both left and right
     bool merged = false;
-    if(isAligned(right.head, p_alloc.head, p_alloc.head_size)){
+    if(isAligned(type_size, right.head, p_alloc.head, p_alloc.head_size)){
         auto iter = find_open(right);
         merged = merge(iter, p_alloc);
         p_alloc = iter->second->second;
@@ -214,7 +214,7 @@ void AbstractPool::moveto_open(closed_iter iter){
             throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
         }
     }
-    if(isAligned(p_alloc.head, left.head, left.head_size)){
+    if(isAligned(type_size, p_alloc.head, left.head, left.head_size)){
         auto left_ol_iter = find_open(left);
         if(merged){
             auto right_ol_iter = find_open(right);
@@ -244,7 +244,7 @@ void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
     alloc &a = iter->second;
     if(a.head == p && a.head_size == N){
         moveto_open(iter);
-    } else if(inRange(p, N, a.head, a.head_size)) {
+    } else if(inRange(type_size, p, N, a.head, a.head_size)) {
         auto neighbours = find_neighbours(p_alloc.head);
         alloc left,right;
         if(neighbours.second != OpenAllocations.end()){
@@ -255,11 +255,11 @@ void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
         }
 
         alloc b{a.head, p, a.master_size, N};
-        if(isAligned(right.head, b.head, b.head_size)){
+        if(isAligned(type_size, right.head, b.head, b.head_size)){
             if(!merge(find_open(right),b)){
                 throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
             }
-        } else if(isAligned(b.head, left.head, left.head_size)) {
+        } else if(isAligned(type_size, b.head, left.head, left.head_size)) {
             if(!merge(find_open(left),b)){
                 throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
             }
@@ -292,12 +292,12 @@ neighbours AbstractPool::find_neighbours(const uintptr_t p){
     auto iter = find_closed(p);
     alloc &a = iter->second;
     if(left != end){
-        if(!isAligned(a.head,left.head,left.head_size)){
+        if(!isAligned(type_size, a.head, left.head, left.head_size)){
             left = end;
         }
     }
     if(right != end){
-        if(!isAligned(right.head,a.head,a.head_size)){
+        if(!isAligned(type_size, right.head, a.head, a.head_size)){
             right = end;
         }
     }
