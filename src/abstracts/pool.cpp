@@ -195,6 +195,8 @@ void AbstractPool::moveto_open(closed_iter iter){
     }
 
     alloc &p_alloc = iter->second;
+    m_free += p_alloc.head_size;
+    m_used -= p_alloc.head_size;
     auto neighbours = find_neighbours(p_alloc.head);
     alloc left,right;
     if(neighbours.second != OpenAllocations.end()){
@@ -255,18 +257,29 @@ void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
         }
 
         alloc b{a.head, p, a.master_size, N};
+        m_free += b.head_size;
+        m_used -= b.head_size;
         if(isAligned(type_size, right.head, b.head, b.head_size)){
             if(!merge(find_open(right),b)){
                 throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
             }
+            a.head_size -= N;
         } else if(isAligned(type_size, b.head, left.head, left.head_size)) {
             if(!merge(find_open(left),b)){
                 throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
             }
+            a.head += N;
+            a.head_size -= N;
         } else {
-            add_open(a);
+            //update front closed, add back closed, add middle to open
+            size_t front = b.head - a.head;
+            alloc c{b.master, b.head+b.head_size, b.master_size, a.head_size-(b.head_size+front)}
+            a.head_size = front;
+            add_open(b);
+            ClosedList.emplace(c.head,c);
         }
-        ClosedList.erase(iter);
+        update(ClosedList,iter,a);
+
     } else {
         throw bad_request(__CEFUNCTION__, __LINE__, "Range [p,p+N] is not in the range of the iterator sub-allocation passed.");
     }
