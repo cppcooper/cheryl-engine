@@ -1,56 +1,156 @@
 #include "abstracts/pool.h"
 
-/*
-*/
-closed_iter PoolAbstract::find_closed(void* p){
-    /* Get first pair with a key not less than p
-    -p is a masterptr
-        search will land directly on the right pair
-    -p is not a master pointer
-        -p is not the head of an allocation
-            must find the head
-        -p is the head of an allocation
-            must match p to pair.second.head
-    */
-    if(!ClosedList.empty()){
-        auto iter = ClosedList.find(p);
-        if(iter!=ClosedList.end()){
-            //we found an exact match
-            return iter;
+inline bool inRange(const uintptr_t p, const uintptr_t r, const size_t s){
+    return (r <= p && p < r+s);
+}
+
+inline bool inRange(const uintptr_t p, const size_t ps, const uintptr_t r, const size_t rs){
+    return (r <= p && p+ps <= r+rs);
+}
+
+inline bool isAligned(const uintptr_t a, const uintptr_t b, const size_t bs){
+    return a == b+bs;
+}
+
+inline bool update(std::multimap<size_t,openalloc_iter> OpenList, openlist_iter iter, const alloc &a){
+    if(iter != OpenList.end()){
+        iter->first = a.head_size;
+        iter->second->first = a.head;
+        iter->second->second = a;
+        return true;
+    }
+    return false;
+}
+
+inline bool update(std::map<uintptr_t,alloc> ClosedList, closed_iter iter, const alloc &a){
+    if(iter != ClosedList.end()){
+        iter->first = a.head;
+        iter->second = a;
+        return true;
+    }
+    return false;
+}
+
+
+bool AbstractPool::isClosed(const uintptr_t p){
+    auto iter = ClosedList.lower_bound(p);
+    if(iter != ClosedList.end()){
+        return inRange(p,iter->second.head,iter->second.head_size);
+    }
+    return false;
+}
+
+bool AbstractPool::isOpen(const uintptr_t p){
+    auto iter = OpenAllocations.lower_bound(p);
+    if(iter != OpenAllocations.end()){
+        return inRange(p,iter->second.head,iter->second.head_size);
+    }
+    return false;
+}
+
+bool AbstractPool::merge(openlist_iter iter, const alloc &a){
+    if(iter != OpenList.end()){
+        alloc &b = iter->second->second;
+        if(isAligned(a.head,b.head,b.head_size)) {
+            //merging in on the right
+            b.head_size += a.head_size;
+            return update(OpenList,iter,b);
         }
-        iter = ClosedList.lower_bound(p);
-        if(iter!=ClosedList.begin()){
-            //we found something not less than what we're looking for
-            --iter;
-            void* mptr = iter->first; //p should mptr < p < mptr+master_size
-            if(mptr < p && p < mptr+iter->second.master_size){
-                //we just need to do a linear search now to find the right sub-allocation
-                while(true){
-                    if(mptr != iter->first){
-                        //we've gone too far
-                        return ClosedList.end();
+        if(isAligned(b.head,a.head,a.head_size)){
+            //merging in on the left
+            b.head = a.head;
+            b.head_size += a.head_size;
+            return update(OpenList,iter,b);
+        }
+        return false;
+    }
+    throw invalid_args(__CEFUNCTION__, __LINE__, "Invalid iterator.");
+}
+
+int8_t AbstractPool::grow(closed_iter p_iter, size_t N){
+    if(p_iter != ClosedList.end()){
+        alloc &a = p_iter->second;
+        assert(N > a.head_size && "Allocation is not less than the grow parameter N");
+        auto neighbours = find_neighbours(p_alloc.head);
+        size_t bytes_needed = bytes-a.head_size;
+        alloc left,right;
+        if(neighbours.second != OpenAllocations.end()){
+            right = neighbours.second->second;                
+        }
+        if(neighbours.first != OpenAllocations.end()){
+            left = neighbours.first->second;
+        }
+
+        //Check available space (right, then left)
+        if(right.head_size >= bytes_needed){
+            a.head_size = N;
+            update(ClosedList,p_iter,a);
+
+            alloc &b = neighbours.second->second;
+            b.head_size -= bytes_needed;
+            if(b.head_size==0){
+                erase_open(neighbours.second->second);
+            } else {
+                b.head = a.head+a.head_size;
+                if(!update(OpenList,find_open(b),b)){
+                    throw failed_operation(__CEFUNCTION__, __LINE__, "Failed to find OpenList iterator.");
+                }
+            }
+            return 1;
+        }
+        if(left.head_size >= bytes_needed){
+            a.head -= bytes_needed;
+            a.head_size = N;
+            update(ClosedList,p_iter,a);
+
+            alloc &b = neighbours.first->second;
+            b.head_size -= bytes_needed;
+            if(b.head_size==0){
+                erase_open(neighbours.second->second);
+            } else {
+                b_ol_iter->first = b.head_size;
+                if(!update(OpenList,find_open(b),b)){
+                    throw failed_operation(__CEFUNCTION__, __LINE__, "Failed to find OpenList iterator.");
+                }
+            }
+            return -1;
+        }
+    }
+    return 0;
+}
+
+bool AbstractPool::shrink(closed_iter p_iter, size_t N){
+    if(p_iter != ClosedList.end()){
+        alloc &a = p_iter->second;
+        assert(N < a.head_size && "Allocation is not greater than the shrink parameter N");
+
+        size_t remainder = a.head_size - N;
+        a.head_size = N;
+        
+        if(remainder!=0){
+            alloc b{a.master, a.head+a.head_size, a.master_size, remainder};
+            auto right_al_iter = find_neighbours(b.head).second;
+            if(right_al_iter != OpenAllocations.end()){
+                alloc &right = right_al_iter->second;
+                if(isAligned(right.head,b.head,b.head_size)){
+                    right.head = b.head;
+                    right.head_size += b.head_size;
+                    if(!update(OpenList,find_open(right),right)){
+                        throw failed_operation(__CEFUNCTION__, __LINE__, "Failed to find OpenList iterator.");
                     }
-                    alloc a = iter->second;
-                    if(p == a.head){
-                        return iter;
-                    } else if (a.head < p && p < a.head+a.head_size){
-                        //we found the sub-allocation that p is a sub-allocation of
-                        return iter;
-                    }
-                    if(iter==ClosedList.begin()){
-                        break;
-                    }
-                    --iter;
+                } else {
+                    add_open(right);
                 }
             }
         }
+        return true;
     }
-    return ClosedList.end();
+    return false;
 }
 
 /*
 */
-void PoolAbstract::add_open(const alloc &a){
+void AbstractPool::add_open(const alloc &a){
     auto result = OpenAllocations.emplace(a.head,a);
     if(!result.second){
         throw bad_request(__CEFUNCTION__,__LINE__,"Allocation already exists in OpenAllocations");
@@ -62,80 +162,157 @@ void PoolAbstract::add_open(const alloc &a){
 
 /*
 */
-void PoolAbstract::erase_open(openlist_iter &iter){
-    if(iter != OpenList.end()){
-        OpenAllocations.erase(iter->second);
-        OpenList.erase(iter);
+void AbstractPool::erase_open(openlist_iter &iter){
+    if(iter==OpenList.end()){
+        throw invalid_args(__CEFUNCTION__,__LINE__);
     }
-    throw bad_request(__CEFUNCTION__,__LINE__,"")
+    OpenAllocations.erase(iter->second);
+    OpenList.erase(iter);
 }
 
 /*
 */
-void PoolAbstract::erase_open(open_iter &iter){
-    if(iter != OpenList.end()){
-        alloc a = iter->second;
-        auto iter2 = find_open(a);
-        if(iter2==OpenList.end()){
-            throw bad_request(__CEFUNCTION__,__LINE__,"Cannot find the OpenList iterator");
-        }
-        OpenAllocations.erase(iter);
-        OpenList.erase(iter2);
+void AbstractPool::erase_open(openalloc_iter &iter){
+    if(iter==OpenList.end()){
+        throw invalid_args(__CEFUNCTION__,__LINE__);
     }
-    throw invalid_args(__CEFUNCTION__,__LINE__);
+    alloc a = iter->second;
+    auto iter2 = find_open(a);
+    if(iter2==OpenList.end()){
+        throw bad_request(__CEFUNCTION__,__LINE__,"Cannot find the OpenList iterator");
+    }
+    OpenAllocations.erase(iter);
+    OpenList.erase(iter2);
 }
 
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-void PoolAbstract::moveto_open(closed_iter iter, size_t N){
-    alloc a = iter->second->second; //<x,<a,b>::iterator>::iterator
-    size_t remainder = 0;
-    if(N <= a.head_size){
-        remainder = a.head_size - N;
-        a.head_size = N;
-        m_used -= N;
-        m_free += N;
-    } else {
-        throw invalid_args(__CEFUNCTION__, __LINE__, "The elements returned must be less than or equal to the bytes allocated.");
+void AbstractPool::moveto_open(closed_iter iter){
+    //todo: perform merging
+    if(iter==ClosedList.end()){
+        throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
+    }
+
+    alloc &p_alloc = iter->second;
+    auto neighbours = find_neighbours(p_alloc.head);
+    alloc left,right;
+    if(neighbours.second != OpenAllocations.end()){
+        right = neighbours.second->second;                
+    }
+    if(neighbours.first != OpenAllocations.end()){
+        left = neighbours.first->second;
+    }
+
+    //todo: remember we might need to merge with both left and right
+    bool merged = false;
+    if(isAligned(right.head, p_alloc.head, p_alloc.head_size)){
+        auto iter = find_open(right);
+        merged = merge(iter, p_alloc);
+        p_alloc = iter->second->second;
+        if(!merged){
+            throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
+        }
+    }
+    if(isAligned(p_alloc.head, left.head, left.head_size)){
+        auto left_ol_iter = find_open(left);
+        if(merged){
+            auto right_ol_iter = find_open(right);
+            merged = merge(left_ol_iter, p_alloc);
+            erase_open(right_ol_iter);
+        } else {
+            merged = merge(left_ol_iter, p_alloc);
+        }
+        if(!merged){
+            throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
+        }
+    }
+    if(!merged){
+        add_open(p_alloc);
     }
     ClosedList.erase(iter);
-    auto existing = find_neighbours(a.head);
-    if(existing.first != OpenAllocations.end()){
-        alloc b = existing.first->second;
-        if(a.head-b.head == b.head_size){
-            auto iter2 = find_open(b);
-            if(iter2 == OpenList.end()){
-                throw bad_request(__CEFUNCTION__, __LINE__, "Allocation should exist, but was not found.");
-            }
-            erase_open(iter2);
-            a.head = b.head;
-            a.head_size += b.head_size;
-        }
+}
+
+/* protected method
+    moves an allocation from the ClosedList to the OpenList
+*/
+void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
+    //todo: perform merging
+    if(iter==ClosedList.end()){
+        throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
     }
-    if(remainder>0){
-        //if there is a remainder, we know there won't be a trailing allocation
-        add_open(a);
-        a.head += a.head_size;
-        a.head_size = remainder;
-        ClosedList.emplace(a.master,a);
-    } else if(existing.second != OpenAllocations.end()){
-        alloc c = existing.second->second;
-        if(c.head-a.head == a.head_size){
-            auto iter2 = find_open(c);
-            if(iter2 == OpenList.end()){
-                throw bad_request(__CEFUNCTION__, __LINE__, "Allocation should exist, but was not found.");
-            }
-            erase_open(iter2);
-            a.head_size += c.head_size;
+    alloc &a = iter->second;
+    if(a.head == p && a.head_size == N){
+        moveto_open(iter);
+    } else if(inRange(p, N, a.head, a.head_size)) {
+        auto neighbours = find_neighbours(p_alloc.head);
+        alloc left,right;
+        if(neighbours.second != OpenAllocations.end()){
+            right = neighbours.second->second;                
         }
-        add_open(a);
+        if(neighbours.first != OpenAllocations.end()){
+            left = neighbours.first->second;
+        }
+
+        alloc b{a.head, p, a.master_size, N};
+        if(isAligned(right.head, b.head, b.head_size)){
+            if(!merge(find_open(right),b)){
+                throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
+            }
+        } else if(isAligned(b.head, left.head, left.head_size)) {
+            if(!merge(find_open(left),b)){
+                throw failed_operation(__CEFUNCTION__, __LINE__, "Failed attempt of merging allocations.");
+            }
+        } else {
+            add_open(a);
+        }
+        ClosedList.erase(iter);
+    } else {
+        throw bad_request(__CEFUNCTION__, __LINE__, "Range [p,p+N] is not in the range of the iterator sub-allocation passed.");
     }
 }
 
 /*
 */
-openlist_iter PoolAbstract::find_open(const alloc &a){
+neighbours AbstractPool::find_neighbours(const uintptr_t p){
+    assert(isClosed(p) && "p isn't managed, what did you do!"); //maybe an exception should be thrown :-/
+    auto end = OpenAllocations.end();
+    if(isOpen(p)){
+        // p would have been merged with its neighbours when joining the Open list
+        return std::make_pair(end,end); //throwing an exception is probably preferable
+    }
+
+    openalloc_iter left,right;
+    left = right = OpenAllocations.lower_bound(p);
+    if(left != OpenAllocations.begin()){
+        --left;
+    } else {
+        left = end;
+    }
+    auto iter = find_closed(p);
+    alloc &a = iter->second;
+    if(left != end){
+        if(!isAligned(a.head,left.head,left.head_size)){
+            left = end;
+        }
+    }
+    if(right != end){
+        if(!isAligned(right.head,a.head,a.head_size)){
+            right = end;
+        }
+    }
+    return std::make_pair(left,right);
+}
+
+/* todo: revise?
+*/
+closed_iter AbstractPool::find_closed(const uintptr_t p){
+    return ClosedList.lower_bound(p);
+}
+
+/*
+*/
+openlist_iter AbstractPool::find_open(const alloc &a){
     auto iter = OpenList.lower_bound(a.head_size);
     for(; iter != OpenList.end(); ++iter){
         alloc &v = iter->second->second;
@@ -146,15 +323,4 @@ openlist_iter PoolAbstract::find_open(const alloc &a){
         }
     }
     return OpenList.end();
-}
-
-/*
-*/
-neighbours PoolAbstract::find_neighbours(void* p){
-    auto iter2 = OpenAllocations.lower_bound(p);
-    auto iter1 = iter2;
-    if(iter1 != OpenAllocations.begin()){
-        --iter1;
-    }
-    return std::make_pair(iter1,iter2);
 }

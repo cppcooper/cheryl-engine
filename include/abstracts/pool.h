@@ -1,19 +1,17 @@
 #pragma once
 
 namespace CherylE{
-    class PoolAbstract{
+    class AbstractPool{
     protected:
-        using ptr = void*;
-        using masterptr = ptr;
-        using open_iter = std::map<ptr,alloc>::iterator;
-        using openlist_iter = std::multimap<size_t,open_iter>::iterator;
-        using closed_iter = std::multimap<ptr,alloc>::iterator;
-        using neighbours = std::pair<open_iter,open_iter>;
+        using openalloc_iter = std::map<uintptr_t,alloc>::iterator;
+        using openlist_iter = std::multimap<size_t,openalloc_iter>::iterator;
+        using closed_iter = std::multimap<uintptr_t,alloc>::iterator;
+        using neighbours = std::pair<openalloc_iter,openalloc_iter>;
         struct alloc{
-            ptr master;
-            ptr head;
-            size_t master_size;
-            size_t head_size;
+            uintptr_t master = 0;
+            uintptr_t head = 0;
+            size_t master_size = 0;
+            size_t head_size = 0;
         };
         enum fitType{
             bestFit, /*get will return the nearest amount of available memory which fits the query*/
@@ -26,29 +24,36 @@ namespace CherylE{
             both/*probably not gonna ever use this*/
         };
     protected:
+        size_t type_size = 1;
         size_t m_free = 0;
         size_t m_used = 0;
         size_t m_total = 0;
         //tracks allocations to prevent memory leaks
-        std::unordered_set<masterptr> MasterRecord;
-        //lookup table for available allocations
-        std::map<ptr,alloc> OpenAllocations;
-        //lookup table for available allocations
-        std::multimap<size_t,open_iter> OpenList;
+        std::unordered_set<uintptr_t> MasterRecord;
         //lookup table for sub-allocations
-        std::multimap<ptr,alloc> ClosedList;
+        std::map<uintptr_t,alloc> ClosedList;
+        //lookup table for available allocations
+        std::map<uintptr_t,alloc> OpenAllocations;
+        //lookup table for available allocations
+        std::multimap<size_t,openalloc_iter> OpenList;
     protected:
-        virtual closed_iter find_closed(void* p); //needs override if not storing bytes
+        virtual bool isClosed(const uintptr_t p);
+        virtual bool isOpened(const uintptr_t p);
+        virtual bool merge(openlist_iter iter, const alloc &a);
+        virtual bool shrink(closed_iter p_iter, size_t N);
+        virtual int8_t grow(closed_iter p_iter, size_t N);
         virtual void add_open(const alloc &a);
         virtual void erase_open(openlist_iter &iter);
-        virtual void erase_open(open_iter &iter);
-        virtual void moveto_open(closed_iter iter, size_t N); //needs override if not storing bytes
+        virtual void erase_open(openalloc_iter &iter);
+        virtual void moveto_open(closed_iter iter);
+        virtual void moveto_open(closed_iter iter, size_t N);
+        virtual neighbours find_neighbours(const uintptr_t p);
+        virtual closed_iter find_closed(const uintptr_t p);
         virtual openlist_iter find_open(const alloc &a);
-        virtual neighbours find_neighbours(void* p);
         //virtual bool grow(void*)
     public:
         /*frees all memory*/
-        virtual ~PoolAbstract(){
+        virtual ~AbstractPool(){
             purge();
         }
         /*frees all memory*/
