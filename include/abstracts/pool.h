@@ -55,6 +55,7 @@ namespace CherylE{
         //lookup table for available allocations
         std::multimap<size_t,openalloc_iter> OpenList;
     protected:
+        virtual alloc allocate(const size_t &N) = 0;
         virtual bool isClosed(const ce_uintptr &p);
         virtual bool isOpened(const ce_uintptr &p);
         virtual bool merge(openlist_iter &iter, const alloc &a);
@@ -68,17 +69,27 @@ namespace CherylE{
         virtual neighbours find_neighbours(const ce_uintptr &p);
         virtual closed_iter find_closed(const ce_uintptr &p);
         virtual openlist_iter find_open(const alloc &a);
-        //virtual bool grow(void*)
     public:
         /*frees all memory*/
         virtual ~AbstractPool(){
             purge();
         }
         /*frees all memory*/
-        virtual void purge() = 0;
-        /**/
+        virtual void purge();
         /*allocates M blocks of N bytes/objects [order of arguments: N,M]*/
-        virtual void pre_allocate(size_t N, size_t blocks) = 0;
+        virtual void pre_allocate(const size_t N, const size_t blocks);
+        /**/
+        virtual size_t size(void* p);
+        /**/
+        virtual resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
+        /**/
+        virtual void* get(const size_t N, fitType fit = fitType::bestFit);
+        /**/
+        virtual void put(void* p);
+        /**/
+        virtual void put(void* p, const size_t N);
+
+        
         /*returns how many bytes/objects are available*/
         size_t free()const{ return m_free; };
         /*returns how many bytes/objects are not available*/
