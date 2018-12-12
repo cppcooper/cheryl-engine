@@ -69,6 +69,7 @@ namespace CherylE{
         virtual neighbours find_neighbours(const ce_uintptr &p);
         virtual closed_iter find_closed(const ce_uintptr &p);
         virtual openlist_iter find_open(const alloc &a);
+        virtual openalloc_iter find_open(const ce_uintptr &p);
     public:
         /*frees all memory*/
         virtual ~AbstractPool(){

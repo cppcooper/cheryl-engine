@@ -33,19 +33,11 @@ inline bool update(std::map<ce_uintptr,alloc> &ClosedList, closed_iter &iter, co
 
 
 bool AbstractPool::isClosed(const ce_uintptr &p){
-    auto iter = ClosedList.lower_bound(p);
-    if(iter != ClosedList.end()){
-        return inRange(type_size, p,iter->second.head,iter->second.head_size);
-    }
-    return false;
+    return find_closed(p) != ClosedList.end();
 }
 
 bool AbstractPool::isOpen(const ce_uintptr &p){
-    auto iter = OpenAllocations.lower_bound(p);
-    if(iter != OpenAllocations.end()){
-        return inRange(type_size, p,iter->second.head,iter->second.head_size);
-    }
-    return false;
+    return find_open(p) != OpenAllocations.end();
 }
 
 bool AbstractPool::merge(openlist_iter &iter, const alloc &a){
@@ -320,7 +312,20 @@ neighbours AbstractPool::find_neighbours(const ce_uintptr &p){
 /* todo: revise?
 */
 closed_iter AbstractPool::find_closed(const ce_uintptr &p){
-    return ClosedList.lower_bound(p);
+    auto iter = ClosedList.lower_bound(p);
+    if(iter != ClosedList.end()){
+        if(iter->second.head != p){
+            if(iter != ClosedList.begin()){
+                --iter;
+                if(!inRange(p, iter->second.head, iter->second.head_size)){
+                    iter = ClosedList.end()
+                }
+            } else {
+                iter = ClosedList.end();
+            }
+        }
+    }
+    return iter;
 }
 
 /*
@@ -336,4 +341,21 @@ openlist_iter AbstractPool::find_open(const alloc &a){
         }
     }
     return OpenList.end();
+}
+
+openalloc_iter AbstractPool::find_open(const ce_uintptr &p){
+    auto iter = OpenAllocations.lower_bound(p);
+    if(iter != OpenAllocations.end()){
+        if(iter->second.head != p){
+            if(iter != OpenAllocations.begin()){
+                --iter;
+                if(!inRange(p, iter->second.head, iter->second.head_size)){
+                    iter = OpenAllocations.end()
+                }
+            } else {
+                iter = OpenAllocations.end();
+            }
+        }
+    }
+    return iter;
 }
