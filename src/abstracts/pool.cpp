@@ -1,18 +1,18 @@
 #include "abstracts/pool.h"
 
-inline bool inRange(const size_t ts, const uintptr_t p, const uintptr_t r, const size_t s){
-    return (r <= p && p < r+(ts*s);
+inline bool inRange(const size_t ts, const ce_uintptr p, const ce_uintptr r, const size_t s){
+    return (r <= p && p < r+(ts*s));
 }
 
-inline bool inRange(const size_t ts, const uintptr_t p, const size_t ps, const uintptr_t r, const size_t rs){
-    return (r <= p && p+(ts*ps) <= r+(ts*rs);
+inline bool inRange(const size_t &ts, const ce_uintptr &p, const size_t &ps, const ce_uintptr &r, const size_t &rs){
+    return (r <= p && p+(ts*ps) <= r+(ts*rs));
 }
 
-inline bool isAligned(const size_t ts, const uintptr_t a, const uintptr_t b, const size_t bs){
+inline bool isAligned(const size_t &ts, const ce_uintptr &a, const ce_uintptr &b, const size_t &bs){
     return a == b+(ts*bs);
 }
 
-inline bool update(std::multimap<size_t,openalloc_iter> OpenList, openlist_iter iter, const alloc &a){
+inline bool update(std::multimap<size_t,openalloc_iter> &OpenList, openlist_iter &iter, const alloc &a){
     if(iter != OpenList.end()){
         iter->first = a.head_size;
         iter->second->first = a.head;
@@ -22,7 +22,7 @@ inline bool update(std::multimap<size_t,openalloc_iter> OpenList, openlist_iter 
     return false;
 }
 
-inline bool update(std::map<uintptr_t,alloc> ClosedList, closed_iter iter, const alloc &a){
+inline bool update(std::map<ce_uintptr,alloc> &ClosedList, closed_iter &iter, const alloc &a){
     if(iter != ClosedList.end()){
         iter->first = a.head;
         iter->second = a;
@@ -32,7 +32,7 @@ inline bool update(std::map<uintptr_t,alloc> ClosedList, closed_iter iter, const
 }
 
 
-bool AbstractPool::isClosed(const uintptr_t p){
+bool AbstractPool::isClosed(const ce_uintptr &p){
     auto iter = ClosedList.lower_bound(p);
     if(iter != ClosedList.end()){
         return inRange(type_size, p,iter->second.head,iter->second.head_size);
@@ -40,7 +40,7 @@ bool AbstractPool::isClosed(const uintptr_t p){
     return false;
 }
 
-bool AbstractPool::isOpen(const uintptr_t p){
+bool AbstractPool::isOpen(const ce_uintptr &p){
     auto iter = OpenAllocations.lower_bound(p);
     if(iter != OpenAllocations.end()){
         return inRange(type_size, p,iter->second.head,iter->second.head_size);
@@ -48,7 +48,7 @@ bool AbstractPool::isOpen(const uintptr_t p){
     return false;
 }
 
-bool AbstractPool::merge(openlist_iter iter, const alloc &a){
+bool AbstractPool::merge(openlist_iter &iter, const alloc &a){
     if(iter != OpenList.end()){
         alloc &b = iter->second->second;
         if(isAligned(type_size, a.head, b.head, b.head_size)) {
@@ -67,7 +67,7 @@ bool AbstractPool::merge(openlist_iter iter, const alloc &a){
     throw invalid_args(__CEFUNCTION__, __LINE__, "Invalid iterator.");
 }
 
-int8_t AbstractPool::grow(closed_iter p_iter, size_t N){
+int8_t AbstractPool::grow(closed_iter &p_iter, const size_t &N){
     if(p_iter != ClosedList.end()){
         alloc &a = p_iter->second;
         assert(N > a.head_size && "Allocation is not less than the grow parameter N");
@@ -119,7 +119,7 @@ int8_t AbstractPool::grow(closed_iter p_iter, size_t N){
     return 0;
 }
 
-bool AbstractPool::shrink(closed_iter p_iter, size_t N){
+bool AbstractPool::shrink(closed_iter &p_iter, const size_t &N){
     if(p_iter != ClosedList.end()){
         alloc &a = p_iter->second;
         assert(N < a.head_size && "Allocation is not greater than the shrink parameter N");
@@ -188,7 +188,7 @@ void AbstractPool::erase_open(openalloc_iter &iter){
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-void AbstractPool::moveto_open(closed_iter iter){
+void AbstractPool::moveto_open(closed_iter &iter){
     //todo: perform merging
     if(iter==ClosedList.end()){
         throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
@@ -238,7 +238,7 @@ void AbstractPool::moveto_open(closed_iter iter){
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
+void AbstractPool::moveto_open(closed_iter &iter, const ce_uintptr &p, const size_t &N){
     //todo: perform merging
     if(iter==ClosedList.end()){
         throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
@@ -287,8 +287,8 @@ void AbstractPool::moveto_open(closed_iter iter, uintptr_t p, size_t N){
 
 /*
 */
-neighbours AbstractPool::find_neighbours(const uintptr_t p){
-    assert(isClosed(p) && "p isn't managed, what did you do!"); //maybe an exception should be thrown :-/
+neighbours AbstractPool::find_neighbours(const ce_uintptr &p){
+    //assert(isClosed(p) && "p isn't managed, what did you do!"); //maybe an exception should be thrown :-/
     auto end = OpenAllocations.end();
     if(isOpen(p)){
         // p would have been merged with its neighbours when joining the Open list
@@ -319,7 +319,7 @@ neighbours AbstractPool::find_neighbours(const uintptr_t p){
 
 /* todo: revise?
 */
-closed_iter AbstractPool::find_closed(const uintptr_t p){
+closed_iter AbstractPool::find_closed(const ce_uintptr &p){
     return ClosedList.lower_bound(p);
 }
 

@@ -1,15 +1,33 @@
 #pragma once
 
 namespace CherylE{
+    // struct ce_ptr{
+    //     uintptr_t p = 0;
+    //     ce_ptr(){}
+    //     ce_ptr(uintptr_t x){
+    //         p = x;
+    //     }
+    //     ce_ptr(void* x){
+    //         p = (uintptr_t)x;
+    //     }
+    //     operator uintptr_t() const {
+    //         return p;
+    //     }
+    //     operator void*() const {
+    //         return (void*)p;
+    //     }
+    //  We need so many operator overloads to replace uintptr_t
+    // };
     class AbstractPool{
     protected:
-        using openalloc_iter = std::map<uintptr_t,alloc>::iterator;
+        using ce_uintptr = uintptr_t;
+        using openalloc_iter = std::map<ce_uintptr,alloc>::iterator;
         using openlist_iter = std::multimap<size_t,openalloc_iter>::iterator;
-        using closed_iter = std::multimap<uintptr_t,alloc>::iterator;
+        using closed_iter = std::multimap<ce_uintptr,alloc>::iterator;
         using neighbours = std::pair<openalloc_iter,openalloc_iter>;
         struct alloc{
-            uintptr_t master = 0;
-            uintptr_t head = 0;
+            ce_uintptr master = 0;
+            ce_uintptr head = 0;
             size_t master_size = 0;
             size_t head_size = 0;
         };
@@ -29,26 +47,26 @@ namespace CherylE{
         size_t m_used = 0;
         size_t m_total = 0;
         //tracks allocations to prevent memory leaks
-        std::unordered_set<uintptr_t> MasterRecord;
+        std::unordered_set<ce_uintptr> MasterRecord;
         //lookup table for sub-allocations
-        std::map<uintptr_t,alloc> ClosedList;
+        std::map<ce_uintptr,alloc> ClosedList;
         //lookup table for available allocations
-        std::map<uintptr_t,alloc> OpenAllocations;
+        std::map<ce_uintptr,alloc> OpenAllocations;
         //lookup table for available allocations
         std::multimap<size_t,openalloc_iter> OpenList;
     protected:
-        virtual bool isClosed(const uintptr_t p);
-        virtual bool isOpened(const uintptr_t p);
-        virtual bool merge(openlist_iter iter, const alloc &a);
-        virtual bool shrink(closed_iter p_iter, size_t N);
-        virtual int8_t grow(closed_iter p_iter, size_t N);
+        virtual bool isClosed(const ce_uintptr &p);
+        virtual bool isOpened(const ce_uintptr &p);
+        virtual bool merge(openlist_iter &iter, const alloc &a);
+        virtual bool shrink(closed_iter &p_iter, const size_t &N);
+        virtual int8_t grow(closed_iter &p_iter, const size_t &N);
         virtual void add_open(const alloc &a);
         virtual void erase_open(openlist_iter &iter);
         virtual void erase_open(openalloc_iter &iter);
-        virtual void moveto_open(closed_iter iter);
-        virtual void moveto_open(closed_iter iter, size_t N);
-        virtual neighbours find_neighbours(const uintptr_t p);
-        virtual closed_iter find_closed(const uintptr_t p);
+        virtual void moveto_open(closed_iter &iter);
+        virtual void moveto_open(closed_iter &iter, const size_t &N);
+        virtual neighbours find_neighbours(const ce_uintptr &p);
+        virtual closed_iter find_closed(const ce_uintptr &p);
         virtual openlist_iter find_open(const alloc &a);
         //virtual bool grow(void*)
     public:
@@ -58,6 +76,7 @@ namespace CherylE{
         }
         /*frees all memory*/
         virtual void purge() = 0;
+        /**/
         /*allocates M blocks of N bytes/objects [order of arguments: N,M]*/
         virtual void pre_allocate(size_t N, size_t blocks) = 0;
         /*returns how many bytes/objects are available*/
