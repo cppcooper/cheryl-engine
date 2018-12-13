@@ -31,27 +31,9 @@ namespace CherylE
     class MemoryMgr : public iPool{
         TYPENAMEAVAILABLE_STATIC
     protected:
-        alloc allocate(size_t &bytes);
+        virtual alloc allocate(const size_t &bytes) override;
     public:
-        /*frees all memory*/
-        ~MemoryMgr();
-        /*frees all memory*/
-        void purge();
-        /*allocates N blocks of M bytes [order of arguments: M,N]*/
-        void pre_allocate(size_t bytes, size_t blocks = 1);
-        /*returns a sub-allocation of X bytes, returns the first fit according to the fitType*/
-        void* get(size_t bytes, fitType fit = fitType::bestFit);
-        /*finds the sub-allocation p belongs to and returns the number of bytes following after p*/
-        size_t size(void* p);
-        /*attempts to resize p to X bytes, performs a realloc on p if no other option is available (option disabled by default)*/
-        resizeResult resize(void* &p, size_t bytes, bool allow_realloc = false);
-        /*returns all the bytes from p to the end of the sub-allocation p belongs to*/
-        void put(void* p);
-        /*returns all the bytes from p to p+X of the sub-allocation p belongs to*/
-        void put(void* p, size_t bytes);
-        //void update/cleanup --needs time data
-        
-
+        virtual void purge() override;
     };
 
     template<class T>
