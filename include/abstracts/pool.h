@@ -37,10 +37,13 @@ namespace CherylE{
         };
         enum resizeResult{
             fail,
+            realloc,
+            shrunk,
             left,
             right/*,
             both/*probably not gonna ever use this*/
         };
+        
     protected:
         size_t type_size = 1;
         size_t m_free = 0;
@@ -54,42 +57,45 @@ namespace CherylE{
         std::map<ce_uintptr,alloc> OpenAllocations;
         //lookup table for available allocations
         std::multimap<size_t,openalloc_iter> OpenList;
+
+    protected:
+        bool isClosed(const ce_uintptr &p);
+        bool isOpened(const ce_uintptr &p);
+        bool merge(openlist_iter &iter, const alloc &a);
+        bool shrink(closed_iter &p_iter, const size_t &N);
+        int8_t grow(closed_iter &p_iter, const size_t &N);
+        void add_open(const alloc &a);
+        void erase_open(openlist_iter &iter);
+        void erase_open(openalloc_iter &iter);
+        void moveto_open(closed_iter &iter);
+        void moveto_open(closed_iter &iter, const size_t &N);
+        neighbours find_neighbours(const ce_uintptr &p);
+        closed_iter find_closed(const ce_uintptr &p);
+        openlist_iter find_open(const alloc &a);
+        openalloc_iter find_open(const ce_uintptr &p);
+
     protected:
         virtual alloc allocate(const size_t &N) = 0;
-        virtual bool isClosed(const ce_uintptr &p);
-        virtual bool isOpened(const ce_uintptr &p);
-        virtual bool merge(openlist_iter &iter, const alloc &a);
-        virtual bool shrink(closed_iter &p_iter, const size_t &N);
-        virtual int8_t grow(closed_iter &p_iter, const size_t &N);
-        virtual void add_open(const alloc &a);
-        virtual void erase_open(openlist_iter &iter);
-        virtual void erase_open(openalloc_iter &iter);
-        virtual void moveto_open(closed_iter &iter);
-        virtual void moveto_open(closed_iter &iter, const size_t &N);
-        virtual neighbours find_neighbours(const ce_uintptr &p);
-        virtual closed_iter find_closed(const ce_uintptr &p);
-        virtual openlist_iter find_open(const alloc &a);
-        virtual openalloc_iter find_open(const ce_uintptr &p);
+
     public:
+        /*frees all memory*/
+        virtual void purge() = 0;
         /*frees all memory*/
         virtual ~AbstractPool(){
             purge();
         }
-        /*frees all memory*/
-        virtual void purge();
         /*allocates M blocks of N bytes/objects [order of arguments: N,M]*/
-        virtual void pre_allocate(const size_t N, const size_t blocks);
+        void pre_allocate(const size_t N, const size_t blocks);
         /**/
-        virtual size_t size(void* p);
+        size_t size(void* p);
         /**/
-        virtual resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
+        resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
         /**/
-        virtual void* get(const size_t N, fitType fit = fitType::bestFit);
+        void* get(const size_t N, fitType fit = fitType::bestFit);
         /**/
-        virtual void put(void* p);
+        void put(const void* p);
         /**/
-        virtual void put(void* p, const size_t N);
-
+        void put(const void* p, const size_t N);
         
         /*returns how many bytes/objects are available*/
         size_t free()const{ return m_free; };
