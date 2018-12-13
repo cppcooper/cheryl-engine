@@ -75,7 +75,18 @@ void* AbstractPool::get(const size_t N, fitType fit){
         return (void*)a.head;
     } else {
         alloc a = allocate(N);
-        ClosedList.emplace(a.head,a);
+        if(a.head_size==N){
+            ClosedList.emplace(a.head,a);
+        } else {
+            ce_uintptr temp = a.head;
+            size_t remainder = a.head_size - N;
+            a.head_size = N;
+            ClosedList.emplace(a.head,a);
+            a.head += a.head_size;
+            a.head_size = remainder;
+            add_open(a);
+            a.head = temp;
+        }
         return (void*)a.head;
     }
 }
