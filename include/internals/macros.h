@@ -8,6 +8,7 @@
 #define isderived(base,type) std::is_base_of_v<base, type>
 #define ismethodptr(method) std::is_member_function_pointer_v<decltype(method)>
 #define hasmethod(type,method) std::is_member_function_pointer_v<decltype(&type::method)>
+#define hasdefconstructor(type) std::is_trivially_default_constructible_v<type>
 //todo work for static methods #define hasmethod_any(type,method) std::enable_if<std::is_member_function_pointer_v<decltype(&type::method)>>
 
 #ifdef _MSC_VER

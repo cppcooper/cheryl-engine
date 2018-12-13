@@ -43,7 +43,7 @@ namespace CherylE{
             right/*,
             both/*probably not gonna ever use this*/
         };
-        
+
     protected:
         size_t type_size = 1;
         size_t m_free = 0;
@@ -91,7 +91,7 @@ namespace CherylE{
         /**/
         resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
         /**/
-        void* get(const size_t N, fitType fit = fitType::bestFit);
+        void* get(const size_t N, const fitType fit = fitType::bestFit);
         /**/
         void put(const void* p);
         /**/
