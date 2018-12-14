@@ -28,7 +28,6 @@ namespace CherylE{
     // Part 1 - Definition
     template<class AssetType> //todo: "override" valid? this is the first implementation
     class AssetPool : public iPoolT<iAsset>{
-        TYPENAMEAVAILABLE_STATIC
         static_assert(isderived(iAsset,AssetType),"In AssetPool<T>, T must be derived from iAsset.");
     protected:
         alloc allocate(const size_t &N);
