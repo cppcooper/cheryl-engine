@@ -1,9 +1,13 @@
 #pragma once
+#include "../../interfaces/pool.h"
+#include "../../internals.h"
+#include "../memory.h"
 
 namespace CherylE{
     template<class derived, class base>
     class GenericPool : public iPoolT<base>{
         static_assert(isderived(base,derived),"In ObjectPool<D,B>, D must be derived from B.");
+        static_assert(!isderived(iAsset,derived),"Use AssetPool for iAsset derived types.");
     protected:
         virtual alloc allocate(const size_t &N) override;
     public:
@@ -39,10 +43,6 @@ namespace CherylE{
     }
     template<class D, class B>
     B* GenericPool<D,B>::getT(const size_t N, const fitType fit){
-        D* p = get(N,fit);
-        for(int i = 0; i < N; ++i){
-            p[i] = D();
-        }
-        return p;
+        return get(N,fit);
     }
 }

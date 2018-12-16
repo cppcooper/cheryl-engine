@@ -1,32 +1,10 @@
 #pragma once
-
-#include "../../internals.h"
 #include "../../interfaces/pool.h"
+#include "../../internals.h"
 #include "../memory.h"
 
 namespace CherylE{
-    /* AssetPool
-    ************
-    Offers contiguous memory management for objects.
-
-    Object Memory is tracked via three containers.
-    1)A master record set which records all allocations.
-    2)An open list which records all available sub-allocations
-    3)A closed list which records all unavailable sub-allocations
-
-    Services:
-    * pre-allocate memory
-    * get available memory
-    * resize acquired memory
-    * return memory
-    * purge memory
-
-    This header is partitioned into two parts.
-    - Part 1: class definition, (ie. tldr interface)
-    - Part 2: method implementations
-    */
-    // Part 1 - Definition
-    template<class AssetType> //todo: "override" valid? this is the first implementation
+    template<class AssetType>
     class AssetPool : public iPoolT<iAsset>{
         static_assert(isderived(iAsset,AssetType),"In AssetPool<T>, T must be derived from iAsset.");
     protected:
@@ -65,11 +43,7 @@ namespace CherylE{
     }
     template<class A>
     iAsset* AssetPool<A>::getT(const size_t N, const fitType fit){
-        A* p = get(N,fit);
-        for(int i = 0; i < N; ++i){
-            p[i] = A();
-        }
-        return p;
+        return get(N,fit);
     }
 
 }

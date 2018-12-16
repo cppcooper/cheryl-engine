@@ -1,9 +1,10 @@
 #pragma once
 #ifndef CEPOOL_H
 #define CEPOOL_H
+#include "../abstracts/pool.h"
 
 namespace CherylE{
-    template<class typeinterface, template<typename> class child> //todo: child appears to be redundant
+    template<class typeinterface>
     class iPoolT : public AbstractPool{ //remove iPool, duplicate interface with T*
         static_assert(isclass(typeinterface),"In iPoolT<T>, T must be a class.");
         static_assert(hasdefconstructor(T), "In iPoolT<T>, T must be default trivially constructible.");
