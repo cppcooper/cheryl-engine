@@ -76,7 +76,7 @@ private:
 
 #define TYPENAMEAVAILABLE_STATIC \
 public: \
-static const char* TypeName() { \
+static const char* TypeName_s() { \
     static char name[256] = {}; \
     static std::once_flag flag; \
     std::call_once(flag, [&](){ \
