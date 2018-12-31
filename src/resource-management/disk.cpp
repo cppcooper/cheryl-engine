@@ -1,6 +1,12 @@
 #include "resource-management/disk.h"
 
+FileExt::FileExt(const fs::path &file){
+    sprintf(ext,"%s",file.extension().c_str());
+}
 
+const char* FileExt::getExtension(){
+    return ext;
+}
 
 TypeIterator::TypeIterator(FileExt type, std::unordered_set<File>::iterator head, std::unordered_set<File>::iterator tail){
     this->type = type;
@@ -10,6 +16,10 @@ TypeIterator::TypeIterator(FileExt type, std::unordered_set<File>::iterator head
     if(head != tail){
         ++nxt;
     }
+}
+
+FileExt TypeIterator::getType(){
+    return type;
 }
 
 bool TypeIterator::hasNext(){
@@ -28,13 +38,13 @@ void FileMgr::addFile(fs::path &file){
     auto iter = files.find(ext);
     if(iter != files.end()){
         //add file to set
-        if(!iter->second.emplace(file.filename()).second){
+        if(!iter->second.emplace(file).second){
             throw failed_operation(__CEFUNCTION__, __LINE__, "Duplicate file name.");
         }
     } else {
         //make a set, add file to set, add set to map
         std::unordered_set<fs::path> typeOfFile;
-        typeOfFile.emplace(file.filename());
+        typeOfFile.emplace(file);
         files.emplace(ext,typeOfFile);
     }
 }
@@ -44,15 +54,15 @@ void FileMgr::removeFile(fs::path &file){
     auto iter = files.find(ext);
     if(iter != files.end()){
         //remove file from set
-        iter->second.erase(file.filename());
+        iter->second.erase(file);
         auto release_iter = releaseList.find(ext);
         if(release_iter != releaseList.end()){
-            if(!release_iter->second.emplace(file.filename()).second){
+            if(!release_iter->second.emplace(file).second){
                 throw failed_operation(__CEFUNCTION__, __LINE__, "Duplicate file name.");
             }
         } else {
             std::unordered_set<fs::path> typeOfFile;
-            typeOfFile.emplace(file.filename());
+            typeOfFile.emplace(file);
             releaseList.emplace(ext,typeOfFile);
         }
     } else {

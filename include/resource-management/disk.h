@@ -2,13 +2,12 @@
 #include <unordered_set>
 #include <filesystem>
 #include "../internals.h"
-namespace fs = std::filesystem;
 
 class FileExt{
 private:
     char ext[9];
 public:
-    FileExt(const std::filesystem::path &);
+    FileExt(const fs::path &);
     const char* getExtension() const;
 };
 
@@ -29,8 +28,6 @@ public:
 
 class FileMgr{
 private:
-    using uset = std::unordered_set;
-    using umap = std::unordered_map;
     uset<fs::path> registered;
     umap<FileExt,uset<fs::path>> files;
     umap<FileExt,uset<fs::path>> releaseList;
