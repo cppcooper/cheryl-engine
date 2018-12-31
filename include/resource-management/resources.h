@@ -3,13 +3,18 @@
 #include "../internals.h"
 #include "../interfaces/loader.h"
 #include "../interfaces/loadable.h"
+#include "disk.h"
 
 class ResourceMgr : public Singleton<ResourceMgr>{
-    using FileExt = std::filesystem::path;
-    using File = std::filesystem::path;
 private:
     Singleton<FileMgr> &file_mgr = Singleton<FileMgr>::get();
-    std::unordered_map<FileExt,Loader*> loaders;
-    std::unordered_map<File,loadable*> loaded; //mapped according to file name, unloaded based on path.. mapping replaced if duplicate name exists
+    umap<FileExt,Policy*> policies;
+    umap<FileExt,Loader*> loaders;
+    umap<fs::path,loadable*> loaded; //mapped according to file name, unloaded based on path.. mapping replaced if duplicate name exists
+
 public:
+    bool addType(const FileExt &, Policy*, Loader*);
+    void load(const char*);
+    void unload(const char*);
+    loadable* retrieve(fs::path &);
 };
