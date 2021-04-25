@@ -1,9 +1,8 @@
 #pragma once
 #ifndef TILESET_H
 #define TILESET_H
-
+#include <stdafx.h>
 #include "../Components/../AssetAbstract.h"
-
 #include "BasicTypes.h"
 
 namespace CherylE

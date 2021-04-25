@@ -1,7 +1,12 @@
 #pragma once
 #include <unordered_set>
+#include <unordered_map>
 #include <filesystem>
 #include "../internals.h"
+
+namespace fs = std::filesystem;
+template<class T> using uset = std::unordered_set<T>;
+template<class K, class V> using umap = std::unordered_map<K,V>;
 
 class FileExt{
 private:

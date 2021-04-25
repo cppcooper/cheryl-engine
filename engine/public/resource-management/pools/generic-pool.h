@@ -1,4 +1,5 @@
 #pragma once
+#include <stdafx.h>
 #include "../../interfaces/pool.h"
 #include "../../internals.h"
 #include "../memory.h"

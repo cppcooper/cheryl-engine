@@ -1,6 +1,7 @@
 #pragma once
 #ifndef CEPOOL_H
 #define CEPOOL_H
+#include <stdafx.h>
 #include "../abstracts/pool.h"
 
 namespace CherylE{
