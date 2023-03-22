@@ -13,3 +13,6 @@
 [submodule "extern/glew"]
 	path = extern/glew
 	url = https://github.com/nigels-com/glew.git
+[submodule "extern/googletest"]
+	path = extern/googletest
+	url = https://github.com/google/googletest.git
