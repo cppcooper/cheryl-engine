@@ -3,6 +3,8 @@
 #define CE_MACROS_H
 #include <string>
 #include <cstring>
+#include <mutex>
+#include <type_traits>
 
 #define isclass(type) std::is_class_v<type>
 #define isderived(base,type) std::is_base_of_v<base, type>
@@ -10,6 +12,8 @@
 #define hasmethod(type,method) std::is_member_function_pointer_v<decltype(&type::method)>
 #define hasdefconstructor(type) std::is_trivially_default_constructible_v<type>
 //todo work for static methods #define hasmethod_any(type,method) std::enable_if<std::is_member_function_pointer_v<decltype(&type::method)>>
+
+
 
 #ifdef _MSC_VER
     #define __CEFUNCTION__ __FUNCTION__
@@ -76,7 +80,7 @@ private:
 
 #define TYPENAMEAVAILABLE_STATIC \
 public: \
-static const char* TypeName_s() { \
+static const char* TypeName_static() { \
     static char name[256] = {}; \
     static std::once_flag flag; \
     std::call_once(flag, [&](){ \
