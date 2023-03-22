@@ -10,7 +10,7 @@ project(cheryl-engine)
 
 # target names
 set(LIBRARY_TARGET cengine)
-#set(TEST_TARGET all-tests)
+set(TEST_TARGET all-tests)
 
 # dependencies
 file(GLOB_RECURSE SOURCE LIST_DIRECTORIES false src/*)
@@ -21,14 +21,17 @@ add_subdirectory(extern/glfw EXCLUDE_FROM_ALL)
 add_subdirectory(extern/glm EXCLUDE_FROM_ALL)
 add_subdirectory(extern/spdlog EXCLUDE_FROM_ALL)
 add_subdirectory(extern/backward-cpp EXCLUDE_FROM_ALL)
+add_subdirectory(extern/googletest EXCLUDE_FROM_ALL)
 
 # include directories
 include_directories(include)
 include_directories(extern/glm/glm)
-include_directories(extern/glfw/include/GLFW)
-include_directories(extern/spdlog/include)
+include_directories(extern/googletest/googletest/include)
+#include_directories(extern/glfw/include/GLFW)
+#include_directories(extern/spdlog/include)
 
 # test targets
+
 
 # library targets
 add_library(${LIBRARY_TARGET} SHARED ${SOURCE})

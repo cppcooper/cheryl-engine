@@ -41,10 +41,10 @@ namespace CherylE
     {
     public:
         void *allocate(size_t count) override {
-            return Singleton<MemoryMgr>::getInstance().get(sizeof(T) * count);
+            return ConcreteSingleton<MemoryMgr>::getInstance().get(sizeof(T) * count);
         }
         void deallocate(void *ptr, size_t count) override {
-            Singleton<MemoryMgr>::getInstance().put(ptr, sizeof(T) * count);
+            ConcreteSingleton<MemoryMgr>::getInstance().put(ptr, sizeof(T) * count);
         }
     };
 }
