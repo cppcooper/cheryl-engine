@@ -1,11 +1,15 @@
+#include <iostream>
 #include <exception>
+#include <cinttypes>
+#include <string>
+#include <cstring>
 
 namespace CherylE
 {
     class base_exception : public std::exception{
     protected:
-        char msg[2048];
-        char stacktrace[4096];
+        char msg[2048]{};
+        char stacktrace[4096]{};
     public:
         base_exception(const char* exception_type, const char* function, uint32_t line, const char* info){
             snprintf(msg,2048,"exception: %s\n[%s:%d]\n",exception_type,function,line);
@@ -14,7 +18,8 @@ namespace CherylE
             //todo: fill stacktrace
         }
 
-        virtual const char* what() const {
+        [[nodiscard("exception's what() is unused")]]
+        const char *what() const noexcept override {
             static char buffer[2048+4096];
             //todo: sprintf into buffer
             return msg;
