@@ -1,46 +1,52 @@
 #pragma once
+#ifndef RES_DISK_H
+#define RES_DISK_H
+
 #include <unordered_set>
 #include <unordered_map>
 #include <filesystem>
-#include "../internals.h"
+
+#include <internals.h>
 
 namespace fs = std::filesystem;
-template<class T> using uset = std::unordered_set<T>;
-template<class K, class V> using umap = std::unordered_map<K,V>;
 
 class FileExt{
 private:
-    char ext[9];
+    char ext[9] = {};
 public:
-    FileExt(const fs::path &);
+    explicit FileExt(const fs::path &);
+
+    [[nodiscard("getExtension called, return value is unused")]]
     const char* getExtension() const;
+    bool operator==(const FileExt &rhs) const;
+    bool operator!=(const FileExt &rhs) const;
+
 };
 
 class TypeIterator{
 private:
-    #define FILEITER std::unordered_set<fs::path>::iterator
+    using FileIter = std::unordered_set<fs::path>::iterator;
     FileExt type;
-    FILEITER current;
-    FILEITER nxt;
-    FILEITER end;
+    FileIter current;
+    FileIter nxt;
+    FileIter end;
 public:
-    TypeIterator(FileExt type, FILEITER head, FILEITER tail);
+    TypeIterator(FileExt type, FileIter head, FileIter tail);
+
+    [[nodiscard("getType called, return value is unused")]]
     FileExt getType() const;
+    [[nodiscard("hasNext called, return value is unused")]]
     bool hasNext() const;
-    File next();
-    #undef FILEITER
+    fs::path next();
 };
 
-class FileMgr{
-private:
-    uset<fs::path> registered;
-    umap<FileExt,uset<fs::path>> files;
-    umap<FileExt,uset<fs::path>> releaseList;
-protected:
-    void addFile(fs::path&);
-    void removeFile(fs::path&);
-public:
-    TypeIterator find(FileExt);
-    void load(const char*);
-    void unload(const char*);
-};
+namespace std {
+    template <>
+    struct hash<FileExt> {
+        size_t operator()(const FileExt& k) const {
+            return hash<string>()(k.getExtension());
+        }
+    };
+}
+
+#endif
