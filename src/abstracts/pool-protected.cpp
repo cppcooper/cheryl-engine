@@ -1,7 +1,7 @@
 #include <abstracts/pool.h>
 #include <internals.h>
-
 #include <cinttypes>
+#include <cassert>
 
 using std::size_t;
 
@@ -24,7 +24,7 @@ namespace CherylE {
         return a == b + (ts * bs);
     }
 
-    inline bool update(std::multimap<size_t, openalloc_iter> &OpenList, openlist_iter &iter, const alloc &a) {
+    inline bool update(std::multimap<size_t, openalloc_iter> &OpenList, openlist_iter iter, const alloc &a) {
         if (iter != OpenList.end()) {
             auto second = iter->second;
             OpenList.erase(iter);
@@ -34,7 +34,7 @@ namespace CherylE {
         return false;
     }
 
-    inline bool update(std::map<uintptr_t, alloc> &ClosedList, closed_iter &iter, const alloc &a) {
+    inline bool update(std::multimap<uintptr_t, alloc> &ClosedList, closed_iter iter, const alloc &a) {
         if (iter != ClosedList.end()) {
             ClosedList.erase(iter);
             ClosedList.emplace(a.head, a);
@@ -43,18 +43,18 @@ namespace CherylE {
         return false;
     }
 
-    bool MemoryPool::isClosed(const uintptr_t &p) {
+    bool MemoryPool::isOnClosed(const uintptr_t &p) {
         return find_closed(p) != ClosedList.end();
     }
 
-    bool MemoryPool::isOpen(const uintptr_t &p) {
+    bool MemoryPool::isOnOpened(const uintptr_t &p) {
         return find_open(p) != OpenAllocations.end();
     }
 
-    bool MemoryPool::merge(openlist_iter &iter, const alloc &a) {
+    bool MemoryPool::merge(openlist_iter iter, const alloc &a) {
         if (iter != OpenList.end()) {
-            alloc &b = iter->second;
-            if (isAligned(type_size, a.head, b.head, b.head_size)) {
+            alloc &b = iter->second->second;
+            if (isAligned( type_size, a.head, b.head, b.head_size)) {
                 //merging in on the right
                 b.head_size += a.head_size;
                 return update(OpenList, iter, b);
@@ -67,14 +67,15 @@ namespace CherylE {
             }
             return false;
         }
-        throw invalid_args(__CEFUNCTION__, __LINE__, "Invalid iterator.");
+        throw invalid_args(_CE_HERE, "Invalid iterator.");
     }
 
-    int8_t MemoryPool::grow(closed_iter &p_iter, const size_t &N) {
+    int8_t MemoryPool::grow(closed_iter p_iter, const size_t &N) {
         if (p_iter != ClosedList.end()) {
             alloc &a = p_iter->second;
             assert(N > a.head_size && "Allocation is not less than the grow parameter N");
-            auto neighbours = find_neighbours(p_alloc.head);
+            auto neighbours = find_neighbours(p_iter->second.head);
+            // todo: is bytes the object size? ie. type_size
             size_t bytes_needed = bytes - a.head_size;
             alloc left, right;
             if (neighbours.second != OpenAllocations.end()) {
@@ -92,6 +93,7 @@ namespace CherylE {
                 alloc &b = neighbours.second->second;
                 b.head_size -= bytes_needed;
                 if (b.head_size == 0) {
+                    // todo: figure out why erase_open is no good for our usages
                     erase_open(neighbours.second->second);
                 } else {
                     b.head = a.head + a.head_size;
@@ -111,6 +113,7 @@ namespace CherylE {
                 if (b.head_size == 0) {
                     erase_open(neighbours.second->second);
                 } else {
+                    // todo: b_openlist_iter, this whole block looks wrong
                     b_ol_iter->first = b.head_size;
                     if (!update(OpenList, find_open(b), b)) {
                         throw failed_operation(__CEFUNCTION__, __LINE__, "Failed to find OpenList iterator.");
@@ -122,7 +125,7 @@ namespace CherylE {
         return 0;
     }
 
-    bool MemoryPool::shrink(closed_iter &p_iter, const size_t &N) {
+    bool MemoryPool::shrink(closed_iter p_iter, const size_t &N) {
         if (p_iter != ClosedList.end()) {
             alloc &a = p_iter->second;
             assert(N < a.head_size && "Allocation is not greater than the shrink parameter N");
@@ -158,14 +161,15 @@ namespace CherylE {
         if (!result.second) {
             throw bad_request(__CEFUNCTION__, __LINE__, "Allocation already exists in OpenAllocations");
         }
-        if (!OpenList.emplace(a.head_size, result.first).second) {
+        // todo: check for pre-existing allocation in another way
+        if (!OpenList.emplace(a.head_size, result.first)) {
             throw bad_request(__CEFUNCTION__, __LINE__, "Allocation already exists in OpenList");
         }
     }
 
 /*
 */
-    void MemoryPool::erase_open(openlist_iter &iter) {
+    void MemoryPool::erase_open(openlist_iter iter) {
         if (iter == OpenList.end()) {
             throw invalid_args(__CEFUNCTION__, __LINE__);
         }
@@ -175,8 +179,8 @@ namespace CherylE {
 
 /*
 */
-    void MemoryPool::erase_open(openalloc_iter &iter) {
-        if (iter == OpenList.end()) {
+    void MemoryPool::erase_open(openalloc_iter iter) {
+        if (iter == OpenAllocations.end()) {
             throw invalid_args(__CEFUNCTION__, __LINE__);
         }
         alloc a = iter->second;
@@ -191,7 +195,7 @@ namespace CherylE {
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-    void MemoryPool::moveto_open(closed_iter &iter) {
+    void MemoryPool::moveto_open(closed_iter iter) {
         //todo: perform merging
         if (iter == ClosedList.end()) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
@@ -241,8 +245,7 @@ namespace CherylE {
 /* protected method
     moves an allocation from the ClosedList to the OpenList
 */
-    void MemoryPool::moveto_open(closed_iter &iter, const uintptr_t &p, const size_t &N) {
-        //todo: perform merging
+    void MemoryPool::moveto_open(closed_iter iter, const size_t &N) {
         if (iter == ClosedList.end()) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "Iterator is invalid.");
         }
@@ -293,7 +296,7 @@ namespace CherylE {
     neighbours MemoryPool::find_neighbours(const uintptr_t &p) {
         //assert(isClosed(p) && "p isn't managed, what did you do!"); //maybe an exception should be thrown :-/
         auto end = OpenAllocations.end();
-        if (isOpen(p)) {
+        if (isOnOpened(p)) {
             // p would have been merged with its neighbours when joining the Open list
             return std::make_pair(end, end); //throwing an exception is probably preferable
         }
@@ -308,12 +311,12 @@ namespace CherylE {
         auto iter = find_closed(p);
         alloc &a = iter->second;
         if (left != end) {
-            if (!isAligned(type_size, a.head, left.head, left.head_size)) {
+            if (!isAligned(type_size, a.head, left->second.head, left->second.head_size)) {
                 left = end;
             }
         }
         if (right != end) {
-            if (!isAligned(type_size, right.head, a.head, a.head_size)) {
+            if (!isAligned(type_size, right->second.head, a.head, a.head_size)) {
                 right = end;
             }
         }
@@ -322,13 +325,13 @@ namespace CherylE {
 
 /* todo: revise?
 */
-    closed_iter MemoryPool::find_closed(const int &p) {
-
+    closed_iter MemoryPool::find_closed(const uintptr_t &p) {
         auto iter = ClosedList.lower_bound(p);
         if (iter != ClosedList.end()) {
             if (iter->second.head != p) {
                 if (iter != ClosedList.begin()) {
                     --iter;
+                    // todo: figure out inRange math, and what we're missing for the call (look for other usages, that don't have errors)
                     if (!inRange(p, iter->second.head, iter->second.head_size)) {
                         iter = ClosedList.end()
                     }

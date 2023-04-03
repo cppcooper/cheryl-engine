@@ -6,6 +6,14 @@
 
 namespace CherylE
 {
+    // single threaded function to construct a c-string for exception messages. UB if used on multiple threads concurrently
+    template<typename... Args>
+    const char* exception_msg(const char* format, Args... args) {
+        static char buffer[2048] = {};
+        snprintf(buffer, 2047, format, args...);
+        return buffer;
+    }
+
     class base_exception : public std::exception{
     protected:
         char msg[2048]{};
@@ -19,7 +27,7 @@ namespace CherylE
         }
 
         [[nodiscard("exception's what() is unused")]]
-        const char *what() const noexcept override {
+        const char* what() const noexcept override {
             static char buffer[2048+4096];
             //todo: sprintf into buffer
             return msg;

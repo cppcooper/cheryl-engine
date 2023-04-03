@@ -18,7 +18,7 @@ namespace CherylE {
 
     size_t MemoryPool::size(void* p) {
         auto ptr = (uintptr_t) p;
-        if (isClosed(ptr)) {
+        if (isOnClosed(ptr)) {
             return find_closed(ptr)->second.head_size;
         }
         auto iter = find_open(ptr);
@@ -28,13 +28,14 @@ namespace CherylE {
         return 0;
     }
 
-    resizeResult MemoryPool::resize(void*&p, const size_t N, bool allow_realloc) {
-        auto iter = find_closed(p);
+    resizeResult MemoryPool::resize(void* &p, const size_t N, bool allow_realloc) {
+        auto ip = (uintptr_t) p;
+        auto iter = find_closed(ip);
         if (iter == ClosedList.end()) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "Invalid pointer, it is not managed on the ClosedList.");
         }
         alloc &a = iter->second;
-        if (p != a.head) {
+        if (ip != a.head) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "Invalid pointer. Must use the head of the sub-allocation.");
         }
         if (N == a.head_size) {
@@ -66,7 +67,7 @@ namespace CherylE {
     }
 
     void* MemoryPool::get(const size_t N, fitType fit) {
-        openlist_iter iter;
+        CherylE::openlist_iter iter;
         if (fit == fitType::bestFit) {
             iter = OpenList.lower_bound(N);
         } else if (fit == fitType::worstFit) {
@@ -103,6 +104,6 @@ namespace CherylE {
     }
 
     void MemoryPool::put(const void* p, const size_t N) {
-        moveto_open(find_closed((uintptr_t) p, N));
+        moveto_open(find_closed((uintptr_t) p), N);
     }
 }

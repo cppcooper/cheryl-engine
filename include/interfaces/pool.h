@@ -10,7 +10,7 @@ namespace CherylE {
     // As a child of VirtualSingleton, this class can't be instantiated
 
     template<class T>
-    class Pool : public DerivedSingleton<MemoryPool>{
+    class Pool : public MemoryPool, SuperSingleton<Pool<T>>{
     TYPENAMEAVAILABLE_VIRTUAL
         //remove iPool, duplicate interface with T*
         static_assert(isclass(T), "In iPoolT<T>, T must be a class.");
@@ -19,7 +19,7 @@ namespace CherylE {
         static_assert(hasmethod(T, TypeName), "In iPoolT<T>, T must implement the method TypeName");
         static_assert(hasmethod(T, get_typeID), "In iPoolT<T>, T must implement the method typeID");
     public:
-        // todo: shouldn't this be implemented here?
+        // todo: shouldn't this be implemented here? definitely should be!
         /*returns an array of size N*/
         virtual T* getT(size_t N, fitType fit/* = fitType::worstFit*/) = 0;
     };

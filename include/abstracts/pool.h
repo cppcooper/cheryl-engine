@@ -5,6 +5,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <cstdint>
 
 // struct ce_ptr{
 //     uintptr_t p = 0;
@@ -50,8 +51,9 @@ namespace CherylE {
     using closed_iter = std::multimap<uintptr_t, alloc>::iterator;
     using neighbours = std::pair<openalloc_iter, openalloc_iter>;
 
+    // todo: if this is going to be the singleton, then there can't be pure virtuals
     class MemoryPool {
-    TYPENAMEAVAILABLE_VIRTUAL
+    TYPENAMEAVAILABLE_VIRTUAL;
     protected:
         size_t type_size = 1;
         size_t m_free = 0;
@@ -63,29 +65,31 @@ namespace CherylE {
         std::multimap<uintptr_t, alloc> ClosedList;
         //lookup table for available allocations
         OpenAllocMap OpenAllocations;
+
         //lookup table for available allocations
         std::multimap<size_t, openalloc_iter> OpenList;
 
     protected:
-        bool isClosed(const uintptr_t &p);
 
-        bool isOpened(const uintptr_t &p);
+        bool isOnClosed(const uintptr_t &p);
 
-        bool merge(openlist_iter &iter, const alloc &a);
+        bool isOnOpened(const uintptr_t &p);
 
-        bool shrink(closed_iter &p_iter, const size_t &N);
+        bool merge(openlist_iter iter, const alloc &a);
 
-        int8_t grow(closed_iter &p_iter, const size_t &N);
+        bool shrink(closed_iter p_iter, const size_t &N);
+
+        int8_t grow(closed_iter p_iter, const size_t &N);
 
         void add_open(const alloc &a);
 
-        void erase_open(openlist_iter &iter);
+        void erase_open(openlist_iter iter);
 
-        void erase_open(openalloc_iter &iter);
+        void erase_open(openalloc_iter iter);
 
-        void moveto_open(closed_iter &iter);
+        void moveto_open(closed_iter iter);
 
-        void moveto_open(closed_iter &iter, const size_t &N);
+        void moveto_open(closed_iter iter, const size_t &N);
 
         neighbours find_neighbours(const uintptr_t &p);
 
@@ -94,13 +98,13 @@ namespace CherylE {
         openlist_iter find_open(const alloc &a);
 
         openalloc_iter find_open(const uintptr_t &p);
-
     protected:
+
         MemoryPool() = default;
 
         virtual alloc allocate(const size_t &N) = 0;
-
     public:
+
         /*frees all memory*/
         virtual void purge() = 0;
 
@@ -116,7 +120,7 @@ namespace CherylE {
         size_t size(void* p);
 
         /**/
-        resizeResult resize(void*&p, const size_t N, bool allow_realloc = false);
+        resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
 
         /**/
         void* get(const size_t N, const fitType fit = fitType::bestFit);
@@ -132,7 +136,6 @@ namespace CherylE {
 
         /*returns how many bytes/objects are not available*/
         size_t used() const { return m_used; };
-
         /*returns how many bytes/objects are allocated*/
         size_t total() const { return m_total; };
     };

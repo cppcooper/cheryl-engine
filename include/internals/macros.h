@@ -64,7 +64,16 @@
     }
 #endif
 
+#define _CE_HERE __CEFUNCTION__, __LINE__
 
+// todo: universalize, this will currently only give unique ids with respect to similarly derived classes
+#define TYPEID static uint32_t TypeID_impl() {              \
+                    static uint32_t id = id_counter++;      \
+                    return id;                              \
+               }                                            \
+               uint32_t TypeID() const override {           \
+                    return TypeID_impl();                   \
+               }
 
 #define TYPENAMEAVAILABLE_VIRTUAL \
 public: \
@@ -75,8 +84,8 @@ virtual const char* TypeName() { \
         CE_STRCPY(name,ExtractClassName(__CEFUNCTION__).c_str()); \
     });\
     return name; \
-} \
-private: 
+}                                 \
+private:
 
 #define TYPENAMEAVAILABLE_STATIC \
 public: \
