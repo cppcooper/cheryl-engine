@@ -3,11 +3,14 @@
 
 #include <cinttypes>
 
+#include <iterator>
+#include <vector>
+#include <cmath>
 using std::size_t;
 
 namespace CherylE {
-
-    void MemoryPool::pre_allocate(const size_t N, const size_t blocks) {
+    template<size_t growth_factor, size_t base_growth>
+    void MemoryPool<growth_factor, base_growth>::pre_allocate(const size_t N, const size_t blocks) {
         if (blocks < 1) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "The number of allocated blocks cannot be less than 1.");
         }
@@ -16,7 +19,8 @@ namespace CherylE {
         }
     }
 
-    size_t MemoryPool::size(void* p) {
+    template<size_t growth_factor, size_t base_growth>
+    size_t MemoryPool<growth_factor, base_growth>::size(void* p) {
         auto ptr = (uintptr_t) p;
         if (isOnClosed(ptr)) {
             return find_closed(ptr)->second.head_size;
@@ -28,7 +32,8 @@ namespace CherylE {
         return 0;
     }
 
-    resizeResult MemoryPool::resize(void* &p, const size_t N, bool allow_realloc) {
+    template<size_t growth_factor, size_t base_growth>
+    resizeResult MemoryPool<growth_factor, base_growth>::resize(void* &p, const size_t N, bool allow_realloc) {
         auto ip = (uintptr_t) p;
         auto iter = find_closed(ip);
         if (iter == ClosedList.end()) {
@@ -66,44 +71,71 @@ namespace CherylE {
         return resizeResult::fail;
     }
 
-    void* MemoryPool::get(const size_t N, fitType fit) {
-        CherylE::openlist_iter iter;
-        if (fit == fitType::bestFit) {
+    template<size_t growth_factor, size_t base_growth>
+    template<fitType fit>
+    void* MemoryPool<growth_factor, base_growth>::get(const size_t N) {
+        auto iter = OpenList.end();
+        auto checkFit = [&N](alloc &a) {
+            return a.head_size >= N;
+        };
+        if (OpenList.empty()) {
+            //pre_allocate(2 * N, 2);
+            return (void*) getNew(N).head;
+        }
+
+        /*
+         * We decide at compile time how to fulfill the get request, and so why not constexpr our logic
+         * OpenList is ordered from the smallest to the largest keys
+         */
+        if constexpr (fit == fitType::lower_bound) {
+            // lower bound gets us the smallest key that is NOT less than N
             iter = OpenList.lower_bound(N);
-        } else if (fit == fitType::worstFit) {
-            iter = OpenList.end();
-            if (iter != OpenList.begin()) {
-                --iter;
+        } else if constexpr (fit == fitType::upper_bound) {
+            // upper bound gets us the first key greater than N
+            iter = OpenList.upper_bound(N);
+            if (iter == OpenList.end()) {
+                iter = OpenList.lower_bound(N);
             }
+        } else if constexpr (fit == fitType::largest) {
+            // rbegin() points to the largest allocation (but rbegin.base() == end())
+            iter = (++OpenList.rbegin()).base();
+        } else if constexpr (fit == fitType::second_largest) {
+            auto riter = OpenList.rbegin();
+            std::advance(riter, std::min(2ul, OpenList.size()));
+            iter = riter.base();
         }
-        if (iter != OpenList.end()) {
-            alloc &a = iter->second->second;
-            erase_open(iter);
-            ClosedList.emplace(a.head, a);
-            return (void*) a.head;
-        } else {
-            alloc a = allocate(N);
-            if (a.head_size == N) {
-                ClosedList.emplace(a.head, a);
-            } else {
-                uintptr_t temp = a.head;
-                size_t remainder = a.head_size - N;
-                a.head_size = N;
-                ClosedList.emplace(a.head, a);
-                a.head += a.head_size;
-                a.head_size = remainder;
-                add_open(a);
-                a.head = temp;
+
+        // did we find the fit we want?
+        if (iter != OpenList.end() || !checkFit(iter->second->second)) {
+            size_t N2;
+            if constexpr (fit == fitType::lower_bound) {
+                N2 = N;
+            } else if constexpr (fit == fitType::upper_bound) {
+                N2 = N + base_growth;
+            } else if constexpr (fit == fitType::largest) {
+                N2 = N * growth_factor + base_growth;
+            } else if constexpr (fit == fitType::second_largest) {
+                N2 = N * (growth_factor - 1) + base_growth;
             }
-            return (void*) a.head;
+            // todo: revise getNew?
+            //  don't emplace? & early return?
+            iter = OpenList.emplace(N2, getNew(N2));
         }
+
+        alloc &a = iter->second->second;
+        erase_open(iter);
+        ClosedList.emplace(a.head, a);
+        return (void*) a.head;
     }
 
-    void MemoryPool::put(const void* p) {
+    template<size_t growth_factor, size_t base_growth>
+    void MemoryPool<growth_factor, base_growth>::put(const void* p) {
         moveto_open(find_closed((uintptr_t) p));
     }
 
-    void MemoryPool::put(const void* p, const size_t N) {
-        moveto_open(find_closed((uintptr_t) p), N);
+    template<size_t growth_factor, size_t base_growth>
+    void MemoryPool<growth_factor, base_growth>::put(const void* p, const size_t N) {
+        auto ip = (uintptr_t)p;
+        moveto_open(find_closed(ip), ip, N);
     }
 }

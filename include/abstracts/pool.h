@@ -26,8 +26,10 @@
 // };
 namespace CherylE {
     enum fitType {
-        bestFit, /*get will return the nearest amount of available memory which fits the query*/
-        worstFit /*get will return the largest amount of available memory which fits the query*/
+        lower_bound, // first allocation big enough for request
+        upper_bound, // first allocation greater than request
+        second_largest, // todo: drop? rename?
+        largest // largest allocation available
     };
     enum resizeResult {
         fail,
@@ -52,8 +54,12 @@ namespace CherylE {
     using neighbours = std::pair<openalloc_iter, openalloc_iter>;
 
     // todo: if this is going to be the singleton, then there can't be pure virtuals
+    template<size_t growth_factor = 2, size_t base_growth = 4>
     class MemoryPool {
     TYPENAMEAVAILABLE_VIRTUAL;
+        static_assert(base_growth > 0, "The base growth should be a positive integer.");
+        static_assert(growth_factor > 0, "The growth factor cannot be 0.");
+        static_assert(growth_factor < 32, "Use a reasonable growth factor that is below 32.");
     protected:
         size_t type_size = 1;
         size_t m_free = 0;
@@ -89,7 +95,7 @@ namespace CherylE {
 
         void moveto_open(closed_iter iter);
 
-        void moveto_open(closed_iter iter, const size_t &N);
+        void moveto_open(closed_iter iter, uintptr_t &p, const size_t &N);
 
         neighbours find_neighbours(const uintptr_t &p);
 
@@ -103,6 +109,7 @@ namespace CherylE {
         MemoryPool() = default;
 
         virtual alloc allocate(const size_t &N) = 0;
+        virtual alloc getNew(const size_t &N);
     public:
 
         /*frees all memory*/
@@ -123,7 +130,8 @@ namespace CherylE {
         resizeResult resize(void* &p, const size_t N, bool allow_realloc = false);
 
         /**/
-        void* get(const size_t N, const fitType fit = fitType::bestFit);
+        template<fitType fit = fitType::lower_bound>
+        void* get(const size_t N);
 
         /**/
         void put(const void* p);

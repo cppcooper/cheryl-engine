@@ -9,8 +9,9 @@ namespace CherylE {
 
     // As a child of VirtualSingleton, this class can't be instantiated
 
-    template<class T>
-    class Pool : public MemoryPool, SuperSingleton<Pool<T>>{
+    // todo: remove singleton? make specialized pools? create derived pools to specialize??
+    template<class T, size_t F, size_t B>
+    class Pool : public MemoryPool<F, B>, SuperSingleton<Pool<T, F, B>>{
     TYPENAMEAVAILABLE_VIRTUAL
         //remove iPool, duplicate interface with T*
         static_assert(isclass(T), "In iPoolT<T>, T must be a class.");
