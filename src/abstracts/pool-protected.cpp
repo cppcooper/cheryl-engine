@@ -7,11 +7,6 @@ using std::size_t;
 
 namespace CherylE {
 
-
-    using openalloc_iter = std::map<uintptr_t, alloc>::iterator;
-    using openlist_iter = std::multimap<size_t, openalloc_iter>::iterator;
-    using closed_iter = std::multimap<uintptr_t, alloc>::iterator;
-    using neighbours = std::pair<openalloc_iter, openalloc_iter>;
     inline bool inRange(const size_t ts, const uintptr_t p, const uintptr_t r, const size_t s) {
         return (r <= p && p < r + (ts * s));
     }
@@ -20,11 +15,37 @@ namespace CherylE {
         return (r <= p && p + (ts * ps) <= r + (ts * rs));
     }
 
-    inline bool isAligned(const size_t &ts, const uintptr_t &a, const uintptr_t &b, const size_t &bs) {
-        return a == b + (ts * bs);
+    inline bool in_range(const alloc &a, const uintptr_t &p) {
+        return a.block.head <= p && p <= a.block.head + a.block.length;
     }
 
-    inline bool update(std::multimap<size_t, openalloc_iter> &OpenList, openlist_iter iter, const alloc &a) {
+    inline bool range_in_range(const uintptr_t &p, const size_t &N, const alloc &outer_range) {
+        return outer_range.block.head <= p && p + N <= outer_range.block.head + outer_range.block.length;
+    }
+
+
+    template<typename alloc_left, typename alloc_right>
+    inline bool is_contiguous(alloc_left&& left, alloc_right&& right) {
+        using al = std::remove_cvref_t<alloc_left>;
+        using ar = std::remove_cvref_t<alloc_right>;
+        static_assert(std::is_same_v<ablock, al> || std::is_same_v<alloc, al>);
+        static_assert(std::is_same_v<al, ar>);
+        if constexpr (std::is_same_v<ablock, al>) {
+            return left.head + left.length == right.head;
+        } else {
+            return left.owning_block.head == right.owning_block.head &&
+                   left.block.head + left.block.length == right.block.head;
+        }
+    }
+
+    template<typename T>
+    bool is_aligned(const void * ptr) noexcept {
+        auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
+        return !(iptr % alignof(T));
+    }
+
+    template<typename C, typename I, typename A> // the letters are a coincidence
+    inline bool update_openList(C &OpenList, I iter, const A &a) {
         if (iter != OpenList.end()) {
             auto second = iter->second;
             OpenList.erase(iter);
@@ -34,7 +55,8 @@ namespace CherylE {
         return false;
     }
 
-    inline bool update(std::multimap<uintptr_t, alloc> &ClosedList, closed_iter iter, const alloc &a) {
+    template<typename C, typename I, typename A>
+    inline bool update_closedList(C &ClosedList, I iter, const A &a) {
         if (iter != ClosedList.end()) {
             ClosedList.erase(iter);
             ClosedList.emplace(a.head, a);
@@ -43,45 +65,46 @@ namespace CherylE {
         return false;
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    bool MemoryPool<growth_factor, base_growth>::isOnClosed(const uintptr_t &p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    bool MemoryPool<T, growth_factor, base_growth>::isOnClosed(const uintptr_t &p) {
         return find_closed(p) != ClosedList.end();
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    bool MemoryPool<growth_factor, base_growth>::isOnOpened(const uintptr_t &p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    bool MemoryPool<T, growth_factor, base_growth>::isOnOpened(const uintptr_t &p) {
         return find_open(p) != OpenAllocations.end();
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    bool MemoryPool<growth_factor, base_growth>::merge(openlist_iter iter, const alloc &a) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    bool MemoryPool<T, growth_factor, base_growth>::merge(openlist_iter iter, const alloc &a) {
         if (iter != OpenList.end()) {
             alloc &b = iter->second->second;
-            if (isAligned( type_size, a.head, b.head, b.head_size)) {
+            if (is_contiguous(b, a)) {
                 //merging in on the right
                 b.head_size += a.head_size;
-                return update(OpenList, iter, b);
+                return update_openList(OpenList, iter, b);
             }
-            if (isAligned(type_size, b.head, a.head, a.head_size)) {
+            if (is_contiguous(a, b)) {
                 //merging in on the left
                 b.head = a.head;
                 b.head_size += a.head_size;
-                return update(OpenList, iter, b);
+                return update_openList(OpenList, iter, b);
             }
             return false;
         }
         throw invalid_args(_CE_HERE, "Invalid iterator.");
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    int8_t MemoryPool<growth_factor, base_growth>::grow(closed_iter p_iter, const size_t &N) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    int8_t MemoryPool<T, growth_factor, base_growth>::growBy(closed_iter p_iter, const size_t &N) {
+        if (p_iter->second.head != p_iter->second.master) {
+            // todo: make new allocation, copy this to it, return p_iter
+        }
         if (p_iter != ClosedList.end()) {
             alloc &a = p_iter->second;
-            assert(N > a.head_size && "Allocation is not less than the grow parameter N");
+            assert(N > a.head_size && "Allocation is not less than the growBy parameter N");
             auto neighbours = find_neighbours(p_iter->second.head);
-            // todo: is bytes the object size? ie. type_size
-            size_t Nbytes = N * type_size;
-            size_t bytes_needed = bytes - a.head_size;
+            size_t needed = N - a.head_size;
             alloc left, right;
             if (neighbours.second != OpenAllocations.end()) {
                 right = neighbours.second->second;
@@ -91,31 +114,30 @@ namespace CherylE {
             }
 
             //Check available space (right, then left)
-            if (right.head_size >= bytes_needed) {
+            if (right.head_size >= needed) {
                 a.head_size = N;
-                update(ClosedList, p_iter, a);
+                update_closedList(ClosedList, p_iter, a);
 
                 alloc &b = neighbours.second->second;
-                b.head_size -= bytes_needed;
+                b.head_size -= needed;
                 if (b.head_size == 0) {
-                    // todo: figure out why erase_open is no good for our usages
                     erase_open(neighbours.second);
                 } else {
                     b.head = a.head + a.head_size;
-                    if (!update(OpenList, find_open(b), b)) {
+                    if (!update_OpenList(OpenList, find_open(b), b)) {
                         throw failed_operation(_CE_HERE, "Failed to find OpenList iterator.");
                     }
                 }
                 return 1;
             }
-            if (left.head_size >= bytes_needed) {
-                a.head -= bytes_needed;
+            if (left.head_size >= needed) {
+                a.head -= needed;
                 a.head_size = N;
-                update(ClosedList, p_iter, a);
+                update_closedList(ClosedList, p_iter, a);
 
                 alloc &b = neighbours.first->second;
 
-                b.head_size -= bytes_needed;
+                b.head_size -= needed;
                 if (b.head_size == 0) {
                     erase_open(neighbours.second);
                 } else {
@@ -131,8 +153,14 @@ namespace CherylE {
         return 0;
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    bool MemoryPool<growth_factor, base_growth>::shrink(closed_iter p_iter, const size_t &N) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    int8_t MemoryPool<T, growth_factor, base_growth>::growTo(closed_iter p_iter, const size_t &N) {
+        assert(N > p_iter->second.head_size);
+        return growBy(p_iter, N - p_iter->second.head_size);
+    }
+
+    template<typename T, size_t growth_factor, size_t base_growth>
+    bool MemoryPool<T, growth_factor, base_growth>::shrink(closed_iter p_iter, const size_t &N) {
         if (p_iter != ClosedList.end()) {
             alloc &a = p_iter->second;
             assert(N < a.head_size && "Allocation is not greater than the shrink parameter N");
@@ -145,7 +173,7 @@ namespace CherylE {
                 auto right_al_iter = find_neighbours(b.head).second;
                 if (right_al_iter != OpenAllocations.end()) {
                     alloc &right = right_al_iter->second;
-                    if (isAligned(type_size, right.head, b.head, b.head_size)) {
+                    if (is_contiguous(b, right)) {
                         right.head = b.head;
                         right.head_size += b.head_size;
                         if (!update(OpenList, find_open(right), right)) {
@@ -161,10 +189,8 @@ namespace CherylE {
         return false;
     }
 
-/*
-*/
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::add_open(const alloc &a) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::add_open(const alloc &a) {
         auto result = OpenAllocations.emplace(a.head, a);
         if (!result.second) {
             throw bad_request(_CE_HERE, "Allocation already exists in OpenAllocations");
@@ -175,10 +201,8 @@ namespace CherylE {
         }
     }
 
-/*
-*/
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::erase_open(openlist_iter iter) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::erase_open(openlist_iter iter) {
         if (iter == OpenList.end()) {
             throw invalid_args(_CE_HERE);
         }
@@ -186,10 +210,8 @@ namespace CherylE {
         OpenList.erase(iter);
     }
 
-/*
-*/
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::erase_open(openalloc_iter iter) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::erase_open(oam_iter iter) {
         if (iter == OpenAllocations.end()) {
             throw invalid_args(_CE_HERE);
         }
@@ -202,149 +224,104 @@ namespace CherylE {
         OpenList.erase(iter2);
     }
 
-/* protected method
-    moves an allocation from the ClosedList to the OpenList
-*/
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::moveto_open(closed_iter iter) {
-        //todo: perform merging
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::moveto_open(closed_iter iter, const uintptr_t &p, const size_t &N) {
         if (iter == ClosedList.end()) {
-            throw invalid_args(_CE_HERE, "Iterator is invalid.");
+            throw invalid_args(_CE_HERE, "Invalid iterator, p is probably already on the OpenList.");
         }
 
-        alloc &p_alloc = iter->second;
-        m_free += p_alloc.head_size;
-        m_used -= p_alloc.head_size;
-        auto neighbours = find_neighbours(p_alloc.head);
-        alloc left, right;
-        if (neighbours.second != OpenAllocations.end()) {
-            right = neighbours.second->second;
-        }
-        if (neighbours.first != OpenAllocations.end()) {
-            left = neighbours.first->second;
+        alloc &ca = iter->second; // this is the original closed allocation
+        if (!range_in_range(p, N, ca)) {
+            throw bad_request(_CE_HERE, "Range [p,p+N] goes beyond the bounds of the allocation block in iter.");
         }
 
-        //todo: remember we might need to merge with both left and right
-        bool merged = false;
-        if (isAligned(type_size, right.head, p_alloc.head, p_alloc.head_size)) {
-            auto iter = find_open(right);
-            merged = merge(iter, p_alloc);
-            p_alloc = iter->second->second;
-            if (!merged) {
-                throw failed_operation(_CE_HERE, "Failed attempt of merging allocations.");
-            }
+        /* 1. get open neighbouring blocks to p
+         * 2. check if they actually touch p's block
+         * 3. if they do, merge them into p's block, and remove the merged blocks from the OpenList
+         * 4. then add p's block to the open list
+         * 5. remove iter from the ClosedList
+         * 6. if iter's block still exists add it back to the ClosedList with the new size
+         */
+        auto neighbours = find_neighbours(ca.block.head);
+        alloc empty{0};
+        alloc &n_left = neighbours.first != OpenAllocations.end() ? neighbours.first->second : empty; // neighbour left of p
+        alloc &n_right = neighbours.second != OpenAllocations.end() ? neighbours.second->second : empty; // neighbour right of p
+        ablock block_to_open = {p, N};
+        uintptr_t bto_head = block_to_open.head;
+        size_t bto_length = block_to_open.length;
+
+        // Now we're going to merge blocks if we can
+        if (n_left.owning_block.head != 0 && is_contiguous(n_left.block, block_to_open)) {
+            auto ol_left_iter = find_open(n_left);
+            auto la = ol_left_iter->second->second;
+            OpenAllocations.erase(ol_left_iter->second);
+            OpenList.erase(ol_left_iter);
+            bto_head = la.block.head;
+            bto_length += la.block.length;
         }
-        if (isAligned(type_size, p_alloc.head, left.head, left.head_size)) {
-            auto left_ol_iter = find_open(left);
-            if (merged) {
-                auto right_ol_iter = find_open(right);
-                merged = merge(left_ol_iter, p_alloc);
-                erase_open(right_ol_iter);
-            } else {
-                merged = merge(left_ol_iter, p_alloc);
-            }
-            if (!merged) {
-                throw failed_operation(_CE_HERE, "Failed attempt of merging allocations.");
-            }
+        if (n_right.owning_block.head != 0 && is_contiguous(block_to_open, n_right.block)) {
+            auto ol_right_iter = find_open(n_right);
+            auto ra = ol_right_iter->second->second;
+            OpenAllocations.erase(ol_right_iter->second);
+            OpenList.erase(ol_right_iter);
+            bto_length += ra.block.length;
         }
-        if (!merged) {
-            add_open(p_alloc);
-        }
+        alloc oa = {
+                ca.owning_block,
+                ca.parent_block,
+                {bto_head, bto_length}
+        };
+        // move oa to the OpenList, and remove iter from the ClosedList (before we add ca back with its new length)
+        OpenList.emplace(oa.block.length, OpenAllocations.emplace(oa.block.head, oa));
         ClosedList.erase(iter);
+        size_t ca_length = ca.block.length - N;
+        if (ca_length > 0) {
+            ClosedList.emplace(ca.block.head, alloc{
+                ca.owning_block,
+                ca.parent_block,
+                {ca.block.head, ca_length}
+            });
+        }
+        m_free += N;
+        m_used -= N;
     }
 
-/* protected method
-    moves an allocation from the ClosedList to the OpenList
-*/
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::moveto_open(closed_iter iter, uintptr_t &p, const size_t &N) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::moveto_open(closed_iter iter) {
         if (iter == ClosedList.end()) {
-            throw invalid_args(_CE_HERE, "Iterator is invalid.");
+            throw invalid_args(_CE_HERE, "Invalid iterator, iter == ClosedList.end().");
         }
-        alloc &a = iter->second;
-        if (a.head == p && a.head_size == N) {
-            moveto_open(iter);
-        } else if (inRange(type_size, p, N, a.head, a.head_size)) {
-            auto neighbours = find_neighbours(a.head);
-            alloc left, right;
-            if (neighbours.second != OpenAllocations.end()) {
-                right = neighbours.second->second;
-            }
-            if (neighbours.first != OpenAllocations.end()) {
-                left = neighbours.first->second;
-            }
-
-            alloc b{a.head, p, a.master_size, N};
-            m_free += b.head_size;
-            m_used -= b.head_size;
-            if (isAligned(type_size, right.head, b.head, b.head_size)) {
-                if (!merge(find_open(right), b)) {
-                    throw failed_operation(_CE_HERE, "Failed attempt of merging allocations.");
-                }
-                a.head_size -= N;
-            } else if (isAligned(type_size, b.head, left.head, left.head_size)) {
-                if (!merge(find_open(left), b)) {
-                    throw failed_operation(_CE_HERE, "Failed attempt of merging allocations.");
-                }
-                a.head += N;
-                a.head_size -= N;
-            } else {
-                //update front closed, add back closed, add middle to open
-                size_t front = b.head - a.head;
-                alloc c {
-                    b.master,
-                    b.head + b.head_size,
-                    b.master_size,
-                    a.head_size - (b.head_size + front)
-                };
-                a.head_size = front;
-                add_open(b);
-                ClosedList.emplace(c.head, c);
-            }
-            update(ClosedList, iter, a);
-
-        } else {
-            throw bad_request(_CE_HERE, "Range [p,p+N] is not in the range of the iterator sub-allocation passed.");
-        }
+        moveto_open(iter, iter->second.block.head, iter->second.block.length);
     }
 
-/*
-*/
-    template<size_t growth_factor, size_t base_growth>
-    neighbours MemoryPool<growth_factor, base_growth>::find_neighbours(const uintptr_t &p) {
-        //assert(isClosed(p) && "p isn't managed, what did you do!"); //maybe an exception should be thrown :-/
+    template<typename T, size_t growth_factor, size_t base_growth>
+    neighbours MemoryPool<T, growth_factor, base_growth>::find_neighbours(const uintptr_t &p) {
+        auto iter = find_closed(p);
         auto end = OpenAllocations.end();
-        if (isOnOpened(p)) {
-            // p would have been merged with its neighbours when joining the Open list
-            return std::make_pair(end, end); //throwing an exception is probably preferable
+        // if p isn't on the closed list, it is either invalid or on the OpenList
+        if (iter == ClosedList.end()) {
+            // todo: throw an exception?
+            return std::make_pair(end, end);
         }
+        alloc &p_alloc = iter->second;
 
-        openalloc_iter left, right;
+        oam_iter left, right;
+        // get the iterator to the first open allocation that doesn't come before p
         left = right = OpenAllocations.lower_bound(p);
-        if (left != OpenAllocations.begin()) {
-            --left;
-        } else {
+        left != OpenAllocations.begin() ?
+        --left : left = end;
+
+        if (left != end && !is_contiguous(left->second, p_alloc)) {
             left = end;
         }
-        auto iter = find_closed(p);
-        alloc &a = iter->second;
-        if (left != end) {
-            if (!isAligned(type_size, a.head, left->second.head, left->second.head_size)) {
-                left = end;
-            }
-        }
-        if (right != end) {
-            if (!isAligned(type_size, right->second.head, a.head, a.head_size)) {
-                right = end;
-            }
+        if (right != end && !is_contiguous(p_alloc, right->second)) {
+            right = end;
         }
         return std::make_pair(left, right);
     }
 
-/* todo: revise?
-*/
-    template<size_t growth_factor, size_t base_growth>
-    closed_iter MemoryPool<growth_factor, base_growth>::find_closed(const uintptr_t &p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    closed_iter MemoryPool<T, growth_factor, base_growth>::find_closed(const uintptr_t &p) {
         auto iter = ClosedList.lower_bound(p);
         if (iter != ClosedList.end()) {
             if (iter->second.head != p) {
@@ -362,10 +339,8 @@ namespace CherylE {
         return iter;
     }
 
-/*
-*/
-    template<size_t growth_factor, size_t base_growth>
-    openlist_iter MemoryPool<growth_factor, base_growth>::find_open(const alloc &a) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    openlist_iter MemoryPool<T, growth_factor, base_growth>::find_open(const alloc &a) {
         auto iter = OpenList.lower_bound(a.head_size);
         for (; iter != OpenList.end(); ++iter) {
             alloc &v = iter->second->second;
@@ -378,8 +353,8 @@ namespace CherylE {
         return OpenList.end();
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    openalloc_iter MemoryPool<growth_factor, base_growth>::find_open(const uintptr_t &p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    oam_iter MemoryPool<T, growth_factor, base_growth>::find_open(const uintptr_t &p) {
         auto iter = OpenAllocations.lower_bound(p);
         if (iter != OpenAllocations.end()) {
             if (iter->second.head != p) {
@@ -396,21 +371,19 @@ namespace CherylE {
         return iter;
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    alloc MemoryPool<growth_factor, base_growth>::getNew(const size_t &N) {
-        alloc a = allocate(N);
-        if (a.head_size == N) {
-            ClosedList.emplace(a.head, a);
-        } else {
-            uintptr_t temp = a.head;
-            size_t remainder = a.head_size - N;
-            a.head_size = N;
-            ClosedList.emplace(a.head, a);
-            a.head += a.head_size;
-            a.head_size = remainder;
-            add_open(a);
-            a.head = temp;
+    template<typename T, size_t growth_factor, size_t base_growth>
+    template<fitType fit>
+    alloc MemoryPool<T, growth_factor, base_growth>::allocate(const size_t &N) {
+        size_t N2;
+        if constexpr (fit == fitType::lower_bound) {
+            N2 = N;
+        } else if constexpr (fit == fitType::upper_bound) {
+            N2 = N + base_growth;
+        } else if constexpr (fit == fitType::largest) {
+            N2 = N * growth_factor + base_growth;
+        } else if constexpr (fit == fitType::second_largest) {
+            N2 = N * (growth_factor - 1) + base_growth;
         }
-        return a;
+        return allocate_impl(N2);
     }
 }

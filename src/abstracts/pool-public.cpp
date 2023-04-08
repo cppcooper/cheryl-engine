@@ -2,6 +2,7 @@
 #include <internals.h>
 
 #include <cinttypes>
+#include <cassert>
 
 #include <iterator>
 #include <vector>
@@ -9,18 +10,18 @@
 using std::size_t;
 
 namespace CherylE {
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::pre_allocate(const size_t N, const size_t blocks) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::pre_allocate(const size_t &N, const size_t &blocks) {
         if (blocks < 1) {
             throw invalid_args(__CEFUNCTION__, __LINE__, "The number of allocated blocks cannot be less than 1.");
         }
         for (int i = 0; i < blocks; ++i) {
-            add_open(allocate(N));
+            add_open(allocate_impl(N));
         }
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    size_t MemoryPool<growth_factor, base_growth>::size(void* p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    size_t MemoryPool<T, growth_factor, base_growth>::size(void* p) {
         auto ptr = (uintptr_t) p;
         if (isOnClosed(ptr)) {
             return find_closed(ptr)->second.head_size;
@@ -32,8 +33,8 @@ namespace CherylE {
         return 0;
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    resizeResult MemoryPool<growth_factor, base_growth>::resize(void* &p, const size_t N, bool allow_realloc) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    resizeResult MemoryPool<T, growth_factor, base_growth>::resize(void* &p, const size_t &N, bool allow_realloc) {
         auto ip = (uintptr_t) p;
         auto iter = find_closed(ip);
         if (iter == ClosedList.end()) {
@@ -55,7 +56,7 @@ namespace CherylE {
             }
             return resizeResult::shrunk;
         } else {
-            int8_t r = grow(iter, N);
+            int8_t r = growBy(iter, N);
             if (r == 0) {
                 if (allow_realloc) {
                     void* p2 = get(N);
@@ -71,16 +72,31 @@ namespace CherylE {
         return resizeResult::fail;
     }
 
-    template<size_t growth_factor, size_t base_growth>
+    template<typename T, size_t growth_factor, size_t base_growth>
     template<fitType fit>
-    void* MemoryPool<growth_factor, base_growth>::get(const size_t N) {
+    void* MemoryPool<T, growth_factor, base_growth>::get(const size_t N) {
         auto iter = OpenList.end();
-        auto checkFit = [&N](alloc &a) {
+        auto checkFit = [&N](alloc<type_size> &a) {
             return a.head_size >= N;
         };
+        auto get_alloc = [&](const size_t N) {
+            alloc a = allocate<fit>(N);
+            assert(a.head_size >= N);
+            auto copy = a;
+            auto remainder = a.head_size - N;
+            copy.head_size = N;
+            ClosedList.emplace(copy.head, copy);
+            if (remainder > 0) {
+                // todo: ensure all allocation math uses the same calculations (verify the correctness of this math)
+                copy.head += N * type_size;
+                copy.head_size = remainder;
+                OpenList.emplace(copy.head_size, OpenAllocations.emplace(copy.head_size, copy));
+            }
+            return (void*) a.head;
+        };
+
         if (OpenList.empty()) {
-            //pre_allocate(2 * N, 2);
-            return (void*) getNew(N).head;
+            return get_alloc(N);
         }
 
         /*
@@ -107,19 +123,7 @@ namespace CherylE {
 
         // did we find the fit we want?
         if (iter != OpenList.end() || !checkFit(iter->second->second)) {
-            size_t N2;
-            if constexpr (fit == fitType::lower_bound) {
-                N2 = N;
-            } else if constexpr (fit == fitType::upper_bound) {
-                N2 = N + base_growth;
-            } else if constexpr (fit == fitType::largest) {
-                N2 = N * growth_factor + base_growth;
-            } else if constexpr (fit == fitType::second_largest) {
-                N2 = N * (growth_factor - 1) + base_growth;
-            }
-            // todo: revise getNew?
-            //  don't emplace? & early return?
-            iter = OpenList.emplace(N2, getNew(N2));
+            return get_alloc(N);
         }
 
         alloc &a = iter->second->second;
@@ -128,13 +132,13 @@ namespace CherylE {
         return (void*) a.head;
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::put(const void* p) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::put(const void* p) {
         moveto_open(find_closed((uintptr_t) p));
     }
 
-    template<size_t growth_factor, size_t base_growth>
-    void MemoryPool<growth_factor, base_growth>::put(const void* p, const size_t N) {
+    template<typename T, size_t growth_factor, size_t base_growth>
+    void MemoryPool<T, growth_factor, base_growth>::put(const void* p, const size_t N) {
         auto ip = (uintptr_t)p;
         moveto_open(find_closed(ip), ip, N);
     }
