@@ -13,3 +13,6 @@
 [submodule "extern/gainput"]
 	path = extern/gainput
 	url = https://github.com/marcoesposito1988/gainput.git
+[submodule "extern/stb"]
+	path = extern/stb
+	url = https://github.com/nothings/stb.git
