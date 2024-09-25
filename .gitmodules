@@ -4,3 +4,6 @@
 [submodule "extern/ctti"]
 	path = extern/ctti
 	url = https://github.com/hendrik-skubch/ctti.git
+[submodule "extern/backward-cpp"]
+	path = extern/backward-cpp
+	url = https://github.com/bombela/backward-cpp.git
