@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <resources/memory.h>
 #include <testing/block.h>
-#include <internal/macros/int-literals.h>
+#include <internals/macros/int-literals.h>
 #include <random>
 
 inline bool is_po2(size_t idx) {
@@ -56,6 +56,8 @@ TEST(memory, manager) {
     ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(MM_bm));
     ASSERT_TRUE(checkStaleAndReleaseInRegistry(MM_bm));
     ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
+
+    // todo: sometimes fails on next check
     ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
     for(int i = 0; i < samples; ++i) {

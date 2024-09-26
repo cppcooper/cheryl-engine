@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <ctti/type_id.hpp>
-#include <internal/internals.h>
+#include <internals.h>
 #include <logging.h>
 #include <regex>
 #include <fstream>
@@ -81,11 +81,13 @@ void check_file_logging(fs::path& path) {
     std::fstream logfile(path);
     ASSERT_TRUE(logfile.is_open());
     logfile.seekg(0, std::ios::end);
-    auto file_size = logfile.tellg();
+    auto file_size = static_cast<int64_t>(logfile.tellg()) + 1;
     logfile.seekg(0, std::ios::beg);
     ASSERT_TRUE(file_size > 0);
-    char* buffer = new char[file_size];
+    // crashes
+    auto buffer = new char[file_size];
     logfile.read(buffer, file_size); // this read operation "fails" (don't try to assert it)
+    buffer[file_size-1] = 0;
     std::string file_content(buffer);
     delete[] buffer;
     // verify log contents
