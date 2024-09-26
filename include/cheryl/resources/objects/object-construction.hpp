@@ -12,6 +12,9 @@ namespace CE::Obj {
             static_assert(std::is_constructible_v<T, Args...>, "A constructor for type T with the arguments provided does not exist.");
             for(int i = 0; i < N; ++i) {
                 auto pi = p + i;
+                if (constructed.count(pi) && constructed[pi]) {
+                    std::destroy_at(pi);
+                }
                 std::construct_at(pi, std::forward<Args>(args)...);
                 constructed[pi] = true;
             }
@@ -34,6 +37,9 @@ namespace CE::Obj {
     protected:
         static std::unordered_map<void*,bool> constructed;
     };
+
+    template<typename T>
+    std::unordered_map<void*, bool> ObjCtor<T>::constructed;
 }
 
 #endif //OBJECT_CONSTRUCTION_H

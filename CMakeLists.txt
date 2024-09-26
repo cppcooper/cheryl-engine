@@ -64,6 +64,7 @@ endif()
 
 # library
 add_library(${LIB_TARGET} STATIC ${LIB_SOURCES})
+#target_link_libraries(spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
 add_dependencies(${LIB_TARGET} gl46)
 
 # testing
@@ -71,7 +72,7 @@ include(GoogleTest)
 enable_testing()
 add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
 TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
-target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46)
+target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
 gtest_discover_tests(${TEST_TARGET})
 
 add_executable(backward-cpp tests/executables/backward.cpp)

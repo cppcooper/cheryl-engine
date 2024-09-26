@@ -15,15 +15,16 @@ namespace CE::Assets {
 
     struct STBFont final : Font {
         explicit STBFont(const STBFontData &data) : Font(data) {}
-        ~STBFont() override;
+        ~STBFont() override = default;
         void print(std::string text, FontDrawInfo *format) override;
+        static STBFontData load_font(const char* font_path, int font_size);
+
+    protected:
+        void draw(const DrawInfo &info) override;
+
     private:
         float print_angle = 0.f;
         std::string print_msg;
-    protected:
-        void draw(const DrawInfo &info) override;
-    public:
-        static STBFontData load_font(const char* font_path, int font_size);
     };
 }
 #endif //STBFONT_H

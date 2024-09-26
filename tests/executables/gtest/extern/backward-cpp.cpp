@@ -28,9 +28,9 @@ TEST(externlibs, backwardcpp) {
     std::string out_str_stderr = testing::internal::GetCapturedStderr();
     //std::cout<<out_str_stderr<<std::endl;
 #ifdef POSH_OS_LINUX
-    std::regex frame4(R"(#4.*foo1UR.*\n.*tests\/automated\/externlibs\/backward-cpp.cpp.*line 22.*foo1UR)");
-    std::regex frame3(R"(#3.*foo2toot.*\n.*tests\/automated\/externlibs\/backward-cpp.cpp.*line 18.*foo2toot)");
-    std::regex frame2(R"(#2.*foo3ty.*\n.*tests\/automated\/externlibs\/backward-cpp.cpp.*line 9.*foo3ty)");
+    std::regex frame4(R"(#4.*foo1UR.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 22.*foo1UR)");
+    std::regex frame3(R"(#3.*foo2toot.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 18.*foo2toot)");
+    std::regex frame2(R"(#2.*foo3ty.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 9.*foo3ty)");
     ASSERT_TRUE(std::regex_search(out_str_stderr, frame4));
     ASSERT_TRUE(std::regex_search(out_str_stderr, frame3));
     ASSERT_TRUE(std::regex_search(out_str_stderr, frame2));
