@@ -82,12 +82,21 @@ typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
 template<typename T>
 typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     using namespace CE;
+    constexpr auto av64 = std::align_val_t{64};
+    constexpr auto av128 = std::align_val_t{128};
+    const auto av1 = alignment >= av128 ? alignment : av128;
+    const auto av2 = (alignment > av64 && alignment < av128) ? alignment : av64;
+    const auto av3 = alignment <= av64 ? alignment : av64;
+
     const auto cidx = idx;
-    idx = ptr::align_offset(head.get(), cidx, std::align_val_t{64});
+    idx = ptr::align_offset(head.get(), cidx, av1);
     if (idx >= length - 1) {
-        idx = ptr::align_offset(head.get(), cidx, alignment);
+        idx = ptr::align_offset(head.get(), cidx, av2);
         if (idx >= length - 1) {
-            return std::nullopt;
+            idx = ptr::align_offset(head.get(), cidx, av3);
+            if (idx >= length - 1) {
+                return std::nullopt;
+            }
         }
     }
     return split_exactly(idx);
@@ -339,11 +348,13 @@ protected:
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
         auto iter = set.lower_bound(block);
-        if (iter != set.begin()) {
+        if (iter != set.begin() && *iter == block) {
             iter = std::prev(iter);
-            return {*iter};
         }
-        return {std::nullopt};
+        if (iter == set.end()) {
+            return {std::nullopt};
+        }
+        return {*iter};
     }
     // iManage interface
     /////////////////////

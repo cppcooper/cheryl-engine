@@ -13,7 +13,6 @@ namespace CE::Mem {
     struct Manager : AbstractManager<void>, Singleton_CTS<Manager<growth_factor_, growth_base_>> {
         static_assert(growth_base_ >= 0, "The base growth should be a positive integer.");
         static_assert(growth_factor_ > 0, "The growth factor cannot be 0.");
-        static_assert(growth_factor_ < 32, "Use a reasonable growth factor that is below 32.");
 
         Manager() = default;
         // retrieve stats

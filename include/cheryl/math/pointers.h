@@ -42,7 +42,7 @@ namespace CE::ptr {
 
     // returns an aligned offset for ptr
     inline std::size_t align_offset(void* ptr, std::size_t offset_bytes, std::align_val_t alignment) {
-        return offset_bytes + get_alignment_offset(ptr, alignment);
+        return offset_bytes + get_alignment_offset(add_offset<void>(ptr,offset_bytes), alignment);
     }
 
     // returns the alignment for address

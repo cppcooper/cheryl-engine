@@ -118,6 +118,9 @@ bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
             // Check if the blocks are contiguous (prevBlock's end equals currentBlock's start)
             if (BlockHelpers::is_contiguous(prevBlock, currentBlock)) {
                 // Contiguous blocks cannot have the same owner
+                auto sec = std::get<1>(bm.sections);
+                auto s1 = sec.lower_bound(prevBlock);
+                auto s2 = sec.lower_bound(currentBlock);
                 if (prevBlock.owner.get() == currentBlock.owner.get()) {
                     return false;
                 }

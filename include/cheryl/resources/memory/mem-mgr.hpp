@@ -99,8 +99,8 @@ namespace CE::Mem {
         const auto align_val = static_cast<std::align_val_t>(alignment);
         OBlock ob = fill_request(request_length);
         const bool request_filled = ob.has_value();
-        // do we have an allocation?
-        if (!request_filled) {
+        // do we have an allocation? of the correct alignment..?
+        if (!request_filled || ob->alignment < align_val) {
             // no? we'll make an allocation now
             ob = allocate(request_length, align_val);
             record_new(*ob);
