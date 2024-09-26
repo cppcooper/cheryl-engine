@@ -10,3 +10,6 @@
 [submodule "extern/spdlog"]
 	path = extern/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "extern/gainput"]
+	path = extern/gainput
+	url = https://github.com/marcoesposito1988/gainput.git
