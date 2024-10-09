@@ -9,6 +9,19 @@ static std::shared_mutex& get_mutex(Tuple& tuple) {
 }
 
 template<typename T>
+bool checkPoolNotInUse(const BlockManagement<T>& bm, const std::vector<Block<T>>& in_use) {
+    std::shared_lock poolLock(get_mutex(bm.pool));
+
+    const auto& pool = std::get<1>(bm.pool);
+    for(auto &b : in_use) {
+        if(pool.contains(b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
 bool checkOwnerEqualsHeadInRegistry(const BlockManagement<T>& bm) {
     std::shared_lock registryLock(get_mutex(bm.registry));
     const auto& reg = std::get<1>(bm.registry);
