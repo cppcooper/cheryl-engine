@@ -135,6 +135,9 @@ bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
                 auto s1 = sec.lower_bound(prevBlock);
                 auto s2 = sec.lower_bound(currentBlock);
                 if (prevBlock.owner.get() == currentBlock.owner.get()) {
+                    MTRACE() << "Found contiguous blocks in Pool";
+                    MTRACE() << "iter: " << prevBlock;
+                    MTRACE() << "next: " << currentBlock;
                     return false;
                 }
             }

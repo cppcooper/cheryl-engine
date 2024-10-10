@@ -1,7 +1,15 @@
 #pragma once
 #ifndef BLOCK_TEMPLATE_H
 #define BLOCK_TEMPLATE_H
+#define MTRACE() UTRACE(CE::memlog)
+#define MDEBUG() UDEBUG(CE::memlog)
+#define MINFO() UINFO(CE::memlog)
+#define MWARN() UWARN(CE::memlog)
+#define MERROR() UERROR(CE::memlog)
+#define MFATAL() UFATAL(CE::memlog)
 #include <cemath.h>
+#include <internals/compile-time-logging.hpp>
+#include <logging/logger.h>
 #include <functional>
 #include <memory>
 #include <chrono>
@@ -69,10 +77,14 @@ typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
         return std::nullopt;
     }
     T* p = ptr::add_offset<T>(head.get(), idx);
+    auto av = ptr::calculate_alignment(p);
+    if(av == std::align_val_t{1}) {
+        MERROR() << "Houston, we have a problem.";
+    }
     Block R{
         owner,
         std::shared_ptr<T>(owner, p),
-        ptr::calculate_alignment(p),
+        av,
         length - idx
     };
     length = idx;
@@ -239,7 +251,6 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
         static tpoint last;
         // This was run early if not even a minute has passed.
         if (const tpoint now = clock::now(); mcast(now - last) >= std::chrono::minutes(1)) {
-            //CELog::info("Monitoring Block allocations.");
             auto &stale_memory = std::get<1>(this->stale);
             last = now;
             std::shared_lock lock(std::get<0>(this->stale));
@@ -331,30 +342,59 @@ protected:
     OBlock<T> adjacent_right(Block<T> block, Tuple &tuple) {
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
+        MTRACE() << "Looking for adjacent right to " << block;
         auto iter = set.lower_bound(block);
+        if(iter != set.end()) {
+            MTRACE() << "lower_bound: " << *iter;
+        }
+        if (iter != set.end() && *iter == block) {
+            iter = std::next(iter);
+        }
         if (iter != set.end()) {
-            if (*iter == block) {
-                iter = std::next(iter);
-                if (iter == set.end()) {
-                    return {std::nullopt};
-                }
-            }
+            MTRACE() << "found: " << *iter;
             return {*iter};
         }
+        MTRACE() << "found nothing, returning nullopt";
         return {std::nullopt};
     }
     template<typename Tuple>
     OBlock<T> adjacent_left(Block<T> block, Tuple &tuple) {
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
+        MTRACE() << "Looking for adjacent left to " << block;
         auto iter = set.lower_bound(block);
-        if (iter != set.begin() && *iter == block) {
+        if(iter != set.end()) {
+            MTRACE() << "lower_bound: " << *iter;
+        } else {
+            MTRACE() << "lower_bound: end()";
+        }
+        if (iter != set.begin()) {
             iter = std::prev(iter);
         }
-        if (iter == set.end()) {
-            return {std::nullopt};
+        if (iter != set.end()) {
+            MTRACE() << "found: " << *iter;
+            return {*iter};
         }
-        return {*iter};
+        MTRACE() << "found nothing, returning nullopt";
+        return {std::nullopt};
+    }
+    template<typename Tuple>
+    OBlock<T> contiguous_right(Block<T> block, Tuple &tuple) {
+        auto ob = adjacent_right(block, tuple);
+        if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
+            return {*ob};
+        }
+        MTRACE() << "not contiguous, returning nullopt";
+        return {std::nullopt};
+    }
+    template<typename Tuple>
+    OBlock<T> contiguous_left(Block<T> block, Tuple &tuple) {
+        auto ob = adjacent_left(block, tuple);
+        if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
+            return {*ob};
+        }
+        MTRACE() << "not contiguous, returning nullopt";
+        return {std::nullopt};
     }
     // iManage interface
     /////////////////////
@@ -370,31 +410,47 @@ protected:
         std::get<1>(this->stale).emplace(block, now);
     }
     OBlock<T> merge_into_pool(Block<T> block) override {
-        auto left = adjacent_left(block, this->sections);
-        auto right = adjacent_right(block, this->sections);
-        if (left.has_value() || right.has_value()) {
-            erase(block, this->sections);
+        MTRACE() << "Merging " << block << " into pool.";
+        MDEBUG() << "Remove block from sections. (Add it back later, might change/merge)";
+        erase(block, this->sections);
+        auto left = contiguous_left(block, this->sections);
+        auto right = contiguous_right(block, this->sections);
+        if(left.has_value()) {
+            MTRACE() << "left: " << left.value();
+        }
+        if(right.has_value()) {
+            MTRACE() << "right: " << right.value();
         }
         // merge properties
-        if (left.has_value() && BlockHelpers::is_contiguous(*left, block) && std::get<1>(this->pool).contains(*left)) {
-            erase(*left, this->pool, this->sections);
-            block.head = left->head;
-            block.alignment = left->alignment;
-            block.length += left->length;
-        }
-        if (right.has_value() && BlockHelpers::is_contiguous(block, *right) && std::get<1>(this->pool).contains(*right)) {
-            erase(*right, this->pool, this->sections);
-            block.length += right->length;
-        }
-        // record block
-        if (left.has_value() || right.has_value()) {
-            if (contains(block, this->registry)) {
-                mark_stale(block);
+        if (left.has_value()) {
+            if (contains(*left, this->pool)) {
+                erase(*left, this->pool, this->sections);
+                block.head = left->head;
+                block.alignment = left->alignment;
+                block.length += left->length;
+                MDEBUG() << "adjacent left merged.";
             } else {
-                emplace(block, this->sections);
+                MDEBUG() << "adjacent left is in use.";
             }
         }
-        emplace(block, this->pool);
+        if (right.has_value()) {
+            if (contains(*right, this->pool)) {
+                erase(*right, this->pool, this->sections);
+                block.length += right->length;
+                MDEBUG() << "adjacent right merged.";
+            } else {
+                MDEBUG() << "adjacent right is in use.";
+            }
+        }
+        // record block
+        if (contains(block, this->registry)) {
+            MDEBUG() << "Merged block is in the registry. Marking stale.";
+            mark_stale(block);
+            emplace(block, this->pool);
+        } else {
+            emplace(block, this->pool, this->sections);
+        }
+        MTRACE() << "Merged " << block << " into pool.";
         return {block};
     }
     OBlock<T> find_section(T* ptr) override {
@@ -436,6 +492,7 @@ protected:
         };
         constexpr auto Talignval = av();
         auto &pool_set = std::get<1>(this->pool);
+        MINFO() << "Pool received a request for " << N << " slices("<< ctti::nameof<T>() <<") of " << Talignval << " aligned memory.";
         // our pool Blocks are sorted alignment, length, head, owner all in ascending order
         // search all iter with large enough alignment
         for (auto iter = pool_set.begin(); iter != pool_set.end() && iter->alignment >= Talignval; ++iter) {
@@ -443,6 +500,7 @@ protected:
             if (iter->length >= N) {
                 OBlock<T> ob {*iter};
                 pool_set.erase(iter);
+                MTRACE() << "result: " << ob.value();
                 return ob;
             }
         }
@@ -478,5 +536,22 @@ namespace std {
                 a.length);
         }
     };
+
+    template <typename S, typename T>
+    S& operator<<(S& os, const Block<T>& block) {
+        //uint32_t owner = std::get<uint32_t>(CE::ptr::pointer_to_hash(block.owner.get(),4));
+        auto owner = static_cast<void*>(block.owner.get());
+        os << std::format("{} [alignment: {}, length: {}({}), owner: {}]",
+                          static_cast<void*>(block.head.get()),
+                          static_cast<std::size_t>(block.alignment),
+                          (void*)block.length, block.length, owner);
+        return os;
+    }
+
+    template <typename S>
+    S& operator<<(S& os, const std::align_val_t alignment) {
+        os << std::format("{}", static_cast<std::size_t>(alignment));
+        return os;
+    }
 }
 #endif

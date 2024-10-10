@@ -17,6 +17,8 @@ namespace CE::Mem {
         Manager() = default;
         // retrieve stats
         [[nodiscard]] std::string stats();
+        // retrieve debug info
+        [[nodiscard]] std::string debug_info();
         // return all ownership of a section containing ptr
         void return_ptr(void* ptr);
         // return a portion of a block
