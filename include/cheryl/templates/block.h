@@ -9,6 +9,8 @@
 #define MFATAL() UFATAL(CE::memlog)
 #include <cemath.h>
 #include <internals/compile-time-logging.hpp>
+#undef CTWriteMask
+#define CTWriteMask 0
 #include <logging/logger.h>
 #include <functional>
 #include <memory>
