@@ -125,7 +125,7 @@ namespace CE::Mem {
             erase(*ob, stale, release);
         }
         auto original = *ob;
-        const auto right = ob->split_exactly(request_length);
+        const auto right = ob->split_at(request_length);
         // we only need records if the right portion exists, because sections only deals in sub-blocks
         if (right.has_value()) {
             erase(original, sections);
