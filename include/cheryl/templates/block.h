@@ -79,7 +79,7 @@ typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
     T* p = ptr::add_offset<T>(head.get(), idx);
     auto av = ptr::calculate_alignment(p);
     if(av == std::align_val_t{1}) {
-        MERROR() << "Houston, we have a problem.";
+        MWARN() << "We are going to have a 1 alignment memory pooling issue. We at least need to resplit";
     }
     Block R{
         owner,
@@ -339,61 +339,103 @@ protected:
         return (share_set(b, std::forward<Tuples>(tuples)) && ...);
     }
     template<typename Tuple>
-    OBlock<T> adjacent_right(Block<T> block, Tuple &tuple) {
+    OBlock<T> search_right(Block<T> block, Tuple &tuple) {
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
-        MTRACE() << "Looking for adjacent right to " << block;
+        MTRACE() << "Searching to the right from " << block;
         auto iter = set.lower_bound(block);
-        if(iter != set.end()) {
-            MTRACE() << "lower_bound: " << *iter;
-        }
-        if (iter != set.end() && *iter == block) {
-            iter = std::next(iter);
-        }
         if (iter != set.end()) {
-            MTRACE() << "found: " << *iter;
-            return {*iter};
-        }
-        MTRACE() << "found nothing, returning nullopt";
-        return {std::nullopt};
-    }
-    template<typename Tuple>
-    OBlock<T> adjacent_left(Block<T> block, Tuple &tuple) {
-        std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
-        auto &set = std::get<1>(tuple);
-        MTRACE() << "Looking for adjacent left to " << block;
-        auto iter = set.lower_bound(block);
-        if(iter != set.end()) {
             MTRACE() << "lower_bound: " << *iter;
         } else {
             MTRACE() << "lower_bound: end()";
         }
-        if (iter != set.begin()) {
-            iter = std::prev(iter);
+        while (iter != set.end() && block.owner == iter->owner && iter->head.get() <= block.head.get()) {
+            iter = std::next(iter);
+            MTRACE() << "next: " << *iter;
         }
-        if (iter != set.end()) {
-            MTRACE() << "found: " << *iter;
+        if (iter != set.end() && block.owner == iter->owner && iter->head.get() > block.head.get()) {
             return {*iter};
         }
-        MTRACE() << "found nothing, returning nullopt";
+        MWARN() << "search condition not found right, returning nullopt";
+        return {std::nullopt};
+    }
+    template<typename Tuple>
+    OBlock<T> search_left(Block<T> block, Tuple &tuple) {
+        std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+        auto &set = std::get<1>(tuple);
+        MTRACE() << "Searching to the left from " << block;
+        auto iter = set.lower_bound(block);
+        if (iter != set.end()) {
+            MTRACE() << "lower_bound: " << *iter;
+        } else {
+            MTRACE() << "lower_bound: end()";
+        }
+        while (iter != set.begin() && block.owner == iter->owner && iter->head.get() >= block.head.get()) {
+            iter = std::prev(iter);
+            MTRACE() << "prev: " << *iter;
+        }
+        if (iter != set.end() && block.owner == iter->owner && iter->head.get() < block.head.get()) {
+            return {*iter};
+        }
+        MWARN() << "search condition not found left, returning nullopt";
         return {std::nullopt};
     }
     template<typename Tuple>
     OBlock<T> contiguous_right(Block<T> block, Tuple &tuple) {
-        auto ob = adjacent_right(block, tuple);
+        MDEBUG() << "Looking for contiguous right..";
+        auto ob = search_right(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
+            MDEBUG() << "contiguous right found: " << *ob;
             return {*ob};
         }
-        MTRACE() << "not contiguous, returning nullopt";
+        MWARN() << "not contiguous, returning nullopt";
         return {std::nullopt};
     }
     template<typename Tuple>
     OBlock<T> contiguous_left(Block<T> block, Tuple &tuple) {
-        auto ob = adjacent_left(block, tuple);
+        MDEBUG() << "Looking for contiguous left..";
+        auto ob = search_left(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
+            MDEBUG() << "contiguous left found: " << *ob;
             return {*ob};
         }
-        MTRACE() << "not contiguous, returning nullopt";
+        MWARN() << "not contiguous, returning nullopt";
+        return {std::nullopt};
+    }
+    template<typename Tuple>
+    OBlock<T> adjacent_right(Block<T> block, Tuple &tuple) {
+        MDEBUG() << "Looking for adjacent right..";
+        std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+        auto &set = std::get<1>(tuple);
+        auto iter = set.lower_bound(block);
+        if (iter != set.end()) {
+            if (*iter == block) {
+                iter = std::next(iter);
+            }
+        }
+        if (iter != set.end()) {
+            MDEBUG() << "adjacent right found: " << *iter;
+            return {*iter};
+        }
+        MDEBUG() << "no adjacent, returning nullopt";
+        return {std::nullopt};
+    }
+    template<typename Tuple>
+    OBlock<T> adjacent_left(Block<T> block, Tuple &tuple) {
+        MDEBUG() << "Looking for adjacent left..";
+        std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+        auto &set = std::get<1>(tuple);
+        auto iter = set.lower_bound(block);
+        if (iter != set.begin()) {
+            iter = std::next(iter);
+        } else {
+            MWARN() << "unable to locate adjacent left.";
+        }
+        if (iter != set.end()) {
+            MDEBUG() << "adjacent left found: " << *iter;
+            return {*iter};
+        }
+        MDEBUG() << "no adjacent, returning nullopt";
         return {std::nullopt};
     }
     // iManage interface
@@ -411,46 +453,47 @@ protected:
     }
     OBlock<T> merge_into_pool(Block<T> block) override {
         MTRACE() << "Merging " << block << " into pool.";
-        MDEBUG() << "Remove block from sections. (Add it back later, might change/merge)";
-        erase(block, this->sections);
+        const auto og = block;
         auto left = contiguous_left(block, this->sections);
-        auto right = contiguous_right(block, this->sections);
-        if(left.has_value()) {
-            MTRACE() << "left: " << left.value();
-        }
-        if(right.has_value()) {
-            MTRACE() << "right: " << right.value();
-        }
-        // merge properties
         if (left.has_value()) {
             if (contains(*left, this->pool)) {
                 erase(*left, this->pool, this->sections);
-                block.head = left->head;
-                block.alignment = left->alignment;
-                block.length += left->length;
-                MDEBUG() << "adjacent left merged.";
             } else {
-                MDEBUG() << "adjacent left is in use.";
+                left = {std::nullopt};
             }
         }
+        auto right = contiguous_right(block, this->sections);
         if (right.has_value()) {
             if (contains(*right, this->pool)) {
                 erase(*right, this->pool, this->sections);
-                block.length += right->length;
-                MDEBUG() << "adjacent right merged.";
             } else {
-                MDEBUG() << "adjacent right is in use.";
+                right = {std::nullopt};
             }
         }
-        // record block
+        // merge properties
+        if (left.has_value()) {
+            block.head = left->head;
+            block.alignment = left->alignment;
+            block.length += left->length;
+            MINFO() << "contiguous left merged.";
+        }
+        if (right.has_value()) {
+            block.length += right->length;
+            MINFO() << "contiguous right merged.";
+        }
+
+        // by now block has changed, or it hasn't
         if (contains(block, this->registry)) {
-            MDEBUG() << "Merged block is in the registry. Marking stale.";
+            MTRACE() << "Merged block is in the registry. Marking stale.";
             mark_stale(block);
             emplace(block, this->pool);
-        } else {
+        } else if (og != block) {
+            erase(og, this->sections);
             emplace(block, this->pool, this->sections);
+        } else {
+            emplace(block, this->pool);
         }
-        MTRACE() << "Merged " << block << " into pool.";
+        MDEBUG() << "Merged " << block << " into pool.";
         return {block};
     }
     OBlock<T> find_section(T* ptr) override {
@@ -458,8 +501,8 @@ protected:
         const auto av = CE::ptr::calculate_alignment(ptr);
         Block<T> faux_block {nullptr, std::shared_ptr<T>(ptr, [](const T* p){}), av, 0};
         // finds
-        if (auto adjacent = adjacent_left(faux_block, this->sections); adjacent.has_value() && adjacent->contains(ptr)) {
-            return adjacent;
+        if (auto left = adjacent_left(faux_block, this->sections); left.has_value() && left->contains(ptr)) {
+            return left;
         }
         auto &sec = std::get<1>(this->sections);
         if (auto lb = sec.lower_bound(faux_block); lb != sec.end() && lb->contains(ptr)) {
@@ -476,8 +519,8 @@ protected:
             auto iter = reg.find(faux_block);
             return {*iter};
         }
-        if (auto adjacent = adjacent_left(faux_block, this->registry); adjacent.has_value() && adjacent->contains(ptr)) {
-            return adjacent;
+        if (auto left = adjacent_left(faux_block, this->registry); left.has_value() && left->contains(ptr)) {
+            return left;
         }
         return {std::nullopt};
     }

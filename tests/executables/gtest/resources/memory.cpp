@@ -35,6 +35,16 @@ TEST(memory, manager) {
     ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
     ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
+    auto cndtn = [](int i) {
+        bool r = false;
+        for (int j = i; j > 0 && j >= (i-6); --j) {
+            if (is_po2(j)) {
+                r = true;
+                break;
+            }
+        }
+        return r;
+    };
     for(int j = 0; j < samples; ++j) {
         auto new_block = MM::get().checkout_chunk(rd(rng));
         MTRACE() << "Checked out chunk: " << new_block;
@@ -49,7 +59,7 @@ TEST(memory, manager) {
             MM::get().return_chunk(a);
             memory.erase(iter);
         }
-        if(j > 400) {
+        if(cndtn(j)) {
             MINFO() << "iteration: " << j;
             ASSERT_TRUE(checkPoolNotInUse(MM_bm, memory));
             ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(MM_bm));
