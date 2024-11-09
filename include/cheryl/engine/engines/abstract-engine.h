@@ -3,6 +3,9 @@
 #define ABSTRACT_ENGINE_H
 #include <enums.h>
 
+// template for storing/modifying a variable (T*, maybe T& actually), with a signal to notify of or listen for changes made through the template
+// todo: design transport for matrices (proj, view, model) to shaders
+
 namespace CE::Engine {
     struct iEngine {
         virtual ~iEngine() = default;
