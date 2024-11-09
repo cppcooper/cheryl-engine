@@ -9,6 +9,19 @@ static std::shared_mutex& get_mutex(Tuple& tuple) {
 }
 
 template<typename T>
+bool checkPoolNotInUse(const BlockManagement<T>& bm, const std::vector<Block<T>>& in_use) {
+    std::shared_lock poolLock(get_mutex(bm.pool));
+
+    const auto& pool = std::get<1>(bm.pool);
+    for(auto &b : in_use) {
+        if(pool.contains(b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
 bool checkOwnerEqualsHeadInRegistry(const BlockManagement<T>& bm) {
     std::shared_lock registryLock(get_mutex(bm.registry));
     const auto& reg = std::get<1>(bm.registry);
@@ -49,14 +62,16 @@ bool checkStaleAndReleaseInRegistry(const BlockManagement<T>& bm) {
 
     const auto& reg = std::get<1>(bm.registry);
 
-    for (const auto& staleBlock : std::get<1>(bm.stale)) {
-        if (reg.find(staleBlock.first) == reg.end()) {
+    for (const auto& [staleBlock,time] : std::get<1>(bm.stale)) {
+        if (reg.find(staleBlock) == reg.end()) {
+            MERROR() << "Unable to find stale block " << staleBlock << " in registry.";
             return false;
         }
     }
 
     for (const auto& releasedBlock : std::get<1>(bm.release)) {
         if (reg.find(releasedBlock) == reg.end()) {
+            MERROR() << "Unable to find released block " << releasedBlock << " in registry.";
             return false;
         }
     }
@@ -75,7 +90,8 @@ bool checkPoolInSectionsOrInRegistry(const BlockManagement<T>& bm) {
     const auto& sec = std::get<1>(bm.sections);
 
     for (const auto& poolBlock : std::get<1>(bm.pool)) {
-        if (reg.contains(poolBlock) == sec.contains(poolBlock)) {
+        if (!reg.contains(poolBlock) && !sec.contains(poolBlock)) {
+            MERROR() << "Found pool block " << poolBlock << " in neither the registry or sections.";
             return false;
         }
     }
@@ -93,6 +109,7 @@ bool checkPoolInRegistryAlsoInStale(const BlockManagement<T>& bm) {
 
     for (const auto& poolBlock : std::get<1>(bm.pool)) {
         if (reg.contains(poolBlock) && !stale.contains(poolBlock)) {
+            MERROR() << "Found pool block " << poolBlock << " in the registry but not in stale.";
             return false;
         }
     }
@@ -118,7 +135,18 @@ bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
             // Check if the blocks are contiguous (prevBlock's end equals currentBlock's start)
             if (BlockHelpers::is_contiguous(prevBlock, currentBlock)) {
                 // Contiguous blocks cannot have the same owner
+                auto sec = std::get<1>(bm.sections);
+                auto s1 = sec.lower_bound(prevBlock);
+                auto s2 = sec.lower_bound(currentBlock);
                 if (prevBlock.owner.get() == currentBlock.owner.get()) {
+                    MERROR() << "Found contiguous blocks in Pool";
+                    MTRACE() << "prev: " << prevBlock;
+                    MTRACE() << "current: " << currentBlock;
+                    if (prevBlock.head.get() < currentBlock.head.get()) {
+                        MDEBUG() << prevBlock << " is less than " << currentBlock;
+                    } else {
+                        MDEBUG() << prevBlock << " is greater than or equal to " << currentBlock;
+                    }
                     return false;
                 }
             }

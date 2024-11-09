@@ -14,14 +14,15 @@ inline bool is_po2(size_t idx) {
 }
 
 
-
 TEST(memory, manager) {
+    CE::Logger<CE::memlog>::get().set_level_logger(spdlog::level::trace);
+    CE::Logger<CE::memlog>::get().set_level_stdsink(spdlog::level::info);
+    CE::Logger<CE::memlog>::get().set_level_filesink(spdlog::level::trace);
     using namespace CE;
-    constexpr int samples = 12288;
+    constexpr int samples = 4280;
     std::uniform_int_distribution<> rd(64,256);
-    std::bernoulli_distribution bd(0.07);
+    std::bernoulli_distribution bd(0.5);
     std::random_device rng;
-    std::size_t returned_blks = 0;
 
     using MM = Mem::CacheMMgr;
     Mem::ExactMMgr::get().preallocate(64,1024);
@@ -34,72 +35,41 @@ TEST(memory, manager) {
     ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
     ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
-    for(int i = 0; i < samples; ++i) {
-        memory.push_back(MM::get().checkout_chunk(rd(rng)));
-        if(!memory.empty() && bd(rng)) {
-            std::cout << "returning..";
-            returned_blks++;
+    auto cndtn = [](int i) {
+        bool r = false;
+        for (int j = i; j > 0 && j >= (i-3); --j) {
+            if (is_po2(j)) {
+                r = true;
+                break;
+            }
+        }
+        return r;
+    };
+    for(int j = 0; j < samples; ++j) {
+        auto new_block = MM::get().checkout_chunk(rd(rng));
+        MTRACE() << "Checked out chunk: " << new_block;
+        memory.push_back(new_block);
+        if(memory.size() > 4 && bd(rng)) {
             const auto sz = memory.size()-1;
             const auto lo = std::min(sz-1,std::max(sz-4, UZ(0)));
             auto idx = std::uniform_int_distribution<>(lo, sz)(rng);
             auto iter = memory.begin() + idx;
             auto a = memory.at(idx);
+            MTRACE() << "Returning block: " << a;
             MM::get().return_chunk(a);
             memory.erase(iter);
         }
-        if (is_po2(i)) {
-            std::cout << MM::get().stats();
+        if(cndtn(j)) {
+            MINFO() << "iteration: " << j;
+            ASSERT_TRUE(checkPoolNotInUse(MM_bm, memory));
+            ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(MM_bm));
+            ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(MM_bm));
+            ASSERT_TRUE(checkStaleAndReleaseInRegistry(MM_bm));
+            ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
+            ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
+            ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
         }
     }
-    std::cout << std::endl;
-    ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(MM_bm));
-    ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(MM_bm));
-    ASSERT_TRUE(checkStaleAndReleaseInRegistry(MM_bm));
-    ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
-
-    // todo: sometimes fails on next check
-    ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
-    ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
-    for(int i = 0; i < samples; ++i) {
-        memory.push_back(MM::get().checkout_chunk(rd(rng)));
-        if(!memory.empty() && bd(rng)) {
-            std::cout << "returning..";
-            returned_blks++;
-            const auto sz = memory.size()-1;
-            const auto lo = std::min(sz-1,std::max(sz-4, UZ(0)));
-            auto idx = std::uniform_int_distribution<>(lo, sz)(rng);
-            auto iter = memory.begin() + idx;
-            auto a = memory.at(idx);
-            MM::get().return_chunk(a);
-            memory.erase(iter);
-        }
-    }
-    std::cout << std::endl;
-    ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(MM_bm));
-    ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(MM_bm));
-    ASSERT_TRUE(checkStaleAndReleaseInRegistry(MM_bm));
-    ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
-    ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
-    ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
-    for(int i = 0; i < samples; ++i) {
-        memory.push_back(MM::get().checkout_chunk(rd(rng)));
-        if(!memory.empty() && bd(rng)) {
-            std::cout << "returning..";
-            returned_blks++;
-            const auto sz = memory.size()-1;
-            const auto lo = std::min(sz-1,std::max(sz-4, UZ(0)));
-            auto idx = std::uniform_int_distribution<>(lo, sz)(rng);
-            auto iter = memory.begin() + idx;
-            auto a = memory.at(idx);
-            MM::get().return_chunk(a);
-            memory.erase(iter);
-        }
-    }
-    std::cout << std::endl;
-    ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(MM_bm));
-    ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(MM_bm));
-    ASSERT_TRUE(checkStaleAndReleaseInRegistry(MM_bm));
-    ASSERT_TRUE(checkPoolInSectionsOrInRegistry(MM_bm));
-    ASSERT_TRUE(checkContiguousBlocksInPool(MM_bm));
-    ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
+    MWARN() << MM::get().stats();
+    MWARN() << MM::get().debug_info();
 }

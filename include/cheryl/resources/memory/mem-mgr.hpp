@@ -5,6 +5,7 @@
 #include "mem-mgr.h"
 #include <internals/celog.h>
 #include <math/fit.h>
+#include <math/bytes.h>
 #include <optional>
 #include <utility>
 #include <format>
@@ -23,19 +24,29 @@ namespace CE::Mem {
         for(const auto &b : std::get<1>(this->registry)) {
             total += b.length;
         }
-        auto avail = available/1024.0/1024;
-        auto tot = total/1024.0/1024;
+        auto tot = human_readable(total);
+        auto avail = human_readable(available);
         return std::format(
             "Recorded stats regarding allocations from this manager\n"
             "heap allocations: {}\n"
             "heap ranges: {}\n"
             "not in use: {:2.1f}%\n"
-            "total: {:3.1f}MiB\n"
-            "available: {:3.1f}MiB\n\n",
+            "total: {}\n"
+            "available: {}\n\n",
             std::get<1>(this->registry).size(),
             std::get<1>(this->sections).size(),
-            (avail/tot)*100,
+            (available/(double)total)*100,
             tot, avail);
+    }
+
+    template<double gf_, int32_t gb_>
+    std::string Manager<gf_,gb_>::debug_info() {
+        std::stringstream ss;
+        std::shared_lock l1(get_mutex(pool));
+        for(const auto& b : std::get<1>(this->pool)) {
+            ss << b << std::endl;
+        }
+        return ss.str();
     }
 
     template<double gf_, int32_t gb_>
@@ -49,6 +60,7 @@ namespace CE::Mem {
 
     template<double growth_factor_, int32_t growth_base_>
     void Manager<growth_factor_, growth_base_>::return_portion(void* ptr, std::size_t length) {
+        MFATAL() << "I thought this wasn't being used in this binary/test";
         auto ret_chunk = [](OBlock b, void* ptr, std::size_t length) {
             const auto original = *b;
             auto block_end = ptr::offset_address(b->head.get(), b->length);
@@ -87,8 +99,9 @@ namespace CE::Mem {
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::return_chunk(const Block &returned) {
         if (!contains(returned, sections) && !contains(returned, registry)) {
-            CELog::error("Cannot return Block. No such block exists. Block: {}", returned);
-            return;
+            CELog::critical("Cannot return Block. No such block exists. Block: {}", returned);
+            MTRACE() << debug_info();
+            throw Exceptions::failed_operation(CE_HERE,"Memory Manager was returned an unknown block");
         }
         merge_into_pool(returned);
     }
@@ -103,6 +116,7 @@ namespace CE::Mem {
         if (!request_filled) {
             // no? we'll make an allocation now
             ob = allocate(request_length, align_val);
+            MTRACE() << "allocated: " << *ob;
             record_new(*ob);
         }
         // we will now know precisely how much we're passing along, it may be up to 63 bytes extra
@@ -110,22 +124,30 @@ namespace CE::Mem {
             // an existing block may still be marked stale
             erase(*ob, stale, release);
         }
+        auto original = *ob;
         const auto right = ob->split_at(request_length);
         // we only need records if the right portion exists, because sections only deals in sub-blocks
         if (right.has_value()) {
+            erase(original, sections);
+
             // record the left portion
             emplace(*ob, sections);
             // record the right portion
-            emplace(*right, sections, pool);
+            emplace(*right, sections);
+            merge_into_pool(*right);
+            MTRACE() << "taking " << *right << " back to the pool.";
         }
+        MTRACE() << "giving " << *ob << " to caller.";
         return *ob;
     }
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
         const auto len = Math::adjust_length(width, Enum::greedy, gb_, gf_);
+        MINFO() << "Pre-allocating " << blocks << " " << width << " byte wide blocks aligned to " << alignment;
         for(int i = 0; i < blocks; ++i) {
             const auto a = allocate(len, alignment);
+            MTRACE() << "preallocated: " << a;
             emplace(a, registry, pool);
             mark_stale(a);
         }
