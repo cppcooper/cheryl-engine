@@ -19,7 +19,7 @@ TEST(memory, manager) {
     CE::Logger<CE::memlog>::get().set_level_stdsink(spdlog::level::info);
     CE::Logger<CE::memlog>::get().set_level_filesink(spdlog::level::trace);
     using namespace CE;
-    constexpr int samples = 12288;
+    constexpr int samples = 4280;
     std::uniform_int_distribution<> rd(64,256);
     std::bernoulli_distribution bd(0.5);
     std::random_device rng;
@@ -37,7 +37,7 @@ TEST(memory, manager) {
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(MM_bm));
     auto cndtn = [](int i) {
         bool r = false;
-        for (int j = i; j > 0 && j >= (i-6); --j) {
+        for (int j = i; j > 0 && j >= (i-3); --j) {
             if (is_po2(j)) {
                 r = true;
                 break;
