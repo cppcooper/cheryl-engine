@@ -22,7 +22,7 @@ struct ObservedVariable {
         wl.release();
         std::shared_lock rl(mtx);
         for(auto callback : callbacks) {
-            if (callback) {
+            if (callback) [[likely]] {
                 callback(var);
             }
         }
@@ -31,7 +31,6 @@ struct ObservedVariable {
         std::shared_lock rl(mtx);
         return var;
     }
-    // I am not sure I understand how to use the predicate form of wait correctly
     void wait_until_change() {
         std::shared_lock lock(mtx);
         auto ov = q;
