@@ -28,8 +28,6 @@ namespace CE::Engine {
         ~glEngine() override = default;
         void init() override;
         void deinit() override;
-        void pre_update() override;
-        void post_update() override;
         void pre_draw() override;
         void post_draw() override;
         void set_mode(Enum::gfx_mode) override;

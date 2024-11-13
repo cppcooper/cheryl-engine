@@ -16,9 +16,7 @@ namespace CE::GFramework {
             running = true;
             while(running) {
                 const double dt = delta();
-                e->pre_update();
                 gf->update(dt);
-                e->post_update();
 
                 e->pre_draw();
                 gf->draw(dt);

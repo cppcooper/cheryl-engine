@@ -64,12 +64,6 @@ namespace CE::Engine {
 #endif
     }
 
-    void glEngine::pre_update() {
-    }
-
-    void glEngine::post_update() {
-    }
-
     void glEngine::pre_draw() {
     	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }

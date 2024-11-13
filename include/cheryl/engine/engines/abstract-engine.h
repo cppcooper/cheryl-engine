@@ -11,8 +11,6 @@ namespace CE::Engine {
         virtual ~iEngine() = default;
         virtual void init() = 0;
         virtual void deinit() = 0;
-        virtual void pre_update() = 0;
-        virtual void post_update() = 0;
         virtual void pre_draw() = 0;
         virtual void post_draw() = 0;
 
