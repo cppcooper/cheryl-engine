@@ -1,7 +1,6 @@
 #pragma once
 #ifndef OBSERVED_VARIABLES_H
 #define OBSERVED_VARIABLES_H
-#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
@@ -48,9 +47,5 @@ protected:
     std::condition_variable_any cv;
     std::array<Callback, Observers> callbacks;
 };
-
-inline void foo() {
-    ObservedVariable A(0,{[](const int&){}});
-}
 
 #endif //OBSERVED_VARIABLES_H
