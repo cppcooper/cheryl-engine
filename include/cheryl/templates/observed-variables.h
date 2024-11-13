@@ -17,8 +17,10 @@ struct ObservedVariable {
         std::unique_lock wl(mtx);
         if (var != v) {
             var = std::move(v);
+            q++;
             cv.notify_all();
         }
+        wl.unlock();
         wl.release();
         std::shared_lock rl(mtx);
         for(auto callback : callbacks) {
