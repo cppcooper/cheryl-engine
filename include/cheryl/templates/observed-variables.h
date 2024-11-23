@@ -7,8 +7,16 @@
 
 template<typename T, uint8_t Observers = 1>
 struct ObservedVariable {
-    static_assert(Observers != 0, "The number of observers is not allowed to be less than 1.");
-    using Callback = void(*)(const T&);
+    using Callback = std::function<void(const T&)>;
+
+protected:
+    uint64_t q = 0;
+    T var;
+    std::shared_mutex mtx;
+    std::condition_variable_any cv;
+    std::array<Callback, Observers> callbacks;
+
+public:
     explicit ObservedVariable(T v, std::array<Callback, Observers> callbacks) : var(std::move(v)), callbacks(std::move(callbacks)) {}
 
     ObservedVariable& operator=(T v) { set(v); return *this; }
@@ -22,7 +30,7 @@ struct ObservedVariable {
         wl.unlock();
         wl.release();
         std::shared_lock rl(mtx);
-        for(auto callback : callbacks) {
+        for(auto &callback : callbacks) {
             if (callback) [[likely]] {
                 callback(var);
             }
@@ -40,12 +48,6 @@ struct ObservedVariable {
             if (ov != q) break;
         }
     }
-protected:
-    uint64_t q = 0;
-    T var;
-    std::shared_mutex mtx;
-    std::condition_variable_any cv;
-    std::array<Callback, Observers> callbacks;
 };
 
 #endif //OBSERVED_VARIABLES_H
