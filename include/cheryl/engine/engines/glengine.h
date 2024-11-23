@@ -4,25 +4,25 @@
 #include <cgl.h>
 #include <enums.h>
 #include <engine/view/display-system.h>
+#include <templates/observed-variables.h>
+
 #include <glm.hpp>
+
 #include "abstract-engine.h"
 
 namespace CE::Engine {
     struct glEngine final : iEngine {
     private:
         DisplaySystem display;
-        Enum::gfx_mode m_gMode{};
-        glm::mat4 m_viewMatrix{1.f};
-        glm::mat4 m_projectionMatrix{};
-        float m_nearplane{0.1f};
-        float m_farplane{10000.f};
+        ObservedVariable<Enum::gfx_mode,1> m_gMode;
+        ObservedVariable<glm::mat4> m_viewMatrix;// viewMatrix represents the camera todo: move to camera controller
+        ObservedVariable<glm::mat4> m_projectionMatrix;
+        ObservedVariable<float> m_nearplane;
+        ObservedVariable<float> m_farplane;
 
-        union {
-            std::array<float, 4> rgba{0.8f, 0.6f, 0.7f, 0.0f};
-            struct {
-                float r,g,b,a;
-            } colour;
-        }clear_colour{};
+    protected:
+        void update_matrices();
+
     public:
         glEngine();
         ~glEngine() override = default;

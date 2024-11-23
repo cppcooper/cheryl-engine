@@ -5,12 +5,51 @@
 #include "ext/matrix_clip_space.hpp"
 #include <mutex>
 
+template<typename P>
+void fn_update_matrices(const P &p) {
+	if constexpr (std::is_same_v<P,CE::Enum::gfx_mode>) {
+
+	}
+}
+
 namespace CE::Engine {
-    glEngine::glEngine() {
-    	std::once_flag flag;
-    	std::call_once(flag,[]() {
-    		gladLoadGL(glfwGetProcAddress);
-    	});
+	void glEngine::update_matrices() {
+		switch(m_gMode.get()) {
+			case Enum::gfx_mode::R2D: {
+				/// Disable Depth Testing for 2D!
+				glDisable( GL_DEPTH_TEST );
+
+				///2d orthographic projection
+				m_projectionMatrix.set(glm::mat4( 1.f )
+				* glm::ortho( 0.f,static_cast<float>(display.active->width),
+					0.f,static_cast<float>(display.active->height),
+					0.f, 1.f)); //2D was using 0,1 for near,far
+				break;
+			}
+			case Enum::gfx_mode::R3D: {
+				/// Enable Depth Testing for 3D!
+				glEnable( GL_DEPTH_TEST );
+
+				///3D perspective projection
+				m_projectionMatrix.set(glm::mat4( 1.f )
+				* glm::perspective( 45.0f,
+					static_cast<float>(display.active->width) / static_cast<float>(display.active->height),
+					m_nearplane.get(), m_farplane.get()));
+				break;
+			}
+		}
+	}
+
+    glEngine::glEngine():
+	m_gMode({},{}),
+	m_viewMatrix(glm::mat4{1.f}, {}), // todo: move to camera controller
+	m_projectionMatrix(glm::mat4{}, {}),
+	m_nearplane(0.1f, {}),
+	m_farplane(10000.f, {}) {
+	    std::once_flag flag;
+	    std::call_once(flag, []() {
+		    gladLoadGL(glfwGetProcAddress);
+	    });
     }
 
     void glEngine::init() {
@@ -49,11 +88,11 @@ namespace CE::Engine {
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
 
     	// it's dark here. (part 3)
-		glClearColor(
-			clear_colour.rgba[0],
-			clear_colour.rgba[1],
-			clear_colour.rgba[2],
-			clear_colour.rgba[3]);
+		// glClearColor(
+		// 	clear_colour.colour.r,
+		// 	clear_colour.colour.g,
+		// 	clear_colour.colour.b,
+		// 	clear_colour.colour.a);
 		glfwSwapInterval(1);
     }
 
@@ -73,32 +112,7 @@ namespace CE::Engine {
     }
 
     void glEngine::set_mode(Enum::gfx_mode mode) {
-    	if ( m_gMode == mode ) return;
-    	m_gMode = mode;
-    	switch(mode) {
-		    case Enum::gfx_mode::R2D: {
-		    	/// Disable Depth Testing for 2D!
-		    	glDisable( GL_DEPTH_TEST );
-
-		    	///2d orthographic projection
-		    	m_projectionMatrix = glm::mat4( 1.f )
-		    	* glm::ortho( 0.f,static_cast<float>(display.active->width),
-		    		0.f,static_cast<float>(display.active->height),
-		    		m_nearplane, m_farplane); //2D was using 0,1 for near,far
-			    break;
-		    }
-		    case Enum::gfx_mode::R3D: {
-			    /// Enable Depth Testing for 3D!
-		    	glEnable( GL_DEPTH_TEST );
-
-		    	///3D perspective projection
-		    	m_projectionMatrix = glm::mat4( 1.f )
-		    	* glm::perspective( 45.0f,
-		    		display.active->width / static_cast<float>(display.active->height),
-		    		m_nearplane, m_farplane );
-		    	break;
-		    }
-	    }
+    	m_gMode.set(mode);
     }
 
     void glEngine::set_mode(Enum::window_mode mode) {
@@ -106,7 +120,7 @@ namespace CE::Engine {
     }
 
     void glEngine::set_clear_colour( float r, float g, float b, float a ) {
-        clear_colour.colour = {r,g,b,a};
+    	glClearColor(r,g,b,a);
     }
 
     void glEngine::hide_cursor(bool hide) {
