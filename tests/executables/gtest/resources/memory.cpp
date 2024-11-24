@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <resources/memory.h>
+#include <core/resources/memory.h>
 #include <testing/block.h>
 #include <internals/macros/int-literals.h>
 #include <random>

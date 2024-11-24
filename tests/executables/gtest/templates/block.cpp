@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <templates/block.h>
 #include <math/pointers.h>
-#include <resources/memory/mem-mgr.h>
+#include <core/resources/memory/mem-mgr.h>
 #include <testing/block.h>
 
 
