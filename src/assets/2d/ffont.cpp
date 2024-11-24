@@ -1,4 +1,4 @@
-#include <resources/assets/texture-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
 #include <assets/2d/ffont.h>
 #include <math/anchor.h>
 #include <gtx/transform.hpp>

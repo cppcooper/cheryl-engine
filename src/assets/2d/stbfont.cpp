@@ -1,11 +1,9 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 #include <assets/2d/stbfont.h>
-#include <resources.h>
 #include <math/anchor.h>
 #include <ext/matrix_transform.hpp>
-
-#include <resources/memory/allocators/object-pool-allocator.hpp>
+#include <core/resources/memory.h>
 
 namespace CE::Assets {
     void STBFont::print(std::string text, FontDrawInfo* format) {

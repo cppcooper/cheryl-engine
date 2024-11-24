@@ -7,6 +7,5 @@
 #endif
 //#include <cheryl.h>
 backward::TraceResolver tr;
-#include <resources.h>
-#include <engine.h>
+#include <core.h>
 

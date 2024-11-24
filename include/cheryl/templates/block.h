@@ -11,7 +11,7 @@
 #include <internals/compile-time-logging.hpp>
 #undef CTWriteMask
 #define CTWriteMask 0
-#include <logging/logger.h>
+#include <core/logging/logger.h>
 #include <functional>
 #include <memory>
 #include <chrono>

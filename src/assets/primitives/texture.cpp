@@ -1,5 +1,4 @@
 #include <assets/primitives/texture.h>
-#include <resources/assets/texture-mgr.h>
 #include <internals.h>
 
 #define STB_IMAGE_IMPLEMENTATION

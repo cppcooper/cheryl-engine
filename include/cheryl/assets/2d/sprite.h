@@ -3,7 +3,7 @@
 #define SPRITE_H
 
 #include <assets/abstracts.h>
-#include <resources/allocators.h>
+#include <core/resources/allocators.h>
 
 #include <filesystem>
 #include <tuple>

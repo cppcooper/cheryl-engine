@@ -36,7 +36,7 @@ public:
             }
         }
     }
-    [[nodiscard]] T get() const {
+    [[nodiscard]] T get() {
         std::shared_lock rl(mtx);
         return var;
     }

@@ -1,7 +1,6 @@
 #include <assets/2d/sprite.h>
-#include <resources/assets.h>
-#include <resources/allocators.h>
-#include <resources/assets/texture-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/memory.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <math/anchor.h>

@@ -2,7 +2,8 @@
 #include <math/anchor.h>
 #include <fstream>
 #include <format>
-#include <resources/assets/texture-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/memory.h>
 #include <nlohmann/json.hpp>
 
 namespace CE::Assets {
