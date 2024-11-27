@@ -14,14 +14,13 @@ namespace CE::Engine {
     struct glEngine final : iEngine {
     private:
         DisplaySystem display;
-        ObservedVariable<Enum::gfx_mode,1> m_gMode;
-        ObservedVariable<glm::mat4> m_viewMatrix;// viewMatrix represents the camera todo: move to camera controller
-        ObservedVariable<glm::mat4> m_projectionMatrix;
+        ObservedVariable<Enum::gfx_mode> m_gMode;
         ObservedVariable<float> m_nearplane;
         ObservedVariable<float> m_farplane;
+        ObservedVariable<glm::mat4> m_projectionMatrix;
 
     protected:
-        void update_matrices();
+        void calculate_projection();
 
     public:
         glEngine();

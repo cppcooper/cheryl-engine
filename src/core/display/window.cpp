@@ -1,4 +1,5 @@
 #include <core/display/window.h>
+#include <core/subsystems/event-system.h>
 #include <internals.h>
 
 #include <GLFW/glfw3.h>
@@ -10,6 +11,7 @@ inline GLFWwindow* create_window(const CE::Monitor&, CE::Enum::window_mode, uint
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glfwMakeContextCurrent(window);
     glViewport(0,0,width,height);
+    CE::SubSystems::EventSystem::get().dispatch("window-resized",{std::make_tuple(window,width,height)});
 }
 
 namespace CE {
