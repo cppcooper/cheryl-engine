@@ -46,7 +46,6 @@ using GLdouble = double;
 using GLchar = char;
 
 class GLSLProgram {
-private:
     int id_prog;
     bool linked;
     std::string log_info;
@@ -76,7 +75,7 @@ public:
     void bindFragDataLocation(GLuint location, const char* name);
 
     template<glm::length_t dim>
-    void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& m);
+    void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
     template<glm::length_t dim>
     void set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m);
     template<typename T>
@@ -98,9 +97,9 @@ void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32
         if constexpr (dim == 2) {
             glUniform2f(loc, v.x, v.y);
         } else if constexpr (dim == 3) {
-            glUniform2f(loc, v.x, v.y, v.z);
+            glUniform3f(loc, v.x, v.y, v.z);
         } else if constexpr (dim == 4) {
-            glUniform2f(loc, v.x, v.y, v.z, v.w);
+            glUniform4f(loc, v.x, v.y, v.z, v.w);
         }
     }
 }
