@@ -11,7 +11,7 @@ namespace CE::Assets {
             const auto &file = files[i];
             if (!loaded_assets.contains(file)) {
                 const auto &asset = assets[i];
-                asset->compileShaderFromFile(file.c_str(), GLSLShader::get_type(file.extension().string()));
+                asset->compile_file(file.c_str(), GLSLShader::get_type(file.extension().string()));
                 loaded_assets[file] = asset;
             }
         }

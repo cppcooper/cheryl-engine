@@ -50,29 +50,26 @@ class GLSLProgram {
     bool linked;
     std::string log_info;
 
-    int getUniformLocation(const char* name);
-
     //std::map<int,int> mymap;
     //Store uniforms and attributes in a map for easy lookup
-    std::map<std::string, int> UniformMap;
-    std::map<std::string, int>::iterator UMapIter;
+    std::map<std::string, int> locations;
 
 public:
     GLSLProgram();
     ~GLSLProgram();
 
-    bool compileShaderFromFile(const char* fileName, GLSLShader::GLSLShaderType type);
-    bool compileShaderFromString(const std::string &source, GLSLShader::GLSLShaderType type);
+    bool compile_file(const char* fileName, GLSLShader::GLSLShaderType type);
+    bool compile_src(const std::string &source, GLSLShader::GLSLShaderType type);
     bool link();
     void use();
 
     std::string log();
 
-    int getHandle();
-    bool isLinked();
+    [[nodiscard]] int get_handle() const;
+    [[nodiscard]] bool is_linked() const;
 
-    void bindAttribLocation(GLuint location, const char* name);
-    void bindFragDataLocation(GLuint location, const char* name);
+    void bind_attrib_location(GLuint location, const char* name) const;
+    void bind_frag_data_location(GLuint location, const char* name) const;
 
     template<glm::length_t dim>
     void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
@@ -81,17 +78,17 @@ public:
     template<typename T>
     void set_uniform_value(const char* name, const T& v);
 
-    void printActiveUniforms();
-    void printActiveAttribs();
+    void print_active_uniforms() const;
+    void print_active_attribs() const;
 
-    int GetUniform(const char* name);
-    int GetAttribute(const char* name);
+    int get_uniform_location(const char* name);
+    int get_attribute_location(const char* name);
 };
 
 template<glm::length_t dim>
 void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {
     static_assert(2 <= dim && dim <= 4, "set_uniform_vec can only take 2-4D vectors");
-    int loc = getUniformLocation(name);
+    int loc = get_uniform_location(name);
     assert(loc >= 0 && "set_uniform_vec failed");
     if (loc >= 0) {
         if constexpr (dim == 2) {
@@ -107,7 +104,7 @@ void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32
 template<glm::length_t dim>
 void GLSLProgram::set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m) {
     static_assert(2 <= dim && dim <= 4, "set_uniform_matrix can only take 2-4D matrices");
-    int loc = getUniformLocation(name);
+    int loc = get_uniform_location(name);
     assert(loc >= 0 && "set_uniform_matrix failed");
     if (loc >= 0) {
         if constexpr (dim == 2) {
@@ -123,7 +120,7 @@ void GLSLProgram::set_uniform_matrix(const char* name, const glm::mat<dim, dim, 
 template<typename T>
 void GLSLProgram::set_uniform_value(const char* name, const T& v) {
     static_assert(std::is_same_v<T, GLfloat> || std::is_same_v<T, GLuint> || std::is_same_v<T, GLint> || std::is_same_v<T, bool>, "set_uniform_value must take a float, int, or bool");
-    int loc = getUniformLocation(name);
+    int loc = get_uniform_location(name);
     assert(loc >= 0 && "set_uniform_value failed");
     if (loc >= 0) {
         if constexpr (std::is_same_v<T, GLfloat>) {

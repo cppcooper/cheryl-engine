@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <internals/exceptions.h>
 
 using std::ifstream;
 using std::ios;
@@ -20,7 +21,7 @@ GLSLProgram::~GLSLProgram() {
     }
 }
 
-bool GLSLProgram::compileShaderFromFile(const char* fileName, GLSLShader::GLSLShaderType type) {
+bool GLSLProgram::compile_file(const char* fileName, GLSLShader::GLSLShaderType type) {
     if (!fs::exists(fileName)) {
         log_info = "File not found.";
         return false;
@@ -47,10 +48,10 @@ bool GLSLProgram::compileShaderFromFile(const char* fileName, GLSLShader::GLSLSh
     }
     inFile.close();
 
-    return compileShaderFromString(code.str(), type);
+    return compile_src(code.str(), type);
 }
 
-bool GLSLProgram::compileShaderFromString(const std::string &source, GLSLShader::GLSLShaderType type) {
+bool GLSLProgram::compile_src(const std::string &source, GLSLShader::GLSLShaderType type) {
     if (id_prog <= 0) {
         id_prog = glCreateProgram();
         if (id_prog == 0) {
@@ -90,25 +91,25 @@ bool GLSLProgram::compileShaderFromString(const std::string &source, GLSLShader:
     // Check for errors
     int result;
     glGetShaderiv(shaderHandle, GL_COMPILE_STATUS, &result);
-    if (GL_FALSE == result) {
-        // Compile failed, store log and return false
+    // Did the compile fail, store log and return false
+    if (result == GL_FALSE) {
         int length = 0;
         log_info = "";
         glGetShaderiv(shaderHandle, GL_INFO_LOG_LENGTH, &length);
         if (length > 0) {
-            char* c_log = new char[length];
+            const auto c_log = new char[length];
             int written = 0;
             glGetShaderInfoLog(shaderHandle, length, &written, c_log);
             log_info = c_log;
             delete[] c_log;
         }
-        assert(false);
-        return false;
-    } else {
-        // Compile succeeded, attach shader and return true
-        glAttachShader(id_prog, shaderHandle);
-        return true;
+        // todo: replace assert with thrown exception
+        throw CE::Exceptions::runtime_exception(CE_HERE, "Unable to compile glsl program.");
     }
+    // Compile succeeded, attach shader and return true
+    glAttachShader(id_prog, shaderHandle);
+    // todo: link object to the variables it depends on
+    return true;
 }
 
 bool GLSLProgram::link() {
@@ -157,103 +158,87 @@ std::string GLSLProgram::log() {
     return log_info;
 }
 
-int GLSLProgram::getHandle() {
+int GLSLProgram::get_handle() const {
     return id_prog;
 }
 
-bool GLSLProgram::isLinked() {
+bool GLSLProgram::is_linked() const {
     return linked;
 }
 
-void GLSLProgram::bindAttribLocation(GLuint location, const char* name) {
+void GLSLProgram::bind_attrib_location(GLuint location, const char* name) const {
     glBindAttribLocation(id_prog, location, name);
 }
 
-void GLSLProgram::bindFragDataLocation(GLuint location, const char* name) {
+void GLSLProgram::bind_frag_data_location(GLuint location, const char* name) const {
     glBindFragDataLocation(id_prog, location, name);
 }
 
-void GLSLProgram::printActiveUniforms() {
+void GLSLProgram::print_active_uniforms() const {
 
-    GLint nUniforms, size, location, maxLen;
-    GLchar* name;
+    GLint nUniforms, size, maxLen;
     GLsizei written;
     GLenum type;
 
     glGetProgramiv(id_prog, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
     glGetProgramiv(id_prog, GL_ACTIVE_UNIFORMS, &nUniforms);
 
-    name = (GLchar*)malloc(maxLen);
+    // todo: replace malloc/free
+    const auto name = static_cast<GLchar *>(malloc(maxLen));
 
     std::cout<<" Location | Name\n";
     std::cout<<"------------------------------------------------\n";
     for (int i = 0; i < nUniforms; ++i) {
         glGetActiveUniform(id_prog, i, maxLen, &written, &size, &type, name);
-        location = glGetUniformLocation(id_prog, name);
+        const GLint location = glGetUniformLocation(id_prog, name);
         std::cout<<location<<" | "<<name<<"\n";
     }
 
     free(name);
 }
 
-void GLSLProgram::printActiveAttribs() {
+void GLSLProgram::print_active_attribs() const {
 
-    GLint written, size, location, maxLength, nAttribs;
+    GLint written, size, maxLength, nAttribs;
     GLenum type;
-    GLchar* name;
 
     glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxLength);
     glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTES, &nAttribs);
 
-    name = (GLchar*)malloc(maxLength);
+    const auto name = static_cast<GLchar *>(malloc(maxLength));
 
     std::cout<<" Index | Name\n";
     std::cout<<"------------------------------------------------\n";
     for (int i = 0; i < nAttribs; i++) {
         glGetActiveAttrib(id_prog, i, maxLength, &written, &size, &type, name);
-        location = glGetAttribLocation(id_prog, name);
+        const GLint location = glGetAttribLocation(id_prog, name);
         std::cout<<location<<" | "<<name<<"\n";
     }
 
     free(name);
 }
 
-int GLSLProgram::getUniformLocation(const char* name) {
-    //return glGetUniformLocation(handle, name);
-    return GetUniform(name);
-}
-
-int GLSLProgram::GetUniform(const char* name) {
+int GLSLProgram::get_uniform_location(const char* name) {
     int result = -1;
-
     if (linked) {
-        UMapIter = UniformMap.find(name);
-        if (UMapIter == UniformMap.end()) {
-            result = glGetUniformLocation(id_prog, name);
-
-            if (result != -1) UniformMap[name] = result;
-        } else {
-            result = UMapIter->second;
+        if (locations.contains(name)) {
+            return locations[name];
         }
+        result = glGetUniformLocation(id_prog, name);
+        if (result != -1) locations[name] = result;
     }
-
     return result;
 }
 
-int GLSLProgram::GetAttribute(const char* name) {
+int GLSLProgram::get_attribute_location(const char* name) {
     int result = -1;
-
     if (linked) {
-        UMapIter = UniformMap.find(name);
-        if (UMapIter == UniformMap.end()) {
-            result = glGetAttribLocation(id_prog, name);
-
-            if (result != -1) UniformMap[name] = result;
-        } else {
-            result = UMapIter->second;
+        if (locations.contains(name)) {
+            return locations[name];
         }
+        result = glGetAttribLocation(id_prog, name);
+        if (result != -1) locations[name] = result;
     }
-
     return result;
 }
 
