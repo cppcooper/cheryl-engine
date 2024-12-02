@@ -7,6 +7,7 @@ namespace CE::RenderAPIs {
         DisplaySystem display;
         void initialize_libraries() override;
         void initialize_rendering_context() override;
+        void deinitialize() override;
         void clear() override;
         void swap_buffer() override;
         void draw() override;

@@ -12,6 +12,7 @@ namespace CE {
 
 			virtual void initialize_libraries() = 0;
 			virtual void initialize_rendering_context() = 0;
+			virtual void deinitialize() = 0;
 			virtual void clear() = 0;
 			virtual void swap_buffer() = 0;
 			virtual void draw() = 0;

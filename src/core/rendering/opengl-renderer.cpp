@@ -8,6 +8,7 @@ using CE::Enum::ShaderTypes;
 CE::RenderAPIs::program_id compile_src(const std::string &source, ShaderTypes type);
 
 namespace CE::RenderAPIs{
+
     void OpenGLRenderer::initialize_libraries() {
         std::once_flag flag;
         std::call_once(flag, []() {
@@ -60,6 +61,10 @@ namespace CE::RenderAPIs{
         // it's dark here. (part 3)
         glClearColor(0.f,0.f,0.f,0.f); //white or black, dunno
         glfwSwapInterval(1);
+    }
+
+    void OpenGLRenderer::deinitialize() {
+        glfwMakeContextCurrent(nullptr);
     }
 
     void OpenGLRenderer::clear() {
