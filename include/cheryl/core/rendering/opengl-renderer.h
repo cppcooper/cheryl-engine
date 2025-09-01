@@ -1,5 +1,6 @@
 #pragma once
 #include "renderer.h"
+#include <core/display.h>
 
 namespace CE::RenderAPIs {
     struct OpenGLRenderer : iRenderer {

@@ -1,6 +1,7 @@
 #pragma once
 #include <cgl.h>
 #include <memory>
+#include <array>
 
 namespace CE {
     namespace VAONumbers {

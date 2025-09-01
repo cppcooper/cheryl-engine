@@ -1,17 +1,19 @@
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
 #include <internals.h>
+#include <core/rendering/opengl-renderer.h>
 
 namespace CE::Assets {
     void ShaderMgr::load_assets(const std::vector<fs::path> &files) {
+        static auto& renderer = Singleton_CTS<RenderAPIs::OpenGLRenderer>::get();
         const auto N = files.size();
         auto assets = allocate<GLSLProgram>(N);
-        Obj::ObjCtor<GLSLProgram>::construct(assets[0].get(),N);
+        // Obj::ObjCtor<GLSLProgram>::construct(assets[0].get(),N);
         for(int i = 0; i < N; ++i) {
             const auto &file = files[i];
             if (!loaded_assets.contains(file)) {
                 const auto &asset = assets[i];
-                asset->compile_file(file.c_str(), GLSLShader::get_type(file.extension().string()));
+                Obj::ObjCtor<GLSLProgram>::construct(asset.get(),N,renderer.compile_shader(file));
                 loaded_assets[file] = asset;
             }
         }

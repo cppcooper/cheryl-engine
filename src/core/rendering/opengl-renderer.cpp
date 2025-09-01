@@ -81,7 +81,7 @@ namespace CE::RenderAPIs{
 
     program_id OpenGLRenderer::compile_shader(fs::path file) {
         if (!fs::exists(file)) {
-            CELog::critical("GLSLProgram: File does not exist. {}", file);
+            CELog::critical("GLSLProgram: File does not exist. {}", file.c_str());
             throw Exceptions::failed_operation(CE_HERE, "No such file exists");
         }
 
