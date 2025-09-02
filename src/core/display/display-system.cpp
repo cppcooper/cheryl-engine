@@ -10,7 +10,9 @@ namespace CE {
 
     DisplaySystem::DisplaySystem() : glfw_monitors(glfwGetMonitors(&num_monitors)), primary_monitor(CreatePrimary()) {
         monitors.push_back(primary_monitor);
+        // ReSharper disable once CppDFAConstantConditions
         for (int i = 0; i < num_monitors; ++i) {
+            // ReSharper disable once CppDFAUnreachableCode
             if (auto monitor = glfw_monitors[i]; monitor != primary_monitor.glfw_monitor) {
                 monitors.emplace_back(monitor, glfwGetVideoMode(monitor));
             }

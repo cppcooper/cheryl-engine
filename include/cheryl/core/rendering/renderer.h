@@ -1,13 +1,16 @@
 #pragma once
 #ifndef RENDERER_H
 #define RENDERER_H
+#include <memory>
 #include <filesystem>
+#include <core/display.h>
 
 namespace CE {
 	namespace RenderAPIs {
 		namespace fs = std::filesystem;
 		using program_id = uint64_t;
 		struct iRenderer {
+			std::unique_ptr<DisplaySystem> display = nullptr;
 			virtual ~iRenderer() = default; //todo: clion.. is this useful?
 
 			virtual void initialize_libraries() = 0;

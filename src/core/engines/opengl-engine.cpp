@@ -14,8 +14,8 @@ namespace CE::Engine {
 
 				///2d orthographic projection
 				m_projectionMatrix.set(glm::mat4( 1.f )
-				* glm::ortho( 0.f,static_cast<float>(display.active->width),
-					0.f,static_cast<float>(display.active->height),
+				* glm::ortho( 0.f,static_cast<float>(renderer->display->active->width),
+					0.f,static_cast<float>(renderer->display->active->height),
 					0.f, 1.f)); //2D was using 0,1 for near,far
 				break;
 			}
@@ -26,7 +26,7 @@ namespace CE::Engine {
 				///3D perspective projection
 				m_projectionMatrix.set(glm::mat4( 1.f )
 				* glm::perspective( 45.0f,
-					static_cast<float>(display.active->width) / static_cast<float>(display.active->height),
+					static_cast<float>(renderer->display->active->width) / static_cast<float>(renderer->display->active->height),
 					m_nearplane.get(), m_farplane.get()));
 				break;
 			}
@@ -58,58 +58,12 @@ namespace CE::Engine {
 	    std::call_once(flag, []() {
 		    gladLoadGL(glfwGetProcAddress);
 	    });
+		renderer = &Singleton_CTS<RenderAPIs::OpenGLRenderer>::get();
     }
 
     void glEngine::init() {
-        /// We need our GLFW function pointers to be assigned, if this process fails we cannot continue
-		if (!glfwInit()) {
-			return;
-		}
-    	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-		/// Here we query how much sampling is possible and set that to be used if possible
-		GLint samples = 8;
-		glGetIntegerv(GL_SAMPLES, &samples);
-		if (samples) {
-			glEnable(GL_MULTISAMPLE);
-		}
-		glfwWindowHint(GLFW_SAMPLES, samples);
-
-    	const auto pm = display.primary_monitor;
-    	display.create_window(pm, Enum::window_mode::FULLSCREEN, pm.width, pm.height)->activate();
-		/// If creating the window failed we need to terminate
-		if (!display.active || !display.active->glfw_window) {
-			glfwTerminate();
-			return;
-		}
-		SubSystems::EventSystem::get().register_listener("window-resized",[this](std::any payload) {
-			if (!payload.has_value()) {
-				throw Exceptions::failed_operation(CE_HERE,"An event (\"window-resized\") was dispatched without a payload.");
-			}
-			try {
-				const auto window = std::get<0>(std::any_cast<std::tuple<Window*,float,float>>(payload));
-				if (window == display.active) {
-					calculate_projection();
-				}
-			} catch (const std::bad_any_cast& e) {
-				CELog::error("Event payload was illformed.\n{}", e.what());
-			}
-		});
-
-    	// where are we? (part 1)
-		glEnable( GL_CULL_FACE );
-		glCullFace( GL_BACK );
-		glFrontFace( GL_CCW );
-
-    	// what are we doing? (part 2)
-		glEnable( GL_BLEND );
-		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
-
-    	// it's dark here. (part 3)
-		set_clear_colour(0.f,0.f,0.f,0.f); //white or black, dunno
-		glfwSwapInterval(1);
+		renderer->initialize_libraries();
+		renderer->initialize_rendering_context();
     }
 
     void glEngine::deinit() {
@@ -121,11 +75,12 @@ namespace CE::Engine {
     }
 
     void glEngine::pre_draw() {
+		glfwPollEvents(); // OS Event Queue needs servicing
     	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
     void glEngine::post_draw() {
-    	glfwSwapBuffers(display.active->glfw_window);
+    	glfwSwapBuffers(renderer->display->active->glfw_window);
     }
 
     void glEngine::set_mode(Enum::gfx_mode mode) {
@@ -133,7 +88,7 @@ namespace CE::Engine {
     }
 
     void glEngine::set_mode(Enum::window_mode mode) {
-    	display.active->set_mode(mode);
+    	renderer->display->active->set_mode(mode);
     }
 
     void glEngine::set_clear_colour(float r, float g, float b, float a) {
@@ -141,6 +96,6 @@ namespace CE::Engine {
     }
 
     void glEngine::hide_cursor(bool hide) {
-    	display.active->hide_cursor(hide);
+    	renderer->display->active->hide_cursor(hide);
     }
 }

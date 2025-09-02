@@ -9,30 +9,40 @@ CE::RenderAPIs::program_id compile_src(const std::string &source, ShaderTypes ty
 
 namespace CE::RenderAPIs{
 
-    void OpenGLRenderer::initialize_libraries() {
-        std::once_flag flag;
-        std::call_once(flag, []() {
-            gladLoadGL(glfwGetProcAddress);
-            glfwInit();
+    void OpenGLRenderer::initialize_glfw() {
+        std::call_once(glfw_flag, [this]() {
+            if (!glfwInit()) {
+                throw std::runtime_error("Failed to initialize GLFW.");
+            }
+            display = std::make_unique<DisplaySystem>();
+            const auto pm = display->primary_monitor;
+            display->create_window(pm, Enum::window_mode::NORMAL, pm.width, pm.height)->activate();
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         });
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    }
 
-        /// Here we query how much sampling is possible and set that to be used if possible
-        GLint samples = 8;
-        glGetIntegerv(GL_SAMPLES, &samples);
-        if (samples) {
-            glEnable(GL_MULTISAMPLE);
-        }
-        glfwWindowHint(GLFW_SAMPLES, samples);
+    void OpenGLRenderer::initialize_glad() {
+        std::call_once(glad_flag, []() {
+            if (!gladLoadGL(glfwGetProcAddress)) {
+                throw std::runtime_error("Failed to initialize OpenGL context");
+            }
+        });
+    }
+
+    void OpenGLRenderer::initialize_libraries() {
+        initialize_glfw();
+        initialize_glad();
+        lib_init = true;
     }
 
     void OpenGLRenderer::initialize_rendering_context() {
-        const auto pm = display.primary_monitor;
-        display.create_window(pm, Enum::window_mode::FULLSCREEN, pm.width, pm.height)->activate();
+        if(!lib_init) {
+            initialize_libraries();
+        }
         /// If creating the window failed we need to terminate
-        if (!display.active || !display.active->glfw_window) {
+        if (!display->active || !display->active->glfw_window) {
             glfwTerminate();
             return;
         }
@@ -48,6 +58,14 @@ namespace CE::RenderAPIs{
                 CELog::error("Event payload was illformed.\n{}", e.what());
             }
         });
+
+        /// Here we query how much sampling is possible and set that to be used if possible
+        GLint samples = 8;
+        glGetIntegerv(GL_SAMPLES, &samples);
+        if (samples) {
+            glEnable(GL_MULTISAMPLE);
+        }
+        glfwWindowHint(GLFW_SAMPLES, samples);
 
         // where are we? (part 1)
         glEnable( GL_CULL_FACE );
@@ -72,7 +90,7 @@ namespace CE::RenderAPIs{
     }
 
     void OpenGLRenderer::swap_buffer() {
-        glfwSwapBuffers(display.active->glfw_window);
+        glfwSwapBuffers(display->active->glfw_window);
     }
 
     void OpenGLRenderer::draw() {

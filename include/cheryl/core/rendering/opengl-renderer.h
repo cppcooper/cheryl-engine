@@ -4,8 +4,7 @@
 
 namespace CE::RenderAPIs {
     struct OpenGLRenderer : iRenderer {
-        // todo: needs abstraction
-        DisplaySystem display;
+        ~OpenGLRenderer() override = default;
         void initialize_libraries() override;
         void initialize_rendering_context() override;
         void deinitialize() override;
@@ -13,5 +12,11 @@ namespace CE::RenderAPIs {
         void swap_buffer() override;
         void draw() override;
         program_id compile_shader(fs::path file) override;
+        void initialize_glfw();
+        void initialize_glad();
+    private:
+        std::once_flag glfw_flag;
+        std::once_flag glad_flag;
+        bool lib_init = false;
     };
 }

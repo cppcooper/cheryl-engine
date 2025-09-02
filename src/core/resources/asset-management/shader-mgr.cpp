@@ -13,7 +13,7 @@ namespace CE::Assets {
             const auto &file = files[i];
             if (!loaded_assets.contains(file)) {
                 const auto &asset = assets[i];
-                Obj::ObjCtor<GLSLProgram>::construct(asset.get(),N,renderer.compile_shader(file));
+                Obj::ObjCtor<GLSLProgram>::construct(asset.get(),1,renderer.compile_shader(file));
                 loaded_assets[file] = asset;
             }
         }

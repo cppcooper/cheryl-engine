@@ -15,7 +15,7 @@ namespace CE {
 
         explicit Window(const Monitor& monitor, Enum::window_mode mode, uint16_t width, uint16_t height);
         // Activates window - only one window can be active at a time (glfwMakeContextCurrent)
-        void activate() const;
+        void activate();
         void resize(uint16_t width, uint16_t height);
         void set_mode(Enum::window_mode mode);
         void hide_cursor(bool hide) const;

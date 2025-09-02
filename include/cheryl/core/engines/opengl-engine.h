@@ -34,7 +34,6 @@
 namespace CE::Engine {
     struct glEngine final : iEngine {
     private:
-        DisplaySystem display;
         // todo: move everything to a camera object
         ObservedVariable<Enum::gfx_mode> m_gMode;
         ObservedVariable<float> m_nearplane;

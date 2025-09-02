@@ -2,12 +2,14 @@
 #ifndef ABSTRACT_ENGINE_H
 #define ABSTRACT_ENGINE_H
 #include <enums.h>
+#include <core/rendering/renderer.h>
 
 // template for storing/modifying a variable (T*, maybe T& actually), with a signal to notify of or listen for changes made through the template
-// todo: design transport for matrices (proj, view, model) to shaders
+// todo: this is done (i think): design transport for matrices (proj, view, model) to shaders
 
 namespace CE::Engine {
     struct iEngine {
+        RenderAPIs::iRenderer* renderer = nullptr;
         virtual ~iEngine() = default;
         virtual void init() = 0;
         virtual void deinit() = 0;

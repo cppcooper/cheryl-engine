@@ -1,5 +1,6 @@
 #include <core/display/window.h>
 #include <core/subsystems/event-system.h>
+#include <core/rendering/opengl-renderer.h>
 #include <internals.h>
 
 #include <GLFW/glfw3.h>
@@ -26,7 +27,8 @@ namespace CE {
         glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     }
 
-    void Window::activate() const {
+    void Window::activate() {
+        Singleton_CTS<RenderAPIs::OpenGLRenderer>::get().display->active = this;
         glfwMakeContextCurrent(glfw_window);
     }
 
