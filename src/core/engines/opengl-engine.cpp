@@ -76,6 +76,7 @@ namespace CE::Engine {
 
     void glEngine::pre_draw() {
 		glfwPollEvents(); // OS Event Queue needs servicing
+		set_clear_colour(0.4,0.2,0.8,1.0);
     	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 

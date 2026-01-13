@@ -16,7 +16,11 @@ namespace CE::RenderAPIs{
             }
             display = std::make_unique<DisplaySystem>();
             const auto pm = display->primary_monitor;
-            display->create_window(pm, Enum::window_mode::NORMAL, pm.width, pm.height)->activate();
+            float sw, sh;
+            glfwGetMonitorContentScale(pm.glfw_monitor, &sw, &sh);
+            uint16_t width = round(pm.width / sw);
+            uint16_t height = round(pm.height / sh);
+            display->create_window(pm, Enum::window_mode::NORMAL, width, height)->activate();
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

@@ -1,7 +1,6 @@
 #include <cgl.h>
 #include <core/game-runtime.h>
 #include <core/engines/opengl-engine.h>
-#include <core/rendering/opengl-renderer.h>
 #include <templates/singleton.h>
 
 class Game : public CE::GFramework::AbstractGame {
