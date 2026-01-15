@@ -1,6 +1,4 @@
 #pragma once
-#ifndef GLENGINE_H
-#define GLENGINE_H
 #include <cgl.h>
 #include <enums.h>
 #include <core/display.h>
@@ -56,4 +54,3 @@ namespace CE::Engine {
         void hide_cursor(bool) override;
     };
 }
-#endif //GLENGINE_H

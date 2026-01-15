@@ -1,6 +1,4 @@
 #pragma once
-#ifndef ABSTRACT_ENGINE_H
-#define ABSTRACT_ENGINE_H
 #include <enums.h>
 #include <core/rendering/renderer.h>
 
@@ -22,5 +20,3 @@ namespace CE::Engine {
         virtual void hide_cursor(bool) = 0;
     };
 }
-
-#endif //ABSTRACT_ENGINE_H

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef OBSERVED_VARIABLES_H
-#define OBSERVED_VARIABLES_H
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
@@ -49,5 +47,3 @@ public:
         }
     }
 };
-
-#endif //OBSERVED_VARIABLES_H

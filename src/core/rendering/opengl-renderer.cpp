@@ -18,8 +18,8 @@ namespace CE::RenderAPIs{
             const auto pm = display->primary_monitor;
             float sw, sh;
             glfwGetMonitorContentScale(pm.glfw_monitor, &sw, &sh);
-            uint16_t width = round(pm.width / sw);
-            uint16_t height = round(pm.height / sh);
+            const uint16_t width = round(pm.width / sw);
+            const uint16_t height = round(pm.height / sh);
             display->create_window(pm, Enum::window_mode::NORMAL, width, height)->activate();
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);

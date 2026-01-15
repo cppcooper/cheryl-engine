@@ -1,6 +1,4 @@
 #pragma once
-#ifndef EVENT_SYSTEM_H
-#define EVENT_SYSTEM_H
 #include <any>
 #include <vector>
 #include <functional>
@@ -30,5 +28,3 @@ namespace CE::SubSystems {
         std::unordered_map<std::string, std::vector<Callback>> event_listeners;
     };
 }
-
-#endif //EVENT_SYSTEM_H

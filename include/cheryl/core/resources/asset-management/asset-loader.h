@@ -1,6 +1,4 @@
 #pragma once
-#ifndef ASSET_LOADER_H
-#define ASSET_LOADER_H
 #include <templates/singleton.h>
 #include <core/resources/fileio/file-mgr.h>
 
@@ -10,5 +8,3 @@ namespace CE::Assets {
         void load_assets();
     };
 }
-
-#endif //ASSET_LOADER_H

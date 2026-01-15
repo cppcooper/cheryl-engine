@@ -1,6 +1,4 @@
 #pragma once
-#ifndef RENDERER_H
-#define RENDERER_H
 #include <memory>
 #include <filesystem>
 #include <core/display.h>
@@ -24,6 +22,3 @@ namespace CE {
 	}
 	namespace R = RenderAPIs;
 }
-
-
-#endif //RENDERER_H

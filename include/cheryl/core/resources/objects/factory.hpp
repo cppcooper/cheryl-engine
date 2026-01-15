@@ -1,6 +1,4 @@
 #pragma once
-#ifndef OFACTORYH
-#define OFACTORYH
 #include <internals/celog.h>
 #include <unordered_map>
 #include <vector>
@@ -61,4 +59,3 @@ namespace CE::Obj {
          AAloc::destroy(p, N);
      }
 }
-#endif

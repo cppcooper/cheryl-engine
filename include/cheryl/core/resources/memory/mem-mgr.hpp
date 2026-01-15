@@ -1,7 +1,4 @@
 #pragma once
-#ifndef MEMMGRHPP
-#define MEMMGRHPP
-
 #include "mem-mgr.h"
 #include <internals/celog.h>
 #include <math/fit.h>
@@ -153,5 +150,3 @@ namespace CE::Mem {
         }
     }
 }
-
-#endif

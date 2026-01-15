@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CEMATHPTR_H
-#define CEMATHPTR_H
 #include <variant>
 #include <cstring>
 #include <stdexcept>
@@ -103,4 +101,3 @@ namespace CE::ptr {
         }
     }
 }
-#endif

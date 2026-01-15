@@ -1,7 +1,4 @@
 #pragma once
-#ifndef OPOOLHPP
-#define OPOOLHPP
-
 //#include <core/resources/allocators.h>
 #include <memory>
 //#include <core/resources/memory/allocators/object-pool-allocator.hpp>
@@ -127,6 +124,3 @@ namespace CE::Obj {
         return {block_root, block_root, b.alignment, len};;
     }
 }
-
-
-#endif

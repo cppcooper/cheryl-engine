@@ -1,6 +1,4 @@
 #pragma once
-#ifndef FIT_H
-#define FIT_H
 #include <cinttypes>
 #include <enums/fit-type.h>
 
@@ -29,5 +27,3 @@ namespace CE::Math {
         }
     }
 }
-
-#endif //FIT_H

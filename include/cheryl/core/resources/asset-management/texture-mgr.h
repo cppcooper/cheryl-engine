@@ -1,6 +1,4 @@
 #pragma once
-#ifndef TEXTURE_MGR_H
-#define TEXTURE_MGR_H
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/primitives/texture.h>
@@ -24,4 +22,3 @@ namespace CE::Assets {
         texid Bound_IDs[TEXTURE_MANAGER_MAX_TEXTURES]{}; //currently bound texture
     };
 }
-#endif

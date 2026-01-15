@@ -1,7 +1,4 @@
 #pragma once
-#ifndef OPOOLH
-#define OPOOLH
-
 #include <templates/block.h>
 #include <templates/singleton.h>
 
@@ -33,4 +30,3 @@ namespace CE::Obj {
 }
 
 #include "pool.hpp"
-#endif

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef OBJECT_CONSTRUCTION_H
-#define OBJECT_CONSTRUCTION_H
 #include <unordered_map>
 #include <memory>
 
@@ -41,5 +39,3 @@ namespace CE::Obj {
     template<typename T>
     std::unordered_map<void*, bool> ObjCtor<T>::constructed;
 }
-
-#endif //OBJECT_CONSTRUCTION_H

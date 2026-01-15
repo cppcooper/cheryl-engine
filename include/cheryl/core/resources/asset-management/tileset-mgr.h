@@ -1,6 +1,4 @@
 #pragma once
-#ifndef TILESET_MGR_H
-#define TILESET_MGR_H
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/2d/tileset.h>
@@ -13,5 +11,3 @@ namespace CE::Assets {
         void load_assets(const std::vector<std::filesystem::path>&) override;
     };
 }
-
-#endif //TILESET_MGR_H

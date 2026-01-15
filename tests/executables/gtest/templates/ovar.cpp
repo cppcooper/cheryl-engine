@@ -16,6 +16,7 @@ TEST(templates_ovar, simple) {
         var.wait_until_change();
     });
     std::this_thread::sleep_for(Seconds{2});
+    // checks if it is a valid thread
     ASSERT_TRUE(wait_thread.joinable());
     var.set(10);
     wait_thread.join();

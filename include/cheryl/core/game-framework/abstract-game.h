@@ -1,6 +1,4 @@
 #pragma once
-#ifndef FRAMEWORK_H
-#define FRAMEWORK_H
 
 namespace CE::GFramework {
     struct AbstractGame {
@@ -11,4 +9,3 @@ namespace CE::GFramework {
         virtual void draw(double seconds) = 0;
     };
 }
-#endif //FRAMEWORK_H

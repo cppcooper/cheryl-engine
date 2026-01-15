@@ -1,6 +1,4 @@
 #pragma once
-#ifndef SHADER_MGR_H
-#define SHADER_MGR_H
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/primitives/glslprogram.h>
@@ -13,4 +11,3 @@ namespace CE::Assets {
         void load_assets(const std::vector<std::filesystem::path>&) override;
     };
 }
-#endif

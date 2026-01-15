@@ -1,6 +1,4 @@
 #pragma once
-#ifndef FONT_MGR_H
-#define FONT_MGR_H
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/abstracts/font.h>
@@ -13,4 +11,3 @@ namespace CE::Assets {
         void load_assets(const std::vector<fs::path>&) override;
     };
 }
-#endif //FONT_MGR_H

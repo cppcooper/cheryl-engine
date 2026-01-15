@@ -1,6 +1,4 @@
 #pragma once
-#ifndef GAMERUNTIME_H
-#define GAMERUNTIME_H
 #include <memory>
 #include <utility>
 #include "engines/abstract-engine.h"
@@ -20,5 +18,3 @@ namespace CE::GFramework {
         bool running = false;
     };
 }
-
-#endif //GAMERUNTIME_H

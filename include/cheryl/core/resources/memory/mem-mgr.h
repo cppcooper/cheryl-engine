@@ -1,7 +1,4 @@
 #pragma once
-#ifndef MEMMGRH
-#define MEMMGRH
-
 #include "typedefs.h"
 #include <enums.h>
 #include <templates/singleton.h>
@@ -55,4 +52,3 @@ namespace CE::Mem {
 }
 
 #include "mem-mgr.hpp"
-#endif
