@@ -8,6 +8,7 @@ extern/
 .obsidian/
 .trash/
 notes/
+assets/
 
 *.log
 
