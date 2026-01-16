@@ -8,9 +8,12 @@ extern/
 .obsidian/
 .trash/
 notes/
-assets/
 
 *.log
+*.png
+assets/**/*.txt
+assets/**/*.xcf
+assets/**/*.docx
 
 /cheryl/
 bb-key
