@@ -31,7 +31,7 @@ namespace CE::Assets {
             std::size_t width = data["tileset"]["w"];
             std::size_t height = data["tileset"]["h"];
             uint32_t total_frames = rows * columns;
-            AnchorType anchor = get_anchor(data["meta"]["anchor"]);
+            math::AnchorType anchor = math::get_anchor(data["meta"]["anchor"]);
 
             std::size_t vertices_bytes = sizeof(Quad) * total_frames;
             auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
@@ -43,9 +43,9 @@ namespace CE::Assets {
             for(int r = 0; r < rows; ++r) {
                 for(int c = 0; c < columns; c++) {
                     int x0 = width * c, y0 = height * r;
-                    Anchor::MakeAnchor(anchor,
-                        reinterpret_cast<float*>(vertices.get() + (frame_counter++ * VAONumbers::vertices_per_quad)),
-                        texture->width, texture->height, width,height, x0, y0);
+                    math::Anchor::MakeAnchor(anchor,
+                                             reinterpret_cast<float*>(vertices.get() + (frame_counter++ * VAONumbers::vertices_per_quad)),
+                                             texture->width, texture->height, width,height, x0, y0);
                 }
             }
             return {vertices, total_frames*VAONumbers::vertices_per_quad, texture};
