@@ -1,5 +1,6 @@
 #include <assets/2d/tileset.h>
 #include <math/anchor.h>
+
 #include <fstream>
 #include <format>
 #include <core/resources/asset-management/texture-mgr.h>
@@ -26,29 +27,36 @@ namespace CE::Assets {
         json data = json::parse(file);
         if (data["meta"].size() >= 4) {
             shptr<Texture> texture = TextureMgr::get().get_asset(data["meta"]["texture"]);
-            std::size_t rows = data["tileset"]["r"];
-            std::size_t columns = data["tileset"]["c"];
-            std::size_t width = data["tileset"]["w"];
-            std::size_t height = data["tileset"]["h"];
-            uint32_t total_frames = rows * columns;
-            math::AnchorType anchor = math::get_anchor(data["meta"]["anchor"]);
+            math::AnchorType default_anchor = math::get_anchor(data["meta"]["anchor"]);
+            auto tilesets = data["tilesets"];
+            // todo: fix frame calculations / separate tilsets?
+            for (auto tileset : tilesets) {
+                std::size_t rows = tileset["r"];
+                std::size_t columns = tileset["c"];
+                std::size_t width = tileset["w"];
+                std::size_t height = tileset["h"];
+                std::size_t x1 = tileset["x"];
+                std::size_t y1 = tileset["y"];
+                uint32_t total_frames = rows * columns;
+                math::AnchorType anchor = tileset.contains("anchor") ? math::get_anchor(tileset["anchor"]) : default_anchor;
 
-            std::size_t vertices_bytes = sizeof(Quad) * total_frames;
-            auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
-            auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(b.head.get()),[b](void*) {
-                Mem::ExactMMgr::get().return_chunk(b);
-            });
+                std::size_t vertices_bytes = sizeof(Quad) * total_frames;
+                auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
+                auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(b.head.get()),[b](void*) {
+                    Mem::ExactMMgr::get().return_chunk(b);
+                });
 
-            std::size_t frame_counter = 0;
-            for(int r = 0; r < rows; ++r) {
-                for(int c = 0; c < columns; c++) {
-                    int x0 = width * c, y0 = height * r;
-                    math::Anchor::MakeAnchor(anchor,
-                                             reinterpret_cast<float*>(vertices.get() + (frame_counter++ * VAONumbers::vertices_per_quad)),
-                                             texture->width, texture->height, width,height, x0, y0);
+                std::size_t frame_counter = 0;
+                for(int r = 0; r < rows; ++r) {
+                    for(int c = 0; c < columns; c++) {
+                        int x0 = x1 + (width * c), y0 = y1 + (height * r);
+                        math::Anchor::MakeAnchor(anchor,
+                                                 reinterpret_cast<float*>(vertices.get() + (frame_counter++ * VAONumbers::vertices_per_quad)),
+                                                 texture->width, texture->height, width,height, x0, y0);
+                    }
                 }
+                return {vertices, total_frames*VAONumbers::vertices_per_quad, texture};
             }
-            return {vertices, total_frames*VAONumbers::vertices_per_quad, texture};
         }
         return {};
     }

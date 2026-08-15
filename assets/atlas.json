@@ -1,0 +1,1230 @@
+{
+    "sprites": {
+        "arrow_long": {
+            "texture": "ArrowLong.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 2
+        },
+        "arrow_short": {
+            "texture": "ArrowShort.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 2
+        },
+        "axe": {
+            "texture": "Axe.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 4
+        },
+        "bolt_ballista": {
+            "texture": "BallistaBolt.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "bullet": {
+            "texture": "Bullet.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 2
+        },
+        "fireball": {
+            "texture": "FireballProjectile.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "shortsword_big": {
+            "texture": "ShortBig.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "shortsword": {
+            "texture": "SwordShort.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "spear": {
+            "texture": "Spear.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "boars": {
+            "texture": "Boar.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 4
+        },
+        "chicks": {
+            "texture": "Chick.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "chickens": {
+            "texture": "Chicken.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "sheep_horned": {
+            "texture": "HornedSheep.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "horses": {
+            "texture": "Horse(32x32).png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 6,
+            "c": 4
+        },
+        "marine_animals": {
+            "texture": "MarineAnimals.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 5
+        },
+        "pigs": {
+            "texture": "Pig.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 4
+        },
+        "sheep": {
+            "texture": "Sheep.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "champion_arthax": {
+            "texture": "Arthax.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "champion_borg": {
+            "texture": "Börg.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "champion_gangblanc": {
+            "texture": "Gangblanc.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 8
+        },
+        "champion_grum": {
+            "texture": "Grum.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 9,
+            "c": 5
+        },
+        "champion_kanji": {
+            "texture": "Kanji.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "champion_katan": {
+            "texture": "Katan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "champion_okomo": {
+            "texture": "Okomo.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "champion_zhinja": {
+            "texture": "Zhinja.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 9,
+            "c": 6
+        },
+        "demon_armoured_red": {
+            "texture": "ArmouredRedDemon.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "demon_purple": {
+            "texture": "PurpleDemon.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "demon_red": {
+            "texture": "RedDemon.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "dragon_black": {
+            "texture": "BlackDragon.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 8,
+            "c": 4
+        },
+        "dragon_blue": {
+            "texture": "BlueDragon.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 8,
+            "c": 4
+        },
+        "dragon_red": {
+            "texture": "RedDragon.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 8,
+            "c": 4
+        },
+        "dragon_white": {
+            "texture": "WhiteDragon.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 8,
+            "c": 4
+        },
+        "dragon_yellow": {
+            "texture": "YellowDragon.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 8,
+            "c": 4
+        },
+        "frostborn_mammoth": {
+            "texture": "Mammoth.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 4
+        },
+        "frostborn_wendigo": {
+            "texture": "Wendigo.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "frostborn_yeti": {
+            "texture": "Yeti.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "giant_crab": {
+            "texture": "GiantCrab.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 3
+        },
+        "goblin_archer": {
+            "texture": "ArcherGoblin.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "goblin_club": {
+            "texture": "ClubGoblin.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "goblin_farmer": {
+            "texture": "FarmerGoblin.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 7,
+            "c": 5
+        },
+        "goblin_kamikaze": {
+            "texture": "KamikazeGoblin.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 10,
+            "c": 5
+        },
+        "minotaur": {
+            "texture": "Minotaur.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 7,
+            "c": 6
+        },
+        "orc": {
+            "texture": "Orc.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "orc_mage": {
+            "texture": "OrcMage.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "orc_shaman": {
+            "texture": "OrcShaman.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "goblin_spear": {
+            "texture": "SpearGoblin.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 10,
+            "c": 5
+        },
+        "pirate_captain": {
+            "texture": "PirateCaptain.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "pirate_grunt": {
+            "texture": "PirateGrunt.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "pirate_gunner": {
+            "texture": "PirateGunner.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "slime_king_blue": {
+            "texture": "KingSlimeBlue.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "slime_king_green": {
+            "texture": "KingSlimeGreen.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "slime_mega_blue": {
+            "texture": "MegaSlimeBlue.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "slime_mega_green": {
+            "texture": "MegaSlimeGreen.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "slime": {
+            "texture": "Slime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "slime_blue": {
+            "texture": "SlimeBlue.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 6
+        },
+        "undead_necromancer": {
+            "texture": "Necromancer.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "undead_skeleton_soldier": {
+            "texture": "Skeleton-Soldier.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "template_assassin": {
+            "texture": "AssasinTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "template_axeman": {
+            "texture": "AxemanTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 6
+        },
+        "soldier_assassin_cyan": {
+            "texture": "AssasinCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_axeman_cyan": {
+            "texture": "AxemanCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 6
+        },
+        "soldier_spearman_cyan": {
+            "texture": "SpearmanCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 14,
+            "c": 5
+        },
+        "soldier_swordsman_cyan": {
+            "texture": "SwordsmanCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_assassin_lime": {
+            "texture": "AssasinLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_axeman_lime": {
+            "texture": "AxemanLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 6
+        },
+        "soldier_spearman_lime": {
+            "texture": "SpearmanLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 14,
+            "c": 5
+        },
+        "soldier_swordsman_lime": {
+            "texture": "SwordsmanLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_assassin_purple": {
+            "texture": "AssasinPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_axeman_purple": {
+            "texture": "AxemanPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 6
+        },
+        "soldier_spearman_purple": {
+            "texture": "SpearmanPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 14,
+            "c": 5
+        },
+        "soldier_swordsman_purple": {
+            "texture": "SwordsmanPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_assassin_red": {
+            "texture": "AssasinRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "soldier_axeman_red": {
+            "texture": "AxemanRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 6
+        },
+        "soldier_spearman_red": {
+            "texture": "SpearmanRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 14,
+            "c": 5
+        },
+        "soldier_swordsman_red": {
+            "texture": "SwordsmanRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "template_spearman": {
+            "texture": "SpearmanTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 14,
+            "c": 5
+        },
+        "template_swordsman": {
+            "texture": "SwordsmanTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "mounted_knight_cyan": {
+            "texture": "CyanKnight.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 12,
+            "c": 4
+        },
+        "mounted_knight_lime": {
+            "texture": "LimeKnight.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 12,
+            "c": 4
+        },
+        "mounted_knight_purple": {
+            "texture": "PurpleKnight.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 12,
+            "c": 4
+        },
+        "mounted_knight_red": {
+            "texture": "RedKnight.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 12,
+            "c": 4
+        },
+        "ballista": {
+            "texture": "Ballista.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 7
+        },
+        "template_bowman": {
+            "texture": "BowmanTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_bowman_cyan": {
+            "texture": "BowmanCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_mage_cyan": {
+            "texture": "MageCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "soldier_musketeer_cyan": {
+            "texture": "MusketeerCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_bowman_lime": {
+            "texture": "BowmanLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_mage_lime": {
+            "texture": "MageLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "soldier_musketeer_lime": {
+            "texture": "MusketeerLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "template_mage": {
+            "texture": "MageTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "soldier_bowman_purple": {
+            "texture": "BowmanPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_mage_purple": {
+            "texture": "MagePurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "soldier_musketeer_purple": {
+            "texture": "MusketeerPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_bowman_red": {
+            "texture": "BowmanRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "soldier_mage_red": {
+            "texture": "MageRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 6
+        },
+        "soldier_musketeer_red": {
+            "texture": "MusketeerRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 8,
+            "c": 5
+        },
+        "worker_farmer_cyan": {
+            "texture": "FarmerCyan.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "template_farmer": {
+            "texture": "FarmerTemplate.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "worker_farmer_lime": {
+            "texture": "FarmerLime.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "worker_farmer_purple": {
+            "texture": "FarmerPurple.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        },
+        "worker_farmer_red": {
+            "texture": "FarmerRed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 5
+        }
+    },
+    "tilesets": {
+        "boxselector": {
+            "texture": "BoxSelector.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "boxhighlighter": {
+            "texture": "Highlighted-Boxes.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 5
+        },
+        "icons_essential": {
+            "texture": "Icons-Essentials.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "icons_ui": {
+            "texture": "UiIcons.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 12,
+            "c": 4
+        },
+        "cactus": {
+            "texture": "Cactus.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 4
+        },
+        "tree_coconut": {
+            "texture": "CoconutTrees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 6
+        },
+        "tree_alive": {
+            "texture": "Trees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "tree_dead": {
+            "texture": "DeadTrees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "tree_dead_winter": {
+            "texture": "WinterDeadTrees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "tree_winter": {
+            "texture": "WinterTrees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 4
+        },
+        "rocks": {
+            "texture": "Rocks.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 3
+        },
+        "wheatfield": {
+            "texture": "Wheatfield.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "tumbleweed": {
+            "texture": "Tumbleweed.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "boat": {
+            "texture": "Boat.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "bridge": {
+            "texture": "Bridge.png",
+            "x": 0,
+            "y": 0,
+            "w": 40,
+            "h": 48,
+            "r": 1,
+            "c": 2
+        },
+        "chests": {
+            "texture": "Chests.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 2
+        },
+        "ship_pirate": {
+            "texture": "PirateShip.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 1,
+            "c": 4
+        },
+        "ship_transport": {
+            "texture": "TransportShip.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 1,
+            "c": 3
+        },
+        "ship_war": {
+            "texture": "WarShip.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 2,
+            "c": 4
+        },
+        "portal": {
+            "texture": "Portal.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "questboard": {
+            "texture": "QuestBoard.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "signs_general": {
+            "texture": "Signs.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 4
+        },
+        "signs_path": {
+            "texture": "StreetSigns.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 5
+        },
+        "tombstones": {
+            "texture": "Tombstones.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 4
+        },
+        "wells": {
+            "texture": "Well.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 3
+        },
+        "grass_dead": {
+            "texture": "DeadGrass.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 3
+        },
+        "grass_alive": {
+            "texture": "TexturedGrass.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 3
+        },
+        "grass": {
+            "texture": "Grass.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 5
+        },
+        "mausoleum": {
+            "texture": "Mausoleum.png",
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 1,
+            "c": 2
+        },
+        "shore": {
+            "texture": "Shore.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 5
+        },
+        "spike_walls": {
+            "texture": "SpearWall.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 2,
+            "c": 3
+        },
+        "winter": {
+            "texture": "Winter.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 8
+        },
+        "cliff": {
+            "texture": "Cliff.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 9,
+            "c": 7
+        },
+        "cliff_water": {
+            "texture": "Cliff-Water.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 6,
+            "c": 5
+        },
+        "tree_pine": {
+            "texture": "PineTrees.png",
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 1,
+            "c": 3
+        }
+    }
+}

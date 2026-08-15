@@ -1,12 +1,16 @@
 #include <cgl.h>
 #include <core/game-runtime.h>
 #include <core/engines/opengl-engine.h>
+#include <core/resources/asset-management/asset-loader.h>
+#include <templates/asset-mgr.h>
 #include <templates/singleton.h>
+#include <math/round.h>
 
 class Game : public CE::GFramework::AbstractGame {
 public:
     void init() override {
-
+        // todo: get root directory
+        CE::Assets::Loader::get("/home/jcooper/Documents/projects/cheryl-engine/assets");
     }
     void deinit() override {
 

@@ -1,0 +1,14 @@
+{
+    "texture": "Character-Customizer-Photoshop.png",
+    "sprites": {
+        "character_customizer_flattened": {
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 20,
+            "c": 5
+        }
+    }
+}
+

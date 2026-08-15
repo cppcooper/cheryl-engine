@@ -25,8 +25,8 @@ void FileMgr::search_directory(const fs::path& directory) {
                 f_ext extension = p.extension().string();
                 if (!extension.empty()) {
                     // normal files
-                    std::transform(extension.cbegin(), extension.cend(), extension.begin(),
-                                   [](unsigned char c) { return std::tolower(c); });
+                    std::ranges::transform(std::as_const(extension), extension.begin(),
+                                           [](unsigned char c) { return std::tolower(c); });
                     mapped_files[extension].push_back(entry.path());
                 } else {
                     // no extension files
