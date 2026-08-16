@@ -4,7 +4,6 @@
 #include <core/resources/asset-management/asset-loader.h>
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <math/round.h>
 
 class Game : public CE::GFramework::AbstractGame {
 public:
