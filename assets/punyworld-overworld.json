@@ -1,4 +1,5 @@
 {
+    "version": "1.0",
     "texture": "punyworld-overworld-tileset.png",
     "tilesets": {
         "grass_and_dirt_paths": {
