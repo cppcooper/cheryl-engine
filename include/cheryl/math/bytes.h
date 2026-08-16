@@ -1,6 +1,4 @@
 #pragma once
-#ifndef CEMATHBYTES_H
-#define CEMATHBYTES_H
 #include <string>
 #include <format>
 
@@ -43,5 +41,3 @@ inline std::string human_readable(const std::size_t bytes) {
     }
     return std::format("{:3.1f}{}",XiB,suffix);
 }
-
-#endif //BYTES_H

@@ -1,3 +1,4 @@
+cmake-build*/
 build/
 builds/
 extern/
@@ -9,6 +10,10 @@ extern/
 notes/
 
 *.log
+*.png
+assets/**/*.txt
+assets/**/*.xcf
+assets/**/*.docx
 
 /cheryl/
 bb-key

@@ -1,6 +1,4 @@
 #pragma once
-#ifndef COMPILE_TIME_LOGGING_HPP
-#define COMPILE_TIME_LOGGING_HPP
 #include "internal-logs.h"
 #include <sstream>
 #include <functional>
@@ -53,5 +51,3 @@ namespace ctlog {
         LogLineStream& operator=(LogLineStream&& other) = delete;
     };
 }
-
-#endif //COMPILE_TIME_LOGGING_HPP

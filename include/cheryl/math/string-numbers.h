@@ -1,6 +1,4 @@
 #pragma once
-#ifndef STRING_NUMBERS_H
-#define STRING_NUMBERS_H
 #include <cinttypes>
 #include <limits>
 #include <variant>

@@ -79,3 +79,6 @@ add_executable(backward-cpp tests/executables/backward.cpp)
 target_link_libraries(backward-cpp PUBLIC Backward::Backward)
 
 add_executable(cpp-testing tests/executables/cpp-testing.cpp)
+
+add_executable(demo tests/executables/demo.cpp)
+target_link_libraries(demo PUBLIC cherylGL spdlog Backward::Object gainputstatic glfw gl46 GL)

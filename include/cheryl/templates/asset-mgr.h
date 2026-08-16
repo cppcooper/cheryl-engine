@@ -1,12 +1,11 @@
 #pragma once
-#ifndef ASSETMGR_TEMPLATE_H
-#define ASSETMGR_TEMPLATE_H
 #include <assets/abstracts.h>
-#include <resources/allocators.h>
+#include <core/resources/allocators.h>
 #include <unordered_map>
 #include <filesystem>
 #include <vector>
 #include <memory>
+#include "block.h"
 
 namespace CE::Assets {
     struct iAssetMgr {
@@ -44,4 +43,3 @@ namespace CE::Assets {
         std::unordered_map<fs::path, spointer> loaded_assets{};
     };
 }
-#endif

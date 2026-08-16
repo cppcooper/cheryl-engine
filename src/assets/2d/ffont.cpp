@@ -1,4 +1,4 @@
-#include <resources/assets/texture-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
 #include <assets/2d/ffont.h>
 #include <math/anchor.h>
 #include <gtx/transform.hpp>
@@ -52,8 +52,8 @@ namespace CE::Assets {
         for (int idx = 0; idx < num_chars_ffont; ++idx) {
             uint16_t x0 = idx % 16;
             uint16_t y0 = idx / 16;
-            Anchor::Center(vertices.data() + (idx * vertices_per_quad),
-                           16, 16, 1, 1, x0, y0);
+            math::Anchor::Center(vertices.data() + (idx * vertices_per_quad),
+                                 16, 16, 1, 1, x0, y0);
         }
     }
 

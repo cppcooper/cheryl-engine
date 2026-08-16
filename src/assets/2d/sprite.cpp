@@ -1,7 +1,6 @@
 #include <assets/2d/sprite.h>
-#include <resources/assets.h>
-#include <resources/allocators.h>
-#include <resources/assets/texture-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/memory.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <math/anchor.h>
@@ -55,7 +54,7 @@ namespace CE::Assets {
         if (json data = json::parse(file); data["meta"].size() >= 4) {
             shptr<Texture> texture = TextureMgr::get().get_asset(data["meta"]["texture"]);
             std::size_t total_frames = data["meta"]["frames"];
-            AnchorType anchor = get_anchor(data["meta"]["anchor"]);
+            math::AnchorType anchor = math::get_anchor(data["meta"]["anchor"]);
 
             std::size_t vertices_bytes = sizeof(Quad) * total_frames;
             auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
@@ -77,9 +76,9 @@ namespace CE::Assets {
                     if (offset >= total_frames) [[unlikely]] {
                         throw Exceptions::bad_request(CE_HERE, "Out of space. This can only mean one thing: the vertices array was too small.");
                     }
-                    Anchor::MakeAnchor(anchor,
-                        reinterpret_cast<float*>(vertices.get() + (offset * VAONumbers::vertices_per_quad)),
-                        texture->width, texture->height, w,h, x+(i*w), y);
+                    math::Anchor::MakeAnchor(anchor,
+                                             reinterpret_cast<float*>(vertices.get() + (offset * VAONumbers::vertices_per_quad)),
+                                             texture->width, texture->height, w,h, x+(i*w), y);
                 }
                 frame_offset += frames;
             }

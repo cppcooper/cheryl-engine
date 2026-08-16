@@ -1,0 +1,39 @@
+{
+    "version": "1.0",
+    "texture": "magecity.png",
+    "tilesets": {
+        "mage_city_props_walls_and_floors": {
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32,
+            "r": 12,
+            "c": 8
+        },
+        "mage_city_monuments_trees_and_windows": {
+            "x": 0,
+            "y": 384,
+            "w": 32,
+            "h": 32,
+            "r": 11,
+            "c": 8
+        },
+        "mage_city_roofs": {
+            "x": 0,
+            "y": 736,
+            "w": 32,
+            "h": 32,
+            "r": 3,
+            "c": 8
+        },
+        "mage_city_terrain": {
+            "x": 0,
+            "y": 832,
+            "w": 32,
+            "h": 32,
+            "r": 18,
+            "c": 8
+        }
+    }
+}
+

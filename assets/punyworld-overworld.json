@@ -1,0 +1,63 @@
+{
+    "version": "1.0",
+    "texture": "punyworld-overworld-tileset.png",
+    "tilesets": {
+        "grass_and_dirt_paths": {
+            "x": 0,
+            "y": 0,
+            "w": 16,
+            "h": 16,
+            "r": 4,
+            "c": 27
+        },
+        "elevation_and_crossings": {
+            "x": 0,
+            "y": 64,
+            "w": 16,
+            "h": 16,
+            "r": 3,
+            "c": 27
+        },
+        "trees": {
+            "x": 0,
+            "y": 112,
+            "w": 16,
+            "h": 16,
+            "r": 3,
+            "c": 27
+        },
+        "water_animations": {
+            "x": 0,
+            "y": 160,
+            "w": 16,
+            "h": 16,
+            "r": 16,
+            "c": 27
+        },
+        "resource_nodes": {
+            "x": 0,
+            "y": 416,
+            "w": 16,
+            "h": 16,
+            "r": 7,
+            "c": 4
+        },
+        "neutral_buildings": {
+            "x": 64,
+            "y": 416,
+            "w": 16,
+            "h": 16,
+            "r": 7,
+            "c": 23
+        },
+        "colored_buildings": {
+            "x": 64,
+            "y": 528,
+            "w": 16,
+            "h": 16,
+            "r": 5,
+            "c": 20
+        }
+    }
+}
+

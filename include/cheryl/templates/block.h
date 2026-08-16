@@ -1,6 +1,4 @@
 #pragma once
-#ifndef BLOCK_TEMPLATE_H
-#define BLOCK_TEMPLATE_H
 #define MTRACE() UTRACE(CE::memlog)
 #define MDEBUG() UDEBUG(CE::memlog)
 #define MINFO() UINFO(CE::memlog)
@@ -11,7 +9,7 @@
 #include <internals/compile-time-logging.hpp>
 #undef CTWriteMask
 #define CTWriteMask 0
-#include <logging/logger.h>
+#include <core/logging/logger.h>
 #include <functional>
 #include <memory>
 #include <chrono>
@@ -599,4 +597,3 @@ namespace std {
         return os;
     }
 }
-#endif
