@@ -1,6 +1,7 @@
 {
+    "$schema": "./schemas/asset-manifest-1.0.schema.json",
     "version": "1.0",
-    "texture": "Character-Customizer-Photoshop.png",
+    "texture": "char-customizer/Character-Customizer-Photoshop.png",
     "sprites": {
         "character_customizer_flattened": {
             "x": 0,
@@ -12,4 +13,3 @@
         }
     }
 }
-

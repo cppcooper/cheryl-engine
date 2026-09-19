@@ -1,0 +1,151 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "asset-manifest-1.0.schema.json",
+    "title": "Cheryl Engine Asset Manifest 1.0",
+    "description": "Describes contiguous sprite and tileset frame grids. Coordinates use a top-left pixel origin. Frames are enumerated in row-major order: columns advance first, followed by rows.",
+    "$comment": "Texture existence, case-sensitive path resolution, and image bounds are semantic checks outside JSON Schema. A loader must verify x + (w * c) <= texture width and y + (h * r) <= texture height.",
+    "type": "object",
+    "required": [
+        "$schema",
+        "version"
+    ],
+    "properties": {
+        "$schema": {
+            "const": "./schemas/asset-manifest-1.0.schema.json",
+            "description": "Manifest-relative path to this JSON Schema. Runtime loaders may ignore this field."
+        },
+        "version": {
+            "const": "1.0"
+        },
+        "texture": {
+            "$ref": "#/$defs/texture_path",
+            "description": "Default texture inherited by entries in this manifest."
+        },
+        "sprites": {
+            "$ref": "#/$defs/asset_map"
+        },
+        "tilesets": {
+            "$ref": "#/$defs/asset_map"
+        }
+    },
+    "anyOf": [
+        {
+            "required": [
+                "sprites"
+            ]
+        },
+        {
+            "required": [
+                "tilesets"
+            ]
+        }
+    ],
+    "allOf": [
+        {
+            "if": {
+                "required": [
+                    "texture"
+                ]
+            },
+            "else": {
+                "properties": {
+                    "sprites": {
+                        "$ref": "#/$defs/asset_map_with_texture"
+                    },
+                    "tilesets": {
+                        "$ref": "#/$defs/asset_map_with_texture"
+                    }
+                }
+            }
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "texture_path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$",
+            "description": "Forward-slash path relative to the manifest directory. Absolute paths, parent traversal, and backslashes are not allowed."
+        },
+        "asset_map": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            },
+            "additionalProperties": {
+                "$ref": "#/$defs/grid_asset"
+            }
+        },
+        "asset_map_with_texture": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            },
+            "additionalProperties": {
+                "$ref": "#/$defs/grid_asset_with_texture"
+            }
+        },
+        "grid_asset": {
+            "type": "object",
+            "required": [
+                "x",
+                "y",
+                "w",
+                "h",
+                "r",
+                "c"
+            ],
+            "properties": {
+                "texture": {
+                    "$ref": "#/$defs/texture_path",
+                    "description": "Texture override for this entry."
+                },
+                "x": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Horizontal pixel origin measured from the texture's left edge."
+                },
+                "y": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Vertical pixel origin measured from the texture's top edge."
+                },
+                "w": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Width of one frame in pixels."
+                },
+                "h": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Height of one frame in pixels."
+                },
+                "r": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of contiguous frame rows."
+                },
+                "c": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of contiguous frame columns."
+                }
+            },
+            "additionalProperties": false
+        },
+        "grid_asset_with_texture": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/grid_asset"
+                },
+                {
+                    "required": [
+                        "texture"
+                    ]
+                }
+            ]
+        }
+    }
+}

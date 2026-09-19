@@ -1,6 +1,7 @@
 {
+    "$schema": "./schemas/asset-manifest-1.0.schema.json",
     "version": "1.0",
-    "texture": "ColoredBuildingsPreview.png",
+    "texture": "MiniWorldSprites/ColoredBuildingsPreview.png",
     "tilesets": {
         "large-colored-buildings": {
             "x": 0,
@@ -92,5 +93,4 @@
         }
     }
 }
-
 

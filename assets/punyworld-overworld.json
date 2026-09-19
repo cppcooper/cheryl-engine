@@ -1,6 +1,7 @@
 {
+    "$schema": "./schemas/asset-manifest-1.0.schema.json",
     "version": "1.0",
-    "texture": "punyworld-overworld-tileset.png",
+    "texture": "tilesets/punyworld-overworld-tileset.png",
     "tilesets": {
         "grass_and_dirt_paths": {
             "x": 0,
@@ -60,4 +61,3 @@
         }
     }
 }
-

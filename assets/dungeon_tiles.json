@@ -1,6 +1,7 @@
 {
+    "$schema": "./schemas/asset-manifest-1.0.schema.json",
     "version": "1.0",
-    "texture": "dungeon_tiles.png",
+    "texture": "tilesets/dungeon_tiles.png",
     "tilesets": {
         "punyworld_dungeon": {
             "x": 0,
@@ -12,4 +13,3 @@
         }
     }
 }
-

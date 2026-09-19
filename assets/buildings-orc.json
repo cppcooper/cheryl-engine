@@ -1,6 +1,7 @@
 {
+    "$schema": "./schemas/asset-manifest-1.0.schema.json",
     "version": "1.0",
-    "texture": "AllBuildings-Preview.png",
+    "texture": "MiniWorldSprites/Buildings/Enemy/Orc/AllBuildings-Preview.png",
     "tilesets": {
         "orc-buildings-32x32": {
             "x": 0,
@@ -20,5 +21,4 @@
         }
     }
 }
-
 
