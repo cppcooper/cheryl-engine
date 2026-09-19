@@ -1,39 +1,68 @@
 {
-    "$schema": "./schemas/asset-manifest-1.0.schema.json",
-    "version": "1.0",
-    "texture": "tilesets/magecity.png",
-    "tilesets": {
-        "mage_city_props_walls_and_floors": {
-            "x": 0,
-            "y": 0,
-            "w": 32,
-            "h": 32,
-            "r": 12,
-            "c": 8
-        },
-        "mage_city_monuments_trees_and_windows": {
-            "x": 0,
-            "y": 384,
-            "w": 32,
-            "h": 32,
-            "r": 11,
-            "c": 8
-        },
-        "mage_city_roofs": {
-            "x": 0,
-            "y": 736,
-            "w": 32,
-            "h": 32,
-            "r": 3,
-            "c": 8
-        },
-        "mage_city_terrain": {
-            "x": 0,
-            "y": 832,
-            "w": 32,
-            "h": 32,
-            "r": 18,
-            "c": 8
-        }
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "magecity",
+  "texture": "tilesets/magecity.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
     }
+  },
+  "tilesets": {
+    "mage_city": {
+      "description": "The complete populated 32-pixel grid in the Mage City sheet.",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 44,
+        "columns": 8,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "props_walls_and_floors": {
+          "row": 0,
+          "column": 0,
+          "rows": 12,
+          "columns": 8
+        },
+        "monuments_trees_and_windows": {
+          "row": 12,
+          "column": 0,
+          "rows": 11,
+          "columns": 8
+        },
+        "roofs": {
+          "row": 23,
+          "column": 0,
+          "rows": 3,
+          "columns": 8
+        },
+        "terrain": {
+          "row": 26,
+          "column": 0,
+          "rows": 18,
+          "columns": 8
+        }
+      }
+    }
+  }
 }

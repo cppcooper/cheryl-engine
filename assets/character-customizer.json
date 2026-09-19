@@ -1,15 +1,42 @@
 {
-    "$schema": "./schemas/asset-manifest-1.0.schema.json",
-    "version": "1.0",
-    "texture": "char-customizer/Character-Customizer-Photoshop.png",
-    "sprites": {
-        "character_customizer_flattened": {
-            "x": 0,
-            "y": 0,
-            "w": 16,
-            "h": 16,
-            "r": 20,
-            "c": 5
-        }
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "character-customizer",
+  "texture": "char-customizer/Character-Customizer-Photoshop.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
     }
+  },
+  "sprites": {
+    "character_customizer_flattened": {
+      "description": "Flattened export of the layered character customizer artwork.",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 20,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    }
+  }
 }

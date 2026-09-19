@@ -1,15 +1,42 @@
 {
-    "$schema": "./schemas/asset-manifest-1.0.schema.json",
-    "version": "1.0",
-    "texture": "tilesets/dungeon_tiles.png",
-    "tilesets": {
-        "punyworld_dungeon": {
-            "x": 0,
-            "y": 0,
-            "w": 16,
-            "h": 16,
-            "r": 24,
-            "c": 23
-        }
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "dungeon",
+  "texture": "tilesets/dungeon_tiles.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
     }
+  },
+  "tilesets": {
+    "dungeon": {
+      "description": "The complete 23-column by 24-row legacy 0x72 dungeon sheet.",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 24,
+        "columns": 23,
+        "cell_order": "row-major"
+      }
+    }
+  }
 }

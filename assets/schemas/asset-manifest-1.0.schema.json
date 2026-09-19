@@ -1,151 +1,831 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "asset-manifest-1.0.schema.json",
-    "title": "Cheryl Engine Asset Manifest 1.0",
-    "description": "Describes contiguous sprite and tileset frame grids. Coordinates use a top-left pixel origin. Frames are enumerated in row-major order: columns advance first, followed by rows.",
-    "$comment": "Texture existence, case-sensitive path resolution, and image bounds are semantic checks outside JSON Schema. A loader must verify x + (w * c) <= texture width and y + (h * r) <= texture height.",
-    "type": "object",
-    "required": [
-        "$schema",
-        "version"
-    ],
-    "properties": {
-        "$schema": {
-            "const": "./schemas/asset-manifest-1.0.schema.json",
-            "description": "Manifest-relative path to this JSON Schema. Runtime loaders may ignore this field."
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "asset-manifest-1.0.schema.json",
+  "title": "Cheryl Engine Asset Manifest 1.0",
+  "description": "Describes texture-backed sprite and tileset grids, pivots, views, animations, orientations, and autotile rules.",
+  "$comment": "Texture existence, case-sensitive path resolution, image bounds, named profile references, cell ranges, unique terrain IDs, Wang terrain references, and bitmask ranges are semantic checks outside JSON Schema.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "version",
+    "namespace",
+    "defaults"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./schemas/asset-manifest-1.0.schema.json",
+      "description": "Manifest-relative path to this JSON Schema. Runtime loaders may ignore this field."
+    },
+    "version": {
+      "const": "1.0"
+    },
+    "namespace": {
+      "$ref": "#/$defs/namespace",
+      "description": "Stable namespace used with each map key to form a globally unique asset ID."
+    },
+    "texture": {
+      "$ref": "#/$defs/texture_path",
+      "description": "Default texture inherited by entries in this manifest."
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    },
+    "animation_profiles": {
+      "$ref": "#/$defs/animation_profile_map"
+    },
+    "sprites": {
+      "$ref": "#/$defs/sprite_map"
+    },
+    "tilesets": {
+      "$ref": "#/$defs/tileset_map"
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "sprites"
+      ]
+    },
+    {
+      "required": [
+        "tilesets"
+      ]
+    }
+  ],
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "texture"
+        ]
+      },
+      "else": {
+        "properties": {
+          "sprites": {
+            "$ref": "#/$defs/sprite_map_with_texture"
+          },
+          "tilesets": {
+            "$ref": "#/$defs/tileset_map_with_texture"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "namespace": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "texture_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$",
+      "description": "Forward-slash path relative to the manifest directory. Absolute paths, parent traversal, and backslashes are not allowed."
+    },
+    "pivot": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Normalized horizontal position from the frame's left edge."
         },
-        "version": {
-            "const": "1.0"
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Normalized vertical position from the frame's top edge."
+        }
+      },
+      "additionalProperties": false
+    },
+    "asset_defaults": {
+      "type": "object",
+      "required": [
+        "pivot"
+      ],
+      "properties": {
+        "pivot": {
+          "$ref": "#/$defs/pivot"
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "required": [
+        "sprite",
+        "tileset"
+      ],
+      "properties": {
+        "sprite": {
+          "$ref": "#/$defs/asset_defaults"
+        },
+        "tileset": {
+          "$ref": "#/$defs/asset_defaults"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pixel_origin": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "frame_size": {
+      "type": "object",
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "spacing": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "origin",
+        "frame",
+        "spacing",
+        "rows",
+        "columns",
+        "cell_order"
+      ],
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/pixel_origin"
+        },
+        "frame": {
+          "$ref": "#/$defs/frame_size"
+        },
+        "spacing": {
+          "$ref": "#/$defs/spacing"
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cell_order": {
+          "const": "row-major",
+          "description": "Cell index = row * columns + column."
+        }
+      },
+      "additionalProperties": false
+    },
+    "cell_ref": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "index"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "row",
+            "column"
+          ],
+          "properties": {
+            "row": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "column": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "view": {
+      "type": "object",
+      "required": [
+        "row",
+        "column",
+        "rows",
+        "columns"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "view_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/view"
+      }
+    },
+    "orientation_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/cell_ref"
+      }
+    },
+    "animation_frame": {
+      "type": "object",
+      "required": [
+        "cell",
+        "duration_ms"
+      ],
+      "properties": {
+        "cell": {
+          "$ref": "#/$defs/cell_ref"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "animation_clip": {
+      "type": "object",
+      "required": [
+        "frames",
+        "loop"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/animation_frame"
+          }
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "animation_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/animation_clip"
+      }
+    },
+    "tile_animation": {
+      "type": "object",
+      "required": [
+        "target",
+        "frames",
+        "loop"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "$ref": "#/$defs/cell_ref"
+        },
+        "frames": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/animation_frame"
+          }
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tile_animation_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/tile_animation"
+      }
+    },
+    "profile_clip": {
+      "type": "object",
+      "required": [
+        "row_offset",
+        "columns",
+        "frame_duration_ms",
+        "loop"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "row_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Added to the selected facing row offset."
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "frame_duration_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "profile_clip_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/profile_clip"
+      }
+    },
+    "facing_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Row offset added to a profile clip's row_offset."
+      }
+    },
+    "animation_profile": {
+      "type": "object",
+      "required": [
+        "facings",
+        "clips"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "facings": {
+          "$ref": "#/$defs/facing_map"
+        },
+        "clips": {
+          "$ref": "#/$defs/profile_clip_map"
+        }
+      },
+      "additionalProperties": false
+    },
+    "animation_profile_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/animation_profile"
+      }
+    },
+    "terrain": {
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+        },
+        "probability": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "representative": {
+          "$ref": "#/$defs/cell_ref"
+        }
+      },
+      "additionalProperties": false
+    },
+    "wang_slot_order": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "const": "north"
+        },
+        {
+          "const": "north_east"
+        },
+        {
+          "const": "east"
+        },
+        {
+          "const": "south_east"
+        },
+        {
+          "const": "south"
+        },
+        {
+          "const": "south_west"
+        },
+        {
+          "const": "west"
+        },
+        {
+          "const": "north_west"
+        }
+      ],
+      "items": false,
+      "minItems": 8,
+      "maxItems": 8
+    },
+    "wang_tile": {
+      "type": "object",
+      "required": [
+        "cell",
+        "wang"
+      ],
+      "properties": {
+        "cell": {
+          "$ref": "#/$defs/cell_ref"
+        },
+        "wang": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "weight": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Relative selection weight among cells with the same Wang signature. Defaults to 1."
+        }
+      },
+      "additionalProperties": false
+    },
+    "wang_autotile": {
+      "type": "object",
+      "required": [
+        "type",
+        "slot_order",
+        "terrains",
+        "tiles"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "wang-corner",
+            "wang-edge"
+          ]
+        },
+        "slot_order": {
+          "$ref": "#/$defs/wang_slot_order"
+        },
+        "terrains": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/terrain"
+          }
+        },
+        "tiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/wang_tile"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "direction": {
+      "enum": [
+        "north",
+        "north_east",
+        "east",
+        "south_east",
+        "south",
+        "south_west",
+        "west",
+        "north_west"
+      ]
+    },
+    "bitmask_case_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/cell_ref"
+      }
+    },
+    "bitmask_autotile": {
+      "type": "object",
+      "required": [
+        "type",
+        "bit_order",
+        "cases"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "four-neighbor",
+            "eight-neighbor"
+          ]
+        },
+        "bit_order": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/direction"
+          }
+        },
+        "cases": {
+          "$ref": "#/$defs/bitmask_case_map"
+        }
+      },
+      "additionalProperties": false
+    },
+    "autotile": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/wang_autotile"
+        },
+        {
+          "$ref": "#/$defs/bitmask_autotile"
+        }
+      ]
+    },
+    "autotile_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/autotile"
+      }
+    },
+    "sprite_asset": {
+      "type": "object",
+      "required": [
+        "grid"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
         },
         "texture": {
-            "$ref": "#/$defs/texture_path",
-            "description": "Default texture inherited by entries in this manifest."
+          "$ref": "#/$defs/texture_path"
         },
-        "sprites": {
-            "$ref": "#/$defs/asset_map"
+        "grid": {
+          "$ref": "#/$defs/grid"
         },
-        "tilesets": {
-            "$ref": "#/$defs/asset_map"
+        "pivot": {
+          "$ref": "#/$defs/pivot"
+        },
+        "views": {
+          "$ref": "#/$defs/view_map"
+        },
+        "orientations": {
+          "$ref": "#/$defs/orientation_map"
+        },
+        "animation_profile": {
+          "$ref": "#/$defs/identifier"
+        },
+        "animations": {
+          "$ref": "#/$defs/animation_map"
         }
+      },
+      "additionalProperties": false
     },
-    "anyOf": [
+    "sprite_asset_with_texture": {
+      "allOf": [
         {
-            "required": [
-                "sprites"
-            ]
+          "$ref": "#/$defs/sprite_asset"
         },
         {
-            "required": [
-                "tilesets"
-            ]
+          "required": [
+            "texture"
+          ]
         }
-    ],
-    "allOf": [
+      ]
+    },
+    "tileset_asset": {
+      "type": "object",
+      "required": [
+        "grid"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "texture": {
+          "$ref": "#/$defs/texture_path"
+        },
+        "grid": {
+          "$ref": "#/$defs/grid"
+        },
+        "pivot": {
+          "$ref": "#/$defs/pivot"
+        },
+        "views": {
+          "$ref": "#/$defs/view_map"
+        },
+        "orientations": {
+          "$ref": "#/$defs/orientation_map"
+        },
+        "animations": {
+          "$ref": "#/$defs/tile_animation_map"
+        },
+        "autotiles": {
+          "$ref": "#/$defs/autotile_map"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tileset_asset_with_texture": {
+      "allOf": [
         {
-            "if": {
-                "required": [
-                    "texture"
-                ]
-            },
-            "else": {
-                "properties": {
-                    "sprites": {
-                        "$ref": "#/$defs/asset_map_with_texture"
-                    },
-                    "tilesets": {
-                        "$ref": "#/$defs/asset_map_with_texture"
-                    }
-                }
-            }
+          "$ref": "#/$defs/tileset_asset"
+        },
+        {
+          "required": [
+            "texture"
+          ]
         }
-    ],
-    "additionalProperties": false,
-    "$defs": {
-        "texture_path": {
-            "type": "string",
-            "minLength": 1,
-            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$",
-            "description": "Forward-slash path relative to the manifest directory. Absolute paths, parent traversal, and backslashes are not allowed."
-        },
-        "asset_map": {
-            "type": "object",
-            "minProperties": 1,
-            "propertyNames": {
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
-            },
-            "additionalProperties": {
-                "$ref": "#/$defs/grid_asset"
-            }
-        },
-        "asset_map_with_texture": {
-            "type": "object",
-            "minProperties": 1,
-            "propertyNames": {
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
-            },
-            "additionalProperties": {
-                "$ref": "#/$defs/grid_asset_with_texture"
-            }
-        },
-        "grid_asset": {
-            "type": "object",
-            "required": [
-                "x",
-                "y",
-                "w",
-                "h",
-                "r",
-                "c"
-            ],
-            "properties": {
-                "texture": {
-                    "$ref": "#/$defs/texture_path",
-                    "description": "Texture override for this entry."
-                },
-                "x": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Horizontal pixel origin measured from the texture's left edge."
-                },
-                "y": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "description": "Vertical pixel origin measured from the texture's top edge."
-                },
-                "w": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Width of one frame in pixels."
-                },
-                "h": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Height of one frame in pixels."
-                },
-                "r": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Number of contiguous frame rows."
-                },
-                "c": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "description": "Number of contiguous frame columns."
-                }
-            },
-            "additionalProperties": false
-        },
-        "grid_asset_with_texture": {
-            "allOf": [
-                {
-                    "$ref": "#/$defs/grid_asset"
-                },
-                {
-                    "required": [
-                        "texture"
-                    ]
-                }
-            ]
-        }
+      ]
+    },
+    "sprite_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/sprite_asset"
+      }
+    },
+    "sprite_map_with_texture": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/sprite_asset_with_texture"
+      }
+    },
+    "tileset_map": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/tileset_asset"
+      }
+    },
+    "tileset_map_with_texture": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/tileset_asset_with_texture"
+      }
     }
+  }
 }
