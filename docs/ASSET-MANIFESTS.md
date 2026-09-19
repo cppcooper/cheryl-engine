@@ -1,6 +1,6 @@
 # Asset manifest 1.0
 
-The authoritative format is `schemas/asset-manifest-1.0.schema.json`. Manifest files live directly in `assets/`; schema files are not asset manifests and must not be discovered as loadable assets.
+The authoritative format is `assets/schemas/asset-manifest-1.0.schema.json`. Manifest files live directly in `assets/`; schema files are not asset manifests and must not be discovered as loadable assets.
 
 ## Identity and inheritance
 

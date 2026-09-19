@@ -1,4 +1,4 @@
-# Remaining asset metadata TODO
+# Remaining asset-manifest metadata TODO
 
 These items are not blockers for loading every texture/grid, applying pivots, playing the verified animations, or using the Puny World autotiles. They need matching source metadata or an artwork-owner decision before more semantics can be encoded safely.
 
