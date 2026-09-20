@@ -8,8 +8,11 @@
 #include <array>
 #include <cctype>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace CE::Assets {
     namespace {
@@ -22,55 +25,48 @@ namespace CE::Assets {
             return value;
         }
 
-        void register_id(std::unordered_map<std::string, fs::path>& ids,
-                         const std::string& id, const fs::path& source) {
+        void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id,
+                         const fs::path& source) {
             if (const auto existing = ids.find(id); existing != ids.end()) {
-                throw std::runtime_error(
-                    "Duplicate asset ID '" + id + "' in manifests '"
-                    + existing->second.string() + "' and '" + source.string() + "'");
+                throw std::runtime_error("Duplicate asset ID '" + id + "' in manifests '" + existing->second.string() +
+                                         "' and '" + source.string() + "'");
             }
             ids.emplace(id, source);
         }
 
         std::pair<int, int> inspect_texture(const fs::path& texture) {
             if (!fs::is_regular_file(texture)) {
-                throw std::runtime_error(
-                    "Manifest texture does not exist or is not a file: '" + texture.string() + "'");
+                throw std::runtime_error("Manifest texture does not exist or is not a file: '" + texture.string() +
+                                         "'");
             }
             int width{};
             int height{};
             int channels{};
-            if (stbi_info(texture.string().c_str(), &width, &height, &channels) == 0
-                || width <= 0 || height <= 0) {
-                throw std::runtime_error(
-                    "Unable to read manifest texture metadata from '" + texture.string() + "'");
+            if (stbi_info(texture.string().c_str(), &width, &height, &channels) == 0 || width <= 0 || height <= 0) {
+                throw std::runtime_error("Unable to read manifest texture metadata from '" + texture.string() + "'");
             }
             return {width, height};
         }
 
         void validate_grid_bounds(const GridDefinition& grid, const fs::path& texture,
-                                  const std::pair<int, int> dimensions,
-                                  const std::string& asset_id) {
-            if (grid.occupied_right() > static_cast<std::uint64_t>(dimensions.first)
-                || grid.occupied_bottom() > static_cast<std::uint64_t>(dimensions.second)) {
-                throw std::runtime_error(
-                    "Asset '" + asset_id + "' grid exceeds texture '" + texture.string()
-                    + "' bounds (" + std::to_string(dimensions.first) + 'x'
-                    + std::to_string(dimensions.second) + ')');
+                                  const std::pair<int, int> dimensions, const std::string& asset_id) {
+            if (grid.occupied_right() > static_cast<std::uint64_t>(dimensions.first) ||
+                grid.occupied_bottom() > static_cast<std::uint64_t>(dimensions.second)) {
+                throw std::runtime_error("Asset '" + asset_id + "' grid exceeds texture '" + texture.string() +
+                                         "' bounds (" + std::to_string(dimensions.first) + 'x' +
+                                         std::to_string(dimensions.second) + ')');
             }
         }
     }
 
     void Loader::load_assets() {
         if (!fs::is_directory(root_path_)) {
-            throw std::runtime_error(
-                "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
+            throw std::runtime_error("Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
         }
 
         std::vector<fs::path> manifest_files;
         for (const auto& entry : fs::directory_iterator(root_path_)) {
-            if (entry.is_regular_file()
-                && lowercase(entry.path().extension().string()) == ".json") {
+            if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".json") {
                 manifest_files.push_back(entry.path().lexically_normal());
             }
         }
@@ -110,12 +106,10 @@ namespace CE::Assets {
             texture_dimensions.emplace(texture, inspect_texture(texture));
         }
         for (const auto& sprite : sprites) {
-            validate_grid_bounds(sprite.grid, sprite.texture,
-                                 texture_dimensions.at(sprite.texture), sprite.id());
+            validate_grid_bounds(sprite.grid, sprite.texture, texture_dimensions.at(sprite.texture), sprite.id());
         }
         for (const auto& tileset : tilesets) {
-            validate_grid_bounds(tileset.grid, tileset.texture,
-                                 texture_dimensions.at(tileset.texture), tileset.id());
+            validate_grid_bounds(tileset.grid, tileset.texture, texture_dimensions.at(tileset.texture), tileset.id());
         }
 
         std::vector<fs::path> textures = referenced_textures;
@@ -130,12 +124,8 @@ namespace CE::Assets {
         SpriteMgr::get().load_assets(sprites);
         TilesetMgr::get().load_assets(tilesets);
 
-        const std::unordered_set<std::string> valid_fonts {
-            "arial.ttf",
-            "calibri.ttf",
-            "consola.ttf",
-            "ProggyVector Regular.ttf"
-        };
+        const std::unordered_set<std::string> valid_fonts{"arial.ttf", "calibri.ttf", "consola.ttf",
+                                                          "ProggyVector Regular.ttf"};
         std::vector<fs::path> fonts;
         for (const auto& font : Resources::find_system_fonts()) {
             if (valid_fonts.contains(font.filename().string())) {
@@ -147,7 +137,7 @@ namespace CE::Assets {
         FontMgr::get().load_assets(fonts);
 
         std::vector<fs::path> shaders;
-        constexpr std::array shader_extensions {".vert", ".geo", ".frag", ".tesc", ".tese"};
+        constexpr std::array shader_extensions{".vert", ".geo", ".frag", ".tesc", ".tese"};
         for (const auto extension : shader_extensions) {
             const auto& files = get_files_of_type(extension);
             shaders.insert(shaders.end(), files.begin(), files.end());

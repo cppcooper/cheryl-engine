@@ -13,7 +13,6 @@ namespace CE::Assets {
         std::uint32_t vertex_count{};
     };
 
-    [[nodiscard]] GridGeometry make_grid_geometry(const GridDefinition& grid,
-                                                  math::Pivot pivot,
+    [[nodiscard]] GridGeometry make_grid_geometry(const GridDefinition& grid, math::Pivot pivot,
                                                   const Texture& texture);
 }

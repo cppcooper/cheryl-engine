@@ -7,12 +7,10 @@
 
 namespace CE::Assets {
     struct Loader : Singleton_CTS<Loader>, FileMgr {
-        explicit Loader(const std::filesystem::path& root_path)
-            : FileMgr(root_path), root_path_(root_path.lexically_normal()) {}
+        explicit Loader(const std::filesystem::path& root_path) :
+            FileMgr(root_path), root_path_(root_path.lexically_normal()) {}
         void load_assets();
-        [[nodiscard]] const std::vector<AssetManifest>& manifests() const {
-            return manifests_;
-        }
+        [[nodiscard]] const std::vector<AssetManifest>& manifests() const { return manifests_; }
 
     private:
         std::filesystem::path root_path_;

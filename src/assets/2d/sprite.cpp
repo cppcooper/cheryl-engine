@@ -2,14 +2,14 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace CE::Assets {
     void SpriteFrame::draw(const DrawInfo& info) {
         glBindVertexArray(id_vao);
         texture->bind();
         info.use_shader();
-        glDrawArrays(GL_QUADS,
-                     static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
+        glDrawArrays(GL_QUADS, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
                      VAONumbers::vertices_per_quad);
     }
 
@@ -19,9 +19,8 @@ namespace CE::Assets {
     }
 
     SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const GLuint id,
-                                     const shptr<Texture>& texture)
-        : Draw2D(id, texture), Frame(0, 0, definition.frames.size()),
-          definition_(std::move(definition)) {
+                                     const shptr<Texture>& texture) :
+        Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
         if (definition_.frames.empty()) {
             throw std::invalid_argument("A sprite animation must contain at least one frame");
         }
@@ -32,9 +31,7 @@ namespace CE::Assets {
     }
 
     SpriteFrame SpriteAnimation::operator[](const std::size_t frame) {
-        index_ = definition_.loop
-            ? frame % definition_.frames.size()
-            : std::min(frame, definition_.frames.size() - 1);
+        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
         return SpriteFrame(definition_.frames[index_].cell, id_vao, texture);
     }
 
@@ -42,17 +39,14 @@ namespace CE::Assets {
         return definition_.frames.at(index_).duration;
     }
 
-    Sprite::Sprite(SpriteData data)
-        : Asset2D(data.vertices, data.vertex_count, data.texture),
-          Frame(0, 0, data.definition.grid.cell_count()),
-          definition_(std::move(data.definition)) {
+    Sprite::Sprite(SpriteData data) :
+        Asset2D(data.vertices, data.vertex_count, data.texture), Frame(0, 0, data.definition.grid.cell_count()),
+        definition_(std::move(data.definition)) {
         animations_.reserve(definition_.animations.size());
         for (const auto& animation_definition : definition_.animations) {
-            const auto key = animation_key(animation_definition.name,
-                                           animation_definition.facing);
+            const auto key = animation_key(animation_definition.name, animation_definition.facing);
             if (animation_indices_.contains(key)) {
-                throw std::invalid_argument(
-                    "Duplicate sprite animation '" + animation_definition.name + "'");
+                throw std::invalid_argument("Duplicate sprite animation '" + animation_definition.name + "'");
             }
             animation_indices_.emplace(key, animations_.size());
             animations_.emplace_back(animation_definition, vao.id, texture);
@@ -68,13 +62,11 @@ namespace CE::Assets {
         return SpriteFrame(index_, vao.id, texture);
     }
 
-    std::string Sprite::animation_key(const std::string& animation,
-                                      const std::optional<std::string>& facing) {
+    std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {
         return animation + '\x1f' + facing.value_or("");
     }
 
-    bool Sprite::has_animation(const std::string& animation,
-                               const std::optional<std::string> facing) const {
+    bool Sprite::has_animation(const std::string& animation, const std::optional<std::string> facing) const {
         if (animation_indices_.contains(animation_key(animation, facing))) {
             return true;
         }
@@ -82,8 +74,8 @@ namespace CE::Assets {
             return false;
         }
         return std::ranges::count_if(animations_, [&animation](const auto& candidate) {
-            return candidate.definition().name == animation;
-        }) == 1;
+                   return candidate.definition().name == animation;
+               }) == 1;
     }
 
     SpriteAnimation Sprite::animation(const std::string& animation_name,
@@ -99,8 +91,7 @@ namespace CE::Assets {
                     continue;
                 }
                 if (match) {
-                    throw std::out_of_range(
-                        "Sprite animation '" + animation_name + "' requires an explicit facing");
+                    throw std::out_of_range("Sprite animation '" + animation_name + "' requires an explicit facing");
                 }
                 match = &animation;
             }
@@ -108,8 +99,7 @@ namespace CE::Assets {
                 return *match;
             }
         }
-        throw std::out_of_range(
-            "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
+        throw std::out_of_range("Sprite animation '" + animation_name + "' was not loaded for the requested facing");
     }
 
     SpriteAnimation Sprite::operator[](const std::string& animation_name) const {

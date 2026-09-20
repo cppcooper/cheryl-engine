@@ -10,15 +10,16 @@ namespace CE::Assets {
         std::size_t offset_ = 0;
         std::size_t index_ = 0;
         std::size_t limit_ = 0;
+
     public:
-        Frame(std::size_t o, std::size_t i, std::size_t l)
-            : offset_(o), index_(i), limit_(l), offset(offset_), index(index_), limit(limit_) {}
-        Frame(const Frame& other)
-            : offset_(other.offset_), index_(other.index_), limit_(other.limit_),
-              offset(offset_), index(index_), limit(limit_) {}
-        Frame(Frame&& other) noexcept
-            : offset_(other.offset_), index_(other.index_), limit_(other.limit_),
-              offset(offset_), index(index_), limit(limit_) {}
+        Frame(std::size_t o, std::size_t i, std::size_t l) :
+            offset_(o), index_(i), limit_(l), offset(offset_), index(index_), limit(limit_) {}
+        Frame(const Frame& other) :
+            offset_(other.offset_), index_(other.index_), limit_(other.limit_), offset(offset_), index(index_),
+            limit(limit_) {}
+        Frame(Frame&& other) noexcept :
+            offset_(other.offset_), index_(other.index_), limit_(other.limit_), offset(offset_), index(index_),
+            limit(limit_) {}
         Frame& operator=(const Frame& other) {
             offset_ = other.offset_;
             index_ = other.index_;
@@ -31,10 +32,10 @@ namespace CE::Assets {
             limit_ = other.limit_;
             return *this;
         }
-        const std::size_t &offset;
-        const std::size_t &index;
-        const std::size_t &limit;
-        template<typename T>
+        const std::size_t& offset;
+        const std::size_t& index;
+        const std::size_t& limit;
+        template <typename T>
         T& operator[](const std::size_t frame) {
             set_frame(frame);
             return *reinterpret_cast<T*>(this);

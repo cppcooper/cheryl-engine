@@ -3,12 +3,13 @@
 #include <memory>
 
 namespace CE::Obj {
-    template<typename T>
+    template <typename T>
     struct ObjCtor {
-        template<typename... Args>
+        template <typename... Args>
         static void construct(T* p, std::size_t N, Args... args) {
-            static_assert(std::is_constructible_v<T, Args...>, "A constructor for type T with the arguments provided does not exist.");
-            for(std::size_t i = 0; i < N; ++i) {
+            static_assert(std::is_constructible_v<T, Args...>,
+                          "A constructor for type T with the arguments provided does not exist.");
+            for (std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
                 if (constructed.count(pi) && constructed[pi]) {
                     std::destroy_at(pi);
@@ -18,7 +19,7 @@ namespace CE::Obj {
             }
         }
         static void destroy(T* p, std::size_t N = 1) {
-            for(std::size_t i = 0; i < N; ++i) {
+            for (std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
                 if (constructed.count(pi) && constructed[pi]) {
                     std::destroy_at(pi);
@@ -32,10 +33,11 @@ namespace CE::Obj {
                 constructed.erase(current++);
             }
         }
+
     protected:
-        static std::unordered_map<void*,bool> constructed;
+        static std::unordered_map<void*, bool> constructed;
     };
 
-    template<typename T>
+    template <typename T>
     std::unordered_map<void*, bool> ObjCtor<T>::constructed;
 }

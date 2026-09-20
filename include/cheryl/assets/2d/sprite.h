@@ -22,8 +22,8 @@ namespace CE::Assets {
     };
 
     struct SpriteFrame final : Draw2D, protected Frame {
-        explicit SpriteFrame(std::size_t cell, GLuint id, const shptr<Texture>& texture)
-            : Draw2D(id, texture), Frame(cell, 0, 1) {}
+        explicit SpriteFrame(std::size_t cell, GLuint id, const shptr<Texture>& texture) :
+            Draw2D(id, texture), Frame(cell, 0, 1) {}
 
         void draw(const DrawInfo& info) override;
         SpriteFrame& operator[](std::size_t frame);
@@ -31,8 +31,7 @@ namespace CE::Assets {
     };
 
     struct SpriteAnimation final : Draw2D, protected Frame {
-        explicit SpriteAnimation(SpriteAnimationDefinition definition, GLuint id,
-                                 const shptr<Texture>& texture);
+        explicit SpriteAnimation(SpriteAnimationDefinition definition, GLuint id, const shptr<Texture>& texture);
 
         void draw(const DrawInfo& info) override;
         SpriteFrame operator[](std::size_t frame);
@@ -50,18 +49,16 @@ namespace CE::Assets {
         void draw(const DrawInfo& info) override;
         SpriteFrame operator[](std::size_t frame);
         SpriteAnimation operator[](const std::string& animation) const;
-        SpriteAnimation animation(const std::string& animation,
-                                  std::optional<std::string> facing = std::nullopt) const;
-        [[nodiscard]] bool has_animation(
-            const std::string& animation,
-            std::optional<std::string> facing = std::nullopt) const;
+        SpriteAnimation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
+        [[nodiscard]] bool has_animation(const std::string& animation,
+                                         std::optional<std::string> facing = std::nullopt) const;
         [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
         [[nodiscard]] CellIndex orientation(const std::string& name) const;
         [[nodiscard]] const SpriteDefinition& definition() const { return definition_; }
 
     private:
-        [[nodiscard]] static std::string animation_key(
-            const std::string& animation, const std::optional<std::string>& facing);
+        [[nodiscard]] static std::string animation_key(const std::string& animation,
+                                                       const std::optional<std::string>& facing);
 
         SpriteDefinition definition_;
         std::vector<SpriteAnimation> animations_;

@@ -6,11 +6,14 @@
 #include <math/anchor.h>
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
     namespace fs = std::filesystem;
@@ -34,20 +37,12 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
     EXPECT_FLOAT_EQ(vertices[0].v, 0.5f);
     EXPECT_FLOAT_EQ(vertices[2].v, 0.75f);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
-    EXPECT_THROW(
-        CE::math::Anchor::MakePivot(
-            {std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8),
-        std::invalid_argument);
+    EXPECT_THROW(CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8),
+                 std::invalid_argument);
 }
 
 TEST(asset_grid, resolves_spaced_row_major_cells) {
-    const GridDefinition grid {
-        .origin = {2, 3},
-        .frame = {10, 8},
-        .spacing = {1, 2},
-        .rows = 2,
-        .columns = 3
-    };
+    const GridDefinition grid{.origin = {2, 3}, .frame = {10, 8}, .spacing = {1, 2}, .rows = 2, .columns = 3};
 
     EXPECT_EQ(grid.cell_count(), std::size_t{6});
     EXPECT_EQ(grid.cell_index(1, 2), std::size_t{5});
@@ -80,9 +75,8 @@ TEST(asset_manifest, expands_profiles_and_inherits_pivots) {
     ASSERT_EQ(manifest.sprites.size(), std::size_t{101});
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{35});
 
-    const auto sprite = std::ranges::find_if(manifest.sprites, [](const auto& value) {
-        return value.name == "soldier_swordsman_cyan";
-    });
+    const auto sprite = std::ranges::find_if(manifest.sprites,
+                                             [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
     ASSERT_NE(sprite, manifest.sprites.end());
     EXPECT_EQ(sprite->id(), "miniworld:soldier_swordsman_cyan");
     EXPECT_EQ(sprite->pivot, (CE::math::Pivot{0.5f, 1.0f}));
@@ -116,11 +110,9 @@ TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
     EXPECT_EQ(terrain.terrains.size(), std::size_t{12});
     EXPECT_EQ(terrain.tiles.size(), std::size_t{168});
     EXPECT_FALSE(terrain.variants.empty());
-    const auto terrain_variant_count = std::accumulate(
-        terrain.variants.begin(), terrain.variants.end(), std::size_t{},
-        [](const std::size_t count, const auto& entry) {
-            return count + entry.second.size();
-        });
+    const auto terrain_variant_count =
+        std::accumulate(terrain.variants.begin(), terrain.variants.end(), std::size_t{},
+                        [](const std::size_t count, const auto& entry) { return count + entry.second.size(); });
     EXPECT_EQ(terrain_variant_count, terrain.tiles.size());
     const auto& pathways = std::get<WangAutotileDefinition>(tileset.autotiles.at("pathways"));
     EXPECT_EQ(pathways.type, WangType::Edge);
@@ -192,8 +184,7 @@ TEST(asset_manifest, parses_explicit_animations_orientations_and_bitmasks) {
     EXPECT_EQ(sprite.animations.front().frames[1].cell, std::size_t{3});
     EXPECT_EQ(sprite.animations.front().frames[1].duration, std::chrono::milliseconds(120));
 
-    const auto& bitmask = std::get<BitmaskAutotileDefinition>(
-        manifest.tilesets.front().autotiles.at("edges"));
+    const auto& bitmask = std::get<BitmaskAutotileDefinition>(manifest.tilesets.front().autotiles.at("edges"));
     EXPECT_EQ(bitmask.bit_order.size(), std::size_t{4});
     EXPECT_EQ(bitmask.cases.at(15), std::size_t{1});
 }

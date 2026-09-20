@@ -8,7 +8,6 @@
 namespace CE::Assets {
     struct ManifestLoader {
         [[nodiscard]] static AssetManifest load(const std::filesystem::path& file);
-        [[nodiscard]] static AssetManifest parse(std::istream& input,
-                                                 const std::filesystem::path& source);
+        [[nodiscard]] static AssetManifest parse(std::istream& input, const std::filesystem::path& source);
     };
 }

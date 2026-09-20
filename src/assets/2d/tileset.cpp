@@ -2,21 +2,19 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace CE::Assets {
     void Tile::draw(const DrawInfo& info) {
         glBindVertexArray(id_vao);
         texture->bind();
         info.use_shader();
-        glDrawArrays(GL_QUADS,
-                     static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
+        glDrawArrays(GL_QUADS, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
                      VAONumbers::vertices_per_quad);
     }
 
-    TileAnimation::TileAnimation(TileAnimationDefinition definition, const GLuint id,
-                                 const shptr<Texture>& texture)
-        : Draw2D(id, texture), Frame(0, 0, definition.frames.size()),
-          definition_(std::move(definition)) {
+    TileAnimation::TileAnimation(TileAnimationDefinition definition, const GLuint id, const shptr<Texture>& texture) :
+        Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
         if (definition_.frames.empty()) {
             throw std::invalid_argument("A tile animation must contain at least one frame");
         }
@@ -27,9 +25,7 @@ namespace CE::Assets {
     }
 
     Tile TileAnimation::operator[](const std::size_t frame) {
-        index_ = definition_.loop
-            ? frame % definition_.frames.size()
-            : std::min(frame, definition_.frames.size() - 1);
+        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
         return Tile(definition_.frames[index_].cell, id_vao, texture);
     }
 
@@ -37,10 +33,9 @@ namespace CE::Assets {
         return definition_.frames.at(index_).duration;
     }
 
-    Tileset::Tileset(TilesetData data)
-        : Asset2D(data.vertices, data.vertex_count, data.texture),
-          Frame(0, 0, data.definition.grid.cell_count()),
-          definition_(std::move(data.definition)) {
+    Tileset::Tileset(TilesetData data) :
+        Asset2D(data.vertices, data.vertex_count, data.texture), Frame(0, 0, data.definition.grid.cell_count()),
+        definition_(std::move(data.definition)) {
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
                 throw std::invalid_argument("Multiple tile animations target the same cell");

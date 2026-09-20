@@ -1,48 +1,47 @@
 #pragma once
 #include <assets/abstracts.h>
 #include <core/resources/allocators.h>
-#include <unordered_map>
-#include <filesystem>
-#include <vector>
-#include <memory>
+
 #include "block.h"
 
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
+
 namespace CE::Assets {
-    template<typename AssetType, typename Key = fs::path>
+    template <typename AssetType, typename Key = std::filesystem::path>
     struct AssetMgr {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
         AssetMgr() = default;
-        virtual ~AssetMgr() {
-            loaded_assets.clear();
-        }
+        virtual ~AssetMgr() { loaded_assets.clear(); }
         [[nodiscard]] virtual spointer get_asset(const Key& key) const {
             if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
                 return asset->second;
             }
             return nullptr;
         }
-        [[nodiscard]] bool contains(const Key& key) const {
-            return loaded_assets.contains(key);
-        }
-        [[nodiscard]] std::size_t size() const {
-            return loaded_assets.size();
-        }
+        [[nodiscard]] bool contains(const Key& key) const { return loaded_assets.contains(key); }
+        [[nodiscard]] std::size_t size() const { return loaded_assets.size(); }
 
     protected:
-        template<typename Derived>
+        template <typename Derived>
         std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
-            static_assert(std::is_base_of_v<AssetType, Derived>, "The allocated class type must be derived from the managed type.");
+            static_assert(std::is_base_of_v<AssetType, Derived>,
+                          "The allocated class type must be derived from the managed type.");
             if (N == 0) {
                 return {};
             }
             using A_OPA = std::allocator_traits<Mem::ObjectPoolAllocator<Derived>>;
             auto raw = A_OPA::allocate(N);
-            std::shared_ptr<Derived> owner(raw,[](void* p) {});
-            Block<Derived> block{owner,owner,ptr::calculate_alignment(raw),N};
+            std::shared_ptr<Derived> owner(raw, [](void* p) {});
+            Block<Derived> block{owner, owner, ptr::calculate_alignment(raw), N};
             return block.vector([](Derived* p) {
                 A_OPA::destroy(p);
-                A_OPA::deallocate(p,1);
+                A_OPA::deallocate(p, 1);
             });
         }
         std::unordered_map<Key, spointer> loaded_assets{};

@@ -17,18 +17,16 @@ namespace CE::Assets {
             }
             const auto texture = TextureMgr::get().get_asset(definition.texture);
             if (!texture) {
-                throw std::runtime_error(
-                    "Sprite '" + id + "' references an unloaded texture '"
-                    + definition.texture.string() + "'");
+                throw std::runtime_error("Sprite '" + id + "' references an unloaded texture '" +
+                                         definition.texture.string() + "'");
             }
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, *texture);
             const auto& asset = assets[index];
-            Obj::ObjCtor<Sprite>::construct(asset.get(), 1, SpriteData {
-                .vertices = std::move(geometry.vertices),
-                .vertex_count = geometry.vertex_count,
-                .texture = texture,
-                .definition = definition
-            });
+            Obj::ObjCtor<Sprite>::construct(asset.get(), 1,
+                                            SpriteData{.vertices = std::move(geometry.vertices),
+                                                       .vertex_count = geometry.vertex_count,
+                                                       .texture = texture,
+                                                       .definition = definition});
             loaded_assets.emplace(id, asset);
         }
     }

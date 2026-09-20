@@ -17,9 +17,10 @@ namespace CE::Assets {
         texid get_active(const uint32_t slot = GL_TEXTURE0) const { return Bound_IDs[slot - GL_TEXTURE0]; }
         void update_bind(uint32_t slot, texid id);
         void load_assets(const std::vector<std::filesystem::path>&);
+
     protected:
         int32_t default_bind_slot = GL_TEXTURE0;
         bool useMipMaps = true;
-        texid Bound_IDs[TEXTURE_MANAGER_MAX_TEXTURES]{}; //currently bound texture
+        texid Bound_IDs[TEXTURE_MANAGER_MAX_TEXTURES]{}; // currently bound texture
     };
 }
