@@ -9,6 +9,7 @@ extern/
 .trash/
 notes/
 
+*.tar.gz
 *.log
 *.png
 assets/**/*.txt
