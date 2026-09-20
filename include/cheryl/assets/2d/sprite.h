@@ -1,56 +1,70 @@
 #pragma once
-#ifndef SPRITE_H
-#define SPRITE_H
 
 #include <assets/abstracts.h>
-#include <core/resources/allocators.h>
+#include <assets/manifest.h>
 
-#include <filesystem>
-#include <tuple>
+#include <chrono>
 #include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace CE::Assets {
     template <typename T>
     using shptr = std::shared_ptr<T>;
 
+    struct SpriteData {
+        shptr<Vertex2D> vertices;
+        std::uint32_t vertex_count{};
+        shptr<Texture> texture;
+        SpriteDefinition definition;
+    };
+
     struct SpriteFrame final : Draw2D, protected Frame {
-        explicit SpriteFrame(uint16_t o, uint16_t i, uint16_t l,
-            const GLuint id, const shptr<Texture> &texture)
-            : Draw2D(id, texture), Frame(o,i,l) {}
-        void draw(const DrawInfo &info) override;
+        explicit SpriteFrame(std::size_t cell, GLuint id, const shptr<Texture>& texture)
+            : Draw2D(id, texture), Frame(cell, 0, 1) {}
+
+        void draw(const DrawInfo& info) override;
         SpriteFrame& operator[](std::size_t frame);
+        [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
     struct SpriteAnimation final : Draw2D, protected Frame {
-        explicit SpriteAnimation(const std::size_t o, const std::size_t l,
-            const GLuint id, const shptr<Texture> &texture)
-            : Draw2D(id, texture), Frame(o,0,l) {}
-        void draw(const DrawInfo &info) override;
+        explicit SpriteAnimation(SpriteAnimationDefinition definition, GLuint id,
+                                 const shptr<Texture>& texture);
+
+        void draw(const DrawInfo& info) override;
         SpriteFrame operator[](std::size_t frame);
+        [[nodiscard]] const SpriteAnimationDefinition& definition() const { return definition_; }
+        [[nodiscard]] std::chrono::milliseconds frame_duration() const;
+        [[nodiscard]] bool loops() const { return definition_.loop; }
+
+    private:
+        SpriteAnimationDefinition definition_;
     };
 
-    using SpriteData = std::tuple<shptr<Vertex2D>,uint32_t,shptr<Texture>,std::vector<std::tuple<std::string,uint16_t,uint16_t>>>;
     struct Sprite final : Asset2D, protected Frame {
-        explicit Sprite(const SpriteData &data) :
-        Asset2D(
-            std::get<0>(data),
-            std::get<1>(data),
-            std::get<2>(data)),
-        Frame(0,0, std::get<1>(data) / VAONumbers::vertices_per_quad), animations() {
-            auto &anim = std::get<3>(data);
-            animations.reserve(anim.size());
-            for(auto &[animation,frames,offset] : anim) {
-                animations_map[animation] = animations.size(); // map the name to the vector index
-                animations.emplace_back(offset, frames, vao.id, texture);
-            }
-        }
-        void draw(const DrawInfo &info) override;
+        explicit Sprite(SpriteData data);
+
+        void draw(const DrawInfo& info) override;
         SpriteFrame operator[](std::size_t frame);
-        SpriteAnimation operator[](const std::string& animation);
-        static SpriteData load_sprite(const std::filesystem::path &file);
+        SpriteAnimation operator[](const std::string& animation) const;
+        SpriteAnimation animation(const std::string& animation,
+                                  std::optional<std::string> facing = std::nullopt) const;
+        [[nodiscard]] bool has_animation(
+            const std::string& animation,
+            std::optional<std::string> facing = std::nullopt) const;
+        [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
+        [[nodiscard]] CellIndex orientation(const std::string& name) const;
+        [[nodiscard]] const SpriteDefinition& definition() const { return definition_; }
+
     private:
-        std::vector<SpriteAnimation, Mem::ObjectPoolAllocator<SpriteAnimation>> animations;
-        std::unordered_map<std::string, std::size_t> animations_map;
+        [[nodiscard]] static std::string animation_key(
+            const std::string& animation, const std::optional<std::string>& facing);
+
+        SpriteDefinition definition_;
+        std::vector<SpriteAnimation> animations_;
+        std::unordered_map<std::string, std::size_t> animation_indices_;
     };
 }
-#endif

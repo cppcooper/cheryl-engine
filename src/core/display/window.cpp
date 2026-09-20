@@ -1,4 +1,5 @@
 #include <core/display/window.h>
+#include <cgl.h>
 #include <core/subsystems/event-system.h>
 #include <core/rendering/opengl-renderer.h>
 #include <internals.h>

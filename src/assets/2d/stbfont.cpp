@@ -80,9 +80,9 @@ namespace CE::Assets {
         };
         std::size_t idx = 0;
         for(const auto &c : baked_chars) {
-            math::Anchor::Center(vertices.get() + (idx++ * VAONumbers::floats_per_quad),
+            math::Anchor::Center(vertices.get() + (idx++ * VAONumbers::vertices_per_quad),
                                  texture->width, texture->height, c.x1-c.x0,c.y1-c.y0, c.x0, c.y0);
         }
-        return {vertices, num_char, texture};
+        return {vertices, num_char * VAONumbers::vertices_per_quad, texture};
     }
 }

@@ -8,7 +8,7 @@ namespace CE::Assets {
     void FontMgr::load_assets(const std::vector<fs::path> &files) {
         const auto N = files.size();
         auto assets = allocate<STBFont>(N);
-        for(int i = 0; i < N; ++i) {
+        for(std::size_t i = 0; i < N; ++i) {
             const auto &file = files[i];
             if (!loaded_assets.contains(file)) {
                 auto &asset = assets[i];

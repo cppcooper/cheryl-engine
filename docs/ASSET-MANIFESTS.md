@@ -46,7 +46,7 @@ bottom = (pivot.y - 1) * height
 top    = pivot.y * height
 ```
 
-The current fixed `AnchorType` enum does not represent bottom center, so the loader/rendering update must retain the numeric pivot or extend vertex generation instead of rounding it to an existing anchor.
+The runtime retains numeric pivots for arbitrary normalized positions. `AnchorType` also covers all nine standard positions, including bottom center, so older named-anchor call sites remain available without rounding manifest values.
 
 ## Animations
 
@@ -73,13 +73,8 @@ Terrain ID `0` means no terrain. `wang-corner` sets use the corner slots and `wa
 
 The schema also supports `four-neighbor` and `eight-neighbor` bitmask autotiles. `bit_order[i]` owns bit `1 << i`, and the decimal mask string selects a cell from `cases`.
 
-The Puny World manifest is transcribed from the author-supplied `punyworld-overworld-tiles.tsx`. Its bundled PNG is byte-for-byte identical to the source PNG, so its 70 animated targets, 280 timed frames, 168 corner-Wang assignments, and 45 edge-Wang assignments preserve the upstream tile IDs exactly.
+The Puny World manifest is transcribed from the author-supplied `punyworld-overworld-tiles.tsx`. The corresponding source-bundle PNG was verified byte-for-byte against the upstream PNG, so its 70 animated targets, 280 timed frames, 168 corner-Wang assignments, and 45 edge-Wang assignments preserve the upstream tile IDs exactly.
 
-## Engine implementation order
+## Runtime implementation
 
-1. Discover only manifest JSON files in the `assets` directory and require supported `version` values.
-2. Resolve each entry's texture and pivot, validate its grid against the decoded texture, and register its namespaced ID.
-3. Materialize row-major cell UVs and named views.
-4. Resolve `animation_profile` references and build sprite and animated-tile sequences.
-5. Build Wang-signature and bitmask lookup tables, retaining duplicate Wang variants.
-6. Fail a manifest atomically on bad paths, missing profiles, out-of-range cells/views, or invalid autotile terrain references.
+The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [`ASSET-LOADING.md`](ASSET-LOADING.md) for the runtime entry point, validation/load order, retrieval APIs, and the remaining animation-controller and tile-map-renderer integration work.

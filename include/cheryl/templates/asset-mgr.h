@@ -8,29 +8,34 @@
 #include "block.h"
 
 namespace CE::Assets {
-    struct iAssetMgr {
-        virtual ~iAssetMgr() = default;
-        virtual void load_assets(const std::vector<fs::path>& file) = 0;
-    };
-
-    template<typename AssetType>
-    struct AssetMgr : iAssetMgr {
+    template<typename AssetType, typename Key = fs::path>
+    struct AssetMgr {
         using spointer = std::shared_ptr<AssetType>;
+        using key_type = Key;
         AssetMgr() = default;
-        ~AssetMgr() override {
+        virtual ~AssetMgr() {
             loaded_assets.clear();
         }
-        virtual spointer get_asset(const fs::path& f) {
-            if (loaded_assets.count(f)) {
-                return loaded_assets[f];
+        [[nodiscard]] virtual spointer get_asset(const Key& key) const {
+            if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
+                return asset->second;
             }
             return nullptr;
-        };
+        }
+        [[nodiscard]] bool contains(const Key& key) const {
+            return loaded_assets.contains(key);
+        }
+        [[nodiscard]] std::size_t size() const {
+            return loaded_assets.size();
+        }
 
     protected:
         template<typename Derived>
         std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>, "The allocated class type must be derived from the managed type.");
+            if (N == 0) {
+                return {};
+            }
             using A_OPA = std::allocator_traits<Mem::ObjectPoolAllocator<Derived>>;
             auto raw = A_OPA::allocate(N);
             std::shared_ptr<Derived> owner(raw,[](void* p) {});
@@ -40,6 +45,6 @@ namespace CE::Assets {
                 A_OPA::deallocate(p,1);
             });
         }
-        std::unordered_map<fs::path, spointer> loaded_assets{};
+        std::unordered_map<Key, spointer> loaded_assets{};
     };
 }

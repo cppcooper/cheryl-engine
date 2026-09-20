@@ -12,10 +12,11 @@ namespace CE::Assets {
         using texid = GLuint;
         TextureMgr() = default;
         ~TextureMgr() override = default;
+        [[nodiscard]] spointer get_asset(const std::filesystem::path& file) const override;
         void change_default_slot(uint32_t slot = GL_TEXTURE0);
         texid get_active(const uint32_t slot = GL_TEXTURE0) const { return Bound_IDs[slot - GL_TEXTURE0]; }
         void update_bind(uint32_t slot, texid id);
-        void load_assets(const std::vector<std::filesystem::path>&) override;
+        void load_assets(const std::vector<std::filesystem::path>&);
     protected:
         int32_t default_bind_slot = GL_TEXTURE0;
         bool useMipMaps = true;

@@ -1,69 +1,159 @@
-#include <templates/asset-mgr.h>
+#include <core/resources/asset-management/asset-loader.h>
+
 #include <core/resources/asset-management.h>
 #include <core/resources/fileio/fonts-system.h>
-#include <nlohmann/json.hpp>
-#include <fstream>
+#include <stb_image.h>
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <stdexcept>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace CE::Assets {
+    namespace {
+        namespace fs = std::filesystem;
+
+        std::string lowercase(std::string value) {
+            std::ranges::transform(value, value.begin(), [](const unsigned char character) {
+                return static_cast<char>(std::tolower(character));
+            });
+            return value;
+        }
+
+        void register_id(std::unordered_map<std::string, fs::path>& ids,
+                         const std::string& id, const fs::path& source) {
+            if (const auto existing = ids.find(id); existing != ids.end()) {
+                throw std::runtime_error(
+                    "Duplicate asset ID '" + id + "' in manifests '"
+                    + existing->second.string() + "' and '" + source.string() + "'");
+            }
+            ids.emplace(id, source);
+        }
+
+        std::pair<int, int> inspect_texture(const fs::path& texture) {
+            if (!fs::is_regular_file(texture)) {
+                throw std::runtime_error(
+                    "Manifest texture does not exist or is not a file: '" + texture.string() + "'");
+            }
+            int width{};
+            int height{};
+            int channels{};
+            if (stbi_info(texture.string().c_str(), &width, &height, &channels) == 0
+                || width <= 0 || height <= 0) {
+                throw std::runtime_error(
+                    "Unable to read manifest texture metadata from '" + texture.string() + "'");
+            }
+            return {width, height};
+        }
+
+        void validate_grid_bounds(const GridDefinition& grid, const fs::path& texture,
+                                  const std::pair<int, int> dimensions,
+                                  const std::string& asset_id) {
+            if (grid.occupied_right() > static_cast<std::uint64_t>(dimensions.first)
+                || grid.occupied_bottom() > static_cast<std::uint64_t>(dimensions.second)) {
+                throw std::runtime_error(
+                    "Asset '" + asset_id + "' grid exceeds texture '" + texture.string()
+                    + "' bounds (" + std::to_string(dimensions.first) + 'x'
+                    + std::to_string(dimensions.second) + ')');
+            }
+        }
+    }
+
     void Loader::load_assets() {
-        const std::array<iAssetMgr*,5> managers {
-            &TextureMgr::get(),
-            &TilesetMgr::get(),
-            &SpriteMgr::get(),
-            &FontMgr::get(),
-            &ShaderMgr::get()
-        };
-        const std::vector<fspath> &jsons = get_files_of_type("json");
-        std::vector<fspath> sprites, tilesets;
-        for(const auto& file : jsons) {
-            std::ifstream fstream(file);
-            using json = nlohmann::json;
-            if (json data = json::parse(fstream); !data.empty()) {
-                if(!data["animations"].empty()) {
-                    sprites.push_back(file);
+        if (!fs::is_directory(root_path_)) {
+            throw std::runtime_error(
+                "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
+        }
+
+        std::vector<fs::path> manifest_files;
+        for (const auto& entry : fs::directory_iterator(root_path_)) {
+            if (entry.is_regular_file()
+                && lowercase(entry.path().extension().string()) == ".json") {
+                manifest_files.push_back(entry.path().lexically_normal());
+            }
+        }
+        std::ranges::sort(manifest_files);
+
+        std::vector<AssetManifest> parsed_manifests;
+        parsed_manifests.reserve(manifest_files.size());
+        for (const auto& file : manifest_files) {
+            parsed_manifests.push_back(ManifestLoader::load(file));
+        }
+
+        std::vector<SpriteDefinition> sprites;
+        std::vector<TilesetDefinition> tilesets;
+        std::vector<fs::path> referenced_textures;
+        std::unordered_set<fs::path> seen_textures;
+        std::unordered_map<std::string, fs::path> asset_ids;
+        for (const auto& manifest : parsed_manifests) {
+            for (const auto& sprite : manifest.sprites) {
+                register_id(asset_ids, sprite.id(), manifest.source);
+                sprites.push_back(sprite);
+                if (seen_textures.emplace(sprite.texture).second) {
+                    referenced_textures.push_back(sprite.texture);
                 }
-                if(!data["tileset"].empty()) {
-                    tilesets.push_back(file);
+            }
+            for (const auto& tileset : manifest.tilesets) {
+                register_id(asset_ids, tileset.id(), manifest.source);
+                tilesets.push_back(tileset);
+                if (seen_textures.emplace(tileset.texture).second) {
+                    referenced_textures.push_back(tileset.texture);
                 }
             }
         }
-        auto vert = get_files_of_type(".vert");
-        auto geo = get_files_of_type(".geo");
-        auto frag = get_files_of_type(".frag");
-        auto tesc = get_files_of_type(".tesc");
-        auto tese = get_files_of_type(".tese");
-        std::vector<fspath> shaders;
-        shaders.reserve(vert.size() + geo.size() + frag.size() + tesc.size() + tese.size());
-        shaders.insert( shaders.end(), vert.begin(), vert.end() );
-        shaders.insert( shaders.end(), geo.begin(), geo.end() );
-        shaders.insert( shaders.end(), frag.begin(), frag.end() );
-        shaders.insert( shaders.end(), tesc.begin(), tesc.end() );
-        shaders.insert( shaders.end(), tese.begin(), tese.end() );
+        std::ranges::sort(referenced_textures);
 
-        // todo: parameterize desired fonts
-        std::unordered_set<std::string> valid_fonts{
+        std::unordered_map<fs::path, std::pair<int, int>> texture_dimensions;
+        for (const auto& texture : referenced_textures) {
+            texture_dimensions.emplace(texture, inspect_texture(texture));
+        }
+        for (const auto& sprite : sprites) {
+            validate_grid_bounds(sprite.grid, sprite.texture,
+                                 texture_dimensions.at(sprite.texture), sprite.id());
+        }
+        for (const auto& tileset : tilesets) {
+            validate_grid_bounds(tileset.grid, tileset.texture,
+                                 texture_dimensions.at(tileset.texture), tileset.id());
+        }
+
+        std::vector<fs::path> textures = referenced_textures;
+        for (const auto& file : get_files_of_type(".png")) {
+            const auto normalized = file.lexically_normal();
+            if (seen_textures.emplace(normalized).second) {
+                textures.push_back(normalized);
+            }
+        }
+        std::ranges::sort(textures);
+        TextureMgr::get().load_assets(textures);
+        SpriteMgr::get().load_assets(sprites);
+        TilesetMgr::get().load_assets(tilesets);
+
+        const std::unordered_set<std::string> valid_fonts {
             "arial.ttf",
             "calibri.ttf",
             "consola.ttf",
             "ProggyVector Regular.ttf"
         };
-        auto ffont = get_files_of_type(".fdat");
-        std::vector<fspath> fonts = Resources::find_system_fonts();
-        std::vector<fspath> ok_fonts;
-        for(auto f : fonts) {
-            if(valid_fonts.contains(f)) {
-                ok_fonts.push_back(f);
+        std::vector<fs::path> fonts;
+        for (const auto& font : Resources::find_system_fonts()) {
+            if (valid_fonts.contains(font.filename().string())) {
+                fonts.push_back(font);
             }
         }
-        ok_fonts.insert(ok_fonts.end(), ffont.begin(), ffont.end());
-        const std::array file_lists {
-            get_files_of_type(".png"),
-            tilesets, sprites,
-            ok_fonts,
-            shaders
-        };
-        for(int i = 0; i < 4; ++i) {
-            managers[i]->load_assets(file_lists[i]);
+        const auto& bitmap_fonts = get_files_of_type(".fdat");
+        fonts.insert(fonts.end(), bitmap_fonts.begin(), bitmap_fonts.end());
+        FontMgr::get().load_assets(fonts);
+
+        std::vector<fs::path> shaders;
+        constexpr std::array shader_extensions {".vert", ".geo", ".frag", ".tesc", ".tese"};
+        for (const auto extension : shader_extensions) {
+            const auto& files = get_files_of_type(extension);
+            shaders.insert(shaders.end(), files.begin(), files.end());
         }
+        ShaderMgr::get().load_assets(shaders);
+
+        manifests_ = std::move(parsed_manifests);
     }
 }

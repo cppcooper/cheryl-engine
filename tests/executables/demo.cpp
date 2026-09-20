@@ -5,11 +5,16 @@
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 
+#include <filesystem>
+#include <utility>
+
 class Game : public CE::GFramework::AbstractGame {
 public:
+    explicit Game(std::filesystem::path asset_root)
+        : asset_root_(std::move(asset_root)) {}
+
     void init() override {
-        // todo: get root directory
-        CE::Assets::Loader::get("/home/jcooper/Documents/projects/cheryl-engine/assets");
+        CE::Assets::Loader::get(asset_root_).load_assets();
     }
     void deinit() override {
 
@@ -23,12 +28,17 @@ public:
             std::cerr << "OpenGL error: " << err << "\n";
         }
     }
+
+private:
+    std::filesystem::path asset_root_;
 };
 
 using CE::Engine::glEngine;
 using CE::GFramework::GameRuntime;
 
-int main() {
-    GameRuntime game_runtime(std::make_shared<glEngine>(),std::make_shared<Game>());
+int main(const int argc, char** argv) {
+    const std::filesystem::path asset_root = argc > 1 ? argv[1] : "assets";
+    GameRuntime game_runtime(
+        std::make_shared<glEngine>(), std::make_shared<Game>(asset_root));
     game_runtime.run();
 }

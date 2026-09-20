@@ -8,6 +8,6 @@ namespace CE::Assets {
     struct FontMgr final : FMgr, Singleton_CTS<FontMgr> {
         FontMgr() = default;
         ~FontMgr() override = default;
-        void load_assets(const std::vector<fs::path>&) override;
+        void load_assets(const std::vector<fs::path>&);
     };
 }

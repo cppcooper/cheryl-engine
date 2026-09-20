@@ -8,7 +8,7 @@ namespace CE::Obj {
         template<typename... Args>
         static void construct(T* p, std::size_t N, Args... args) {
             static_assert(std::is_constructible_v<T, Args...>, "A constructor for type T with the arguments provided does not exist.");
-            for(int i = 0; i < N; ++i) {
+            for(std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
                 if (constructed.count(pi) && constructed[pi]) {
                     std::destroy_at(pi);
@@ -18,7 +18,7 @@ namespace CE::Obj {
             }
         }
         static void destroy(T* p, std::size_t N = 1) {
-            for(int i = 0; i < N; ++i) {
+            for(std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
                 if (constructed.count(pi) && constructed[pi]) {
                     std::destroy_at(pi);

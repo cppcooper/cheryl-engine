@@ -8,6 +8,6 @@ namespace CE::Assets {
     struct ShaderMgr final : GLSLMgr, Singleton_CTS<ShaderMgr> {
         ShaderMgr() = default;
         ~ShaderMgr() override = default;
-        void load_assets(const std::vector<std::filesystem::path>&) override;
+        void load_assets(const std::vector<std::filesystem::path>&);
     };
 }

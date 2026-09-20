@@ -16,6 +16,7 @@ endif()
 # target names
 set(LIB_TARGET cherylGL)
 set(TEST_TARGET all-tests)
+set(ASSET_MANIFEST_TEST_TARGET asset-manifest-tests)
 
 # source files
 find_package(X11)
@@ -72,8 +73,25 @@ include(GoogleTest)
 enable_testing()
 add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
 TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
+target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
 gtest_discover_tests(${TEST_TARGET})
+
+# Manifest parsing and pivot generation are intentionally testable without a
+# window system or OpenGL context.
+add_executable(${ASSET_MANIFEST_TEST_TARGET}
+        tests/executables/gtest.cpp
+        tests/executables/gtest/assets/manifest.cpp
+        src/assets/manifest.cpp
+        src/core/resources/asset-management/manifest-loader.cpp
+        src/math/anchor.cpp)
+target_compile_definitions(${ASSET_MANIFEST_TEST_TARGET}
+        PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(${ASSET_MANIFEST_TEST_TARGET} PRIVATE gtest)
+add_dependencies(${ASSET_MANIFEST_TEST_TARGET} gl46)
+gtest_discover_tests(${ASSET_MANIFEST_TEST_TARGET}
+        TEST_PREFIX "asset-manifest:"
+        DISCOVERY_MODE PRE_TEST)
 
 add_executable(backward-cpp tests/executables/backward.cpp)
 target_link_libraries(backward-cpp PUBLIC Backward::Backward)
