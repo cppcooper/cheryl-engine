@@ -48,6 +48,7 @@ namespace CE::Engine {
         void deinit() override;
         void pre_draw() override;
         void post_draw() override;
+        [[nodiscard]] bool should_close() const override;
         void set_mode(Enum::gfx_mode) override;
         void set_mode(Enum::window_mode) override;
         void set_clear_colour(float, float, float, float) override;

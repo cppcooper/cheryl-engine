@@ -17,6 +17,7 @@ endif()
 set(LIB_TARGET cherylGL)
 set(TEST_TARGET all-tests)
 set(ASSET_MANIFEST_TEST_TARGET asset-manifest-tests)
+set(FONT_SYSTEM_TEST_TARGET font-system-tests)
 
 # source files
 find_package(X11)
@@ -91,6 +92,16 @@ target_link_libraries(${ASSET_MANIFEST_TEST_TARGET} PRIVATE gtest)
 add_dependencies(${ASSET_MANIFEST_TEST_TARGET} gl46)
 gtest_discover_tests(${ASSET_MANIFEST_TEST_TARGET}
         TEST_PREFIX "asset-manifest:"
+        DISCOVERY_MODE PRE_TEST)
+
+# Font discovery and selection are testable without an OpenGL context.
+add_executable(${FONT_SYSTEM_TEST_TARGET}
+        tests/executables/gtest.cpp
+        tests/executables/gtest/resources/fonts.cpp
+        src/core/resources/fileio/fonts-list.cpp)
+target_link_libraries(${FONT_SYSTEM_TEST_TARGET} PRIVATE gtest)
+gtest_discover_tests(${FONT_SYSTEM_TEST_TARGET}
+        TEST_PREFIX "font-system:"
         DISCOVERY_MODE PRE_TEST)
 
 add_executable(backward-cpp tests/executables/backward.cpp)

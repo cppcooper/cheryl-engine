@@ -8,7 +8,7 @@ out vec4 out_Color;
 
 void main(void)
 {	
-	vec4 myTexel = 	texture2D(mytexture, v_texcoord);
+	vec4 myTexel = texture(mytexture, v_texcoord);
 
-    out_Color = myTexel * in_Alpha; 
+    out_Color = vec4(myTexel.rgb, myTexel.a * in_Alpha);
 }

@@ -124,17 +124,10 @@ namespace CE::Assets {
         SpriteMgr::get().load_assets(sprites);
         TilesetMgr::get().load_assets(tilesets);
 
-        const std::unordered_set<std::string> valid_fonts{"arial.ttf", "calibri.ttf", "consola.ttf",
-                                                          "ProggyVector Regular.ttf"};
-        std::vector<fs::path> fonts;
-        for (const auto& font : Resources::find_system_fonts()) {
-            if (valid_fonts.contains(font.filename().string())) {
-                fonts.push_back(font);
-            }
+        const auto default_font = Resources::select_default_system_font(Resources::find_system_fonts());
+        if (default_font) {
+            FontMgr::get().load_assets({*default_font});
         }
-        const auto& bitmap_fonts = get_files_of_type(".fdat");
-        fonts.insert(fonts.end(), bitmap_fonts.begin(), bitmap_fonts.end());
-        FontMgr::get().load_assets(fonts);
 
         std::vector<fs::path> shaders;
         constexpr std::array shader_extensions{".vert", ".geo", ".frag", ".tesc", ".tese"};
@@ -143,6 +136,8 @@ namespace CE::Assets {
             shaders.insert(shaders.end(), files.begin(), files.end());
         }
         ShaderMgr::get().load_assets(shaders);
+        const auto shader2d = root_path_ / "shaders" / "shader2d";
+        ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"});
 
         manifests_ = std::move(parsed_manifests);
     }

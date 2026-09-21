@@ -15,7 +15,11 @@ using std::ostringstream;
 namespace fs = std::filesystem;
 
 namespace CE::Assets {
-    GLSLProgram::GLSLProgram(int program_id) : id_prog(program_id), linked(false) { }
+    GLSLProgram::GLSLProgram(int program_id) : id_prog(program_id), linked(false) {
+        GLint status = GL_FALSE;
+        glGetProgramiv(id_prog, GL_LINK_STATUS, &status);
+        linked = status == GL_TRUE;
+    }
 
     GLSLProgram::~GLSLProgram() {
         if (id_prog) {
@@ -60,7 +64,9 @@ namespace CE::Assets {
     }
 
     void GLSLProgram::use() {
-        assert(link());
+        if (!link()) {
+            throw std::runtime_error("Cannot use an unlinked shader program");
+        }
         glUseProgram(id_prog);
     }
 
@@ -140,4 +146,3 @@ namespace CE::Assets {
         return result;
     }
 }
-

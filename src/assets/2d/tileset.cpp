@@ -9,7 +9,7 @@ namespace CE::Assets {
         glBindVertexArray(id_vao);
         texture->bind();
         info.use_shader();
-        glDrawArrays(GL_QUADS, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
                      VAONumbers::vertices_per_quad);
     }
 

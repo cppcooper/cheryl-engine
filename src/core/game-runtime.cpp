@@ -17,7 +17,7 @@ namespace CE::GFramework {
             e->init();
             gf->init();
             running = true;
-            while(running) {
+            while (running && !e->should_close()) {
                 const double dt = delta();
                 gf->update(dt);
 

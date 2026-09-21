@@ -13,6 +13,7 @@ namespace CE::Engine {
         virtual void deinit() = 0;
         virtual void pre_draw() = 0;
         virtual void post_draw() = 0;
+        [[nodiscard]] virtual bool should_close() const = 0;
 
         virtual void set_mode(Enum::gfx_mode) = 0;
         virtual void set_mode(Enum::window_mode) = 0;

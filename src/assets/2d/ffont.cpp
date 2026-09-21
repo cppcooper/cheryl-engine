@@ -42,7 +42,7 @@ namespace CE::Assets {
                 model_matrix = glm::translate(glm::mat4(1.f), cursor_pos);
                 model_matrix = glm::rotate(model_matrix, print_angle, glm::vec3(0.f, 0.f, 1.f));
             } else {
-                glDrawArrays(GL_QUADS, index * vertices_per_quad, vertices_per_quad);
+                glDrawArrays(GL_TRIANGLES, index * vertices_per_quad, vertices_per_quad);
                 model_matrix = glm::translate(model_matrix, glm::vec3(widths[index] * scale, 0.f, 0.f));
             }
         }

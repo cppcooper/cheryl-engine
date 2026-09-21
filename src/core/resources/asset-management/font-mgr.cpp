@@ -1,27 +1,23 @@
 #include <core/resources/asset-management/font-mgr.h>
-#include <core/resources/objects/object-construction.hpp>
-#include <assets/2d/ffont.h>
+
 #include <assets/2d/stbfont.h>
-#include <internals.h>
+
+#include <memory>
 
 namespace CE::Assets {
-    void FontMgr::load_assets(const std::vector<fs::path>& files) {
-        const auto N = files.size();
-        auto assets = allocate<STBFont>(N);
-        for (std::size_t i = 0; i < N; ++i) {
-            const auto& file = files[i];
-            if (!loaded_assets.contains(file)) {
-                auto& asset = assets[i];
-                if (file.filename() != "font.fdat") [[likely]] {
-                    Obj::ObjCtor<STBFont>::construct(asset.get(), 1, STBFont::load_font(file.c_str(), 12));
-                    loaded_assets[file] = asset;
-                }
-                else {
-                    // if the file is font.fdat this is our manual font (just a png)
-                    FFont::get(FFont::load_ffont(file));
-                    loaded_assets[file] = std::shared_ptr<FFont>(&FFont::get(), [](void*) {});
-                }
-            }
+    void FontMgr::load_assets(const std::vector<std::filesystem::path>& files) {
+        constexpr int default_font_size = 32;
+        for (const auto& requested_file : files) {
+            const auto file = requested_file.lexically_normal();
+            if (loaded_assets.contains(file))
+                continue;
+            loaded_assets[file] = std::make_shared<STBFont>(STBFont::load_font(file, default_font_size));
+            if (default_font_path_.empty())
+                default_font_path_ = file;
         }
+    }
+
+    FontMgr::spointer FontMgr::default_font() const {
+        return default_font_path_.empty() ? nullptr : get_asset(default_font_path_);
     }
 }

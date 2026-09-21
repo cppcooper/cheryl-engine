@@ -1,88 +1,159 @@
+#include <assets/2d/stbfont.h>
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
-#include <assets/2d/stbfont.h>
-#include <math/anchor.h>
-#include <ext/matrix_transform.hpp>
+
 #include <core/resources/memory.h>
+#include <ext/matrix_transform.hpp>
+
+#include <array>
+#include <cmath>
+#include <cstddef>
+#include <fstream>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 namespace CE::Assets {
+    namespace {
+        std::vector<unsigned char> read_font_file(const std::filesystem::path& path) {
+            std::ifstream input(path, std::ios::binary | std::ios::ate);
+            if (!input)
+                throw std::runtime_error("Unable to open font file '" + path.string() + "'");
+
+            const auto end = input.tellg();
+            if (end <= 0)
+                throw std::runtime_error("Font file is empty: '" + path.string() + "'");
+            std::vector<unsigned char> bytes(static_cast<std::size_t>(end));
+            input.seekg(0, std::ios::beg);
+            if (!input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
+                throw std::runtime_error("Unable to read font file '" + path.string() + "'");
+            }
+            return bytes;
+        }
+
+        void set_glyph_vertices(Vertex2D* vertices, const stbtt_aligned_quad& quad) {
+            const float left = quad.x0;
+            const float right = quad.x1;
+            const float bottom = -quad.y1;
+            const float top = -quad.y0;
+            vertices[0] = {left, bottom, 0.0f, quad.s0, quad.t1};
+            vertices[1] = {right, bottom, 0.0f, quad.s1, quad.t1};
+            vertices[2] = {right, top, 0.0f, quad.s1, quad.t0};
+            vertices[3] = vertices[0];
+            vertices[4] = vertices[2];
+            vertices[5] = {left, top, 0.0f, quad.s0, quad.t0};
+        }
+    }
+
+    STBFont::STBFont(STBFontData data) :
+        Font({data.vertices, data.vertex_count, data.texture}), advances_(data.advances),
+        line_height_(data.line_height) {
+    }
+
     void STBFont::print(std::string text, FontDrawInfo* format) {
-        print_msg = std::move(text);
-        print_angle = format->angle;
+        if (!format)
+            throw std::invalid_argument("A font draw requires formatting information");
+        print_message_ = std::move(text);
+        print_angle_ = format->angle;
         draw(*format);
     }
 
     void STBFont::draw(const DrawInfo& info) {
-        const float scale = info.scale / 128;
-
-        glBindVertexArray(vao.id);  // Bind the VAO for your font
+        if (!info.material)
+            throw std::invalid_argument("A font draw requires a shader program");
+        info.material->use();
+        info.material->set_uniform_value("in_Alpha", info.alpha);
+        info.material->set_uniform_value("in_Scale", 1.0f);
+        info.material->set_uniform_value("mytexture", GLint{0});
+        glBindVertexArray(vao.id);
         texture->bind();
-        info.use_shader();  // Activate the shader
 
-        glm::vec3 cursor_pos(info.position);
-        auto model_matrix = glm::translate(glm::mat4(1.f), cursor_pos);
-        model_matrix = glm::rotate(model_matrix, info.scale, glm::vec3(0.f, 0.f, 1.f));
+        auto text_matrix = glm::translate(info.model_matrix, info.position);
+        text_matrix = glm::rotate(text_matrix, print_angle_, glm::vec3(0.0f, 0.0f, 1.0f));
+        text_matrix = glm::scale(text_matrix, glm::vec3(info.scale, info.scale, 1.0f));
+        float cursor_x = 0.0f;
+        float cursor_y = 0.0f;
+        constexpr auto fallback_character = static_cast<unsigned char>('?');
+        const auto space_index = static_cast<std::size_t>(' ' - first_font_character);
 
-        // Iterate over each character in the message
-        for (char letter : print_msg) {
-            info.material->set_uniform_matrix("modelMatrix", model_matrix);
-            std::size_t index = letter-32;
-            if (letter == '\n') {
-                cursor_pos.y -= scale;
-                //cursor_pos.y -= (info.scale / 2);
-                model_matrix = glm::translate(glm::mat4(1.f), cursor_pos);
-                model_matrix = glm::rotate(model_matrix, print_angle, glm::vec3(0.f, 0.f, 1.f));
-            } else {
-                using VAONumbers::vertices_per_quad;
-                glDrawArrays(GL_QUADS, index * vertices_per_quad, vertices_per_quad);
-                //model_matrix = glm::translate(model_matrix, glm::vec3(widths[index] * scale, 0.f, 0.f));
+        for (const unsigned char requested_character : print_message_) {
+            if (requested_character == '\n') {
+                cursor_x = 0.0f;
+                cursor_y -= line_height_;
+                continue;
             }
+            if (requested_character == '\r')
+                continue;
+            if (requested_character == '\t') {
+                cursor_x += advances_[space_index] * 4.0f;
+                continue;
+            }
+
+            const auto letter = requested_character < first_font_character || requested_character > last_font_character
+                ? fallback_character
+                : requested_character;
+            const auto index = static_cast<std::size_t>(letter - first_font_character);
+            if (letter != ' ') {
+                const auto model_matrix = glm::translate(text_matrix, glm::vec3(cursor_x, cursor_y, 0.0f));
+                info.material->set_uniform_matrix("modelMatrix", model_matrix);
+                glDrawArrays(GL_TRIANGLES, static_cast<GLint>(index * VAONumbers::vertices_per_quad),
+                             VAONumbers::vertices_per_quad);
+            }
+            cursor_x += advances_[index];
         }
     }
 
-    STBFontData STBFont::load_font(const char* font_path, int font_size) {
-        constexpr std::size_t num_char = 96;
-        stbtt_bakedchar baked_chars[num_char];
-        using OPA = Mem::ObjectPoolAllocator<Texture>;
-        using A_DA = std::allocator_traits<Mem::DefaultAllocator<unsigned char>>;
-        using A_OPA = std::allocator_traits<OPA>;
-        constexpr std::size_t pt20 = 1<<20;
-        constexpr std::size_t km = 512 * 512;
-        using sptr = std::shared_ptr<unsigned char>;
-
-        // allocate font buffer
-        sptr ttf_buffer(A_DA::allocate(pt20),[](unsigned char* p) {
-            A_DA::deallocate(p, pt20);
-        });
-        fread(ttf_buffer.get(), 1, pt20, fopen(font_path, "rb"));
-
-        // allocate bitmap
-        sptr temp_bitmap(A_DA::allocate(km), [](unsigned char* p) {
-            A_DA::deallocate(p,km);
-        });
-
-        stbtt_BakeFontBitmap(ttf_buffer.get(), 0, font_size, temp_bitmap.get(),
-            512, 512, 32, 96, baked_chars);
-        auto texture = std::shared_ptr<Texture>(A_OPA::allocate(1), [](Texture* p) {
-            A_OPA::deallocate(p,1);
-        });
-        A_OPA::construct(texture.get(),
-            temp_bitmap.get(),512,512,GL_TEXTURE0,
-            true,false,GL_CLAMP_TO_EDGE,GL_ALPHA);
-
-        constexpr std::size_t vertices_bytes = sizeof(Quad) * num_char;
-        auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
-        std::shared_ptr<Vertex2D> vertices {
-            static_cast<Vertex2D*>(b.head.get()),
-            [b](Vertex2D* p) {
-                Mem::ExactMMgr::get().return_chunk(b);
-            }
-        };
-        std::size_t idx = 0;
-        for(const auto &c : baked_chars) {
-            math::Anchor::Center(vertices.get() + (idx++ * VAONumbers::vertices_per_quad), texture->width,
-                                 texture->height, c.x1 - c.x0, c.y1 - c.y0, c.x0, c.y0);
+    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size) {
+        if (font_size <= 0)
+            throw std::invalid_argument("Font size must be positive");
+        const auto font_bytes = read_font_file(font_path);
+        const int font_offset = stbtt_GetFontOffsetForIndex(font_bytes.data(), 0);
+        stbtt_fontinfo font_info{};
+        if (font_offset < 0 || !stbtt_InitFont(&font_info, font_bytes.data(), font_offset)) {
+            throw std::runtime_error("Unsupported or corrupt font file '" + font_path.string() + "'");
         }
-        return {vertices, num_char * VAONumbers::vertices_per_quad, texture};
+
+        std::array<stbtt_bakedchar, font_character_count> baked_characters{};
+        int atlas_size = 256;
+        std::vector<unsigned char> bitmap;
+        while (true) {
+            bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
+            const int result = stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size),
+                                                    bitmap.data(), atlas_size, atlas_size, first_font_character,
+                                                    static_cast<int>(font_character_count), baked_characters.data());
+            if (result > 0)
+                break;
+            if (atlas_size == 4096) {
+                throw std::runtime_error("Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
+            }
+            atlas_size *= 2;
+        }
+
+        auto atlas = std::make_shared<Texture>(bitmap.data(), atlas_size, atlas_size, GL_TEXTURE0, false, false,
+                                               GL_CLAMP_TO_EDGE, GL_RED);
+        constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
+        constexpr std::size_t vertices_bytes = sizeof(Vertex2D) * vertex_count;
+        auto chunk = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
+        auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(chunk.head.get()),
+                                                  [chunk](Vertex2D*) { Mem::ExactMMgr::get().return_chunk(chunk); });
+        std::array<float, font_character_count> advances{};
+        for (std::size_t index = 0; index < baked_characters.size(); ++index) {
+            float x = 0.0f;
+            float y = 0.0f;
+            stbtt_aligned_quad quad{};
+            stbtt_GetBakedQuad(baked_characters.data(), atlas_size, atlas_size, static_cast<int>(index), &x, &y, &quad,
+                               1);
+            set_glyph_vertices(vertices.get() + index * VAONumbers::vertices_per_quad, quad);
+            advances[index] = x;
+        }
+
+        int ascent = 0;
+        int descent = 0;
+        int line_gap = 0;
+        stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
+        const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
+        const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
+        return {std::move(vertices), vertex_count, std::move(atlas), advances, line_height};
     }
 }

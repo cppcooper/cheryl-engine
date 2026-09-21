@@ -1,6 +1,8 @@
 #pragma once
 #include "renderer.h"
 #include <core/display.h>
+#include <mutex>
+#include <vector>
 
 namespace CE::RenderAPIs {
     struct OpenGLRenderer : iRenderer {
@@ -12,6 +14,7 @@ namespace CE::RenderAPIs {
         void swap_buffer() override;
         void draw() override;
         program_id compile_shader(fs::path file) override;
+        program_id compile_program(const std::vector<fs::path>& stages);
         void initialize_glfw();
         void initialize_glad();
     private:

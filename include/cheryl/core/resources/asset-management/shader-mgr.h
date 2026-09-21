@@ -2,6 +2,7 @@
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/primitives/glslprogram.h>
+#include <glm.hpp>
 
 using GLSLMgr = CE::Assets::AssetMgr<CE::Assets::GLSLProgram>;
 namespace CE::Assets {
@@ -9,5 +10,11 @@ namespace CE::Assets {
         ShaderMgr() = default;
         ~ShaderMgr() override = default;
         void load_assets(const std::vector<std::filesystem::path>&);
+        void load_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages);
+        void set_projection_matrix(const glm::mat4& projection);
+
+    private:
+        glm::mat4 projection_{1.0f};
+        std::vector<std::filesystem::path> linked_programs_;
     };
 }

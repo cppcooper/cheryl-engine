@@ -25,7 +25,7 @@ namespace {
 }
 
 TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
-    CE::Vertex2D vertices[4]{};
+    CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
     CE::math::Anchor::MakePivot({0.5f, 1.0f}, vertices, 64, 32, 16, 8, 16, 8);
 
     EXPECT_FLOAT_EQ(vertices[0].x, -8.0f);
@@ -36,6 +36,9 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
     EXPECT_FLOAT_EQ(vertices[1].u, 0.5f);
     EXPECT_FLOAT_EQ(vertices[0].v, 0.5f);
     EXPECT_FLOAT_EQ(vertices[2].v, 0.75f);
+    EXPECT_EQ(vertices[0].x, vertices[3].x);
+    EXPECT_EQ(vertices[2].x, vertices[4].x);
+    EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
     EXPECT_THROW(CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8),
                  std::invalid_argument);

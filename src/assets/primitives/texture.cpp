@@ -23,9 +23,16 @@ namespace CE::Assets {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, use_mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, pixelate ? GL_NEAREST : GL_LINEAR);
 
-        // Upload the bitmap data to the GPU (font bitmap is grayscale, so we use GL_RED)
-        glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height,
-            0, fmt, GL_UNSIGNED_BYTE, bits);
+        const GLint internal_format = fmt == GL_RED ? GL_R8 : GL_RGBA8;
+        GLint previous_unpack_alignment = 4;
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
+        if (fmt == GL_RED) {
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            constexpr GLint swizzle[]{GL_ONE, GL_ONE, GL_ONE, GL_RED};
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
+        }
+        glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, fmt, GL_UNSIGNED_BYTE, bits);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
 
         // Generate mipmaps if requested
         if (use_mipmaps) {

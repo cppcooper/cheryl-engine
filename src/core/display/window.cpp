@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 #include <random>
+#include <stdexcept>
 
 const char* generate_title();
 inline GLFWwindow* create_window(const CE::Monitor&, CE::Enum::window_mode, uint16_t, uint16_t);
@@ -21,6 +22,9 @@ namespace CE {
         : ViewPort(width, height), xpos(0), ypos(0), window_mode(mode),
           glfw_window(create_window(monitor, mode, width, height)),
           monitor(monitor) {
+        if (!glfw_window) {
+            throw std::runtime_error("Failed to create a GLFW window");
+        }
         glfwGetMonitorPos(monitor.glfw_monitor, &xpos, &ypos);
         if (mode == Enum::window_mode::NORMAL) {
             glfwSetWindowPos(glfw_window, xpos, ypos);
@@ -96,7 +100,6 @@ inline GLFWwindow* create_window(const Monitor& monitor, const Enum::window_mode
                 glfwWindowHint(GLFW_DECORATED, true);
                 auto w = glfwCreateWindow(width, height, generate_title(), nullptr, nullptr);
                 glfwMakeContextCurrent(w);
-                glViewport(0,0,width,height);
                 return w;
             }
             case Enum::window_mode::FULLSCREEN:

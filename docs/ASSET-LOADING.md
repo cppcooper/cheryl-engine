@@ -24,7 +24,11 @@ The load order is:
 2. Reject duplicate asset IDs, missing textures, corrupt image metadata, and grids outside decoded texture bounds before constructing assets.
 3. Load referenced and standalone PNG textures.
 4. Construct every sprite and tileset grid from its resolved numeric pivot.
-5. Load fonts and every supported shader stage.
+5. Select and bake a system font using the existing stb_truetype dependency.
+6. Load existing shader stages, then explicitly link shader2d.vert and shader2d.frag as the shader2d text program.
+
+Fonts remain outside the manifest schema. `FontMgr::default_font()` returns the selected face. Existing shader stage
+keys remain available; the text program is keyed by `assets/shaders/shader2d` without an extension.
 
 `Loader::manifests()` retains the resolved documents for inspection after a successful load. A failed parse does not replace that collection.
 

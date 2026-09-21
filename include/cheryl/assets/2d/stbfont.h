@@ -1,30 +1,38 @@
 #pragma once
-#ifndef STBFONT_H
-#define STBFONT_H
-
 #include <assets/abstracts.h>
-
-#include <glm.hpp>
-
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
-#include <tuple>
 #include <memory>
+#include <string>
 
 namespace CE::Assets {
-    using STBFontData = std::tuple<std::shared_ptr<Vertex2D>, std::size_t, std::shared_ptr<Texture>>;
+    inline constexpr unsigned char first_font_character = 32;
+    inline constexpr unsigned char last_font_character = 126;
+    inline constexpr std::size_t font_character_count = last_font_character - first_font_character + 1;
+
+    struct STBFontData {
+        std::shared_ptr<Vertex2D> vertices;
+        std::uint32_t vertex_count{};
+        std::shared_ptr<Texture> texture;
+        std::array<float, font_character_count> advances{};
+        float line_height{};
+    };
 
     struct STBFont final : Font {
-        explicit STBFont(const STBFontData &data) : Font(data) {}
+        explicit STBFont(STBFontData data);
         ~STBFont() override = default;
-        void print(std::string text, FontDrawInfo *format) override;
-        static STBFontData load_font(const char* font_path, int font_size);
+        void print(std::string text, FontDrawInfo* format) override;
+        [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size);
 
     protected:
-        void draw(const DrawInfo &info) override;
+        void draw(const DrawInfo& info) override;
 
     private:
-        float print_angle = 0.f;
-        std::string print_msg;
+        std::array<float, font_character_count> advances_{};
+        float line_height_{};
+        float print_angle_{};
+        std::string print_message_;
     };
 }
-#endif //STBFONT_H

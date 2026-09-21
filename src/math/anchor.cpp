@@ -97,7 +97,9 @@ namespace CE::math {
         vertices[0] = {left, bottom, 0.0f, u0, v0};
         vertices[1] = {right, bottom, 0.0f, u1, v0};
         vertices[2] = {right, top, 0.0f, u1, v1};
-        vertices[3] = {left, top, 0.0f, u0, v1};
+        vertices[3] = vertices[0];
+        vertices[4] = vertices[2];
+        vertices[5] = {left, top, 0.0f, u0, v1};
     }
 
     void Anchor::MakePivot(const Pivot pivot, float* vertices, const std::uint32_t texture_width,
@@ -124,7 +126,9 @@ namespace CE::math {
         set_vertex(vertices, 0, left, bottom, u0, v0);
         set_vertex(vertices, 1, right, bottom, u1, v0);
         set_vertex(vertices, 2, right, top, u1, v1);
-        set_vertex(vertices, 3, left, top, u0, v1);
+        set_vertex(vertices, 3, left, bottom, u0, v0);
+        set_vertex(vertices, 4, right, top, u1, v1);
+        set_vertex(vertices, 5, left, top, u0, v1);
     }
 
     void Anchor::MakeAnchor(const AnchorType type, Vertex2D* vertices, const std::uint32_t texture_width,
