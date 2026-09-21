@@ -18,6 +18,7 @@ set(LIB_TARGET cherylGL)
 set(TEST_TARGET all-tests)
 set(ASSET_MANIFEST_TEST_TARGET asset-manifest-tests)
 set(FONT_SYSTEM_TEST_TARGET font-system-tests)
+set(CAMERA_TEST_TARGET camera-tests)
 
 # source files
 find_package(X11)
@@ -103,6 +104,16 @@ add_executable(${FONT_SYSTEM_TEST_TARGET}
 target_link_libraries(${FONT_SYSTEM_TEST_TARGET} PRIVATE gtest)
 gtest_discover_tests(${FONT_SYSTEM_TEST_TARGET}
         TEST_PREFIX "font-system:"
+        DISCOVERY_MODE PRE_TEST)
+
+add_executable(${CAMERA_TEST_TARGET}
+        tests/executables/gtest.cpp
+        tests/executables/gtest/core/camera.cpp
+        src/core/camera.cpp
+        src/internal/exceptions.cpp)
+target_link_libraries(${CAMERA_TEST_TARGET} PRIVATE gtest Backward::Object)
+gtest_discover_tests(${CAMERA_TEST_TARGET}
+        TEST_PREFIX "camera:"
         DISCOVERY_MODE PRE_TEST)
 
 add_executable(backward-cpp tests/executables/backward.cpp)
