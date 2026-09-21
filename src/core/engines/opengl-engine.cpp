@@ -1,114 +1,118 @@
 #include <core/engines/opengl-engine.h>
 
 #include <cgl.h>
-#include <core.h>
+#include <core/rendering/opengl-renderer.h>
 #include <core/resources/asset-management/shader-mgr.h>
-#include <ext/matrix_clip_space.hpp>
-#include <internals.h>
-#include <glm.hpp>
+#include <core/subsystems/event-system.h>
+#include <internals/exceptions.h>
+#include <templates/singleton.h>
 
-#include <algorithm>
-#include <any>
+#include <GLFW/glfw3.h>
+#include <utility>
 
 namespace CE::Engine {
-    void glEngine::calculate_projection() {
-        int framebuffer_width = 0;
-        int framebuffer_height = 0;
-        glfwGetFramebufferSize(renderer->display->active->glfw_window, &framebuffer_width, &framebuffer_height);
-        framebuffer_width = std::max(framebuffer_width, 1);
-        framebuffer_height = std::max(framebuffer_height, 1);
-        switch (m_gMode.get()) {
-        case Enum::gfx_mode::R2D: {
-            /// Disable Depth Testing for 2D!
-            glDisable(GL_DEPTH_TEST);
-
-            /// 2d orthographic projection
-            m_projectionMatrix.set(glm::mat4(1.f) *
-                                   glm::ortho(0.f, static_cast<float>(framebuffer_width), 0.f,
-                                              static_cast<float>(framebuffer_height), 0.f,
-                                              1.f)); // 2D was using 0,1 for near,far
-            break;
-        }
-        case Enum::gfx_mode::R3D: {
-            /// Enable Depth Testing for 3D!
-            glEnable(GL_DEPTH_TEST);
-
-            /// 3D perspective projection
-            m_projectionMatrix.set(
-                glm::mat4(1.f) *
-                glm::perspective(45.0f, static_cast<float>(framebuffer_width) / static_cast<float>(framebuffer_height),
-                                 m_nearplane.get(), m_farplane.get()));
-            break;
-        }
-        }
-    }
-
-    // when any one of these observed variables changes value we want to recalculate the projection matrix immediately
-    // in the case of the projection matrix itself changing value, we want to dispatch an event for all the shaders
-    // listening The observed variables and the event system use the publisher/subscriber paradigm to ensure that these
-    // chains of dependencies are able to update as a chain.
     glEngine::glEngine() :
-        m_gMode(Enum::gfx_mode::R2D, {[this](const Enum::gfx_mode&) { calculate_projection(); }}),
-        m_nearplane(0.1f, {[this](const float&) {
-                        if (m_gMode.get() == Enum::gfx_mode::R3D) {
-                            calculate_projection();
-                        }
-                    }}),
-        m_farplane(10000.f, {[this](const float&) {
-                       if (m_gMode.get() == Enum::gfx_mode::R3D) {
-                           calculate_projection();
-                       }
-                   }}),
-        m_projectionMatrix(glm::mat4{}, {[](const glm::mat4& mat) {
-                               Assets::ShaderMgr::get().set_projection_matrix(mat);
-                               SubSystems::EventSystem::get().dispatch("projection-matrix-changed", mat);
-                           }}) {
+        camera_2d_(std::make_shared<Camera2D>()), camera_3d_(std::make_shared<Camera3D>()), active_camera_(camera_2d_) {
         renderer = &Singleton_CTS<RenderAPIs::OpenGLRenderer>::get();
     }
 
+    void glEngine::synchronize_camera() {
+        auto* window = renderer->display ? renderer->display->active_window() : nullptr;
+        if (!window)
+            throw Exceptions::failed_operation(CE_HERE, "No active window is available for the camera");
+
+        const auto size = window->framebuffer_size();
+        if (viewport_size_ != size) {
+            renderer->set_viewport(size);
+            viewport_size_ = size;
+        }
+        active_camera_->set_framebuffer_size(size);
+        if (published_camera_ == active_camera_ && published_revision_ == active_camera_->revision())
+            return;
+
+        if (active_camera_->mode() == Enum::gfx_mode::R3D)
+            glEnable(GL_DEPTH_TEST);
+        else
+            glDisable(GL_DEPTH_TEST);
+
+        const auto& projection = active_camera_->projection_matrix();
+        const bool projection_changed = !published_camera_ || published_projection_ != projection;
+        Assets::ShaderMgr::get().set_camera_matrices(projection, active_camera_->view_matrix());
+        if (projection_changed)
+            SubSystems::EventSystem::get().dispatch("projection-matrix-changed", projection);
+
+        published_projection_ = projection;
+        published_revision_ = active_camera_->revision();
+        published_camera_ = active_camera_;
+    }
+
+    void glEngine::set_camera(std::shared_ptr<CameraBase> camera) {
+        if (!camera)
+            throw Exceptions::invalid_args(CE_HERE, "Cannot activate a null camera");
+        active_camera_ = std::move(camera);
+        if (initialized_)
+            synchronize_camera();
+    }
+
     void glEngine::init() {
+        if (initialized_)
+            return;
         renderer->initialize_libraries();
         renderer->initialize_rendering_context();
-        SubSystems::EventSystem::get().register_listener("window-resized",
-                                                         [this](std::any) { calculate_projection(); });
-        calculate_projection();
+        synchronize_camera();
+        initialized_ = true;
     }
 
     void glEngine::deinit() {
-#ifdef POSH_OS_LINUX
-        //?
-#else
-        glMakeCurrent(0, 0);
-#endif
+        initialized_ = false;
+        published_camera_.reset();
+        viewport_size_ = {-1, -1};
     }
 
     void glEngine::pre_draw() {
-        glfwPollEvents(); // OS Event Queue needs servicing
-        set_clear_colour(0.4, 0.2, 0.8, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glfwPollEvents();
+        synchronize_camera();
+        renderer->clear();
     }
 
     void glEngine::post_draw() {
-        glfwSwapBuffers(renderer->display->active->glfw_window);
+        renderer->swap_buffer();
     }
 
     bool glEngine::should_close() const {
-        return glfwWindowShouldClose(renderer->display->active->glfw_window);
+        auto* window = renderer->display ? renderer->display->active_window() : nullptr;
+        return !window || glfwWindowShouldClose(window->native_handle());
     }
 
-    void glEngine::set_mode(Enum::gfx_mode mode) {
-        m_gMode.set(mode);
+    void glEngine::set_mode(const Enum::gfx_mode mode) {
+        switch (mode) {
+        case Enum::gfx_mode::R2D:
+            set_camera(camera_2d_);
+            break;
+        case Enum::gfx_mode::R3D:
+            set_camera(camera_3d_);
+            break;
+        default:
+            throw Exceptions::invalid_args(CE_HERE, "Unknown graphics mode");
+        }
     }
 
-    void glEngine::set_mode(Enum::window_mode mode) {
-        renderer->display->active->set_mode(mode);
+    void glEngine::set_mode(const Enum::window_mode mode) {
+        auto* window = renderer->display ? renderer->display->active_window() : nullptr;
+        if (!window)
+            throw Exceptions::failed_operation(CE_HERE, "Cannot change window mode before display initialization");
+        window->set_mode(mode);
+        synchronize_camera();
     }
 
-    void glEngine::set_clear_colour(float r, float g, float b, float a) {
+    void glEngine::set_clear_colour(const float r, const float g, const float b, const float a) {
         glClearColor(r, g, b, a);
     }
 
-    void glEngine::hide_cursor(bool hide) {
-        renderer->display->active->hide_cursor(hide);
+    void glEngine::hide_cursor(const bool hide) {
+        auto* window = renderer->display ? renderer->display->active_window() : nullptr;
+        if (!window)
+            throw Exceptions::failed_operation(CE_HERE, "Cannot set cursor mode before display initialization");
+        window->hide_cursor(hide);
     }
 }

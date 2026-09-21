@@ -2,39 +2,36 @@
 #include "monitor.h"
 #include "window.h"
 
-class GLFWmonitor;
-
-/* DisplaySystem
- * This pod exposes the monitors and windows vectors to the public
- * This was done as a temporary solution to not knowing how this will be used
- *
- * The display system is likely to be used by either the camera or renderer or both.
- * The camera needs actual data from this system, it should be associated with a window
- * and needs the dimensions of that window.
- *
- * todo: revise implementation to remove direct dependency on OpenGL
- * todo: revise access modifiers
- * todo: determine usage/interactions
- */
+#include <memory>
+#include <vector>
 
 namespace CE {
     struct Resolution {
-        uint32_t width : 16{};
-        uint32_t height : 16{};
+        int width{};
+        int height{};
     };
-    struct DisplaySystem {
-        std::vector<Monitor> monitors;
-        std::vector<Window> windows;
-        const int& monitor_count = num_monitors;
-        GLFWmonitor** const glfw_monitors;
-        Monitor primary_monitor;
-        Window* active = nullptr;
-    private:
-        int num_monitors{};
+
+    // Tracks GLFW windows and monitor information. Rendering state belongs to the renderer.
+    // Monitor modes are snapshots; callers can query GLFW again if monitors change at runtime.
+    class DisplaySystem {
     public:
-        explicit DisplaySystem();
-        Window* create_window(Monitor monitor, Enum::window_mode mode, uint16_t width, uint16_t height);
-        Window* create_window(Monitor monitor, Enum::window_mode mode, Resolution res);
-        Window* create_window(Monitor monitor, Enum::window_mode mode);
+        DisplaySystem();
+
+        [[nodiscard]] const std::vector<Monitor>& monitors() const { return monitors_; }
+        [[nodiscard]] int monitor_count() const { return static_cast<int>(monitors_.size()); }
+        [[nodiscard]] const Monitor& primary_monitor() const { return primary_monitor_; }
+        [[nodiscard]] Window* active_window() const { return active_; }
+
+        Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height);
+        Window* create_window(const Monitor& monitor, Enum::window_mode mode, Resolution resolution);
+        Window* create_window(const Monitor& monitor, Enum::window_mode mode);
+        // Selects the initial render window. Additional rendering contexts need GPU resource management.
+        void activate_window(Window& window);
+
+    private:
+        std::vector<Monitor> monitors_;
+        std::vector<std::unique_ptr<Window>> windows_;
+        Monitor primary_monitor_;
+        Window* active_ = nullptr;
     };
 }

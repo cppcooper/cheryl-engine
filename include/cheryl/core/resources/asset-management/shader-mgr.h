@@ -12,9 +12,11 @@ namespace CE::Assets {
         void load_assets(const std::vector<std::filesystem::path>&);
         void load_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages);
         void set_projection_matrix(const glm::mat4& projection);
+        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view);
 
     private:
         glm::mat4 projection_{1.0f};
+        glm::mat4 view_{1.0f};
         std::vector<std::filesystem::path> linked_programs_;
     };
 }

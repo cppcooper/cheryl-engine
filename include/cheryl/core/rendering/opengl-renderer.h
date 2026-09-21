@@ -11,6 +11,7 @@ namespace CE::RenderAPIs {
         void initialize_rendering_context() override;
         void deinitialize() override;
         void clear() override;
+        void set_viewport(FramebufferSize size) override;
         void swap_buffer() override;
         void draw() override;
         program_id compile_shader(fs::path file) override;

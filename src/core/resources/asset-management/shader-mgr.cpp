@@ -28,18 +28,24 @@ namespace CE::Assets {
         program->use();
         program->set_uniform_value("mytexture", GLint{0});
         program->set_uniform_matrix("projectionMatrix", projection_);
-        program->set_uniform_matrix("viewMatrix", glm::mat4(1.0f));
+        program->set_uniform_matrix("viewMatrix", view_);
         program->set_uniform_matrix("modelMatrix", glm::mat4(1.0f));
         loaded_assets.emplace(key, std::move(program));
         linked_programs_.push_back(key);
     }
 
     void ShaderMgr::set_projection_matrix(const glm::mat4& projection) {
+        set_camera_matrices(projection, view_);
+    }
+
+    void ShaderMgr::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
         projection_ = projection;
+        view_ = view;
         for (const auto& key : linked_programs_) {
             auto program = loaded_assets.at(key);
             program->use();
             program->set_uniform_matrix("projectionMatrix", projection_);
+            program->set_uniform_matrix("viewMatrix", view_);
         }
     }
 }

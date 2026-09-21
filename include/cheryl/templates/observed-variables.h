@@ -1,7 +1,11 @@
 #pragma once
+#include <array>
+#include <cstdint>
+#include <functional>
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+#include <utility>
 
 template<typename T, uint8_t Observers = 1>
 struct ObservedVariable {

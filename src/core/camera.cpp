@@ -15,10 +15,14 @@ namespace CE {
             return;
         framebuffer_size_ = size;
         recalculate_projection();
+        ++revision_;
     }
 
     void CameraBase::set_view_matrix(const glm::mat4& view) {
+        if (view_matrix_ == view)
+            return;
         view_matrix_ = view;
+        ++revision_;
     }
 
     Camera2D::Camera2D() {
@@ -41,10 +45,13 @@ namespace CE {
             !std::isfinite(far_plane) || near_plane <= 0.0f || far_plane <= near_plane) {
             throw Exceptions::invalid_args(CE_HERE, "Perspective needs a valid field of view and near/far planes");
         }
+        if (fov_degrees_ == fov_degrees && near_plane_ == near_plane && far_plane_ == far_plane)
+            return;
         fov_degrees_ = fov_degrees;
         near_plane_ = near_plane;
         far_plane_ = far_plane;
         recalculate_projection();
+        ++revision_;
     }
 
     void Camera3D::recalculate_projection() {

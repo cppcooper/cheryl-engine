@@ -1,18 +1,16 @@
 #pragma once
 
+#include <core/display/framebuffer-size.h>
+#include <enums/gfx-mode.h>
 #include <glm.hpp>
 
+#include <cstdint>
+
 namespace CE {
-    struct FramebufferSize {
-        int width = 1;
-        int height = 1;
-
-        bool operator==(const FramebufferSize&) const = default;
-    };
-
     class CameraBase {
     public:
         virtual ~CameraBase() = default;
+        [[nodiscard]] virtual Enum::gfx_mode mode() const = 0;
 
         void set_framebuffer_size(FramebufferSize size);
         void set_view_matrix(const glm::mat4& view);
@@ -20,6 +18,7 @@ namespace CE {
         [[nodiscard]] FramebufferSize framebuffer_size() const { return framebuffer_size_; }
         [[nodiscard]] const glm::mat4& projection_matrix() const { return projection_matrix_; }
         [[nodiscard]] const glm::mat4& view_matrix() const { return view_matrix_; }
+        [[nodiscard]] std::uint64_t revision() const { return revision_; }
 
     protected:
         virtual void recalculate_projection() = 0;
@@ -27,11 +26,13 @@ namespace CE {
         FramebufferSize framebuffer_size_{};
         glm::mat4 projection_matrix_{1.0f};
         glm::mat4 view_matrix_{1.0f};
+        std::uint64_t revision_ = 0;
     };
 
     class Camera2D final : public CameraBase {
     public:
         Camera2D();
+        [[nodiscard]] Enum::gfx_mode mode() const override { return Enum::gfx_mode::R2D; }
 
     protected:
         void recalculate_projection() override;
@@ -40,6 +41,7 @@ namespace CE {
     class Camera3D final : public CameraBase {
     public:
         Camera3D();
+        [[nodiscard]] Enum::gfx_mode mode() const override { return Enum::gfx_mode::R3D; }
         void set_perspective(float fov_degrees, float near_plane, float far_plane);
 
     protected:

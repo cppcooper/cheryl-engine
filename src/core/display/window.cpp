@@ -1,119 +1,137 @@
 #include <core/display/window.h>
-#include <cgl.h>
+
 #include <core/subsystems/event-system.h>
-#include <core/rendering/opengl-renderer.h>
-#include <internals.h>
+#include <internals/exceptions.h>
 
 #include <GLFW/glfw3.h>
 #include <random>
+#include <tuple>
 
 const char* generate_title();
-inline GLFWwindow* create_window(const CE::Monitor&, CE::Enum::window_mode, uint16_t, uint16_t);
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-    glfwMakeContextCurrent(window);
-    glViewport(0,0,width,height);
-    CE::SubSystems::EventSystem::get().dispatch("window-resized",{std::make_tuple(window,width,height)});
-}
+GLFWwindow* create_native_window(const CE::Monitor&, CE::Enum::window_mode, int, int);
 
 namespace CE {
-    Window::Window(const Monitor& monitor, const Enum::window_mode mode, const uint16_t width, const uint16_t height)
-        : ViewPort(width, height), xpos(0), ypos(0), window_mode(mode),
-          glfw_window(create_window(monitor, mode, width, height)),
-          monitor(monitor) {
-        if (!glfw_window) {
-            throw Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
-        }
-        glfwGetMonitorPos(monitor.glfw_monitor, &xpos, &ypos);
+    Window::Window(const Monitor& monitor, const Enum::window_mode mode, const int width, const int height) :
+        logical_size_(width, height), window_mode_(mode), monitor_(monitor),
+        glfw_window_(create_native_window(monitor, mode, width, height)), windowed_width_(width),
+        windowed_height_(height) {
+        glfwGetMonitorPos(monitor_.glfw_monitor, &windowed_x_, &windowed_y_);
         if (mode == Enum::window_mode::NORMAL) {
-            glfwSetWindowPos(glfw_window, xpos, ypos);
+            glfwSetWindowPos(glfw_window_, windowed_x_, windowed_y_);
         }
-        glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
+        glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
+        glfwGetFramebufferSize(glfw_window_, &framebuffer_size_.width, &framebuffer_size_.height);
+        glfwSetWindowUserPointer(glfw_window_, this);
+        glfwSetWindowSizeCallback(glfw_window_, on_window_size);
+        glfwSetFramebufferSizeCallback(glfw_window_, on_framebuffer_size);
     }
 
-    void Window::activate() {
-        Singleton_CTS<RenderAPIs::OpenGLRenderer>::get().display->active = this;
-        glfwMakeContextCurrent(glfw_window);
+    Window::~Window() {
+        glfwSetFramebufferSizeCallback(glfw_window_, nullptr);
+        glfwSetWindowSizeCallback(glfw_window_, nullptr);
+        glfwSetWindowUserPointer(glfw_window_, nullptr);
+        glfwDestroyWindow(glfw_window_);
     }
 
-    void Window::resize(const uint16_t width, const uint16_t height) {
-        if (glfw_window) {
-            x = width;
-            y = height;
-            glfwSetWindowSize(glfw_window, width, height);
-        }
-    }
-
-    void Window::set_mode(Enum::window_mode mode) {
-        if (window_mode == mode) {
+    void Window::on_window_size(GLFWwindow* handle, const int width, const int height) {
+        auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+        if (!window)
             return;
+        window->logical_size_ = {width, height};
+        if (window->window_mode_ == Enum::window_mode::NORMAL) {
+            window->windowed_width_ = width;
+            window->windowed_height_ = height;
         }
-        const GLFWvidmode* vidmode = glfwGetVideoMode(monitor.glfw_monitor);
-        if (!vidmode) {
-            CELog::critical("Unable to retrieve GLFWvidemode* from glfwGetVideoMode({})", reinterpret_cast<uint64_t>(monitor.glfw_monitor));
-            throw Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode.");
-        }
-        uint16_t w{256},h{256};
-        switch(mode) {
-            case Enum::window_mode::NORMAL: {
-                glfwWindowHint(GLFW_DECORATED, true);
-                glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, 0);
-                w=width; h=height;
-                break;
-            }
-            case Enum::window_mode::BORDERLESS: {
-                glfwWindowHint(GLFW_DECORATED, false);
-                glfwWindowHint(GLFW_RED_BITS, vidmode->redBits);
-                glfwWindowHint(GLFW_GREEN_BITS, vidmode->greenBits);
-                glfwWindowHint(GLFW_BLUE_BITS, vidmode->blueBits);
-                glfwWindowHint(GLFW_REFRESH_RATE, vidmode->refreshRate);
-                glfwSetWindowMonitor(glfw_window, nullptr, xpos, ypos, width, height, 0);
-                w=width; h=height;
-                break;
-            }
-            case Enum::window_mode::FULLSCREEN: {
-                glfwGetWindowPos(glfw_window, &xpos, &ypos);
-                glfwSetWindowMonitor(glfw_window, monitor.glfw_monitor, 0, 0, monitor.width, monitor.height, vidmode->refreshRate);
-                w=monitor.width; h=monitor.height;
-                break;
-            }
-        }
-        activate();
-        glViewport(0,0,w,h);
     }
 
-    void Window::hide_cursor(bool hide) const {
-        if (!hide) {
-            glfwSetInputMode(glfw_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL );
-        } else {
-            glfwSetInputMode(glfw_window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN );
+    void Window::on_framebuffer_size(GLFWwindow* handle, const int width, const int height) {
+        auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+        if (window)
+            window->update_framebuffer_size(width, height);
+    }
+
+    void Window::update_framebuffer_size(const int width, const int height) {
+        if (framebuffer_size_ == FramebufferSize{width, height})
+            return;
+        framebuffer_size_ = {width, height};
+        SubSystems::EventSystem::get().dispatch("window-resized", std::make_tuple(glfw_window_, width, height));
+    }
+
+    void Window::resize(const int width, const int height) {
+        if (width <= 0 || height <= 0)
+            throw Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+        glfwSetWindowSize(glfw_window_, width, height);
+        glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
+        if (window_mode_ == Enum::window_mode::NORMAL) {
+            windowed_width_ = logical_size_.width;
+            windowed_height_ = logical_size_.height;
         }
+        int framebuffer_width = 0;
+        int framebuffer_height = 0;
+        glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
+        update_framebuffer_size(framebuffer_width, framebuffer_height);
+    }
+
+    void Window::set_mode(const Enum::window_mode mode) {
+        if (window_mode_ == mode)
+            return;
+        if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS &&
+            mode != Enum::window_mode::FULLSCREEN)
+            throw Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+
+        const GLFWvidmode* vidmode = glfwGetVideoMode(monitor_.glfw_monitor);
+        if (!vidmode) {
+            throw Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode");
+        }
+
+        if (window_mode_ == Enum::window_mode::NORMAL) {
+            glfwGetWindowPos(glfw_window_, &windowed_x_, &windowed_y_);
+            glfwGetWindowSize(glfw_window_, &windowed_width_, &windowed_height_);
+        }
+        window_mode_ = mode;
+        switch (mode) {
+        case Enum::window_mode::NORMAL:
+            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
+            break;
+        case Enum::window_mode::BORDERLESS:
+            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
+            break;
+        case Enum::window_mode::FULLSCREEN:
+            glfwSetWindowMonitor(glfw_window_, monitor_.glfw_monitor, 0, 0, monitor_.width, monitor_.height,
+                                 vidmode->refreshRate);
+            break;
+        }
+        glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
+        int framebuffer_width = 0;
+        int framebuffer_height = 0;
+        glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
+        update_framebuffer_size(framebuffer_width, framebuffer_height);
+    }
+
+    void Window::hide_cursor(const bool hide) const {
+        glfwSetInputMode(glfw_window_, GLFW_CURSOR, hide ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
     }
 }
 
 using CE::Monitor;
 namespace Enum = CE::Enum;
-inline GLFWwindow* create_window(const Monitor& monitor, const Enum::window_mode mode, const uint16_t width, const uint16_t height) {
-        switch (mode) {
-            case Enum::window_mode::NORMAL: {
-                glfwWindowHint(GLFW_DECORATED, true);
-                auto w = glfwCreateWindow(width, height, generate_title(), nullptr, nullptr);
-                glfwMakeContextCurrent(w);
-                return w;
-            }
-            case Enum::window_mode::FULLSCREEN:
-                return glfwCreateWindow(width, height, generate_title(), monitor.glfw_monitor, nullptr);
-            case Enum::window_mode::BORDERLESS:
-                const GLFWvidmode* vidmode = glfwGetVideoMode(monitor.glfw_monitor);
-            glfwWindowHint(GLFW_DECORATED, false);
-            glfwWindowHint(GLFW_RED_BITS, vidmode->redBits);
-            glfwWindowHint(GLFW_GREEN_BITS, vidmode->greenBits);
-            glfwWindowHint(GLFW_BLUE_BITS, vidmode->blueBits);
-            glfwWindowHint(GLFW_REFRESH_RATE, vidmode->refreshRate);
-            return glfwCreateWindow(width, height, generate_title(), nullptr, nullptr);
-        }
-        return nullptr;
-    }
+GLFWwindow* create_native_window(const Monitor& monitor, const Enum::window_mode mode, const int width,
+                                 const int height) {
+    if (width <= 0 || height <= 0)
+        throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+    if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS &&
+        mode != Enum::window_mode::FULLSCREEN)
+        throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+
+    glfwWindowHint(GLFW_DECORATED, mode == Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
+    auto* fullscreen_monitor = mode == Enum::window_mode::FULLSCREEN ? monitor.glfw_monitor : nullptr;
+    auto* native = glfwCreateWindow(width, height, generate_title(), fullscreen_monitor, nullptr);
+    if (!native)
+        throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
+    return native;
+}
 
     const char* generate_title() {
         std::random_device rng;

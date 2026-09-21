@@ -1,34 +1,62 @@
 #include <core/display/display-system.h>
-#include <GLFW/glfw3.h>
+
+#include <internals/exceptions.h>
+
+#include <algorithm>
+#include <memory>
 
 namespace CE {
-    Monitor CreatePrimary() {
-        auto p = glfwGetPrimaryMonitor();
-        auto vm = glfwGetVideoMode(p);
-        return {p, vm};
-    }
-
-    DisplaySystem::DisplaySystem() : glfw_monitors(glfwGetMonitors(&num_monitors)), primary_monitor(CreatePrimary()) {
-        monitors.push_back(primary_monitor);
-        // ReSharper disable once CppDFAConstantConditions
-        for (int i = 0; i < num_monitors; ++i) {
-            // ReSharper disable once CppDFAUnreachableCode
-            if (auto monitor = glfw_monitors[i]; monitor != primary_monitor.glfw_monitor) {
-                monitors.emplace_back(monitor, glfwGetVideoMode(monitor));
-            }
+    namespace {
+        Monitor create_primary_monitor() {
+            auto* handle = glfwGetPrimaryMonitor();
+            const auto* video_mode = handle ? glfwGetVideoMode(handle) : nullptr;
+            if (!video_mode)
+                throw Exceptions::runtime_exception(CE_HERE, "No primary monitor or video mode is available");
+            return {handle, video_mode};
         }
     }
 
-    Window* DisplaySystem::create_window(Monitor monitor, Enum::window_mode mode, uint16_t width, uint16_t height) {
-        windows.emplace_back(monitor, mode, width, height);
-        return &windows[windows.size()-1];
+    DisplaySystem::DisplaySystem() : primary_monitor_(create_primary_monitor()) {
+        int count = 0;
+        GLFWmonitor** handles = glfwGetMonitors(&count);
+        if (!handles || count <= 0)
+            throw Exceptions::runtime_exception(CE_HERE, "No monitors are available");
+
+        monitors_.reserve(static_cast<std::size_t>(count));
+        monitors_.push_back(primary_monitor_);
+        for (int index = 0; index < count; ++index) {
+            if (handles[index] == primary_monitor_.glfw_monitor)
+                continue;
+            const auto* video_mode = glfwGetVideoMode(handles[index]);
+            if (video_mode)
+                monitors_.emplace_back(handles[index], video_mode);
+        }
     }
 
-    Window* DisplaySystem::create_window(Monitor monitor, Enum::window_mode mode, Resolution res) {
-        return create_window(monitor, mode, res.width, res.height);
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const int width,
+                                         const int height) {
+        auto window = std::make_unique<Window>(monitor, mode, width, height);
+        auto* result = window.get();
+        windows_.push_back(std::move(window));
+        return result;
     }
 
-    Window* DisplaySystem::create_window(Monitor monitor, Enum::window_mode mode) {
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode,
+                                         const Resolution resolution) {
+        return create_window(monitor, mode, resolution.width, resolution.height);
+    }
+
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode) {
         return create_window(monitor, mode, monitor.width, monitor.height);
+    }
+
+    void DisplaySystem::activate_window(Window& window) {
+        const auto owned =
+            std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
+        if (!owned)
+            throw Exceptions::invalid_args(CE_HERE, "Active window must be owned by DisplaySystem");
+        if (active_ && active_ != &window)
+            throw Exceptions::failed_operation(CE_HERE, "Switching active rendering windows is not supported");
+        active_ = &window;
     }
 }

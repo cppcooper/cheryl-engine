@@ -27,14 +27,16 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_SAMPLES, 8);
             display = std::make_unique<DisplaySystem>();
-            const auto pm = display->primary_monitor;
+            const auto& pm = display->primary_monitor();
             float sw, sh;
             glfwGetMonitorContentScale(pm.glfw_monitor, &sw, &sh);
             sw = std::max(sw, 1.0f);
             sh = std::max(sh, 1.0f);
-            const uint16_t width = std::lround(pm.width / sw);
-            const uint16_t height = std::lround(pm.height / sh);
-            display->create_window(pm, Enum::window_mode::NORMAL, width, height)->activate();
+            const int width = std::max(1L, std::lround(pm.width / sw));
+            const int height = std::max(1L, std::lround(pm.height / sh));
+            auto* window = display->create_window(pm, Enum::window_mode::NORMAL, width, height);
+            display->activate_window(*window);
+            glfwMakeContextCurrent(window->native_handle());
         });
     }
 
@@ -56,13 +58,11 @@ namespace CE::RenderAPIs {
         if (!lib_init) {
             initialize_libraries();
         }
-        if (!display->active || !display->active->glfw_window) {
+        if (!display || !display->active_window()) {
             throw Exceptions::runtime_exception(CE_HERE, "Cannot initialize rendering without an active window");
         }
-        int framebuffer_width = 0;
-        int framebuffer_height = 0;
-        glfwGetFramebufferSize(display->active->glfw_window, &framebuffer_width, &framebuffer_height);
-        glViewport(0, 0, framebuffer_width, framebuffer_height);
+        const auto size = display->active_window()->framebuffer_size();
+        set_viewport(size);
         /// Here we query how much sampling is possible and set that to be used if possible
         GLint samples = 0;
         glGetIntegerv(GL_SAMPLES, &samples);
@@ -79,8 +79,7 @@ namespace CE::RenderAPIs {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        // it's dark here. (part 3)
-        glClearColor(0.f, 0.f, 0.f, 0.f); // white or black, dunno
+        glClearColor(0.4f, 0.2f, 0.8f, 1.0f);
         glfwSwapInterval(1);
     }
 
@@ -92,8 +91,12 @@ namespace CE::RenderAPIs {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
+    void OpenGLRenderer::set_viewport(const FramebufferSize size) {
+        glViewport(0, 0, size.width, size.height);
+    }
+
     void OpenGLRenderer::swap_buffer() {
-        glfwSwapBuffers(display->active->glfw_window);
+        glfwSwapBuffers(display->active_window()->native_handle());
     }
 
     void OpenGLRenderer::draw() {

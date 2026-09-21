@@ -8,11 +8,10 @@
 class GLFWmonitor;
 
 namespace CE {
-// todo: convert to class? control state modification
-//  mode, window size?
-    struct Monitor : ViewPort<uint16_t> {
+    // A snapshot of a monitor and its current video mode when the display is created.
+    struct Monitor : ViewPort<int> {
         GLFWmonitor* const glfw_monitor;
-        Monitor(GLFWmonitor* glfw_mon, uint16_t width, uint16_t height);
+        Monitor(GLFWmonitor* glfw_mon, int width, int height);
         Monitor(GLFWmonitor* glfw_mon, const GLFWvidmode* mode);
     };
 }
