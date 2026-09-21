@@ -19,6 +19,7 @@ set(TEST_TARGET all-tests)
 set(ASSET_MANIFEST_TEST_TARGET asset-manifest-tests)
 set(FONT_SYSTEM_TEST_TARGET font-system-tests)
 set(CAMERA_TEST_TARGET camera-tests)
+set(INPUT_TEST_TARGET input-tests)
 
 # source files
 find_package(X11)
@@ -114,6 +115,17 @@ add_executable(${CAMERA_TEST_TARGET}
 target_link_libraries(${CAMERA_TEST_TARGET} PRIVATE gtest Backward::Object)
 gtest_discover_tests(${CAMERA_TEST_TARGET}
         TEST_PREFIX "camera:"
+        DISCOVERY_MODE PRE_TEST)
+
+# GLFW key translation and callback binding require no window or native Gainput backend.
+add_executable(${INPUT_TEST_TARGET}
+        tests/executables/gtest.cpp
+        tests/executables/gtest/core/input.cpp
+        src/core/controls/glfw-bindings.cpp
+        src/core/controls/input-bindings.cpp)
+target_link_libraries(${INPUT_TEST_TARGET} PRIVATE gtest)
+gtest_discover_tests(${INPUT_TEST_TARGET}
+        TEST_PREFIX "input:"
         DISCOVERY_MODE PRE_TEST)
 
 add_executable(backward-cpp tests/executables/backward.cpp)

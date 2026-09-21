@@ -1,36 +1,26 @@
 #include <core/controls/input-mapper.h>
-#include <templates/singleton.h>
+#include <core/controls/input-system.h>
 
 namespace CE::Input {
+    InputMapper::InputMapper() : InputMapper(InputSystem::get().manager()) {
+    }
 
-    InputMapper::InputMapper() {
-        id = Singleton_CTS<gainput::InputManager>::get().AddListener(this);
+    InputMapper::InputMapper(gainput::InputManager& manager) : manager_(manager), id_(manager_.AddListener(this)) {
     }
 
     InputMapper::~InputMapper() {
-        Singleton_CTS<gainput::InputManager>::get().RemoveListener(id);
+        manager_.RemoveListener(id_);
     }
 
-    bool InputMapper::OnDeviceButtonFloat(gainput::DeviceId device, gainput::DeviceButtonId input, float old_value, float new_value) {
-        if(const DeviceBind binding{device,input}; axis_callbacks.contains(binding)) {
-            axis_callbacks[binding](old_value, new_value);
-        }
-        return false;
+    bool InputMapper::OnDeviceButtonFloat(const gainput::DeviceId device, const gainput::DeviceButtonId input,
+                                          const float old_value, const float new_value) {
+        on_axis({device, input}, old_value, new_value);
+        return true;
     }
 
-    bool InputMapper::OnDeviceButtonBool(gainput::DeviceId device, gainput::DeviceButtonId input, bool old_value, bool new_value) {
-        if(const DeviceBind binding{device,input}; button_callbacks.contains(binding)) {
-            button_callbacks[binding](old_value, new_value);
-        }
-        return false;
+    bool InputMapper::OnDeviceButtonBool(const gainput::DeviceId device, const gainput::DeviceButtonId input,
+                                         const bool old_value, const bool new_value) {
+        on_button({device, input}, old_value, new_value);
+        return true;
     }
-
-    void InputMapper::bind_axis(DeviceBind binding, std::function<void(float, float)> callback) {
-        axis_callbacks.emplace(binding, callback);
-    }
-
-    void InputMapper::bind_button(DeviceBind binding, std::function<void(bool, bool)> callback) {
-        axis_callbacks.emplace(binding, callback);
-    }
-
 }

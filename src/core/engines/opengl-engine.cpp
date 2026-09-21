@@ -1,6 +1,7 @@
 #include <core/engines/opengl-engine.h>
 
 #include <cgl.h>
+#include <core/controls/input-system.h>
 #include <core/rendering/opengl-renderer.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/subsystems/event-system.h>
@@ -60,17 +61,26 @@ namespace CE::Engine {
         renderer->initialize_libraries();
         renderer->initialize_rendering_context();
         synchronize_camera();
+        Input::InputSystem::get().initialize(*renderer->display->active_window());
         initialized_ = true;
     }
 
     void glEngine::deinit() {
+        if (initialized_)
+            Input::InputSystem::get().deinitialize();
         initialized_ = false;
         published_camera_.reset();
         viewport_size_ = {-1, -1};
     }
 
-    void glEngine::pre_draw() {
+    void glEngine::poll_input() {
+        if (!initialized_)
+            throw Exceptions::failed_operation(CE_HERE, "Input cannot be polled before engine initialization");
         glfwPollEvents();
+        Input::InputSystem::get().update();
+    }
+
+    void glEngine::pre_draw() {
         synchronize_camera();
         renderer->clear();
     }

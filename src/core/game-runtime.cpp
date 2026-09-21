@@ -17,7 +17,10 @@ namespace CE::GFramework {
             e->init();
             gf->init();
             running = true;
-            while (running && !e->should_close()) {
+            while (running) {
+                e->poll_input();
+                if (e->should_close())
+                    break;
                 const double dt = delta();
                 gf->update(dt);
 
