@@ -3,6 +3,7 @@
 #include <assets/manifest.h>
 #include <assets/primitives/vertex-array-object.h>
 #include <core/resources/asset-management/manifest-loader.h>
+#include <internals/exceptions.h>
 #include <math/anchor.h>
 
 #include <algorithm>
@@ -11,7 +12,6 @@
 #include <limits>
 #include <numeric>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -40,8 +40,15 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
     EXPECT_EQ(vertices[2].x, vertices[4].x);
     EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
-    EXPECT_THROW(CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8),
-                 std::invalid_argument);
+    try {
+        CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
+        FAIL() << "An invalid pivot should throw";
+    }
+    catch (const CE::Exceptions::invalid_args& error) {
+        EXPECT_NE(std::string(error.what()).find("A pivot must be normalized"), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);
+    }
 }
 
 TEST(asset_grid, resolves_spaced_row_major_cells) {
@@ -54,7 +61,7 @@ TEST(asset_grid, resolves_spaced_row_major_cells) {
     EXPECT_EQ(cell.y, 13);
     EXPECT_EQ(grid.occupied_right(), 34);
     EXPECT_EQ(grid.occupied_bottom(), 21);
-    EXPECT_THROW(static_cast<void>(grid.cell_rect(6)), std::out_of_range);
+    EXPECT_THROW(static_cast<void>(grid.cell_rect(6)), CE::Exceptions::bad_request);
 }
 
 TEST(asset_manifest, parses_every_checked_in_manifest) {
@@ -217,5 +224,13 @@ TEST(asset_manifest, rejects_out_of_range_cells) {
       }
     })json");
 
-    EXPECT_THROW(static_cast<void>(ManifestLoader::parse(input, "bad.json")), std::runtime_error);
+    try {
+        static_cast<void>(ManifestLoader::parse(input, "bad.json"));
+        FAIL() << "An out-of-range cell should throw";
+    }
+    catch (const CE::Exceptions::runtime_exception& error) {
+        EXPECT_NE(std::string(error.what()).find("bad.json"), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);
+    }
 }

@@ -2,7 +2,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 #include <cstddef>
-#include <stdexcept>
+#include <internals/exceptions.h>
 
 namespace CE::Assets {
     struct Frame {
@@ -42,7 +42,7 @@ namespace CE::Assets {
         }
         void set_frame(const std::size_t frame) {
             if (limit_ == 0) {
-                throw std::out_of_range("Cannot select a frame from an empty sequence");
+                throw Exceptions::bad_request(CE_HERE, "Cannot select a frame from an empty sequence");
             }
             index_ = frame % limit_;
         }

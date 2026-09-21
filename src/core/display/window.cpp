@@ -6,7 +6,6 @@
 
 #include <GLFW/glfw3.h>
 #include <random>
-#include <stdexcept>
 
 const char* generate_title();
 inline GLFWwindow* create_window(const CE::Monitor&, CE::Enum::window_mode, uint16_t, uint16_t);
@@ -23,7 +22,7 @@ namespace CE {
           glfw_window(create_window(monitor, mode, width, height)),
           monitor(monitor) {
         if (!glfw_window) {
-            throw std::runtime_error("Failed to create a GLFW window");
+            throw Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
         }
         glfwGetMonitorPos(monitor.glfw_monitor, &xpos, &ypos);
         if (mode == Enum::window_mode::NORMAL) {

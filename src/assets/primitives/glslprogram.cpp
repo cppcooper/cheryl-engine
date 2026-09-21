@@ -65,7 +65,7 @@ namespace CE::Assets {
 
     void GLSLProgram::use() {
         if (!link()) {
-            throw std::runtime_error("Cannot use an unlinked shader program");
+            throw Exceptions::runtime_exception(CE_HERE, "Cannot use an unlinked shader program");
         }
         glUseProgram(id_prog);
     }

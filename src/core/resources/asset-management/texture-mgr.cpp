@@ -2,7 +2,6 @@
 #include <core/resources/objects/object-construction.hpp>
 #include <internals.h>
 
-#include <stdexcept>
 
 namespace CE::Assets {
     TextureMgr::spointer TextureMgr::get_asset(const fs::path& file) const {
@@ -20,8 +19,8 @@ namespace CE::Assets {
                 continue;
             }
             if (result) {
-                throw std::runtime_error("Texture filename '" + file.string() +
-                                         "' is ambiguous; use its resolved path");
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Texture filename '" + file.string() + "' is ambiguous; use its resolved path");
             }
             result = texture;
         }

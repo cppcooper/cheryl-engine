@@ -4,13 +4,13 @@
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/font-mgr.h>
 #include <core/resources/asset-management/shader-mgr.h>
+#include <internals/exceptions.h>
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 
 #include <filesystem>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <utility>
 
 class Game : public CE::GFramework::AbstractGame {
@@ -22,9 +22,9 @@ public:
         font_ = CE::Assets::FontMgr::get().default_font();
         font_shader_ = CE::Assets::ShaderMgr::get().get_asset(asset_root_ / "shaders" / "shader2d");
         if (!font_)
-            throw std::runtime_error("No supported system font was found");
+            throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
         if (!font_shader_)
-            throw std::runtime_error("The shader2d program was not loaded");
+            throw CE::Exceptions::runtime_exception(CE_HERE, "The shader2d program was not loaded");
     }
     void deinit() override {}
     void update(double seconds) override {}

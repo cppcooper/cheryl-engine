@@ -39,13 +39,15 @@ CE::Exceptions::exception_base FormatException(const std::format_string<Args...>
     return CE::Exceptions::exception_base(std::vformat(fmt.get(), std::make_format_args(args...)));
 }
 
-CE::Exceptions::invalid_args::invalid_args(const char* location_, uint32_t line_) noexcept
-        : CE::Exceptions::exception_base(FormatException("{}\nexception: at line {} inside {}\n{}\n",
-                                                         insert_st(), "runtime exception: ", line_, location_)) { }
+CE::Exceptions::invalid_args::invalid_args(const char* location_, uint32_t line_) noexcept :
+    CE::Exceptions::exception_base(
+        FormatException("{}\nexception: invalid args at line {} inside {}\n", insert_st(), line_, location_)) {
+}
 
-CE::Exceptions::invalid_args::invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept
-        : CE::Exceptions::exception_base(FormatException("{}\nexception: {} at line {} inside {}\n{}\n",
-                                                         insert_st(), "runtime exception: ", line_, location_, info_)) { }
+CE::Exceptions::invalid_args::invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept :
+    CE::Exceptions::exception_base(FormatException("{}\nexception: invalid args at line {} inside {}\n{}\n",
+                                                   insert_st(), line_, location_, info_)) {
+}
 
 CE::Exceptions::runtime_exception::runtime_exception(const char* location_, uint32_t line_, const char* info_) noexcept
         : CE::Exceptions::exception_base(FormatException("{}\nexception: {} at line {} inside {}\n{}\n",

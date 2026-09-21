@@ -2,24 +2,24 @@
 
 #include <core/resources/memory.h>
 #include <math/anchor.h>
+#include <internals/exceptions.h>
 
 #include <limits>
-#include <stdexcept>
 #include <utility>
 
 namespace CE::Assets {
     GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const Texture& texture) {
         if (texture.width <= 0 || texture.height <= 0) {
-            throw std::runtime_error("Cannot build an asset grid from an empty texture");
+            throw Exceptions::runtime_exception(CE_HERE, "Cannot build an asset grid from an empty texture");
         }
         if (grid.occupied_right() > static_cast<std::uint64_t>(texture.width) ||
             grid.occupied_bottom() > static_cast<std::uint64_t>(texture.height)) {
-            throw std::runtime_error("Asset grid extends beyond its texture bounds");
+            throw Exceptions::runtime_exception(CE_HERE, "Asset grid extends beyond its texture bounds");
         }
 
         const auto cell_count = grid.cell_count();
         if (cell_count > std::numeric_limits<std::uint32_t>::max() / VAONumbers::vertices_per_quad) {
-            throw std::overflow_error("Asset grid has too many vertices for a VAO");
+            throw Exceptions::runtime_exception("overflow", CE_HERE, "Asset grid has too many vertices for a VAO");
         }
         const auto vertex_count = static_cast<std::uint32_t>(cell_count * VAONumbers::vertices_per_quad);
         const auto vertices_bytes = sizeof(Vertex2D) * vertex_count;
@@ -31,7 +31,8 @@ namespace CE::Assets {
             const auto rect = grid.cell_rect(cell);
             if (rect.x > std::numeric_limits<std::uint32_t>::max() ||
                 rect.y > std::numeric_limits<std::uint32_t>::max()) {
-                throw std::overflow_error("Asset grid pixel coordinate exceeds uint32_t");
+                throw Exceptions::runtime_exception("overflow", CE_HERE,
+                                                    "Asset grid pixel coordinate exceeds uint32_t");
             }
             math::Anchor::MakePivot(pivot, vertices.get() + cell * VAONumbers::vertices_per_quad,
                                     static_cast<std::uint32_t>(texture.width),

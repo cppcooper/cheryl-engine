@@ -10,7 +10,7 @@
 #include <cmath>
 #include <cstddef>
 #include <fstream>
-#include <stdexcept>
+#include <internals/exceptions.h>
 #include <utility>
 #include <vector>
 
@@ -19,15 +19,15 @@ namespace CE::Assets {
         std::vector<unsigned char> read_font_file(const std::filesystem::path& path) {
             std::ifstream input(path, std::ios::binary | std::ios::ate);
             if (!input)
-                throw std::runtime_error("Unable to open font file '" + path.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE, "Unable to open font file '" + path.string() + "'");
 
             const auto end = input.tellg();
             if (end <= 0)
-                throw std::runtime_error("Font file is empty: '" + path.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE, "Font file is empty: '" + path.string() + "'");
             std::vector<unsigned char> bytes(static_cast<std::size_t>(end));
             input.seekg(0, std::ios::beg);
             if (!input.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
-                throw std::runtime_error("Unable to read font file '" + path.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE, "Unable to read font file '" + path.string() + "'");
             }
             return bytes;
         }
@@ -53,7 +53,7 @@ namespace CE::Assets {
 
     void STBFont::print(std::string text, FontDrawInfo* format) {
         if (!format)
-            throw std::invalid_argument("A font draw requires formatting information");
+            throw Exceptions::invalid_args(CE_HERE, "A font draw requires formatting information");
         print_message_ = std::move(text);
         print_angle_ = format->angle;
         draw(*format);
@@ -61,7 +61,7 @@ namespace CE::Assets {
 
     void STBFont::draw(const DrawInfo& info) {
         if (!info.material)
-            throw std::invalid_argument("A font draw requires a shader program");
+            throw Exceptions::invalid_args(CE_HERE, "A font draw requires a shader program");
         info.material->use();
         info.material->set_uniform_value("in_Alpha", info.alpha);
         info.material->set_uniform_value("in_Scale", 1.0f);
@@ -106,12 +106,13 @@ namespace CE::Assets {
 
     STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size) {
         if (font_size <= 0)
-            throw std::invalid_argument("Font size must be positive");
+            throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);
         const int font_offset = stbtt_GetFontOffsetForIndex(font_bytes.data(), 0);
         stbtt_fontinfo font_info{};
         if (font_offset < 0 || !stbtt_InitFont(&font_info, font_bytes.data(), font_offset)) {
-            throw std::runtime_error("Unsupported or corrupt font file '" + font_path.string() + "'");
+            throw Exceptions::runtime_exception(CE_HERE,
+                                                "Unsupported or corrupt font file '" + font_path.string() + "'");
         }
 
         std::array<stbtt_bakedchar, font_character_count> baked_characters{};
@@ -125,7 +126,8 @@ namespace CE::Assets {
             if (result > 0)
                 break;
             if (atlas_size == 4096) {
-                throw std::runtime_error("Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE,
+                                                    "Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
             }
             atlas_size *= 2;
         }

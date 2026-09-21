@@ -3,12 +3,12 @@
 #include <core.h>
 #include <enums.h>
 #include <assets/primitives/glslprogram.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <fstream>
 #include <format>
 #include <sstream>
-#include <stdexcept>
 #include <vector>
 
 using CE::Enum::ShaderTypes;
@@ -19,7 +19,7 @@ namespace CE::RenderAPIs {
     void OpenGLRenderer::initialize_glfw() {
         std::call_once(glfw_flag, [this]() {
             if (!glfwInit()) {
-                throw std::runtime_error("Failed to initialize GLFW.");
+                throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW.");
             }
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -41,7 +41,7 @@ namespace CE::RenderAPIs {
     void OpenGLRenderer::initialize_glad() {
         std::call_once(glad_flag, []() {
             if (!gladLoadGL(glfwGetProcAddress)) {
-                throw std::runtime_error("Failed to initialize OpenGL context");
+                throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize OpenGL context");
             }
         });
     }
@@ -57,7 +57,7 @@ namespace CE::RenderAPIs {
             initialize_libraries();
         }
         if (!display->active || !display->active->glfw_window) {
-            throw std::runtime_error("Cannot initialize rendering without an active window");
+            throw Exceptions::runtime_exception(CE_HERE, "Cannot initialize rendering without an active window");
         }
         int framebuffer_width = 0;
         int framebuffer_height = 0;
@@ -124,18 +124,18 @@ namespace CE::RenderAPIs {
 
     program_id OpenGLRenderer::compile_program(const std::vector<fs::path>& files) {
         if (files.size() < 2) {
-            throw std::invalid_argument("A shader program needs vertex and fragment stages");
+            throw Exceptions::invalid_args(CE_HERE, "A shader program needs vertex and fragment stages");
         }
         const GLuint program = glCreateProgram();
         if (!program) {
-            throw std::runtime_error("Failed to create an OpenGL program");
+            throw Exceptions::runtime_exception(CE_HERE, "Failed to create an OpenGL program");
         }
         std::vector<GLuint> compiled;
         try {
             for (const auto& file : files) {
                 std::ifstream input(file);
                 if (!input) {
-                    throw std::runtime_error("Unable to open shader: " + file.string());
+                    throw Exceptions::runtime_exception(CE_HERE, "Unable to open shader: " + file.string());
                 }
                 std::ostringstream buffer;
                 buffer << input.rdbuf();
@@ -161,7 +161,7 @@ namespace CE::RenderAPIs {
                 }
                 const GLuint stage = glCreateShader(gl_type);
                 if (!stage) {
-                    throw std::runtime_error("Failed to create shader stage: " + file.string());
+                    throw Exceptions::runtime_exception(CE_HERE, "Failed to create shader stage: " + file.string());
                 }
                 compiled.push_back(stage);
                 const char* data = source.c_str();
@@ -174,7 +174,8 @@ namespace CE::RenderAPIs {
                     glGetShaderiv(stage, GL_INFO_LOG_LENGTH, &size);
                     std::string log(static_cast<std::size_t>(std::max(size, 1)), '\0');
                     glGetShaderInfoLog(stage, size, nullptr, log.data());
-                    throw std::runtime_error("Shader compile failed: " + file.string() + "\n" + log);
+                    throw Exceptions::runtime_exception(CE_HERE,
+                                                        "Shader compile failed: " + file.string() + "\n" + log);
                 }
                 glAttachShader(program, stage);
             }
@@ -186,7 +187,7 @@ namespace CE::RenderAPIs {
                 glGetProgramiv(program, GL_INFO_LOG_LENGTH, &size);
                 std::string log(static_cast<std::size_t>(std::max(size, 1)), '\0');
                 glGetProgramInfoLog(program, size, nullptr, log.data());
-                throw std::runtime_error("Shader program link failed:\n" + log);
+                throw Exceptions::runtime_exception(CE_HERE, "Shader program link failed:\n" + log);
             }
         }
         catch (...) {

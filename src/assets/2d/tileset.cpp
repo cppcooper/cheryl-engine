@@ -1,7 +1,7 @@
 #include <assets/2d/tileset.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
-#include <stdexcept>
 #include <utility>
 
 namespace CE::Assets {
@@ -16,7 +16,7 @@ namespace CE::Assets {
     TileAnimation::TileAnimation(TileAnimationDefinition definition, const GLuint id, const shptr<Texture>& texture) :
         Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
         if (definition_.frames.empty()) {
-            throw std::invalid_argument("A tile animation must contain at least one frame");
+            throw Exceptions::invalid_args(CE_HERE, "A tile animation must contain at least one frame");
         }
     }
 
@@ -38,7 +38,7 @@ namespace CE::Assets {
         definition_(std::move(data.definition)) {
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
-                throw std::invalid_argument("Multiple tile animations target the same cell");
+                throw Exceptions::invalid_args(CE_HERE, "Multiple tile animations target the same cell");
             }
         }
     }
@@ -49,7 +49,7 @@ namespace CE::Assets {
 
     Tile Tileset::tile(const std::size_t cell) const {
         if (cell >= definition_.grid.cell_count()) {
-            throw std::out_of_range("Tileset cell is outside the grid");
+            throw Exceptions::bad_request(CE_HERE, "Tileset cell is outside the grid");
         }
         return Tile(cell, vao.id, texture);
     }

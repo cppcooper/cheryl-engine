@@ -1,7 +1,7 @@
 #include <assets/2d/sprite.h>
+#include <internals/exceptions.h>
 
 #include <algorithm>
-#include <stdexcept>
 #include <utility>
 
 namespace CE::Assets {
@@ -22,7 +22,7 @@ namespace CE::Assets {
                                      const shptr<Texture>& texture) :
         Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
         if (definition_.frames.empty()) {
-            throw std::invalid_argument("A sprite animation must contain at least one frame");
+            throw Exceptions::invalid_args(CE_HERE, "A sprite animation must contain at least one frame");
         }
     }
 
@@ -46,7 +46,8 @@ namespace CE::Assets {
         for (const auto& animation_definition : definition_.animations) {
             const auto key = animation_key(animation_definition.name, animation_definition.facing);
             if (animation_indices_.contains(key)) {
-                throw std::invalid_argument("Duplicate sprite animation '" + animation_definition.name + "'");
+                throw Exceptions::invalid_args(CE_HERE,
+                                               "Duplicate sprite animation '" + animation_definition.name + "'");
             }
             animation_indices_.emplace(key, animations_.size());
             animations_.emplace_back(animation_definition, vao.id, texture);
@@ -91,7 +92,8 @@ namespace CE::Assets {
                     continue;
                 }
                 if (match) {
-                    throw std::out_of_range("Sprite animation '" + animation_name + "' requires an explicit facing");
+                    throw Exceptions::bad_request(
+                        CE_HERE, "Sprite animation '" + animation_name + "' requires an explicit facing");
                 }
                 match = &animation;
             }
@@ -99,7 +101,8 @@ namespace CE::Assets {
                 return *match;
             }
         }
-        throw std::out_of_range("Sprite animation '" + animation_name + "' was not loaded for the requested facing");
+        throw Exceptions::bad_request(
+            CE_HERE, "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
     }
 
     SpriteAnimation Sprite::operator[](const std::string& animation_name) const {

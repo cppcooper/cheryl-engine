@@ -85,10 +85,11 @@ add_executable(${ASSET_MANIFEST_TEST_TARGET}
         tests/executables/gtest/assets/manifest.cpp
         src/assets/manifest.cpp
         src/core/resources/asset-management/manifest-loader.cpp
+        src/internal/exceptions.cpp
         src/math/anchor.cpp)
 target_compile_definitions(${ASSET_MANIFEST_TEST_TARGET}
         PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(${ASSET_MANIFEST_TEST_TARGET} PRIVATE gtest)
+target_link_libraries(${ASSET_MANIFEST_TEST_TARGET} PRIVATE gtest Backward::Object)
 add_dependencies(${ASSET_MANIFEST_TEST_TARGET} gl46)
 gtest_discover_tests(${ASSET_MANIFEST_TEST_TARGET}
         TEST_PREFIX "asset-manifest:"

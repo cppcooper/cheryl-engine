@@ -3,8 +3,8 @@
 #include <assets/2d/grid-geometry.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
+#include <internals/exceptions.h>
 
-#include <stdexcept>
 
 namespace CE::Assets {
     void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions) {
@@ -17,8 +17,9 @@ namespace CE::Assets {
             }
             const auto texture = TextureMgr::get().get_asset(definition.texture);
             if (!texture) {
-                throw std::runtime_error("Tileset '" + id + "' references an unloaded texture '" +
-                                         definition.texture.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE,
+                                                    "Tileset '" + id + "' references an unloaded texture '" +
+                                                        definition.texture.string() + "'");
             }
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, *texture);
             const auto& asset = assets[index];

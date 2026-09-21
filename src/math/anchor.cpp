@@ -1,20 +1,20 @@
 #include <math/anchor.h>
 
 #include <assets/primitives/vertex-array-object.h>
+#include <internals/exceptions.h>
 
 #include <cmath>
 #include <cstddef>
-#include <stdexcept>
 
 namespace CE::math {
     namespace {
         void validate(const Pivot pivot, const std::uint32_t texture_width, const std::uint32_t texture_height) {
             if (!std::isfinite(pivot.x) || !std::isfinite(pivot.y) || pivot.x < 0.0f || pivot.x > 1.0f ||
                 pivot.y < 0.0f || pivot.y > 1.0f) {
-                throw std::invalid_argument("A pivot must be normalized to the [0, 1] range");
+                throw Exceptions::invalid_args(CE_HERE, "A pivot must be normalized to the [0, 1] range");
             }
             if (texture_width == 0 || texture_height == 0) {
-                throw std::invalid_argument("A texture must have non-zero dimensions");
+                throw Exceptions::invalid_args(CE_HERE, "A texture must have non-zero dimensions");
             }
         }
 

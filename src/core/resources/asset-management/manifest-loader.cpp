@@ -1,6 +1,7 @@
 #include <core/resources/asset-management/manifest-loader.h>
 
 #include <nlohmann/json.hpp>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <charconv>
@@ -8,7 +9,6 @@
 #include <fstream>
 #include <initializer_list>
 #include <limits>
-#include <stdexcept>
 #include <string_view>
 #include <unordered_set>
 #include <utility>
@@ -26,8 +26,9 @@ namespace CE::Assets {
 
         [[noreturn]] void fail(const fs::path& source, const std::string_view location,
                                const std::string_view message) {
-            throw std::runtime_error("Asset manifest '" + source.string() + "' at " + std::string(location) + ": " +
-                                     std::string(message));
+            throw Exceptions::runtime_exception(CE_HERE,
+                                                "Asset manifest '" + source.string() + "' at " + std::string(location) +
+                                                    ": " + std::string(message));
         }
 
         void require_object(const json& value, const fs::path& source, const std::string_view location) {
@@ -829,7 +830,7 @@ namespace CE::Assets {
     AssetManifest ManifestLoader::load(const std::filesystem::path& file) {
         std::ifstream stream(file);
         if (!stream.is_open()) {
-            throw std::runtime_error("Unable to open asset manifest '" + file.string() + "'");
+            throw Exceptions::runtime_exception(CE_HERE, "Unable to open asset manifest '" + file.string() + "'");
         }
         return parse(stream, file);
     }
@@ -839,7 +840,8 @@ namespace CE::Assets {
             return Parser(source).parse(json::parse(input));
         }
         catch (const json::exception& error) {
-            throw std::runtime_error("Unable to parse asset manifest '" + source.string() + "': " + error.what());
+            throw Exceptions::runtime_exception(
+                CE_HERE, "Unable to parse asset manifest '" + source.string() + "': " + error.what());
         }
     }
 }

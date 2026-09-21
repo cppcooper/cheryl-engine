@@ -2,12 +2,12 @@
 
 #include <core/resources/asset-management.h>
 #include <core/resources/fileio/fonts-system.h>
+#include <internals/exceptions.h>
 #include <stb_image.h>
 
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -28,22 +28,24 @@ namespace CE::Assets {
         void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id,
                          const fs::path& source) {
             if (const auto existing = ids.find(id); existing != ids.end()) {
-                throw std::runtime_error("Duplicate asset ID '" + id + "' in manifests '" + existing->second.string() +
-                                         "' and '" + source.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE,
+                                                    "Duplicate asset ID '" + id + "' in manifests '" +
+                                                        existing->second.string() + "' and '" + source.string() + "'");
             }
             ids.emplace(id, source);
         }
 
         std::pair<int, int> inspect_texture(const fs::path& texture) {
             if (!fs::is_regular_file(texture)) {
-                throw std::runtime_error("Manifest texture does not exist or is not a file: '" + texture.string() +
-                                         "'");
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Manifest texture does not exist or is not a file: '" + texture.string() + "'");
             }
             int width{};
             int height{};
             int channels{};
             if (stbi_info(texture.string().c_str(), &width, &height, &channels) == 0 || width <= 0 || height <= 0) {
-                throw std::runtime_error("Unable to read manifest texture metadata from '" + texture.string() + "'");
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Unable to read manifest texture metadata from '" + texture.string() + "'");
             }
             return {width, height};
         }
@@ -52,16 +54,18 @@ namespace CE::Assets {
                                   const std::pair<int, int> dimensions, const std::string& asset_id) {
             if (grid.occupied_right() > static_cast<std::uint64_t>(dimensions.first) ||
                 grid.occupied_bottom() > static_cast<std::uint64_t>(dimensions.second)) {
-                throw std::runtime_error("Asset '" + asset_id + "' grid exceeds texture '" + texture.string() +
-                                         "' bounds (" + std::to_string(dimensions.first) + 'x' +
-                                         std::to_string(dimensions.second) + ')');
+                throw Exceptions::runtime_exception(
+                    CE_HERE,
+                    "Asset '" + asset_id + "' grid exceeds texture '" + texture.string() + "' bounds (" +
+                        std::to_string(dimensions.first) + 'x' + std::to_string(dimensions.second) + ')');
             }
         }
     }
 
     void Loader::load_assets() {
         if (!fs::is_directory(root_path_)) {
-            throw std::runtime_error("Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
+            throw Exceptions::runtime_exception(
+                CE_HERE, "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
         }
 
         std::vector<fs::path> manifest_files;

@@ -1,7 +1,7 @@
 #include <assets/manifest.h>
+#include <internals/exceptions.h>
 
 #include <limits>
-#include <stdexcept>
 #include <unordered_set>
 
 namespace CE::Assets {
@@ -16,21 +16,21 @@ namespace CE::Assets {
 
     std::size_t GridDefinition::cell_count() const {
         if (rows != 0 && columns > std::numeric_limits<std::size_t>::max() / rows) {
-            throw std::overflow_error("Asset grid cell count exceeds size_t");
+            throw Exceptions::runtime_exception("overflow", CE_HERE, "Asset grid cell count exceeds size_t");
         }
         return rows * columns;
     }
 
     CellIndex GridDefinition::cell_index(const std::size_t row, const std::size_t column) const {
         if (row >= rows || column >= columns) {
-            throw std::out_of_range("Asset grid cell coordinates are out of range");
+            throw Exceptions::bad_request(CE_HERE, "Asset grid cell coordinates are out of range");
         }
         return row * columns + column;
     }
 
     PixelRect GridDefinition::cell_rect(const CellIndex cell) const {
         if (cell >= cell_count()) {
-            throw std::out_of_range("Asset grid cell index is out of range");
+            throw Exceptions::bad_request(CE_HERE, "Asset grid cell index is out of range");
         }
         const auto row = cell / columns;
         const auto column = cell % columns;
