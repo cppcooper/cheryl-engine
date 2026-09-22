@@ -134,4 +134,5 @@ target_link_libraries(backward-cpp PUBLIC Backward::Backward)
 add_executable(cpp-testing tests/executables/cpp-testing.cpp)
 
 add_executable(demo tests/executables/demo.cpp)
+target_compile_definitions(demo PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(demo PUBLIC cherylGL spdlog Backward::Object gainputstatic glfw gl46 GL)
