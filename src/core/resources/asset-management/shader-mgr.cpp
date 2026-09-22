@@ -4,6 +4,7 @@
 
 namespace CE::Assets {
     void ShaderMgr::load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider) {
+        bind_provider(provider);
         for (const auto& file : files) {
             if (!loaded_assets.contains(file)) {
                 loaded_assets.emplace(file, provider.compile_stage(file));
@@ -14,6 +15,7 @@ namespace CE::Assets {
     void ShaderMgr::load_program(const std::filesystem::path& key,
                                  const std::vector<std::filesystem::path>& stages,
                                  ResourceProvider& provider) {
+        bind_provider(provider);
         if (loaded_assets.contains(key))
             return;
         auto program = provider.link_program(stages);

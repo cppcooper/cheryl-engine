@@ -28,6 +28,7 @@ namespace CE::Assets {
     }
 
     void TextureMgr::load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider) {
+        bind_provider(provider);
         for (const auto& requested : files) {
             const auto file = requested.lexically_normal();
             if (!loaded_assets.contains(file)) {

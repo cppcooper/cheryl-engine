@@ -1,6 +1,7 @@
 #pragma once
 #include <assets/abstracts.h>
 #include <core/resources/allocators.h>
+#include <internals/exceptions.h>
 
 #include "block.h"
 
@@ -12,8 +13,29 @@
 #include <vector>
 
 namespace CE::Assets {
+    struct ResourceProvider;
+
+    // Singleton asset managers use one resource provider for their process lifetime.
+    class ProviderBoundCache {
+    public:
+        static void verify_provider(const ResourceProvider& provider) {
+            if (bound_provider_ && bound_provider_ != &provider)
+                throw Exceptions::failed_operation(
+                    CE_HERE, "Asset caches are already bound to another resource provider");
+        }
+
+    protected:
+        static void bind_provider(const ResourceProvider& provider) {
+            verify_provider(provider);
+            bound_provider_ = &provider;
+        }
+
+    private:
+        inline static const ResourceProvider* bound_provider_ = nullptr;
+    };
+
     template <typename AssetType, typename Key = std::filesystem::path>
-    struct AssetMgr {
+    struct AssetMgr : ProviderBoundCache {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
         AssetMgr() = default;

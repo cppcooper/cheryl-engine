@@ -64,6 +64,7 @@ namespace CE::Assets {
     }
 
     void Loader::load_assets(ResourceProvider& provider) {
+        ProviderBoundCache::verify_provider(provider);
         if (!fs::is_directory(root_path_)) {
             throw Exceptions::runtime_exception(
                 CE_HERE, "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");

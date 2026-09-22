@@ -10,6 +10,7 @@
 
 namespace CE::Assets {
     void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
+        bind_provider(provider);
         auto assets = allocate<Tileset>(definitions.size());
         for (std::size_t index = 0; index < definitions.size(); ++index) {
             const auto& definition = definitions[index];

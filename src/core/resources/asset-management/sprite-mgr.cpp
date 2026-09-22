@@ -10,6 +10,7 @@
 
 namespace CE::Assets {
     void SpriteMgr::load_assets(const std::vector<SpriteDefinition>& definitions, ResourceProvider& provider) {
+        bind_provider(provider);
         auto assets = allocate<Sprite>(definitions.size());
         for (std::size_t index = 0; index < definitions.size(); ++index) {
             const auto& definition = definitions[index];
