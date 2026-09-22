@@ -6,12 +6,12 @@
 #include <enums.h>
 
 class GLFWwindow;
+class GLFWmonitor;
 
 namespace CE {
     // Owns a GLFW window and its logical and framebuffer dimensions.
     class Window final {
     public:
-        Window(const Monitor& monitor, Enum::window_mode mode, int width, int height);
         ~Window();
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
@@ -28,6 +28,9 @@ namespace CE {
         void hide_cursor(bool hide) const;
 
     private:
+        friend class DisplaySystem;
+        Window(const Monitor& monitor, GLFWmonitor* native_monitor, Enum::window_mode mode, int width, int height);
+
         static void on_window_size(GLFWwindow* window, int width, int height);
         static void on_framebuffer_size(GLFWwindow* window, int width, int height);
         void update_framebuffer_size(int width, int height);
@@ -36,6 +39,7 @@ namespace CE {
         FramebufferSize framebuffer_size_{};
         Enum::window_mode window_mode_;
         Monitor monitor_;
+        GLFWmonitor* glfw_monitor_;
         GLFWwindow* glfw_window_;
         int windowed_x_ = 0;
         int windowed_y_ = 0;

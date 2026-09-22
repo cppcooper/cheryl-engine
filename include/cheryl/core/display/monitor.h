@@ -1,17 +1,19 @@
 #pragma once
 #include "viewport.h"
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include "GLFW/glfw3.h"
 
-class GLFWmonitor;
+#include <cstdint>
 
 namespace CE {
-    // A snapshot of a monitor and its current video mode when the display is created.
+    class DisplaySystem;
+
+    // A display-owned snapshot of a monitor's current video mode.
     struct Monitor : ViewPort<int> {
-        GLFWmonitor* const glfw_monitor;
-        Monitor(GLFWmonitor* glfw_mon, int width, int height);
-        Monitor(GLFWmonitor* glfw_mon, const GLFWvidmode* mode);
+        Monitor(const Monitor&) = default;
+
+    private:
+        friend class DisplaySystem;
+        Monitor(std::uint64_t id, int width, int height);
+
+        std::uint64_t id_;
     };
 }

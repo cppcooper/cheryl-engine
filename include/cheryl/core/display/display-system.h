@@ -3,7 +3,10 @@
 #include "window.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
+
+class GLFWmonitor;
 
 namespace CE {
     struct Resolution {
@@ -21,6 +24,7 @@ namespace CE {
         [[nodiscard]] int monitor_count() const { return static_cast<int>(monitors_.size()); }
         [[nodiscard]] const Monitor& primary_monitor() const { return primary_monitor_; }
         [[nodiscard]] Window* active_window() const { return active_; }
+        [[nodiscard]] std::pair<float, float> content_scale(const Monitor& monitor) const;
 
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height);
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, Resolution resolution);
@@ -29,7 +33,11 @@ namespace CE {
         void activate_window(Window& window);
 
     private:
+        [[nodiscard]] static Monitor create_primary_monitor();
+        [[nodiscard]] GLFWmonitor* native_monitor(const Monitor& monitor) const;
+
         std::vector<Monitor> monitors_;
+        std::vector<GLFWmonitor*> native_monitors_;
         std::vector<std::unique_ptr<Window>> windows_;
         Monitor primary_monitor_;
         Window* active_ = nullptr;

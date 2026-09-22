@@ -5,6 +5,11 @@
 #include <assets/primitives/glslprogram.h>
 #include <internals/exceptions.h>
 
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
+#include <GLFW/glfw3.h>
+
 #include <algorithm>
 #include <fstream>
 #include <format>
@@ -28,8 +33,7 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_SAMPLES, 8);
             display = std::make_unique<DisplaySystem>();
             const auto& pm = display->primary_monitor();
-            float sw, sh;
-            glfwGetMonitorContentScale(pm.glfw_monitor, &sw, &sh);
+            auto [sw, sh] = display->content_scale(pm);
             sw = std::max(sw, 1.0f);
             sh = std::max(sh, 1.0f);
             const int width = std::max(1L, std::lround(pm.width / sw));
