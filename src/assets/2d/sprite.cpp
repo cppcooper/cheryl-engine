@@ -1,4 +1,5 @@
 #include <assets/2d/sprite.h>
+#include <assets/primitives/vertex.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
@@ -6,11 +7,9 @@
 
 namespace CE::Assets {
     void SpriteFrame::draw(const DrawInfo& info) {
-        glBindVertexArray(id_vao);
-        texture->bind();
+        geometry->bind(*texture);
         info.use_shader();
-        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
-                     VAONumbers::vertices_per_quad);
+        geometry->draw(VAONumbers::calculate_num_vertices(offset_), VAONumbers::vertices_per_quad);
     }
 
     SpriteFrame& SpriteFrame::operator[](const std::size_t frame) {
@@ -18,21 +17,21 @@ namespace CE::Assets {
         return *this;
     }
 
-    SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const GLuint id,
-                                     const shptr<Texture>& texture) :
-        Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
+    SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
+                                     const shptr<Image>& texture) :
+        Draw2D(geometry, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
         if (definition_.frames.empty()) {
             throw Exceptions::invalid_args(CE_HERE, "A sprite animation must contain at least one frame");
         }
     }
 
     void SpriteAnimation::draw(const DrawInfo& info) {
-        SpriteFrame(definition_.frames[index_].cell, id_vao, texture).draw(info);
+        SpriteFrame(definition_.frames[index_].cell, geometry, texture).draw(info);
     }
 
     SpriteFrame SpriteAnimation::operator[](const std::size_t frame) {
         index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
-        return SpriteFrame(definition_.frames[index_].cell, id_vao, texture);
+        return SpriteFrame(definition_.frames[index_].cell, geometry, texture);
     }
 
     std::chrono::milliseconds SpriteAnimation::frame_duration() const {
@@ -40,7 +39,8 @@ namespace CE::Assets {
     }
 
     Sprite::Sprite(SpriteData data) :
-        Asset2D(data.vertices, data.vertex_count, data.texture), Frame(0, 0, data.definition.grid.cell_count()),
+        Asset2D(std::move(data.geometry), std::move(data.texture)),
+        Frame(0, 0, data.definition.grid.cell_count()),
         definition_(std::move(data.definition)) {
         animations_.reserve(definition_.animations.size());
         for (const auto& animation_definition : definition_.animations) {
@@ -50,17 +50,17 @@ namespace CE::Assets {
                                                "Duplicate sprite animation '" + animation_definition.name + "'");
             }
             animation_indices_.emplace(key, animations_.size());
-            animations_.emplace_back(animation_definition, vao.id, texture);
+            animations_.emplace_back(animation_definition, geometry, texture);
         }
     }
 
     void Sprite::draw(const DrawInfo& info) {
-        SpriteFrame(index_, vao.id, texture).draw(info);
+        SpriteFrame(index_, geometry, texture).draw(info);
     }
 
     SpriteFrame Sprite::operator[](const std::size_t frame) {
         set_frame(frame);
-        return SpriteFrame(index_, vao.id, texture);
+        return SpriteFrame(index_, geometry, texture);
     }
 
     std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {

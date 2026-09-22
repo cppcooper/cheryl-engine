@@ -1,4 +1,7 @@
 #include <assets/primitives/vertex-array-object.h>
+#include <assets/primitives/texture.h>
+
+#include <internals/exceptions.h>
 
 template<typename T, uint64_t offset>
 constexpr uint64_t get_length() {
@@ -11,6 +14,21 @@ constexpr void* glBufferOffset() {
 }
 namespace CE {
     using namespace VAONumbers;
+
+    void VAO::bind(const Assets::Image& image) const {
+        const auto* texture = dynamic_cast<const Assets::Texture*>(&image);
+        if (!texture)
+            throw Exceptions::invalid_args(CE_HERE, "An OpenGL vertex array requires an OpenGL texture");
+        glBindVertexArray(id_vao);
+        texture->bind();
+    }
+
+    void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
+        if (type != flat)
+            throw Exceptions::invalid_args(CE_HERE, "Indexed meshes cannot be drawn as 2D geometry");
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(first_vertex), static_cast<GLsizei>(vertex_count));
+    }
+
     VAO::VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices)
             : type(flat) {
         // each 2D vertex has 5 points of data: x,y,z,u,v

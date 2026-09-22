@@ -13,9 +13,8 @@ namespace CE::Assets {
     inline constexpr std::size_t font_character_count = last_font_character - first_font_character + 1;
 
     struct STBFontData {
-        std::shared_ptr<Vertex2D> vertices;
-        std::uint32_t vertex_count{};
-        std::shared_ptr<Texture> texture;
+        std::shared_ptr<Geometry2D> geometry;
+        std::shared_ptr<Image> texture;
         std::array<float, font_character_count> advances{};
         float line_height{};
     };

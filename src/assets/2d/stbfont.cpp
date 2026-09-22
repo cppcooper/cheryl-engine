@@ -1,4 +1,6 @@
 #include <assets/2d/stbfont.h>
+#include <assets/primitives/texture.h>
+#include <assets/primitives/vertex-array-object.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
@@ -47,7 +49,7 @@ namespace CE::Assets {
     }
 
     STBFont::STBFont(STBFontData data) :
-        Font({data.vertices, data.vertex_count, data.texture}), advances_(data.advances),
+        Font({data.geometry, data.texture}), advances_(data.advances),
         line_height_(data.line_height) {
     }
 
@@ -65,9 +67,8 @@ namespace CE::Assets {
         info.material->use();
         info.material->set_uniform_value("in_Alpha", info.alpha);
         info.material->set_uniform_value("in_Scale", 1.0f);
-        info.material->set_uniform_value("mytexture", GLint{0});
-        glBindVertexArray(vao.id);
-        texture->bind();
+        info.material->set_uniform_value("mytexture", 0);
+        geometry->bind(*texture);
 
         auto text_matrix = glm::translate(info.model_matrix, info.position);
         text_matrix = glm::rotate(text_matrix, print_angle_, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -97,8 +98,7 @@ namespace CE::Assets {
             if (letter != ' ') {
                 const auto model_matrix = glm::translate(text_matrix, glm::vec3(cursor_x, cursor_y, 0.0f));
                 info.material->set_uniform_matrix("modelMatrix", model_matrix);
-                glDrawArrays(GL_TRIANGLES, static_cast<GLint>(index * VAONumbers::vertices_per_quad),
-                             VAONumbers::vertices_per_quad);
+                geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
             }
             cursor_x += advances_[index];
         }
@@ -156,6 +156,7 @@ namespace CE::Assets {
         stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
-        return {std::move(vertices), vertex_count, std::move(atlas), advances, line_height};
+        auto geometry = std::make_shared<VAO>(std::move(vertices), vertex_count);
+        return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 }

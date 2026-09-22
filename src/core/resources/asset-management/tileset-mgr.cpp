@@ -1,6 +1,7 @@
 #include <core/resources/asset-management/tileset-mgr.h>
 
 #include <assets/2d/grid-geometry.h>
+#include <assets/primitives/vertex-array-object.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
 #include <internals/exceptions.h>
@@ -27,10 +28,10 @@ namespace CE::Assets {
             const PixelSize texture_size{static_cast<std::uint32_t>(texture->width),
                                          static_cast<std::uint32_t>(texture->height)};
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
+            auto mesh = std::make_shared<VAO>(std::move(geometry.vertices), geometry.vertex_count);
             const auto& asset = assets[index];
             Obj::ObjCtor<Tileset>::construct(asset.get(), 1,
-                                             TilesetData{.vertices = std::move(geometry.vertices),
-                                                         .vertex_count = geometry.vertex_count,
+                                             TilesetData{.geometry = std::move(mesh),
                                                          .texture = texture,
                                                          .definition = definition});
             loaded_assets.emplace(id, asset);

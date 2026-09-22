@@ -15,15 +15,14 @@ namespace CE::Assets {
     using shptr = std::shared_ptr<T>;
 
     struct SpriteData {
-        shptr<Vertex2D> vertices;
-        std::uint32_t vertex_count{};
-        shptr<Texture> texture;
+        shptr<Geometry2D> geometry;
+        shptr<Image> texture;
         SpriteDefinition definition;
     };
 
     struct SpriteFrame final : Draw2D, protected Frame {
-        explicit SpriteFrame(std::size_t cell, GLuint id, const shptr<Texture>& texture) :
-            Draw2D(id, texture), Frame(cell, 0, 1) {}
+        explicit SpriteFrame(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture) :
+            Draw2D(geometry, texture), Frame(cell, 0, 1) {}
 
         void draw(const DrawInfo& info) override;
         SpriteFrame& operator[](std::size_t frame);
@@ -31,7 +30,8 @@ namespace CE::Assets {
     };
 
     struct SpriteAnimation final : Draw2D, protected Frame {
-        explicit SpriteAnimation(SpriteAnimationDefinition definition, GLuint id, const shptr<Texture>& texture);
+        explicit SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
+                                 const shptr<Image>& texture);
 
         void draw(const DrawInfo& info) override;
         SpriteFrame operator[](std::size_t frame);
