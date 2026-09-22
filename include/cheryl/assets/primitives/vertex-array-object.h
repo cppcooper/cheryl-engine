@@ -17,6 +17,7 @@ namespace CE {
             flat, mesh
         } type;
 
+        // TODO: Coordinate glDeleteVertexArrays/glDeleteBuffers and Texture's glDeleteTextures with context lifetime.
         GLuint id_vao = 0;
         GLuint id_vbo[2] = {};
 
