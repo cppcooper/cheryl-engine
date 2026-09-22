@@ -4,16 +4,13 @@
 #include <cstdint>
 
 namespace CE {
-    class DisplaySystem;
-
     // A display-owned snapshot of a monitor's current video mode.
     struct Monitor : ViewPort<int> {
+        Monitor(std::uint64_t id, int width, int height);
         Monitor(const Monitor&) = default;
+        [[nodiscard]] std::uint64_t id() const { return id_; }
 
     private:
-        friend class DisplaySystem;
-        Monitor(std::uint64_t id, int width, int height);
-
         std::uint64_t id_;
     };
 }

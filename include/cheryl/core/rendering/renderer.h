@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core/display.h>
+#include <core/display/display-system-interface.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -11,7 +11,7 @@ namespace CE::RenderAPIs {
     using program_id = std::uint64_t;
 
     struct iRenderer {
-        std::unique_ptr<DisplaySystem> display;
+        std::unique_ptr<iDisplaySystem> display;
         virtual ~iRenderer() = default;
 
         virtual void initialize_libraries() = 0;

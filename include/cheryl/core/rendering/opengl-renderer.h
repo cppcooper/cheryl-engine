@@ -1,8 +1,11 @@
 #pragma once
 #include "renderer.h"
-#include <core/display.h>
 #include <mutex>
 #include <vector>
+
+namespace CE {
+    class Window;
+}
 
 namespace CE::RenderAPIs {
     struct OpenGLRenderer : iRenderer {
@@ -19,6 +22,7 @@ namespace CE::RenderAPIs {
         void initialize_glfw();
         void initialize_glad();
     private:
+        Window* render_window_ = nullptr; // Owned by display.
         std::once_flag glfw_flag;
         std::once_flag glad_flag;
         bool lib_init = false;

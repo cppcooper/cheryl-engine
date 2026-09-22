@@ -131,8 +131,12 @@ namespace CE::Input {
         deinitialize();
     }
 
-    void InputSystem::initialize(Window& window) {
-        if (window_ && window_ != &window)
+    void InputSystem::initialize(iWindow& window) {
+        // This adapter needs the GLFW-backed window; a different backend supplies its own input adapter.
+        auto* glfw_window = dynamic_cast<Window*>(&window);
+        if (!glfw_window)
+            throw Exceptions::invalid_args(CE_HERE, "GLFW input requires a GLFW window");
+        if (window_ && window_ != glfw_window)
             throw Exceptions::failed_operation(CE_HERE, "Input is already attached to another window");
         if (window_)
             return;
@@ -148,10 +152,10 @@ namespace CE::Input {
         if (gamepad_id_ == gainput::InvalidDeviceId)
             gamepad_id_ = manager_.CreateDevice<gainput::InputDevicePad>();
 
-        window_ = &window;
+        window_ = glfw_window;
         const auto size = window.logical_size();
         manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
-        auto* handle = window.native_handle();
+        auto* handle = glfw_window->native_handle();
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
         glfwSetCursorPosCallback(handle, on_cursor);

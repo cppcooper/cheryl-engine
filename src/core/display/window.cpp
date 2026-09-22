@@ -5,7 +5,6 @@
 
 #include <GLFW/glfw3.h>
 #include <random>
-#include <tuple>
 
 const char* generate_title();
 GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int);
@@ -55,7 +54,7 @@ namespace CE {
         if (framebuffer_size_ == FramebufferSize{width, height})
             return;
         framebuffer_size_ = {width, height};
-        SubSystems::EventSystem::get().dispatch("window-resized", std::make_tuple(glfw_window_, width, height));
+        SubSystems::EventSystem::get().dispatch("window-resized", WindowResized{this, framebuffer_size_});
     }
 
     void Window::resize(const int width, const int height) {
@@ -113,6 +112,10 @@ namespace CE {
 
     void Window::hide_cursor(const bool hide) const {
         glfwSetInputMode(glfw_window_, GLFW_CURSOR, hide ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+    }
+
+    bool Window::should_close() const {
+        return glfwWindowShouldClose(glfw_window_) == GLFW_TRUE;
     }
 }
 

@@ -7,6 +7,7 @@
 class GLFWwindow;
 
 namespace CE {
+    class iWindow;
     class Window;
 }
 
@@ -20,7 +21,7 @@ namespace CE::Input {
         InputSystem();
         ~InputSystem();
 
-        void initialize(Window& window);
+        void initialize(iWindow& window);
         void update();
         void deinitialize();
 

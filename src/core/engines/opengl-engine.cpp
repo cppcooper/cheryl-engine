@@ -91,7 +91,7 @@ namespace CE::Engine {
 
     bool glEngine::should_close() const {
         auto* window = renderer->display ? renderer->display->active_window() : nullptr;
-        return !window || glfwWindowShouldClose(window->native_handle());
+        return !window || window->should_close();
     }
 
     void glEngine::set_mode(const Enum::gfx_mode mode) {

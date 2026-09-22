@@ -45,7 +45,7 @@ namespace CE {
 
     GLFWmonitor* DisplaySystem::native_monitor(const Monitor& monitor) const {
         for (std::size_t index = 0; index < monitors_.size(); ++index) {
-            if (monitors_[index].id_ == monitor.id_)
+            if (monitors_[index].id() == monitor.id())
                 return native_monitors_[index];
         }
         throw Exceptions::invalid_args(CE_HERE, "Monitor is not owned by this display");
@@ -75,13 +75,13 @@ namespace CE {
         return create_window(monitor, mode, monitor.width, monitor.height);
     }
 
-    void DisplaySystem::activate_window(Window& window) {
+    void DisplaySystem::activate_window(iWindow& window) {
         const auto owned =
             std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
         if (!owned)
             throw Exceptions::invalid_args(CE_HERE, "Active window must be owned by DisplaySystem");
         if (active_ && active_ != &window)
             throw Exceptions::failed_operation(CE_HERE, "Switching active rendering windows is not supported");
-        active_ = &window;
+        active_ = static_cast<Window*>(&window);
     }
 }

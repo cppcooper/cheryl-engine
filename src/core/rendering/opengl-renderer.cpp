@@ -1,6 +1,7 @@
 #include <core/rendering/opengl-renderer.h>
 
 #include <core.h>
+#include <core/display/display-system.h>
 #include <enums.h>
 #include <assets/primitives/glslprogram.h>
 #include <internals/exceptions.h>
@@ -14,6 +15,7 @@
 #include <fstream>
 #include <format>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 using CE::Enum::ShaderTypes;
@@ -31,16 +33,18 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_SAMPLES, 8);
-            display = std::make_unique<DisplaySystem>();
-            const auto& pm = display->primary_monitor();
-            auto [sw, sh] = display->content_scale(pm);
+            auto glfw_display = std::make_unique<DisplaySystem>();
+            const auto& pm = glfw_display->primary_monitor();
+            auto [sw, sh] = glfw_display->content_scale(pm);
             sw = std::max(sw, 1.0f);
             sh = std::max(sh, 1.0f);
             const int width = std::max(1L, std::lround(pm.width / sw));
             const int height = std::max(1L, std::lround(pm.height / sh));
-            auto* window = display->create_window(pm, Enum::window_mode::NORMAL, width, height);
-            display->activate_window(*window);
+            auto* window = glfw_display->create_window(pm, Enum::window_mode::NORMAL, width, height);
+            glfw_display->activate_window(*window);
             glfwMakeContextCurrent(window->native_handle());
+            render_window_ = window;
+            display = std::move(glfw_display);
         });
     }
 
@@ -100,7 +104,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::swap_buffer() {
-        glfwSwapBuffers(display->active_window()->native_handle());
+        glfwSwapBuffers(render_window_->native_handle());
     }
 
     void OpenGLRenderer::draw() {

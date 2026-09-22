@@ -11,3 +11,5 @@ The goal is to let the runtime and asset loader use a selected backend without n
 7. **Proof:** Build the OpenGL demo and tests after each coherent slice. Add a small second adapter or test implementation that exercises the same runtime, loading, input, resize, and draw contracts without including OpenGL or GLFW in client code. A new renderer class alone is not sufficient proof.
 
 Each commit should change at least one targeted class (plus the callers needed to keep it usable). Avoid replacing working implementation classes with empty interfaces; finish one usable boundary before moving its consumers.
+
+Progress: steps 1 and 2 have implementations. `iRenderer::display` now uses `iDisplaySystem`, which returns `iWindow` and monitor snapshots without GLFW handles. The GLFW-backed `DisplaySystem` and `Window` implement these contracts; a test display can implement them without native API headers. The `window-resized` event now carries `WindowResized` instead of a tuple with a GLFW window pointer. The GLFW input adapter still needs its own backend-independent selection in step 3.
