@@ -16,10 +16,6 @@ endif()
 # target names
 set(LIB_TARGET cherylGL)
 set(TEST_TARGET all-tests)
-set(ASSET_MANIFEST_TEST_TARGET asset-manifest-tests)
-set(FONT_SYSTEM_TEST_TARGET font-system-tests)
-set(CAMERA_TEST_TARGET camera-tests)
-set(INPUT_TEST_TARGET input-tests)
 
 # source files
 find_package(X11)
@@ -79,54 +75,6 @@ TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
 target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
 gtest_discover_tests(${TEST_TARGET})
-
-# Manifest parsing and pivot generation are intentionally testable without a
-# window system or OpenGL context.
-add_executable(${ASSET_MANIFEST_TEST_TARGET}
-        tests/executables/gtest.cpp
-        tests/executables/gtest/assets/manifest.cpp
-        src/assets/manifest.cpp
-        src/core/resources/asset-management/manifest-loader.cpp
-        src/internal/exceptions.cpp
-        src/math/anchor.cpp)
-target_compile_definitions(${ASSET_MANIFEST_TEST_TARGET}
-        PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(${ASSET_MANIFEST_TEST_TARGET} PRIVATE gtest Backward::Object)
-add_dependencies(${ASSET_MANIFEST_TEST_TARGET} gl46)
-gtest_discover_tests(${ASSET_MANIFEST_TEST_TARGET}
-        TEST_PREFIX "asset-manifest:"
-        DISCOVERY_MODE PRE_TEST)
-
-# Font discovery and selection are testable without an OpenGL context.
-add_executable(${FONT_SYSTEM_TEST_TARGET}
-        tests/executables/gtest.cpp
-        tests/executables/gtest/resources/fonts.cpp
-        src/core/resources/fileio/fonts-list.cpp)
-target_link_libraries(${FONT_SYSTEM_TEST_TARGET} PRIVATE gtest)
-gtest_discover_tests(${FONT_SYSTEM_TEST_TARGET}
-        TEST_PREFIX "font-system:"
-        DISCOVERY_MODE PRE_TEST)
-
-add_executable(${CAMERA_TEST_TARGET}
-        tests/executables/gtest.cpp
-        tests/executables/gtest/core/camera.cpp
-        src/core/camera.cpp
-        src/internal/exceptions.cpp)
-target_link_libraries(${CAMERA_TEST_TARGET} PRIVATE gtest Backward::Object)
-gtest_discover_tests(${CAMERA_TEST_TARGET}
-        TEST_PREFIX "camera:"
-        DISCOVERY_MODE PRE_TEST)
-
-# GLFW key translation and callback binding require no window or native Gainput backend.
-add_executable(${INPUT_TEST_TARGET}
-        tests/executables/gtest.cpp
-        tests/executables/gtest/core/input.cpp
-        src/core/controls/glfw-bindings.cpp
-        src/core/controls/input-bindings.cpp)
-target_link_libraries(${INPUT_TEST_TARGET} PRIVATE gtest)
-gtest_discover_tests(${INPUT_TEST_TARGET}
-        TEST_PREFIX "input:"
-        DISCOVERY_MODE PRE_TEST)
 
 add_executable(backward-cpp tests/executables/backward.cpp)
 target_link_libraries(backward-cpp PUBLIC Backward::Backward)
