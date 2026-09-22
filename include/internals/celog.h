@@ -1,5 +1,5 @@
 #pragma once
-#include <logging.h>
+#include <core/logging.h>
 #include "internal-logs.h"
 
 namespace CE {

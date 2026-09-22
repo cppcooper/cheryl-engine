@@ -1,91 +1,119 @@
 #include <assets/2d/sprite.h>
-#include <resources/assets.h>
-#include <resources/allocators.h>
-#include <resources/assets/texture-mgr.h>
-#include <nlohmann/json.hpp>
-#include <fstream>
-#include <math/anchor.h>
-#include <internals.h>
+#include <internals/exceptions.h>
 
+#include <algorithm>
+#include <utility>
 
 namespace CE::Assets {
-    void SpriteFrame::draw(const DrawInfo &info) {
+    void SpriteFrame::draw(const DrawInfo& info) {
         glBindVertexArray(id_vao);
         texture->bind();
         info.use_shader();
-        glDrawArrays(GL_QUADS,
-            VAONumbers::calculate_num_vertices(offset_ + index_),
-            VAONumbers::vertices_per_quad);
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
+                     VAONumbers::vertices_per_quad);
     }
 
-    SpriteFrame& SpriteFrame::operator[](std::size_t frame) {
+    SpriteFrame& SpriteFrame::operator[](const std::size_t frame) {
         set_frame(frame);
         return *this;
     }
 
-    void SpriteAnimation::draw(const DrawInfo &info) {
-        SpriteFrame(offset_, index_, limit_, id_vao, texture).draw(info);
-    }
-
-    SpriteFrame SpriteAnimation::operator[](std::size_t frame) {
-        set_frame(frame);
-        return SpriteFrame(offset_, frame, limit_, id_vao, texture);
-    }
-
-    void Sprite::draw(const DrawInfo &info) {
-        operator[](index_).draw(info);
-    }
-
-    SpriteFrame Sprite::operator[](std::size_t frame) {
-        set_frame(frame);
-        return SpriteFrame(index_,0,1,vao.id,texture);
-    }
-
-    SpriteAnimation Sprite::operator[](const std::string& animation) {
-        auto &anim = animations[animations_map[animation]];
-        return anim;
-    }
-
-    SpriteData Sprite::load_sprite(const std::filesystem::path& index_file) {
-        std::ifstream file(index_file);
-        if (!file.is_open()) {
-            throw Exceptions::runtime_exception(CE_HERE, std::format(R"(Unable to load "{}")", index_file.string()).c_str());
+    SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const GLuint id,
+                                     const shptr<Texture>& texture) :
+        Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
+        if (definition_.frames.empty()) {
+            throw Exceptions::invalid_args(CE_HERE, "A sprite animation must contain at least one frame");
         }
-        using json = nlohmann::json;
-        if (json data = json::parse(file); data["meta"].size() >= 4) {
-            shptr<Texture> texture = TextureMgr::get().get_asset(data["meta"]["texture"]);
-            std::size_t total_frames = data["meta"]["frames"];
-            AnchorType anchor = get_anchor(data["meta"]["anchor"]);
+    }
 
-            std::size_t vertices_bytes = sizeof(Quad) * total_frames;
-            auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
-            auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(b.head.get()),[b](void*) {
-                Mem::ExactMMgr::get().return_chunk(b);
-            });
+    void SpriteAnimation::draw(const DrawInfo& info) {
+        SpriteFrame(definition_.frames[index_].cell, id_vao, texture).draw(info);
+    }
 
-            std::vector<std::tuple<std::string,uint16_t,uint16_t>> animations;
-            uint32_t frame_offset = 0;
-            for(auto &[key,value] : data["animations"].items()) {
-                uint16_t frames = value["frames"];
-                animations.emplace_back(key, frames, frame_offset);
-                uint16_t x = value["frame0"]["x"];
-                uint16_t y = value["frame0"]["y"];
-                uint16_t w = value["w"];
-                uint16_t h = value["h"];
-                for(int i = 0; i < frames; ++i) {
-                    std::size_t offset = frame_offset + i;
-                    if (offset >= total_frames) [[unlikely]] {
-                        throw Exceptions::bad_request(CE_HERE, "Out of space. This can only mean one thing: the vertices array was too small.");
-                    }
-                    Anchor::MakeAnchor(anchor,
-                        reinterpret_cast<float*>(vertices.get() + (offset * VAONumbers::vertices_per_quad)),
-                        texture->width, texture->height, w,h, x+(i*w), y);
-                }
-                frame_offset += frames;
+    SpriteFrame SpriteAnimation::operator[](const std::size_t frame) {
+        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
+        return SpriteFrame(definition_.frames[index_].cell, id_vao, texture);
+    }
+
+    std::chrono::milliseconds SpriteAnimation::frame_duration() const {
+        return definition_.frames.at(index_).duration;
+    }
+
+    Sprite::Sprite(SpriteData data) :
+        Asset2D(data.vertices, data.vertex_count, data.texture), Frame(0, 0, data.definition.grid.cell_count()),
+        definition_(std::move(data.definition)) {
+        animations_.reserve(definition_.animations.size());
+        for (const auto& animation_definition : definition_.animations) {
+            const auto key = animation_key(animation_definition.name, animation_definition.facing);
+            if (animation_indices_.contains(key)) {
+                throw Exceptions::invalid_args(CE_HERE,
+                                               "Duplicate sprite animation '" + animation_definition.name + "'");
             }
-            const uint32_t num_verts = frame_offset * VAONumbers::vertices_per_quad;
-            return {vertices, num_verts, texture, animations};
+            animation_indices_.emplace(key, animations_.size());
+            animations_.emplace_back(animation_definition, vao.id, texture);
         }
-        throw Exceptions::failed_operation(CE_HERE, "File is definitely missing data.");
+    }
+
+    void Sprite::draw(const DrawInfo& info) {
+        SpriteFrame(index_, vao.id, texture).draw(info);
+    }
+
+    SpriteFrame Sprite::operator[](const std::size_t frame) {
+        set_frame(frame);
+        return SpriteFrame(index_, vao.id, texture);
+    }
+
+    std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {
+        return animation + '\x1f' + facing.value_or("");
+    }
+
+    bool Sprite::has_animation(const std::string& animation, const std::optional<std::string> facing) const {
+        if (animation_indices_.contains(animation_key(animation, facing))) {
+            return true;
+        }
+        if (facing) {
+            return false;
+        }
+        return std::ranges::count_if(animations_, [&animation](const auto& candidate) {
+                   return candidate.definition().name == animation;
+               }) == 1;
+    }
+
+    SpriteAnimation Sprite::animation(const std::string& animation_name,
+                                      const std::optional<std::string> facing) const {
+        const auto exact = animation_indices_.find(animation_key(animation_name, facing));
+        if (exact != animation_indices_.end()) {
+            return animations_.at(exact->second);
+        }
+        if (!facing) {
+            const SpriteAnimation* match = nullptr;
+            for (const auto& animation : animations_) {
+                if (animation.definition().name != animation_name) {
+                    continue;
+                }
+                if (match) {
+                    throw Exceptions::bad_request(
+                        CE_HERE, "Sprite animation '" + animation_name + "' requires an explicit facing");
+                }
+                match = &animation;
+            }
+            if (match) {
+                return *match;
+            }
+        }
+        throw Exceptions::bad_request(
+            CE_HERE, "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
+    }
+
+    SpriteAnimation Sprite::operator[](const std::string& animation_name) const {
+        return animation(animation_name);
+    }
+
+    const ViewDefinition& Sprite::view(const std::string& name) const {
+        return definition_.views.at(name);
+    }
+
+    CellIndex Sprite::orientation(const std::string& name) const {
+        return definition_.orientations.at(name);
     }
 }

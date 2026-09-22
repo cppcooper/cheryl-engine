@@ -5,7 +5,7 @@ template<typename ClockType = std::chrono::steady_clock>
 class DeltaTime {
 public:
     using TimePoint = typename ClockType::time_point;
-    using Duration  = typename ClockType::duration;
+    using Duration  = typename ClockType::duration; // ns by default
 
 protected:
     TimePoint last_checkin;
@@ -15,7 +15,7 @@ protected:
 
 public:
     double operator()() {
-        double delta = std::chrono::duration<double>(elapsed()).count();
+        const double delta = std::chrono::duration<double>(elapsed()).count();
         checkin();
         return delta;
     }

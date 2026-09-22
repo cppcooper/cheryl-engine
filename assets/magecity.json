@@ -1,0 +1,68 @@
+{
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "magecity",
+  "texture": "tilesets/magecity.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "tilesets": {
+    "mage_city": {
+      "description": "The complete populated 32-pixel grid in the Mage City sheet.",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 44,
+        "columns": 8,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "props_walls_and_floors": {
+          "row": 0,
+          "column": 0,
+          "rows": 12,
+          "columns": 8
+        },
+        "monuments_trees_and_windows": {
+          "row": 12,
+          "column": 0,
+          "rows": 11,
+          "columns": 8
+        },
+        "roofs": {
+          "row": 23,
+          "column": 0,
+          "rows": 3,
+          "columns": 8
+        },
+        "terrain": {
+          "row": 26,
+          "column": 0,
+          "rows": 18,
+          "columns": 8
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5651 @@
+{
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "punyworld",
+  "texture": "tilesets/punyworld-overworld-tileset.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "tilesets": {
+    "overworld": {
+      "description": "Full source grid; row-major cell indices exactly match the upstream Tiled tile IDs.",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 65,
+        "columns": 27,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "grass_and_dirt_paths": {
+          "row": 0,
+          "column": 0,
+          "rows": 4,
+          "columns": 27
+        },
+        "elevation_and_crossings": {
+          "row": 4,
+          "column": 0,
+          "rows": 3,
+          "columns": 27
+        },
+        "trees": {
+          "row": 7,
+          "column": 0,
+          "rows": 3,
+          "columns": 27
+        },
+        "water": {
+          "row": 10,
+          "column": 0,
+          "rows": 16,
+          "columns": 27
+        },
+        "resource_nodes": {
+          "row": 26,
+          "column": 0,
+          "rows": 7,
+          "columns": 4
+        },
+        "neutral_buildings": {
+          "row": 26,
+          "column": 4,
+          "rows": 7,
+          "columns": 23
+        },
+        "colored_buildings": {
+          "row": 33,
+          "column": 4,
+          "rows": 5,
+          "columns": 20
+        }
+      },
+      "animations": {
+        "tile-270": {
+          "target": {
+            "index": 270
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 270
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 378
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 486
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 594
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-271": {
+          "target": {
+            "index": 271
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 271
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 379
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 487
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 595
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-272": {
+          "target": {
+            "index": 272
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 272
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 380
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 488
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 596
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-273": {
+          "target": {
+            "index": 273
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 273
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 381
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 489
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 597
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-275": {
+          "target": {
+            "index": 275
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 275
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 356
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 437
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 518
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-277": {
+          "target": {
+            "index": 277
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 277
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 358
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 439
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 520
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-278": {
+          "target": {
+            "index": 278
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 278
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 359
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 440
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 521
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-279": {
+          "target": {
+            "index": 279
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 279
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 360
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 441
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 522
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-280": {
+          "target": {
+            "index": 280
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 280
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 334
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 388
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 442
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-281": {
+          "target": {
+            "index": 281
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 281
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 335
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 389
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 443
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-282": {
+          "target": {
+            "index": 282
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 282
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 363
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 444
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 525
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-283": {
+          "target": {
+            "index": 283
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 283
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 364
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 445
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 526
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-284": {
+          "target": {
+            "index": 284
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 284
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 365
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 446
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 527
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-285": {
+          "target": {
+            "index": 285
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 285
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 339
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 393
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 447
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-286": {
+          "target": {
+            "index": 286
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 286
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 340
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 394
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 448
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-287": {
+          "target": {
+            "index": 287
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 287
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 368
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 449
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 530
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-288": {
+          "target": {
+            "index": 288
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 288
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 369
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 450
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 531
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-289": {
+          "target": {
+            "index": 289
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 289
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 370
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 451
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 532
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-290": {
+          "target": {
+            "index": 290
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 290
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 371
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 452
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 533
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-291": {
+          "target": {
+            "index": 291
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 291
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 372
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 453
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 534
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-292": {
+          "target": {
+            "index": 292
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 292
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 373
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 454
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 535
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-293": {
+          "target": {
+            "index": 293
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 293
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 374
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 455
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 536
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-294": {
+          "target": {
+            "index": 294
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 294
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 375
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 456
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 537
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-295": {
+          "target": {
+            "index": 295
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 295
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 376
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 457
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 538
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-296": {
+          "target": {
+            "index": 296
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 296
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 377
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 458
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 539
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-297": {
+          "target": {
+            "index": 297
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 297
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 405
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 513
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 621
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-298": {
+          "target": {
+            "index": 298
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 298
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 406
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 514
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 622
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-299": {
+          "target": {
+            "index": 299
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 299
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 407
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 515
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 623
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-300": {
+          "target": {
+            "index": 300
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 300
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 408
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 516
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 624
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-301": {
+          "target": {
+            "index": 301
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 301
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 382
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 463
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 544
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-302": {
+          "target": {
+            "index": 302
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 302
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 383
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 464
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 545
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-303": {
+          "target": {
+            "index": 303
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 303
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 384
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 465
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 546
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-304": {
+          "target": {
+            "index": 304
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 304
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 385
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 466
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 547
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-306": {
+          "target": {
+            "index": 306
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 306
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 387
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 468
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 549
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-307": {
+          "target": {
+            "index": 307
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 307
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 361
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 415
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 469
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-308": {
+          "target": {
+            "index": 308
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 308
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 362
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 416
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 470
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-309": {
+          "target": {
+            "index": 309
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 309
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 390
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 471
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 552
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-311": {
+          "target": {
+            "index": 311
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 311
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 392
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 473
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 554
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-312": {
+          "target": {
+            "index": 312
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 312
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 366
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 420
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 474
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-313": {
+          "target": {
+            "index": 313
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 313
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 367
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 421
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 475
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-314": {
+          "target": {
+            "index": 314
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 314
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 395
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 476
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 557
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-316": {
+          "target": {
+            "index": 316
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 316
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 397
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 478
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 559
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-317": {
+          "target": {
+            "index": 317
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 317
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 398
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 479
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 560
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-318": {
+          "target": {
+            "index": 318
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 318
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 399
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 480
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 561
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-319": {
+          "target": {
+            "index": 319
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 319
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 400
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 481
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 562
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-321": {
+          "target": {
+            "index": 321
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 321
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 402
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 483
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 564
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-322": {
+          "target": {
+            "index": 322
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 322
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 403
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 484
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 565
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-323": {
+          "target": {
+            "index": 323
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 323
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 404
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 485
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 566
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-324": {
+          "target": {
+            "index": 324
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 324
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 432
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 540
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 648
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-325": {
+          "target": {
+            "index": 325
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 325
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 433
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 541
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 649
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-326": {
+          "target": {
+            "index": 326
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 326
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 434
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 542
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 650
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-327": {
+          "target": {
+            "index": 327
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 327
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 435
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 543
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 651
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-329": {
+          "target": {
+            "index": 329
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 329
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 410
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 491
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 572
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-331": {
+          "target": {
+            "index": 331
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 331
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 412
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 493
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 574
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-332": {
+          "target": {
+            "index": 332
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 332
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 413
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 494
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 575
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-333": {
+          "target": {
+            "index": 333
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 333
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 414
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 495
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 576
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-336": {
+          "target": {
+            "index": 336
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 336
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 417
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 498
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 579
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-337": {
+          "target": {
+            "index": 337
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 337
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 418
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 499
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 580
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-338": {
+          "target": {
+            "index": 338
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 338
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 419
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 500
+              },
+              "duration_ms": 400
+            },
+            {
+              "cell": {
+                "index": 581
+              },
+              "duration_ms": 400
+            }
+          ],
+          "loop": true
+        },
+        "tile-341": {
+          "target": {
+            "index": 341
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 341
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 422
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 503
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 584
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-342": {
+          "target": {
+            "index": 342
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 342
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 423
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 504
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 585
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-343": {
+          "target": {
+            "index": 343
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 343
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 424
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 505
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 586
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-346": {
+          "target": {
+            "index": 346
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 346
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 427
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 508
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 589
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-347": {
+          "target": {
+            "index": 347
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 347
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 428
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 509
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 590
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-348": {
+          "target": {
+            "index": 348
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 348
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 429
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 510
+              },
+              "duration_ms": 200
+            },
+            {
+              "cell": {
+                "index": 591
+              },
+              "duration_ms": 200
+            }
+          ],
+          "loop": true
+        },
+        "tile-351": {
+          "target": {
+            "index": 351
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 351
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 459
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 567
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 675
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-352": {
+          "target": {
+            "index": 352
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 352
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 460
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 568
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 676
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-353": {
+          "target": {
+            "index": 353
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 353
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 461
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 569
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 677
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-354": {
+          "target": {
+            "index": 354
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 354
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 462
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 570
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 678
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        },
+        "tile-598": {
+          "target": {
+            "index": 598
+          },
+          "frames": [
+            {
+              "cell": {
+                "index": 598
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 599
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 600
+              },
+              "duration_ms": 100
+            },
+            {
+              "cell": {
+                "index": 601
+              },
+              "duration_ms": 100
+            }
+          ],
+          "loop": true
+        }
+      },
+      "autotiles": {
+        "overworld": {
+          "description": "Author-supplied Tiled corner Wang set.",
+          "type": "wang-corner",
+          "slot_order": [
+            "north",
+            "north_east",
+            "east",
+            "south_east",
+            "south",
+            "south_west",
+            "west",
+            "north_west"
+          ],
+          "terrains": [
+            {
+              "id": 1,
+              "name": "grass",
+              "color": "#00ff00",
+              "probability": 1
+            },
+            {
+              "id": 2,
+              "name": "dirt",
+              "color": "#aaaa00",
+              "probability": 1
+            },
+            {
+              "id": 3,
+              "name": "sand",
+              "color": "#ffff00",
+              "probability": 1
+            },
+            {
+              "id": 4,
+              "name": "cliff",
+              "color": "#aaaa7f",
+              "probability": 1
+            },
+            {
+              "id": 5,
+              "name": "air",
+              "color": "#00e9ff",
+              "probability": 1
+            },
+            {
+              "id": 6,
+              "name": "trees",
+              "color": "#005500",
+              "probability": 1
+            },
+            {
+              "id": 7,
+              "name": "river",
+              "color": "#0000ff",
+              "probability": 1
+            },
+            {
+              "id": 8,
+              "name": "seawater-light",
+              "color": "#55ffff",
+              "probability": 1
+            },
+            {
+              "id": 9,
+              "name": "seawater-medium",
+              "color": "#00aaff",
+              "probability": 1
+            },
+            {
+              "id": 10,
+              "name": "seawater-deep",
+              "color": "#00007f",
+              "probability": 1
+            },
+            {
+              "id": 11,
+              "name": "cliff-transparent",
+              "color": "#c5c594",
+              "probability": 1
+            },
+            {
+              "id": 12,
+              "name": "trees2",
+              "color": "#00ff00",
+              "probability": 1
+            }
+          ],
+          "tiles": [
+            {
+              "cell": {
+                "index": 0
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 1
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 2
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 10
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                2,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 11
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                2,
+                0,
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 12
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 13
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                2,
+                0,
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 14
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                2,
+                0,
+                2,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 22
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                3,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 23
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                3,
+                0,
+                3,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 24
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                3,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 25
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                3,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 26
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                3,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 27
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 28
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 29
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 37
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                2,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 38
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                2,
+                0,
+                2,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 39
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                2,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 40
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                2,
+                0,
+                1,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 41
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                1,
+                0,
+                2,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 49
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 50
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 51
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 52
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                1,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 53
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                1,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 54
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 55
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 56
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 64
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 65
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                1,
+                0,
+                1,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 66
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 67
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                2,
+                0,
+                1,
+                0,
+                2
+              ]
+            },
+            {
+              "cell": {
+                "index": 68
+              },
+              "wang": [
+                0,
+                2,
+                0,
+                1,
+                0,
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 76
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 77
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                1,
+                0,
+                1,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 78
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 79
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                3,
+                0,
+                1,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 80
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                1,
+                0,
+                3,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 108
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                4,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 109
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                4,
+                0,
+                4,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 110
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                4,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 111
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                4,
+                0,
+                4,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 112
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                4,
+                0,
+                4,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 113
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 119
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                11,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 120
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                11,
+                0,
+                11,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 121
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                11,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 122
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                11,
+                0,
+                11,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 123
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                11,
+                0,
+                11,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 135
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                4,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 136
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                4,
+                0,
+                4,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 137
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                4,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 138
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                4,
+                0,
+                1,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 139
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                1,
+                0,
+                4,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 146
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                11,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 147
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                11,
+                0,
+                11,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 148
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                11,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 149
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                11,
+                0,
+                5,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 150
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                5,
+                0,
+                11,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 162
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 163
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                1,
+                0,
+                1,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 164
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 165
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                4,
+                0,
+                1,
+                0,
+                4
+              ]
+            },
+            {
+              "cell": {
+                "index": 166
+              },
+              "wang": [
+                0,
+                4,
+                0,
+                1,
+                0,
+                4,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 173
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 174
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                5,
+                0,
+                5,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 175
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 176
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                11,
+                0,
+                5,
+                0,
+                11
+              ]
+            },
+            {
+              "cell": {
+                "index": 177
+              },
+              "wang": [
+                0,
+                11,
+                0,
+                5,
+                0,
+                11,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 189
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 190
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 191
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 192
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 193
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 194
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 195
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                6,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 196
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                6,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 198
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 199
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 200
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 201
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 202
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 203
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 204
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                12,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 205
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                12,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 216
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                6,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 217
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                6,
+                0,
+                6,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 218
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                6,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 219
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                6,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 221
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                6,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 222
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                6,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 223
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                6,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 225
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                12,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 226
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                12,
+                0,
+                12,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 227
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                12,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 228
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                12,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 230
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                12,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 231
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                12,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 232
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                12,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 243
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 244
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 245
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 246
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 247
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 248
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 249
+              },
+              "wang": [
+                0,
+                6,
+                0,
+                5,
+                0,
+                6,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 250
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                6,
+                0,
+                5,
+                0,
+                6
+              ]
+            },
+            {
+              "cell": {
+                "index": 252
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 253
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 254
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 255
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                5,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 256
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 257
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                5,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 258
+              },
+              "wang": [
+                0,
+                12,
+                0,
+                5,
+                0,
+                12,
+                0,
+                5
+              ]
+            },
+            {
+              "cell": {
+                "index": 259
+              },
+              "wang": [
+                0,
+                5,
+                0,
+                12,
+                0,
+                5,
+                0,
+                12
+              ]
+            },
+            {
+              "cell": {
+                "index": 277
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                7,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 278
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                7,
+                0,
+                7,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 279
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                7,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 280
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                7,
+                0,
+                7,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 281
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                7,
+                0,
+                7,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 282
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                8,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 283
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                8,
+                0,
+                8,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 284
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                8,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 285
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                8,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 286
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                8,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 287
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                9,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 288
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                9,
+                0,
+                9,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 289
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                9,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 290
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                9,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 291
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                9,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 292
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                10,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 293
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                10,
+                0,
+                10,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 294
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                10,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 295
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                10,
+                0,
+                10,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 296
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                10,
+                0,
+                10,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 304
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                7,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 305
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                7,
+                0,
+                7,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 306
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                7,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 307
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                7,
+                0,
+                1,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 308
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                1,
+                0,
+                7,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 309
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 310
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 311
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 312
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                3,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 313
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                3,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 314
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 315
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 316
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 317
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                8,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 318
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                8,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 319
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                10,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 320
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                10,
+                0,
+                10,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 321
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                10,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 322
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                10,
+                0,
+                9,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 323
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                9,
+                0,
+                10,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 331
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1
+              ]
+            },
+            {
+              "cell": {
+                "index": 332
+              },
+              "wang": [
+                0,
+                7,
+                0,
+                1,
+                0,
+                1,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 333
+              },
+              "wang": [
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                7
+              ]
+            },
+            {
+              "cell": {
+                "index": 336
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                3,
+                0,
+                3,
+                0,
+                3
+              ]
+            },
+            {
+              "cell": {
+                "index": 337
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                3,
+                0,
+                3,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 338
+              },
+              "wang": [
+                0,
+                3,
+                0,
+                3,
+                0,
+                3,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 341
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                8,
+                0,
+                8,
+                0,
+                8
+              ]
+            },
+            {
+              "cell": {
+                "index": 342
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                8,
+                0,
+                8,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 343
+              },
+              "wang": [
+                0,
+                8,
+                0,
+                8,
+                0,
+                8,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 346
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                9,
+                0,
+                9,
+                0,
+                9
+              ]
+            },
+            {
+              "cell": {
+                "index": 347
+              },
+              "wang": [
+                0,
+                10,
+                0,
+                9,
+                0,
+                9,
+                0,
+                10
+              ]
+            },
+            {
+              "cell": {
+                "index": 348
+              },
+              "wang": [
+                0,
+                9,
+                0,
+                9,
+                0,
+                9,
+                0,
+                10
+              ]
+            }
+          ]
+        },
+        "pathways": {
+          "description": "Author-supplied Tiled edge Wang set.",
+          "type": "wang-edge",
+          "slot_order": [
+            "north",
+            "north_east",
+            "east",
+            "south_east",
+            "south",
+            "south_west",
+            "west",
+            "north_west"
+          ],
+          "terrains": [
+            {
+              "id": 1,
+              "name": "dirt-paths",
+              "color": "#aaaa00",
+              "probability": 1
+            },
+            {
+              "id": 2,
+              "name": "sand paths",
+              "color": "#ffff00",
+              "probability": 1
+            },
+            {
+              "id": 3,
+              "name": "water-paths",
+              "color": "#0000ff",
+              "probability": 1
+            }
+          ],
+          "tiles": [
+            {
+              "cell": {
+                "index": 3
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 4
+              },
+              "wang": [
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 5
+              },
+              "wang": [
+                0,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 6
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 15
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 16
+              },
+              "wang": [
+                0,
+                0,
+                2,
+                0,
+                2,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 17
+              },
+              "wang": [
+                0,
+                0,
+                2,
+                0,
+                2,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 18
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                2,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 30
+              },
+              "wang": [
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 31
+              },
+              "wang": [
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 32
+              },
+              "wang": [
+                1,
+                0,
+                1,
+                0,
+                1,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 33
+              },
+              "wang": [
+                1,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 42
+              },
+              "wang": [
+                2,
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 43
+              },
+              "wang": [
+                2,
+                0,
+                2,
+                0,
+                2,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 44
+              },
+              "wang": [
+                2,
+                0,
+                2,
+                0,
+                2,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 45
+              },
+              "wang": [
+                2,
+                0,
+                0,
+                0,
+                2,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 57
+              },
+              "wang": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 58
+              },
+              "wang": [
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 59
+              },
+              "wang": [
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 60
+              },
+              "wang": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 69
+              },
+              "wang": [
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 70
+              },
+              "wang": [
+                2,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 71
+              },
+              "wang": [
+                2,
+                0,
+                2,
+                0,
+                0,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 72
+              },
+              "wang": [
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 85
+              },
+              "wang": [
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 86
+              },
+              "wang": [
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 87
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 97
+              },
+              "wang": [
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 98
+              },
+              "wang": [
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 99
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 270
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 271
+              },
+              "wang": [
+                0,
+                0,
+                3,
+                0,
+                3,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 272
+              },
+              "wang": [
+                0,
+                0,
+                3,
+                0,
+                3,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 273
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 297
+              },
+              "wang": [
+                3,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 298
+              },
+              "wang": [
+                3,
+                0,
+                3,
+                0,
+                3,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 299
+              },
+              "wang": [
+                3,
+                0,
+                3,
+                0,
+                3,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 300
+              },
+              "wang": [
+                3,
+                0,
+                0,
+                0,
+                3,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 324
+              },
+              "wang": [
+                3,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 325
+              },
+              "wang": [
+                3,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 326
+              },
+              "wang": [
+                3,
+                0,
+                3,
+                0,
+                0,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 327
+              },
+              "wang": [
+                3,
+                0,
+                0,
+                0,
+                0,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 352
+              },
+              "wang": [
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 353
+              },
+              "wang": [
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                3,
+                0
+              ]
+            },
+            {
+              "cell": {
+                "index": 354
+              },
+              "wang": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                3,
+                0
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

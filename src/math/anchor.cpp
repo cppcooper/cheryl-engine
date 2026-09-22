@@ -1,410 +1,165 @@
-#include <assets/primitives/vertex-array-object.h>
 #include <math/anchor.h>
 
-void Anchor::MakeAnchor(AnchorType type, float* vertices, uint16_t texture_width, uint16_t texture_height,
-                        uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    switch (type) {
-        case ::Center:
-            Center(vertices, texture_width, texture_height, width, height, x0, y0);
-            break;
-        case ::TopLeft:
-            TopLeft(vertices, texture_width, texture_height, width, height, x0, y0);
-            break;
-        case ::TopRight:
-            TopRight(vertices, texture_width, texture_height, width, height, x0, y0);
-            break;
-        case ::BottomLeft:
-            BottomLeft(vertices, texture_width, texture_height, width, height, x0, y0);
-            break;
-        case ::BottomRight:
-            BottomRight(vertices, texture_width, texture_height, width, height, x0, y0);
-            break;
+#include <assets/primitives/vertex-array-object.h>
+#include <internals/exceptions.h>
+
+#include <cmath>
+#include <cstddef>
+
+namespace CE::math {
+    namespace {
+        void validate(const Pivot pivot, const std::uint32_t texture_width, const std::uint32_t texture_height) {
+            if (!std::isfinite(pivot.x) || !std::isfinite(pivot.y) || pivot.x < 0.0f || pivot.x > 1.0f ||
+                pivot.y < 0.0f || pivot.y > 1.0f) {
+                throw Exceptions::invalid_args(CE_HERE, "A pivot must be normalized to the [0, 1] range");
+            }
+            if (texture_width == 0 || texture_height == 0) {
+                throw Exceptions::invalid_args(CE_HERE, "A texture must have non-zero dimensions");
+            }
+        }
+
+        void set_vertex(float* vertices, const std::size_t index, const float x, const float y, const float u,
+                        const float v) {
+            const auto offset = index * 5;
+            vertices[offset] = x;
+            vertices[offset + 1] = y;
+            vertices[offset + 2] = 0.0f;
+            vertices[offset + 3] = u;
+            vertices[offset + 4] = v;
+        }
     }
-}
 
-void Anchor::MakeAnchor(AnchorType type, CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                        uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    switch (type) {
-        case ::Center:
-            Center(vertices, texture_width, texture_height, width, height, x0, y0);
-        break;
-        case ::TopLeft:
-            TopLeft(vertices, texture_width, texture_height, width, height, x0, y0);
-        break;
-        case ::TopRight:
-            TopRight(vertices, texture_width, texture_height, width, height, x0, y0);
-        break;
-        case ::BottomLeft:
-            BottomLeft(vertices, texture_width, texture_height, width, height, x0, y0);
-        break;
-        case ::BottomRight:
-            BottomRight(vertices, texture_width, texture_height, width, height, x0, y0);
-        break;
+    AnchorType get_anchor(const std::string& anchor) {
+        if (anchor == "TL")
+            return AnchorType::TopLeft;
+        if (anchor == "TC")
+            return AnchorType::TopCenter;
+        if (anchor == "TR")
+            return AnchorType::TopRight;
+        if (anchor == "CL" || anchor == "ML")
+            return AnchorType::CenterLeft;
+        if (anchor == "CR" || anchor == "MR")
+            return AnchorType::CenterRight;
+        if (anchor == "BL")
+            return AnchorType::BottomLeft;
+        if (anchor == "BC")
+            return AnchorType::BottomCenter;
+        if (anchor == "BR")
+            return AnchorType::BottomRight;
+        return AnchorType::Center;
     }
-}
 
-inline void CalcUVs(float* vertices, float twidth, float theight, float fwidth, float fheight, float sx, float sy) {
-    ///Bottom Left
-    vertices[2] = 0.f;
-    vertices[3] = sx / twidth;                        // U - Texture mapping
-    vertices[4] = 1.0f-((sy+fheight) / theight);      // V - Texture mapping (Inverted Axis?)
+    Pivot get_pivot(const AnchorType anchor) {
+        switch (anchor) {
+        case AnchorType::TopLeft:
+            return {0.0f, 0.0f};
+        case AnchorType::TopCenter:
+            return {0.5f, 0.0f};
+        case AnchorType::TopRight:
+            return {1.0f, 0.0f};
+        case AnchorType::CenterLeft:
+            return {0.0f, 0.5f};
+        case AnchorType::CenterRight:
+            return {1.0f, 0.5f};
+        case AnchorType::BottomLeft:
+            return {0.0f, 1.0f};
+        case AnchorType::BottomCenter:
+            return {0.5f, 1.0f};
+        case AnchorType::BottomRight:
+            return {1.0f, 1.0f};
+        case AnchorType::Center:
+            return {0.5f, 0.5f};
+        }
+        return {0.5f, 0.5f};
+    }
 
-    ///Bottom Right
-    vertices[7] = 0.0f;
-    vertices[8] = (sx+fwidth) / twidth;
-    vertices[9] = 1.0f-((sy+fheight) / theight);
+    void Anchor::MakePivot(const Pivot pivot, Vertex2D* vertices, const std::uint32_t texture_width,
+                           const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
+                           const std::uint32_t x0, const std::uint32_t y0) {
+        validate(pivot, texture_width, texture_height);
 
-    ///Top Right
-    vertices[12] = 0.0f;
-    vertices[13] = (sx+fwidth) / twidth;
-    vertices[14] = 1.0f-(sy / theight);
+        const auto tw = static_cast<float>(texture_width);
+        const auto th = static_cast<float>(texture_height);
+        const auto fw = static_cast<float>(width);
+        const auto fh = static_cast<float>(height);
+        const auto sx = static_cast<float>(x0);
+        const auto sy = static_cast<float>(y0);
 
-    ///Top Left
-    vertices[17] = 0.0f;
-    vertices[18] = sx / twidth;
-    vertices[19] = 1.0f-(sy / theight);
-}
+        const float left = -pivot.x * fw;
+        const float right = (1.0f - pivot.x) * fw;
+        const float bottom = (pivot.y - 1.0f) * fh;
+        const float top = pivot.y * fh;
+        const float u0 = sx / tw;
+        const float u1 = (sx + fw) / tw;
+        const float v0 = 1.0f - ((sy + fh) / th);
+        const float v1 = 1.0f - (sy / th);
 
-void Anchor::Center(CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    float hfw = fwidth / 2.f;
-    float hfh = fheight / 2.f;
-    // Top Left
-    vertices[0] = {
-        0-hfw,
-        0-hfh,
-        0,
-        x0 / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Bottom Right
-    vertices[1] = {
-        0+hfw,
-        0-hfh,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Top Right
-    vertices[2] = {
-        0+hfw,
-        0+hfh,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-(y0 / theight)
-    };
-    // Top Left
-    vertices[3] = {
-        0-hfw,
-        0+hfh,
-        0,
-        x0 / twidth,
-        1.0f-(y0 / theight)
-    };
-}
+        vertices[0] = {left, bottom, 0.0f, u0, v0};
+        vertices[1] = {right, bottom, 0.0f, u1, v0};
+        vertices[2] = {right, top, 0.0f, u1, v1};
+        vertices[3] = vertices[0];
+        vertices[4] = vertices[2];
+        vertices[5] = {left, top, 0.0f, u0, v1};
+    }
 
-void Anchor::TopLeft(CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    // Bottom Left
-    vertices[0] = {
-        0,
-        -fheight,
-        0,
-        x0 / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Bottom Right
-    vertices[1] = {
-        fwidth,
-        -fheight,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Top Right
-    vertices[2] = {
-        fwidth,
-        0,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-(y0 / theight)
-    };
-    // Top Left
-    vertices[3] = {
-        0,
-        0,
-        0,
-        x0 / twidth,
-        1.0f-(y0 / theight)
-    };
-}
+    void Anchor::MakePivot(const Pivot pivot, float* vertices, const std::uint32_t texture_width,
+                           const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
+                           const std::uint32_t x0, const std::uint32_t y0) {
+        validate(pivot, texture_width, texture_height);
 
-void Anchor::TopRight(CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    // Bottom Left
-    vertices[0] = {
-        -fwidth,
-        -fheight,
-        0,
-        x0 / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Bottom Right
-    vertices[1] = {
-        0,
-        -fheight,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Top Right
-    vertices[2] = {
-        0,
-        0,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-(y0 / theight)
-    };
-    // Top Left
-    vertices[3] = {
-        -fwidth,
-        0,
-        0,
-        x0 / twidth,
-        1.0f-(y0 / theight)
-    };
-}
+        const auto tw = static_cast<float>(texture_width);
+        const auto th = static_cast<float>(texture_height);
+        const auto fw = static_cast<float>(width);
+        const auto fh = static_cast<float>(height);
+        const auto sx = static_cast<float>(x0);
+        const auto sy = static_cast<float>(y0);
 
-void Anchor::BottomLeft(CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    // Bottom Left
-    vertices[0] = {
-        0,
-        0,
-        0,
-        x0 / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Bottom Right
-    vertices[1] = {
-        fwidth,
-        0,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Top Right
-    vertices[2] = {
-        fwidth,
-        fheight,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-(y0 / theight)
-    };
-    // Top Left
-    vertices[3] = {
-        0,
-        fheight,
-        0,
-        x0 / twidth,
-        1.0f-(y0 / theight)
-    };
-}
+        const float left = -pivot.x * fw;
+        const float right = (1.0f - pivot.x) * fw;
+        const float bottom = (pivot.y - 1.0f) * fh;
+        const float top = pivot.y * fh;
+        const float u0 = sx / tw;
+        const float u1 = (sx + fw) / tw;
+        const float v0 = 1.0f - ((sy + fh) / th);
+        const float v1 = 1.0f - (sy / th);
 
-void Anchor::BottomRight(CE::Vertex2D* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    // Bottom Left
-    vertices[0] = {
-        -fwidth,
-        0,
-        0,
-        x0 / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Bottom Right
-    vertices[1] = {
-        0,
-        0,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-((y0+fheight) / theight)
-    };
-    // Top Right
-    vertices[2] = {
-        0,
-        fheight,
-        0,
-        (x0+fwidth) / twidth,
-        1.0f-(y0 / theight)
-    };
-    // Top Left
-    vertices[3] = {
-        -fwidth,
-        fheight,
-        0,
-        x0 / twidth,
-        1.0f-(y0 / theight)
-    };
-}
+        set_vertex(vertices, 0, left, bottom, u0, v0);
+        set_vertex(vertices, 1, right, bottom, u1, v0);
+        set_vertex(vertices, 2, right, top, u1, v1);
+        set_vertex(vertices, 3, left, bottom, u0, v0);
+        set_vertex(vertices, 4, right, top, u1, v1);
+        set_vertex(vertices, 5, left, top, u0, v1);
+    }
 
-void Anchor::Center(float* vertices, uint16_t texture_width, uint16_t texture_height,
-                    uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float sx = static_cast<float>(x0);
-    float sy = static_cast<float>(y0);
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    CalcUVs(vertices, twidth, theight, fwidth, fheight, sx, sy);
-    ///Bottom Left
-    vertices[0] = 0-(fwidth / 2.0f);                  // X
-    vertices[1] = 0-(fheight / 2.0f);                 // Y
+    void Anchor::MakeAnchor(const AnchorType type, Vertex2D* vertices, const std::uint32_t texture_width,
+                            const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
+                            const std::uint32_t x0, const std::uint32_t y0) {
+        MakePivot(get_pivot(type), vertices, texture_width, texture_height, width, height, x0, y0);
+    }
 
-    ///Bottom Right
-    vertices[5] = 0+(fwidth / 2.0f);
-    vertices[6] = 0-(fheight / 2.0f);
+    void Anchor::MakeAnchor(const AnchorType type, float* vertices, const std::uint32_t texture_width,
+                            const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
+                            const std::uint32_t x0, const std::uint32_t y0) {
+        MakePivot(get_pivot(type), vertices, texture_width, texture_height, width, height, x0, y0);
+    }
 
-    ///Top Right
-    vertices[10] = 0+(fwidth / 2.0f);
-    vertices[11] = 0+(fheight / 2.0f);
+#define CE_ANCHOR_WRAPPER(name, value)                                                                                 \
+    void Anchor::name(Vertex2D* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height,       \
+                      const std::uint32_t width, const std::uint32_t height, const std::uint32_t x0,                   \
+                      const std::uint32_t y0) {                                                                        \
+        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                              \
+    }                                                                                                                  \
+    void Anchor::name(float* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height,          \
+                      const std::uint32_t width, const std::uint32_t height, const std::uint32_t x0,                   \
+                      const std::uint32_t y0) {                                                                        \
+        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                              \
+    }
 
-    ///Top Left
-    vertices[15] = 0-(fwidth / 2.0f);
-    vertices[16] = 0+(fheight / 2.0f);
-}
+    CE_ANCHOR_WRAPPER(Center, get_pivot(AnchorType::Center))
+    CE_ANCHOR_WRAPPER(TopLeft, get_pivot(AnchorType::TopLeft))
+    CE_ANCHOR_WRAPPER(TopRight, get_pivot(AnchorType::TopRight))
+    CE_ANCHOR_WRAPPER(BottomLeft, get_pivot(AnchorType::BottomLeft))
+    CE_ANCHOR_WRAPPER(BottomRight, get_pivot(AnchorType::BottomRight))
 
-void Anchor::TopLeft(float* vertices, uint16_t texture_width, uint16_t texture_height,
-                     uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float sx = static_cast<float>(x0);
-    float sy = static_cast<float>(y0);
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    CalcUVs(vertices, twidth, theight, fwidth, fheight, sx, sy);
-    //Bottom Left
-    vertices[0] = 0.f;
-    vertices[1] = -fheight;
-
-    //Bottom Right
-    vertices[5] = fwidth;
-    vertices[6] = -fheight;
-
-    //Top Right
-    vertices[10] = fwidth;
-    vertices[11] = 0.f;
-
-    //Top Left
-    vertices[15] = 0.f;
-    vertices[16] = 0.f;
-}
-
-void Anchor::TopRight(float* vertices, uint16_t texture_width, uint16_t texture_height,
-                      uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float sx = static_cast<float>(x0);
-    float sy = static_cast<float>(y0);
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    CalcUVs(vertices, twidth, theight, fwidth, fheight, sx, sy);
-    //Bottom Left
-    vertices[0] = -fwidth;
-    vertices[1] = -fheight;
-
-    //Bottom Right
-    vertices[5] = 0.f;
-    vertices[6] = -fheight;
-
-    //Top Right
-    vertices[10] = 0.f;
-    vertices[11] = 0.f;
-
-    //Top Left
-    vertices[15] = -fwidth;
-    vertices[16] = 0.f;
-}
-
-void Anchor::BottomLeft(float* vertices, uint16_t texture_width, uint16_t texture_height,
-                        uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float sx = static_cast<float>(x0);
-    float sy = static_cast<float>(y0);
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    CalcUVs(vertices, twidth, theight, fwidth, fheight, sx, sy);
-    //Bottom Left
-    vertices[0] = 0.0f;
-    vertices[1] = 0.0f;
-
-    //Bottom Right
-    vertices[5] = fwidth;
-    vertices[6] = 0.0f;
-
-    //Top Right
-    vertices[10] = fwidth;
-    vertices[11] = fheight;
-
-    //Top Left
-    vertices[15] = 0.0f;
-    vertices[16] = fheight;
-}
-
-void Anchor::BottomRight(float* vertices, uint16_t texture_width, uint16_t texture_height,
-                         uint16_t width, uint16_t height, uint16_t x0, uint16_t y0
-) {
-    float sx = static_cast<float>(x0);
-    float sy = static_cast<float>(y0);
-    float twidth = static_cast<float>(texture_width);
-    float theight = static_cast<float>(texture_height);
-    float fwidth = static_cast<float>(width);
-    float fheight = static_cast<float>(height);
-    CalcUVs(vertices, twidth, theight, fwidth, fheight, sx, sy);
-    //Bottom Left
-    vertices[0] = -fwidth;
-    vertices[1] = 0.f;
-
-    //Bottom Right
-    vertices[5] = 0.f;
-    vertices[6] = 0.f;
-
-    //Top Right
-    vertices[10] = 0.f;
-    vertices[11] = fheight;
-
-    //Top Left
-    vertices[15] = -fwidth;
-    vertices[16] = fheight;
+#undef CE_ANCHOR_WRAPPER
 }

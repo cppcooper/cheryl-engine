@@ -1,9 +1,7 @@
 #pragma once
-#ifndef CEMATHPTR_H
-#define CEMATHPTR_H
 #include <variant>
 #include <cstring>
-#include <stdexcept>
+#include <internals/exceptions.h>
 namespace CE::ptr {
     // returns true if address >= start && address < end
     inline bool is_in_range(const uintptr_t start, const uintptr_t end, const uintptr_t address) {
@@ -99,8 +97,7 @@ namespace CE::ptr {
             case 8:
                 return hash;  // No need for modulus, 64 bits fit directly
             default:
-                throw std::invalid_argument("Invalid hash size. Supported sizes: 1, 2, 4, or 8 bytes.");
+                throw Exceptions::invalid_args(CE_HERE, "Invalid hash size. Supported sizes: 1, 2, 4, or 8 bytes.");
         }
     }
 }
-#endif

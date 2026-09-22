@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include <resources/memory.h>
+#include <core/resources/memory.h>
 #include <testing/block.h>
 #include <internals/macros/int-literals.h>
 #include <random>
 
-inline bool is_po2(size_t idx) {
+inline bool is_po2(const size_t value) {
     for(uint64_t i = 0; i <= 63; ++i) {
-        if (1ull << i == idx) [[unlikely]] {
+        if (1ull << i == value) [[unlikely]] {
             return true;
         }
     }

@@ -1,10 +1,11 @@
 #pragma once
 #include <cgl.h>
 #include <memory>
+#include <array>
 
 namespace CE {
     namespace VAONumbers {
-        constexpr GLsizei vertices_per_quad = 4;
+        constexpr GLsizei vertices_per_quad = 6;
         constexpr GLsizei floats_per_quad_vertex = 5;
         constexpr GLsizei floats_per_quad = vertices_per_quad * floats_per_quad_vertex;
         constexpr GLsizei floats_per_mesh_vertex = 8;
@@ -28,7 +29,7 @@ namespace CE {
     };
 
     struct Quad {
-        std::array<Vertex2D,4> vertices;
+        std::array<Vertex2D, VAONumbers::vertices_per_quad> vertices;
     };
 
     struct VAO {

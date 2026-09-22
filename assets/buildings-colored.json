@@ -1,0 +1,175 @@
+{
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "miniworld-buildings-colored",
+  "texture": "MiniWorldSprites/ColoredBuildingsPreview.png",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "tilesets": {
+    "large_buildings": {
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 15,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "brown": {
+          "row": 0,
+          "column": 0,
+          "rows": 2,
+          "columns": 3
+        },
+        "teal": {
+          "row": 0,
+          "column": 3,
+          "rows": 2,
+          "columns": 3
+        },
+        "red": {
+          "row": 0,
+          "column": 6,
+          "rows": 2,
+          "columns": 3
+        },
+        "purple": {
+          "row": 0,
+          "column": 9,
+          "rows": 2,
+          "columns": 3
+        },
+        "green": {
+          "row": 0,
+          "column": 12,
+          "rows": 2,
+          "columns": 3
+        }
+      }
+    },
+    "buildings": {
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 64
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 20,
+        "columns": 30,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "brown": {
+          "row": 0,
+          "column": 0,
+          "rows": 20,
+          "columns": 6
+        },
+        "teal": {
+          "row": 0,
+          "column": 6,
+          "rows": 20,
+          "columns": 6
+        },
+        "red": {
+          "row": 0,
+          "column": 12,
+          "rows": 20,
+          "columns": 6
+        },
+        "purple": {
+          "row": 0,
+          "column": 18,
+          "rows": 20,
+          "columns": 6
+        },
+        "green": {
+          "row": 0,
+          "column": 24,
+          "rows": 20,
+          "columns": 6
+        }
+      }
+    },
+    "ships": {
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 384
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 15,
+        "cell_order": "row-major"
+      },
+      "views": {
+        "brown": {
+          "row": 0,
+          "column": 0,
+          "rows": 1,
+          "columns": 3
+        },
+        "teal": {
+          "row": 0,
+          "column": 3,
+          "rows": 1,
+          "columns": 3
+        },
+        "red": {
+          "row": 0,
+          "column": 6,
+          "rows": 1,
+          "columns": 3
+        },
+        "purple": {
+          "row": 0,
+          "column": 9,
+          "rows": 1,
+          "columns": 3
+        },
+        "green": {
+          "row": 0,
+          "column": 12,
+          "rows": 1,
+          "columns": 3
+        }
+      }
+    }
+  }
+}

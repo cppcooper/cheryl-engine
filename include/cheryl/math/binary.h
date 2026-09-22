@@ -1,14 +1,14 @@
-#ifndef DATA_STRUCTURES
-#define DATA_STRUCTURES
-
+#pragma once
 #include <ostream>
 #include <cinttypes>
 
 
 typedef uint8_t ubyte;
 
-/*This class is the return type of an operator[] overload
-it is used only when u8bits has been accessed as an array
+/* TODO: check if this is entirely redundant functionality (i.e. bitset can replace it)
+ *
+ * This class is the return type of an operator[] overload
+ * it is used only when u8bits has been accessed as an array
 
 This class allows u8bits to be used as a boolean after being indexed*/
 class u8bits_access {
@@ -70,5 +70,3 @@ union u8byte {
     ubyte Byte;
     u8bits Bit;
 };
-
-#endif

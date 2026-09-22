@@ -1,54 +1,80 @@
 #include <assets/2d/tileset.h>
-#include <math/anchor.h>
-#include <fstream>
-#include <format>
-#include <resources/assets/texture-mgr.h>
-#include <nlohmann/json.hpp>
+#include <internals/exceptions.h>
+
+#include <algorithm>
+#include <utility>
 
 namespace CE::Assets {
     void Tile::draw(const DrawInfo& info) {
         glBindVertexArray(id_vao);
         texture->bind();
         info.use_shader();
-        glDrawArrays(GL_QUADS,
-            VAONumbers::calculate_num_vertices(offset_ + index_),
-            VAONumbers::vertices_per_quad);
+        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(VAONumbers::calculate_num_vertices(offset_)),
+                     VAONumbers::vertices_per_quad);
+    }
+
+    TileAnimation::TileAnimation(TileAnimationDefinition definition, const GLuint id, const shptr<Texture>& texture) :
+        Draw2D(id, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
+        if (definition_.frames.empty()) {
+            throw Exceptions::invalid_args(CE_HERE, "A tile animation must contain at least one frame");
+        }
+    }
+
+    void TileAnimation::draw(const DrawInfo& info) {
+        Tile(definition_.frames[index_].cell, id_vao, texture).draw(info);
+    }
+
+    Tile TileAnimation::operator[](const std::size_t frame) {
+        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
+        return Tile(definition_.frames[index_].cell, id_vao, texture);
+    }
+
+    std::chrono::milliseconds TileAnimation::frame_duration() const {
+        return definition_.frames.at(index_).duration;
+    }
+
+    Tileset::Tileset(TilesetData data) :
+        Asset2D(data.vertices, data.vertex_count, data.texture), Frame(0, 0, data.definition.grid.cell_count()),
+        definition_(std::move(data.definition)) {
+        for (const auto& [name, animation] : definition_.animations) {
+            if (!animation_targets_.emplace(animation.target, name).second) {
+                throw Exceptions::invalid_args(CE_HERE, "Multiple tile animations target the same cell");
+            }
+        }
     }
 
     void Tileset::draw(const DrawInfo& info) {
-        Tile(offset_, index_, limit_, vao.id, texture).draw(info);
+        Tile(index_, vao.id, texture).draw(info);
     }
 
-    TilesetData Tileset::load_tilset(const std::filesystem::path& index_file) {
-        std::ifstream file(index_file);
-        using json = nlohmann::json;
-        json data = json::parse(file);
-        if (data["meta"].size() >= 4) {
-            shptr<Texture> texture = TextureMgr::get().get_asset(data["meta"]["texture"]);
-            std::size_t rows = data["tileset"]["r"];
-            std::size_t columns = data["tileset"]["c"];
-            std::size_t width = data["tileset"]["w"];
-            std::size_t height = data["tileset"]["h"];
-            uint32_t total_frames = rows * columns;
-            AnchorType anchor = get_anchor(data["meta"]["anchor"]);
-
-            std::size_t vertices_bytes = sizeof(Quad) * total_frames;
-            auto b = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(float));
-            auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(b.head.get()),[b](void*) {
-                Mem::ExactMMgr::get().return_chunk(b);
-            });
-
-            std::size_t frame_counter = 0;
-            for(int r = 0; r < rows; ++r) {
-                for(int c = 0; c < columns; c++) {
-                    int x0 = width * c, y0 = height * r;
-                    Anchor::MakeAnchor(anchor,
-                        reinterpret_cast<float*>(vertices.get() + (frame_counter++ * VAONumbers::vertices_per_quad)),
-                        texture->width, texture->height, width,height, x0, y0);
-                }
-            }
-            return {vertices, total_frames*VAONumbers::vertices_per_quad, texture};
+    Tile Tileset::tile(const std::size_t cell) const {
+        if (cell >= definition_.grid.cell_count()) {
+            throw Exceptions::bad_request(CE_HERE, "Tileset cell is outside the grid");
         }
-        return {};
+        return Tile(cell, vao.id, texture);
+    }
+
+    TileAnimation Tileset::animation(const std::string& name) const {
+        return TileAnimation(definition_.animations.at(name), vao.id, texture);
+    }
+
+    std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {
+        const auto animation_name = animation_targets_.find(target);
+        if (animation_name != animation_targets_.end()) {
+            return animation(animation_name->second);
+        }
+        return std::nullopt;
+    }
+
+    const ViewDefinition& Tileset::view(const std::string& name) const {
+        return definition_.views.at(name);
+    }
+
+    CellIndex Tileset::orientation(const std::string& name) const {
+        return definition_.orientations.at(name);
+    }
+
+    const AutotileDefinition& Tileset::autotile(const std::string& name) const {
+        return definition_.autotiles.at(name);
     }
 }
