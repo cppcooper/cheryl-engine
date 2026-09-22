@@ -1,21 +1,20 @@
 #pragma once
-#ifndef STRING_NUMBERS_H
-#define STRING_NUMBERS_H
 #include <cinttypes>
 #include <limits>
 #include <variant>
 #include <stdexcept>
 #include <charconv>
 #include <string>
+#include <internals/exceptions.h>
 
 // Helper function to parse floating point numbers
 double parse_floats(const std::string& str) {
     try {
         return std::stod(str);
     } catch (const std::invalid_argument& e) {
-        throw std::runtime_error("Invalid floating point number.");
+        throw CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
     } catch (const std::out_of_range& e) {
-        throw std::runtime_error("Floating point number out of range.");
+        throw CE::Exceptions::bad_request(CE_HERE, "Floating point number out of range.");
     }
 }
 
@@ -27,7 +26,8 @@ NumberVariant parse_integers(const std::string& str) {
     if constexpr (is_unsigned) {
         uint64_t value;
         auto result = std::from_chars(str.data(), str.data() + str.size(), value);
-        if (result.ec != std::errc()) throw std::runtime_error("Invalid integer format.");
+        if (result.ec != std::errc())
+            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
         if (value <= std::numeric_limits<uint8_t>::max()) return static_cast<uint8_t>(value);
         if (value <= std::numeric_limits<uint16_t>::max()) return static_cast<uint16_t>(value);
@@ -36,7 +36,8 @@ NumberVariant parse_integers(const std::string& str) {
     } else {
         int64_t value;
         auto result = std::from_chars(str.data(), str.data() + str.size(), value);
-        if (result.ec != std::errc()) throw std::runtime_error("Invalid integer format.");
+        if (result.ec != std::errc())
+            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
         if (value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max()) return static_cast<int8_t>(value);
         if (value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max()) return static_cast<int16_t>(value);

@@ -7,7 +7,8 @@
 
 namespace CE {
     struct DrawInfo {
-        std::shared_ptr<GLSLProgram> material;
+        // todo: revise to Shader abstract, then update method to polymorph? Or add interface?
+        std::shared_ptr<Assets::GLSLProgram> material;
         glm::mat4 model_matrix = glm::mat4(1.0f);
         glm::vec3 position;
         float scale = 1.f;

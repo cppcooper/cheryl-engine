@@ -33,11 +33,15 @@ namespace CE::Exceptions {
     public:
         invalid_args(const char* location_, uint32_t line_) noexcept;
         invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept;
+        invalid_args(const char* location_, uint32_t line_, const std::string& info_) noexcept :
+            invalid_args(location_, line_, info_.c_str()) {}
     };
 
     class runtime_exception : public exception_base {
     public:
         runtime_exception(const char* location_, uint32_t line_, const char* info_) noexcept;
+        runtime_exception(const char* location_, uint32_t line_, const std::string& info_) noexcept :
+            runtime_exception(location_, line_, info_.c_str()) {}
         runtime_exception(const char* sub_type, const char* location_, uint32_t line_, const char* info_) noexcept;
     };
 
@@ -49,6 +53,8 @@ namespace CE::Exceptions {
     class bad_request : public runtime_exception {
     public:
         bad_request(const char* location_, uint32_t line_, const char* info_) noexcept;
+        bad_request(const char* location_, uint32_t line_, const std::string& info_) noexcept :
+            bad_request(location_, line_, info_.c_str()) {}
     };
 
     class failed_operation : public runtime_exception {

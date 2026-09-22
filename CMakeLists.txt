@@ -72,6 +72,7 @@ include(GoogleTest)
 enable_testing()
 add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
 TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
+target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
 gtest_discover_tests(${TEST_TARGET})
 
@@ -79,3 +80,7 @@ add_executable(backward-cpp tests/executables/backward.cpp)
 target_link_libraries(backward-cpp PUBLIC Backward::Backward)
 
 add_executable(cpp-testing tests/executables/cpp-testing.cpp)
+
+add_executable(demo tests/executables/demo.cpp)
+target_compile_definitions(demo PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(demo PUBLIC cherylGL spdlog Backward::Object gainputstatic glfw gl46 GL X11)

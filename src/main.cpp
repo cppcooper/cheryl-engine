@@ -1,12 +1,11 @@
 #ifdef NDEBUG
-  #include <internals/celog.h>
+#include <internals/celog.h>
+#include <backward.hpp>
 #else
-  #define ST_ON_SIGNALS
-  #include <internals.h>
-  backward::SignalHandling sh;
+#define ST_ON_SIGNALS
+#include <internals.h>
+backward::SignalHandling sh;
 #endif
-//#include <cheryl.h>
+// #include <cheryl.h>
 backward::TraceResolver tr;
-#include <resources.h>
-#include <engine.h>
-
+#include <core.h>

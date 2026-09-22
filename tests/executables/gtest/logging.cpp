@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <ctti/type_id.hpp>
 #include <internals.h>
-#include <logging.h>
+#include <core/logging.h>
 #include <regex>
 #include <fstream>
 #include <iostream>

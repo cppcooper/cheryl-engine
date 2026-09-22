@@ -1,0 +1,2848 @@
+{
+  "$schema": "./schemas/asset-manifest-1.0.schema.json",
+  "version": "1.0",
+  "namespace": "miniworld",
+  "defaults": {
+    "sprite": {
+      "pivot": {
+        "x": 0.5,
+        "y": 1.0
+      }
+    },
+    "tileset": {
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "animation_profiles": {
+    "swordsman": {
+      "description": "Four-facing Swordsman clips transcribed from the MiniWorld character animation guide.",
+      "facings": {
+        "south": 0,
+        "north": 1,
+        "east": 2,
+        "west": 3
+      },
+      "clips": {
+        "idle": {
+          "row_offset": 0,
+          "columns": [
+            0,
+            1
+          ],
+          "frame_duration_ms": 300,
+          "loop": true
+        },
+        "walk": {
+          "row_offset": 0,
+          "columns": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "frame_duration_ms": 200,
+          "loop": true
+        },
+        "attack": {
+          "row_offset": 4,
+          "columns": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "frame_duration_ms": 100,
+          "loop": false
+        },
+        "shield_idle": {
+          "row_offset": 8,
+          "columns": [
+            0,
+            1
+          ],
+          "frame_duration_ms": 300,
+          "loop": true
+        },
+        "shield_take_damage": {
+          "row_offset": 8,
+          "columns": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "frame_duration_ms": 100,
+          "loop": false
+        }
+      }
+    }
+  },
+  "sprites": {
+    "arrow_long": {
+      "texture": "MiniWorldSprites/Objects/ArrowLong.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "arrow_short": {
+      "texture": "MiniWorldSprites/Objects/ArrowShort.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "axe": {
+      "texture": "MiniWorldSprites/Objects/Axe.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 4,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "bolt_ballista": {
+      "texture": "MiniWorldSprites/Objects/BallistaBolt.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "bullet": {
+      "texture": "MiniWorldSprites/Objects/Bullet.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "fireball": {
+      "texture": "MiniWorldSprites/Objects/FireballProjectile.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "shortsword_big": {
+      "texture": "MiniWorldSprites/Objects/ShortBig.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "shortsword": {
+      "texture": "MiniWorldSprites/Objects/SwordShort.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "spear": {
+      "texture": "MiniWorldSprites/Objects/Spear.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "boars": {
+      "texture": "MiniWorldSprites/Animals/Boar.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "chicks": {
+      "texture": "MiniWorldSprites/Animals/Chick.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "chickens": {
+      "texture": "MiniWorldSprites/Animals/Chicken.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "sheep_horned": {
+      "texture": "MiniWorldSprites/Animals/HornedSheep.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "horses": {
+      "texture": "MiniWorldSprites/Animals/Horse(32x32).png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "marine_animals": {
+      "texture": "MiniWorldSprites/Animals/MarineAnimals.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "pigs": {
+      "texture": "MiniWorldSprites/Animals/Pig.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "sheep": {
+      "texture": "MiniWorldSprites/Animals/Sheep.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_arthax": {
+      "texture": "MiniWorldSprites/Characters/Champions/Arthax.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_borg": {
+      "texture": "MiniWorldSprites/Characters/Champions/Börg.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_gangblanc": {
+      "texture": "MiniWorldSprites/Characters/Champions/Gangblanc.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 8,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_grum": {
+      "texture": "MiniWorldSprites/Characters/Champions/Grum.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 9,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_kanji": {
+      "texture": "MiniWorldSprites/Characters/Champions/Kanji.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_katan": {
+      "texture": "MiniWorldSprites/Characters/Champions/Katan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_okomo": {
+      "texture": "MiniWorldSprites/Characters/Champions/Okomo.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "champion_zhinja": {
+      "texture": "MiniWorldSprites/Characters/Champions/Zhinja.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 9,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "demon_armoured_red": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Demons/ArmouredRedDemon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "demon_purple": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Demons/PurpleDemon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "demon_red": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Demons/RedDemon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "dragon_black": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Dragons/BlackDragon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "dragon_blue": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Dragons/BlueDragon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "dragon_red": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Dragons/RedDragon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "dragon_white": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Dragons/WhiteDragon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "dragon_yellow": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Dragons/YellowDragon.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "frostborn_mammoth": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Frostborn/Mammoth.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "frostborn_wendigo": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Frostborn/Wendigo.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "frostborn_yeti": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Frostborn/Yeti.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "giant_crab": {
+      "texture": "MiniWorldSprites/Characters/Monsters/GiantAnimals/GiantCrab.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "goblin_archer": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/ArcherGoblin.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "goblin_club": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/ClubGoblin.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "goblin_farmer": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/FarmerGoblin.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 7,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "goblin_kamikaze": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/KamikazeGoblin.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 10,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "minotaur": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/Minotaur.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 7,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "orc": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/Orc.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "orc_mage": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/OrcMage.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "orc_shaman": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/OrcShaman.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "goblin_spear": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Orcs/SpearGoblin.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 10,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "pirate_captain": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Pirates/PirateCaptain.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "pirate_grunt": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Pirates/PirateGrunt.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "pirate_gunner": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Pirates/PirateGunner.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "slime_king_blue": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/KingSlimeBlue.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "slime_king_green": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/KingSlimeGreen.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "slime_mega_blue": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/MegaSlimeBlue.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "slime_mega_green": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/MegaSlimeGreen.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "slime": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/Slime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "slime_blue": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Slimes/SlimeBlue.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "undead_necromancer": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Undead/Necromancer.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "undead_skeleton_soldier": {
+      "texture": "MiniWorldSprites/Characters/Monsters/Undead/Skeleton-Soldier.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "template_assassin": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/AssasinTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "template_axeman": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/AxemanTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_assassin_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/AssasinCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_axeman_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/AxemanCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_spearman_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SpearmanCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 14,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_swordsman_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      },
+      "animation_profile": "swordsman"
+    },
+    "soldier_assassin_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/LimeMelee/AssasinLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_axeman_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/LimeMelee/AxemanLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_spearman_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/LimeMelee/SpearmanLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 14,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_swordsman_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/LimeMelee/SwordsmanLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      },
+      "animation_profile": "swordsman"
+    },
+    "soldier_assassin_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/PurpleMelee/AssasinPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_axeman_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/PurpleMelee/AxemanPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_spearman_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/PurpleMelee/SpearmanPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 14,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_swordsman_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/PurpleMelee/SwordsmanPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      },
+      "animation_profile": "swordsman"
+    },
+    "soldier_assassin_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/RedMelee/AssasinRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_axeman_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/RedMelee/AxemanRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_spearman_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/RedMelee/SpearmanRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 14,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_swordsman_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/RedMelee/SwordsmanRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      },
+      "animation_profile": "swordsman"
+    },
+    "template_spearman": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/SpearmanTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 14,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "template_swordsman": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Melee/SwordsmanTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      },
+      "animation_profile": "swordsman"
+    },
+    "mounted_knight_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Mounted/CyanKnight.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "mounted_knight_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Mounted/LimeKnight.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "mounted_knight_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Mounted/PurpleKnight.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "mounted_knight_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Mounted/RedKnight.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "ballista": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/Ballista.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 7,
+        "cell_order": "row-major"
+      }
+    },
+    "template_bowman": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/BowmanTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_bowman_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/CyanRanged/BowmanCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_mage_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/CyanRanged/MageCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_musketeer_cyan": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/CyanRanged/MusketeerCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_bowman_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/LimeRanged/BowmanLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_mage_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/LimeRanged/MageLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_musketeer_lime": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/LimeRanged/MusketeerLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "template_mage": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/MageTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_bowman_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/PurpleRanged/BowmanPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_mage_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/PurpleRanged/MagePurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_musketeer_purple": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/PurpleRanged/MusketeerPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_bowman_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/RedRanged/BowmanRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_mage_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/RedRanged/MageRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "soldier_musketeer_red": {
+      "texture": "MiniWorldSprites/Characters/Soldiers/Ranged/RedRanged/MusketeerRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 8,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "worker_farmer_cyan": {
+      "texture": "MiniWorldSprites/Characters/Workers/CyanWorker/FarmerCyan.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "template_farmer": {
+      "texture": "MiniWorldSprites/Characters/Workers/FarmerTemplate.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "worker_farmer_lime": {
+      "texture": "MiniWorldSprites/Characters/Workers/LimeWorker/FarmerLime.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "worker_farmer_purple": {
+      "texture": "MiniWorldSprites/Characters/Workers/PurpleWorker/FarmerPurple.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "worker_farmer_red": {
+      "texture": "MiniWorldSprites/Characters/Workers/RedWorker/FarmerRed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    }
+  },
+  "tilesets": {
+    "boxselector": {
+      "texture": "MiniWorldSprites/User Interface/BoxSelector.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "boxhighlighter": {
+      "texture": "MiniWorldSprites/User Interface/Highlighted-Boxes.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "icons_essential": {
+      "texture": "MiniWorldSprites/User Interface/Icons-Essentials.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "icons_ui": {
+      "texture": "MiniWorldSprites/User Interface/UiIcons.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 12,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "cactus": {
+      "texture": "MiniWorldSprites/Nature/Cactus.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_coconut": {
+      "texture": "MiniWorldSprites/Nature/CoconutTrees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 6,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_alive": {
+      "texture": "MiniWorldSprites/Nature/Trees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_dead": {
+      "texture": "MiniWorldSprites/Nature/DeadTrees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_dead_winter": {
+      "texture": "MiniWorldSprites/Nature/WinterDeadTrees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_winter": {
+      "texture": "MiniWorldSprites/Nature/WinterTrees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "rocks": {
+      "texture": "MiniWorldSprites/Nature/Rocks.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 4,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "wheatfield": {
+      "texture": "MiniWorldSprites/Nature/Wheatfield.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "tumbleweed": {
+      "texture": "MiniWorldSprites/Nature/Tumbleweed.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "boat": {
+      "texture": "MiniWorldSprites/Miscellaneous/Boat.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "bridge": {
+      "texture": "MiniWorldSprites/Miscellaneous/Bridge.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 40,
+          "height": 48
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "chests": {
+      "texture": "MiniWorldSprites/Miscellaneous/Chests.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "ship_pirate": {
+      "texture": "MiniWorldSprites/Miscellaneous/PirateShip.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "ship_transport": {
+      "texture": "MiniWorldSprites/Miscellaneous/TransportShip.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "ship_war": {
+      "texture": "MiniWorldSprites/Miscellaneous/WarShip.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "portal": {
+      "texture": "MiniWorldSprites/Miscellaneous/Portal.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "questboard": {
+      "texture": "MiniWorldSprites/Miscellaneous/QuestBoard.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "signs_general": {
+      "texture": "MiniWorldSprites/Miscellaneous/Signs.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "signs_path": {
+      "texture": "MiniWorldSprites/Miscellaneous/StreetSigns.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "tombstones": {
+      "texture": "MiniWorldSprites/Miscellaneous/Tombstones.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 4,
+        "cell_order": "row-major"
+      }
+    },
+    "wells": {
+      "texture": "MiniWorldSprites/Miscellaneous/Well.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "grass_dead": {
+      "texture": "MiniWorldSprites/Ground/DeadGrass.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "grass_alive": {
+      "texture": "MiniWorldSprites/Ground/TexturedGrass.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "grass": {
+      "texture": "MiniWorldSprites/Ground/Grass.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "mausoleum": {
+      "texture": "MiniWorldSprites/Buildings/Enemy/Mausoleum.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 2,
+        "cell_order": "row-major"
+      }
+    },
+    "shore": {
+      "texture": "MiniWorldSprites/Ground/Shore.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "spike_walls": {
+      "texture": "MiniWorldSprites/Buildings/Enemy/SpearWall.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    },
+    "winter": {
+      "texture": "MiniWorldSprites/Ground/Winter.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 8,
+        "cell_order": "row-major"
+      }
+    },
+    "cliff": {
+      "texture": "MiniWorldSprites/Ground/Cliff.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 9,
+        "columns": 7,
+        "cell_order": "row-major"
+      }
+    },
+    "cliff_water": {
+      "texture": "MiniWorldSprites/Ground/Cliff-Water.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 6,
+        "columns": 5,
+        "cell_order": "row-major"
+      }
+    },
+    "tree_pine": {
+      "texture": "MiniWorldSprites/Nature/PineTrees.png",
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "width": 16,
+          "height": 16
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 1,
+        "columns": 3,
+        "cell_order": "row-major"
+      }
+    }
+  }
+}
