@@ -67,12 +67,12 @@ namespace CE::Assets {
             widths[idx] = static_cast<float>(buffer[idx]);
         }
 
-        std::array<Vertex2D, num_vertices> vertices{};
-        make_vertices(vertices.data());
+        auto vertices = std::make_shared<std::array<Vertex2D, num_vertices>>();
+        make_vertices(vertices->data());
         auto texture = TextureMgr::get().get_asset("whitefont.png");
         if (!texture)
             throw Exceptions::runtime_exception(CE_HERE, "The legacy font texture is not loaded");
-        std::shared_ptr<Vertex2D> verts(vertices.data(), [](Vertex2D*) {});
+        std::shared_ptr<Vertex2D> verts(vertices, vertices->data());
         auto geometry = provider.upload_geometry(verts, num_vertices);
         return {widths, std::move(geometry), std::move(texture)};
     }

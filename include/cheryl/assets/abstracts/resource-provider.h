@@ -13,6 +13,7 @@
 
 namespace CE::Assets {
     // Uploads transient CPU data into resources owned by the selected backend.
+    // Implementations must finish copying the supplied pixels and vertices before returning.
     struct ResourceProvider {
         virtual ~ResourceProvider() = default;
         [[nodiscard]] virtual std::shared_ptr<Image> load_image(const std::filesystem::path& file) = 0;
