@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <assets/manifest.h>
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/2d/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>
@@ -62,6 +62,19 @@ TEST(asset_grid, resolves_spaced_row_major_cells) {
     EXPECT_EQ(grid.occupied_right(), 34);
     EXPECT_EQ(grid.occupied_bottom(), 21);
     EXPECT_THROW(static_cast<void>(grid.cell_rect(6)), CE::Exceptions::bad_request);
+}
+
+TEST(asset_grid, builds_vertices_from_dimensions_without_a_gpu_texture) {
+    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
+    const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
+
+    ASSERT_EQ(geometry.vertex_count, CE::VAONumbers::vertices_per_quad);
+    ASSERT_NE(geometry.vertices, nullptr);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].x, -4.0f);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].u, 0.125f);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].v, 0.5f);
+    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16}), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16}), CE::Exceptions::runtime_exception);
 }
 
 TEST(asset_manifest, parses_every_checked_in_manifest) {

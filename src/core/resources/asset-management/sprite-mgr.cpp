@@ -21,7 +21,12 @@ namespace CE::Assets {
                                                     "Sprite '" + id + "' references an unloaded texture '" +
                                                         definition.texture.string() + "'");
             }
-            auto geometry = make_grid_geometry(definition.grid, definition.pivot, *texture);
+            if (texture->width <= 0 || texture->height <= 0) {
+                throw Exceptions::runtime_exception(CE_HERE, "Sprite '" + id + "' has an empty texture");
+            }
+            const PixelSize texture_size{static_cast<std::uint32_t>(texture->width),
+                                         static_cast<std::uint32_t>(texture->height)};
+            auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
             const auto& asset = assets[index];
             Obj::ObjCtor<Sprite>::construct(asset.get(), 1,
                                             SpriteData{.vertices = std::move(geometry.vertices),

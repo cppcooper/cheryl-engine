@@ -1,0 +1,13 @@
+# API boundary refactor
+
+The goal is to let the runtime and asset loader use a selected backend without naming OpenGL objects. GLFW can remain the window implementation for more than one graphics API; replacing the graphics API and replacing the window/input implementation are separate capabilities. Keep the existing OpenGL path working after each step.
+
+1. **CPU asset data:** Move vertex definitions out of the VAO header and make grid construction accept image dimensions instead of a GPU texture. Keep manifest parsing and geometry generation usable without a graphics context.
+2. **Display:** Make `Monitor` an API-neutral description, then define the window operations the engine needs (`framebuffer_size`, window mode, close state, cursor, resize) behind a display/window contract. Keep native GLFW handles and monitor lookup inside the GLFW implementation. Change `iRenderer::display` and window-resize events to use only the neutral contract and data.
+3. **Input:** Keep GLFW event translation and Gainput polling in an adapter. Expose backend-independent input bindings or actions to games; preserve the current button/axis callback behavior. Make the engine attach and poll the selected input adapter.
+4. **Draw contract:** Separate `DrawInfo` and `iDraw` from `GLSLProgram`. Move shader parameters and draw submission to a backend-neutral material/draw contract, with OpenGL calls owned by an OpenGL implementation. Adapt sprites, tiles, and fonts together with their draw calls, since they share this contract.
+5. **GPU asset creation:** Move `Texture`, `VAO`, and `GLSLProgram` construction behind backend-owned resource creation. Have texture, sprite, tileset, font, and shader managers use the selected provider rather than an OpenGL singleton; make `Loader` dispatch typed manifest data into that provider. Keep CPU decoding and grid data separate from uploads.
+6. **Engine composition:** Make backend selection compose renderer, display, input, and asset provider. Forward camera state and clear/depth settings through the selected renderer; move OpenGL calls out of the common engine path. Update the demo to use those contracts.
+7. **Proof:** Build the OpenGL demo and tests after each coherent slice. Add a small second adapter or test implementation that exercises the same runtime, loading, input, resize, and draw contracts without including OpenGL or GLFW in client code. A new renderer class alone is not sufficient proof.
+
+Each commit should change at least one targeted class (plus the callers needed to keep it usable). Avoid replacing working implementation classes with empty interfaces; finish one usable boundary before moving its consumers.

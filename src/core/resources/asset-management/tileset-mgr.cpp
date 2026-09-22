@@ -21,7 +21,12 @@ namespace CE::Assets {
                                                     "Tileset '" + id + "' references an unloaded texture '" +
                                                         definition.texture.string() + "'");
             }
-            auto geometry = make_grid_geometry(definition.grid, definition.pivot, *texture);
+            if (texture->width <= 0 || texture->height <= 0) {
+                throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' has an empty texture");
+            }
+            const PixelSize texture_size{static_cast<std::uint32_t>(texture->width),
+                                         static_cast<std::uint32_t>(texture->height)};
+            auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
             const auto& asset = assets[index];
             Obj::ObjCtor<Tileset>::construct(asset.get(), 1,
                                              TilesetData{.vertices = std::move(geometry.vertices),

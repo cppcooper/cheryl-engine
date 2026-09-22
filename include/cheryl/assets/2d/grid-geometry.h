@@ -1,8 +1,7 @@
 #pragma once
 
 #include <assets/manifest.h>
-#include <assets/primitives/texture.h>
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/primitives/vertex.h>
 
 #include <cstdint>
 #include <memory>
@@ -13,6 +12,5 @@ namespace CE::Assets {
         std::uint32_t vertex_count{};
     };
 
-    [[nodiscard]] GridGeometry make_grid_geometry(const GridDefinition& grid, math::Pivot pivot,
-                                                  const Texture& texture);
+    [[nodiscard]] GridGeometry make_grid_geometry(const GridDefinition& grid, math::Pivot pivot, PixelSize texture_size);
 }

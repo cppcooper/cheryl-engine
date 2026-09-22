@@ -8,12 +8,11 @@
 #include <utility>
 
 namespace CE::Assets {
-    GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const Texture& texture) {
-        if (texture.width <= 0 || texture.height <= 0) {
+    GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const PixelSize texture_size) {
+        if (texture_size.width == 0 || texture_size.height == 0) {
             throw Exceptions::runtime_exception(CE_HERE, "Cannot build an asset grid from an empty texture");
         }
-        if (grid.occupied_right() > static_cast<std::uint64_t>(texture.width) ||
-            grid.occupied_bottom() > static_cast<std::uint64_t>(texture.height)) {
+        if (grid.occupied_right() > texture_size.width || grid.occupied_bottom() > texture_size.height) {
             throw Exceptions::runtime_exception(CE_HERE, "Asset grid extends beyond its texture bounds");
         }
 
@@ -35,8 +34,7 @@ namespace CE::Assets {
                                                     "Asset grid pixel coordinate exceeds uint32_t");
             }
             math::Anchor::MakePivot(pivot, vertices.get() + cell * VAONumbers::vertices_per_quad,
-                                    static_cast<std::uint32_t>(texture.width),
-                                    static_cast<std::uint32_t>(texture.height), rect.width, rect.height,
+                                    texture_size.width, texture_size.height, rect.width, rect.height,
                                     static_cast<std::uint32_t>(rect.x), static_cast<std::uint32_t>(rect.y));
         }
         return {std::move(vertices), vertex_count};
