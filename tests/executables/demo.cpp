@@ -1,4 +1,3 @@
-#include <cgl.h>
 #include <core/controls/input-interface.h>
 #include <core/game-runtime.h>
 #include <core/engines/opengl-engine.h>
@@ -14,14 +13,13 @@
 
 #include <filesystem>
 #include <format>
-#include <iostream>
 #include <memory>
 #include <string_view>
 #include <utility>
 
 class Game : public CE::GFramework::AbstractGame {
 public:
-    Game(std::shared_ptr<CE::Engine::glEngine> engine, std::filesystem::path asset_root, bool load_all_assets) :
+    Game(std::shared_ptr<CE::Engine::RuntimeEngine> engine, std::filesystem::path asset_root, bool load_all_assets) :
         engine_(std::move(engine)), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
 
     void init() override {
@@ -111,14 +109,10 @@ public:
                                  "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {}\nGamepad A: {} presses",
                                  mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_),
                      &text);
-        GLenum err;
-        while ((err = glGetError()) != GL_NO_ERROR) {
-            std::cerr << "OpenGL error: " << err << "\n";
-        }
     }
 
 private:
-    std::shared_ptr<CE::Engine::glEngine> engine_;
+    std::shared_ptr<CE::Engine::RuntimeEngine> engine_;
     std::shared_ptr<CE::Camera2D> camera_;
     std::filesystem::path asset_root_;
     bool load_all_assets_;
