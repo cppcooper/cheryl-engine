@@ -2,6 +2,7 @@
 
 #include <core.h>
 #include <core/display/display-system.h>
+#include <core/resources/asset-management/shader-mgr.h>
 #include <enums.h>
 #include <assets/primitives/glslprogram.h>
 #include <internals/exceptions.h>
@@ -106,12 +107,23 @@ namespace CE::RenderAPIs {
         glViewport(0, 0, size.width, size.height);
     }
 
-    void OpenGLRenderer::swap_buffer() {
-        glfwSwapBuffers(render_window_->native_handle());
+    void OpenGLRenderer::set_depth_test(const bool enabled) {
+        if (enabled)
+            glEnable(GL_DEPTH_TEST);
+        else
+            glDisable(GL_DEPTH_TEST);
     }
 
-    void OpenGLRenderer::draw() {
-        // todo: figure it out
+    void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
+        glClearColor(r, g, b, a);
+    }
+
+    void OpenGLRenderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
+        Assets::ShaderMgr::get().set_camera_matrices(projection, view);
+    }
+
+    void OpenGLRenderer::swap_buffer() {
+        glfwSwapBuffers(render_window_->native_handle());
     }
 
     program_id OpenGLRenderer::compile_shader(fs::path file) {

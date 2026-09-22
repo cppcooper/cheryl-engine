@@ -1,6 +1,8 @@
 #pragma once
 #include "renderer.h"
 #include <core/resources/opengl-resource-provider.h>
+#include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <vector>
 
@@ -9,6 +11,9 @@ namespace CE {
 }
 
 namespace CE::RenderAPIs {
+    namespace fs = std::filesystem;
+    using program_id = std::uint64_t;
+
     struct OpenGLRenderer : iRenderer {
         OpenGLRenderer();
         ~OpenGLRenderer() override = default;
@@ -17,10 +22,12 @@ namespace CE::RenderAPIs {
         void deinitialize() override;
         void clear() override;
         void set_viewport(FramebufferSize size) override;
+        void set_depth_test(bool enabled) override;
+        void set_clear_colour(float r, float g, float b, float a) override;
+        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override;
         void swap_buffer() override;
         [[nodiscard]] Assets::ResourceProvider& resources() override { return resource_provider_; }
-        void draw() override;
-        program_id compile_shader(fs::path file) override;
+        program_id compile_shader(fs::path file);
         program_id compile_program(const std::vector<fs::path>& stages);
         void initialize_glfw();
         void initialize_glad();
