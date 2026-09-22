@@ -1,8 +1,10 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <assets/2d/ffont.h>
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/abstracts/resource-provider.h>
+#include <assets/primitives/vertex.h>
+#include <internals/exceptions.h>
 #include <math/anchor.h>
-#include <gtx/transform.hpp>
+#include <ext/matrix_transform.hpp>
 #include <fstream>
 
 namespace CE::Assets {
@@ -50,7 +52,7 @@ namespace CE::Assets {
         }
     }
 
-    FFontData FFont::load_ffont(const std::filesystem::path& path) {
+    FFontData FFont::load_ffont(const std::filesystem::path& path, ResourceProvider& provider) {
         std::fstream file(path);
         if (!file.is_open()) {
             // todo: throw
@@ -67,9 +69,11 @@ namespace CE::Assets {
 
         std::array<Vertex2D, num_vertices> vertices{};
         make_vertices(vertices.data());
-        std::shared_ptr<Vertex2D> verts(vertices.data(), [](Vertex2D*) {});
-        auto geometry = std::make_shared<VAO>(verts, num_vertices);
         auto texture = TextureMgr::get().get_asset("whitefont.png");
+        if (!texture)
+            throw Exceptions::runtime_exception(CE_HERE, "The legacy font texture is not loaded");
+        std::shared_ptr<Vertex2D> verts(vertices.data(), [](Vertex2D*) {});
+        auto geometry = provider.upload_geometry(verts, num_vertices);
         return {widths, std::move(geometry), std::move(texture)};
     }
 }

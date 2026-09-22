@@ -23,6 +23,9 @@ CE::RenderAPIs::program_id compile_src(const std::string& source, ShaderTypes ty
 
 namespace CE::RenderAPIs {
 
+    OpenGLRenderer::OpenGLRenderer() : resource_provider_(*this) {
+    }
+
     void OpenGLRenderer::initialize_glfw() {
         std::call_once(glfw_flag, [this]() {
             if (!glfwInit()) {

@@ -76,6 +76,10 @@ namespace CE::Engine {
         return Input::InputSystem::get();
     }
 
+    Assets::ResourceProvider& glEngine::resources() {
+        return renderer->resources();
+    }
+
     void glEngine::poll_input() {
         if (!initialized_)
             throw Exceptions::failed_operation(CE_HERE, "Input cannot be polled before engine initialization");

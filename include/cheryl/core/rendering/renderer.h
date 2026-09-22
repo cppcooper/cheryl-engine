@@ -6,6 +6,10 @@
 #include <filesystem>
 #include <memory>
 
+namespace CE::Assets {
+    struct ResourceProvider;
+}
+
 namespace CE::RenderAPIs {
     namespace fs = std::filesystem;
     using program_id = std::uint64_t;
@@ -20,6 +24,7 @@ namespace CE::RenderAPIs {
         virtual void clear() = 0;
         virtual void set_viewport(FramebufferSize size) = 0;
         virtual void swap_buffer() = 0;
+        [[nodiscard]] virtual Assets::ResourceProvider& resources() = 0;
         virtual void draw() = 0;
         virtual program_id compile_shader(fs::path file) = 0;
     };

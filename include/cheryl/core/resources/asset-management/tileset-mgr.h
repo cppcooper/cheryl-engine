@@ -5,9 +5,11 @@
 
 using TSMgr = CE::Assets::AssetMgr<CE::Assets::Tileset, std::string>;
 namespace CE::Assets {
+    struct ResourceProvider;
+
     struct TilesetMgr final : TSMgr, Singleton_CTS<TilesetMgr> {
         TilesetMgr() = default;
         ~TilesetMgr() override = default;
-        void load_assets(const std::vector<TilesetDefinition>& definitions);
+        void load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider);
     };
 }

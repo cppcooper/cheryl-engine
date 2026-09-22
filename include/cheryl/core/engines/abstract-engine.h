@@ -10,6 +10,7 @@ namespace CE::Engine {
         virtual void init() = 0;
         virtual void deinit() = 0;
         [[nodiscard]] virtual Input::iInputSystem& input() = 0;
+        [[nodiscard]] virtual Assets::ResourceProvider& resources() = 0;
         virtual void poll_input() = 0;
         virtual void pre_draw() = 0;
         virtual void post_draw() = 0;

@@ -1,6 +1,7 @@
 #include <core/resources/asset-management/asset-loader.h>
 
 #include <core/resources/asset-management.h>
+#include <assets/abstracts/resource-provider.h>
 #include <core/resources/fileio/fonts-system.h>
 #include <internals/exceptions.h>
 #include <stb_image.h>
@@ -62,7 +63,7 @@ namespace CE::Assets {
         }
     }
 
-    void Loader::load_assets() {
+    void Loader::load_assets(ResourceProvider& provider) {
         if (!fs::is_directory(root_path_)) {
             throw Exceptions::runtime_exception(
                 CE_HERE, "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
@@ -124,13 +125,13 @@ namespace CE::Assets {
             }
         }
         std::ranges::sort(textures);
-        TextureMgr::get().load_assets(textures);
-        SpriteMgr::get().load_assets(sprites);
-        TilesetMgr::get().load_assets(tilesets);
+        TextureMgr::get().load_assets(textures, provider);
+        SpriteMgr::get().load_assets(sprites, provider);
+        TilesetMgr::get().load_assets(tilesets, provider);
 
         const auto default_font = Resources::select_default_system_font(Resources::find_system_fonts());
         if (default_font) {
-            FontMgr::get().load_assets({*default_font});
+            FontMgr::get().load_assets({*default_font}, provider);
         }
 
         std::vector<fs::path> shaders;
@@ -139,9 +140,10 @@ namespace CE::Assets {
             const auto& files = get_files_of_type(extension);
             shaders.insert(shaders.end(), files.begin(), files.end());
         }
-        ShaderMgr::get().load_assets(shaders);
+        ShaderMgr::get().load_assets(shaders, provider);
         const auto shader2d = root_path_ / "shaders" / "shader2d";
-        ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"});
+        ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"},
+                                      provider);
 
         manifests_ = std::move(parsed_manifests);
     }

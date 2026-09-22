@@ -6,10 +6,12 @@
 #include <vector>
 
 namespace CE::Assets {
+    struct ResourceProvider;
+
     struct Loader : Singleton_CTS<Loader>, FileMgr {
         explicit Loader(const std::filesystem::path& root_path) :
             FileMgr(root_path), root_path_(root_path.lexically_normal()) {}
-        void load_assets();
+        void load_assets(ResourceProvider& provider);
         [[nodiscard]] const std::vector<AssetManifest>& manifests() const { return manifests_; }
 
     private:

@@ -1,6 +1,6 @@
 #include <assets/2d/stbfont.h>
-#include <assets/primitives/texture.h>
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/abstracts/resource-provider.h>
+#include <assets/primitives/vertex.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
@@ -104,7 +104,8 @@ namespace CE::Assets {
         }
     }
 
-    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size) {
+    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size,
+                                  ResourceProvider& provider) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);
@@ -132,8 +133,6 @@ namespace CE::Assets {
             atlas_size *= 2;
         }
 
-        auto atlas = std::make_shared<Texture>(bitmap.data(), atlas_size, atlas_size, GL_TEXTURE0, false, false,
-                                               GL_CLAMP_TO_EDGE, GL_RED);
         constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
         constexpr std::size_t vertices_bytes = sizeof(Vertex2D) * vertex_count;
         auto chunk = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
@@ -156,7 +155,9 @@ namespace CE::Assets {
         stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
-        auto geometry = std::make_shared<VAO>(std::move(vertices), vertex_count);
+        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count);
+        auto atlas = provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size),
+                                                                  static_cast<std::uint32_t>(atlas_size)});
         return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 }

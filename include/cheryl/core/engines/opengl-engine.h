@@ -30,6 +30,7 @@ namespace CE::Engine {
         void init() override;
         void deinit() override;
         [[nodiscard]] Input::iInputSystem& input() override;
+        [[nodiscard]] Assets::ResourceProvider& resources() override;
         void poll_input() override;
         void pre_draw() override;
         void post_draw() override;

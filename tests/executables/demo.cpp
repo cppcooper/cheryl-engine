@@ -29,16 +29,18 @@ public:
         engine_->set_camera(camera_);
 
         const auto shader2d = asset_root_ / "shaders" / "shader2d";
+        auto& resources = engine_->resources();
         if (load_all_assets_) {
-            CE::Assets::Loader::get(asset_root_).load_assets();
+            CE::Assets::Loader::get(asset_root_).load_assets(resources);
         }
         else {
             const auto font_path = CE::Resources::select_default_system_font(CE::Resources::find_system_fonts());
             if (!font_path)
                 throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
-            CE::Assets::FontMgr::get().load_assets({*font_path});
+            CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
             CE::Assets::ShaderMgr::get().load_program(shader2d,
-                                                      {shader2d.string() + ".vert", shader2d.string() + ".frag"});
+                                                      {shader2d.string() + ".vert", shader2d.string() + ".frag"},
+                                                      resources);
         }
         font_ = CE::Assets::FontMgr::get().default_font();
         font_shader_ = CE::Assets::ShaderMgr::get().get_asset(shader2d);
@@ -121,7 +123,7 @@ private:
     std::filesystem::path asset_root_;
     bool load_all_assets_;
     std::shared_ptr<CE::Assets::Font> font_;
-    std::shared_ptr<CE::Assets::GLSLProgram> font_shader_;
+    std::shared_ptr<CE::Assets::Shader> font_shader_;
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
     float mouse_y_ = 0.0f;
