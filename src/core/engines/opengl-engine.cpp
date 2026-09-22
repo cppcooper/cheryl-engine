@@ -8,7 +8,6 @@
 #include <internals/exceptions.h>
 #include <templates/singleton.h>
 
-#include <GLFW/glfw3.h>
 #include <utility>
 
 namespace CE::Engine {
@@ -61,23 +60,26 @@ namespace CE::Engine {
         renderer->initialize_libraries();
         renderer->initialize_rendering_context();
         synchronize_camera();
-        Input::InputSystem::get().initialize(*renderer->display->active_window());
+        input().initialize(*renderer->display->active_window());
         initialized_ = true;
     }
 
     void glEngine::deinit() {
         if (initialized_)
-            Input::InputSystem::get().deinitialize();
+            input().deinitialize();
         initialized_ = false;
         published_camera_.reset();
         viewport_size_ = {-1, -1};
     }
 
+    Input::iInputSystem& glEngine::input() {
+        return Input::InputSystem::get();
+    }
+
     void glEngine::poll_input() {
         if (!initialized_)
             throw Exceptions::failed_operation(CE_HERE, "Input cannot be polled before engine initialization");
-        glfwPollEvents();
-        Input::InputSystem::get().update();
+        input().poll();
     }
 
     void glEngine::pre_draw() {

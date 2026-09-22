@@ -1,5 +1,5 @@
 #include <cgl.h>
-#include <core/controls/input-system.h>
+#include <core/controls/input-interface.h>
 #include <core/game-runtime.h>
 #include <core/engines/opengl-engine.h>
 #include <core/resources/asset-management/asset-loader.h>
@@ -47,7 +47,7 @@ public:
         if (!font_shader_)
             throw CE::Exceptions::runtime_exception(CE_HERE, "The shader2d program was not loaded");
 
-        auto& input = CE::Input::InputSystem::get();
+        auto& input = engine_->input();
         auto& bindings = input.bindings();
         const auto keyboard = input.keyboard_id();
         const auto bind_direction = [&](const gainput::DeviceButtonId key, bool* held) {
@@ -85,7 +85,7 @@ public:
         });
     }
 
-    void deinit() override { CE::Input::InputSystem::get().bindings().clear(); }
+    void deinit() override { engine_->input().bindings().clear(); }
 
     void update(const double seconds) override {
         const glm::vec2 movement{static_cast<float>(right_) - static_cast<float>(left_),

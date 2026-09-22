@@ -170,6 +170,13 @@ namespace CE::Input {
         manager_.Update();
     }
 
+    void InputSystem::poll() {
+        if (!window_)
+            throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before polling");
+        glfwPollEvents();
+        update();
+    }
+
     void InputSystem::deinitialize() {
         if (!window_)
             return;

@@ -1,5 +1,6 @@
 #pragma once
 #include <enums.h>
+#include <core/controls/input-interface.h>
 #include <core/rendering/renderer.h>
 
 namespace CE::Engine {
@@ -8,6 +9,7 @@ namespace CE::Engine {
         virtual ~iEngine() = default;
         virtual void init() = 0;
         virtual void deinit() = 0;
+        [[nodiscard]] virtual Input::iInputSystem& input() = 0;
         virtual void poll_input() = 0;
         virtual void pre_draw() = 0;
         virtual void post_draw() = 0;

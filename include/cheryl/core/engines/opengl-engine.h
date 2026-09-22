@@ -29,6 +29,7 @@ namespace CE::Engine {
         [[nodiscard]] std::shared_ptr<CameraBase> active_camera() const { return active_camera_; }
         void init() override;
         void deinit() override;
+        [[nodiscard]] Input::iInputSystem& input() override;
         void poll_input() override;
         void pre_draw() override;
         void post_draw() override;
