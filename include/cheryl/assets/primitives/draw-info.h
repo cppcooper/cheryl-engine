@@ -1,14 +1,13 @@
 #pragma once
 #ifndef DRAW_INFO_H
 #define DRAW_INFO_H
-#include <glm.hpp>
+#include <assets/abstracts/shader.h>
+
 #include <memory>
-#include "glslprogram.h"
 
 namespace CE {
     struct DrawInfo {
-        // todo: revise to Shader abstract, then update method to polymorph? Or add interface?
-        std::shared_ptr<Assets::GLSLProgram> material;
+        std::shared_ptr<Assets::Shader> material;
         glm::mat4 model_matrix = glm::mat4(1.0f);
         glm::vec3 position;
         float scale = 1.f;
