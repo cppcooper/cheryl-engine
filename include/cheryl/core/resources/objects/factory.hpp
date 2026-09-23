@@ -29,33 +29,45 @@ namespace CE::Obj {
      template<typename T, typename Allocator>
      template<typename... Args>
      std::vector<std::shared_ptr<T>> Factory<T, Allocator>::create(size_t N, Args... args) {
-         if (N == 0) {
-             CELog::critical("Less than 1 object is not possible, be reasonable sir.");
-             return {nullptr};
-         }
-         auto ptr = AAloc::allocate(N);
-         Factory::construct(ptr, N, std::forward<Args>(args)...);
          std::vector<std::shared_ptr<T>> objects;
          objects.reserve(N);
-         for (int i = 0; i < N; ++i) {
-             auto pi = ptr + i;
-             objects.push_back(std::shared_ptr<T>(pi, [](const T* p) {
-                 AAloc::destroy(p);
-                 AAloc::deallocate(p, 1);
-             }));
+         if (N == 0) return objects;
+
+         Allocator allocator;
+         auto* ptr = AAloc::allocate(allocator, N);
+         // One allocator allocation is released once, after the last element
+         // handle has destroyed its own object.
+         std::shared_ptr<T> allocation(ptr, [allocator, N](T* base) mutable noexcept {
+             AAloc::deallocate(allocator, base, N);
+         });
+         for (std::size_t i = 0; i < N; ++i) {
+             auto* pi = ptr + i;
+             AAloc::construct(allocator, pi, args...);
+             objects.emplace_back(pi, [allocation, allocator](T* object) mutable noexcept {
+                 AAloc::destroy(allocator, object);
+             });
          }
          return objects;
      }
 
      template<typename T, typename Allocator>
-     template<typename ... Args>
+     template<typename... Args>
      void Factory<T, Allocator>::construct(T* p, size_t N, Args... args) {
-         static_assert(std::is_constructible_v<T, Args...>, "A constructor for type T with the arguments provided does not exist.");
-         AAloc::construct(p, N, std::forward<Args>(args)...);
+         Allocator allocator;
+         std::size_t constructed = 0;
+         try {
+             for (; constructed < N; ++constructed) {
+                 AAloc::construct(allocator, p + constructed, args...);
+             }
+         } catch (...) {
+             while (constructed) AAloc::destroy(allocator, p + --constructed);
+             throw;
+         }
      }
 
      template<typename T, typename Allocator>
      void Factory<T, Allocator>::destroy(T* p, size_t N) {
-         AAloc::destroy(p, N);
+         Allocator allocator;
+         for (std::size_t i = 0; i < N; ++i) AAloc::destroy(allocator, p + i);
      }
 }

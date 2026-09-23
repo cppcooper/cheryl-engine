@@ -1,6 +1,7 @@
 #pragma once
 #include <assets/abstracts.h>
 #include <core/resources/allocators.h>
+#include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>
 
 #include "block.h"
@@ -51,6 +52,12 @@ namespace CE::Assets {
 
     protected:
         template <typename Derived>
+        auto reserve(const std::size_t N) {
+            static_assert(std::is_base_of_v<AssetType, Derived>);
+            return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
+        }
+
+        template <typename Derived>
         std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>,
                           "The allocated class type must be derived from the managed type.");
@@ -58,12 +65,14 @@ namespace CE::Assets {
                 return {};
             }
             using A_OPA = std::allocator_traits<Mem::ObjectPoolAllocator<Derived>>;
-            auto raw = A_OPA::allocate(N);
+            Mem::ObjectPoolAllocator<Derived> allocator;
+            auto context = allocator.context();
+            auto raw = A_OPA::allocate(allocator, N);
             std::shared_ptr<Derived> owner(raw, [](void* p) {});
             Block<Derived> block{owner, owner, ptr::calculate_alignment(raw), N};
-            return block.vector([](Derived* p) {
+            return block.vector([context](Derived* p) noexcept {
                 A_OPA::destroy(p);
-                A_OPA::deallocate(p, 1);
+                context->release_owned(p, 1);
             });
         }
         std::unordered_map<Key, spointer> loaded_assets{};

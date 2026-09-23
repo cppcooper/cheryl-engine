@@ -7,18 +7,43 @@
 namespace CE::Obj {
     template<typename T>
     template<typename ... Args>
-    std::vector<std::shared_ptr<T>> Pool<T>::retrieve_objects(std::size_t N, Args... args) {
+    std::vector<std::shared_ptr<T>> PoolState<T>::retrieve_objects(std::size_t N, Args... args) {
         if (N == 0) return {};
+        auto context = this->shared_from_this();
+        std::vector<std::shared_ptr<T>> objects;
+        objects.reserve(N);
         auto block = retrieve_block(N);
-        ObjCtor<T>::construct(block.head.get(), N, std::forward<Args>(args)...);
-        return block.vector([](T* p) {
-            ObjCtor<T>::destroy(p);
-            Pool<T>::get().return_objects(p,1);
-        });
+        std::size_t next = 0;
+        try {
+            for (; next < N; ++next) {
+                auto* p = block.head.get() + next;
+                auto constructed = std::make_shared<bool>(false);
+                auto handle = std::shared_ptr<T>(p, [context, constructed](T* object) noexcept {
+                    if (*constructed) {
+                        ObjCtor<T>::destroy(object);
+                        context->release_owned(object, 1);
+                    }
+                });
+                ObjCtor<T>::construct(p, 1, std::forward<Args>(args)...);
+                *constructed = true;
+                objects.push_back(std::move(handle));
+            }
+        } catch (...) {
+            // Completed handles return their own slots as the vector unwinds.
+            // The unconstructed tail remains one contiguous range.
+            context->release_owned(block.head.get() + next, N - next);
+            throw;
+        }
+        return objects;
     }
 
     template<typename T>
-    Block<T> Pool<T>::retrieve_block(std::size_t N) {
+    void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
+        return_objects(p, length);
+    }
+
+    template<typename T>
+    Block<T> PoolState<T>::retrieve_block(std::size_t N) {
         if (N == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
         }
@@ -43,7 +68,7 @@ namespace CE::Obj {
     }
 
     template<typename T>
-    void Pool<T>::return_objects(T* p, std::size_t length) {
+    void PoolState<T>::return_objects(T* p, std::size_t length) {
         if (length == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot return an empty object range.");
         }
@@ -102,7 +127,7 @@ namespace CE::Obj {
     }
 
     template<typename T>
-    void Pool<T>::return_block(const Block<T> &returned) {
+    void PoolState<T>::return_block(const Block<T> &returned) {
         const bool in_sections = this->contains(returned, this->sections);
         const bool in_registry = this->contains(returned, this->registry);
         bool has_active_sections = false;
@@ -122,7 +147,7 @@ namespace CE::Obj {
     }
 
     template<typename T>
-    Block<T> Pool<T>::allocate(size_t length) {
+    Block<T> PoolState<T>::allocate(size_t length) {
         // we will allocate an ObjBlock to be recorded, it will clean up memory when we cull it
         auto& manager = Mem::ObjMMgr<T>::get();
         Mem::HeapBlock b = manager.checkout_chunk(length*sizeof(T), alignof(T), Enum::greedy);

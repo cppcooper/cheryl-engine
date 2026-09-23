@@ -1,6 +1,7 @@
 #include <assets/2d/grid-geometry.h>
 
 #include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
 #include <math/anchor.h>
 #include <internals/exceptions.h>
 
@@ -22,9 +23,9 @@ namespace CE::Assets {
         }
         const auto vertex_count = static_cast<std::uint32_t>(cell_count * VAONumbers::vertices_per_quad);
         const auto vertices_bytes = sizeof(Vertex2D) * vertex_count;
-        auto block = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
-        auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(block.head.get()),
-                                                  [block](Vertex2D*) { Mem::ExactMMgr::get().return_chunk(block); });
+        auto& manager = Mem::ExactMMgr::get();
+        auto block = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
+        auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(block));
 
         for (CellIndex cell = 0; cell < cell_count; ++cell) {
             const auto rect = grid.cell_rect(cell);

@@ -7,11 +7,16 @@
 #include <internals/exceptions.h>
 
 #include <utility>
+#include <algorithm>
 
 namespace CE::Assets {
     void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
         bind_provider(provider);
-        auto assets = allocate<Tileset>(definitions.size());
+        const auto needed = std::count_if(definitions.begin(), definitions.end(), [this](const auto& definition) {
+            return !loaded_assets.contains(definition.id());
+        });
+        auto reservation = reserve<Tileset>(needed);
+        std::size_t slot = 0;
         for (std::size_t index = 0; index < definitions.size(); ++index) {
             const auto& definition = definitions[index];
             const auto id = definition.id();
@@ -30,11 +35,9 @@ namespace CE::Assets {
             }
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
             auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
-            const auto& asset = assets[index];
-            Obj::ObjCtor<Tileset>::construct(asset.get(), 1,
-                                             TilesetData{.geometry = std::move(mesh),
-                                                         .texture = texture,
-                                                         .definition = definition});
+            auto asset = reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh),
+                                                                  .texture = texture,
+                                                                  .definition = definition});
             loaded_assets.emplace(id, asset);
         }
     }

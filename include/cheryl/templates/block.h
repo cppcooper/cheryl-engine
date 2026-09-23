@@ -224,24 +224,30 @@ template<typename T>
 struct BlockManagement {
     using clock = std::chrono::steady_clock;
     using tpoint = std::chrono::time_point<clock>;
-    // the management (i.e. data structures)
-    static std::tuple<std::shared_mutex, std::set<Block<T>, compare::PoolOrder<T>>> pool; // order allocations according to length and alignment
-    static std::tuple<std::shared_mutex, std::set<Block<T>, compare::HeadOrder<T>>> sections; // Blocks in order of address location
-    static std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> registry; // heap allocations in order of address location
-    static std::tuple<std::shared_mutex, std::unordered_map<Block<T>, tpoint>> stale; // map unique blocks to time stamps
-    static std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> release; // unordered
-};
+    struct State {
+        std::tuple<std::shared_mutex, std::set<Block<T>, compare::PoolOrder<T>>> pool;
+        std::tuple<std::shared_mutex, std::set<Block<T>, compare::HeadOrder<T>>> sections;
+        std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> registry;
+        std::tuple<std::shared_mutex, std::unordered_map<Block<T>, tpoint>> stale;
+        std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> release;
+    };
 
-template<typename T>
-std::tuple<std::shared_mutex, std::set<Block<T>, compare::PoolOrder<T>>> BlockManagement<T>::pool;
-template<typename T>
-std::tuple<std::shared_mutex, std::set<Block<T>, compare::HeadOrder<T>>> BlockManagement<T>::sections;
-template<typename T>
-std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> BlockManagement<T>::registry;
-template<typename T>
-std::tuple<std::shared_mutex, std::unordered_map<Block<T>, typename BlockManagement<T>::tpoint>> BlockManagement<T>::stale;
-template<typename T>
-std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> BlockManagement<T>::release;
+    static std::shared_ptr<State> shared_state() {
+        static auto state = std::make_shared<State>();
+        return state;
+    }
+
+    // Keep the established access points while making the storage's lifetime
+    // independent of the singleton facades that use it.
+    inline static auto& pool = shared_state()->pool;
+    inline static auto& sections = shared_state()->sections;
+    inline static auto& registry = shared_state()->registry;
+    inline static auto& stale = shared_state()->stale;
+    inline static auto& release = shared_state()->release;
+
+protected:
+    std::shared_ptr<State> state_ = shared_state();
+};
 
 template<typename T>
 struct iManage {

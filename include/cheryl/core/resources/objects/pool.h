@@ -1,31 +1,47 @@
 #pragma once
 #include <templates/block.h>
 #include <templates/singleton.h>
+#include <core/resources/memory/mem-mgr.h>
 
 namespace CE::Obj {
-	template<typename T>
-	struct Pool : AbstractManager<T>, Singleton_CTS<Pool<T>> {
-		static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
+    template<typename T>
+    struct PoolState : AbstractManager<T>, std::enable_shared_from_this<PoolState<T>> {
+        static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
 
-		// retrieve/construct N objects
-		template<typename... Args>
-		std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
+        template<typename... Args>
+        std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
+        Block<T> retrieve_block(std::size_t N);
+        void return_objects(T* p, std::size_t length);
+        void return_block(const Block<T>& returned);
 
-		// retrieve a block to fit N objects in (memory will be in an unknown state)
-		Block<T> retrieve_block(std::size_t N);
+        // Trusted, already owned ranges are released through this path in destructors.
+        // An invariant violation is fatal here; exceptions never leave a deleter.
+        void release_owned(T* p, std::size_t length) noexcept;
 
-		// return constructed objects to the pool
-		void return_objects(T* p, std::size_t length);
+    private:
+        [[nodiscard]] static Block<T> allocate(std::size_t length);
+    };
 
-		// return a block to the pool
-		void return_block(const Block<T> &returned);
-	private:
+    template<typename T>
+    struct Pool : AbstractManager<T>, Singleton_CTS<Pool<T>> {
+        using release_context_type = PoolState<T>;
 
-		// retrieve unconstructed storage for objects
-		[[nodiscard]] static Block<T> allocate(size_t length);
-	};
+        Pool() : context_(std::make_shared<release_context_type>()) {}
+        [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return context_; }
 
+        template<typename... Args>
+        std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args) {
+            return context_->retrieve_objects(N, std::forward<Args>(args)...);
+        }
+        Block<T> retrieve_block(std::size_t N) { return context_->retrieve_block(N); }
+        void return_objects(T* p, std::size_t length) { context_->return_objects(p, length); }
+        void return_block(const Block<T>& block) { context_->return_block(block); }
+        void cull(std::chrono::minutes age) override { context_->cull(age); }
+        void release_culled() override { context_->release_culled(); }
 
+    private:
+        std::shared_ptr<release_context_type> context_;
+    };
 }
 
 #include "pool.hpp"

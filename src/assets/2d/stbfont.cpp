@@ -6,6 +6,7 @@
 #include <stb_truetype.h>
 
 #include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
 #include <ext/matrix_transform.hpp>
 
 #include <array>
@@ -135,9 +136,9 @@ namespace CE::Assets {
 
         constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
         constexpr std::size_t vertices_bytes = sizeof(Vertex2D) * vertex_count;
-        auto chunk = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
-        auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(chunk.head.get()),
-                                                  [chunk](Vertex2D*) { Mem::ExactMMgr::get().return_chunk(chunk); });
+        auto& manager = Mem::ExactMMgr::get();
+        auto chunk = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
+        auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(chunk));
         std::array<float, font_character_count> advances{};
         for (std::size_t index = 0; index < baked_characters.size(); ++index) {
             float x = 0.0f;

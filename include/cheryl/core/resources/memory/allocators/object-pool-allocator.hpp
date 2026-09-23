@@ -7,17 +7,25 @@ namespace CE::Mem {
     struct ObjectPoolAllocator final : std::allocator<T> {
         using Base = std::allocator<T>;
         using value_type = T;
+        using manager_type = Obj::Pool<T>;
+        using context_type = typename manager_type::release_context_type;
+
+        ObjectPoolAllocator() : context_(manager_type::get().release_context()) {}
+        [[nodiscard]] std::shared_ptr<context_type> context() const { return context_; }
 
         // Override the allocate function
         T* allocate(std::size_t N) {
-            auto b = Obj::Pool<T>::get().retrieve_block(N);
+            auto b = context_->retrieve_block(N);
             return static_cast<T*>(b.head.get());
         }
 
         // Override the deallocate function
         void deallocate(T* ptr, std::size_t N) {
-            Obj::Pool<T>::get().return_objects(ptr, N);
+            context_->return_objects(ptr, N);
         }
+
+    private:
+        std::shared_ptr<context_type> context_;
     };
 }
 
