@@ -11,6 +11,8 @@
 #endif
 
 namespace {
+    constexpr CE::Input::DeviceButtonId test_button = 65;
+
     class TestWindow final : public CE::iWindow {
     public:
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {640, 480}; }
@@ -28,14 +30,14 @@ namespace {
         void poll() override {
             if (!window_)
                 throw std::logic_error("Input is not attached");
-            bindings_.on_button({keyboard_id(), gainput::KeyA}, false, true);
+            bindings_.on_button({keyboard_id(), test_button}, false, true);
         }
         void deinitialize() override { window_ = nullptr; }
 
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
-        [[nodiscard]] gainput::DeviceId keyboard_id() const override { return 1; }
-        [[nodiscard]] gainput::DeviceId mouse_id() const override { return 2; }
-        [[nodiscard]] gainput::DeviceId gamepad_id() const override { return 3; }
+        [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
+        [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
+        [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
 
     private:
         CE::iWindow* window_ = nullptr;
@@ -48,7 +50,7 @@ TEST(input_contract, dispatches_bindings_through_an_alternative_window_adapter) 
     std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<BufferedInput>();
     input->initialize(window);
     bool pressed = false;
-    input->bindings().bind_button({input->keyboard_id(), gainput::KeyA},
+    input->bindings().bind_button({input->keyboard_id(), test_button},
                                   [&](bool previous, bool current) { pressed = !previous && current; });
     input->poll();
     EXPECT_TRUE(pressed);

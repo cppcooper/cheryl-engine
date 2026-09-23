@@ -18,6 +18,8 @@
 #endif
 
 namespace {
+    constexpr CE::Input::DeviceButtonId test_button = 65;
+
     class MemoryWindow final : public CE::iWindow {
     public:
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {size_.width, size_.height}; }
@@ -63,12 +65,12 @@ namespace {
     class MemoryInput final : public CE::Input::iInputSystem {
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
-        void poll() override { bindings_.on_button({keyboard_id(), gainput::KeyA}, false, true); }
+        void poll() override { bindings_.on_button({keyboard_id(), test_button}, false, true); }
         void deinitialize() override { window_ = nullptr; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
-        [[nodiscard]] gainput::DeviceId keyboard_id() const override { return 1; }
-        [[nodiscard]] gainput::DeviceId mouse_id() const override { return 2; }
-        [[nodiscard]] gainput::DeviceId gamepad_id() const override { return 3; }
+        [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
+        [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
+        [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
         [[nodiscard]] CE::iWindow* attached_window() const { return window_; }
 
     private:
@@ -187,7 +189,7 @@ TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_
     ASSERT_EQ(input.attached_window(), renderer.display->active_window());
 
     bool pressed = false;
-    input.bindings().bind_button({input.keyboard_id(), gainput::KeyA},
+    input.bindings().bind_button({input.keyboard_id(), test_button},
                                  [&](bool, bool current) { pressed = current; });
     engine.poll_input();
     EXPECT_TRUE(pressed);

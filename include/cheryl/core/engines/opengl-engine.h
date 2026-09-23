@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef CHERYL_SANDBOX_BUILD
 #include "runtime-engine.h"
 
 namespace CE::Engine {
@@ -7,3 +8,4 @@ namespace CE::Engine {
         glEngine();
     };
 }
+#endif

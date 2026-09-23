@@ -7,8 +7,8 @@ namespace CE {
 }
 
 namespace CE::Input {
-    // The input adapter used by an engine. Device and button IDs use Gainput's
-    // shared vocabulary; a window backend supplies its own event translation.
+    // The input adapter used by an engine. Device and button IDs are opaque to
+    // the engine; each adapter supplies its own event translation.
     class iInputSystem {
     public:
         virtual ~iInputSystem() = default;
@@ -16,8 +16,8 @@ namespace CE::Input {
         virtual void poll() = 0;
         virtual void deinitialize() = 0;
         [[nodiscard]] virtual InputBindings& bindings() = 0;
-        [[nodiscard]] virtual gainput::DeviceId keyboard_id() const = 0;
-        [[nodiscard]] virtual gainput::DeviceId mouse_id() const = 0;
-        [[nodiscard]] virtual gainput::DeviceId gamepad_id() const = 0;
+        [[nodiscard]] virtual DeviceId keyboard_id() const = 0;
+        [[nodiscard]] virtual DeviceId mouse_id() const = 0;
+        [[nodiscard]] virtual DeviceId gamepad_id() const = 0;
     };
 }

@@ -1,4 +1,6 @@
 #pragma once
+
+#ifndef CHERYL_SANDBOX_BUILD
 #include "input-bindings.h"
 #include <gainput/gainput.h>
 
@@ -20,3 +22,4 @@ namespace CE::Input {
         gainput::ListenerId id_;
     };
 }
+#endif

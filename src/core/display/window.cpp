@@ -3,6 +3,9 @@
 #include <core/subsystems/event-system.h>
 #include <internals/exceptions.h>
 
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
 #include <GLFW/glfw3.h>
 #include <random>
 

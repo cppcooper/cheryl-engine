@@ -1,6 +1,8 @@
 #pragma once
 
 #include "input-interface.h"
+
+#ifndef CHERYL_SANDBOX_BUILD
 #include "input-mapper.h"
 
 #include <templates/singleton.h>
@@ -29,9 +31,9 @@ namespace CE::Input {
 
         [[nodiscard]] InputMapper& bindings() override { return bindings_; }
         [[nodiscard]] gainput::InputManager& manager() { return manager_; }
-        [[nodiscard]] gainput::DeviceId keyboard_id() const override { return keyboard_id_; }
-        [[nodiscard]] gainput::DeviceId mouse_id() const override { return mouse_id_; }
-        [[nodiscard]] gainput::DeviceId gamepad_id() const override { return gamepad_id_; }
+        [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
+        [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
+        [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
 
     private:
         static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
@@ -49,3 +51,4 @@ namespace CE::Input {
         Window* window_ = nullptr;
     };
 }
+#endif
