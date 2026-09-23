@@ -20,6 +20,7 @@
 namespace {
     constexpr CE::Input::DeviceButtonId test_button = 65;
 
+    /** Holds mutable window state for a runtime test without a native window. */
     class MemoryWindow final : public CE::iWindow {
     public:
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {size_.width, size_.height}; }
@@ -39,6 +40,7 @@ namespace {
         mutable bool cursor_hidden_ = false;
     };
 
+    /** Creates and activates MemoryWindow through the display interface. */
     class MemoryDisplay final : public CE::iDisplaySystem {
     public:
         [[nodiscard]] const std::vector<CE::Monitor>& monitors() const override { return monitors_; }
@@ -62,6 +64,7 @@ namespace {
         CE::iWindow* active_ = nullptr;
     };
 
+    /** Emits one button transition per poll and records its attached window. */
     class MemoryInput final : public CE::Input::iInputSystem {
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
@@ -87,6 +90,7 @@ namespace {
         CE::Assets::PixelSize size_;
     };
 
+    /** Records image binding and draw ranges instead of issuing GPU commands. */
     class MemoryGeometry final : public CE::Assets::Geometry2D {
     public:
         void bind(const CE::Assets::Image& image) const override { bound_size = image.pixel_size(); }
@@ -100,6 +104,7 @@ namespace {
         mutable std::size_t drawn_vertices = 0;
     };
 
+    /** Records shader uses and camera matrices passed during drawing. */
     class MemoryShader final : public CE::Assets::Shader {
     public:
         void use() override { ++uses; }
@@ -119,6 +124,7 @@ namespace {
         glm::mat4 view{0.0f};
     };
 
+    /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
     class MemoryProvider final : public CE::Assets::ResourceProvider {
     public:
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(const std::filesystem::path&) override {
@@ -146,6 +152,7 @@ namespace {
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
     };
 
+    /** Hosts the display and records rendering state for the engine integration test. */
     class MemoryRenderer final : public CE::RenderAPIs::iRenderer {
     public:
         explicit MemoryRenderer(MemoryProvider& provider) : provider_(provider) {}
@@ -180,7 +187,8 @@ namespace {
 }
 
 TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_backend) {
-    // Asset managers keep singleton caches, so their provider must outlive the test.
+    // Boot the engine with recording implementations. Asset managers retain singleton caches,
+    // so the provider must outlive the engine and this test.
     static MemoryProvider provider;
     MemoryRenderer renderer(provider);
     MemoryInput input;
@@ -188,12 +196,15 @@ TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_
     engine.init();
     ASSERT_EQ(input.attached_window(), renderer.display->active_window());
 
+    // Poll a synthetic button event through the engine and observe its binding callback.
     bool pressed = false;
     input.bindings().bind_button({input.keyboard_id(), test_button},
                                  [&](bool, bool current) { pressed = current; });
     engine.poll_input();
     EXPECT_TRUE(pressed);
 
+    // Forward display settings, then resize before drawing so the viewport and camera
+    // receive the new framebuffer size. Switching render modes also toggles depth testing.
     engine.set_clear_colour(0.1f, 0.2f, 0.3f, 1.0f);
     EXPECT_FLOAT_EQ(renderer.clear_colour.r, 0.1f);
     engine.hide_cursor(true);
@@ -210,6 +221,7 @@ TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_
     engine.set_mode(CE::Enum::gfx_mode::R2D);
     EXPECT_FALSE(renderer.depth_enabled);
 
+    // Load a texture, sprite geometry, and shader through the in-memory provider.
     const std::filesystem::path texture = "memory-adapter/sprite.png";
     auto& resources = engine.resources();
     CE::Assets::TextureMgr::get().load_assets({texture}, resources);
@@ -224,6 +236,7 @@ TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_
     const std::filesystem::path program = "memory-adapter/shader";
     CE::Assets::ShaderMgr::get().load_program(program, {"vertex", "fragment"}, resources);
 
+    // Draw the loaded sprite and inspect the recorded GPU operations and buffer swap.
     auto sprite = CE::Assets::SpriteMgr::get().get_asset(definition.id());
     auto shader = CE::Assets::ShaderMgr::get().get_asset(program);
     ASSERT_TRUE(sprite);
@@ -239,6 +252,7 @@ TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_
     EXPECT_EQ(provider.shader->projection, engine.active_camera()->projection_matrix());
     EXPECT_EQ(renderer.swaps, 1);
 
+    // Propagate the window's close request and detach input on shutdown.
     renderer.window().request_close();
     EXPECT_TRUE(engine.should_close());
     engine.deinit();

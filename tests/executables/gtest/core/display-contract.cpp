@@ -10,6 +10,7 @@
 #endif
 
 namespace {
+    /** Keeps resize, mode, cursor, and close state behind the window interface. */
     class MemoryWindow final : public CE::iWindow {
     public:
         MemoryWindow(int width, int height) : logical_size_(width, height), framebuffer_size_{width, height} {}
@@ -36,6 +37,7 @@ namespace {
         mutable bool hidden_ = false;
     };
 
+    /** Validates window activation while exposing it through iDisplaySystem. */
     class MemoryDisplay final : public CE::iDisplaySystem {
     public:
         [[nodiscard]] const std::vector<CE::Monitor>& monitors() const override { return monitors_; }
@@ -68,12 +70,17 @@ namespace {
 }
 
 TEST(display_contract, supports_a_display_and_window_without_native_api_handles) {
+    // Create and activate a window through interface pointers backed by
+    // in-memory implementations, with no native display dependency.
     auto backend = std::make_unique<MemoryDisplay>();
     std::unique_ptr<CE::iDisplaySystem> display = std::move(backend);
     ASSERT_EQ(display->monitor_count(), 1);
     auto* window = display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 640, 480);
     display->activate_window(*window);
     EXPECT_EQ(display->active_window(), window);
+
+    // Change window size, mode, and cursor state through the abstraction;
+    // read back both interface state and the test backend's recorded state.
     window->resize(800, 600);
     window->set_mode(CE::Enum::window_mode::BORDERLESS);
     window->hide_cursor(true);
@@ -83,6 +90,9 @@ TEST(display_contract, supports_a_display_and_window_without_native_api_handles)
 
     auto* memory_display = static_cast<MemoryDisplay*>(display.get());
     EXPECT_TRUE(memory_display->window().cursor_hidden());
+
+    // The close request and resize event must refer to the active window
+    // without exposing any platform-specific window handle.
     memory_display->window().request_close();
     EXPECT_TRUE(display->active_window()->should_close());
     const CE::WindowResized resized{window, window->framebuffer_size()};

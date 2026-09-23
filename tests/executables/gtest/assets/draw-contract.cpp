@@ -10,6 +10,7 @@
 #endif
 
 namespace {
+    /** Records DrawInfo's material values without compiling a shader program. */
     struct RecordingShader final : CE::Assets::Shader {
         int uses = 0;
         float alpha = 0.0f;
@@ -38,6 +39,7 @@ namespace {
 }
 
 TEST(draw_contract, applies_material_parameters_without_a_glsl_program) {
+    // Supply a recording shader with distinct alpha, scale, and model values.
     auto material = std::make_shared<RecordingShader>();
     CE::DrawInfo info;
     info.material = material;
@@ -45,6 +47,7 @@ TEST(draw_contract, applies_material_parameters_without_a_glsl_program) {
     info.scale = 2.0f;
     info.model_matrix[3][0] = 42.0f;
 
+    // The drawable delegates to DrawInfo; inspect what it sent to the shader.
     RecordingDrawable drawable;
     drawable.draw(info);
     EXPECT_EQ(material->uses, 1);

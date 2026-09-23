@@ -24,6 +24,7 @@ namespace {
         void hide_cursor(bool) const override {}
     };
 
+    /** Emits a button transition while attached; rejects polls after detachment. */
     class BufferedInput final : public CE::Input::iInputSystem {
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
@@ -46,6 +47,8 @@ namespace {
 }
 
 TEST(input_contract, dispatches_bindings_through_an_alternative_window_adapter) {
+    // Attach the in-memory input system to an interface-only window and bind
+    // one keyboard event before polling the adapter.
     TestWindow window;
     std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<BufferedInput>();
     input->initialize(window);
@@ -54,6 +57,8 @@ TEST(input_contract, dispatches_bindings_through_an_alternative_window_adapter) 
                                   [&](bool previous, bool current) { pressed = !previous && current; });
     input->poll();
     EXPECT_TRUE(pressed);
+
+    // Once detached, polling must fail instead of delivering another event.
     input->deinitialize();
     EXPECT_THROW(input->poll(), std::logic_error);
 }

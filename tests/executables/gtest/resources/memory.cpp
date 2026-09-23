@@ -203,6 +203,7 @@ TEST(memory, partial_return_keeps_other_bytes_in_use) {
 }
 
 TEST(memory, rejects_duplicate_returns) {
+    // Once a checkout has been returned, a second return of the same block fails.
     using namespace CE;
     auto& manager = Mem::ExactMMgr::get();
     const auto block = manager.checkout_chunk(64, 64);
@@ -212,6 +213,7 @@ TEST(memory, rejects_duplicate_returns) {
 
 TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
     auto& manager = CE::Mem::ExactMMgr::get();
+    // A zero-size request is invalid even before considering the free pool.
     EXPECT_THROW(manager.checkout_chunk(0), CE::Exceptions::bad_request);
 
     // Return a low-alignment candidate, then request stronger alignment.
