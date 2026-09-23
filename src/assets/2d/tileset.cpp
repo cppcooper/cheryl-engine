@@ -25,6 +25,8 @@ namespace CE::Assets {
     }
 
     Tile TileAnimation::operator[](const std::size_t frame) {
+        // Looping clips wrap the requested index; a finite clip holds its
+        // final frame after the sequence has been exhausted.
         index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
         return Tile(definition_.frames[index_].cell, geometry, texture);
     }
@@ -61,6 +63,8 @@ namespace CE::Assets {
     }
 
     std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {
+        // Tile maps choose a base cell before animation; this index finds a
+        // clip only when that original cell is an animated target.
         const auto animation_name = animation_targets_.find(target);
         if (animation_name != animation_targets_.end()) {
             return animation(animation_name->second);

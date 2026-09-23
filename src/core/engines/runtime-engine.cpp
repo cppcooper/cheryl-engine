@@ -26,6 +26,8 @@ namespace CE::Engine {
             renderer->set_viewport(size);
             viewport_size_ = size;
         }
+        // Resize the active camera before comparing revisions: a new pixel
+        // size may change its projection even when the view matrix is stable.
         active_camera_->set_framebuffer_size(size);
         // A stable camera revision means neither its view nor its projection needs republishing.
         if (published_camera_ == active_camera_ && published_revision_ == active_camera_->revision())
@@ -66,6 +68,8 @@ namespace CE::Engine {
     }
 
     void RuntimeEngine::deinit() {
+        // Stop GLFW callbacks before forgetting published camera state;
+        // the next init will resend viewport and camera matrices.
         if (initialized_)
             input().deinitialize();
         initialized_ = false;

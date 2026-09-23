@@ -96,6 +96,8 @@ namespace CE::math {
         const float v0 = 1.0f - ((sy + fh) / th);
         const float v1 = 1.0f - (sy / th);
 
+        // Submit bottom-left, bottom-right, top-right and then the second
+        // triangle sharing that diagonal; each cell remains one contiguous range.
         vertices[0] = {left, bottom, 0.0f, u0, v0};
         vertices[1] = {right, bottom, 0.0f, u1, v0};
         vertices[2] = {right, top, 0.0f, u1, v1};

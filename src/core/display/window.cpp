@@ -66,6 +66,8 @@ namespace CE {
         if (width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         glfwSetWindowSize(glfw_window_, width, height);
+        // Query the accepted logical size and remember it only for ordinary
+        // windows; fullscreen restoration uses the last windowed dimensions.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         if (window_mode_ == Enum::window_mode::NORMAL) {
             windowed_width_ = logical_size_.width;
@@ -73,6 +75,7 @@ namespace CE {
         }
         int framebuffer_width = 0;
         int framebuffer_height = 0;
+        // A logical resize can yield a different pixel size on scaled displays.
         glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
         update_framebuffer_size(framebuffer_width, framebuffer_height);
     }
@@ -95,6 +98,8 @@ namespace CE {
             glfwGetWindowSize(glfw_window_, &windowed_width_, &windowed_height_);
         }
         window_mode_ = mode;
+        // Windowed and borderless use a detached monitor; fullscreen attaches
+        // the selected monitor at its video mode and refresh rate.
         switch (mode) {
         case Enum::window_mode::NORMAL:
             glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
@@ -135,6 +140,8 @@ GLFWwindow* create_native_window(GLFWmonitor* monitor, const Enum::window_mode m
         mode != Enum::window_mode::FULLSCREEN)
         throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
+    // The initial mode decides both decoration and whether GLFW creates the
+    // window directly on the monitor; later switches use Window::set_mode.
     glfwWindowHint(GLFW_DECORATED, mode == Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
     auto* fullscreen_monitor = mode == Enum::window_mode::FULLSCREEN ? monitor : nullptr;
     auto* native = glfwCreateWindow(width, height, generate_title(), fullscreen_monitor, nullptr);

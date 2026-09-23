@@ -128,6 +128,8 @@ namespace CE::Assets {
         int atlas_size = 256;
         std::vector<unsigned char> bitmap;
         while (true) {
+            // Retry the whole printable range at double resolution; a
+            // partial bake cannot supply stable glyph indices for drawing.
             bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
             const int result = stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size),
                                                     bitmap.data(), atlas_size, atlas_size, first_font_character,
@@ -162,6 +164,8 @@ namespace CE::Assets {
         int descent = 0;
         int line_gap = 0;
         stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
+        // Keep line advance in the same pixel scale as the baked glyph quads,
+        // so newline motion is independent of individual glyph heights.
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.

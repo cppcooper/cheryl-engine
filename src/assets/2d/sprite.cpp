@@ -30,6 +30,8 @@ namespace CE::Assets {
     }
 
     SpriteFrame SpriteAnimation::operator[](const std::size_t frame) {
+        // The clip's loop flag determines whether an out-of-range request
+        // wraps or stays on the final frame before selecting its grid cell.
         index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
         return SpriteFrame(definition_.frames[index_].cell, geometry, texture);
     }
@@ -76,6 +78,8 @@ namespace CE::Assets {
         if (facing) {
             return false;
         }
+        // A faceless query may still name one facing-specific clip; multiple
+        // matches are ambiguous and should be requested with a facing.
         return std::ranges::count_if(animations_, [&animation](const auto& candidate) {
                    return candidate.definition().name == animation;
                }) == 1;
