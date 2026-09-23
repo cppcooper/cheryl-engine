@@ -18,6 +18,9 @@
  *
  * TODO: Consider typed event channels/IDs whose payload type is encoded in the API. String names
  * plus std::any move typo and payload-mismatch detection entirely to runtime listeners.
+ * TODO: Define dispatch thread affinity before events are emitted concurrently. dispatch() is synchronous,
+ * so every listener currently runs on the producer's thread; cross-thread producers need queued/owned
+ * delivery or an explicit requirement that each listener is safe on every possible dispatching thread.
  */
 
 namespace CE::SubSystems {

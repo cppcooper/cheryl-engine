@@ -7,6 +7,8 @@ namespace CE::GFramework {
     GameRuntime::~GameRuntime() {
         // TODO: Track successful engine/game initialization explicitly so deinit is paired only
         // with completed init calls, including when run() exits through an initialization exception.
+        // A threaded runtime also needs a stop/join barrier here so no simulation, render, input, or
+        // worker job can still touch engine/game resources while deinitialization tears them down.
         if (gf) {
             gf->deinit();
             e->deinit();
@@ -19,6 +21,9 @@ namespace CE::GFramework {
             e->init();
             gf->init();
             running = true;
+            // TODO: Keep this sequential ordering as one valid scheduler mode. If update and render are
+            // decoupled, drive simulation from its own timestep and hand immutable frame state to rendering
+            // rather than simply executing gf->update() and gf->draw() concurrently on the same object.
             while (running) {
                 e->poll_input();
                 if (e->should_close())

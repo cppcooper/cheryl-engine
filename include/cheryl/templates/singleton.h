@@ -8,6 +8,9 @@
  * For simple singleton creation.
  * You can keep inheriting these all you want, it will always be the same instance they point to.
  * Uses static_assert verifying constructibility - requires public constructor(s)
+ * TODO: std::call_once serializes construction only; it does not make Type's later operations thread-safe.
+ * Concurrent first get(args...) calls with different arguments also make configuration depend on whichever
+ * caller wins initialization, so argument-bearing singletons need an explicit initialization contract.
  */
 template<class Type>
 class Singleton_CTS {

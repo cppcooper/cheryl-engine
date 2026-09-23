@@ -78,6 +78,9 @@ namespace CE::Assets {
         }
         std::ranges::sort(manifest_files);
 
+        // TODO: Manifest parsing/semantic validation can become worker-pool work because each document is
+        // independent. Preserve deterministic registration/error ordering, then marshal provider/GPU creation
+        // through its declared owner thread instead of parallelizing the whole load_assets() call blindly.
         std::vector<AssetManifest> parsed_manifests;
         parsed_manifests.reserve(manifest_files.size());
         for (const auto& file : manifest_files) {

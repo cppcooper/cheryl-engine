@@ -6,6 +6,9 @@
 #include <unordered_map>
 
 namespace CE::Input {
+    // TODO: Define callback execution affinity before input can run independently. Direct callbacks from
+    // an input thread would let arbitrary game state mutate concurrently with update/render; prefer queued
+    // events or an input snapshot consumed by the simulation thread unless a callback opts into thread safety.
     class InputBindings {
     public:
         void bind_axis(DeviceBind binding, std::function<void(float, float)> callback);

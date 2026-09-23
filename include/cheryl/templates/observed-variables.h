@@ -22,6 +22,9 @@ public:
     explicit ObservedVariable(T v, std::array<Callback, Observers> callbacks) : var(std::move(v)), callbacks(std::move(callbacks)) {}
 
     ObservedVariable& operator=(T v) { set(v); return *this; }
+    // TODO: Invoke callbacks after releasing mtx and pass a stable value snapshot. A callback that calls set()
+    // on this object can otherwise deadlock trying to acquire the unique lock while the callback invocation
+    // still holds a shared lock; long callbacks also unnecessarily block writers.
     void set(T v) {
         std::unique_lock wl(mtx);
         if (var != v) {

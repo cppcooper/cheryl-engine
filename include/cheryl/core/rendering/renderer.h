@@ -14,6 +14,9 @@ namespace CE::RenderAPIs {
         // TODO: Revisit display ownership. Graphics and window backends are intended to vary
         // independently, but the renderer currently owns the display system. Engine composition
         // may be the cleaner ownership/injection boundary if those choices remain independent.
+        // TODO: Specify renderer thread affinity. OpenGL contexts are current to one thread at a time,
+        // while GLFW window/event operations have main-thread restrictions. A render thread therefore
+        // needs explicit context ownership and command submission rather than arbitrary calls across threads.
         std::unique_ptr<iDisplaySystem> display;
         virtual ~iRenderer() = default;
 

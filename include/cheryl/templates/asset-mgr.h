@@ -20,6 +20,8 @@ namespace CE::Assets {
     // TODO: Give this binding an explicit cache/resource lifecycle. The process-global provider
     // pointer never resets, so backend replacement, multiple providers, and coordinated GPU
     // teardown cannot currently be represented by the cache model.
+    // TODO: Include provider binding in the concurrency contract. bound_provider_ is unsynchronized, so
+    // concurrent first loads or backend/cache lifecycle changes would race even before asset maps are touched.
     class ProviderBoundCache {
     public:
         static void verify_provider(const ResourceProvider& provider) {
@@ -42,6 +44,9 @@ namespace CE::Assets {
      * Caches constructed assets by key. reserve() provides storage whose slots
      * callers construct selectively with emplace(); the older allocate()
      * interface returns unconstructed handles for manual construction.
+     * TODO: Define synchronization/publication before background loading or hot reload. loaded_assets is an
+     * ordinary unordered_map, so concurrent load/get/clear operations are data races even when the underlying
+     * pooled object lifetime is otherwise safe.
      */
     template <typename AssetType, typename Key = std::filesystem::path>
     struct AssetMgr : ProviderBoundCache {

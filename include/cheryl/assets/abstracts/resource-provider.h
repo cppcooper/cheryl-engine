@@ -16,6 +16,9 @@ namespace CE::Assets {
     // Implementations must finish copying the supplied pixels and vertices before returning.
     struct ResourceProvider {
         virtual ~ResourceProvider() = default;
+        // TODO: Split CPU-side file decoding/preparation from backend upload and document thread affinity.
+        // Parsing and decoding are worker-pool candidates, while an OpenGL provider must marshal context-bound
+        // resource creation to the thread that owns the current rendering context.
         [[nodiscard]] virtual std::shared_ptr<Image> load_image(const std::filesystem::path& file) = 0;
         [[nodiscard]] virtual std::shared_ptr<Image> create_font_atlas(std::span<const unsigned char> alpha,
                                                                         PixelSize size) = 0;
