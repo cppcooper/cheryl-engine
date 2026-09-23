@@ -17,8 +17,10 @@ namespace {
         unsigned char pattern;
     };
 
-    // Check the complete address partition for every owner, independent of the
-    // manager's lookup and merge methods. The bookkeeping is shared by all void managers.
+    /**
+     * Check each owner's complete address partition independently of the
+     * manager's lookup and merge methods. Void managers share this bookkeeping.
+     */
     ::testing::AssertionResult valid_partition(const std::vector<CheckedOut>& live) {
         BlockManagement<void> bm;
         std::shared_lock reg_lock(std::get<0>(bm.registry), std::defer_lock);

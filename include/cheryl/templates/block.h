@@ -50,7 +50,7 @@
  * std::formatter<Block<T>>
  */
 
-/* Block<T>
+/**
  * A contiguous range within one backing allocation. owner keeps that allocation
  * alive; head may point into it after a split. length counts T objects (bytes for void).
  * Splitting produces ranges with the same owner without transferring storage.
@@ -225,7 +225,7 @@ namespace compare {
      */
 }
 
-/* BlockManagement<T>
+/**
  * Bookkeeping shared by managers of the same T: registry owns full allocations,
  * sections partitions split allocations, and pool records reusable ranges.
  * stale timestamps complete free owners; release queues them for culling.
@@ -235,6 +235,7 @@ template<typename T>
 struct BlockManagement {
     using clock = std::chrono::steady_clock;
     using tpoint = std::chrono::time_point<clock>;
+    /** All pool, partition, and culling records retained for one T specialization. */
     struct State {
         std::tuple<std::shared_mutex, std::set<Block<T>, compare::PoolOrder<T>>> pool;
         std::tuple<std::shared_mutex, std::set<Block<T>, compare::HeadOrder<T>>> sections;
@@ -260,6 +261,7 @@ protected:
     std::shared_ptr<State> state_ = shared_state();
 };
 
+/** Virtual lookup, merge, and culling interface for block managers. */
 template<typename T>
 struct iManage {
     friend class Test_iManage;
@@ -276,7 +278,7 @@ public:
     virtual void release_culled() = 0;
 };
 
-/* AbstractManager<T>
+/**
  * Implements block lookup, merging, and culling over BlockManagement<T>'s
  * shared sets. Derived managers decide how blocks are acquired and returned.
  */

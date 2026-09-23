@@ -3,6 +3,10 @@
 #include <memory>
 
 namespace CE::Obj {
+    /**
+     * Tracks which raw slots contain live T objects, so cleanup can destroy
+     * constructed objects without touching unconstructed storage.
+     */
     template <typename T>
     struct ObjCtor {
         template <typename... Args>

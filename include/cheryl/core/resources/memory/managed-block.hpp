@@ -3,8 +3,10 @@
 #include <memory>
 
 namespace CE::Mem {
-    // The handle owns the backing block. Returning it to a live manager enables
-    // reuse; if the manager has already died, the block frees its backing normally.
+    /**
+     * Retain a HeapBlock in a handle and return it to a live manager for reuse.
+     * After manager destruction, skip reuse and let the backing owner unwind.
+     */
     template<typename T, typename Manager>
     std::shared_ptr<T> make_managed_block(Manager& manager, HeapBlock block) {
         auto* head = static_cast<T*>(block.head.get());

@@ -6,7 +6,7 @@
 #include <type_traits>
 
 namespace CE::Obj {
-     /* Factory<T, Allocator>
+     /**
       * Allocates one contiguous batch and constructs each T separately. Each
       * returned handle destroys its object; the shared allocation owner calls
       * allocator deallocate(original, count) after the final handle is gone.
@@ -16,15 +16,15 @@ namespace CE::Obj {
          static_assert(std::is_class_v<T>, "The Factory template is only for creating objects of classes.");
          using AAloc = std::allocator_traits<Allocator>;
 
-         // creates N T objects with Allocator (always constructs)
+         /** Allocate one batch and return a handle for each constructed object. */
          template<typename... Args>
          static std::vector<std::shared_ptr<T>> create(size_t N, Args... args);
 
-		 // uses Allocator's traits::construct(alloc, p, args...)
+         /** Construct N objects in caller-owned storage; roll back on failure. */
          template<typename... Args>
          static void construct(T* p, size_t N, Args... args);
 
-         // uses Allocator's traits::destroy(alloc, p)
+         /** Destroy N objects without releasing their backing allocation. */
          static void destroy(T* p, size_t N = 1);
 
      private:

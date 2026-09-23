@@ -207,8 +207,10 @@ TEST(templates_block, pool_merge_at_owner_head) {
 
 struct ManageProbeItem { unsigned char value; };
 
-// iManage grants this test access to the virtual interface. Use real owned
-// allocations and a dedicated T so other managers cannot affect the result.
+/**
+ * Exposes iManage's protected virtual operations to tests. Uses a dedicated
+ * T and owned allocations so other managers cannot affect the result.
+ */
 class Test_iManage {
     AbstractManager<ManageProbeItem> implementation_;
     iManage<ManageProbeItem>* mgr_ = &implementation_;

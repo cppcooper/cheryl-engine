@@ -35,7 +35,7 @@ namespace CE::Assets {
         inline static const ResourceProvider* bound_provider_ = nullptr;
     };
 
-    /* AssetMgr<AssetType, Key>
+    /**
      * Caches constructed assets by key. reserve() provides storage whose slots
      * callers construct selectively with emplace(); the older allocate()
      * interface returns unconstructed handles for manual construction.
@@ -56,12 +56,14 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t size() const { return loaded_assets.size(); }
 
     protected:
+        /** Reserve raw slots for selective construction with emplace(). */
         template <typename Derived>
         auto reserve(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>);
             return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
         }
 
+        /** Provide raw object handles for callers that construct slots manually. */
         template <typename Derived>
         std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>,

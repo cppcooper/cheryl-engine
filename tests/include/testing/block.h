@@ -81,9 +81,11 @@ bool checkStaleAndReleaseInRegistry(const BlockManagement<T>& bm) {
     return true;
 }
 
-// A pooled range belongs to one exact bookkeeping location: a full owner in
-// registry or a split range in sections. Comparator equivalence alone is not
-// enough because a shorter section can share an owner's starting address.
+/**
+ * Check that each pooled range belongs to exactly one bookkeeping location:
+ * a full owner in registry or a split range in sections. Set equivalence is
+ * insufficient when a shorter section shares the owner's starting address.
+ */
 template<typename T>
 bool checkPoolInSectionsOrInRegistry(const BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));
@@ -126,8 +128,10 @@ bool checkPoolInRegistryAlsoInStale(const BlockManagement<T>& bm) {
     return true;
 }
 
-// PoolOrder sorts by alignment and length, so neighboring set entries need
-// not be neighbors in memory. Compare every pair belonging to the same owner.
+/**
+ * Find overlapping or unmerged free ranges from the same owner. PoolOrder
+ * sorts by alignment and length, so compare all pairs rather than set neighbors.
+ */
 template<typename T>
 bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));

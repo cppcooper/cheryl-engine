@@ -10,10 +10,9 @@
 #include <vector>
 
 namespace CE::Obj {
-    /* ReservableManager / ReservationAllocator
-     * Require a manager-backed allocator with a retained release context.
-     * Ordinary allocate/deallocate cover whole allocations; the manager context
-     * must separately support returning claimed or unclaimed subranges.
+    /**
+     * Manager interface for reserving blocks and retaining a context capable
+     * of returning their individual ranges.
      */
     template<typename Manager, typename T>
     concept ReservableManager = requires(Manager& manager, std::size_t count, T* ptr) {
@@ -28,6 +27,11 @@ namespace CE::Obj {
             std::same_as<void>;
     };
 
+    /**
+     * Allocator interface accepted by ObjectReservation: the allocator must
+     * identify a ReservableManager and expose its retained release context.
+     * Ordinary allocate/deallocate still operate on whole allocations.
+     */
     template<typename Allocator, typename T>
     concept ReservationAllocator = requires(Allocator& allocator, std::size_t count, T* ptr) {
         typename Allocator::value_type;
@@ -40,7 +44,7 @@ namespace CE::Obj {
         { allocator.deallocate(ptr, count) } -> std::same_as<void>;
     };
 
-    /* ObjectReservation<T, Allocator>
+    /**
      * Reserves one Block and tracks only its unclaimed ranges. emplace() splits
      * out a slot and gives its handle the release context; the handle may outlive
      * this reservation. Failed construction leaves the slot reserved, while the
@@ -50,8 +54,10 @@ namespace CE::Obj {
         requires ReservationAllocator<Allocator, T>
     class ObjectReservation {
         using context_type = typename Allocator::manager_type::release_context_type;
-        // The aliasing shared_ptr points at T; this control block owns its
-        // destruction and one-slot return after construction succeeds.
+        /**
+         * Controls the constructed slot behind an aliasing shared_ptr<T>.
+         * Its final release destroys T and returns that one slot.
+         */
         struct Claimed {
             std::shared_ptr<context_type> context;
             T* pointer;
@@ -97,6 +103,10 @@ namespace CE::Obj {
         [[nodiscard]] const std::vector<Block<T>>& remaining_ranges() const noexcept { return remaining_; }
         [[nodiscard]] std::size_t size() const noexcept { return count_; }
 
+        /**
+         * Construct one slot and transfer it to a handle retaining the release
+         * context. If construction fails, the slot stays in remaining_ranges().
+         */
         template<typename... Args>
         std::shared_ptr<T> emplace(std::size_t index, Args&&... args) {
             if (index >= count_)
