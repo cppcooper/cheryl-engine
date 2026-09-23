@@ -7,11 +7,12 @@ namespace CE {
 }
 
 namespace CE::Input {
-    // The input adapter used by an engine. Device and button IDs are opaque to
-    // the engine; each adapter supplies its own event translation.
     // TODO: Define which thread poll() runs on and where game-facing input is delivered. A concurrent
     // implementation should separate platform event collection from simulation consumption rather than
     // making bindings implicitly execute on whichever thread owns an input backend.
+    /** Engine-facing input adapter. Device/button IDs are opaque to the engine; each
+     * implementation translates platform events and exposes bindings to the game.
+     */
     class iInputSystem {
     public:
         virtual ~iInputSystem() = default;

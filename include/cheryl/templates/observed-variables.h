@@ -7,6 +7,10 @@
 #include <condition_variable>
 #include <utility>
 
+/** Store a value with a change counter for waiters and an array of callbacks.
+ * A set() call invokes callbacks even when the value compares equal; only an
+ * actual change increments the counter and wakes wait_until_change().
+ */
 template<typename T, uint8_t Observers = 1>
 struct ObservedVariable {
     using Callback = std::function<void(const T&)>;

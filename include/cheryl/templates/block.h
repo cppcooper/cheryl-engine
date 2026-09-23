@@ -110,6 +110,8 @@ typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     if constexpr (!std::is_void_v<T>) {
         return split_exactly(idx);
     } else {
+        // Byte blocks seek an aligned start for the right-hand remainder. If the
+        // requested alignment leaves no room, retry with progressively smaller bounds.
         constexpr auto av64 = std::align_val_t{64};
         constexpr auto av128 = std::align_val_t{128};
         const auto av1 = alignment >= av128 ? alignment : av128;
@@ -289,6 +291,8 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
     using clock = typename BlockManagement<T>::clock;
     using tpoint = typename BlockManagement<T>::tpoint;
     void cull(std::chrono::minutes age) override {
+        // Mark whole free owners old enough to release; actual removal is deferred to
+        // release_culled() so recently reused owners can cancel pending culls.
         const auto now = clock::now();
         std::scoped_lock lock(std::get<0>(this->stale), std::get<0>(this->release));
         auto& stale_memory = std::get<1>(this->stale);
@@ -303,6 +307,8 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
         }
     }
     void release_culled() override {
+        // Recheck ownership and availability under all bookkeeping locks before dropping
+        // the registry/pool references that retain an unused backing allocation.
         std::scoped_lock lock(std::get<0>(this->registry), std::get<0>(this->sections),
                               std::get<0>(this->pool), std::get<0>(this->stale),
                               std::get<0>(this->release));
@@ -501,6 +507,8 @@ protected:
     OBlock<T> merge_into_pool(Block<T> block) override {
         MTRACE() << "Merging " << block << " into pool.";
         const auto og = block;
+        // Coalesce only free neighbors from the same owner; active adjacent sections
+        // stay separate even if they happen to be physically contiguous.
         auto left = contiguous_left(block, this->sections);
         if (left.has_value()) {
             if (contains(*left, this->pool)) {
@@ -554,6 +562,8 @@ protected:
         return {block};
     }
     OBlock<T> find_section(T* ptr) override {
+        // A pointer inside a section may lie after its start. Probe the preceding ordered
+        // range before the lower-bound candidate to include interior pointers.
         const auto av = CE::ptr::calculate_alignment(ptr);
         Block<T> faux_block {nullptr, std::shared_ptr<T>(ptr, [](const T* p){}), av, 0};
         if (auto left = adjacent_left(faux_block, this->sections); left.has_value() && left->contains(ptr)) {
@@ -593,10 +603,9 @@ protected:
         const auto Talignval = std::max(av(), minimum_alignment);
         auto &pool_set = std::get<1>(this->pool);
         MINFO() << "Pool received a request for " << N << " slices("<< ctti::nameof<T>() <<") of " << Talignval << " aligned memory.";
-        // our pool Blocks are sorted alignment, length, head, owner all in ascending order
-        // search all iter with large enough alignment
+        // PoolOrder sorts alignment and length descending; stop once alignment becomes
+        // insufficient, accepting the first range large enough to satisfy this request.
         for (auto iter = pool_set.begin(); iter != pool_set.end() && iter->alignment >= Talignval; ++iter) {
-            // if it also possesses the length required, we can return that block
             if (iter->length >= N) {
                 OBlock<T> ob {*iter};
                 pool_set.erase(iter);

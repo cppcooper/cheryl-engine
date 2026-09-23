@@ -40,6 +40,9 @@ namespace CE::Obj {
 
          Allocator allocator;
          auto* ptr = AAloc::allocate(allocator, N);
+         // TODO: If constructing a later element or its handle throws, ensure the just
+         // constructed object is destroyed before the shared allocation owner releases
+         // its storage; earlier objects are already owned by entries in objects.
          // One allocator allocation is released once, after the last element
          // handle has destroyed its own object.
          std::shared_ptr<T> allocation(ptr, [allocator, N](T* base) mutable noexcept {

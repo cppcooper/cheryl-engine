@@ -18,6 +18,8 @@ namespace CE::Assets {
         bind_provider(provider);
         if (loaded_assets.contains(key))
             return;
+        // Link once and seed the current hard-coded sampler/camera/model uniforms
+        // before publishing this program in the cache.
         auto program = provider.link_program(stages);
         program->use();
         // TODO: Move engine-standard uniform names and sampler defaults into a material/pipeline
@@ -40,6 +42,8 @@ namespace CE::Assets {
         // whenever the active camera changes.
         projection_ = projection;
         view_ = view;
+        // Propagate camera changes to linked programs only; stage-only cache entries
+        // are not executable and cannot receive uniforms.
         for (const auto& key : linked_programs_) {
             auto program = loaded_assets.at(key);
             program->use();

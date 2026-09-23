@@ -7,6 +7,10 @@ namespace CE::RenderAPIs {
 }
 
 namespace CE::Assets {
+    /** Translate backend-neutral resource requests into OpenGL images, buffers, and programs.
+     * Calls require the rendering context current on the calling thread; CPU data is copied
+     * during construction and need not outlive each call.
+     */
     class OpenGLResourceProvider final : public ResourceProvider {
     public:
         explicit OpenGLResourceProvider(RenderAPIs::OpenGLRenderer& renderer) : renderer_(renderer) {}

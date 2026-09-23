@@ -43,12 +43,12 @@ namespace CE::Assets {
         TileAnimationDefinition definition_;
     };
 
-    /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
-     * These queries expose metadata; they do not inspect a world or choose neighbors.
-     */
     // TODO: Integrate a tile-map selection layer here: derive a Wang signature or bitmask from
     // neighboring terrain, choose a weighted candidate, then substitute animation_for(target)
     // using simulation-owned elapsed time before submitting the resolved tile to rendering.
+    /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
+     * These queries expose metadata; they do not inspect a world or choose neighbors.
+     */
     struct Tileset final : Asset2D, protected Frame {
         explicit Tileset(TilesetData data);
         ~Tileset() override = default;

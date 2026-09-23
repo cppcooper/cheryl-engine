@@ -10,6 +10,9 @@ namespace CE::Assets {
 }
 
 namespace CE::RenderAPIs {
+    /** Owns a display backend and presents frames; resource creation and camera state are
+     * delegated to the selected graphics backend through this interface.
+     */
     struct iRenderer {
         // TODO: Revisit display ownership. Graphics and window backends are intended to vary
         // independently, but the renderer currently owns the display system. Engine composition

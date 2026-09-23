@@ -51,6 +51,8 @@ namespace CE::Obj {
         }
         OBlock<T> ob = this->fill_request(N);
         const bool request_filled = ob.has_value();
+        // Create a new owner only when the reusable pool cannot satisfy this batch.
+        // A reused whole owner must leave the stale/release queues before splitting.
         if (!request_filled) {
             ob = allocate(N);
             this->record_new(*ob);
@@ -59,11 +61,10 @@ namespace CE::Obj {
             this->erase(*ob, this->stale, this->release);
         }
         const auto right = ob->split_exactly(N);
-        // we only need records if the right portion exists, because sections only deals in sub-blocks
+        // Split ranges need section records for both halves; the unused tail returns
+        // immediately to the pool while the caller owns the left portion.
         if (right.has_value()) {
-            // record the left portion
             this->emplace(*ob, this->sections);
-            // record the right portion
             this->emplace(*right, this->sections, this->pool);
         }
         return *ob;
@@ -75,6 +76,8 @@ namespace CE::Obj {
             throw Exceptions::bad_request(CE_HERE, "Cannot return an empty object range.");
         }
         auto FUNC = CE_FUNCTION_;
+        // Carve a returned slot/range out of its active section. Preserve unreturned
+        // front/back sections, then coalesce only the returned middle with free neighbors.
         auto ret_chunk = [this,FUNC](OBlock<T> b, T* p, std::size_t length) {
             if(!b.has_value()) {
                 std::unreachable();
@@ -112,7 +115,8 @@ namespace CE::Obj {
             }
         };
 
-        // Try to find the section or owner of the memory block
+        // Whole allocations may have no section record; fall back to the owner lookup
+        // after checking for an interior pointer in the section partition.
         if (auto sec = this->find_section(p); sec.has_value() && sec->contains(p)) {
             if (this->contains(*sec, this->pool)) {
                 throw Exceptions::bad_request(CE_HERE, "Object range has already been returned.");
@@ -130,6 +134,7 @@ namespace CE::Obj {
 
     template<typename T>
     void PoolState<T>::return_block(const Block<T> &returned) {
+        // Returning a whole owner is valid only when no active sections of that owner remain.
         const bool in_sections = this->contains(returned, this->sections);
         const bool in_registry = this->contains(returned, this->registry);
         bool has_active_sections = false;
@@ -150,21 +155,21 @@ namespace CE::Obj {
 
     template<typename T>
     Block<T> PoolState<T>::allocate(size_t length) {
-        // we will allocate an ObjBlock to be recorded, it will clean up memory when we cull it
+        // Borrow raw bytes from the typed memory manager. The resulting owner handle
+        // destroys any tracked T objects and returns those bytes when its final alias dies.
         auto& manager = Mem::ObjMMgr<T>::get();
         Mem::HeapBlock b = manager.checkout_chunk(length*sizeof(T), alignof(T), Enum::greedy);
         auto raw = static_cast<T*>(b.head.get());
 
-        // calculate number of objects = bytes / size
         static_assert(!std::is_same_v<T,void>);
         const std::size_t len = b.length / sizeof(T);
-        // we need to make a more useful pointer
         const auto manager_lifetime = manager.lifetime_token();
+        // TODO: Retain a safe release context for the underlying byte manager. The weak
+        // lifetime check does not serialize this deleter with concurrent manager destruction.
         std::shared_ptr<T> block_root(raw, [b,len,manager_lifetime,manager_ptr = &manager](auto p) {
-            // ensure any pre-constructed objects (or something) get destroyed
+            // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
             ObjCtor<T>::destroy(p,len);
             ObjCtor<T>::erase(p,p+len);
-            // when our HeapBlock is stale, we'll need to return it
             if (manager_lifetime.lock()) {
                 manager_ptr->return_chunk(b);
             }

@@ -30,28 +30,25 @@ namespace CE::Assets {
     }
 
     bool GLSLProgram::link() {
+        // A provider may supply either a linked program or a stage-bearing program awaiting
+        // the link step; avoid relinking an executable that is already ready to use.
         if (linked) {
             return true;
         }
         if (id_prog <= 0) {
             return false;
         }
-        ///Program is not already linked, and is linkable
+        // Link attached stages, then query the program status before permitting use().
         glLinkProgram(id_prog);
 
-        ///Gotta verify the link went Okay
         int status = 0;
         glGetProgramiv(id_prog, GL_LINK_STATUS, &status);
         if (GL_FALSE == status) {
-            ///It failed, we need logs
-
-            ///Get the length of the log
+            // Preserve the driver's diagnostic when a stage interface fails to link.
             int length = 0;
             glGetProgramiv(id_prog, GL_INFO_LOG_LENGTH, &length);
 
             if (length > 0) {
-                ///The log has a non zero size
-                // So allocate space for the log temporarily
                 char* c_log = new char[length];
                 int written = 0;
                 glGetProgramInfoLog(id_prog, length, &written, c_log);
@@ -60,7 +57,6 @@ namespace CE::Assets {
             }
             return false;
         }
-        /// It didn't fail
         linked = true;
         return true;
     }
@@ -125,6 +121,7 @@ namespace CE::Assets {
     }
 
     int GLSLProgram::get_uniform_location(const char* name) {
+        // Query OpenGL once after linking, caching valid locations for repeated draw calls.
         int result = -1;
         if (linked) {
             if (locations.contains(name)) {

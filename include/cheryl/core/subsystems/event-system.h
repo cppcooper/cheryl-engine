@@ -24,6 +24,9 @@
  */
 
 namespace CE::SubSystems {
+    /** Synchronous named-event registry. dispatch() runs listeners on its caller's thread
+     * with the supplied payload copied into each std::any callback argument.
+     */
     struct EventSystem : Singleton_CTS<EventSystem> {
         using Callback = std::function<void(std::any)>;
         EventSystem() = default;

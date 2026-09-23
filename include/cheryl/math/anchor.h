@@ -7,6 +7,7 @@ namespace CE {
     struct Vertex2D;
 
     namespace math {
+        /** Normalized origin within a frame: (0,0) is its top-left, (1,1) its bottom-right. */
         struct Pivot {
             float x{0.5f};
             float y{0.5f};
@@ -29,6 +30,10 @@ namespace CE {
         [[nodiscard]] AnchorType get_anchor(const std::string& anchor);
         [[nodiscard]] Pivot get_pivot(AnchorType anchor);
 
+        /** Expand a top-left-origin image rectangle into two triangles in local Y-up space.
+         * Both overloads write six non-indexed vertices with normalized UVs; callers must
+         * provide enough storage for one complete quad.
+         */
         struct Anchor {
             static void MakePivot(Pivot pivot, float* vertices, std::uint32_t texture_width,
                                   std::uint32_t texture_height, std::uint32_t width, std::uint32_t height,

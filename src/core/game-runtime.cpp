@@ -31,6 +31,9 @@ namespace CE::GFramework {
                 if (e->should_close())
                     break;
                 const double dt = delta();
+                // TODO: A fixed-step simulation would drain queued network/input messages,
+                // advance world/physics, commit AI/navigation results, and publish render/audio
+                // state here. The current update hook receives one wall-clock delta per frame.
                 gf->update(dt);
 
                 // Refresh camera/viewport and clear, then let the game submit its draw work before swap.

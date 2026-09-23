@@ -10,8 +10,8 @@ namespace CE::Assets {
     void upload(const T* bits, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
 
-        // Apply anisotropic filtering only for supported color textures; the alpha-only font
-        // atlas uses its own sampling/swizzle configuration below.
+        // Apply anisotropic filtering only for supported color textures; the red-only
+        // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
             GLfloat largest_supported_anisotropy;
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
