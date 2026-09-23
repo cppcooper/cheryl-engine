@@ -3,6 +3,10 @@
 #include <math/pointers.h>
 #include <core/resources/memory/mem-mgr.h>
 #include <testing/block.h>
+#include <set>
+#include <shared_mutex>
+#include <tuple>
+#include <cstdint>
 
 
 TEST(templates_block, block_methods) {
@@ -35,118 +39,243 @@ TEST(templates_block, block_methods) {
     ASSERT_TRUE(b4->contains(p_raw+i5));
 }
 
+TEST(templates_block, typed_split_preserves_element_ranges) {
+    struct Value { std::uint64_t data; };
+    auto backing = std::shared_ptr<Value>(new Value[4], [](Value* p) { delete[] p; });
+    Block<Value> block{backing, backing, CE::ptr::calculate_alignment(backing.get()), 4};
+
+    auto unchanged = block;
+    EXPECT_FALSE(unchanged.split_exactly(0).has_value());
+    EXPECT_EQ(unchanged.length, 4);
+    EXPECT_EQ(CE::ptr::get_alignment_offset(backing.get(), std::align_val_t{alignof(Value)}), 0);
+    EXPECT_TRUE(block.contains(reinterpret_cast<unsigned char*>(backing.get() + 4) - 1));
+    EXPECT_FALSE(block.contains(backing.get() + 4));
+
+    auto rest = block.split_exactly(1);
+    ASSERT_TRUE(rest.has_value());
+    EXPECT_EQ(rest->head.get(), backing.get() + 1);
+    EXPECT_EQ(block.length, 1);
+    EXPECT_TRUE(block.contains(backing.get()));
+    EXPECT_FALSE(block.contains(backing.get() + 1));
+    EXPECT_TRUE(BlockHelpers::is_contiguous(block, *rest));
+
+    auto last = rest->split_exactly(2);
+    ASSERT_TRUE(last.has_value());
+    EXPECT_EQ(last->head.get(), backing.get() + 3);
+    EXPECT_EQ(last->length, 1);
+    EXPECT_TRUE(BlockHelpers::is_contiguous(*rest, *last));
+    auto aligned = unchanged.split_at(3);
+    ASSERT_TRUE(aligned.has_value());
+    EXPECT_EQ(aligned->head.get(), backing.get() + 3);
+    EXPECT_EQ(aligned->length, 1);
+}
+
+struct CullProbeItem { char value; };
+
+struct CullProbe : AbstractManager<CullProbeItem> {
+    using AbstractManager<CullProbeItem>::record_new;
+    using AbstractManager<CullProbeItem>::merge_into_pool;
+};
+
+TEST(templates_block, cull_only_reclaims_complete_stale_owners) {
+    CullProbe manager;
+    BlockManagement<CullProbeItem> bm;
+    auto make_owner = [] {
+        auto p = std::shared_ptr<CullProbeItem>(new CullProbeItem[64], [](CullProbeItem* p) { delete[] p; });
+        return Block<CullProbeItem>{p, p, CE::ptr::calculate_alignment(p.get()), 64};
+    };
+    const auto first = make_owner();
+    const auto second = make_owner();
+    manager.record_new(first);
+    manager.record_new(second);
+    manager.merge_into_pool(first);
+    manager.merge_into_pool(second);
+
+    manager.cull(std::chrono::minutes(1));
+    EXPECT_TRUE(std::get<1>(bm.release).empty());
+    manager.cull(std::chrono::minutes(0));
+    EXPECT_EQ(std::get<1>(bm.release).size(), 2);
+    EXPECT_TRUE(std::get<1>(bm.stale).empty());
+    manager.release_culled();
+    EXPECT_TRUE(std::get<1>(bm.release).empty());
+    EXPECT_TRUE(std::get<1>(bm.pool).empty());
+    EXPECT_TRUE(std::get<1>(bm.registry).empty());
+}
+
+struct AdjacentBlockProbe : AbstractManager<char> {
+    using AbstractManager<char>::adjacent_left;
+    using AbstractManager<char>::search_left;
+    using AbstractManager<char>::search_right;
+};
+
+TEST(templates_block, adjacent_left) {
+    auto backing = std::shared_ptr<char>(new char[128], [](const char* p) { delete[] p; });
+    auto secondHead = std::shared_ptr<char>(backing, backing.get() + 64);
+    const Block<char> first{backing, backing, CE::ptr::calculate_alignment(backing.get()), 32};
+    const Block<char> second{secondHead, secondHead, CE::ptr::calculate_alignment(secondHead.get()), 32};
+    auto middleHead = std::shared_ptr<char>(backing, backing.get() + 48);
+    const Block<char> middle{middleHead, middleHead, CE::ptr::calculate_alignment(middleHead.get()), 1};
+    auto beyondHead = std::shared_ptr<char>(backing, backing.get() + 96);
+    const Block<char> beyond{beyondHead, beyondHead, CE::ptr::calculate_alignment(beyondHead.get()), 1};
+
+    std::tuple<std::shared_mutex, std::set<Block<char>, compare::HeadOrder<char>>> sections;
+    std::tuple<std::shared_mutex, std::set<Block<char>, compare::RegistryOrder<char>>> registry;
+    std::get<1>(sections).insert({first, second});
+    std::get<1>(registry).insert({first, second});
+
+    AdjacentBlockProbe manager;
+    EXPECT_FALSE(manager.adjacent_left(first, sections).has_value());
+    EXPECT_FALSE(manager.adjacent_left(first, registry).has_value());
+    EXPECT_EQ(manager.adjacent_left(middle, sections), first);
+    EXPECT_EQ(manager.adjacent_left(middle, registry), first);
+    EXPECT_EQ(manager.adjacent_left(beyond, sections), second);
+    EXPECT_EQ(manager.adjacent_left(beyond, registry), second);
+    auto same_owner_second = second;
+    same_owner_second.owner = backing;
+    auto same_owner_beyond = beyond;
+    same_owner_beyond.owner = backing;
+    std::tuple<std::shared_mutex, std::set<Block<char>, compare::HeadOrder<char>>> owner_sections;
+    std::get<1>(owner_sections).insert({first, same_owner_second});
+    EXPECT_EQ(manager.search_left(same_owner_second, owner_sections), first);
+    EXPECT_EQ(manager.search_left(same_owner_beyond, owner_sections), same_owner_second);
+    EXPECT_FALSE(manager.search_left(first, owner_sections).has_value());
+    EXPECT_FALSE(manager.search_right(same_owner_second, owner_sections).has_value());
+}
+
+struct MergeProbeItem { char value; };
+
+struct MergeProbe : AbstractManager<MergeProbeItem> {
+    using AbstractManager<MergeProbeItem>::merge_into_pool;
+    using AbstractManager<MergeProbeItem>::record_new;
+};
+
+TEST(templates_block, pool_merge_at_owner_head) {
+    auto backing = std::shared_ptr<MergeProbeItem>(new MergeProbeItem[128], [](MergeProbeItem* p) { delete[] p; });
+    const Block<MergeProbeItem> owner{backing, backing, CE::ptr::calculate_alignment(backing.get()), 128};
+    auto front = owner;
+    auto middle = *front.split_exactly(32);
+    auto back = *middle.split_exactly(32);
+
+    MergeProbe manager;
+    BlockManagement<MergeProbeItem> bm;
+    auto& registry = std::get<1>(bm.registry);
+    auto& sections = std::get<1>(bm.sections);
+    auto& pool = std::get<1>(bm.pool);
+    auto& stale = std::get<1>(bm.stale);
+    manager.record_new(owner);
+    sections.emplace(front);
+    sections.emplace(middle);
+    sections.emplace(back);
+    pool.emplace(middle);
+
+    const auto partial = manager.merge_into_pool(front);
+    EXPECT_TRUE(partial.has_value());
+    if (partial) {
+        EXPECT_EQ(partial->length, 64);
+        EXPECT_TRUE(sections.contains(*partial));
+    }
+    EXPECT_TRUE(checkPoolInSectionsOrInRegistry(bm));
+    EXPECT_FALSE(stale.contains(owner));
+
+    const auto complete = manager.merge_into_pool(back);
+    EXPECT_TRUE(complete.has_value());
+    if (complete) {
+        EXPECT_EQ(*complete, owner);
+    }
+    EXPECT_TRUE(sections.empty());
+    EXPECT_TRUE(pool.contains(owner));
+    EXPECT_TRUE(stale.contains(owner));
+    EXPECT_TRUE(checkPoolInSectionsOrInRegistry(bm));
+
+    pool.clear();
+    sections.clear();
+    registry.clear();
+    stale.clear();
+}
+
+struct ManageProbeItem { unsigned char value; };
+
+// iManage grants this test access to the virtual interface. Use real owned
+// allocations and a dedicated T so other managers cannot affect the result.
 class Test_iManage {
-    iManage<void>* mgr = &CE::Mem::ExactMMgr::get();
-    Block<void> merge_me;
+    AbstractManager<ManageProbeItem> implementation_;
+    iManage<ManageProbeItem>* mgr_ = &implementation_;
 public:
-    Block<void> make_block() {
-        static std::shared_ptr<void> fake(reinterpret_cast<void*>(2000),[](const void* p){});
-        static Block b{fake, fake,std::align_val_t{64},1000};
-        return b;
+    ~Test_iManage() {
+        BlockManagement<ManageProbeItem> bm;
+        std::scoped_lock lock(std::get<0>(bm.registry), std::get<0>(bm.sections),
+                              std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release));
+        std::get<1>(bm.registry).clear();
+        std::get<1>(bm.sections).clear();
+        std::get<1>(bm.pool).clear();
+        std::get<1>(bm.stale).clear();
+        std::get<1>(bm.release).clear();
     }
-    void prepare() {
-        auto b = make_block();
-        mgr->record_new(b);
+    void record(Block<ManageProbeItem> block) { mgr_->record_new(block); }
+    OBlock<ManageProbeItem> owner(ManageProbeItem* ptr) { return mgr_->find_owner(ptr); }
+    OBlock<ManageProbeItem> section(ManageProbeItem* ptr) { return mgr_->find_section(ptr); }
+    OBlock<ManageProbeItem> merge(Block<ManageProbeItem> block) { return mgr_->merge_into_pool(block); }
+    OBlock<ManageProbeItem> fill(std::size_t count, std::align_val_t alignment = std::align_val_t{0}) {
+        return mgr_->fill_request(count, alignment);
     }
-    void add_section() {
-        std::unique_lock lreg(std::get<0>(BlockManagement<void>::sections));
-        auto b = make_block();
-        auto b2 = b.split_exactly(100);
-        auto &sec = std::get<1>(BlockManagement<void>::sections);
-        sec.emplace(b);
-        sec.emplace(*b2);
-    }
-    void add_pooled() {
-        std::unique_lock lpool(std::get<0>(BlockManagement<void>::pool));
-        std::unique_lock lsec(std::get<0>(BlockManagement<void>::sections));
-        auto &pool = std::get<1>(BlockManagement<void>::pool);
-        auto &sec = std::get<1>(BlockManagement<void>::sections);
-        auto b = make_block();
-        auto b2 = b.split_exactly(100);
-        sec.erase(*b2);
-        auto b3 = b2->split_exactly(500);
-        sec.emplace(*b2);
-        sec.emplace(*b3);
-        pool.emplace(b);
-        pool.emplace(*b3);
-        merge_me = *b2;
-    }
-    void cleanup() {
-        auto ob = mgr->find_owner(reinterpret_cast<void*>(2000));
-        std::unique_lock lreg(std::get<0>(BlockManagement<void>::registry));
-        std::unique_lock lpool(std::get<0>(BlockManagement<void>::pool));
-        std::unique_lock lsec(std::get<0>(BlockManagement<void>::sections));
-        std::unique_lock lstale(std::get<0>(BlockManagement<void>::stale));
-        auto &reg = std::get<1>(BlockManagement<void>::registry);
-        auto &pool = std::get<1>(BlockManagement<void>::pool);
-        auto &sec = std::get<1>(BlockManagement<void>::sections);
-        auto &stale = std::get<1>(BlockManagement<void>::stale);
-        reg.erase(*ob);
-        pool.erase(*ob);
-        sec.erase(*ob);
-        stale.erase(*ob);
-    }
-    [[nodiscard]] bool test1() {
-        auto b = make_block();
-        auto ob = mgr->find_owner(reinterpret_cast<void*>(2000));
-        return ob.has_value() && *ob == b;
-    }
-    [[nodiscard]] bool test2() {
-        auto b = make_block();
-        auto ob = mgr->find_owner(reinterpret_cast<void*>(2002));
-        return ob.has_value() && *ob == b;
-    }
-    [[nodiscard]] bool test3() {
-        auto b = make_block();
-        auto ob = mgr->find_owner(reinterpret_cast<void*>(4000));
-        return ob.has_value() && *ob == b;
-    }
-    [[nodiscard]] bool test4() const {
-        return mgr->find_section(reinterpret_cast<void*>(2100)).has_value();
-    }
-    [[nodiscard]] bool test5() const {
-        return mgr->find_section(reinterpret_cast<void*>(2200)).has_value();
-    }
-    [[nodiscard]] bool test6() const {
-        return mgr->find_section(reinterpret_cast<void*>(4000)).has_value();
-    }
-    [[nodiscard]] bool test7() const {
-        auto ob = mgr->merge_into_pool(merge_me);
-        auto rb = mgr->find_owner(reinterpret_cast<void*>(2000));
-        return ob.has_value() && rb.has_value() && *ob == *rb;
-    }
-    [[nodiscard]] bool test8() const {
-        auto ob = mgr->fill_request(1000);
-        auto rb = mgr->find_owner(reinterpret_cast<void*>(2000));
-        return ob.has_value() && rb.has_value() && *ob == *rb;
-    }
-}t;
+};
 
 TEST(templates_block, iManage) {
-    const std::shared_ptr<void> p1 (reinterpret_cast<void*>(10), [](const void* p){});
-    const std::shared_ptr<void> p2 (reinterpret_cast<void*>(10), [](const void* p){});
+    Test_iManage test;
+    auto make_owner = [] {
+        auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
+                                                        [](ManageProbeItem* p) { delete[] p; });
+        return Block<ManageProbeItem>{memory, memory, CE::ptr::calculate_alignment(memory.get()), 128};
+    };
+    auto first = make_owner();
+    auto second = make_owner();
+    if (std::less<ManageProbeItem*>{}(second.head.get(), first.head.get())) {
+        std::swap(first, second);
+    }
+    test.record(first);
+    EXPECT_EQ(test.owner(first.head.get()), first);
+    EXPECT_EQ(test.owner(first.head.get() + 17), first);
+    EXPECT_FALSE(test.owner(second.head.get()).has_value());
+    test.record(second);
+    EXPECT_EQ(test.owner(first.head.get() + 17), first);
+    EXPECT_EQ(test.owner(second.head.get() + 17), second);
 
-    ASSERT_EQ(p1,p2);
-    // find_owner tests
-    t.prepare();
-    ASSERT_TRUE(t.test1());
-    ASSERT_TRUE(t.test2());
-    ASSERT_FALSE(t.test3());
-    // find_section tests
-    t.add_section();
-    ASSERT_TRUE(t.test4());
-    ASSERT_TRUE(t.test5());
-    ASSERT_FALSE(t.test6());
-    // merge_into_pool test
-    t.add_pooled();
-    ASSERT_TRUE(t.test7());
-    // fill_request test
-    ASSERT_TRUE(t.test8());
-    t.cleanup();
+    auto front = first;
+    auto middle = *front.split_exactly(32);
+    auto back = *middle.split_exactly(32);
+    BlockManagement<ManageProbeItem> bm;
+    {
+        std::unique_lock lock(std::get<0>(bm.sections));
+        auto& sections = std::get<1>(bm.sections);
+        sections.emplace(front);
+        sections.emplace(middle);
+        sections.emplace(back);
+        sections.emplace(second);
+    }
+    EXPECT_EQ(test.section(first.head.get() + 40), middle);
+    EXPECT_EQ(test.section(first.head.get() + 95), back);
+    EXPECT_EQ(test.section(second.head.get() + 40), second);
+    {
+        std::unique_lock lock(std::get<0>(bm.pool));
+        std::get<1>(bm.pool).emplace(middle);
+    }
+    const auto partial = test.merge(front);
+    ASSERT_TRUE(partial.has_value());
+    EXPECT_EQ(partial->length, 64);
+    EXPECT_FALSE(std::get<1>(bm.stale).contains(first));
+    const auto whole = test.merge(back);
+    ASSERT_TRUE(whole.has_value());
+    EXPECT_EQ(*whole, first);
+    EXPECT_TRUE(std::get<1>(bm.stale).contains(first));
+    if (first.alignment < std::align_val_t{128}) {
+        EXPECT_FALSE(test.fill(128, std::align_val_t{128}).has_value());
+    }
+    EXPECT_EQ(test.fill(128), first);
 }
 
 TEST(templates_block, BlockManagementChecks) {
-    using BMv = BlockManagement<void>;
+    // Use a separate specialization so memory manager tests cannot affect these checks.
+    using BMv = BlockManagement<char>;
     std::unique_lock lreg(std::get<0>(BMv::registry));
     std::unique_lock lsec(std::get<0>(BMv::sections));
     std::unique_lock lpool(std::get<0>(BMv::pool));
@@ -174,7 +303,7 @@ TEST(templates_block, BlockManagementChecks) {
     constexpr std::size_t i3 = 256;
     constexpr std::size_t i4 = 512;
 
-    const Block<void> b0 {ptr, ptr, align_val, len};
+    const Block<char> b0 {ptr, ptr, align_val, len};
     auto b1 = b0;
     auto b2 = *b1.split_exactly(i1);
     auto b3 = *b2.split_exactly(i2);
@@ -194,7 +323,7 @@ TEST(templates_block, BlockManagementChecks) {
     ASSERT_TRUE(checkContiguousBlocksInPool(bm)); // (b1,b5)
     // in the unlikely event that two contiguous blocks have different owners.. that's fine
     auto b4_2 = b4;
-    b4_2.owner = std::shared_ptr<void>(nullptr); // invalid, but different.. good enough for testing
+    b4_2.owner = std::shared_ptr<char>(nullptr); // invalid, but different.. good enough for testing
     lpool.lock();
     pool.emplace(b4_2);
     lpool.unlock();
@@ -239,6 +368,9 @@ TEST(templates_block, BlockManagementChecks) {
     sec.emplace(b5);
     lsec.unlock();
     ASSERT_TRUE(checkSectionsAndRegistryAreDisjoint(bm));
+    // b1 starts at b0's head but is shorter, so only the exact section matches.
+    ASSERT_TRUE(checkPoolInSectionsOrInRegistry(bm));
+    ASSERT_TRUE(checkPoolInRegistryAlsoInStale(bm));
 
     // if there is a Block in both registry and sections, then bm is invalid... b0 for example
     lsec.lock();
@@ -277,5 +409,17 @@ TEST(templates_block, BlockManagementChecks) {
     reg.erase(b0);
     lreg.unlock();
     ASSERT_TRUE(checkPoolInSectionsOrInRegistry(bm));
-}
 
+    lsec.lock();
+    sec.erase(b0);
+    lsec.unlock();
+    ASSERT_FALSE(checkPoolInSectionsOrInRegistry(bm));
+
+    // Remove all state belonging to this test; the management sets are static.
+    lpool.lock();
+    pool.erase(b0);
+    lpool.unlock();
+    lrelease.lock();
+    release.erase(b0);
+    lrelease.unlock();
+}

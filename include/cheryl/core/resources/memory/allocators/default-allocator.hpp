@@ -10,8 +10,8 @@ namespace CE::Mem {
             auto b = MM::get().checkout_chunk(sizeof(T)*N, alignof(T), Enum::exact);
             return static_cast<T*>(b.head.get());
         }
-        void deallocate(T *ptr, std::size_t N) {
-            MM::get().return_portion(ptr, N);
+        void deallocate(T *ptr, std::size_t /*N*/) {
+            MM::get().return_ptr(ptr);
         }
     };
 }

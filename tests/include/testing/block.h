@@ -63,14 +63,16 @@ bool checkStaleAndReleaseInRegistry(const BlockManagement<T>& bm) {
     const auto& reg = std::get<1>(bm.registry);
 
     for (const auto& [staleBlock,time] : std::get<1>(bm.stale)) {
-        if (reg.find(staleBlock) == reg.end()) {
+        const auto owner = reg.find(staleBlock);
+        if (owner == reg.end() || *owner != staleBlock) {
             MERROR() << "Unable to find stale block " << staleBlock << " in registry.";
             return false;
         }
     }
 
     for (const auto& releasedBlock : std::get<1>(bm.release)) {
-        if (reg.find(releasedBlock) == reg.end()) {
+        const auto owner = reg.find(releasedBlock);
+        if (owner == reg.end() || *owner != releasedBlock) {
             MERROR() << "Unable to find released block " << releasedBlock << " in registry.";
             return false;
         }
@@ -90,8 +92,12 @@ bool checkPoolInSectionsOrInRegistry(const BlockManagement<T>& bm) {
     const auto& sec = std::get<1>(bm.sections);
 
     for (const auto& poolBlock : std::get<1>(bm.pool)) {
-        if (!reg.contains(poolBlock) && !sec.contains(poolBlock)) {
-            MERROR() << "Found pool block " << poolBlock << " in neither the registry or sections.";
+        const auto registryBlock = reg.find(poolBlock);
+        const auto sectionBlock = sec.find(poolBlock);
+        const bool inRegistry = registryBlock != reg.end() && *registryBlock == poolBlock;
+        const bool inSections = sectionBlock != sec.end() && *sectionBlock == poolBlock;
+        if (inRegistry == inSections) {
+            MERROR() << "Found pool block " << poolBlock << " in both or neither of the registry and sections.";
             return false;
         }
     }
@@ -108,7 +114,8 @@ bool checkPoolInRegistryAlsoInStale(const BlockManagement<T>& bm) {
     const auto& stale = std::get<1>(bm.stale);
 
     for (const auto& poolBlock : std::get<1>(bm.pool)) {
-        if (reg.contains(poolBlock) && !stale.contains(poolBlock)) {
+        const auto registryBlock = reg.find(poolBlock);
+        if (registryBlock != reg.end() && *registryBlock == poolBlock && !stale.contains(poolBlock)) {
             MERROR() << "Found pool block " << poolBlock << " in the registry but not in stale.";
             return false;
         }
@@ -120,40 +127,22 @@ bool checkPoolInRegistryAlsoInStale(const BlockManagement<T>& bm) {
 template<typename T>
 bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));
-
     const auto& pool = std::get<1>(bm.pool);
-    if (pool.size() < 2) return true; // No need to check if fewer than two blocks
-
-    // Outer loop iterates through each block
-    for (auto it1 = pool.begin(); it1 != pool.end(); ++it1) {
-        auto nextIt = std::next(it1);
-        // Inner loop compares current block with every subsequent block
-        while (nextIt != pool.end()) {
-            const auto& currentBlock = *nextIt;
-            const auto& prevBlock = *it1;
-
-            // Check if the blocks are contiguous (prevBlock's end equals currentBlock's start)
-            if (BlockHelpers::is_contiguous(prevBlock, currentBlock)) {
-                // Contiguous blocks cannot have the same owner
-                auto sec = std::get<1>(bm.sections);
-                auto s1 = sec.lower_bound(prevBlock);
-                auto s2 = sec.lower_bound(currentBlock);
-                if (prevBlock.owner.get() == currentBlock.owner.get()) {
-                    MERROR() << "Found contiguous blocks in Pool";
-                    MTRACE() << "prev: " << prevBlock;
-                    MTRACE() << "current: " << currentBlock;
-                    if (prevBlock.head.get() < currentBlock.head.get()) {
-                        MDEBUG() << prevBlock << " is less than " << currentBlock;
-                    } else {
-                        MDEBUG() << prevBlock << " is greater than or equal to " << currentBlock;
-                    }
-                    return false;
-                }
+    constexpr std::size_t element_size = [] {
+        if constexpr (std::is_void_v<T>) return std::size_t{1};
+        else return sizeof(T);
+    }();
+    for (auto first = pool.begin(); first != pool.end(); ++first) {
+        for (auto second = std::next(first); second != pool.end(); ++second) {
+            if (first->owner.get() != second->owner.get()) continue;
+            const auto a = reinterpret_cast<std::uintptr_t>(first->head.get());
+            const auto b = reinterpret_cast<std::uintptr_t>(second->head.get());
+            const auto a_end = a + first->length * element_size;
+            const auto b_end = b + second->length * element_size;
+            if (a <= b_end && b <= a_end) {
+                return false; // two free ranges overlap or should have been merged
             }
-            ++nextIt;
         }
     }
     return true;
 }
-
-

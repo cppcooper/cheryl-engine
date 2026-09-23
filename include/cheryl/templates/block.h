@@ -11,6 +11,7 @@
 #define CTWriteMask 0
 #include <core/logging/logger.h>
 #include <functional>
+#include <algorithm>
 #include <memory>
 #include <chrono>
 #include <set>
@@ -19,6 +20,8 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <mutex>
+#include <cstdint>
+#include <type_traits>
 
 /* Header: block.h
  *
@@ -73,10 +76,15 @@ using OBlock = typename Block<T>::OBlock;
 template<typename T>
 typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
     using namespace CE;
-    if (length == 0 || idx >= length - 1 || !head.get()) {
+    if (idx == 0 || idx >= length || !head.get()) {
         return std::nullopt;
     }
-    T* p = ptr::add_offset<T>(head.get(), idx);
+    T* p;
+    if constexpr (std::is_void_v<T>) {
+        p = ptr::add_offset<T>(head.get(), idx);
+    } else {
+        p = head.get() + idx;
+    }
     auto av = ptr::calculate_alignment(p);
     if(av == std::align_val_t{1}) {
         MWARN() << "We are going to have a 1 alignment memory pooling issue. We at least need to resplit";
@@ -94,30 +102,40 @@ typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
 template<typename T>
 typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     using namespace CE;
-    constexpr auto av64 = std::align_val_t{64};
-    constexpr auto av128 = std::align_val_t{128};
-    const auto av1 = alignment >= av128 ? alignment : av128;
-    const auto av2 = (alignment > av64 && alignment < av128) ? alignment : av64;
-    const auto av3 = alignment <= av64 ? alignment : av64;
+    if constexpr (!std::is_void_v<T>) {
+        return split_exactly(idx);
+    } else {
+        constexpr auto av64 = std::align_val_t{64};
+        constexpr auto av128 = std::align_val_t{128};
+        const auto av1 = alignment >= av128 ? alignment : av128;
+        const auto av2 = (alignment > av64 && alignment < av128) ? alignment : av64;
+        const auto av3 = alignment <= av64 ? alignment : av64;
 
-    const auto cidx = idx;
-    idx = ptr::align_offset(head.get(), cidx, av1);
-    if (idx >= length - 1) {
-        idx = ptr::align_offset(head.get(), cidx, av2);
-        if (idx >= length - 1) {
-            idx = ptr::align_offset(head.get(), cidx, av3);
-            if (idx >= length - 1) {
-                return std::nullopt;
+        const auto cidx = idx;
+        idx = ptr::align_offset(head.get(), cidx, av1);
+        if (idx >= length) {
+            idx = ptr::align_offset(head.get(), cidx, av2);
+            if (idx >= length) {
+                idx = ptr::align_offset(head.get(), cidx, av3);
+                if (idx >= length) {
+                    return std::nullopt;
+                }
             }
         }
+        return split_exactly(idx);
     }
-    return split_exactly(idx);
 }
 
 template<typename T>
 bool Block<T>::contains(void* p) const {
     using namespace CE;
-    return ptr::is_in_range(head.get(), ptr::add_offset<T>(head.get(), length), p);
+    constexpr auto element_size = [] {
+        if constexpr (std::is_void_v<T>) return std::size_t{1};
+        else return sizeof(T);
+    }();
+    return ptr::is_in_range(reinterpret_cast<std::uintptr_t>(head.get()),
+                            ptr::offset_address(head.get(), length * element_size),
+                            reinterpret_cast<std::uintptr_t>(p));
 }
 
 template<typename T, typename U>
@@ -234,7 +252,7 @@ protected:
     virtual OBlock<T> merge_into_pool(Block<T>) = 0;
     virtual OBlock<T> find_section(T*) = 0;
     virtual OBlock<T> find_owner(T*) = 0;
-    virtual OBlock<T> fill_request(std::size_t) = 0;
+    virtual OBlock<T> fill_request(std::size_t, std::align_val_t minimum_alignment = std::align_val_t{0}) = 0;
 public:
     virtual ~iManage() = default;
     virtual void cull(std::chrono::minutes age) = 0;
@@ -248,37 +266,49 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
     using clock = typename BlockManagement<T>::clock;
     using tpoint = typename BlockManagement<T>::tpoint;
     void cull(std::chrono::minutes age) override {
-        static tpoint last;
-        // This was run early if not even a minute has passed.
-        if (const tpoint now = clock::now(); mcast(now - last) >= std::chrono::minutes(1)) {
-            auto &stale_memory = std::get<1>(this->stale);
-            last = now;
-            std::shared_lock lock(std::get<0>(this->stale));
-            for (auto &[a,then] : stale_memory) {
-                auto elapsed = mcast(now - then);
-                if (elapsed >= age) {
-                    std::unique_lock ulock(std::get<0>(this->release));
-                    std::get<1>(this->release).emplace(a);
-                }
-            }
-            lock.unlock();
-            std::unique_lock ulock(std::get<0>(this->stale));
-            for (auto &[a,then] : stale_memory) {
-                stale_memory.erase(a);
+        const auto now = clock::now();
+        std::scoped_lock lock(std::get<0>(this->stale), std::get<0>(this->release));
+        auto& stale_memory = std::get<1>(this->stale);
+        auto& pending = std::get<1>(this->release);
+        for (auto it = stale_memory.begin(); it != stale_memory.end();) {
+            if (now - it->second >= age) {
+                pending.emplace(it->first);
+                it = stale_memory.erase(it);
+            } else {
+                ++it;
             }
         }
     }
     void release_culled() override {
-        std::unique_lock lock(std::get<0>(this->release));
-        if (std::get<1>(this->release).empty()) {
-            return;
+        std::scoped_lock lock(std::get<0>(this->registry), std::get<0>(this->sections),
+                              std::get<0>(this->pool), std::get<0>(this->stale),
+                              std::get<0>(this->release));
+        auto& registry = std::get<1>(this->registry);
+        auto& sections = std::get<1>(this->sections);
+        auto& pool = std::get<1>(this->pool);
+        auto& stale = std::get<1>(this->stale);
+        auto& pending = std::get<1>(this->release);
+        for (const auto& block : pending) {
+            const auto owner = registry.find(block);
+            const auto available = pool.find(block);
+            if (owner == registry.end() || *owner != block ||
+                available == pool.end() || *available != block) {
+                continue;
+            }
+            bool has_active_sections = false;
+            for (const auto& section : sections) {
+                if (section.owner.get() == block.owner.get()) {
+                    has_active_sections = true;
+                    break;
+                }
+            }
+            if (!has_active_sections) {
+                pool.erase(available);
+                registry.erase(owner);
+                stale.erase(block);
+            }
         }
-        auto &memory_to_release = std::get<1>(this->release);
-        auto iter = memory_to_release.begin();
-        do {
-            erase(*iter, this->registry, this->pool, this->stale, this->release);
-            iter = memory_to_release.begin();
-        } while(iter != memory_to_release.end());
+        pending.clear();
     }
 protected:
     template<typename Tuple>
@@ -332,7 +362,9 @@ protected:
         // Lock each mutex associated with its set
         auto share_set = [](Block<T> b, auto&& pair) {
             std::shared_lock<std::shared_mutex> lock(std::get<0>(pair));
-            return std::get<1>(pair).contains(b);
+            const auto& set = std::get<1>(pair);
+            const auto found = set.find(b);
+            return found != set.end() && *found == b;
         };
 
         // Apply the lock and emplace operation to each pair
@@ -351,7 +383,7 @@ protected:
         }
         while (iter != set.end() && block.owner == iter->owner && iter->head.get() <= block.head.get()) {
             iter = std::next(iter);
-            MTRACE() << "next: " << *iter;
+            if (iter != set.end()) MTRACE() << "next: " << *iter;
         }
         if (iter != set.end() && block.owner == iter->owner && iter->head.get() > block.head.get()) {
             return {*iter};
@@ -365,17 +397,12 @@ protected:
         auto &set = std::get<1>(tuple);
         MTRACE() << "Searching to the left from " << block;
         auto iter = set.lower_bound(block);
-        if (iter != set.end()) {
-            MTRACE() << "lower_bound: " << *iter;
-        } else {
-            MTRACE() << "lower_bound: end()";
-        }
-        while (iter != set.begin() && block.owner == iter->owner && iter->head.get() >= block.head.get()) {
-            iter = std::prev(iter);
-            MTRACE() << "prev: " << *iter;
-        }
-        if (iter != set.end() && block.owner == iter->owner && iter->head.get() < block.head.get()) {
-            return {*iter};
+        while (iter != set.begin()) {
+            --iter;
+            if (iter->head.get() < block.head.get()) {
+                if (block.owner == iter->owner) return {*iter};
+                break;
+            }
         }
         MWARN() << "search condition not found left, returning nullopt";
         return {std::nullopt};
@@ -420,23 +447,20 @@ protected:
         MDEBUG() << "no adjacent, returning nullopt";
         return {std::nullopt};
     }
+    // Returns the predecessor in the set's ordering, which may differ from address order.
     template<typename Tuple>
     OBlock<T> adjacent_left(Block<T> block, Tuple &tuple) {
         MDEBUG() << "Looking for adjacent left..";
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
-        auto iter = set.lower_bound(block);
-        if (iter != set.begin()) {
-            iter = std::next(iter);
-        } else {
-            MWARN() << "unable to locate adjacent left.";
+        const auto next = set.lower_bound(block);
+        if (next == set.begin()) {
+            MDEBUG() << "no adjacent, returning nullopt";
+            return {std::nullopt};
         }
-        if (iter != set.end()) {
-            MDEBUG() << "adjacent left found: " << *iter;
-            return {*iter};
-        }
-        MDEBUG() << "no adjacent, returning nullopt";
-        return {std::nullopt};
+        const auto previous = std::prev(next);
+        MDEBUG() << "adjacent left found: " << *previous;
+        return {*previous};
     }
     // iManage interface
     /////////////////////
@@ -482,8 +506,18 @@ protected:
             MINFO() << "contiguous right merged.";
         }
 
-        // by now block has changed, or it hasn't
-        if (contains(block, this->registry)) {
+        // RegistryOrder identifies an allocation by owner and head, so find()
+        // also matches a shorter section at the allocation's starting address.
+        // Only the complete owner block may leave sections and become stale.
+        bool is_owner_block = false;
+        {
+            std::shared_lock lock(std::get<0>(this->registry));
+            const auto& reg = std::get<1>(this->registry);
+            const auto owner = reg.find(block);
+            is_owner_block = owner != reg.end() && *owner == block;
+        }
+        if (is_owner_block) {
+            erase(og, this->sections);
             MTRACE() << "Merged block is in the registry. Marking stale.";
             mark_stale(block);
             emplace(block, this->pool);
@@ -497,16 +531,16 @@ protected:
         return {block};
     }
     OBlock<T> find_section(T* ptr) override {
-        std::shared_lock<std::shared_mutex> lock(std::get<0>(this->sections));
         const auto av = CE::ptr::calculate_alignment(ptr);
         Block<T> faux_block {nullptr, std::shared_ptr<T>(ptr, [](const T* p){}), av, 0};
-        // finds
         if (auto left = adjacent_left(faux_block, this->sections); left.has_value() && left->contains(ptr)) {
             return left;
         }
+        std::shared_lock<std::shared_mutex> lock(std::get<0>(this->sections));
         auto &sec = std::get<1>(this->sections);
-        if (auto lb = sec.lower_bound(faux_block); lb != sec.end() && lb->contains(ptr)) {
-            return *lb;
+        const auto next = sec.lower_bound(faux_block);
+        if (next != sec.end() && next->contains(ptr)) {
+            return *next;
         }
         return {std::nullopt};
     }
@@ -514,17 +548,17 @@ protected:
         std::shared_lock<std::shared_mutex> lock(std::get<0>(this->registry));
         auto fake = std::shared_ptr<T>(ptr, [](const T* p){});
         Block<T> faux_block {fake, fake, {}, 0};
-        if (contains(faux_block, this->registry)) {
-            auto &reg = std::get<1>(this->registry);
-            auto iter = reg.find(faux_block);
-            return {*iter};
-        }
-        if (auto left = adjacent_left(faux_block, this->registry); left.has_value() && left->contains(ptr)) {
-            return left;
+        auto &reg = std::get<1>(this->registry);
+        auto next = reg.upper_bound(faux_block);
+        if (next != reg.begin()) {
+            const auto owner = std::prev(next);
+            if (owner->contains(ptr)) {
+                return *owner;
+            }
         }
         return {std::nullopt};
     }
-    OBlock<T> fill_request(std::size_t N) override {
+    OBlock<T> fill_request(std::size_t N, std::align_val_t minimum_alignment = std::align_val_t{0}) override {
         std::unique_lock lock(std::get<0>(this->pool));
         auto av = []() {
             if constexpr (std::is_same_v<T,void>) {
@@ -533,7 +567,7 @@ protected:
                 return std::align_val_t{alignof(T)};
             }
         };
-        constexpr auto Talignval = av();
+        const auto Talignval = std::max(av(), minimum_alignment);
         auto &pool_set = std::get<1>(this->pool);
         MINFO() << "Pool received a request for " << N << " slices("<< ctti::nameof<T>() <<") of " << Talignval << " aligned memory.";
         // our pool Blocks are sorted alignment, length, head, owner all in ascending order

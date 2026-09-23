@@ -21,9 +21,8 @@ namespace CE::Obj {
 		void return_block(const Block<T> &returned);
 	private:
 
-		// retrieve a block of heap memory, maybe construct objects if we can
-		template<typename... Args>
-		[[nodiscard]] static Block<T> allocate(size_t length, Args... args);
+		// retrieve unconstructed storage for objects
+		[[nodiscard]] static Block<T> allocate(size_t length);
 	};
 
 
