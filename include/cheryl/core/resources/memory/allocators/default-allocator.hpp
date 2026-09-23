@@ -8,6 +8,8 @@ namespace CE::Mem {
         using MM = Manager<2.0,4096>;
         using manager_type = MM;
         T* allocate(std::size_t N) {
+            // Request the caller's exact byte count; the manager may still
+            // serve it from an existing larger reusable range.
             auto b = MM::get().checkout_chunk(sizeof(T)*N, alignof(T), Enum::exact);
             return static_cast<T*>(b.head.get());
         }

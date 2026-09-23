@@ -81,6 +81,8 @@ using OBlock = typename Block<T>::OBlock;
 template<typename T>
 typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
     using namespace CE;
+    // Keep the left range in place and give the right range an alias to the
+    // same owner; splitting bookkeeping must not free or copy the allocation.
     if (idx == 0 || idx >= length || !head.get()) {
         return std::nullopt;
     }
@@ -112,6 +114,7 @@ typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     } else {
         // Byte blocks seek an aligned start for the right-hand remainder. If the
         // requested alignment leaves no room, retry with progressively smaller bounds.
+        // The left range absorbs padding between the requested offset and the split.
         constexpr auto av64 = std::align_val_t{64};
         constexpr auto av128 = std::align_val_t{128};
         const auto av1 = alignment >= av128 ? alignment : av128;
@@ -318,6 +321,8 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
         auto& stale = std::get<1>(this->stale);
         auto& pending = std::get<1>(this->release);
         for (const auto& block : pending) {
+            // A queued range may have been checked out again since cull();
+            // only its exact owner and exact free-pool record can be released.
             const auto owner = registry.find(block);
             const auto available = pool.find(block);
             if (owner == registry.end() || *owner != block ||
@@ -331,6 +336,8 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
                     break;
                 }
             }
+            // Other active ranges from this backing owner veto reclaiming
+            // the whole allocation as though all its sections were free.
             if (!has_active_sections) {
                 pool.erase(available);
                 registry.erase(owner);
@@ -366,29 +373,31 @@ protected:
     }
     template<typename... Tuples>
     static void emplace(Block<T> b, Tuples&... tuples) {
-        // Lock each mutex associated with its set
+        // Update each bookkeeping set under its own mutex. The sets are not
+        // changed as one atomic transaction across these separate locks.
         auto lock_set = [](Block<T> b, auto&& pair) {
             std::unique_lock<std::shared_mutex> lock(std::get<0>(pair));
             std::get<1>(pair).emplace(b);
         };
 
-        // Apply the lock and emplace operation to each pair
+        // Apply the same insertion to each selected bookkeeping set.
         (lock_set(b, std::forward<Tuples>(tuples)), ...);
     }
     template<typename... Tuples>
     static void erase(Block<T> b, Tuples&... tuples) {
-        // Lock each mutex associated with its set
+        // Erase each selected record under that set's own mutex.
         auto lock_set = [](Block<T> b, auto&& pair) {
             std::unique_lock<std::remove_reference_t<decltype(std::get<0>(pair))>> lock(std::get<0>(pair));
             std::get<1>(pair).erase(b);
         };
 
-        // Apply the lock and emplace operation to each pair
+        // Remove the record from every selected bookkeeping set.
         (lock_set(b, std::forward<Tuples>(tuples)), ...);
     }
     template<typename... Tuples>
     static bool contains(Block<T> b, Tuples&... tuples) {
-        // Lock each mutex associated with its set
+        // Require an exact block match: some set comparators equate records
+        // with the same address even when their lengths differ.
         auto share_set = [](Block<T> b, auto&& pair) {
             std::shared_lock<std::shared_mutex> lock(std::get<0>(pair));
             const auto& set = std::get<1>(pair);
@@ -396,11 +405,13 @@ protected:
             return found != set.end() && *found == b;
         };
 
-        // Apply the lock and emplace operation to each pair
+        // Every selected set must still contain that complete block.
         return (share_set(b, std::forward<Tuples>(tuples)) && ...);
     }
     template<typename Tuple>
     OBlock<T> search_right(Block<T> block, Tuple &tuple) {
+        // lower_bound can land on this block or another range at its start;
+        // advance until the next higher address within the same owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
         MTRACE() << "Searching to the right from " << block;
@@ -422,6 +433,8 @@ protected:
     }
     template<typename Tuple>
     OBlock<T> search_left(Block<T> block, Tuple &tuple) {
+        // Walk backward past the lower bound to find an earlier address,
+        // stopping when the ordered records belong to a different owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto &set = std::get<1>(tuple);
         MTRACE() << "Searching to the left from " << block;
@@ -537,6 +550,8 @@ protected:
             MINFO() << "contiguous right merged.";
         }
 
+        // A complete free allocation needs only the registry and pool records;
+        // a smaller free range remains a section so future splits can find it.
         // RegistryOrder identifies an allocation by owner and head, so find()
         // also matches a shorter section at the allocation's starting address.
         // Only the complete owner block may leave sections and become stale.
@@ -569,6 +584,8 @@ protected:
         if (auto left = adjacent_left(faux_block, this->sections); left.has_value() && left->contains(ptr)) {
             return left;
         }
+        // The synthetic key may also land on a section beginning at ptr;
+        // verify the next record before declaring the pointer unowned.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(this->sections));
         auto &sec = std::get<1>(this->sections);
         const auto next = sec.lower_bound(faux_block);
@@ -578,6 +595,8 @@ protected:
         return {std::nullopt};
     }
     OBlock<T> find_owner(T* ptr) override {
+        // Probe the predecessor of a synthetic registry key built from ptr;
+        // set ordering alone is insufficient, so check the candidate's range.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(this->registry));
         auto fake = std::shared_ptr<T>(ptr, [](const T* p){});
         Block<T> faux_block {fake, fake, {}, 0};

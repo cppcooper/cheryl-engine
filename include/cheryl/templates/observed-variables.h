@@ -30,6 +30,8 @@ public:
     // on this object can otherwise deadlock trying to acquire the unique lock while the callback invocation
     // still holds a shared lock; long callbacks also unnecessarily block writers.
     void set(T v) {
+        // Only a changed value advances the sequence that waiters observe;
+        // callbacks below still receive the current value on every set().
         std::unique_lock wl(mtx);
         if (var != v) {
             var = std::move(v);
@@ -38,6 +40,8 @@ public:
         }
         wl.unlock();
         wl.release();
+        // Invoke observers after the write phase, with a shared lock keeping
+        // the referenced value stable for the duration of each callback.
         std::shared_lock rl(mtx);
         for(auto &callback : callbacks) {
             if (callback) [[likely]] {
@@ -52,6 +56,8 @@ public:
     void wait_until_change() {
         std::shared_lock lock(mtx);
         auto ov = q;
+        // Recheck the saved sequence after wakeup: a notification alone does
+        // not prove that this value changed while the caller was waiting.
         while(true) {
             cv.wait(lock);
             if (ov != q) break;

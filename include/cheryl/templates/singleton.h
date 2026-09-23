@@ -30,6 +30,8 @@ class Singleton_CTS {
 public:
     template<typename... Args>
     static Type& get(Args... args) {
+        // Construct once for a matching signature. If this call cannot
+        // construct Type, it can only retrieve an already created instance.
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
         }
@@ -76,6 +78,8 @@ protected:
 public:
     template<typename... Args>
     static Type& get(Args... args) {
+        // This accessor shares the same one-time construction policy while
+        // allowing Type to keep its own constructor nonpublic.
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
         }

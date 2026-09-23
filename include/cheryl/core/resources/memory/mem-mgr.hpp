@@ -51,6 +51,8 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::return_ptr(void* ptr) {
+        // Split owners are tracked by section; whole allocations may still
+        // exist only in the registry. Give the narrower section first chance.
         if (auto sec = find_section(ptr); sec.has_value() && sec->contains(ptr)) {
             return_chunk(*sec);
         } else if (auto owner = find_owner(ptr); owner.has_value() && owner->contains(ptr)) {
@@ -72,6 +74,8 @@ namespace CE::Mem {
             throw Exceptions::bad_request(CE_HERE, "The returned memory portion exceeds its active block.");
         }
         if (offset == 0 && length == block->length) {
+            // An exact return follows the whole-block path, including its
+            // active-section check and eventual stale-owner bookkeeping.
             return_chunk(*block);
             return;
         }
@@ -113,6 +117,8 @@ namespace CE::Mem {
             MTRACE() << debug_info();
             throw Exceptions::failed_operation(CE_HERE,"Memory Manager was returned an unknown block");
         }
+        // merge_into_pool owns the free-range transition: adjacent free
+        // sections coalesce and a complete owner becomes eligible for culling.
         merge_into_pool(returned);
     }
 
@@ -134,7 +140,7 @@ namespace CE::Mem {
         }
         // Reclaiming a stale whole owner cancels its pending cull before checkout.
         if (request_filled && contains(*ob, registry)) {
-            // an existing block may still be marked stale
+            // A previously free owner may still be queued for deferred release.
             erase(*ob, stale, release);
         }
         auto original = *ob;
@@ -144,9 +150,9 @@ namespace CE::Mem {
         if (right.has_value()) {
             erase(original, sections);
 
-            // record the left portion
+            // Both halves replace the former section record; the requested
+            // head stays checked out while only the spare tail becomes free.
             emplace(*ob, sections);
-            // record the right portion
             emplace(*right, sections);
             merge_into_pool(*right);
             MTRACE() << "taking " << *right << " back to the pool.";
@@ -157,6 +163,8 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
+        // Seed the registry and reusable pool together, then start the stale
+        // clock for each untouched allocation so normal culling can reclaim it.
         const auto len = Math::adjust_length(width, Enum::greedy, gb, gf);
         MINFO() << "Pre-allocating " << blocks << " " << width << " byte wide blocks aligned to " << alignment;
         for(int i = 0; i < blocks; ++i) {

@@ -14,6 +14,8 @@ namespace CE::Obj {
         objects.reserve(N);
         auto block = retrieve_block(N);
         std::size_t next = 0;
+        // Claim slots one at a time. Each completed handle retains the pool
+        // context independently of this batch and releases its own live object.
         try {
             for (; next < N; ++next) {
                 auto* p = block.head.get() + next;
@@ -87,24 +89,27 @@ namespace CE::Obj {
             auto end = ptr::offset_address(p, length * sizeof(T));
 
             if (end <= block_end) {
+                // Compute the unreturned spans in object units; only the middle
+                // slice may reenter the free pool after the partition changes.
                 bool sec_changed = false;
                 auto remainder_end = (block_end - end) / sizeof(T);  // Remaining objects at the end
                 auto remainder_front = (reinterpret_cast<uintptr_t>(p) - reinterpret_cast<uintptr_t>(b->head.get())) / sizeof(T);  // Remaining objects at the front
 
-                // Split front part if necessary
+                // Retain a leading active section, then work on the rest.
                 if (remainder_front > 0) {
                     sec_changed = true;
                     auto back_end = b->split_exactly(remainder_front);
                     this->emplace(*b, this->sections);  // Re-add modified front block to sections
                     b = back_end;  // Continue with the remaining block
                 }
-                // Split the back part if necessary
+                // Retain the trailing active section after the returned slice.
                 if (remainder_end > 0) {
                     sec_changed = true;
                     auto back_end = b->split_exactly(b->length - remainder_end);
                     this->emplace(*back_end, this->sections);  // Re-add the split back portion
                 }
-                // If any changes occurred, update the sections
+                // Replace the original record with its new partition before
+                // coalescing the returned range with already free neighbors.
                 if (sec_changed) {
                     this->erase(original, this->sections);
                     this->emplace(*b, this->sections);
@@ -164,6 +169,8 @@ namespace CE::Obj {
         static_assert(!std::is_same_v<T,void>);
         const std::size_t len = b.length / sizeof(T);
         const auto manager_lifetime = manager.lifetime_token();
+        // The owner deleter runs once after every alias to this allocation
+        // disappears; the slot map distinguishes constructed from raw storage.
         // TODO: Retain a safe release context for the underlying byte manager. The weak
         // lifetime check does not serialize this deleter with concurrent manager destruction.
         std::shared_ptr<T> block_root(raw, [b,len,manager_lifetime,manager_ptr = &manager](auto p) {
