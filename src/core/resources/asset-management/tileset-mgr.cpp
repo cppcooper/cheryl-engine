@@ -1,14 +1,22 @@
 #include <core/resources/asset-management/tileset-mgr.h>
 
 #include <assets/2d/grid-geometry.h>
+#include <assets/abstracts/resource-provider.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
 #include <internals/exceptions.h>
 
+#include <utility>
+#include <algorithm>
 
 namespace CE::Assets {
-    void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions) {
-        auto assets = allocate<Tileset>(definitions.size());
+    void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
+        bind_provider(provider);
+        const auto needed = std::count_if(definitions.begin(), definitions.end(), [this](const auto& definition) {
+            return !loaded_assets.contains(definition.id());
+        });
+        auto reservation = reserve<Tileset>(needed);
+        std::size_t slot = 0;
         for (std::size_t index = 0; index < definitions.size(); ++index) {
             const auto& definition = definitions[index];
             const auto id = definition.id();
@@ -21,13 +29,15 @@ namespace CE::Assets {
                                                     "Tileset '" + id + "' references an unloaded texture '" +
                                                         definition.texture.string() + "'");
             }
-            auto geometry = make_grid_geometry(definition.grid, definition.pivot, *texture);
-            const auto& asset = assets[index];
-            Obj::ObjCtor<Tileset>::construct(asset.get(), 1,
-                                             TilesetData{.vertices = std::move(geometry.vertices),
-                                                         .vertex_count = geometry.vertex_count,
-                                                         .texture = texture,
-                                                         .definition = definition});
+            const auto texture_size = texture->pixel_size();
+            if (texture_size.width == 0 || texture_size.height == 0) {
+                throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' has an empty texture");
+            }
+            auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
+            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
+            auto asset = reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh),
+                                                                  .texture = texture,
+                                                                  .definition = definition});
             loaded_assets.emplace(id, asset);
         }
     }

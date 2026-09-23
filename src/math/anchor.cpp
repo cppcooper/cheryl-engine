@@ -1,6 +1,6 @@
 #include <math/anchor.h>
 
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/primitives/vertex.h>
 #include <internals/exceptions.h>
 
 #include <cmath>

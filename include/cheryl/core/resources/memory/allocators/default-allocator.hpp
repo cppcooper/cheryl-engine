@@ -6,12 +6,13 @@ namespace CE::Mem {
     struct DefaultAllocator final : std::allocator<T> {
         using value_type = T;
         using MM = Manager<2.0,4096>;
+        using manager_type = MM;
         T* allocate(std::size_t N) {
             auto b = MM::get().checkout_chunk(sizeof(T)*N, alignof(T), Enum::exact);
             return static_cast<T*>(b.head.get());
         }
-        void deallocate(T *ptr, std::size_t N) {
-            MM::get().return_portion(ptr, N);
+        void deallocate(T *ptr, std::size_t /*N*/) {
+            MM::get().return_ptr(ptr);
         }
     };
 }

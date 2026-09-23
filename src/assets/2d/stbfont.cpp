@@ -1,9 +1,12 @@
 #include <assets/2d/stbfont.h>
+#include <assets/abstracts/resource-provider.h>
+#include <assets/primitives/vertex.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
 #include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
 #include <ext/matrix_transform.hpp>
 
 #include <array>
@@ -47,7 +50,7 @@ namespace CE::Assets {
     }
 
     STBFont::STBFont(STBFontData data) :
-        Font({data.vertices, data.vertex_count, data.texture}), advances_(data.advances),
+        Font({data.geometry, data.texture}), advances_(data.advances),
         line_height_(data.line_height) {
     }
 
@@ -65,9 +68,8 @@ namespace CE::Assets {
         info.material->use();
         info.material->set_uniform_value("in_Alpha", info.alpha);
         info.material->set_uniform_value("in_Scale", 1.0f);
-        info.material->set_uniform_value("mytexture", GLint{0});
-        glBindVertexArray(vao.id);
-        texture->bind();
+        info.material->set_uniform_value("mytexture", 0);
+        geometry->bind(*texture);
 
         auto text_matrix = glm::translate(info.model_matrix, info.position);
         text_matrix = glm::rotate(text_matrix, print_angle_, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -97,14 +99,14 @@ namespace CE::Assets {
             if (letter != ' ') {
                 const auto model_matrix = glm::translate(text_matrix, glm::vec3(cursor_x, cursor_y, 0.0f));
                 info.material->set_uniform_matrix("modelMatrix", model_matrix);
-                glDrawArrays(GL_TRIANGLES, static_cast<GLint>(index * VAONumbers::vertices_per_quad),
-                             VAONumbers::vertices_per_quad);
+                geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
             }
             cursor_x += advances_[index];
         }
     }
 
-    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size) {
+    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size,
+                                  ResourceProvider& provider) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);
@@ -132,13 +134,11 @@ namespace CE::Assets {
             atlas_size *= 2;
         }
 
-        auto atlas = std::make_shared<Texture>(bitmap.data(), atlas_size, atlas_size, GL_TEXTURE0, false, false,
-                                               GL_CLAMP_TO_EDGE, GL_RED);
         constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
         constexpr std::size_t vertices_bytes = sizeof(Vertex2D) * vertex_count;
-        auto chunk = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
-        auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(chunk.head.get()),
-                                                  [chunk](Vertex2D*) { Mem::ExactMMgr::get().return_chunk(chunk); });
+        auto& manager = Mem::ExactMMgr::get();
+        auto chunk = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
+        auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(chunk));
         std::array<float, font_character_count> advances{};
         for (std::size_t index = 0; index < baked_characters.size(); ++index) {
             float x = 0.0f;
@@ -156,6 +156,9 @@ namespace CE::Assets {
         stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
-        return {std::move(vertices), vertex_count, std::move(atlas), advances, line_height};
+        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count);
+        auto atlas = provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size),
+                                                                  static_cast<std::uint32_t>(atlas_size)});
+        return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 }

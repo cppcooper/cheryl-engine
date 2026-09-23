@@ -22,6 +22,8 @@ namespace CE::Assets {
     }
 
     GLSLProgram::~GLSLProgram() {
+        // TODO: Route deletion through a retained GL context/release queue. This
+        // call requires a current context; a shader outliving it is still unsafe.
         if (id_prog) {
             glDeleteProgram(id_prog);
         }

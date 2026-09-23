@@ -3,6 +3,10 @@
 #include <memory>
 
 namespace CE::Obj {
+    /**
+     * Tracks which raw slots contain live T objects, so cleanup can destroy
+     * constructed objects without touching unconstructed storage.
+     */
     template <typename T>
     struct ObjCtor {
         template <typename... Args>
@@ -11,11 +15,15 @@ namespace CE::Obj {
                           "A constructor for type T with the arguments provided does not exist.");
             for (std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
-                if (constructed.count(pi) && constructed[pi]) {
+                // Reserve the tracking entry before constructing the object:
+                // map growth must not throw after T has become live.
+                auto [entry, inserted] = constructed.try_emplace(pi, false);
+                if (entry->second) {
                     std::destroy_at(pi);
+                    entry->second = false;
                 }
                 std::construct_at(pi, std::forward<Args>(args)...);
-                constructed[pi] = true;
+                entry->second = true;
             }
         }
         static void destroy(T* p, std::size_t N = 1) {

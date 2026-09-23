@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <assets/manifest.h>
-#include <assets/primitives/vertex-array-object.h>
+#include <assets/2d/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>
@@ -25,6 +25,8 @@ namespace {
 }
 
 TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
+    // Anchor an atlas subrectangle at its bottom center, then inspect its vertex
+    // positions, texture coordinates, and repeated corners for two triangles.
     CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
     CE::math::Anchor::MakePivot({0.5f, 1.0f}, vertices, 64, 32, 16, 8, 16, 8);
 
@@ -40,6 +42,8 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
     EXPECT_EQ(vertices[2].x, vertices[4].x);
     EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
+
+    // An undefined pivot must report a usable argument error with source context.
     try {
         CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
         FAIL() << "An invalid pivot should throw";
@@ -52,6 +56,7 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
 }
 
 TEST(asset_grid, resolves_spaced_row_major_cells) {
+    // Resolve the last cell of a spaced 2-by-3 grid and its occupied bounds.
     const GridDefinition grid{.origin = {2, 3}, .frame = {10, 8}, .spacing = {1, 2}, .rows = 2, .columns = 3};
 
     EXPECT_EQ(grid.cell_count(), std::size_t{6});
@@ -61,10 +66,29 @@ TEST(asset_grid, resolves_spaced_row_major_cells) {
     EXPECT_EQ(cell.y, 13);
     EXPECT_EQ(grid.occupied_right(), 34);
     EXPECT_EQ(grid.occupied_bottom(), 21);
+
+    // The next cell index lies outside the grid.
     EXPECT_THROW(static_cast<void>(grid.cell_rect(6)), CE::Exceptions::bad_request);
 }
 
+TEST(asset_grid, builds_vertices_from_dimensions_without_a_gpu_texture) {
+    // Build one quad against a known image size and inspect both geometry and UVs.
+    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
+    const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
+
+    ASSERT_EQ(geometry.vertex_count, CE::VAONumbers::vertices_per_quad);
+    ASSERT_NE(geometry.vertices, nullptr);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].x, -4.0f);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].u, 0.125f);
+    EXPECT_FLOAT_EQ(geometry.vertices.get()[0].v, 0.5f);
+
+    // Invalid dimensions must fail before creating geometry.
+    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16}), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16}), CE::Exceptions::runtime_exception);
+}
+
 TEST(asset_manifest, parses_every_checked_in_manifest) {
+    // Discover the checked-in JSON manifests so each file exercises the parser.
     std::vector<fs::path> manifests;
     for (const auto& entry : fs::directory_iterator(fs::path(CHERYL_SOURCE_DIR) / "assets")) {
         if (entry.is_regular_file() && entry.path().extension() == ".json") {
@@ -73,6 +97,7 @@ TEST(asset_manifest, parses_every_checked_in_manifest) {
     }
     std::ranges::sort(manifests);
 
+    // Scope failures to the offending path while checking the expected file set.
     ASSERT_EQ(manifests.size(), std::size_t{7});
     for (const auto& manifest : manifests) {
         SCOPED_TRACE(manifest.string());
@@ -81,10 +106,12 @@ TEST(asset_manifest, parses_every_checked_in_manifest) {
 }
 
 TEST(asset_manifest, expands_profiles_and_inherits_pivots) {
+    // Loading the atlas expands its profile definitions into sprites and tilesets.
     const auto manifest = ManifestLoader::load(asset_file("atlas.json"));
     ASSERT_EQ(manifest.sprites.size(), std::size_t{101});
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{35});
 
+    // Inspect one generated sprite for its full name, inherited pivot, and animations.
     const auto sprite = std::ranges::find_if(manifest.sprites,
                                              [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
     ASSERT_NE(sprite, manifest.sprites.end());
@@ -92,6 +119,7 @@ TEST(asset_manifest, expands_profiles_and_inherits_pivots) {
     EXPECT_EQ(sprite->pivot, (CE::math::Pivot{0.5f, 1.0f}));
     ASSERT_EQ(sprite->animations.size(), std::size_t{20});
 
+    // Follow its south-facing walk cycle through cell selection, timing, and looping.
     const auto walk_south = std::ranges::find_if(sprite->animations, [](const auto& animation) {
         return animation.name == "walk" && animation.facing == "south";
     });
@@ -104,6 +132,7 @@ TEST(asset_manifest, expands_profiles_and_inherits_pivots) {
 }
 
 TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
+    // Load the overworld tileset and verify its derived views, animations, and autotiles.
     const auto manifest = ManifestLoader::load(asset_file("punyworld-overworld.json"));
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{1});
     const auto& tileset = manifest.tilesets.front();
@@ -115,6 +144,7 @@ TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
     EXPECT_EQ(tileset.autotiles.size(), std::size_t{2});
     EXPECT_EQ(tileset.animations.at("tile-270").frames.size(), std::size_t{4});
 
+    // Check corner-based terrain and compare its total variant entries to its tile count.
     const auto& terrain = std::get<WangAutotileDefinition>(tileset.autotiles.at("overworld"));
     EXPECT_EQ(terrain.type, WangType::Corner);
     EXPECT_EQ(terrain.terrains.size(), std::size_t{12});
@@ -124,6 +154,8 @@ TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
         std::accumulate(terrain.variants.begin(), terrain.variants.end(), std::size_t{},
                         [](const std::size_t count, const auto& entry) { return count + entry.second.size(); });
     EXPECT_EQ(terrain_variant_count, terrain.tiles.size());
+
+    // Check the second autotile uses edge-based terrain with its own tile set.
     const auto& pathways = std::get<WangAutotileDefinition>(tileset.autotiles.at("pathways"));
     EXPECT_EQ(pathways.type, WangType::Edge);
     EXPECT_EQ(pathways.terrains.size(), std::size_t{3});
@@ -132,6 +164,8 @@ TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
 }
 
 TEST(asset_manifest, parses_explicit_animations_orientations_and_bitmasks) {
+    // Define a minimal manifest with a sprite grid, explicit animation frames,
+    // and a tileset whose neighbor bitmasks map to cells.
     std::istringstream input(R"json({
       "$schema": "./schemas/asset-manifest-1.0.schema.json",
       "version": "1.0",
@@ -185,6 +219,7 @@ TEST(asset_manifest, parses_explicit_animations_orientations_and_bitmasks) {
       }
     })json");
 
+    // Resolve paths relative to the manifest and cell coordinates within the grid.
     const auto manifest = ManifestLoader::parse(input, "/tmp/assets/test.json");
     ASSERT_EQ(manifest.sprites.size(), std::size_t{1});
     const auto& sprite = manifest.sprites.front();
@@ -194,12 +229,14 @@ TEST(asset_manifest, parses_explicit_animations_orientations_and_bitmasks) {
     EXPECT_EQ(sprite.animations.front().frames[1].cell, std::size_t{3});
     EXPECT_EQ(sprite.animations.front().frames[1].duration, std::chrono::milliseconds(120));
 
+    // Check the number of bit directions and the full-neighbor mask's cell mapping.
     const auto& bitmask = std::get<BitmaskAutotileDefinition>(manifest.tilesets.front().autotiles.at("edges"));
     EXPECT_EQ(bitmask.bit_order.size(), std::size_t{4});
     EXPECT_EQ(bitmask.cases.at(15), std::size_t{1});
 }
 
 TEST(asset_manifest, rejects_out_of_range_cells) {
+    // Declare a one-cell grid but point the east orientation at cell index one.
     std::istringstream input(R"json({
       "$schema": "./schemas/asset-manifest-1.0.schema.json",
       "version": "1.0",
@@ -224,6 +261,7 @@ TEST(asset_manifest, rejects_out_of_range_cells) {
       }
     })json");
 
+    // Parsing must reject the reference and identify its manifest in the error.
     try {
         static_cast<void>(ManifestLoader::parse(input, "bad.json"));
         FAIL() << "An out-of-range cell should throw";

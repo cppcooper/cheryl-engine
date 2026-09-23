@@ -57,45 +57,51 @@ namespace CE::Mem {
 
     template<double growth_factor_, int32_t growth_base_>
     void Manager<growth_factor_, growth_base_>::return_portion(void* ptr, std::size_t length) {
-        MFATAL() << "I thought this wasn't being used in this binary/test";
-        auto ret_chunk = [](OBlock b, void* ptr, std::size_t length) {
-            const auto original = *b;
-            auto block_end = ptr::offset_address(b->head.get(), b->length);
-            auto end = ptr::offset_address(ptr, length);
-            if (end <= block_end) {
-                bool sec_changed = false;
-                auto remainder_end = block_end - end;
-                auto remainder_front = reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(b->head.get());
-                if (remainder_front > 0) {
-                    sec_changed = true;
-                    auto back_end = b->split_exactly(remainder_front);
-                    emplace(*b, sections);
-                    b = back_end;
-                }
-                if (remainder_end > 0) {
-                    sec_changed = true;
-                    auto back_end = b->split_exactly(remainder_front);
-                    emplace(*back_end, sections);
-                }
-                if (sec_changed) {
-                    erase(original, sections);
-                    emplace(*b, sections);
-                }
-            } else {
-                CELog::warn("Mem::Manager::return_portion: Invalid portion returned. The length of the portion is too large from the location of the pointer returned.");
-            }
-            Manager::get().return_chunk(*b);
-        };
-        if (auto sec = find_section(ptr); sec.has_value() && sec->contains(ptr)) {
-            ret_chunk(sec, ptr, length);
-        } else if (auto owner = find_owner(ptr); owner.has_value() && owner->contains(ptr)) {
-            ret_chunk(owner, ptr, length);
+        const auto section = find_section(ptr);
+        const auto block = section.has_value() ? section : find_owner(ptr);
+        if (!block.has_value() || length == 0 || !block->contains(ptr) || contains(*block, pool)) {
+            throw Exceptions::bad_request(CE_HERE, "Cannot return an unknown or already pooled memory portion.");
         }
+        const auto offset = reinterpret_cast<std::uintptr_t>(ptr) -
+                            reinterpret_cast<std::uintptr_t>(block->head.get());
+        if (length > block->length - offset) {
+            throw Exceptions::bad_request(CE_HERE, "The returned memory portion exceeds its active block.");
+        }
+        if (offset == 0 && length == block->length) {
+            return_chunk(*block);
+            return;
+        }
+
+        erase(*block, sections);
+        auto returned = *block;
+        if (offset > 0) {
+            auto remaining = returned.split_exactly(offset);
+            emplace(returned, sections);
+            returned = *remaining;
+        }
+        if (length < returned.length) {
+            auto remaining = returned.split_exactly(length);
+            emplace(*remaining, sections);
+        }
+        emplace(returned, sections);
+        merge_into_pool(returned);
     }
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::return_chunk(const Block &returned) {
-        if (!contains(returned, sections) && !contains(returned, registry)) {
+        const bool in_sections = contains(returned, sections);
+        const bool in_registry = contains(returned, registry);
+        bool has_active_sections = false;
+        if (in_registry) {
+            std::shared_lock lock(std::get<0>(sections));
+            for (const auto& section : std::get<1>(sections)) {
+                if (section.owner.get() == returned.owner.get()) {
+                    has_active_sections = true;
+                    break;
+                }
+            }
+        }
+        if ((!in_sections && !in_registry) || contains(returned, pool) || has_active_sections) {
             CELog::critical("Cannot return Block. No such block exists. Block: {}", returned);
             MTRACE() << debug_info();
             throw Exceptions::failed_operation(CE_HERE,"Memory Manager was returned an unknown block");
@@ -105,9 +111,13 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     Block Manager<gf_,gb_>::checkout_chunk(size_t length, size_t alignment, Enum::fitType fit, size_t growth_base, double growth_factor) {
+        if (length == 0) {
+            throw Exceptions::bad_request(CE_HERE, "Cannot check out an empty memory block.");
+        }
         const auto request_length = Math::adjust_length(length, fit, growth_base, growth_factor);
-        const auto align_val = static_cast<std::align_val_t>(alignment);
-        OBlock ob = fill_request(request_length);
+        const auto requested_alignment = std::bit_ceil(std::max(alignment, std::size_t{64}));
+        const auto align_val = static_cast<std::align_val_t>(requested_alignment);
+        OBlock ob = fill_request(request_length, align_val);
         const bool request_filled = ob.has_value();
         // do we have an allocation?
         if (!request_filled) {
@@ -140,7 +150,7 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
-        const auto len = Math::adjust_length(width, Enum::greedy, gb_, gf_);
+        const auto len = Math::adjust_length(width, Enum::greedy, gb, gf);
         MINFO() << "Pre-allocating " << blocks << " " << width << " byte wide blocks aligned to " << alignment;
         for(int i = 0; i < blocks; ++i) {
             const auto a = allocate(len, alignment);
