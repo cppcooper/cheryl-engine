@@ -56,11 +56,12 @@ TEST(logging, log) {
 }
 
 void test_celog_console();
-TEST(logging,CELog) {
+TEST(logging, CELog) {
     auto path = CELog::get_file_path();
     test_celog_console();
     test_file_logging(&CELog::get());
     check_file_logging(path);
+    CELog::reopen();
 }
 
 template<typename L>
