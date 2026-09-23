@@ -5,6 +5,8 @@
 
 namespace CE::GFramework {
     GameRuntime::~GameRuntime() {
+        // TODO: Track successful engine/game initialization explicitly so deinit is paired only
+        // with completed init calls, including when run() exits through an initialization exception.
         if (gf) {
             gf->deinit();
             e->deinit();
@@ -27,6 +29,9 @@ namespace CE::GFramework {
                 e->pre_draw();
                 gf->draw(dt);
                 e->post_draw();
+                // TODO: Replace the fixed sleep with an explicit frame-pacing policy. It compounds
+                // swap-interval blocking and hard-codes cadence into the runtime instead of timing
+                // configuration or a target-frame scheduler.
                 std::this_thread::sleep_for(Milliseconds(15));
             }
         }

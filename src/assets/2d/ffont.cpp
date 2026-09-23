@@ -13,6 +13,8 @@ namespace CE::Assets {
 
     void FFont::print(std::string text, FontDrawInfo* format) {
         print_msg = std::move(text);
+        // TODO: Font::print accepts FontDrawInfo, but this implementation requires FFontFormat.
+        // Replace the unchecked reinterpret_cast with a type-safe format contract if FFont remains.
         print_fancy = reinterpret_cast<FFontFormat*>(format)->fancy;
         print_angle = format->angle;
         draw(*format);

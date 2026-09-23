@@ -17,6 +17,9 @@ namespace CE::Assets {
     struct ResourceProvider;
 
     // Singleton asset managers use one resource provider for their process lifetime.
+    // TODO: Give this binding an explicit cache/resource lifecycle. The process-global provider
+    // pointer never resets, so backend replacement, multiple providers, and coordinated GPU
+    // teardown cannot currently be represented by the cache model.
     class ProviderBoundCache {
     public:
         static void verify_provider(const ResourceProvider& provider) {

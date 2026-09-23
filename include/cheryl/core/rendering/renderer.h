@@ -11,6 +11,9 @@ namespace CE::Assets {
 
 namespace CE::RenderAPIs {
     struct iRenderer {
+        // TODO: Revisit display ownership. Graphics and window backends are intended to vary
+        // independently, but the renderer currently owns the display system. Engine composition
+        // may be the cleaner ownership/injection boundary if those choices remain independent.
         std::unique_ptr<iDisplaySystem> display;
         virtual ~iRenderer() = default;
 

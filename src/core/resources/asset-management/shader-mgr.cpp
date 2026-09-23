@@ -20,6 +20,8 @@ namespace CE::Assets {
             return;
         auto program = provider.link_program(stages);
         program->use();
+        // TODO: Move engine-standard uniform names and sampler defaults into a material/pipeline
+        // description instead of teaching the generic ShaderMgr one shader naming convention.
         program->set_uniform_value("mytexture", 0);
         program->set_uniform_matrix("projectionMatrix", projection_);
         program->set_uniform_matrix("viewMatrix", view_);
@@ -33,6 +35,9 @@ namespace CE::Assets {
     }
 
     void ShaderMgr::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
+        // TODO: Revisit broadcasting camera state through the singleton shader cache. Binding
+        // frame/pass state when a program is submitted would avoid mutating every cached program
+        // whenever the active camera changes.
         projection_ = projection;
         view_ = view;
         for (const auto& key : linked_programs_) {

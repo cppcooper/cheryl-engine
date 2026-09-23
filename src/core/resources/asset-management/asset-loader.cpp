@@ -130,6 +130,8 @@ namespace CE::Assets {
         SpriteMgr::get().load_assets(sprites, provider);
         TilesetMgr::get().load_assets(tilesets, provider);
 
+        // TODO: Separate environment/bootstrap resources from asset-root loading. Selecting a
+        // host system font here makes a nominal load of one asset tree depend on machine state.
         const auto default_font = Resources::select_default_system_font(Resources::find_system_fonts());
         if (default_font) {
             FontMgr::get().load_assets({*default_font}, provider);
@@ -141,6 +143,9 @@ namespace CE::Assets {
             const auto& files = get_files_of_type(extension);
             shaders.insert(shaders.end(), files.begin(), files.end());
         }
+        // TODO: Define shader-program recipes outside this generic loader. The OpenGL provider
+        // currently compiles individual stages into the cache here, then recompiles shader2d's
+        // source files while linking the hard-coded default program below.
         ShaderMgr::get().load_assets(shaders, provider);
         const auto shader2d = root_path_ / "shaders" / "shader2d";
         ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"},

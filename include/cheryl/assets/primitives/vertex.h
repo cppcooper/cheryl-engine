@@ -4,6 +4,9 @@
 
 namespace CE {
     namespace VAONumbers {
+        // TODO: Separate logical quad topology from the current non-indexed triangle expansion.
+        // A quad has four unique corners; this path submits six vertices as two triangles. If 2D
+        // geometry becomes indexed, keep four vertices and introduce an explicit six-index count.
         constexpr int vertices_per_quad = 6;
         constexpr int floats_per_quad_vertex = 5;
         constexpr int floats_per_quad = vertices_per_quad * floats_per_quad_vertex;

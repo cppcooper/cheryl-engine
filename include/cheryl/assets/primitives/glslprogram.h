@@ -59,6 +59,8 @@ namespace CE::Assets {
     private:
         int id_prog;
         bool linked;
+        // TODO: Keep uniform and attribute lookup caches separate. OpenGL gives them distinct
+        // namespaces, so identical names can legally resolve to different locations.
         //Store uniforms and attributes in a map for easy lookup
         std::map<std::string, int> locations;
 
