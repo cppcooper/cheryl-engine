@@ -3,7 +3,6 @@
 #include <memory>
 //#include <core/resources/memory/allocators/object-pool-allocator.hpp>
 #include "object-construction.hpp"
-#include <assets/primitives.h>
 
 namespace CE::Obj {
     template<typename T>
