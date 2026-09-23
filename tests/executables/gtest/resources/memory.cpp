@@ -32,10 +32,14 @@ namespace {
         const auto& pool = std::get<1>(bm.pool);
         const auto& stale = std::get<1>(bm.stale);
         const auto& release = std::get<1>(bm.release);
+        // Set comparators may match a section at the owner's head. Require
+        // exact block equality when checking membership across sets.
         auto exact = [](const auto& set, const auto& block) {
             const auto it = set.find(block);
             return it != set.end() && *it == block;
         };
+        // Each owner is either whole or covered exactly by ordered sections,
+        // with no gaps or overlap. Whole free owners carry stale/release markers.
         for (const auto& owner : registry) {
             if (owner.owner.get() != owner.head.get() || owner.length == 0) {
                 return ::testing::AssertionFailure() << "Invalid owner " << owner;
@@ -66,6 +70,8 @@ namespace {
                 if (cursor != end) return ::testing::AssertionFailure() << "Uncovered owner tail " << owner;
             }
         }
+        // Cross-check free, stale, and pending entries against their owner.
+        // A free block lives in exactly one of registry or sections.
         for (const auto& block : pool) {
             if (exact(registry, block) == exact(sections, block)) {
                 return ::testing::AssertionFailure() << "Pooled range has zero or two locations " << block;
@@ -90,6 +96,8 @@ namespace {
                 return ::testing::AssertionFailure() << "Release block is not a free owner " << block;
             }
         }
+        // Compare the independent list of checked-out ranges with the manager's
+        // free ranges so bookkeeping cannot silently reuse still-live bytes.
         for (const auto& entry : live) {
             const auto& block = entry.block;
             if (!exact(registry, block) && !exact(sections, block)) {
@@ -118,6 +126,8 @@ TEST(memory, seeded_checkout_return_preserves_bytes_and_owner_partitions) {
     std::vector<CheckedOut> live;
     constexpr std::array<std::size_t, 4> alignments{0, 64, 128, 256};
 
+    // A fixed seed makes any failing operation reproducible; varying sizes,
+    // alignments, and return order repeatedly changes the owner partition.
     for (int step = 0; step < 500; ++step) {
         SCOPED_TRACE(::testing::Message() << "seed=" << seed << " step=" << step);
         if (live.empty() || (live.size() < 40 && rng() % 3 != 0)) {
@@ -134,6 +144,8 @@ TEST(memory, seeded_checkout_return_preserves_bytes_and_owner_partitions) {
             manager.return_chunk(live[index].block);
             live.erase(live.begin() + index);
         }
+        // Stored patterns detect accidental reuse even if the lookup records
+        // appear valid. Periodically check the whole partition as well.
         for (const auto& entry : live) {
             const auto* bytes = static_cast<const unsigned char*>(entry.block.head.get());
             for (std::size_t i = 0; i < entry.block.length; ++i) {
@@ -158,6 +170,8 @@ TEST(memory, partial_return_keeps_other_bytes_in_use) {
     std::memset(data, 0x19, 32);
     std::memset(data + 96, 0x37, 64);
 
+    // Returning only the middle must neither free the outer bytes nor allow
+    // that same middle span to be returned twice.
     manager.return_portion(data + 32, 64);
     EXPECT_THROW(manager.return_portion(data + 32, 64), Exceptions::bad_request);
     EXPECT_THROW(manager.return_portion(data + 96, block.length), Exceptions::bad_request);
@@ -173,6 +187,7 @@ TEST(memory, partial_return_keeps_other_bytes_in_use) {
     }
     EXPECT_TRUE(returned_middle);
 
+    // Rejoin the outer spans and verify the owner's final free-set records.
     manager.return_portion(data, 32);
     manager.return_portion(data + 96, block.length - 96);
     BlockManagement<void> bm;
@@ -227,6 +242,8 @@ TEST(memory, typed_default_allocator_returns_all_bytes) {
     constexpr std::size_t count = 5;
     auto* ptr = allocator.allocate(count);
     ASSERT_NE(ptr, nullptr);
+    // The manager may grant more bytes than requested. Deallocation must
+    // return that entire granted span, including any unused tail.
     std::size_t granted_bytes = 0;
     {
         BlockManagement<void> bm;
@@ -291,6 +308,8 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
         EXPECT_TRUE(cache.allocate<TrackedAsset>(0).empty());
         auto assets = cache.allocate<TrackedAsset>(3);
         ASSERT_EQ(assets.size(), 3);
+        // The legacy allocate interface provides raw slots; this caller
+        // constructs them explicitly before giving one to the cache.
         std::set<TrackedAsset*> unique_addresses;
         for (int i = 0; i < 3; ++i) {
             unique_addresses.emplace(assets[i].get());
@@ -304,6 +323,8 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
         ASSERT_EQ(retained.get(), assets[1].get());
         EXPECT_TRUE(cache.contains(42));
         EXPECT_EQ(cache.size(), 1);
+        // Dropping the batch destroys the uncached objects. The remaining
+        // handle must also survive the cache itself going out of scope.
         assets.clear();
         EXPECT_EQ(TrackedAsset::live, 1);
     }
@@ -325,6 +346,8 @@ TEST(memory, object_pool_constructs_only_requested_objects) {
     EXPECT_EQ(TrackedAsset::live, 3);
     for (const auto& object : objects) EXPECT_EQ(object->value(), 21);
 
+    // An interior object's handle returns only its own slot; its neighbors
+    // remain constructed until their handles are released.
     objects[1].reset();
     EXPECT_EQ(TrackedAsset::live, 2);
     EXPECT_EQ(objects[0]->value(), 21);
@@ -333,6 +356,8 @@ TEST(memory, object_pool_constructs_only_requested_objects) {
     EXPECT_EQ(TrackedAsset::live, 0);
     EXPECT_EQ(TrackedAsset::destroyed, 3);
 
+    // Whole raw blocks have a separate return path, which rejects duplicate
+    // or partial returns after the block is already free.
     const auto raw = pool.retrieve_block(2);
     pool.return_block(raw);
     EXPECT_THROW(pool.return_block(raw), CE::Exceptions::failed_operation);

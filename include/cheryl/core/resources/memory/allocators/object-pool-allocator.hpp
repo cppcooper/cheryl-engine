@@ -3,6 +3,11 @@
 #include <core/resources/objects/object-construction.hpp>
 
 namespace CE::Mem {
+    /* ObjectPoolAllocator<T>
+     * Adapts Pool<T> to an allocator and retains the PoolState captured at
+     * construction. Standard deallocate receives the original allocation and
+     * count; reservation handles return individual slots through that context.
+     */
     template<class T>
     struct ObjectPoolAllocator final : std::allocator<T> {
         using Base = std::allocator<T>;

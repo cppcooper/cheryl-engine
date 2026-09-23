@@ -10,6 +10,11 @@
 #include <vector>
 
 namespace CE::Obj {
+    /* ReservableManager / ReservationAllocator
+     * Require a manager-backed allocator with a retained release context.
+     * Ordinary allocate/deallocate cover whole allocations; the manager context
+     * must separately support returning claimed or unclaimed subranges.
+     */
     template<typename Manager, typename T>
     concept ReservableManager = requires(Manager& manager, std::size_t count, T* ptr) {
         typename Manager::release_context_type;
@@ -35,10 +40,18 @@ namespace CE::Obj {
         { allocator.deallocate(ptr, count) } -> std::same_as<void>;
     };
 
+    /* ObjectReservation<T, Allocator>
+     * Reserves one Block and tracks only its unclaimed ranges. emplace() splits
+     * out a slot and gives its handle the release context; the handle may outlive
+     * this reservation. Failed construction leaves the slot reserved, while the
+     * destructor returns remaining contiguous ranges to the manager.
+     */
     template<typename T, typename Allocator = Mem::ObjectPoolAllocator<T>>
         requires ReservationAllocator<Allocator, T>
     class ObjectReservation {
         using context_type = typename Allocator::manager_type::release_context_type;
+        // The aliasing shared_ptr points at T; this control block owns its
+        // destruction and one-slot return after construction succeeds.
         struct Claimed {
             std::shared_ptr<context_type> context;
             T* pointer;
@@ -96,6 +109,8 @@ namespace CE::Obj {
             if (range_index == remaining_.size())
                 throw Exceptions::bad_request(CE_HERE, "Object reservation slot has already been claimed.");
 
+            // Split a local copy so the recorded range survives any failure
+            // before construction. The original owner remains in every piece.
             auto slot = remaining_[range_index];
             std::optional<Block<T>> before;
             std::optional<Block<T>> after;
@@ -115,6 +130,8 @@ namespace CE::Obj {
             std::construct_at(pointer, std::forward<Args>(args)...);
             claim->constructed = true;
 
+            // Transfer the claimed slot out of the reservation. Only the
+            // unclaimed left and right pieces remain for its destructor.
             auto it = remaining_.begin() + range_index;
             if (before) {
                 *it = std::move(*before);

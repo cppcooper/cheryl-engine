@@ -17,6 +17,8 @@ namespace CE::Obj {
         try {
             for (; next < N; ++next) {
                 auto* p = block.head.get() + next;
+                // Allocate the handle before constructing T. If either step
+                // fails, its false flag leaves this slot in the unclaimed tail.
                 auto constructed = std::make_shared<bool>(false);
                 auto handle = std::shared_ptr<T>(p, [context, constructed](T* object) noexcept {
                     if (*constructed) {

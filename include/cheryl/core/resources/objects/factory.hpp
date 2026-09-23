@@ -6,6 +6,11 @@
 #include <type_traits>
 
 namespace CE::Obj {
+     /* Factory<T, Allocator>
+      * Allocates one contiguous batch and constructs each T separately. Each
+      * returned handle destroys its object; the shared allocation owner calls
+      * allocator deallocate(original, count) after the final handle is gone.
+      */
      template<typename T, typename Allocator>
      struct Factory {
          static_assert(std::is_class_v<T>, "The Factory template is only for creating objects of classes.");

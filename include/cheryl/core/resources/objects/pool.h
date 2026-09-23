@@ -4,6 +4,11 @@
 #include <core/resources/memory/mem-mgr.h>
 
 namespace CE::Obj {
+    /* PoolState<T>
+     * Owns the object pool's release operations and retains shared block
+     * bookkeeping. Handles hold this context so their last release can merge
+     * a slot back into the pool after the Pool<T> facade is destroyed.
+     */
     template<typename T>
     struct PoolState : AbstractManager<T>, std::enable_shared_from_this<PoolState<T>> {
         static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
@@ -22,6 +27,10 @@ namespace CE::Obj {
         [[nodiscard]] static Block<T> allocate(std::size_t length);
     };
 
+    /* Pool<T>
+     * Singleton entry point for allocating objects. Existing manager methods
+     * remain available; release_context() gives handles a retained PoolState.
+     */
     template<typename T>
     struct Pool : AbstractManager<T>, Singleton_CTS<Pool<T>> {
         using release_context_type = PoolState<T>;

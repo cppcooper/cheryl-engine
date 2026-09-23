@@ -35,6 +35,11 @@ namespace CE::Assets {
         inline static const ResourceProvider* bound_provider_ = nullptr;
     };
 
+    /* AssetMgr<AssetType, Key>
+     * Caches constructed assets by key. reserve() provides storage whose slots
+     * callers construct selectively with emplace(); the older allocate()
+     * interface returns unconstructed handles for manual construction.
+     */
     template <typename AssetType, typename Key = std::filesystem::path>
     struct AssetMgr : ProviderBoundCache {
         using spointer = std::shared_ptr<AssetType>;

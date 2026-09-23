@@ -7,6 +7,8 @@
 #include <stdexcept>
 
 namespace {
+    // Separate item types keep lifetime counters and pool bookkeeping isolated
+    // between the reservation, teardown, and failed-construction scenarios.
     struct ReservationItem {
         inline static int live = 0;
         inline static int destroyed = 0;
@@ -35,6 +37,7 @@ namespace {
         ~FailingBatchItem() { --live; }
     };
 
+    // Observe whole-allocation calls without changing allocator behavior.
     template<typename T>
     struct CountingAllocator {
         using value_type = T;
@@ -50,6 +53,8 @@ namespace {
         }
     };
 
+    // Only an allocator with a manager-backed subrange release context may
+    // instantiate ObjectReservation; ordinary allocators lack that contract.
     static_assert(CE::Obj::ReservationAllocator<CE::Mem::ObjectPoolAllocator<ReservationItem>, ReservationItem>);
     static_assert(!CE::Obj::ReservationAllocator<CE::Mem::DefaultAllocator<ReservationItem>, ReservationItem>);
     static_assert(!CE::Obj::ReservationAllocator<CE::Mem::ObjectAllocator<ReservationItem>, ReservationItem>);
@@ -67,6 +72,8 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
         ASSERT_EQ(reserved.remaining_ranges().size(), 1);
         base = reserved.remaining_ranges()[0].head.get();
         ASSERT_EQ(reserved.remaining_ranges()[0].length, 8);
+        // Claim two adjacent interior slots and a separate interior slot.
+        // A failed constructor and a duplicate claim must leave ranges intact.
         first = reserved.emplace(3, 30);
         second = reserved.emplace(4, 40);
         third = reserved.emplace(1, 10);
@@ -78,6 +85,7 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
         EXPECT_THROW(reserved.emplace(3, 99), CE::Exceptions::bad_request);
         EXPECT_EQ(ReservationItem::live, 3);
 
+        // Slots 0, 2, and 5..7 remain available as three contiguous ranges.
         const auto& ranges = reserved.remaining_ranges();
         ASSERT_EQ(ranges.size(), 3);
         EXPECT_EQ(ranges[0].head.get(), base);
@@ -87,6 +95,8 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
         EXPECT_EQ(ranges[2].head.get(), base + 5);
         EXPECT_EQ(ranges[2].length, 3);
     }
+    // Destruction of the reservation returns only unused slots; each handle
+    // still owns a constructed object and releases its slot independently.
     EXPECT_EQ(ReservationItem::live, 3);
     EXPECT_EQ(first->value, 30);
     EXPECT_EQ(second->value, 40);
@@ -109,6 +119,8 @@ TEST(memory, handles_retain_pool_state_after_facade_destruction) {
     std::weak_ptr<CE::Obj::PoolState<LateItem>> weak;
     std::shared_ptr<LateItem> object;
     {
+        // A local facade gives us a teardown boundary we can control. The
+        // handle must retain the exact state it will use for its late release.
         auto facade = std::make_unique<CE::Obj::Pool<LateItem>>();
         auto context = facade->release_context();
         weak = context;
@@ -120,6 +132,7 @@ TEST(memory, handles_retain_pool_state_after_facade_destruction) {
     }
     ASSERT_FALSE(weak.expired());
     EXPECT_EQ(object->value, 99);
+    // The state becomes unowned only after the last object handle is dropped.
     object.reset();
     EXPECT_TRUE(weak.expired());
     EXPECT_EQ(LateItem::destroyed, 1);
@@ -129,6 +142,8 @@ TEST(memory, pool_releases_unconstructed_tail_after_constructor_failure) {
     FailingBatchItem::attempted = 0;
     FailingBatchItem::live = 0;
     auto context = std::make_shared<CE::Obj::PoolState<FailingBatchItem>>();
+    // The second constructor fails: the first handle and the unconstructed
+    // tail must both return their slots before another batch can be retrieved.
     EXPECT_THROW(context->retrieve_objects(3), std::runtime_error);
     EXPECT_EQ(FailingBatchItem::live, 0);
     auto objects = context->retrieve_objects(3);
@@ -148,6 +163,8 @@ TEST(memory, factory_deallocates_one_batch_after_its_last_element) {
     ASSERT_EQ(objects.size(), 3);
     EXPECT_EQ(Allocator::allocated, 1);
     EXPECT_EQ(ReservationItem::live, 3);
+    // Keeping one interior handle alive must also keep the original three-slot
+    // allocation alive, even when the returned vector is cleared.
     auto retained = objects[1];
     objects.clear();
     EXPECT_EQ(ReservationItem::live, 1);
@@ -165,6 +182,8 @@ TEST(memory, factory_releases_batch_after_constructor_failure) {
     Allocator::deallocated = 0;
     FailingBatchItem::attempted = 0;
     FailingBatchItem::live = 0;
+    // Failure halfway through construction destroys completed objects and
+    // deallocates the original allocation once.
     EXPECT_THROW((CE::Obj::Factory<FailingBatchItem, Allocator>::create(3)), std::runtime_error);
     EXPECT_EQ(FailingBatchItem::live, 0);
     EXPECT_EQ(Allocator::allocated, 1);
