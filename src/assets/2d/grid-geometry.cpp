@@ -10,6 +10,7 @@
 
 namespace CE::Assets {
     GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const PixelSize texture_size) {
+        // Validate the pixel rectangle and vertex-count limit before requesting pooled CPU storage.
         if (texture_size.width == 0 || texture_size.height == 0) {
             throw Exceptions::runtime_exception(CE_HERE, "Cannot build an asset grid from an empty texture");
         }
@@ -27,6 +28,8 @@ namespace CE::Assets {
         auto block = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
         auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(block));
 
+        // Each row-major cell occupies six submitted vertices; Anchor converts its pixel rect
+        // and normalized pivot into local positions and UVs in the shared vertex buffer.
         for (CellIndex cell = 0; cell < cell_count; ++cell) {
             const auto rect = grid.cell_rect(cell);
             if (rect.x > std::numeric_limits<std::uint32_t>::max() ||

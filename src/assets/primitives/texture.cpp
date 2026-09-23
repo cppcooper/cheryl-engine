@@ -10,7 +10,8 @@ namespace CE::Assets {
     void upload(const T* bits, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
 
-        //the following turns on a special, high-quality filtering mode called "ANISOTROPY"
+        // Apply anisotropic filtering only for supported color textures; the alpha-only font
+        // atlas uses its own sampling/swizzle configuration below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
             GLfloat largest_supported_anisotropy;
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
@@ -27,6 +28,7 @@ namespace CE::Assets {
         GLint previous_unpack_alignment = 4;
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
         if (fmt == GL_RED) {
+            // One-byte atlas rows can be unaligned; map red to alpha while emitting white RGB.
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             constexpr GLint swizzle[]{GL_ONE, GL_ONE, GL_ONE, GL_RED};
             glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);

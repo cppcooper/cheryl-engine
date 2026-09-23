@@ -64,12 +64,14 @@ namespace CE::Assets {
     }
 
     void Loader::load_assets(ResourceProvider& provider) {
+        // Reject a different backend before parsing anything that could mutate the bound caches.
         ProviderBoundCache::verify_provider(provider);
         if (!fs::is_directory(root_path_)) {
             throw Exceptions::runtime_exception(
                 CE_HERE, "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
         }
 
+        // Scan only the root for manifests, then sort for reproducible parse/error ordering.
         std::vector<fs::path> manifest_files;
         for (const auto& entry : fs::directory_iterator(root_path_)) {
             if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".json") {
@@ -87,6 +89,8 @@ namespace CE::Assets {
             parsed_manifests.push_back(ManifestLoader::load(file));
         }
 
+        // Collect typed assets and their unique referenced images across all documents. IDs are
+        // global within the load, so duplicate names must be rejected before any manager inserts.
         std::vector<SpriteDefinition> sprites;
         std::vector<TilesetDefinition> tilesets;
         std::vector<fs::path> referenced_textures;
@@ -110,6 +114,8 @@ namespace CE::Assets {
         }
         std::ranges::sort(referenced_textures);
 
+        // Read image headers and verify every grid against the actual image dimensions before
+        // the first provider upload. This avoids partial registration for these validation errors.
         std::unordered_map<fs::path, std::pair<int, int>> texture_dimensions;
         for (const auto& texture : referenced_textures) {
             texture_dimensions.emplace(texture, inspect_texture(texture));
@@ -121,6 +127,8 @@ namespace CE::Assets {
             validate_grid_bounds(tileset.grid, tileset.texture, texture_dimensions.at(tileset.texture), tileset.id());
         }
 
+        // Load referenced images plus standalone PNGs first; construction of sprites and tilesets
+        // then retrieves those textures and uploads their precomputed grid geometry.
         std::vector<fs::path> textures = referenced_textures;
         for (const auto& file : get_files_of_type(".png")) {
             const auto normalized = file.lexically_normal();
@@ -154,6 +162,7 @@ namespace CE::Assets {
         ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"},
                                       provider);
 
+        // Publish the resolved documents only after all typed managers have completed this load.
         manifests_ = std::move(parsed_manifests);
     }
 }

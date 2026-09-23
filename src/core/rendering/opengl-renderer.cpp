@@ -37,6 +37,8 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_SAMPLES, 8);
+            // Choose a logical window size from monitor pixels and content scale, then make its
+            // context current before any GL entry point is loaded or rendering resources are created.
             auto glfw_display = std::make_unique<DisplaySystem>();
             const auto& pm = glfw_display->primary_monitor();
             auto [sw, sh] = glfw_display->content_scale(pm);
@@ -75,19 +77,19 @@ namespace CE::RenderAPIs {
         }
         const auto size = display->active_window()->framebuffer_size();
         set_viewport(size);
-        /// Here we query how much sampling is possible and set that to be used if possible
+        // Enable multisampling only if the created framebuffer exposes samples.
         GLint samples = 0;
         glGetIntegerv(GL_SAMPLES, &samples);
         if (samples > 0) {
             glEnable(GL_MULTISAMPLE);
         }
 
-        // where are we? (part 1)
+        // Establish the default face convention for geometry submitted by the engine.
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glFrontFace(GL_CCW);
 
-        // what are we doing? (part 2)
+        // Blend source alpha into the existing framebuffer for 2D images and text.
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -158,6 +160,8 @@ namespace CE::RenderAPIs {
         }
         std::vector<GLuint> compiled;
         try {
+            // Compile and attach each requested stage; keep IDs so either failure or success can
+            // delete the temporary stage objects after linking the executable program.
             for (const auto& file : files) {
                 std::ifstream input(file);
                 if (!input) {
@@ -205,6 +209,7 @@ namespace CE::RenderAPIs {
                 }
                 glAttachShader(program, stage);
             }
+            // Linking resolves the interface across stages; the program is usable only after this check.
             glLinkProgram(program);
             GLint success = GL_FALSE;
             glGetProgramiv(program, GL_LINK_STATUS, &success);

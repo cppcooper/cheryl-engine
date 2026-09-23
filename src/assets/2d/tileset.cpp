@@ -37,6 +37,7 @@ namespace CE::Assets {
         Asset2D(std::move(data.geometry), std::move(data.texture)),
         Frame(0, 0, data.definition.grid.cell_count()),
         definition_(std::move(data.definition)) {
+        // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
                 throw Exceptions::invalid_args(CE_HERE, "Multiple tile animations target the same cell");

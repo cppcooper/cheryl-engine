@@ -8,9 +8,20 @@ namespace CE::GFramework {
     template<typename T>
     using shptr = std::shared_ptr<T>;
 
+    /** Owns the order of platform events, game update, and frame presentation.
+     * The engine supplies platform/renderer adapters; the game supplies simulation and draw hooks.
+     */
     // TODO: Make the execution model explicit before adding/restoring multithreading. Platform/input,
     // simulation, render, and general worker responsibilities should exchange queued events or immutable
     // snapshots at defined boundaries instead of sharing live mutable state between long-lived threads.
+    // TODO: Add engine-owned services at the frame boundaries rather than inside rendering or GLFW input:
+    // - Initialize/deinitialize an audio device alongside other engine services; submit sound commands from
+    //   the simulation, with an explicit audio-thread/teardown contract and listener state from the game camera.
+    // - Poll network transport independently of GLFW, queue decoded messages for a simulation tick, and
+    //   serialize authoritative state/snapshots after that tick; never mutate live game state from I/O callbacks.
+    // - Establish a world/entity update contract before fixed-step physics and collision, AI decisions, or
+    //   pathfinding. Navigation jobs can read immutable world snapshots and return results for a later tick;
+    //   rendering and audio should consume published results rather than half-updated world state.
     struct GameRuntime {
         explicit GameRuntime(shptr<Engine::iEngine> e, shptr<AbstractGame> gf) : e(std::move(e)), gf(std::move(gf)) {}
         ~GameRuntime();

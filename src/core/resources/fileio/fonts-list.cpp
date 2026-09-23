@@ -46,6 +46,8 @@ namespace CE::Resources {
     }
 
     std::vector<fs::path> find_system_fonts(const std::vector<fs::path>& directories) {
+        // Ignore inaccessible roots while walking installed fonts, then sort/deduplicate
+        // across overlapping system and user font directories.
         std::vector<fs::path> fonts;
         for (const auto& directory : directories) {
             std::error_code error;
@@ -84,6 +86,7 @@ namespace CE::Resources {
                                                      "calibri.ttf",
                                                      "consola.ttf",
                                                      "proggyvector regular.ttf"};
+        // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
         for (const auto preferred : preferred_names) {
             const auto match = std::ranges::find_if(
                 fonts, [preferred](const fs::path& font) { return lowercase(font.filename().string()) == preferred; });

@@ -215,6 +215,8 @@ namespace CE::Assets {
                                   .columns = read_size(required(value, "columns", source, location), source,
                                                        std::string(location) + ".columns", 1)};
 
+            // Keep the parser's addressing convention and renderer vertex limit aligned before
+            // any named cell, animation, or autotile is expanded against this grid.
             if (read_string(required(value, "cell_order", source, location), source,
                             std::string(location) + ".cell_order") != "row-major") {
                 fail(source, std::string(location) + ".cell_order", "only row-major grids are supported");
@@ -383,6 +385,8 @@ namespace CE::Assets {
 
         void append_profile_animations(SpriteDefinition& sprite, const AnimationProfileDefinition& profile,
                                        const fs::path& source, const std::string_view location) {
+            // Expand each clip/facing combination into a concrete sequence of cells so runtime
+            // sprite lookup does not need to interpret the profile's row offsets again.
             for (const auto& [clip_name, clip] : profile.clips) {
                 for (const auto& [facing_name, facing_offset] : profile.facings) {
                     if (facing_offset > std::numeric_limits<std::size_t>::max() - clip.row_offset) {
@@ -464,6 +468,7 @@ namespace CE::Assets {
                                           .tiles = {},
                                           .variants = {}};
 
+            // Establish the signature layout and known terrain IDs before validating tile patterns.
             const auto& slots = required(value, "slot_order", source, location);
             require_array(slots, source, std::string(location) + ".slot_order");
             if (slots.size() != result.slot_order.size()) {
@@ -516,6 +521,8 @@ namespace CE::Assets {
                 result.terrains.push_back(std::move(definition));
             }
 
+            // Index candidates by their complete signature; retain multiple weighted variants
+            // instead of choosing one at parse time when neighboring terrain is still unknown.
             const auto& tiles = required(value, "tiles", source, location);
             require_array(tiles, source, std::string(location) + ".tiles");
             if (tiles.empty()) {
@@ -575,6 +582,8 @@ namespace CE::Assets {
                 }
                 result.bit_order.push_back(direction);
             }
+            // The declared neighbor order determines which bits a future tile-map selector sets.
+            // Reject masks outside that width before storing their resolved cell indices.
             const auto& cases = required(value, "cases", source, location);
             require_object(cases, source, std::string(location) + ".cases");
             if (cases.empty()) {
@@ -638,6 +647,8 @@ namespace CE::Assets {
             explicit Parser(fs::path source) : source_(std::move(source)) {}
 
             AssetManifest parse(const json& root) const {
+                // Establish document identity and defaults first; individual assets inherit these
+                // values unless their entry provides a more specific texture or pivot.
                 allow_only(root, source_, "$",
                            {"$schema", "version", "namespace", "texture", "defaults", "animation_profiles", "sprites",
                             "tilesets"});
@@ -674,6 +685,8 @@ namespace CE::Assets {
                     manifest.animation_profiles =
                         parse_profiles(root.at("animation_profiles"), source_, "$.animation_profiles");
                 }
+                // Expand profiles and local grid references while parsing entries. Cross-manifest
+                // identity and physical image bounds must wait for Loader's collection pass.
                 if (!root.contains("sprites") && !root.contains("tilesets")) {
                     fail(source_, "$", "manifest must contain sprites or tilesets");
                 }
@@ -733,6 +746,8 @@ namespace CE::Assets {
                         definition.orientations = parse_orientations(sprite.at("orientations"), definition.grid,
                                                                      source_, location + ".orientations");
                     }
+                    // Profile clips produce facing-specific sequences; explicit clips append
+                    // unfaced sequences. Sprite construction later checks for duplicate keys.
                     if (sprite.contains("animation_profile")) {
                         const auto profile_name =
                             read_identifier(sprite.at("animation_profile"), source_, location + ".animation_profile");
@@ -786,6 +801,8 @@ namespace CE::Assets {
                         definition.orientations = parse_orientations(tileset.at("orientations"), definition.grid,
                                                                      source_, location + ".orientations");
                     }
+                    // Resolve target cells and frames now; the map renderer will later choose a
+                    // base/autotile cell and substitute an animated frame for targeted cells.
                     if (tileset.contains("animations")) {
                         const auto& animations = tileset.at("animations");
                         require_object(animations, source_, location + ".animations");

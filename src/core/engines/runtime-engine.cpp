@@ -16,6 +16,7 @@ namespace CE::Engine {
     }
 
     void RuntimeEngine::synchronize_camera() {
+        // Use framebuffer pixels for projection/viewport; window logical dimensions are for input/UI.
         auto* window = renderer->display ? renderer->display->active_window() : nullptr;
         if (!window)
             throw Exceptions::failed_operation(CE_HERE, "No active window is available for the camera");
@@ -26,12 +27,15 @@ namespace CE::Engine {
             viewport_size_ = size;
         }
         active_camera_->set_framebuffer_size(size);
+        // A stable camera revision means neither its view nor its projection needs republishing.
         if (published_camera_ == active_camera_ && published_revision_ == active_camera_->revision())
             return;
 
         renderer->set_depth_test(active_camera_->mode() == Enum::gfx_mode::R3D);
 
         const auto& projection = active_camera_->projection_matrix();
+        // Notify projection consumers only when the projection actually changes; view changes still
+        // update the renderer through set_camera_matrices below.
         const bool projection_changed = !published_camera_ || published_projection_ != projection;
         renderer->set_camera_matrices(projection, active_camera_->view_matrix());
         if (projection_changed)
@@ -53,6 +57,7 @@ namespace CE::Engine {
     void RuntimeEngine::init() {
         if (initialized_)
             return;
+        // Establish the display and rendering context before publishing camera state or attaching input.
         renderer->initialize_libraries();
         renderer->initialize_rendering_context();
         synchronize_camera();

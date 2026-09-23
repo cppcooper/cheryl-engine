@@ -25,6 +25,7 @@ namespace CE {
     }
 
     DisplaySystem::DisplaySystem() : primary_monitor_(create_primary_monitor()) {
+        // Put the primary monitor first, then keep native handles in matching positions for lookup.
         int count = 0;
         GLFWmonitor** handles = glfwGetMonitors(&count);
         if (!handles || count <= 0)
@@ -79,6 +80,7 @@ namespace CE {
     }
 
     void DisplaySystem::activate_window(iWindow& window) {
+        // Only display-owned windows may become active, and the current renderer assumes one context.
         const auto owned =
             std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
         if (!owned)

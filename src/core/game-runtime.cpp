@@ -18,6 +18,7 @@ namespace CE::GFramework {
     void GameRuntime::run() {
         if (gf) {
             DeltaTime delta;
+            // The engine creates its display/context before game init can request backend resources.
             e->init();
             gf->init();
             running = true;
@@ -25,12 +26,14 @@ namespace CE::GFramework {
             // decoupled, drive simulation from its own timestep and hand immutable frame state to rendering
             // rather than simply executing gf->update() and gf->draw() concurrently on the same object.
             while (running) {
+                // Deliver platform events/input first so this update sees the complete current poll.
                 e->poll_input();
                 if (e->should_close())
                     break;
                 const double dt = delta();
                 gf->update(dt);
 
+                // Refresh camera/viewport and clear, then let the game submit its draw work before swap.
                 e->pre_draw();
                 gf->draw(dt);
                 e->post_draw();

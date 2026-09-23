@@ -83,6 +83,8 @@ namespace CE::Input {
 
     protected:
         void InternalUpdate(gainput::InputDeltaState* delta) override {
+            // Release last frame's wheel pulses, then apply GLFW events queued since the previous poll.
+            // New pulses stay pressed for this update and are released on the following update.
             auto releases = std::move(release_next_frame_);
             release_next_frame_ = std::move(pending_pulses_);
             pending_pulses_.clear();
@@ -141,6 +143,7 @@ namespace CE::Input {
         if (window_)
             return;
 
+        // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
         if (!keyboard_) {
             keyboard_ = manager_.CreateAndGetDevice<GlfwKeyboardDevice>();
             keyboard_id_ = keyboard_->GetDeviceId();
@@ -155,6 +158,7 @@ namespace CE::Input {
         window_ = glfw_window;
         const auto size = window.logical_size();
         manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
+        // GLFW callbacks only queue transitions. Gainput processes them together in update().
         auto* handle = glfw_window->native_handle();
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
@@ -173,6 +177,7 @@ namespace CE::Input {
     void InputSystem::poll() {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before polling");
+        // Pump GLFW on the platform thread before Gainput converts queued changes to listener calls.
         glfwPollEvents();
         update();
     }
@@ -181,6 +186,7 @@ namespace CE::Input {
         if (!window_)
             return;
         auto* handle = window_->native_handle();
+        // Detach callbacks while the native window is still alive, then clear per-window input state.
         glfwSetKeyCallback(handle, nullptr);
         glfwSetMouseButtonCallback(handle, nullptr);
         glfwSetCursorPosCallback(handle, nullptr);

@@ -24,6 +24,7 @@ namespace CE {
         }
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         glfwGetFramebufferSize(glfw_window_, &framebuffer_size_.width, &framebuffer_size_.height);
+        // Track logical and pixel sizes separately; GLFW callbacks may subsequently change either.
         glfwSetWindowUserPointer(glfw_window_, this);
         glfwSetWindowSizeCallback(glfw_window_, on_window_size);
         glfwSetFramebufferSizeCallback(glfw_window_, on_framebuffer_size);
@@ -57,6 +58,7 @@ namespace CE {
         if (framebuffer_size_ == FramebufferSize{width, height})
             return;
         framebuffer_size_ = {width, height};
+        // Consumers recompute pixel-dependent state (for example, camera projection) on this event.
         SubSystems::EventSystem::get().dispatch("window-resized", WindowResized{this, framebuffer_size_});
     }
 
@@ -87,6 +89,7 @@ namespace CE {
             throw Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode");
         }
 
+        // Save the ordinary window placement before changing modes so NORMAL can restore it.
         if (window_mode_ == Enum::window_mode::NORMAL) {
             glfwGetWindowPos(glfw_window_, &windowed_x_, &windowed_y_);
             glfwGetWindowSize(glfw_window_, &windowed_width_, &windowed_height_);
@@ -106,6 +109,7 @@ namespace CE {
                                  vidmode->refreshRate);
             break;
         }
+        // Mode switches can change framebuffer size independently of logical window size.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         int framebuffer_width = 0;
         int framebuffer_height = 0;
