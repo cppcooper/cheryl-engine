@@ -1,6 +1,7 @@
 #include <assets/2d/grid-geometry.h>
 
 #include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
 #include <math/anchor.h>
 #include <internals/exceptions.h>
 
@@ -8,12 +9,11 @@
 #include <utility>
 
 namespace CE::Assets {
-    GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const Texture& texture) {
-        if (texture.width <= 0 || texture.height <= 0) {
+    GridGeometry make_grid_geometry(const GridDefinition& grid, const math::Pivot pivot, const PixelSize texture_size) {
+        if (texture_size.width == 0 || texture_size.height == 0) {
             throw Exceptions::runtime_exception(CE_HERE, "Cannot build an asset grid from an empty texture");
         }
-        if (grid.occupied_right() > static_cast<std::uint64_t>(texture.width) ||
-            grid.occupied_bottom() > static_cast<std::uint64_t>(texture.height)) {
+        if (grid.occupied_right() > texture_size.width || grid.occupied_bottom() > texture_size.height) {
             throw Exceptions::runtime_exception(CE_HERE, "Asset grid extends beyond its texture bounds");
         }
 
@@ -23,9 +23,9 @@ namespace CE::Assets {
         }
         const auto vertex_count = static_cast<std::uint32_t>(cell_count * VAONumbers::vertices_per_quad);
         const auto vertices_bytes = sizeof(Vertex2D) * vertex_count;
-        auto block = Mem::ExactMMgr::get().checkout_chunk(vertices_bytes, alignof(Vertex2D));
-        auto vertices = std::shared_ptr<Vertex2D>(static_cast<Vertex2D*>(block.head.get()),
-                                                  [block](Vertex2D*) { Mem::ExactMMgr::get().return_chunk(block); });
+        auto& manager = Mem::ExactMMgr::get();
+        auto block = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
+        auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(block));
 
         for (CellIndex cell = 0; cell < cell_count; ++cell) {
             const auto rect = grid.cell_rect(cell);
@@ -35,8 +35,7 @@ namespace CE::Assets {
                                                     "Asset grid pixel coordinate exceeds uint32_t");
             }
             math::Anchor::MakePivot(pivot, vertices.get() + cell * VAONumbers::vertices_per_quad,
-                                    static_cast<std::uint32_t>(texture.width),
-                                    static_cast<std::uint32_t>(texture.height), rect.width, rect.height,
+                                    texture_size.width, texture_size.height, rect.width, rect.height,
                                     static_cast<std::uint32_t>(rect.x), static_cast<std::uint32_t>(rect.y));
         }
         return {std::move(vertices), vertex_count};

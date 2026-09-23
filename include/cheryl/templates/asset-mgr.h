@@ -1,6 +1,8 @@
 #pragma once
 #include <assets/abstracts.h>
 #include <core/resources/allocators.h>
+#include <core/resources/objects/object-reservation.hpp>
+#include <internals/exceptions.h>
 
 #include "block.h"
 
@@ -12,8 +14,34 @@
 #include <vector>
 
 namespace CE::Assets {
+    struct ResourceProvider;
+
+    // Singleton asset managers use one resource provider for their process lifetime.
+    class ProviderBoundCache {
+    public:
+        static void verify_provider(const ResourceProvider& provider) {
+            if (bound_provider_ && bound_provider_ != &provider)
+                throw Exceptions::failed_operation(
+                    CE_HERE, "Asset caches are already bound to another resource provider");
+        }
+
+    protected:
+        static void bind_provider(const ResourceProvider& provider) {
+            verify_provider(provider);
+            bound_provider_ = &provider;
+        }
+
+    private:
+        inline static const ResourceProvider* bound_provider_ = nullptr;
+    };
+
+    /**
+     * Caches constructed assets by key. reserve() provides storage whose slots
+     * callers construct selectively with emplace(); the older allocate()
+     * interface returns unconstructed handles for manual construction.
+     */
     template <typename AssetType, typename Key = std::filesystem::path>
-    struct AssetMgr {
+    struct AssetMgr : ProviderBoundCache {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
         AssetMgr() = default;
@@ -28,6 +56,14 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t size() const { return loaded_assets.size(); }
 
     protected:
+        /** Reserve raw slots for selective construction with emplace(). */
+        template <typename Derived>
+        auto reserve(const std::size_t N) {
+            static_assert(std::is_base_of_v<AssetType, Derived>);
+            return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
+        }
+
+        /** Provide raw object handles for callers that construct slots manually. */
         template <typename Derived>
         std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>,
@@ -36,12 +72,14 @@ namespace CE::Assets {
                 return {};
             }
             using A_OPA = std::allocator_traits<Mem::ObjectPoolAllocator<Derived>>;
-            auto raw = A_OPA::allocate(N);
+            Mem::ObjectPoolAllocator<Derived> allocator;
+            auto context = allocator.context();
+            auto raw = A_OPA::allocate(allocator, N);
             std::shared_ptr<Derived> owner(raw, [](void* p) {});
             Block<Derived> block{owner, owner, ptr::calculate_alignment(raw), N};
-            return block.vector([](Derived* p) {
+            return block.vector([context](Derived* p) noexcept {
                 A_OPA::destroy(p);
-                A_OPA::deallocate(p, 1);
+                context->release_owned(p, 1);
             });
         }
         std::unordered_map<Key, spointer> loaded_assets{};

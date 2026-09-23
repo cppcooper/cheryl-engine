@@ -33,7 +33,7 @@ namespace CE::ptr {
     inline std::size_t get_alignment_offset(void* ptr, std::align_val_t alignment) {
         const auto av = static_cast<std::size_t>(alignment);
         const auto address = reinterpret_cast<uintptr_t>(ptr);
-        return av - (address % av);
+        return (av - (address % av)) % av;
     }
 
     // returns the offset from ptr to alignment for type <T>

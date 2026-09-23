@@ -5,6 +5,7 @@ namespace CE::Mem {
     template<class T>
     struct ObjectAllocator final : std::allocator<T> {
         using value_type = T;
+        using manager_type = ObjMMgr<T>;
 
         T* allocate(std::size_t N) {
             auto b = ObjMMgr<T>::get().checkout_chunk(sizeof(T)*N, alignof(T), Enum::greedy);

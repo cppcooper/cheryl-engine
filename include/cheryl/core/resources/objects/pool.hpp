@@ -3,22 +3,52 @@
 #include <memory>
 //#include <core/resources/memory/allocators/object-pool-allocator.hpp>
 #include "object-construction.hpp"
-#include <assets/primitives.h>
 
 namespace CE::Obj {
     template<typename T>
     template<typename ... Args>
-    std::vector<std::shared_ptr<T>> Pool<T>::retrieve_objects(std::size_t N, Args... args) {
+    std::vector<std::shared_ptr<T>> PoolState<T>::retrieve_objects(std::size_t N, Args... args) {
+        if (N == 0) return {};
+        auto context = this->shared_from_this();
+        std::vector<std::shared_ptr<T>> objects;
+        objects.reserve(N);
         auto block = retrieve_block(N);
-        ObjCtor<T>::construct(block.head.get(), N, std::forward<Args>(args)...);
-        return block.vector([](T* p) {
-            ObjCtor<T>::destroy(p);
-            Pool<T>::get().return_objects(p,1);
-        });
+        std::size_t next = 0;
+        try {
+            for (; next < N; ++next) {
+                auto* p = block.head.get() + next;
+                // Allocate the handle before constructing T. If either step
+                // fails, its false flag leaves this slot in the unclaimed tail.
+                auto constructed = std::make_shared<bool>(false);
+                auto handle = std::shared_ptr<T>(p, [context, constructed](T* object) noexcept {
+                    if (*constructed) {
+                        ObjCtor<T>::destroy(object);
+                        context->release_owned(object, 1);
+                    }
+                });
+                ObjCtor<T>::construct(p, 1, std::forward<Args>(args)...);
+                *constructed = true;
+                objects.push_back(std::move(handle));
+            }
+        } catch (...) {
+            // Completed handles return their own slots as the vector unwinds.
+            // The unconstructed tail remains one contiguous range.
+            context->release_owned(block.head.get() + next, N - next);
+            throw;
+        }
+        return objects;
     }
 
     template<typename T>
-    Block<T> Pool<T>::retrieve_block(std::size_t N) {
+    void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
+        return_objects(p, length);
+    }
+
+    template<typename T>
+    Block<T> PoolState<T>::retrieve_block(std::size_t N) {
+        if (N == 0) {
+            throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
+        }
         OBlock<T> ob = this->fill_request(N);
         const bool request_filled = ob.has_value();
         if (!request_filled) {
@@ -40,7 +70,10 @@ namespace CE::Obj {
     }
 
     template<typename T>
-    void Pool<T>::return_objects(T* p, std::size_t length) {
+    void PoolState<T>::return_objects(T* p, std::size_t length) {
+        if (length == 0) {
+            throw Exceptions::bad_request(CE_HERE, "Cannot return an empty object range.");
+        }
         auto FUNC = CE_FUNCTION_;
         auto ret_chunk = [this,FUNC](OBlock<T> b, T* p, std::size_t length) {
             if(!b.has_value()) {
@@ -81,8 +114,14 @@ namespace CE::Obj {
 
         // Try to find the section or owner of the memory block
         if (auto sec = this->find_section(p); sec.has_value() && sec->contains(p)) {
+            if (this->contains(*sec, this->pool)) {
+                throw Exceptions::bad_request(CE_HERE, "Object range has already been returned.");
+            }
             ret_chunk(sec, p, length);
         } else if (auto owner = this->find_owner(p); owner.has_value() && owner->contains(p)) {
+            if (this->contains(*owner, this->pool)) {
+                throw Exceptions::bad_request(CE_HERE, "Object range has already been returned.");
+            }
             ret_chunk(owner, p, length);
         } else {
             throw Exceptions::bad_request(CE_HERE,"No matching block found for the given pointer.");
@@ -90,37 +129,47 @@ namespace CE::Obj {
     }
 
     template<typename T>
-    void Pool<T>::return_block(const Block<T> &returned) {
-        if (!this->contains(returned, this->sections) && !this->contains(returned, this->registry)) {
-            CELog::error("Cannot return Block. No such block exists. Block: {}", returned);
-            return;
+    void PoolState<T>::return_block(const Block<T> &returned) {
+        const bool in_sections = this->contains(returned, this->sections);
+        const bool in_registry = this->contains(returned, this->registry);
+        bool has_active_sections = false;
+        if (in_registry) {
+            std::shared_lock lock(std::get<0>(this->sections));
+            for (const auto& section : std::get<1>(this->sections)) {
+                if (section.owner.get() == returned.owner.get()) {
+                    has_active_sections = true;
+                    break;
+                }
+            }
+        }
+        if ((!in_sections && !in_registry) || this->contains(returned, this->pool) || has_active_sections) {
+            throw Exceptions::failed_operation(CE_HERE, "Object pool was returned an unknown or active block.");
         }
         this->merge_into_pool(returned);
     }
 
     template<typename T>
-    template<typename ... Args>
-    Block<T> Pool<T>::allocate(size_t length, Args... args) {
+    Block<T> PoolState<T>::allocate(size_t length) {
         // we will allocate an ObjBlock to be recorded, it will clean up memory when we cull it
-        Mem::HeapBlock b = Mem::ObjMMgr<T>::get().checkout_chunk(length*sizeof(T), alignof(T), Enum::greedy);
+        auto& manager = Mem::ObjMMgr<T>::get();
+        Mem::HeapBlock b = manager.checkout_chunk(length*sizeof(T), alignof(T), Enum::greedy);
         auto raw = static_cast<T*>(b.head.get());
 
         // calculate number of objects = bytes / size
         static_assert(!std::is_same_v<T,void>);
-        uint32_t len = b.length / sizeof(T);
+        const std::size_t len = b.length / sizeof(T);
         // we need to make a more useful pointer
-        std::shared_ptr<T> block_root(raw, [b,len](auto p) {
+        const auto manager_lifetime = manager.lifetime_token();
+        std::shared_ptr<T> block_root(raw, [b,len,manager_lifetime,manager_ptr = &manager](auto p) {
             // ensure any pre-constructed objects (or something) get destroyed
             ObjCtor<T>::destroy(p,len);
             ObjCtor<T>::erase(p,p+len);
             // when our HeapBlock is stale, we'll need to return it
-            Mem::ObjMMgr<T>::get().return_chunk(b);
+            if (manager_lifetime.lock()) {
+                manager_ptr->return_chunk(b);
+            }
         });
 
-        // construct objects if legal
-        if constexpr (std::is_constructible_v<T, Args...>) {
-            ObjCtor<T>::construct(block_root.get(), len, std::forward<Args>(args)...);
-        }
-        return {block_root, block_root, b.alignment, len};;
+        return {block_root, block_root, b.alignment, len};
     }
 }

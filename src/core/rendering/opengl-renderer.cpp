@@ -1,20 +1,31 @@
 #include <core/rendering/opengl-renderer.h>
 
 #include <core.h>
+#include <core/display/display-system.h>
+#include <core/resources/asset-management/shader-mgr.h>
 #include <enums.h>
 #include <assets/primitives/glslprogram.h>
 #include <internals/exceptions.h>
+
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
+#include <GLFW/glfw3.h>
 
 #include <algorithm>
 #include <fstream>
 #include <format>
 #include <sstream>
+#include <utility>
 #include <vector>
 
 using CE::Enum::ShaderTypes;
 CE::RenderAPIs::program_id compile_src(const std::string& source, ShaderTypes type);
 
 namespace CE::RenderAPIs {
+
+    OpenGLRenderer::OpenGLRenderer() : resource_provider_(*this) {
+    }
 
     void OpenGLRenderer::initialize_glfw() {
         std::call_once(glfw_flag, [this]() {
@@ -26,17 +37,18 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_SAMPLES, 8);
-            display = std::make_unique<DisplaySystem>();
-            const auto& pm = display->primary_monitor();
-            float sw, sh;
-            glfwGetMonitorContentScale(pm.glfw_monitor, &sw, &sh);
+            auto glfw_display = std::make_unique<DisplaySystem>();
+            const auto& pm = glfw_display->primary_monitor();
+            auto [sw, sh] = glfw_display->content_scale(pm);
             sw = std::max(sw, 1.0f);
             sh = std::max(sh, 1.0f);
             const int width = std::max(1L, std::lround(pm.width / sw));
             const int height = std::max(1L, std::lround(pm.height / sh));
-            auto* window = display->create_window(pm, Enum::window_mode::NORMAL, width, height);
-            display->activate_window(*window);
+            auto* window = glfw_display->create_window(pm, Enum::window_mode::NORMAL, width, height);
+            glfw_display->activate_window(*window);
             glfwMakeContextCurrent(window->native_handle());
+            render_window_ = window;
+            display = std::move(glfw_display);
         });
     }
 
@@ -95,12 +107,23 @@ namespace CE::RenderAPIs {
         glViewport(0, 0, size.width, size.height);
     }
 
-    void OpenGLRenderer::swap_buffer() {
-        glfwSwapBuffers(display->active_window()->native_handle());
+    void OpenGLRenderer::set_depth_test(const bool enabled) {
+        if (enabled)
+            glEnable(GL_DEPTH_TEST);
+        else
+            glDisable(GL_DEPTH_TEST);
     }
 
-    void OpenGLRenderer::draw() {
-        // todo: figure it out
+    void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
+        glClearColor(r, g, b, a);
+    }
+
+    void OpenGLRenderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
+        Assets::ShaderMgr::get().set_camera_matrices(projection, view);
+    }
+
+    void OpenGLRenderer::swap_buffer() {
+        glfwSwapBuffers(render_window_->native_handle());
     }
 
     program_id OpenGLRenderer::compile_shader(fs::path file) {

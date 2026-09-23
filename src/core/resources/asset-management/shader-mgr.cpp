@@ -1,32 +1,26 @@
 #include <core/resources/asset-management/shader-mgr.h>
-#include <core/resources/objects/object-construction.hpp>
-#include <internals.h>
-#include <core/rendering/opengl-renderer.h>
-#include <memory>
+
+#include <assets/abstracts/resource-provider.h>
 
 namespace CE::Assets {
-    void ShaderMgr::load_assets(const std::vector<fs::path>& files) {
-        static auto& renderer = Singleton_CTS<RenderAPIs::OpenGLRenderer>::get();
-        const auto N = files.size();
-        auto assets = allocate<GLSLProgram>(N);
-        // Obj::ObjCtor<GLSLProgram>::construct(assets[0].get(),N);
-        for (std::size_t i = 0; i < N; ++i) {
-            const auto& file = files[i];
+    void ShaderMgr::load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider) {
+        bind_provider(provider);
+        for (const auto& file : files) {
             if (!loaded_assets.contains(file)) {
-                const auto& asset = assets[i];
-                Obj::ObjCtor<GLSLProgram>::construct(asset.get(), 1, renderer.compile_shader(file));
-                loaded_assets[file] = asset;
+                loaded_assets.emplace(file, provider.compile_stage(file));
             }
         }
     }
 
-    void ShaderMgr::load_program(const fs::path& key, const std::vector<fs::path>& stages) {
+    void ShaderMgr::load_program(const std::filesystem::path& key,
+                                 const std::vector<std::filesystem::path>& stages,
+                                 ResourceProvider& provider) {
+        bind_provider(provider);
         if (loaded_assets.contains(key))
             return;
-        auto& renderer = Singleton_CTS<RenderAPIs::OpenGLRenderer>::get();
-        auto program = std::make_shared<GLSLProgram>(static_cast<int>(renderer.compile_program(stages)));
+        auto program = provider.link_program(stages);
         program->use();
-        program->set_uniform_value("mytexture", GLint{0});
+        program->set_uniform_value("mytexture", 0);
         program->set_uniform_matrix("projectionMatrix", projection_);
         program->set_uniform_matrix("viewMatrix", view_);
         program->set_uniform_matrix("modelMatrix", glm::mat4(1.0f));

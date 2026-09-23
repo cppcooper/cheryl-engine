@@ -7,7 +7,7 @@
 
 namespace CE::Assets {
     template<typename T>
-    void upload(T* bits, int width, int height, GLuint slot,
+    void upload(const T* bits, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
 
         //the following turns on a special, high-quality filtering mode called "ANISOTROPY"
@@ -66,7 +66,7 @@ namespace CE::Assets {
         unbind();
     }
 
-    Texture::Texture(unsigned char* bitmap_data, int width, int height, GLuint slot,
+    Texture::Texture(const unsigned char* bitmap_data, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt)
     : width(width), height(height), unit(slot) {
 

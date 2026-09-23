@@ -1,7 +1,7 @@
 #pragma once
 #ifndef IDRAW_H
 #define IDRAW_H
-#include <assets/primitives.h>
+#include <assets/primitives/draw-info.h>
 
 namespace CE::Assets {
     struct iDraw {

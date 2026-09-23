@@ -3,10 +3,14 @@
 #define GLSLPROGRAM_H
 
 #define GLM_ENABLE_EXPERIMENTAL
+#include <assets/abstracts/shader.h>
+
 #include <cgl.h>
 #include <glm.hpp>
 #include <string>
 #include <map>
+#include <cassert>
+#include <type_traits>
 
 using GLboolean = unsigned char;
 using GLbyte = signed char;
@@ -21,12 +25,6 @@ using GLdouble = double;
 using GLchar = char;
 
 namespace CE::Assets {
-    // todo: move abstract to new header, refactor name probably, maybe add new methods
-    struct Shader {
-        virtual ~Shader() = default;
-
-        virtual void use() = 0;
-    };
     struct GLSLProgram final : Shader {
         explicit GLSLProgram(int program_id);
         ~GLSLProgram() override;
@@ -41,6 +39,16 @@ namespace CE::Assets {
         void set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m);
         template<typename T>
         void set_uniform_value(const char* name, const T& v);
+
+        void set_uniform_value(const char* name, float value) override { set_uniform_value<float>(name, value); }
+        void set_uniform_value(const char* name, int value) override { set_uniform_value<int>(name, value); }
+        void set_uniform_value(const char* name, unsigned int value) override {
+            set_uniform_value<unsigned int>(name, value);
+        }
+        void set_uniform_value(const char* name, bool value) override { set_uniform_value<bool>(name, value); }
+        void set_uniform_matrix(const char* name, const glm::mat4& value) override {
+            set_uniform_matrix<4>(name, value);
+        }
 
         // todo: convert the code from both methods into parsers that register events
         void print_active_uniforms() const;

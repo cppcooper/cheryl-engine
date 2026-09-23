@@ -12,6 +12,8 @@ namespace CE::Mem {
         static_assert(growth_factor_ > 0, "The growth factor cannot be 0.");
 
         Manager() = default;
+        ~Manager() override { lifetime_token_.reset(); }
+        [[nodiscard]] std::weak_ptr<void> lifetime_token() const { return lifetime_token_; }
         // retrieve stats
         [[nodiscard]] std::string stats();
         // retrieve debug info
@@ -29,6 +31,7 @@ namespace CE::Mem {
         );
 
     private:
+        std::shared_ptr<void> lifetime_token_ = std::make_shared<int>(0);
         // retrieve an allocation with the given length - returns a section of an allocation at least big enough to fill the request
         [[nodiscard]] static HeapBlock allocate(size_t length, std::align_val_t alignment) {
             alignment = static_cast<std::align_val_t>(std::bit_ceil(static_cast<std::size_t>(alignment)));

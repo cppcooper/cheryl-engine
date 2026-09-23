@@ -1,5 +1,8 @@
 #pragma once
 
+#include "input-interface.h"
+
+#ifndef CHERYL_SANDBOX_BUILD
 #include "input-mapper.h"
 
 #include <templates/singleton.h>
@@ -7,6 +10,7 @@
 class GLFWwindow;
 
 namespace CE {
+    class iWindow;
     class Window;
 }
 
@@ -15,20 +19,21 @@ namespace CE::Input {
 
     // Routes GLFW window input into Gainput; Gainput polls gamepads directly.
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
-    class InputSystem final : public Singleton_CTS<InputSystem> {
+    class InputSystem final : public iInputSystem, public Singleton_CTS<InputSystem> {
     public:
         InputSystem();
-        ~InputSystem();
+        ~InputSystem() override;
 
-        void initialize(Window& window);
+        void initialize(iWindow& window) override;
+        void poll() override;
         void update();
-        void deinitialize();
+        void deinitialize() override;
 
-        [[nodiscard]] InputMapper& bindings() { return bindings_; }
+        [[nodiscard]] InputMapper& bindings() override { return bindings_; }
         [[nodiscard]] gainput::InputManager& manager() { return manager_; }
-        [[nodiscard]] gainput::DeviceId keyboard_id() const { return keyboard_id_; }
-        [[nodiscard]] gainput::DeviceId mouse_id() const { return mouse_id_; }
-        [[nodiscard]] gainput::DeviceId gamepad_id() const { return gamepad_id_; }
+        [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
+        [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
+        [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
 
     private:
         static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
@@ -46,3 +51,4 @@ namespace CE::Input {
         Window* window_ = nullptr;
     };
 }
+#endif
