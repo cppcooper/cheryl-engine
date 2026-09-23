@@ -159,6 +159,8 @@ TEST(memory, seeded_checkout_return_preserves_bytes_and_owner_partitions) {
             ASSERT_TRUE(checkContiguousBlocksInPool(BlockManagement<void>{}));
         }
     }
+    // Drain the remaining checkouts, then recheck the bookkeeping with an
+    // empty independent list of live ranges.
     for (const auto& entry : live) manager.return_chunk(entry.block);
     EXPECT_TRUE(valid_partition({}));
 }
@@ -181,6 +183,9 @@ TEST(memory, partial_return_keeps_other_bytes_in_use) {
     EXPECT_EQ(data[31], 0x19);
     EXPECT_EQ(data[96], 0x37);
     EXPECT_EQ(data[159], 0x37);
+
+    // Verify the returned interior span appears as free in the manager's
+    // records while the untouched outer spans retain their byte patterns.
     bool returned_middle = false;
     for (const auto& free : std::get<1>(BlockManagement<void>::pool)) {
         if (free.head.get() == data + 32 && free.length == 64) {
@@ -208,6 +213,9 @@ TEST(memory, rejects_duplicate_returns) {
 TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
     auto& manager = CE::Mem::ExactMMgr::get();
     EXPECT_THROW(manager.checkout_chunk(0), CE::Exceptions::bad_request);
+
+    // Return a low-alignment candidate, then request stronger alignment.
+    // Reuse must satisfy the new request regardless of the free candidate.
     auto lower = manager.checkout_chunk(77, 64);
     manager.return_chunk(lower);
     auto higher = manager.checkout_chunk(77, 256);
@@ -220,11 +228,16 @@ TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
 TEST(memory, preallocation_respects_explicit_growth_and_alignment) {
     auto& manager = CE::Mem::ExactMMgr::get();
     BlockManagement<void> bm;
+
+    // Snapshot existing owners so the later assertions describe only the
+    // allocation made by this explicit preallocation call.
     std::set<void*> before;
     {
         std::shared_lock lock(std::get<0>(bm.registry));
         for (const auto& owner : std::get<1>(bm.registry)) before.emplace(owner.head.get());
     }
+    // Apply the growth parameters and inspect the new owner: one block must
+    // have the computed size and the requested alignment.
     manager.preallocate(1, 32, 16, 2.0, std::align_val_t{128});
     std::vector<CE::Mem::Block> added;
     {
@@ -261,8 +274,12 @@ TEST(memory, typed_default_allocator_returns_all_bytes) {
         }
     }
     ASSERT_GE(granted_bytes, sizeof(*ptr) * count);
+    // Write through the requested typed elements before releasing storage.
     for (std::size_t i = 0; i < count; ++i) ptr[i] = i + 100;
     for (std::size_t i = 0; i < count; ++i) EXPECT_EQ(ptr[i], i + 100);
+
+    // Deallocate using the requested count, then verify the pool covers the
+    // full manager-granted byte span, including its tail.
     allocator.deallocate(ptr, count);
     bool all_bytes_returned = false;
     {
@@ -320,6 +337,9 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
         }
         EXPECT_EQ(unique_addresses.size(), 3);
         EXPECT_EQ(TrackedAsset::live, 3);
+
+        // Cache only the middle object and take another handle to it. The
+        // other two have no owners once the original batch is released.
         cache.retain(42, assets[1]);
         retained = cache.get_asset(42);
         ASSERT_EQ(retained.get(), assets[1].get());
@@ -332,6 +352,8 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
     }
     EXPECT_EQ(TrackedAsset::live, 1);
     EXPECT_EQ(retained->value(), 11);
+
+    // Dropping the last external handle finally destroys the cached object.
     retained.reset();
     EXPECT_EQ(TrackedAsset::live, 0);
     EXPECT_EQ(TrackedAsset::destroyed, 3);
@@ -341,6 +363,9 @@ TEST(memory, object_pool_constructs_only_requested_objects) {
     TrackedAsset::live = 0;
     TrackedAsset::destroyed = 0;
     auto& pool = CE::Obj::Pool<TrackedAsset>::get();
+
+    // Empty object requests are harmless, but a raw block cannot have zero
+    // length; then construct three real objects to exercise handle ownership.
     EXPECT_TRUE(pool.retrieve_objects(0, 21).empty());
     EXPECT_THROW(pool.retrieve_block(0), CE::Exceptions::bad_request);
     auto objects = pool.retrieve_objects(3, 21);

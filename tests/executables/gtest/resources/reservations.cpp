@@ -72,8 +72,9 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
         ASSERT_EQ(reserved.remaining_ranges().size(), 1);
         base = reserved.remaining_ranges()[0].head.get();
         ASSERT_EQ(reserved.remaining_ranges()[0].length, 8);
-        // Claim two adjacent interior slots and a separate interior slot.
-        // A failed constructor and a duplicate claim must leave ranges intact.
+
+        // Claim two adjacent interior slots and one separate slot. Their
+        // handles should point into the original eight-slot allocation.
         first = reserved.emplace(3, 30);
         second = reserved.emplace(4, 40);
         third = reserved.emplace(1, 10);
@@ -81,6 +82,9 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
         EXPECT_EQ(first.get(), base + 3);
         EXPECT_EQ(second.get(), base + 4);
         EXPECT_EQ(third.get(), base + 1);
+
+        // A constructor failure leaves slot 6 unclaimed, and attempting to
+        // claim slot 3 again must not disturb the three live objects.
         EXPECT_THROW(reserved.emplace(6, -1), std::runtime_error);
         EXPECT_THROW(reserved.emplace(3, 99), CE::Exceptions::bad_request);
         EXPECT_EQ(ReservationItem::live, 3);
@@ -107,6 +111,8 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
     EXPECT_EQ(ReservationItem::live, 0);
     EXPECT_EQ(ReservationItem::destroyed, 3);
 
+    // After the final handle returns its slot, none of this allocation's
+    // active sections may remain in the manager bookkeeping.
     BlockManagement<ReservationItem> bm;
     auto& sections = std::get<1>(bm.sections);
     for (const auto& section : sections) {
@@ -146,6 +152,9 @@ TEST(memory, pool_releases_unconstructed_tail_after_constructor_failure) {
     // tail must both return their slots before another batch can be retrieved.
     EXPECT_THROW(context->retrieve_objects(3), std::runtime_error);
     EXPECT_EQ(FailingBatchItem::live, 0);
+
+    // Retry with the same state after the failure: the entire batch should
+    // be usable and later release all three constructed objects.
     auto objects = context->retrieve_objects(3);
     EXPECT_EQ(objects.size(), 3);
     EXPECT_EQ(FailingBatchItem::live, 3);
@@ -170,6 +179,9 @@ TEST(memory, factory_deallocates_one_batch_after_its_last_element) {
     EXPECT_EQ(ReservationItem::live, 1);
     EXPECT_EQ(retained->value, 7);
     EXPECT_EQ(Allocator::deallocated, 0);
+
+    // The one remaining handle destroys its element and triggers the only
+    // deallocation of the original three-slot allocation.
     retained.reset();
     EXPECT_EQ(ReservationItem::live, 0);
     EXPECT_EQ(ReservationItem::destroyed, 3);

@@ -10,8 +10,8 @@
 
 
 TEST(templates_block, block_methods) {
-    // All split heads must remain offsets into one allocation; an out-of-range
-    // split leaves the original range unchanged.
+    // Start with one owned byte range and establish its inclusive start and
+    // exclusive end before any split changes its boundaries.
     constexpr std::size_t len = 2048;
     char* p_raw = new char[len];
     std::shared_ptr<char> ptr(p_raw, [](const char* p){ delete[] p; });
@@ -24,6 +24,9 @@ TEST(templates_block, block_methods) {
     Block<char> b {ptr, ptr, align_val, len};
     ASSERT_TRUE(b.contains(p_raw+i5));
     ASSERT_TRUE(!b.contains(p_raw+len));
+
+    // Split the successive tails; each new head must advance by the length
+    // removed from the preceding piece.
     auto b2 = b.split_exactly(i1);
     ASSERT_TRUE(b2.has_value());
     ASSERT_EQ(b2->head.get(), p_raw+i1);
@@ -33,6 +36,9 @@ TEST(templates_block, block_methods) {
     auto b4 = b3->split_exactly(i3);
     ASSERT_TRUE(b4.has_value());
     ASSERT_EQ(b4->head.get(), p_raw+i1+i2+i3);
+
+    // Split the original front again, then reject an oversized split without
+    // disturbing the distant tail created earlier.
     auto b5 = b.split_exactly(i4);
     ASSERT_TRUE(b5.has_value());
     ASSERT_EQ(b5->head.get(), p_raw+i4);
@@ -42,8 +48,8 @@ TEST(templates_block, block_methods) {
 }
 
 TEST(templates_block, typed_split_preserves_element_ranges) {
-    // Typed lengths are element counts, while contains() tests byte addresses
-    // through the last element's end.
+    // Establish four typed elements and their byte boundaries. A split at
+    // zero must leave the original range unchanged.
     struct Value { std::uint64_t data; };
     auto backing = std::shared_ptr<Value>(new Value[4], [](Value* p) { delete[] p; });
     Block<Value> block{backing, backing, CE::ptr::calculate_alignment(backing.get()), 4};
@@ -55,6 +61,8 @@ TEST(templates_block, typed_split_preserves_element_ranges) {
     EXPECT_TRUE(block.contains(reinterpret_cast<unsigned char*>(backing.get() + 4) - 1));
     EXPECT_FALSE(block.contains(backing.get() + 4));
 
+    // Peel off the first element. The remainder starts at the next element,
+    // and the two ranges still cover adjacent parts of the same allocation.
     auto rest = block.split_exactly(1);
     ASSERT_TRUE(rest.has_value());
     EXPECT_EQ(rest->head.get(), backing.get() + 1);
@@ -63,6 +71,8 @@ TEST(templates_block, typed_split_preserves_element_ranges) {
     EXPECT_FALSE(block.contains(backing.get() + 1));
     EXPECT_TRUE(BlockHelpers::is_contiguous(block, *rest));
 
+    // Split the remainder into a two-element middle and a one-element tail.
+    // A split_at(3) on the untouched copy must locate that same final element.
     auto last = rest->split_exactly(2);
     ASSERT_TRUE(last.has_value());
     EXPECT_EQ(last->head.get(), backing.get() + 3);
@@ -82,8 +92,8 @@ struct CullProbe : AbstractManager<CullProbeItem> {
 };
 
 TEST(templates_block, cull_only_reclaims_complete_stale_owners) {
-    // Two fully returned owners become stale; the age threshold decides when
-    // they enter the release queue, and release_culled removes their records.
+    // Register two independent allocations and return each complete owner;
+    // both should now be stale candidates for culling.
     CullProbe manager;
     BlockManagement<CullProbeItem> bm;
     auto make_owner = [] {
@@ -97,11 +107,15 @@ TEST(templates_block, cull_only_reclaims_complete_stale_owners) {
     manager.merge_into_pool(first);
     manager.merge_into_pool(second);
 
+    // A positive age does not select these new entries. An age of zero moves
+    // both into the release queue and empties the stale map.
     manager.cull(std::chrono::minutes(1));
     EXPECT_TRUE(std::get<1>(bm.release).empty());
     manager.cull(std::chrono::minutes(0));
     EXPECT_EQ(std::get<1>(bm.release).size(), 2);
     EXPECT_TRUE(std::get<1>(bm.stale).empty());
+
+    // Release the queued owners and ensure no registry or pool records remain.
     manager.release_culled();
     EXPECT_TRUE(std::get<1>(bm.release).empty());
     EXPECT_TRUE(std::get<1>(bm.pool).empty());
@@ -115,8 +129,8 @@ struct AdjacentBlockProbe : AbstractManager<char> {
 };
 
 TEST(templates_block, adjacent_left) {
-    // Exercise predecessor lookup in two different set orderings before
-    // checking address-based search within a shared owner.
+    // Set up two ranges with a gap, then query at the first range, inside
+    // the gap, and just beyond the second range.
     auto backing = std::shared_ptr<char>(new char[128], [](const char* p) { delete[] p; });
     auto secondHead = std::shared_ptr<char>(backing, backing.get() + 64);
     const Block<char> first{backing, backing, CE::ptr::calculate_alignment(backing.get()), 32};
@@ -131,6 +145,8 @@ TEST(templates_block, adjacent_left) {
     std::get<1>(sections).insert({first, second});
     std::get<1>(registry).insert({first, second});
 
+    // adjacent_left returns the immediate predecessor in each set's order,
+    // even when the query lies inside the gap rather than in a stored block.
     AdjacentBlockProbe manager;
     EXPECT_FALSE(manager.adjacent_left(first, sections).has_value());
     EXPECT_FALSE(manager.adjacent_left(first, registry).has_value());
@@ -138,6 +154,9 @@ TEST(templates_block, adjacent_left) {
     EXPECT_EQ(manager.adjacent_left(middle, registry), first);
     EXPECT_EQ(manager.adjacent_left(beyond, sections), second);
     EXPECT_EQ(manager.adjacent_left(beyond, registry), second);
+
+    // Give the ranges a common owner to test search_left/search_right's
+    // address-and-owner rules separately from raw predecessor lookup.
     auto same_owner_second = second;
     same_owner_second.owner = backing;
     auto same_owner_beyond = beyond;
@@ -158,6 +177,8 @@ struct MergeProbe : AbstractManager<MergeProbeItem> {
 };
 
 TEST(templates_block, pool_merge_at_owner_head) {
+    // Partition one owner into front, middle, and back. Seed the middle as
+    // reusable while the two outer pieces are still active.
     auto backing = std::shared_ptr<MergeProbeItem>(new MergeProbeItem[128], [](MergeProbeItem* p) { delete[] p; });
     const Block<MergeProbeItem> owner{backing, backing, CE::ptr::calculate_alignment(backing.get()), 128};
     auto front = owner;
@@ -246,6 +267,8 @@ TEST(templates_block, iManage) {
     if (std::less<ManageProbeItem*>{}(second.head.get(), first.head.get())) {
         std::swap(first, second);
     }
+    // Register owners in address order; lookups must not invent the second
+    // owner until it is recorded, then must distinguish both interiors.
     test.record(first);
     EXPECT_EQ(test.owner(first.head.get()), first);
     EXPECT_EQ(test.owner(first.head.get() + 17), first);
@@ -271,6 +294,9 @@ TEST(templates_block, iManage) {
     EXPECT_EQ(test.section(first.head.get() + 40), middle);
     EXPECT_EQ(test.section(first.head.get() + 95), back);
     EXPECT_EQ(test.section(second.head.get() + 40), second);
+
+    // Mark the middle free and return the front. Their partial merge must
+    // remain a section because the back of the owner is still outstanding.
     {
         std::unique_lock lock(std::get<0>(bm.pool));
         std::get<1>(bm.pool).emplace(middle);
@@ -321,6 +347,8 @@ TEST(templates_block, BlockManagementChecks) {
     constexpr std::size_t i3 = 256;
     constexpr std::size_t i4 = 512;
 
+    // Keep b0 as the full owner and divide a copy into five sections. Later
+    // checks deliberately move those pieces among the bookkeeping sets.
     const Block<char> b0 {ptr, ptr, align_val, len};
     auto b1 = b0;
     auto b2 = *b1.split_exactly(i1);
@@ -340,13 +368,18 @@ TEST(templates_block, BlockManagementChecks) {
     pool.erase(b4);
     lpool.unlock();
     ASSERT_TRUE(checkContiguousBlocksInPool(bm)); // (b1,b5)
-    // in the unlikely event that two contiguous blocks have different owners.. that's fine
+
+    // Reintroduce the intervening address with a different owner; physical
+    // adjacency alone is not grounds to merge two free ranges.
     auto b4_2 = b4;
     b4_2.owner = std::shared_ptr<char>(nullptr); // invalid, but different.. good enough for testing
     lpool.lock();
     pool.emplace(b4_2);
     lpool.unlock();
     ASSERT_TRUE(checkContiguousBlocksInPool(bm)); // (b1, b4_2, b5)
+
+    // Restore the original owner and choose a free section touching b1. The
+    // checker must find this pair even if the pool set sorts it elsewhere.
     lpool.lock();
     pool.erase(b4_2);
     pool.emplace(b2);
@@ -360,7 +393,8 @@ TEST(templates_block, BlockManagementChecks) {
     lreg.unlock();
     ASSERT_FALSE(checkOwnerEqualsHeadInRegistry(bm));
 
-    // b0 being in stale and release but not registry means bm should not be valid
+    // Stale and pending release records for b0 cannot be valid while only a
+    // partial section, b2, is registered as the supposed owner.
     lstale.lock();
     stale.emplace(b0, BMv::clock::now());
     lstale.unlock();
@@ -369,14 +403,14 @@ TEST(templates_block, BlockManagementChecks) {
     lrelease.unlock();
     ASSERT_FALSE(checkStaleAndReleaseInRegistry(bm));
 
+    // Replace the bad registry entry with the full owner, making both the
+    // owner check and the stale/release relationship valid.
     lreg.lock();
     reg.erase(b2);
-    // b0 is the owner of the block, registry should be valid with it
     reg.emplace(b0);
     lreg.unlock();
     ASSERT_TRUE(checkOwnerEqualsHeadInRegistry(bm));
 
-    // b0 now also being in registry means all three are valid
     ASSERT_TRUE(checkStaleAndReleaseInRegistry(bm));
 
     // The split pieces may share an owner with b0 without being the same
@@ -393,7 +427,8 @@ TEST(templates_block, BlockManagementChecks) {
     ASSERT_TRUE(checkPoolInSectionsOrInRegistry(bm));
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(bm));
 
-    // if there is a Block in both registry and sections, then bm is invalid... b0 for example
+    // Put the exact owner in sections as well to violate their disjointness;
+    // then remove all sections before checking whole-owner pool state.
     lsec.lock();
     sec.emplace(b0);
     lsec.unlock();
@@ -411,7 +446,8 @@ TEST(templates_block, BlockManagementChecks) {
     pool.erase(b1);
     pool.erase(b2);
     pool.erase(b5);
-    // if a block is in registry, and pool then it must be in stale as well
+    // A whole owner in the pool also needs a stale marker. Removing that
+    // marker creates the next invalid state without changing ownership.
     pool.emplace(b0);
     lpool.unlock();
     ASSERT_TRUE(checkPoolInRegistryAlsoInStale(bm));
