@@ -20,24 +20,22 @@ namespace CE::Assets {
         SpriteDefinition definition;
     };
 
-    struct SpriteFrame final : Draw2D, protected Frame {
+    struct SpriteFrame final : Draw2D, Frame<SpriteFrame> {
         explicit SpriteFrame(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture) :
             Draw2D(geometry, texture), Frame(cell, 0, 1) {}
 
         void draw(const DrawInfo& info) override;
-        SpriteFrame& operator[](std::size_t frame);
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
     /** A selected clip with mutable frame index; the caller chooses when to advance it.
      * Indexing selects a cell, with looping or final-frame clamping from the definition.
      */
-    struct SpriteAnimation final : Draw2D, protected Frame {
+    struct SpriteAnimation final : Draw2D, Frame<SpriteAnimation> {
         explicit SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                  const shptr<Image>& texture);
 
         void draw(const DrawInfo& info) override;
-        SpriteFrame operator[](std::size_t frame);
         [[nodiscard]] const SpriteAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
@@ -49,11 +47,10 @@ namespace CE::Assets {
     /** Cached geometry/image and named animation definitions for one sprite grid.
      * Animation lookup returns a value; keep that value if frame selection should persist.
      */
-    struct Sprite final : Asset2D, protected Frame {
+    struct Sprite final : Asset2D, Frame<Sprite> {
         explicit Sprite(SpriteData data);
 
         void draw(const DrawInfo& info) override;
-        SpriteFrame operator[](std::size_t frame);
         SpriteAnimation operator[](const std::string& animation) const;
         SpriteAnimation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
         [[nodiscard]] bool has_animation(const std::string& animation,

@@ -19,22 +19,20 @@ namespace CE::Assets {
         TilesetDefinition definition;
     };
 
-    struct Tile final : Draw2D, protected Frame {
+    struct Tile final : Draw2D, Frame<Tile> {
         explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture) :
             Draw2D(geometry, texture), Frame(cell, 0, 1) {}
 
         void draw(const DrawInfo& info) override;
-        Tile& operator[](std::size_t frame) { return Frame::operator[]<Tile>(frame); }
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
     /** A selected tile clip with mutable frame index; advancing elapsed time belongs to its caller. */
-    struct TileAnimation final : Draw2D, protected Frame {
+    struct TileAnimation final : Draw2D, Frame<TileAnimation> {
         explicit TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                const shptr<Image>& texture);
 
         void draw(const DrawInfo& info) override;
-        Tile operator[](std::size_t frame);
         [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
@@ -49,12 +47,11 @@ namespace CE::Assets {
     /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
      * These queries expose metadata; they do not inspect a world or choose neighbors.
      */
-    struct Tileset final : Asset2D, protected Frame {
+    struct Tileset final : Asset2D, Frame<Tileset> {
         explicit Tileset(TilesetData data);
         ~Tileset() override = default;
 
         void draw(const DrawInfo& info) override;
-        Tileset& operator[](std::size_t frame) { return Frame::operator[]<Tileset>(frame); }
         [[nodiscard]] Tile tile(std::size_t cell) const;
         [[nodiscard]] TileAnimation animation(const std::string& name) const;
         [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;

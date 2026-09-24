@@ -12,11 +12,6 @@ namespace CE::Assets {
         geometry->draw(VAONumbers::calculate_num_vertices(offset_), VAONumbers::vertices_per_quad);
     }
 
-    SpriteFrame& SpriteFrame::operator[](const std::size_t frame) {
-        set_frame(frame);
-        return *this;
-    }
-
     SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                      const shptr<Image>& texture) :
         Draw2D(geometry, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
@@ -27,13 +22,6 @@ namespace CE::Assets {
 
     void SpriteAnimation::draw(const DrawInfo& info) {
         SpriteFrame(definition_.frames[index_].cell, geometry, texture).draw(info);
-    }
-
-    SpriteFrame SpriteAnimation::operator[](const std::size_t frame) {
-        // The clip's loop flag determines whether an out-of-range request
-        // wraps or stays on the final frame before selecting its grid cell.
-        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
-        return SpriteFrame(definition_.frames[index_].cell, geometry, texture);
     }
 
     std::chrono::milliseconds SpriteAnimation::frame_duration() const {
@@ -60,11 +48,6 @@ namespace CE::Assets {
 
     void Sprite::draw(const DrawInfo& info) {
         SpriteFrame(index_, geometry, texture).draw(info);
-    }
-
-    SpriteFrame Sprite::operator[](const std::size_t frame) {
-        set_frame(frame);
-        return SpriteFrame(index_, geometry, texture);
     }
 
     std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {

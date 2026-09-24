@@ -24,13 +24,6 @@ namespace CE::Assets {
         Tile(definition_.frames[index_].cell, geometry, texture).draw(info);
     }
 
-    Tile TileAnimation::operator[](const std::size_t frame) {
-        // Looping clips wrap the requested index; a finite clip holds its
-        // final frame after the sequence has been exhausted.
-        index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
-        return Tile(definition_.frames[index_].cell, geometry, texture);
-    }
-
     std::chrono::milliseconds TileAnimation::frame_duration() const {
         return definition_.frames.at(index_).duration;
     }
