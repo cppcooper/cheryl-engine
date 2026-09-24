@@ -29,6 +29,9 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
+    /** A selected clip with mutable frame index; the caller chooses when to advance it.
+     * Indexing selects a cell, with looping or final-frame clamping from the definition.
+     */
     struct SpriteAnimation final : Draw2D, protected Frame {
         explicit SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                  const shptr<Image>& texture);
@@ -43,6 +46,9 @@ namespace CE::Assets {
         SpriteAnimationDefinition definition_;
     };
 
+    /** Cached geometry/image and named animation definitions for one sprite grid.
+     * Animation lookup returns a value; keep that value if frame selection should persist.
+     */
     struct Sprite final : Asset2D, protected Frame {
         explicit Sprite(SpriteData data);
 

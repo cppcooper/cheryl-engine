@@ -12,6 +12,7 @@
 namespace CE::Assets {
     void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
         bind_provider(provider);
+        // Reserve for new IDs only; a repeated load does not replace a cached tileset.
         const auto needed = std::count_if(definitions.begin(), definitions.end(), [this](const auto& definition) {
             return !loaded_assets.contains(definition.id());
         });
@@ -33,6 +34,8 @@ namespace CE::Assets {
             if (texture_size.width == 0 || texture_size.height == 0) {
                 throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' has an empty texture");
             }
+            // Translate each grid cell into vertices, upload once, then retain geometry and
+            // unconsumed animation/autotile metadata in the cached tileset.
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
             auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
             auto asset = reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh),

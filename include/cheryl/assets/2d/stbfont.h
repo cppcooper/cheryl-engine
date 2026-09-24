@@ -21,6 +21,12 @@ namespace CE::Assets {
         float line_height{};
     };
 
+    // TODO: A Unicode/text-layout service must decode code points and shape glyph runs before
+    // drawing; this atlas covers only printable ASCII and the current draw loop treats bytes as
+    // characters (multi-byte UTF-8 sequences each produce separate fallback glyphs).
+    /** Baked ASCII glyph quads, advances, and alpha atlas for immediate text submission.
+     * print() sets text/angle and draws synchronously through the supplied material.
+     */
     struct STBFont final : Font {
         explicit STBFont(STBFontData data);
         ~STBFont() override = default;

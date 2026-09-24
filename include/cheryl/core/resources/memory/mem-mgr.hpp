@@ -10,6 +10,7 @@
 namespace CE::Mem {
     template<double gf_, int32_t gb_>
     std::string Manager<gf_,gb_>::stats() {
+        // Read the reusable and registered ranges under shared locks for one bookkeeping snapshot.
         std::shared_lock l1(get_mutex(pool));
         std::shared_lock l2(get_mutex(sections));
         std::shared_lock l3(get_mutex(registry));
@@ -21,6 +22,8 @@ namespace CE::Mem {
         for(const auto &b : std::get<1>(this->registry)) {
             total += b.length;
         }
+        // TODO: Define a zero-allocation result before dividing by total; an untouched
+        // manager currently formats 0/0 as the free percentage.
         auto tot = human_readable(total);
         auto avail = human_readable(available);
         return std::format(
@@ -48,6 +51,8 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::return_ptr(void* ptr) {
+        // Split owners are tracked by section; whole allocations may still
+        // exist only in the registry. Give the narrower section first chance.
         if (auto sec = find_section(ptr); sec.has_value() && sec->contains(ptr)) {
             return_chunk(*sec);
         } else if (auto owner = find_owner(ptr); owner.has_value() && owner->contains(ptr)) {
@@ -57,6 +62,7 @@ namespace CE::Mem {
 
     template<double growth_factor_, int32_t growth_base_>
     void Manager<growth_factor_, growth_base_>::return_portion(void* ptr, std::size_t length) {
+        // Resolve the active subrange (or whole owner) and reject a return that crosses its end.
         const auto section = find_section(ptr);
         const auto block = section.has_value() ? section : find_owner(ptr);
         if (!block.has_value() || length == 0 || !block->contains(ptr) || contains(*block, pool)) {
@@ -68,10 +74,14 @@ namespace CE::Mem {
             throw Exceptions::bad_request(CE_HERE, "The returned memory portion exceeds its active block.");
         }
         if (offset == 0 && length == block->length) {
+            // An exact return follows the whole-block path, including its
+            // active-section check and eventual stale-owner bookkeeping.
             return_chunk(*block);
             return;
         }
 
+        // Partition around the returned slice. Keep unreleased pieces in sections and merge
+        // only the returned slice with adjacent reusable ranges in the pool.
         erase(*block, sections);
         auto returned = *block;
         if (offset > 0) {
@@ -89,6 +99,7 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::return_chunk(const Block &returned) {
+        // A whole owner cannot be returned while any of its split sections remain in use.
         const bool in_sections = contains(returned, sections);
         const bool in_registry = contains(returned, registry);
         bool has_active_sections = false;
@@ -106,6 +117,8 @@ namespace CE::Mem {
             MTRACE() << debug_info();
             throw Exceptions::failed_operation(CE_HERE,"Memory Manager was returned an unknown block");
         }
+        // merge_into_pool owns the free-range transition: adjacent free
+        // sections coalesce and a complete owner becomes eligible for culling.
         merge_into_pool(returned);
     }
 
@@ -117,29 +130,29 @@ namespace CE::Mem {
         const auto request_length = Math::adjust_length(length, fit, growth_base, growth_factor);
         const auto requested_alignment = std::bit_ceil(std::max(alignment, std::size_t{64}));
         const auto align_val = static_cast<std::align_val_t>(requested_alignment);
+        // Reuse a suitable pool range or allocate/record a new backing owner.
         OBlock ob = fill_request(request_length, align_val);
         const bool request_filled = ob.has_value();
-        // do we have an allocation?
         if (!request_filled) {
-            // no? we'll make an allocation now
             ob = allocate(request_length, align_val);
             MTRACE() << "allocated: " << *ob;
             record_new(*ob);
         }
-        // we will now know precisely how much we're passing along, it may be up to 63 bytes extra
+        // Reclaiming a stale whole owner cancels its pending cull before checkout.
         if (request_filled && contains(*ob, registry)) {
-            // an existing block may still be marked stale
+            // A previously free owner may still be queued for deferred release.
             erase(*ob, stale, release);
         }
         auto original = *ob;
         const auto right = ob->split_at(request_length);
-        // we only need records if the right portion exists, because sections only deals in sub-blocks
+        // A split makes both portions sections; immediately return the aligned spare tail to
+        // the pool. An unsplit range remains represented by its original owner record.
         if (right.has_value()) {
             erase(original, sections);
 
-            // record the left portion
+            // Both halves replace the former section record; the requested
+            // head stays checked out while only the spare tail becomes free.
             emplace(*ob, sections);
-            // record the right portion
             emplace(*right, sections);
             merge_into_pool(*right);
             MTRACE() << "taking " << *right << " back to the pool.";
@@ -150,6 +163,8 @@ namespace CE::Mem {
 
     template<double gf_, int32_t gb_>
     void Manager<gf_,gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
+        // Seed the registry and reusable pool together, then start the stale
+        // clock for each untouched allocation so normal culling can reclaim it.
         const auto len = Math::adjust_length(width, Enum::greedy, gb, gf);
         MINFO() << "Pre-allocating " << blocks << " " << width << " byte wide blocks aligned to " << alignment;
         for(int i = 0; i < blocks; ++i) {

@@ -25,6 +25,8 @@ namespace CE::Assets {
     }
 
     Tile TileAnimation::operator[](const std::size_t frame) {
+        // Looping clips wrap the requested index; a finite clip holds its
+        // final frame after the sequence has been exhausted.
         index_ = definition_.loop ? frame % definition_.frames.size() : std::min(frame, definition_.frames.size() - 1);
         return Tile(definition_.frames[index_].cell, geometry, texture);
     }
@@ -37,6 +39,7 @@ namespace CE::Assets {
         Asset2D(std::move(data.geometry), std::move(data.texture)),
         Frame(0, 0, data.definition.grid.cell_count()),
         definition_(std::move(data.definition)) {
+        // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
                 throw Exceptions::invalid_args(CE_HERE, "Multiple tile animations target the same cell");
@@ -60,6 +63,8 @@ namespace CE::Assets {
     }
 
     std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {
+        // Tile maps choose a base cell before animation; this index finds a
+        // clip only when that original cell is an animated target.
         const auto animation_name = animation_targets_.find(target);
         if (animation_name != animation_targets_.end()) {
             return animation(animation_name->second);

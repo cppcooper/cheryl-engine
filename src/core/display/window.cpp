@@ -24,6 +24,7 @@ namespace CE {
         }
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         glfwGetFramebufferSize(glfw_window_, &framebuffer_size_.width, &framebuffer_size_.height);
+        // Track logical and pixel sizes separately; GLFW callbacks may subsequently change either.
         glfwSetWindowUserPointer(glfw_window_, this);
         glfwSetWindowSizeCallback(glfw_window_, on_window_size);
         glfwSetFramebufferSizeCallback(glfw_window_, on_framebuffer_size);
@@ -57,6 +58,7 @@ namespace CE {
         if (framebuffer_size_ == FramebufferSize{width, height})
             return;
         framebuffer_size_ = {width, height};
+        // Consumers recompute pixel-dependent state (for example, camera projection) on this event.
         SubSystems::EventSystem::get().dispatch("window-resized", WindowResized{this, framebuffer_size_});
     }
 
@@ -64,6 +66,8 @@ namespace CE {
         if (width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         glfwSetWindowSize(glfw_window_, width, height);
+        // Query the accepted logical size and remember it only for ordinary
+        // windows; fullscreen restoration uses the last windowed dimensions.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         if (window_mode_ == Enum::window_mode::NORMAL) {
             windowed_width_ = logical_size_.width;
@@ -71,6 +75,7 @@ namespace CE {
         }
         int framebuffer_width = 0;
         int framebuffer_height = 0;
+        // A logical resize can yield a different pixel size on scaled displays.
         glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
         update_framebuffer_size(framebuffer_width, framebuffer_height);
     }
@@ -87,11 +92,14 @@ namespace CE {
             throw Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode");
         }
 
+        // Save the ordinary window placement before changing modes so NORMAL can restore it.
         if (window_mode_ == Enum::window_mode::NORMAL) {
             glfwGetWindowPos(glfw_window_, &windowed_x_, &windowed_y_);
             glfwGetWindowSize(glfw_window_, &windowed_width_, &windowed_height_);
         }
         window_mode_ = mode;
+        // Windowed and borderless use a detached monitor; fullscreen attaches
+        // the selected monitor at its video mode and refresh rate.
         switch (mode) {
         case Enum::window_mode::NORMAL:
             glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
@@ -106,6 +114,7 @@ namespace CE {
                                  vidmode->refreshRate);
             break;
         }
+        // Mode switches can change framebuffer size independently of logical window size.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
         int framebuffer_width = 0;
         int framebuffer_height = 0;
@@ -131,6 +140,8 @@ GLFWwindow* create_native_window(GLFWmonitor* monitor, const Enum::window_mode m
         mode != Enum::window_mode::FULLSCREEN)
         throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
+    // The initial mode decides both decoration and whether GLFW creates the
+    // window directly on the monitor; later switches use Window::set_mode.
     glfwWindowHint(GLFW_DECORATED, mode == Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
     auto* fullscreen_monitor = mode == Enum::window_mode::FULLSCREEN ? monitor : nullptr;
     auto* native = glfwCreateWindow(width, height, generate_title(), fullscreen_monitor, nullptr);

@@ -8,6 +8,9 @@
  * For simple singleton creation.
  * You can keep inheriting these all you want, it will always be the same instance they point to.
  * Uses static_assert verifying constructibility - requires public constructor(s)
+ * TODO: std::call_once serializes construction only; it does not make Type's later operations thread-safe.
+ * Concurrent first get(args...) calls with different arguments also make configuration depend on whichever
+ * caller wins initialization, so argument-bearing singletons need an explicit initialization contract.
  */
 template<class Type>
 class Singleton_CTS {
@@ -27,6 +30,8 @@ class Singleton_CTS {
 public:
     template<typename... Args>
     static Type& get(Args... args) {
+        // Construct once for a matching signature. If this call cannot
+        // construct Type, it can only retrieve an already created instance.
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
         }
@@ -73,6 +78,8 @@ protected:
 public:
     template<typename... Args>
     static Type& get(Args... args) {
+        // This accessor shares the same one-time construction policy while
+        // allowing Type to keep its own constructor nonpublic.
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
         }

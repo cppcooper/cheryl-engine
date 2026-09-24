@@ -32,12 +32,17 @@ namespace CE::Assets {
             limit_ = other.limit_;
             return *this;
         }
+        // TODO: Prefer accessors over public reference aliases. Reference members force the
+        // hand-written copy/move operations above and make Frame's value semantics unusually fragile.
         const std::size_t& offset;
         const std::size_t& index;
         const std::size_t& limit;
         template <typename T>
         T& operator[](const std::size_t frame) {
             set_frame(frame);
+            // TODO: Replace this unchecked reinterpret_cast with a type-safe frame-selection API.
+            // Frame is used as a secondary base (for example by Tileset), so its subobject address
+            // is not guaranteed to equal the complete T object's address under multiple inheritance.
             return *reinterpret_cast<T*>(this);
         }
         void set_frame(const std::size_t frame) {

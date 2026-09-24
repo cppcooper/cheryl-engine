@@ -33,6 +33,10 @@ namespace CE::Assets {
         std::uint32_t height{};
     };
 
+    /** Row-major cells in image pixel coordinates; origin is the top-left of the first cell.
+     * cell_rect() maps an index to a source rectangle, while the grid geometry builder converts
+     * that rectangle to vertices and normalized texture coordinates for the selected backend.
+     */
     struct GridDefinition {
         PixelPoint origin;
         PixelSize frame;
@@ -126,6 +130,9 @@ namespace CE::Assets {
         double weight{1.0};
     };
 
+    /** Parsed terrain signatures and candidate tile indices. A future tile-map system computes
+     * a signature from neighbors, looks up variants, and selects by their stored weights.
+     */
     struct WangAutotileDefinition {
         std::string description;
         WangType type{};
@@ -179,6 +186,9 @@ namespace CE::Assets {
         [[nodiscard]] std::string id() const;
     };
 
+    /** Fully resolved, CPU-only definitions. Texture paths are relative to this document's
+     * directory; Loader validates cross-document IDs and image bounds before GPU construction.
+     */
     struct AssetManifest {
         std::filesystem::path source;
         std::string schema;

@@ -59,7 +59,9 @@ namespace CE::Assets {
     private:
         int id_prog;
         bool linked;
-        //Store uniforms and attributes in a map for easy lookup
+        // TODO: Keep uniform and attribute lookup caches separate. OpenGL gives them distinct
+        // namespaces, so identical names can legally resolve to different locations.
+        // Cache driver lookups after linking for repeated draw submissions.
         std::map<std::string, int> locations;
 
         bool link();
@@ -68,6 +70,8 @@ namespace CE::Assets {
 
     template<glm::length_t dim>
     void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {
+        // Resolve a linked program's uniform once, then choose the matching
+        // GL upload at compile time from the vector's dimension.
         static_assert(2 <= dim && dim <= 4, "set_uniform_vec can only take 2-4D vectors");
         int loc = get_uniform_location(name);
         assert(loc >= 0 && "set_uniform_vec failed");
@@ -84,6 +88,8 @@ namespace CE::Assets {
 
     template<glm::length_t dim>
     void GLSLProgram::set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m) {
+        // GLM's contiguous column-major storage is passed from its first
+        // element; the dimension selects the appropriate matrix uniform call.
         static_assert(2 <= dim && dim <= 4, "set_uniform_matrix can only take 2-4D matrices");
         int loc = get_uniform_location(name);
         assert(loc >= 0 && "set_uniform_matrix failed");

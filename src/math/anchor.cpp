@@ -85,6 +85,8 @@ namespace CE::math {
         const auto sx = static_cast<float>(x0);
         const auto sy = static_cast<float>(y0);
 
+        // Shift the local quad around its normalized pivot, then flip the top-left
+        // source rectangle's vertical pixel coordinates into OpenGL UV space.
         const float left = -pivot.x * fw;
         const float right = (1.0f - pivot.x) * fw;
         const float bottom = (pivot.y - 1.0f) * fh;
@@ -94,6 +96,8 @@ namespace CE::math {
         const float v0 = 1.0f - ((sy + fh) / th);
         const float v1 = 1.0f - (sy / th);
 
+        // Submit bottom-left, bottom-right, top-right and then the second
+        // triangle sharing that diagonal; each cell remains one contiguous range.
         vertices[0] = {left, bottom, 0.0f, u0, v0};
         vertices[1] = {right, bottom, 0.0f, u1, v0};
         vertices[2] = {right, top, 0.0f, u1, v1};
@@ -114,6 +118,7 @@ namespace CE::math {
         const auto sx = static_cast<float>(x0);
         const auto sy = static_cast<float>(y0);
 
+        // Mirror the typed-vertex layout for callers that supply interleaved float storage.
         const float left = -pivot.x * fw;
         const float right = (1.0f - pivot.x) * fw;
         const float bottom = (pivot.y - 1.0f) * fh;

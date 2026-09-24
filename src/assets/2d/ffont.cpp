@@ -13,12 +13,16 @@ namespace CE::Assets {
 
     void FFont::print(std::string text, FontDrawInfo* format) {
         print_msg = std::move(text);
+        // TODO: Font::print accepts FontDrawInfo, but this implementation requires FFontFormat.
+        // Replace the unchecked reinterpret_cast with a type-safe format contract if FFont remains.
         print_fancy = reinterpret_cast<FFontFormat*>(format)->fancy;
         print_angle = format->angle;
         draw(*format);
     }
 
     void FFont::draw(const DrawInfo& info) {
+        // The legacy atlas stores one six-vertex range per character, with
+        // alternate glyphs offset into its second half for fancy text.
         const float scale = info.scale / 128;
         geometry->bind(*texture);
         info.use_shader();
@@ -32,6 +36,8 @@ namespace CE::Assets {
             int index = print_fancy ? letter-32+128 : letter-32;
 
             if (letter == '\n') {
+                // Start a new line from the updated print origin; ordinary
+                // glyphs instead advance the existing model matrix by width.
                 cursor_pos.y -= scale;
                 //cursor_pos.y -= (info.scale / 2);
                 model_matrix = glm::translate(glm::mat4(1.f), cursor_pos);
@@ -62,6 +68,8 @@ namespace CE::Assets {
         file.read(reinterpret_cast<char*>(buffer.data()), buffer.size() * sizeof(short));
         file.close();
 
+        // Convert stored glyph widths for pen movement, then upload the fixed
+        // atlas geometry while reusing the already loaded font image.
         std::array<float, num_chars_ffont> widths{};
         for (int idx = 0; idx < num_chars_ffont; ++idx) {
             widths[idx] = static_cast<float>(buffer[idx]);

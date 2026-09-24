@@ -6,6 +6,8 @@ namespace CE {
     uint16_t log_counter = 0;
 
     std::string stack_trace(void *addr0) {
+        // Reuse thread-local formatting storage, then resolve a bounded slice of the
+        // current stack (or the caller-provided address) into a printable trace.
         static thread_local std::array<char, 6144> buffer{};
         static thread_local std::span bspan(buffer);
         static thread_local std::spanstream ss(bspan);
