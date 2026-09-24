@@ -48,6 +48,7 @@ namespace CE::Assets {
      * Animation lookup returns a value; keep that value if frame selection should persist.
      */
     struct Sprite final : Asset2D, Frame<Sprite> {
+        using Frame::operator[];
         explicit Sprite(SpriteData data);
 
         void draw(const DrawInfo& info) override;
