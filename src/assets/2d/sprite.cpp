@@ -6,10 +6,12 @@
 #include <utility>
 
 namespace CE::Assets {
-    void SpriteFrame::draw(const DrawInfo& info) {
-        geometry->bind(*texture);
-        info.use_shader();
-        geometry->draw(VAONumbers::calculate_num_vertices(offset_), VAONumbers::vertices_per_quad);
+    namespace {
+        void draw_frame(const std::size_t cell, Geometry2D& geometry, Image& texture, const DrawInfo& info) {
+            geometry.bind(texture);
+            info.use_shader();
+            geometry.draw(VAONumbers::calculate_num_vertices(cell), VAONumbers::vertices_per_quad);
+        }
     }
 
     SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
@@ -19,7 +21,7 @@ namespace CE::Assets {
         definition_(std::move(definition)) {}
 
     void SpriteAnimation::draw(const DrawInfo& info) {
-        SpriteFrame(definition_.frames[index_].cell, geometry, texture).draw(info);
+        draw_frame(definition_.frames[index_].cell, *geometry, *texture, info);
     }
 
     std::chrono::milliseconds SpriteAnimation::frame_duration() const {
@@ -45,7 +47,7 @@ namespace CE::Assets {
     }
 
     void Sprite::draw(const DrawInfo& info) {
-        SpriteFrame(index_, geometry, texture).draw(info);
+        draw_frame(index_, *geometry, *texture, info);
     }
 
     std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {

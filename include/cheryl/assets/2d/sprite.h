@@ -20,14 +20,6 @@ namespace CE::Assets {
         SpriteDefinition definition;
     };
 
-    struct SpriteFrame final : Draw2D, Frame<SpriteFrame> {
-        explicit SpriteFrame(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture) :
-            Draw2D(geometry, texture), Frame(cell, 0, 1) {}
-
-        void draw(const DrawInfo& info) override;
-        [[nodiscard]] std::size_t cell() const { return offset_; }
-    };
-
     /** A selected clip with mutable frame index; the caller chooses when to advance it.
      * Indexing selects a cell, with looping or final-frame clamping from the definition.
      */
