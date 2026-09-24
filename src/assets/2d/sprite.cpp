@@ -28,7 +28,7 @@ namespace CE::Assets {
 
     Sprite::Sprite(SpriteData data) :
         Asset2D(std::move(data.geometry), std::move(data.texture)),
-        Frame(0, 0, data.definition.grid.cell_count(), data.definition.),
+        Frame(0, 0, data.definition.grid.cell_count()),
         definition_(std::move(data.definition)) {
         // Map clip name and facing to a single lookup index, retaining shared GPU resources
         // in each clip value while the original manifest definition remains inspectable.
