@@ -2,21 +2,25 @@
 
 namespace CE::SubSystems {
     void EventSystem::dispatch(const std::string &event, const std::any &payload) {
-        // Hold the listener collection stable throughout synchronous delivery.
-        // TODO: Snapshot callbacks while locked and invoke them after unlocking. A callback that
-        // registers another listener needs the unique lock and can deadlock/reenter this dispatch;
-        // long callbacks also unnecessarily block registration.
+        // Snapshot the listener collection while protected so registration cannot
+        // invalidate it, then release the lock before invoking arbitrary callback code.
         std::shared_lock rl(mtx);
-        if (event_listeners.contains(event)) {
-            const auto& listeners = event_listeners[event];
-            for(auto& cb : listeners) {
-                cb(payload);
-            }
+
+        const auto iter = event_listeners.find(event);
+        if (iter == event_listeners.end()) {
+            return;
+        }
+
+        auto callbacks_snapshot{iter->second};
+        rl.unlock();
+
+        for(auto& cb : callbacks_snapshot) {
+            cb(payload);
         }
     }
 
-    void EventSystem::register_listener(const std::string &event, const Callback &callback) {
+    void EventSystem::register_listener(const std::string &event, Callback callback) {
         std::unique_lock wl(mtx);
-        event_listeners[event].push_back(callback);
+        event_listeners[event].push_back(std::move(callback));
     }
 }
