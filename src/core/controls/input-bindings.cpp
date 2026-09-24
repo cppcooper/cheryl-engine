@@ -24,6 +24,8 @@ namespace CE::Input {
 
     void InputBindings::on_axis(const DeviceBind binding, const float old_value, const float new_value) const {
         if (const auto it = axis_callbacks_.find(binding); it != axis_callbacks_.end()) {
+            // Copy the callable before invocation: a listener may change its
+            // own mapping during delivery and invalidate the map iterator.
             const auto callback = it->second;
             callback(old_value, new_value);
         }
@@ -31,6 +33,8 @@ namespace CE::Input {
 
     void InputBindings::on_button(const DeviceBind binding, const bool old_value, const bool new_value) const {
         if (const auto it = button_callbacks_.find(binding); it != button_callbacks_.end()) {
+            // Keep this invocation alive even if the callback replaces or
+            // removes its binding from the map.
             const auto callback = it->second;
             callback(old_value, new_value);
         }

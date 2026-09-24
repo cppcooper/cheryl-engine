@@ -37,6 +37,8 @@ namespace CE::RenderAPIs {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_SAMPLES, 8);
+            // Choose a logical window size from monitor pixels and content scale, then make its
+            // context current before any GL entry point is loaded or rendering resources are created.
             auto glfw_display = std::make_unique<DisplaySystem>();
             const auto& pm = glfw_display->primary_monitor();
             auto [sw, sh] = glfw_display->content_scale(pm);
@@ -61,6 +63,8 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::initialize_libraries() {
+        // GL entry points require the context created by the GLFW phase;
+        // keep that order even when callers initialize the renderer twice.
         initialize_glfw();
         initialize_glad();
         lib_init = true;
@@ -75,19 +79,19 @@ namespace CE::RenderAPIs {
         }
         const auto size = display->active_window()->framebuffer_size();
         set_viewport(size);
-        /// Here we query how much sampling is possible and set that to be used if possible
+        // Enable multisampling only if the created framebuffer exposes samples.
         GLint samples = 0;
         glGetIntegerv(GL_SAMPLES, &samples);
         if (samples > 0) {
             glEnable(GL_MULTISAMPLE);
         }
 
-        // where are we? (part 1)
+        // Establish the default face convention for geometry submitted by the engine.
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
         glFrontFace(GL_CCW);
 
-        // what are we doing? (part 2)
+        // Blend source alpha into the existing framebuffer for 2D images and text.
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -127,6 +131,8 @@ namespace CE::RenderAPIs {
     }
 
     program_id OpenGLRenderer::compile_shader(fs::path file) {
+        // The stage-only cache uses this legacy single-file path; linked
+        // programs go through compile_program and its separate link checks.
         if (!fs::exists(file)) {
             CELog::critical("GLSLProgram: File does not exist. {}", file.c_str());
             throw Exceptions::failed_operation(CE_HERE, "No such file exists");
@@ -158,6 +164,8 @@ namespace CE::RenderAPIs {
         }
         std::vector<GLuint> compiled;
         try {
+            // Compile and attach each requested stage; keep IDs so either failure or success can
+            // delete the temporary stage objects after linking the executable program.
             for (const auto& file : files) {
                 std::ifstream input(file);
                 if (!input) {
@@ -167,6 +175,8 @@ namespace CE::RenderAPIs {
                 buffer << input.rdbuf();
                 const auto source = buffer.str();
                 const auto type = Enum::get_shader_type(file.extension().string());
+                // Select the GL stage from the source extension before
+                // creating the shader object attached to this program.
                 GLenum gl_type = GL_FRAGMENT_SHADER;
                 switch (type) {
                 case ShaderTypes::VERTEX:
@@ -189,6 +199,8 @@ namespace CE::RenderAPIs {
                 if (!stage) {
                     throw Exceptions::runtime_exception(CE_HERE, "Failed to create shader stage: " + file.string());
                 }
+                // Record the stage as soon as it exists so a compile or link
+                // failure below can delete every temporary object.
                 compiled.push_back(stage);
                 const char* data = source.c_str();
                 glShaderSource(stage, 1, &data, nullptr);
@@ -205,6 +217,7 @@ namespace CE::RenderAPIs {
                 }
                 glAttachShader(program, stage);
             }
+            // Linking resolves the interface across stages; the program is usable only after this check.
             glLinkProgram(program);
             GLint success = GL_FALSE;
             glGetProgramiv(program, GL_LINK_STATUS, &success);
@@ -217,11 +230,15 @@ namespace CE::RenderAPIs {
             }
         }
         catch (...) {
+            // No failed compile or link leaves a partially built GL program
+            // or its stage objects owned by the caller.
             for (const GLuint stage : compiled)
                 glDeleteShader(stage);
             glDeleteProgram(program);
             throw;
         }
+        // A successful link retains the executable in program; shader stage
+        // objects are no longer needed once detached.
         for (const GLuint stage : compiled) {
             glDetachShader(program, stage);
             glDeleteShader(stage);
@@ -231,6 +248,8 @@ namespace CE::RenderAPIs {
 }
 
 CE::RenderAPIs::program_id compile_src(const std::string& source, ShaderTypes type) {
+    // This entry point builds a program containing one attached stage; the
+    // consumer must link it after attaching any other required stages.
     const int id_prog = glCreateProgram();
     if (id_prog == 0) {
         throw CE::Exceptions::failed_operation(CE_HERE, "Unable to create GLSL program id.");
@@ -261,13 +280,12 @@ CE::RenderAPIs::program_id compile_src(const std::string& source, ShaderTypes ty
     const char* c_code = source.c_str();
     glShaderSource(shaderHandle, 1, &c_code, NULL);
 
-    // Compile the shader
+    // Compile before attaching so a failed stage cannot reach the program.
     glCompileShader(shaderHandle);
 
-    // Check for errors
+    // Preserve the driver log in the failure path.
     int result;
     glGetShaderiv(shaderHandle, GL_COMPILE_STATUS, &result);
-    // Did the compile fail, store log and return false
     if (result == GL_FALSE) {
         int length = 0;
         glGetShaderiv(shaderHandle, GL_INFO_LOG_LENGTH, &length);
@@ -282,7 +300,7 @@ CE::RenderAPIs::program_id compile_src(const std::string& source, ShaderTypes ty
         throw CE::Exceptions::runtime_exception(CE_HERE,
                                                 std::format("Unable to compile glsl program.\n{}", log).c_str());
     }
-    // Compile succeeded, attach shader and return id
+    // Leave the one compiled stage attached for the caller's link step.
     glAttachShader(id_prog, shaderHandle);
     return id_prog;
 }

@@ -14,6 +14,9 @@ namespace CE::RenderAPIs {
     namespace fs = std::filesystem;
     using program_id = std::uint64_t;
 
+    // TODO: If OpenGL rendering moves off the platform thread, split GLFW/window setup from context
+    // ownership: create and pump the window on the required main thread, release the context there, then
+    // make it current on the render thread before GL calls, resource uploads, or buffer swaps occur.
     struct OpenGLRenderer : iRenderer {
         OpenGLRenderer();
         ~OpenGLRenderer() override = default;

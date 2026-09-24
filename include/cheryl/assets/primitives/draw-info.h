@@ -12,6 +12,9 @@ namespace CE {
         glm::vec3 position;
         float scale = 1.f;
         float alpha = 1.f;
+        // TODO: Move semantic draw parameters behind a material-binding contract. DrawInfo is
+        // backend-neutral, but use_shader() requires every material to understand these literal
+        // uniform names and therefore embeds one shader convention in the generic draw packet.
         void use_shader() const {
             material->use();
             material->set_uniform_value("in_Alpha", alpha);

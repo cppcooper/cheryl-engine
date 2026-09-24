@@ -13,6 +13,8 @@ namespace CE {
         }
         if (framebuffer_size_ == size)
             return;
+        // Advance one revision for both the size and the resulting projection,
+        // allowing the renderer to publish them as a single camera update.
         framebuffer_size_ = size;
         recalculate_projection();
         ++revision_;

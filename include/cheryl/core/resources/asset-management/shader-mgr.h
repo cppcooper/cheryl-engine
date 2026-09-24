@@ -8,6 +8,9 @@ using ShaderAssetMgr = CE::Assets::AssetMgr<CE::Assets::Shader>;
 namespace CE::Assets {
     struct ResourceProvider;
 
+    /** Cache compiled stages and linked programs by path; linked programs receive the
+     * current camera matrices when they are loaded or when the camera changes.
+     */
     struct ShaderMgr final : ShaderAssetMgr, Singleton_CTS<ShaderMgr> {
         ShaderMgr() = default;
         ~ShaderMgr() override = default;

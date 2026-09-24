@@ -7,6 +7,8 @@
 
 namespace CE::Input {
     gainput::DeviceButtonId gainput_key(const int key) {
+        // Contiguous GLFW ranges map directly to corresponding Gainput ranges;
+        // keys with different enum layouts need the explicit table below.
         if ((key >= GLFW_KEY_0 && key <= GLFW_KEY_9) || (key >= GLFW_KEY_A && key <= GLFW_KEY_Z))
             return static_cast<gainput::DeviceButtonId>(key);
         if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F19)
@@ -115,6 +117,8 @@ namespace CE::Input {
     }
 
     gainput::DeviceButtonId gainput_mouse_button(const int button) {
+        // Preserve left/right/middle's named IDs before offsetting the extra
+        // mouse buttons into Gainput's numbered range.
         if (button < GLFW_MOUSE_BUTTON_1 || button > GLFW_MOUSE_BUTTON_LAST)
             return gainput::InvalidDeviceButtonId;
         if (button == GLFW_MOUSE_BUTTON_LEFT)

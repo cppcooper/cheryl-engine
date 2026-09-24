@@ -8,6 +8,8 @@ namespace CE::Mem {
         using manager_type = ObjMMgr<T>;
 
         T* allocate(std::size_t N) {
+            // Reserve growth beyond this batch for future allocations of T;
+            // deallocation returns the active range through its raw pointer.
             auto b = ObjMMgr<T>::get().checkout_chunk(sizeof(T)*N, alignof(T), Enum::greedy);
             return static_cast<T*>(b.head.get());
         }

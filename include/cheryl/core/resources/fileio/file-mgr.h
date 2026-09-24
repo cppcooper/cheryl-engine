@@ -7,6 +7,9 @@
 using f_ext = std::string;
 using fspath = std::filesystem::path;
 
+/** Index files by extension beneath one root, including nested directories. Loader uses this
+ * index for standalone images and shaders; manifest discovery itself scans only its root.
+ */
 class FileMgr {
 public:
     FileMgr(const std::filesystem::path& root_path);

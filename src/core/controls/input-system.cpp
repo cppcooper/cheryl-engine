@@ -20,6 +20,8 @@ namespace CE::Input {
             InputDevice(manager, id,
                         index == AutoIndex ? manager.GetDeviceCountByType(mouse ? DT_MOUSE : DT_KEYBOARD) : index),
             mouse_(mouse) {
+            // Keep current and previous Gainput state for delta generation;
+            // GLFW callbacks enqueue changes instead of mutating either here.
             (void)variant;
             const unsigned count =
                 mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_);
@@ -60,11 +62,15 @@ namespace CE::Input {
         }
 
         void queue_pulse(const gainput::DeviceButtonId button) {
+            // Wheel motion is a button transition lasting one Update, so queue
+            // its matching release separately for the following frame.
             queue_button(button, true);
             pending_pulses_.push_back(button);
         }
 
         void reset() {
+            // Detachment discards queued transitions and clears both snapshots;
+            // reattaching must not replay a held key or pending wheel pulse.
             pending_.clear();
             release_next_frame_.clear();
             pending_pulses_.clear();
@@ -83,6 +89,8 @@ namespace CE::Input {
 
     protected:
         void InternalUpdate(gainput::InputDeltaState* delta) override {
+            // Release last frame's wheel pulses, then apply GLFW events queued since the previous poll.
+            // New pulses stay pressed for this update and are released on the following update.
             auto releases = std::move(release_next_frame_);
             release_next_frame_ = std::move(pending_pulses_);
             pending_pulses_.clear();
@@ -141,6 +149,7 @@ namespace CE::Input {
         if (window_)
             return;
 
+        // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
         if (!keyboard_) {
             keyboard_ = manager_.CreateAndGetDevice<GlfwKeyboardDevice>();
             keyboard_id_ = keyboard_->GetDeviceId();
@@ -155,6 +164,7 @@ namespace CE::Input {
         window_ = glfw_window;
         const auto size = window.logical_size();
         manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
+        // GLFW callbacks only queue transitions. Gainput processes them together in update().
         auto* handle = glfw_window->native_handle();
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
@@ -166,6 +176,8 @@ namespace CE::Input {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
         const auto size = window_->logical_size();
+        // Refresh normalized pointer dimensions before Gainput consumes this
+        // frame's queued GLFW changes and invokes any registered listeners.
         manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
         manager_.Update();
     }
@@ -173,6 +185,7 @@ namespace CE::Input {
     void InputSystem::poll() {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before polling");
+        // Pump GLFW on the platform thread before Gainput converts queued changes to listener calls.
         glfwPollEvents();
         update();
     }
@@ -181,6 +194,7 @@ namespace CE::Input {
         if (!window_)
             return;
         auto* handle = window_->native_handle();
+        // Detach callbacks while the native window is still alive, then clear per-window input state.
         glfwSetKeyCallback(handle, nullptr);
         glfwSetMouseButtonCallback(handle, nullptr);
         glfwSetCursorPosCallback(handle, nullptr);
@@ -192,6 +206,8 @@ namespace CE::Input {
     }
 
     void InputSystem::on_key(GLFWwindow* handle, const int key, int, const int action, int) {
+        // The singleton receives GLFW's global callback; ignore stale windows
+        // and repeat events so button transitions match press/release edges.
         auto& input = get();
         if (!input.window_ || input.window_->native_handle() != handle || action == GLFW_REPEAT)
             return;
@@ -209,6 +225,8 @@ namespace CE::Input {
         auto& input = get();
         if (!input.window_ || input.window_->native_handle() != handle)
             return;
+        // Convert GLFW logical coordinates into normalized mouse axes, using
+        // a nonzero divisor while the window is minimized.
         const auto size = input.window_->logical_size();
         input.mouse_->queue_axis(gainput::MouseAxisX, static_cast<float>(x / std::max(size.width, 1)));
         input.mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / std::max(size.height, 1)));

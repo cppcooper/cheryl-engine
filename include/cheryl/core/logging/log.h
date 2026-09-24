@@ -100,6 +100,8 @@ namespace CE {
         if (m_logger || m_console || m_file) return;
         static std::once_flag tp_flag;
         // todo: unlink the call from type(s) - e.g. extern the flag? simple tp_init singleton
+        // Share console and rotating-file sinks behind one async logger; the thread pool
+        // handles queued writes after producers return from the log call.
         m_console = std::make_shared<osink_mt>();
         m_file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(std::format("logs/{}.log", name), 1024 * 1024 * 10, 5, true, event_handlers);
         //todo: set pattern/format w/e to prepend the log name to the log lines
@@ -141,6 +143,8 @@ namespace CE {
 
     template<const char* name>
     void Log<name>::close() {
+        // Preserve sink levels for reopen(), then drop the registered logger and wait
+        // for pending async writes before releasing local sink/logger handles.
         spdlog::drop(name);
         console_level = m_console->log_level();
         file_level = m_file->log_level();

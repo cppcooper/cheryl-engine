@@ -7,6 +7,10 @@
 #include <cstdint>
 
 namespace CE {
+    /** Tracks projection and view changes by revision. The runtime checks the
+     * active camera after framebuffer changes and publishes matrices only when
+     * that revision or the active camera changes.
+     */
     class CameraBase {
     public:
         virtual ~CameraBase() = default;

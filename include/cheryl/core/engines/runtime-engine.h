@@ -11,6 +11,9 @@
 
 namespace CE::Engine {
     // Runs the selected renderer and input adapter. Both adapters must outlive this engine.
+    // TODO: RuntimeEngine state is currently unsynchronized. If simulation and rendering are separated,
+    // camera selection/revisions, viewport state, initialization state, and renderer access need a single
+    // owning thread or an explicit message/snapshot handoff instead of ad-hoc cross-thread calls.
     struct RuntimeEngine : iEngine {
     private:
         void synchronize_camera();

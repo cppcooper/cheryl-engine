@@ -4,6 +4,12 @@
 #include <core/rendering/renderer.h>
 
 namespace CE::Engine {
+    // TODO: Define thread affinity for this interface before callers can use it concurrently. Input/event
+    // pumping, display mutation, simulation-facing state, resource creation, and render-frame operations
+    // have different ownership constraints and should not be freely mixed from arbitrary threads.
+    /** Facade for platform input, backend resources, and a frame's render/present operations.
+     * GameRuntime currently calls these in sequence on its running thread.
+     */
     struct iEngine {
         RenderAPIs::iRenderer* renderer = nullptr;
         virtual ~iEngine() = default;

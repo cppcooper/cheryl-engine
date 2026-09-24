@@ -10,14 +10,16 @@ namespace CE::Assets {
     void upload(const T* bits, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
 
-        //the following turns on a special, high-quality filtering mode called "ANISOTROPY"
+        // Apply anisotropic filtering only for supported color textures; the red-only
+        // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
             GLfloat largest_supported_anisotropy;
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
         }
 
-        // Specify texture parameters
+        // Set sampling and wrap policy before uploading pixels; atlas textures
+        // disable mipmaps while sprite textures may generate them afterward.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_opt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_opt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, use_mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
@@ -27,6 +29,7 @@ namespace CE::Assets {
         GLint previous_unpack_alignment = 4;
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
         if (fmt == GL_RED) {
+            // One-byte atlas rows can be unaligned; map red to alpha while emitting white RGB.
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             constexpr GLint swizzle[]{GL_ONE, GL_ONE, GL_ONE, GL_RED};
             glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
@@ -34,7 +37,7 @@ namespace CE::Assets {
         glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, fmt, GL_UNSIGNED_BYTE, bits);
         glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
 
-        // Generate mipmaps if requested
+        // Mip levels depend on the base image uploaded above.
         if (use_mipmaps) {
             glGenerateMipmap(GL_TEXTURE_2D);
         }
@@ -42,10 +45,10 @@ namespace CE::Assets {
 
     Texture::Texture(const char* file, int slot, bool use_mipmaps, bool pixelate, int wrap_opt)
     : unit(slot) {
-        //image width and height, and #of components (1= gray scale, 4 = rgba)
+        // Decode files into a consistent four-channel upload even when the
+        // source file stores a different number of channels.
         int channels(0);
 
-        //retrieve the image data, currently force to RGBA (4 channels)
         stbi_uc* bits = stbi_load(file,
             &width, &height, &channels, 4);
         if (bits == nullptr || width <= 0 || height <= 0) {
@@ -57,11 +60,11 @@ namespace CE::Assets {
             throw Exceptions::runtime_exception(CE_HERE, "A problem was encountered when loading an image from disk.");
         }
 
-        //generate an OpenGL texture ID for this texture
+        // OpenGL copies stb's decoded bytes during upload; release that CPU
+        // buffer after the texture is populated.
         glGenTextures(1, &id);
         bind();
         upload(bits, width, height, unit, use_mipmaps, pixelate, wrap_opt,GL_RGBA);
-        //Free stb's copy of the data
         stbi_image_free(bits);
         unbind();
     }
@@ -70,7 +73,8 @@ namespace CE::Assets {
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt)
     : width(width), height(height), unit(slot) {
 
-        // Generate and bind the texture
+        // The font path supplies an already baked alpha atlas; upload() applies
+        // its one-channel swizzle without running a file decoder.
         glGenTextures(1, &id);
         bind();
         upload(bitmap_data, width, height, unit, use_mipmaps, pixelate, wrap_opt, fmt);

@@ -15,6 +15,8 @@ namespace CE::Assets {
     }
 
     std::size_t GridDefinition::cell_count() const {
+        // Count cells before addressing or allocating their geometry; catch
+        // multiplication overflow while rows and columns are still separate.
         if (rows != 0 && columns > std::numeric_limits<std::size_t>::max() / rows) {
             throw Exceptions::runtime_exception("overflow", CE_HERE, "Asset grid cell count exceeds size_t");
         }
@@ -34,6 +36,8 @@ namespace CE::Assets {
         }
         const auto row = cell / columns;
         const auto column = cell % columns;
+        // Add spacing only between earlier cells, then retain the source
+        // frame size for the vertex builder's position/UV conversion.
         return {origin.x + column * (static_cast<std::uint64_t>(frame.width) + spacing.x),
                 origin.y + row * (static_cast<std::uint64_t>(frame.height) + spacing.y), frame.width, frame.height};
     }
@@ -63,6 +67,8 @@ namespace CE::Assets {
     }
 
     std::vector<std::filesystem::path> AssetManifest::textures() const {
+        // Preserve first reference order while deduplicating shared images
+        // across sprite and tileset entries in this document.
         std::vector<std::filesystem::path> result;
         std::unordered_set<std::filesystem::path> seen;
         const auto append = [&result, &seen](const std::filesystem::path& path) {

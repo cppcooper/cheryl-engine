@@ -12,6 +12,7 @@
 namespace CE::Assets {
     void SpriteMgr::load_assets(const std::vector<SpriteDefinition>& definitions, ResourceProvider& provider) {
         bind_provider(provider);
+        // Reserve only slots for new IDs; existing assets keep their handles across repeated loads.
         const auto needed = std::count_if(definitions.begin(), definitions.end(), [this](const auto& definition) {
             return !loaded_assets.contains(definition.id());
         });
@@ -33,6 +34,8 @@ namespace CE::Assets {
             if (texture_size.width == 0 || texture_size.height == 0) {
                 throw Exceptions::runtime_exception(CE_HERE, "Sprite '" + id + "' has an empty texture");
             }
+            // Build CPU vertices from manifest grid/pivot, upload them through the selected backend,
+            // and transfer the claimed slot from this reservation into the cache.
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
             auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
             auto asset = reservation.emplace(slot++, SpriteData{.geometry = std::move(mesh),

@@ -112,6 +112,8 @@ namespace CE::Obj {
             if (index >= count_)
                 throw Exceptions::bad_request(CE_HERE, "Object reservation index is out of range.");
             T* pointer = base_ + index;
+            // Search the current unclaimed partition, not the original block:
+            // a previously handed-out slot must never be constructed again.
             std::size_t range_index = 0;
             for (; range_index < remaining_.size(); ++range_index) {
                 if (remaining_[range_index].contains(pointer)) break;

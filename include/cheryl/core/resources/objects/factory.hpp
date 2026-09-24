@@ -40,12 +40,19 @@ namespace CE::Obj {
 
          Allocator allocator;
          auto* ptr = AAloc::allocate(allocator, N);
+         // One allocation owner spans the batch, while completed entries below
+         // each own destruction of their individual constructed element.
+         // TODO: If constructing a later element or its handle throws, ensure the just
+         // constructed object is destroyed before the shared allocation owner releases
+         // its storage; earlier objects are already owned by entries in objects.
          // One allocator allocation is released once, after the last element
          // handle has destroyed its own object.
          std::shared_ptr<T> allocation(ptr, [allocator, N](T* base) mutable noexcept {
              AAloc::deallocate(allocator, base, N);
          });
          for (std::size_t i = 0; i < N; ++i) {
+             // Construct first, then attach a per-object handle retaining the
+             // allocation owner until the final element handle disappears.
              auto* pi = ptr + i;
              AAloc::construct(allocator, pi, args...);
              objects.emplace_back(pi, [allocation, allocator](T* object) mutable noexcept {
@@ -61,6 +68,8 @@ namespace CE::Obj {
          Allocator allocator;
          std::size_t constructed = 0;
          try {
+             // The prefix length identifies exactly which constructors
+             // succeeded if a later element throws.
              for (; constructed < N; ++constructed) {
                  AAloc::construct(allocator, p + constructed, args...);
              }

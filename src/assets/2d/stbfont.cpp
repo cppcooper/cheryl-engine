@@ -36,6 +36,8 @@ namespace CE::Assets {
         }
 
         void set_glyph_vertices(Vertex2D* vertices, const stbtt_aligned_quad& quad) {
+            // Flip stb's downward-positive glyph Y into the engine's upward-positive local space;
+            // expand the four corners into two triangles matching the non-indexed 2D geometry.
             const float left = quad.x0;
             const float right = quad.x1;
             const float bottom = -quad.y1;
@@ -71,6 +73,8 @@ namespace CE::Assets {
         info.material->set_uniform_value("mytexture", 0);
         geometry->bind(*texture);
 
+        // Compose caller transform, print origin, rotation, and scale once. Per-glyph transforms
+        // then add pen offsets without moving the atlas geometry on the CPU.
         auto text_matrix = glm::translate(info.model_matrix, info.position);
         text_matrix = glm::rotate(text_matrix, print_angle_, glm::vec3(0.0f, 0.0f, 1.0f));
         text_matrix = glm::scale(text_matrix, glm::vec3(info.scale, info.scale, 1.0f));
@@ -79,6 +83,8 @@ namespace CE::Assets {
         constexpr auto fallback_character = static_cast<unsigned char>('?');
         const auto space_index = static_cast<std::size_t>(' ' - first_font_character);
 
+        // Move the pen for whitespace, otherwise select one baked glyph (or '?') and draw
+        // its pre-uploaded six-vertex range with a per-glyph model matrix.
         for (const unsigned char requested_character : print_message_) {
             if (requested_character == '\n') {
                 cursor_x = 0.0f;
@@ -117,10 +123,13 @@ namespace CE::Assets {
                                                 "Unsupported or corrupt font file '" + font_path.string() + "'");
         }
 
+        // Bake the fixed printable range into a growing alpha atlas until every glyph fits.
         std::array<stbtt_bakedchar, font_character_count> baked_characters{};
         int atlas_size = 256;
         std::vector<unsigned char> bitmap;
         while (true) {
+            // Retry the whole printable range at double resolution; a
+            // partial bake cannot supply stable glyph indices for drawing.
             bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
             const int result = stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size),
                                                     bitmap.data(), atlas_size, atlas_size, first_font_character,
@@ -139,6 +148,7 @@ namespace CE::Assets {
         auto& manager = Mem::ExactMMgr::get();
         auto chunk = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
         auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(chunk));
+        // Build one reusable quad per glyph and retain its advance separately for pen movement.
         std::array<float, font_character_count> advances{};
         for (std::size_t index = 0; index < baked_characters.size(); ++index) {
             float x = 0.0f;
@@ -154,8 +164,11 @@ namespace CE::Assets {
         int descent = 0;
         int line_gap = 0;
         stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
+        // Keep line advance in the same pixel scale as the baked glyph quads,
+        // so newline motion is independent of individual glyph heights.
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
+        // The provider copies both transient CPU buffers into backend resources before return.
         auto geometry = provider.upload_geometry(std::move(vertices), vertex_count);
         auto atlas = provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size),
                                                                   static_cast<std::uint32_t>(atlas_size)});

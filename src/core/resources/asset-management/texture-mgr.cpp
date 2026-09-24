@@ -5,6 +5,8 @@
 
 namespace CE::Assets {
     TextureMgr::spointer TextureMgr::get_asset(const std::filesystem::path& file) const {
+        // Prefer the resolved path used at load time; a bare filename is a convenience
+        // lookup only when it uniquely identifies one cached texture.
         const auto normalized = file.lexically_normal();
         if (const auto exact = loaded_assets.find(normalized); exact != loaded_assets.end()) {
             return exact->second;

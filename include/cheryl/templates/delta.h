@@ -8,6 +8,9 @@ public:
     using Duration  = typename ClockType::duration; // ns by default
 
 protected:
+    // TODO: Start the timer at runtime initialization (or define the first sample as zero).
+    // A default-constructed time_point is the clock epoch, so the first operator() reports
+    // time since that epoch instead of the interval since the game loop began.
     TimePoint last_checkin;
 
     void checkin() { last_checkin = ClockType::now(); }
