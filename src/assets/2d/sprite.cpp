@@ -14,11 +14,9 @@ namespace CE::Assets {
 
     SpriteAnimation::SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                      const shptr<Image>& texture) :
-        Draw2D(geometry, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
-        if (definition_.frames.empty()) {
-            throw Exceptions::invalid_args(CE_HERE, "A sprite animation must contain at least one frame");
-        }
-    }
+        Draw2D(geometry, texture),
+        Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
+        definition_(std::move(definition)) {}
 
     void SpriteAnimation::draw(const DrawInfo& info) {
         SpriteFrame(definition_.frames[index_].cell, geometry, texture).draw(info);
@@ -30,7 +28,7 @@ namespace CE::Assets {
 
     Sprite::Sprite(SpriteData data) :
         Asset2D(std::move(data.geometry), std::move(data.texture)),
-        Frame(0, 0, data.definition.grid.cell_count()),
+        Frame(0, 0, data.definition.grid.cell_count(), data.definition.),
         definition_(std::move(data.definition)) {
         // Map clip name and facing to a single lookup index, retaining shared GPU resources
         // in each clip value while the original manifest definition remains inspectable.
@@ -64,8 +62,8 @@ namespace CE::Assets {
         // A faceless query may still name one facing-specific clip; multiple
         // matches are ambiguous and should be requested with a facing.
         return std::ranges::count_if(animations_, [&animation](const auto& candidate) {
-                   return candidate.definition().name == animation;
-               }) == 1;
+            return candidate.definition().name == animation;
+        }) == 1;
     }
 
     SpriteAnimation Sprite::animation(const std::string& animation_name,

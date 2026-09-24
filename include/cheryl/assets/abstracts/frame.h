@@ -2,6 +2,8 @@
 #ifndef FRAME_H
 #define FRAME_H
 #include <cstddef>
+#include <algorithm>
+#include <type_traits>
 #include <internals/exceptions.h>
 
 namespace CE::Assets {
@@ -52,7 +54,8 @@ namespace CE::Assets {
         Frame(Frame&&) noexcept = default;
         Frame& operator=(const Frame&) = default;
         Frame& operator=(Frame&&) noexcept = default;
-        virtual ~Frame() = default;
+    protected:
+        ~Frame() = default;
     };
 }
 #endif

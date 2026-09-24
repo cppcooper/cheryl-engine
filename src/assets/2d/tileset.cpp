@@ -14,11 +14,9 @@ namespace CE::Assets {
 
     TileAnimation::TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                  const shptr<Image>& texture) :
-        Draw2D(geometry, texture), Frame(0, 0, definition.frames.size()), definition_(std::move(definition)) {
-        if (definition_.frames.empty()) {
-            throw Exceptions::invalid_args(CE_HERE, "A tile animation must contain at least one frame");
-        }
-    }
+        Draw2D(geometry, texture),
+        Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
+        definition_(std::move(definition)) {}
 
     void TileAnimation::draw(const DrawInfo& info) {
         Tile(definition_.frames[index_].cell, geometry, texture).draw(info);
