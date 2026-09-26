@@ -17,11 +17,10 @@ namespace CE::Math {
     }
     inline Enum::fitType reduce(const Enum::fitType fit) {
         switch(fit) {
-            case Enum::exact:
-            case Enum::larger:
-                return Enum::exact;
             case Enum::greedy:
                 return Enum::larger;
+            case Enum::larger:
+            case Enum::exact:
             default:
                 return Enum::exact;
         }
