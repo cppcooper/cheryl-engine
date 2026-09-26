@@ -1,5 +1,4 @@
-# Generated from CLion C/C++ Code Style settings, then completed with
-# repository conventions that are not represented by the export.
+# Generated from CLion C/C++ Code Style settings
 ---
 Language: Cpp
 BasedOnStyle: LLVM
@@ -9,9 +8,8 @@ AlignConsecutiveDeclarations: false
 AlignOperands: false
 AlignTrailingComments: false
 AlwaysBreakTemplateDeclarations: Yes
-AllowShortEnumsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: InlineOnly
-BraceWrapping:
+BinPackParameters: false
+BraceWrapping: 
   AfterCaseLabel: false
   AfterClass: false
   AfterControlStatement: false
@@ -29,13 +27,8 @@ BraceWrapping:
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
 BreakBeforeBraces: Custom
-BreakConstructorInitializers: AfterColon
-BreakConstructorInitializersBeforeComma: false
-ColumnLimit: 120
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ContinuationIndentWidth: 4
-FixNamespaceComments: false
-IncludeCategories:
+ColumnLimit: 140
+IncludeCategories: 
   - Regex: '^<.*'
     Priority: 1
   - Regex: '^".*'
@@ -43,19 +36,17 @@ IncludeCategories:
   - Regex: '.*'
     Priority: 3
 IncludeIsMainRegex: '([-_](test|unittest))?$'
+IndentCaseLabels: true
 IndentWidth: 4
 InsertNewlineAtEOF: true
 MacroBlockBegin: ''
 MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
-PointerAlignment: Left
-SortIncludes: false
 SpaceInEmptyParentheses: false
 SpacesInAngles: false
 SpacesInConditionalStatement: false
 SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 TabWidth: 4
-UseTab: Never
 ...

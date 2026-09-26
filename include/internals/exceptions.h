@@ -60,5 +60,7 @@ namespace CE::Exceptions {
     class failed_operation : public runtime_exception {
     public:
         failed_operation(const char* location_, uint32_t line_, const char* info_) noexcept;
+        failed_operation(const char* location_, uint32_t line_, const std::string& info_) noexcept :
+            failed_operation(location_, line_, info_.c_str()) {}
     };
 }
