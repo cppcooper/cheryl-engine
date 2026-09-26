@@ -21,11 +21,11 @@ namespace CE::math {
         // exceeding the native word size. If none qualify, use the native word.
         template <std::size_t Bits>
         using bit_word_t =
-            std::conditional_t<Bits <= 8, std::uint8_t,
-                               std::conditional_t<Bits <= 16 && native_bits >= 16, std::uint16_t,
-                                                  std::conditional_t<Bits <= 32 && native_bits >= 32, std::uint32_t,
-                                                                     std::conditional_t<Bits <= 64 && native_bits >= 64, std::uint64_t,
-                                                                                        native_word>>>>;
+        std::conditional_t<Bits <= 8, std::uint8_t,
+                           std::conditional_t<Bits <= 16 && native_bits >= 16, std::uint16_t,
+                                              std::conditional_t<Bits <= 32 && native_bits >= 32, std::uint32_t,
+                                                                 std::conditional_t<Bits <= 64 && native_bits >= 64, std::uint64_t,
+                                                                                    native_word>>>>;
 
         // Width, in bits, of the selected backing word.
         template <std::size_t Bits>
@@ -40,11 +40,15 @@ namespace CE::math {
         // Keep single-word bit arrays as a scalar; larger arrays become a packed
         // sequence of backing words.
         template <std::size_t Bits>
-        using bit_storage_t = std::conditional_t<
+        using bit_storage_t =
+        std::conditional_t<
             bit_word_count<Bits> == 1,
             bit_word_t<Bits>,
             std::array<bit_word_t<Bits>, bit_word_count<Bits>>
         >;
+
+        template <typename Word>
+        class BitReference;
     }
 
     /**
@@ -68,20 +72,7 @@ namespace CE::math {
         static constexpr std::size_t word_count = Detail::bit_word_count<Bits>;
 
     public:
-        class Reference {
-        public:
-            Reference& operator=(bool value) noexcept;
-            Reference& operator=(const Reference& other) noexcept;
-            explicit operator bool() const noexcept;
-
-        private:
-            friend class BitArray;
-
-            Reference(word_type& word, word_type mask) noexcept;
-
-            word_type* word_;
-            word_type mask_;
-        };
+        using Reference = Detail::BitReference<word_type>;
 
         Reference operator[](std::size_t index) noexcept;
         bool operator[](std::size_t index) const noexcept;
@@ -94,30 +85,60 @@ namespace CE::math {
 
         storage_type storage_{};
     };
+}
 
-    template <std::size_t Bits>
-    BitArray<Bits>::Reference::Reference(word_type& word, word_type mask) noexcept
-    : word_(&word), mask_(mask) {}
+namespace CE::math{
+    namespace Detail {
+        /**
+         * Writable proxy for one bit inside a BitArray backing word.
+         *
+         * Construction identifies the backing word and bit mask. Assignment writes
+         * through that reference rather than rebinding it to another bit.
+         */
+        template <typename Word>
+        class BitReference {
+        public:
+            BitReference& operator=(bool value) noexcept;
+            BitReference& operator=(const BitReference& other) noexcept;
+            explicit operator bool() const noexcept;
 
-    template <std::size_t Bits>
-    typename BitArray<Bits>::Reference& BitArray<Bits>::Reference::operator=(const bool value) noexcept {
-        if (value) {
-            *word_ |= mask_;
+        private:
+            template <std::size_t>
+            friend class BitArray;
+
+            BitReference(Word& word, Word mask) noexcept;
+
+            Word* word_;
+            Word mask_;
+        };
+
+        template <typename Word>
+        BitReference<Word>::BitReference(Word& word, const Word mask) noexcept
+        : word_(&word), mask_(mask) {}
+
+        template <typename Word>
+        BitReference<Word>& BitReference<Word>::operator=(const bool value) noexcept {
+            if (value) {
+                *word_ |= mask_;
+            }
+            else {
+                *word_ &= static_cast<Word>(~mask_);
+            }
+            return *this;
         }
-        else {
-            *word_ &= static_cast<word_type>(~mask_);
+
+        template <typename Word>
+        BitReference<Word>& BitReference<Word>::operator=(const BitReference& other) noexcept {
+            if (this != &other) {
+                *this = static_cast<bool>(other);
+            }
+            return *this;
         }
-        return *this;
-    }
 
-    template <std::size_t Bits>
-    typename BitArray<Bits>::Reference& BitArray<Bits>::Reference::operator=(const Reference& other) noexcept {
-        return *this = static_cast<bool>(other);
-    }
-
-    template <std::size_t Bits>
-    BitArray<Bits>::Reference::operator bool() const noexcept {
-        return (*word_ & mask_) != 0;
+        template <typename Word>
+        BitReference<Word>::operator bool() const noexcept {
+            return (*word_ & mask_) != 0;
+        }
     }
 
     template <std::size_t Bits>
@@ -148,7 +169,9 @@ namespace CE::math {
     }
 
     template <std::size_t Bits>
-    const typename BitArray<Bits>::word_type& BitArray<Bits>::word([[maybe_unused]] const std::size_t index) const noexcept {
+    const typename BitArray<Bits>::word_type& BitArray<Bits>::word(
+        [[maybe_unused]] const std::size_t index
+    ) const noexcept {
         if constexpr (word_count == 1) {
             return storage_;
         }
