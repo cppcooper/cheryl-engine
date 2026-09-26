@@ -11,6 +11,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <initializer_list>
@@ -22,6 +23,8 @@
 
 namespace CE::LogDetail {
     inline std::mutex default_logger_mutex;
+
+    [[nodiscard]] uint16_t next_log_id() noexcept;
 
     enum class LogState {
         Opening,
@@ -83,7 +86,7 @@ namespace CE {
         using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;
 
     protected:
-        uint16_t log_id;
+        uint16_t log_id = 0;
         const spdlog::file_event_handlers event_handlers;
         atomic_shared_ptr<spdlog::logger> m_logger{nullptr};
         atomic_shared_ptr<spdlog::sinks::rotating_file_sink_mt> m_file{nullptr};
@@ -97,6 +100,7 @@ namespace CE {
         using ReopenState = LogDetail::ReopenState;
 
         void construct_log();
+        void release_registry_ownership() const noexcept;
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
@@ -112,6 +116,7 @@ namespace CE {
 
     public:
         explicit Log(spdlog::file_event_handlers event_handlers = {});
+        ~Log() noexcept;
         [[nodiscard]] std::filesystem::path get_file_path() const;
         [[nodiscard]] uint16_t get_log_id() const;
         void flush() const;
@@ -139,7 +144,7 @@ namespace CE {
         }
 
         void strace(void* addr0 = nullptr) const {
-            if (auto logger = m_logger.load(); logger && logger->should_log(spdlog::level::trace)) {
+            if (const auto logger = m_logger.load(); logger && logger->should_log(spdlog::level::trace)) {
                 logger->log(spdlog::level::trace, "{}", stack_trace(addr0));
             }
         }
@@ -204,8 +209,6 @@ namespace spdlog::CE {
 
 // template definitions - methods
 namespace CE {
-    extern uint16_t log_counter;
-
     template <const char* name>
     void Log<name>::construct_log() {
         // Reserve the closed logger for construction and capture any state that must be
@@ -300,7 +303,42 @@ namespace CE {
           std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
         m_fallback_logger->set_level(spdlog::level::off);
         construct_log();
-        log_id = ++log_counter;
+        log_id = LogDetail::next_log_id();
+    }
+
+    template <const char* name>
+    Log<name>::~Log() noexcept {
+        // Ordinary destruction attempts the same strong close boundary exposed by close(): under
+        // normal ownership, the file sink is destroyed before shutdown completes. External spdlog
+        // owners can extend that lifetime, so destruction waits at most one minute.
+        try {
+            close(std::chrono::seconds{60});
+        }
+        catch (...) {
+            // Destructors cannot propagate lifecycle failures. A timeout leaves Closing intact,
+            // and the sink-held state controller remains alive until the final external owner exits.
+        }
+
+        release_registry_ownership();
+    }
+
+    template <const char* name>
+    void Log<name>::release_registry_ownership() const noexcept {
+        try {
+            const std::lock_guard default_lock(LogDetail::default_logger_mutex);
+
+            // Remove only registrations that still refer to this Log's objects. Pointer identity
+            // avoids disturbing another logger that later reused either textual name.
+            if (const auto logger = m_logger.load(); logger && logger != m_fallback_logger && spdlog::get(name) == logger) {
+                spdlog::drop(name);
+            }
+            if (spdlog::get(m_fallback_logger->name()) == m_fallback_logger) {
+                spdlog::drop(m_fallback_logger->name());
+            }
+        }
+        catch (...) {
+            // Registry cleanup is best-effort during noexcept destruction.
+        }
     }
 
     template <const char* name>

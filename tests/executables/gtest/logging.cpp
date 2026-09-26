@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 using namespace CE;
@@ -29,6 +30,7 @@ namespace {
 
     constexpr char file_barrier_name[] = "logging-file-barrier";
     constexpr char console_routing_name[] = "logging-console-routing";
+    constexpr char destructor_close_name[] = "logging-destructor-close";
     constexpr char closed_state_name[] = "logging-closed-state";
     constexpr char reopen_levels_name[] = "logging-reopen-levels";
     constexpr char timed_close_name[] = "logging-timed-close";
@@ -67,14 +69,6 @@ namespace {
     public:
         explicit TestLog(spdlog::file_event_handlers event_handlers = {})
         : Log<name>(std::move(event_handlers)) {
-        }
-
-        ~TestLog() {
-            try {
-                this->close(close_timeout);
-            } catch (...) {
-                // Test cleanup must not mask the assertion or exception that ended the test.
-            }
         }
 
         [[nodiscard]] std::shared_ptr<spdlog::logger> retain_logger() const {
@@ -159,6 +153,40 @@ TEST(logging, close_is_a_file_completion_barrier) {
     // Closing an already closed logger is idempotent and must not destroy the sink twice.
     EXPECT_NO_THROW(log.close());
     EXPECT_EQ(close_events.load(), 1);
+}
+
+TEST(logging, destruction_closes_file_and_releases_registry_ownership) {
+    remove_current_log_file(destructor_close_name);
+
+    std::atomic<int> close_events = 0;
+    spdlog::file_event_handlers handlers;
+    handlers.after_close = [&close_events](const spdlog::filename_t&) {
+        ++close_events;
+    };
+
+    DefaultLoggerGuard default_guard;
+    fs::path path;
+    {
+        TestLog<destructor_close_name> log{handlers};
+        path = log.get_file_path();
+        log.set_pattern("%v");
+        log.set_level_stdsink(spdlog::level::off);
+        log.make_default();
+        log.info("destructor-close-message");
+
+        EXPECT_EQ(close_events.load(), 0);
+        EXPECT_NE(spdlog::get(destructor_close_name), nullptr);
+    }
+
+    // Leaving scope invokes Log's destructor. Under ordinary ownership it must reach the same
+    // completed file-close boundary as close(), then remove both real and fallback registrations.
+    EXPECT_EQ(close_events.load(), 1);
+    EXPECT_EQ(spdlog::get(destructor_close_name), nullptr);
+    EXPECT_EQ(spdlog::get(std::format("{}-closed", destructor_close_name)), nullptr);
+    EXPECT_EQ(spdlog::default_logger(), nullptr);
+    expect_contains(read_file(path), "destructor-close-message");
+
+    default_guard.restore();
 }
 
 TEST(logging, console_routes_levels_before_close_returns) {
