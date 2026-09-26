@@ -33,7 +33,7 @@ namespace CE::SubSystems {
         void dispatch(const std::string &event, const std::any &payload);
         // TODO: Return a subscription/token or provide unregister support before finite-lifetime
         // objects rely on this system; registered callbacks currently have no removal mechanism.
-        void register_listener(const std::string &event, const Callback &callback);
+        void register_listener(const std::string &event, Callback callback);
     protected:
         std::shared_mutex mtx;
         std::unordered_map<std::string, std::vector<Callback>> event_listeners;

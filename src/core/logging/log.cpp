@@ -2,9 +2,18 @@
 #include <backward.hpp>
 #include <spanstream>
 
-namespace CE {
-    uint16_t log_counter = 0;
+#include <atomic>
 
+namespace CE::LogDetail {
+    uint16_t next_log_id() noexcept {
+        // IDs only need a process-wide unique increment; they do not publish or order
+        // any other logger state, so relaxed atomic ordering is sufficient.
+        static std::atomic_uint16_t log_counter{0};
+        return static_cast<uint16_t>(log_counter.fetch_add(1, std::memory_order_relaxed) + 1);
+    }
+}
+
+namespace CE {
     std::string stack_trace(void *addr0) {
         // Reuse thread-local formatting storage, then resolve a bounded slice of the
         // current stack (or the caller-provided address) into a printable trace.

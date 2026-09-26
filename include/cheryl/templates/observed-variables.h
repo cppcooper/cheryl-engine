@@ -5,6 +5,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+#include <type_traits>
 #include <utility>
 
 /** Store a value with a change counter for waiters and an array of callbacks.
@@ -13,6 +14,11 @@
  */
 template<typename T, uint8_t Observers = 1>
 struct ObservedVariable {
+    static_assert(
+        std::is_copy_constructible_v<T>,
+        "ObservedVariable<T> requires T to be copy constructible."
+    );
+
     using Callback = std::function<void(const T&)>;
 
 protected:
@@ -25,10 +31,10 @@ protected:
 public:
     explicit ObservedVariable(T v, std::array<Callback, Observers> callbacks) : var(std::move(v)), callbacks(std::move(callbacks)) {}
 
-    ObservedVariable& operator=(T v) { set(v); return *this; }
-    // TODO: Invoke callbacks after releasing mtx and pass a stable value snapshot. A callback that calls set()
-    // on this object can otherwise deadlock trying to acquire the unique lock while the callback invocation
-    // still holds a shared lock; long callbacks also unnecessarily block writers.
+    ObservedVariable& operator=(T v) {
+        set(std::move(v));
+        return *this;
+    }
     void set(T v) {
         // Only a changed value advances the sequence that waiters observe;
         // callbacks below still receive the current value on every set().
@@ -38,14 +44,13 @@ public:
             q++;
             cv.notify_all();
         }
+        T snapshot{var};
         wl.unlock();
-        wl.release();
-        // Invoke observers after the write phase, with a shared lock keeping
-        // the referenced value stable for the duration of each callback.
-        std::shared_lock rl(mtx);
+        // Invoke observers after releasing the lock, using the snapshot to keep
+        // this set()'s value stable even if another writer changes var concurrently.
         for(auto &callback : callbacks) {
             if (callback) [[likely]] {
-                callback(var);
+                callback(snapshot);
             }
         }
     }

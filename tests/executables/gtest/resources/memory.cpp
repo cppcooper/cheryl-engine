@@ -214,7 +214,7 @@ TEST(memory, rejects_duplicate_returns) {
 TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
     auto& manager = CE::Mem::ExactMMgr::get();
     // A zero-size request is invalid even before considering the free pool.
-    EXPECT_THROW(manager.checkout_chunk(0), CE::Exceptions::bad_request);
+    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
 
     // Return a low-alignment candidate, then request stronger alignment.
     // Reuse must satisfy the new request regardless of the free candidate.

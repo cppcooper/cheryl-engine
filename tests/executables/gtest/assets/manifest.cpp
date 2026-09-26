@@ -83,8 +83,14 @@ TEST(asset_grid, builds_vertices_from_dimensions_without_a_gpu_texture) {
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].v, 0.5f);
 
     // Invalid dimensions must fail before creating geometry.
-    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16}), CE::Exceptions::runtime_exception);
-    EXPECT_THROW(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16}), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(
+        static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})),
+        CE::Exceptions::runtime_exception
+    );
+    EXPECT_THROW(
+        static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16})),
+        CE::Exceptions::runtime_exception
+    );
 }
 
 TEST(asset_manifest, parses_every_checked_in_manifest) {
