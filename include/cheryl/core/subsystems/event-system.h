@@ -21,6 +21,7 @@
  * TODO: Define dispatch thread affinity before events are emitted concurrently. dispatch() is synchronous,
  * so every listener currently runs on the producer's thread; cross-thread producers need queued/owned
  * delivery or an explicit requirement that each listener is safe on every possible dispatching thread.
+ * todo: refactor input system for concurrent engine architecture
  */
 
 namespace CE::SubSystems {
