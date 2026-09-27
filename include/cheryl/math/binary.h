@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <ostream>
+#include <span>
 #include <type_traits>
 
 namespace CE::math {
@@ -47,6 +48,7 @@ namespace CE::math {
             std::array<bit_word_t<Bits>, bit_word_count<Bits>>
         >;
 
+        // Definition below
         template <typename Word>
         class BitReference;
     }
@@ -60,24 +62,28 @@ namespace CE::math {
      *
      * Bit zero is the least-significant bit. Mutable indexing returns a proxy so
      * individual bits can be assigned as though they were ordinary booleans.
+     * words() exposes the same packed storage as a contiguous word array.
      */
     template <std::size_t Bits>
     class BitArray {
         static_assert(Bits > 0);
 
+    public:
         using word_type = Detail::bit_word_t<Bits>;
-        using storage_type = Detail::bit_storage_t<Bits>;
+        using Reference = Detail::BitReference<word_type>;
 
         static constexpr std::size_t word_bits = Detail::bit_word_bits<Bits>;
         static constexpr std::size_t word_count = Detail::bit_word_count<Bits>;
 
-    public:
-        using Reference = Detail::BitReference<word_type>;
-
         Reference operator[](std::size_t index) noexcept;
         bool operator[](std::size_t index) const noexcept;
 
+        std::span<word_type, word_count> words() noexcept;
+        std::span<const word_type, word_count> words() const noexcept;
+
     private:
+        using storage_type = Detail::bit_storage_t<Bits>;
+
         static constexpr word_type mask(std::size_t index) noexcept;
 
         word_type& word(std::size_t index) noexcept;
@@ -87,7 +93,7 @@ namespace CE::math {
     };
 }
 
-namespace CE::math{
+namespace CE::math {
     namespace Detail {
         /**
          * Writable proxy for one bit inside a BitArray backing word.
@@ -151,6 +157,18 @@ namespace CE::math{
     bool BitArray<Bits>::operator[](const std::size_t index) const noexcept {
         assert(index < Bits);
         return (word(index) & mask(index)) != 0;
+    }
+
+    template <std::size_t Bits>
+    std::span<typename BitArray<Bits>::word_type, BitArray<Bits>::word_count>
+    BitArray<Bits>::words() noexcept {
+        return std::span<word_type, word_count>{&word(0), word_count};
+    }
+
+    template <std::size_t Bits>
+    std::span<const typename BitArray<Bits>::word_type, BitArray<Bits>::word_count>
+    BitArray<Bits>::words() const noexcept {
+        return std::span<const word_type, word_count>{&word(0), word_count};
     }
 
     template <std::size_t Bits>
