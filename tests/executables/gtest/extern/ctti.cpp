@@ -2,33 +2,33 @@
 #include <ctti/type_id.hpp>
 #include <ctti/detailed_nameof.hpp>
 #include <vector>
-#include <iostream>
 
 class Foo{};
 
 class Bar{};
 
-TEST(externlibs, ctti_type_id){
-    int x;
-    static_assert(ctti::type_id(x) == ctti::type_id<int>());
-    std::vector<int> vx;
-    std::vector<double> vy;
-    ASSERT_TRUE(ctti::type_id<int>() == ctti::type_id(x));
-    ASSERT_FALSE(ctti::type_id(vx) == ctti::type_id(vy));
+TEST(externlibs, ctti_distinguishes_containers_with_different_element_types) {
+    int number = 0;
+    std::vector<int> integers;
+    std::vector<double> decimals;
+
+    // A value and its declared type agree; changing a container's element
+    // type produces a different type ID.
+    static_assert(ctti::type_id(number) == ctti::type_id<int>());
+    EXPECT_EQ(ctti::type_id(number), ctti::type_id<int>());
+    EXPECT_NE(ctti::type_id(integers), ctti::type_id(decimals));
 }
 
-TEST(externlibs, ctti_type_name) {
-    std::vector<Foo> vf;
-    ctti::name_t name_vi = ctti::detailed_nameof<std::vector<int>>();
-    ctti::name_t name_vf = ctti::detailed_nameof<std::vector<Foo>>();
-    ctti::name_t name_vf2 = ctti::detailed_nameof<decltype(vf)>();
-    std::cout << name_vf.name() << std::endl;
-    std::cout << name_vf.full_name() << std::endl;
-    std::cout << name_vf.full_homogeneous_name() << std::endl;
+TEST(externlibs, ctti_names_a_container_using_its_element_type) {
+    std::vector<Foo> values;
+    const auto integer_name = ctti::detailed_nameof<std::vector<int>>();
+    const auto foo_name = ctti::detailed_nameof<std::vector<Foo>>();
+
+    // Template arguments distinguish two vector types. A declared vector
+    // and the type deduced from its instance still share the same name.
     static_assert(ctti::detailed_nameof<Foo>() != ctti::detailed_nameof<Bar>());
     static_assert(ctti::detailed_nameof<std::vector<Foo>>() != ctti::detailed_nameof<std::vector<Bar>>());
-    static_assert(ctti::detailed_nameof<std::vector<int>>() == ctti::detailed_nameof<std::vector<int>>());
-    ASSERT_TRUE(name_vi.full_name() != name_vf.full_name());
-    ASSERT_TRUE(name_vf.full_name() == name_vf2.full_name());
-    ASSERT_TRUE(ctti::detailed_nameof<Foo>().full_name() == "Foo");
+    EXPECT_NE(integer_name.full_name(), foo_name.full_name());
+    EXPECT_EQ(foo_name.full_name(), ctti::detailed_nameof<decltype(values)>().full_name());
+    EXPECT_EQ(ctti::detailed_nameof<Foo>().full_name(), "Foo");
 }

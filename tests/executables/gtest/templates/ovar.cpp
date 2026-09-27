@@ -1,29 +1,29 @@
 #include <gtest/gtest.h>
 #include <templates/observed-variables.h>
 #include <math/time.h>
+#include <atomic>
 #include <thread>
 
-std::atomic_bool cb1{false};
-std::atomic_bool cb2{false};
-
-TEST(templates_ovar, simple) {
-    // Register two callbacks to observe a change from the initial value.
-    ObservedVariable<int,2> var(0,{
-        [](const int&){cb1.store(true);},
-        [](const int&){cb2.store(true);}
+TEST(templates_ovar, notifies_both_observers_and_unblocks_a_waiter_on_change) {
+    std::atomic<int> first_observed{-1};
+    std::atomic<int> second_observed{-1};
+    ObservedVariable<int, 2> value(0, {
+        [&](const int& changed) { first_observed.store(changed); },
+        [&](const int& changed) { second_observed.store(changed); }
     });
 
-    // Start a waiter before changing the value. Joinable only means the thread has
-    // not been joined yet; it does not establish that the waiter is blocked.
-    std::thread wait_thread([&var]() {
-        var.wait_until_change();
+    // Start a waiter before changing the value. The current API exposes no
+    // readiness signal, so this delay is a best-effort scheduling allowance.
+    std::thread wait_thread([&value]() {
+        value.wait_until_change();
     });
     std::this_thread::sleep_for(Seconds{2});
-    ASSERT_TRUE(wait_thread.joinable());
 
-    // Set a new value, join the waiter, then confirm both callbacks ran.
-    var.set(10);
+    // One change should release the waiter and pass the new value to each
+    // observer, rather than just calling the observers with the old value.
+    value.set(10);
     wait_thread.join();
-    ASSERT_TRUE(cb1.load());
-    ASSERT_TRUE(cb2.load());
+    EXPECT_EQ(value.get(), 10);
+    EXPECT_EQ(first_observed.load(), 10);
+    EXPECT_EQ(second_observed.load(), 10);
 }

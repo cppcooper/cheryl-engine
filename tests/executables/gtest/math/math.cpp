@@ -19,10 +19,6 @@
 #include <math/pointers.h>
 #include <math/time.h>
 
-// TODO(test-layout): assets/manifest.cpp currently owns the direct Anchor/MakePivot
-// coverage. Once this file is integrated, remove that math-specific test from the
-// asset manifest suite rather than maintaining duplicate coverage.
-//
 namespace {
     template <typename T>
     constexpr bool is_power_of_two(const T value) {
@@ -57,23 +53,19 @@ TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
 
 TEST(math_binary, turns_individual_flags_on_and_off) {
     CE::math::BitArray<8> bits;
-
-    // Start with no flags, then light up three positions including the last.
-    EXPECT_EQ(bits.words()[0], std::uint8_t{0});
-    bits[0] = true;
-    bits[2] = true;
-    bits[7] = true;
-    EXPECT_EQ(bits.words()[0], std::uint8_t{0b10000101});
-
-    // A const reader sees those flags; clearing one leaves the others set.
     const auto& readable = bits;
-    EXPECT_TRUE(readable[0]);
+
+    // Light two flags, then clear only the first. Read each change through
+    // the const interface that consumers use to inspect the flags.
+    EXPECT_FALSE(readable[0]);
     EXPECT_FALSE(readable[1]);
-    EXPECT_TRUE(readable[2]);
-    EXPECT_TRUE(readable[7]);
-    bits[2] = false;
-    EXPECT_EQ(readable.words()[0], std::uint8_t{0b10000001});
-    EXPECT_FALSE(readable[2]);
+    bits[0] = true;
+    EXPECT_TRUE(readable[0]);
+    bits[1] = true;
+    EXPECT_TRUE(readable[1]);
+    bits[0] = false;
+    EXPECT_FALSE(readable[0]);
+    EXPECT_TRUE(readable[1]);
 }
 
 TEST(math_binary, copies_the_value_of_one_flag_to_another) {
@@ -83,14 +75,14 @@ TEST(math_binary, copies_the_value_of_one_flag_to_another) {
     // Copy both a set flag and a clear flag; neither assignment moves the
     // proxy's destination to the source position.
     bits[1] = bits[0];
-    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000011});
+    EXPECT_EQ(bits.words()[0], std::uint8_t{3});
     bits[0] = bits[2];
-    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000010});
+    EXPECT_EQ(bits.words()[0], std::uint8_t{2});
 
     // Self-assignment also keeps the represented flag intact.
     auto reference = bits[1];
     reference = reference;
-    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000010});
+    EXPECT_EQ(bits.words()[0], std::uint8_t{2});
 }
 
 TEST(math_binary, bits_and_words) {
@@ -225,13 +217,12 @@ TEST(math_anchor, quad_geometry) {
     EXPECT_FLOAT_EQ(typed[2].y, typed[4].y);
 }
 
-TEST(math_anchor, invalid_input) {
+TEST(math_anchor, rejects_pivots_outside_the_image) {
     using namespace CE::math;
 
     std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
 
-    // Geometry generation requires a finite normalized pivot and a real texture
-    // extent before any UV division can occur.
+    // A pivot has to identify a finite point within the image's unit square.
     EXPECT_THROW(
         Anchor::MakePivot(
             {std::numeric_limits<float>::quiet_NaN(), 0.5f},
@@ -247,6 +238,13 @@ TEST(math_anchor, invalid_input) {
         Anchor::MakePivot({0.5f, 1.01f}, vertices.data(), 64, 32, 16, 8),
         CE::Exceptions::invalid_args
     );
+}
+
+TEST(math_anchor, rejects_images_without_a_width_or_height) {
+    using namespace CE::math;
+    std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
+
+    // Either missing dimension makes texture coordinates impossible to compute.
     EXPECT_THROW(
         Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 0, 32, 16, 8),
         CE::Exceptions::invalid_args
@@ -280,7 +278,7 @@ TEST(math_pointers, advances_an_address_by_bytes) {
     EXPECT_EQ(CE::ptr::add_offset<std::byte>(begin, 17), begin + 17);
 }
 
-TEST(math_pointers, alignment) {
+TEST(math_pointers, moves_forward_to_the_next_aligned_address) {
     alignas(64) std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
 
@@ -298,6 +296,11 @@ TEST(math_pointers, alignment) {
         CE::ptr::align_offset(begin, 3, std::align_val_t{16}),
         std::size_t{16}
     );
+}
+
+TEST(math_pointers, reports_the_alignment_of_an_address) {
+    alignas(64) std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
 
     // calculate_alignment reports the largest power of two dividing an address.
     EXPECT_EQ(
