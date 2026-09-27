@@ -112,7 +112,7 @@ namespace {
     };
 }
 
-TEST(logging, close_is_a_file_completion_barrier) {
+TEST(logging, close_completes_file) {
     remove_current_log_file(file_barrier_name);
 
     std::atomic<int> close_events = 0;
@@ -155,7 +155,7 @@ TEST(logging, close_is_a_file_completion_barrier) {
     EXPECT_EQ(close_events.load(), 1);
 }
 
-TEST(logging, destruction_closes_file_and_releases_registry_ownership) {
+TEST(logging, destructor_closes_file) {
     remove_current_log_file(destructor_close_name);
 
     std::atomic<int> close_events = 0;
@@ -189,7 +189,7 @@ TEST(logging, destruction_closes_file_and_releases_registry_ownership) {
     default_guard.restore();
 }
 
-TEST(logging, console_routes_levels_before_close_returns) {
+TEST(logging, console_routing) {
     remove_current_log_file(console_routing_name);
     TestLog<console_routing_name> log;
 
@@ -219,7 +219,7 @@ TEST(logging, console_routes_levels_before_close_returns) {
     EXPECT_EQ(stderr_text.find("stdout-warn"), std::string::npos);
 }
 
-TEST(logging, closed_state_drops_writes_and_rejects_live_resource_operations) {
+TEST(logging, closed_state) {
     remove_current_log_file(closed_state_name);
     TestLog<closed_state_name> log;
 
@@ -247,7 +247,7 @@ TEST(logging, closed_state_drops_writes_and_rejects_live_resource_operations) {
     EXPECT_THROW(log.set_level_stdsink(spdlog::level::debug), Exceptions::bad_request);
 }
 
-TEST(logging, reopen_restores_levels_independently) {
+TEST(logging, levels_after_reopen) {
     remove_current_log_file(reopen_levels_name);
     TestLog<reopen_levels_name> log;
 
@@ -267,7 +267,7 @@ TEST(logging, reopen_restores_levels_independently) {
     EXPECT_NO_THROW(log.reopen());
 }
 
-TEST(logging, timed_close_preserves_closing_and_tolerates_concurrent_writes) {
+TEST(logging, timed_close) {
     remove_current_log_file(timed_close_name);
     TestLog<timed_close_name> log;
     log.set_level_logger(spdlog::level::off);
@@ -325,7 +325,7 @@ TEST(logging, timed_close_preserves_closing_and_tolerates_concurrent_writes) {
     EXPECT_NO_THROW(log.close(close_timeout));
 }
 
-TEST(logging, opening_state_rejects_conflicting_lifecycle_operations) {
+TEST(logging, opening_state) {
     remove_current_log_file(opening_state_name);
 
     std::atomic<bool> block_open = false;
@@ -367,7 +367,7 @@ TEST(logging, opening_state_rejects_conflicting_lifecycle_operations) {
     EXPECT_NO_THROW(reopening.get());
 }
 
-TEST(logging, failed_reopen_returns_to_closed_and_can_retry) {
+TEST(logging, failed_reopen) {
     remove_current_log_file(failed_reopen_name);
 
     std::atomic<bool> fail_next_open = false;
@@ -393,7 +393,7 @@ TEST(logging, failed_reopen_returns_to_closed_and_can_retry) {
     EXPECT_NE(spdlog::get(failed_reopen_name), nullptr);
 }
 
-TEST(logging, reopen_restores_default_when_fallback_is_unchanged) {
+TEST(logging, default_after_reopen) {
     remove_current_log_file(default_restore_name);
     TestLog<default_restore_name> log;
     DefaultLoggerGuard default_guard;
@@ -414,7 +414,7 @@ TEST(logging, reopen_restores_default_when_fallback_is_unchanged) {
     default_guard.restore();
 }
 
-TEST(logging, reopen_does_not_steal_an_explicitly_replaced_default) {
+TEST(logging, replaced_default_after_reopen) {
     remove_current_log_file(default_replaced_name);
     remove_current_log_file(alternate_default_name);
     TestLog<default_replaced_name> preferred;
@@ -435,7 +435,7 @@ TEST(logging, reopen_does_not_steal_an_explicitly_replaced_default) {
     default_guard.restore();
 }
 
-TEST(logging, logger_wrapper_forwards_close_timeout_and_compile_time_writes_remain_safe) {
+TEST(logging, wrapper_timeout_and_writes) {
     remove_current_log_file(wrapper_name);
 
     // Touch the facade first so its underlying singleton is constructed, then retain the real

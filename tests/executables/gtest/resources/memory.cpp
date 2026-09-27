@@ -121,7 +121,7 @@ namespace {
     }
 }
 
-TEST(memory, seeded_checkout_return_preserves_bytes_and_owner_partitions) {
+TEST(memory, mixed_checkouts_and_returns) {
     auto& manager = CE::Mem::ExactMMgr::get();
     constexpr unsigned seed = 0xB10C42u;
     std::mt19937 rng(seed);
@@ -165,7 +165,7 @@ TEST(memory, seeded_checkout_return_preserves_bytes_and_owner_partitions) {
     EXPECT_TRUE(valid_partition({}));
 }
 
-TEST(memory, partial_return_keeps_other_bytes_in_use) {
+TEST(memory, partial_returns) {
     using namespace CE;
     auto& manager = Mem::ExactMMgr::get();
     auto block = manager.checkout_chunk(256, 64);
@@ -202,7 +202,7 @@ TEST(memory, partial_return_keeps_other_bytes_in_use) {
     EXPECT_TRUE(checkPoolInRegistryAlsoInStale(bm));
 }
 
-TEST(memory, rejects_duplicate_returns) {
+TEST(memory, duplicate_returns) {
     // Once a checkout has been returned, a second return of the same block fails.
     using namespace CE;
     auto& manager = Mem::ExactMMgr::get();
@@ -211,7 +211,7 @@ TEST(memory, rejects_duplicate_returns) {
     EXPECT_THROW(manager.return_chunk(block), Exceptions::failed_operation);
 }
 
-TEST(memory, reuses_a_block_only_if_it_meets_the_requested_alignment) {
+TEST(memory, alignment_on_reuse) {
     auto& manager = CE::Mem::ExactMMgr::get();
     // Return a low-alignment candidate, then request stronger alignment.
     // Reuse must satisfy the new request regardless of the free candidate.
@@ -224,12 +224,12 @@ TEST(memory, reuses_a_block_only_if_it_meets_the_requested_alignment) {
     EXPECT_TRUE(valid_partition({}));
 }
 
-TEST(memory, rejects_an_empty_checkout) {
+TEST(memory, empty_checkouts) {
     auto& manager = CE::Mem::ExactMMgr::get();
     EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
 }
 
-TEST(memory, preallocation_respects_explicit_growth_and_alignment) {
+TEST(memory, preallocation) {
     auto& manager = CE::Mem::ExactMMgr::get();
     BlockManagement<void> bm;
 
@@ -256,7 +256,7 @@ TEST(memory, preallocation_respects_explicit_growth_and_alignment) {
     EXPECT_TRUE(valid_partition({}));
 }
 
-TEST(memory, typed_default_allocator_returns_all_bytes) {
+TEST(memory, typed_allocator_releases_full_block) {
     CE::Mem::DefaultAllocator<std::uint64_t> allocator;
     constexpr std::size_t count = 5;
     auto* ptr = allocator.allocate(count);
@@ -321,7 +321,7 @@ namespace {
     };
 }
 
-TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
+TEST(memory, cached_asset_lifetime) {
     TrackedAsset::live = 0;
     TrackedAsset::destroyed = 0;
     std::shared_ptr<TrackedAssetBase> retained;
@@ -362,12 +362,12 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
     EXPECT_EQ(TrackedAsset::destroyed, 3);
 }
 
-TEST(memory, empty_asset_requests_create_no_objects) {
+TEST(memory, empty_asset_request) {
     AssetCacheProbe cache;
     EXPECT_TRUE(cache.allocate<TrackedAsset>(0).empty());
 }
 
-TEST(memory, object_pool_keeps_neighbors_alive_when_one_handle_is_released) {
+TEST(memory, independent_pool_handles) {
     TrackedAsset::live = 0;
     TrackedAsset::destroyed = 0;
     auto& pool = CE::Obj::Pool<TrackedAsset>::get();
@@ -389,7 +389,7 @@ TEST(memory, object_pool_keeps_neighbors_alive_when_one_handle_is_released) {
     EXPECT_EQ(TrackedAsset::destroyed, 3);
 }
 
-TEST(memory, object_pool_rejects_invalid_raw_block_returns) {
+TEST(memory, invalid_pool_returns) {
     auto& pool = CE::Obj::Pool<TrackedAsset>::get();
 
     // Whole raw blocks have a separate return path, which rejects duplicate

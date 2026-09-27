@@ -61,7 +61,7 @@ namespace {
     static_assert(!CE::Obj::ReservationAllocator<std::allocator<ReservationItem>, ReservationItem>);
 }
 
-TEST(memory, reservation_tracks_only_unclaimed_ranges) {
+TEST(memory, unclaimed_reservation_ranges) {
     using CE::Obj::ObjectReservation;
     ReservationItem::live = 0;
     ReservationItem::destroyed = 0;
@@ -120,7 +120,7 @@ TEST(memory, reservation_tracks_only_unclaimed_ranges) {
     }
 }
 
-TEST(memory, handles_retain_pool_state_after_facade_destruction) {
+TEST(memory, handles_outlive_pool_facade) {
     LateItem::destroyed = 0;
     std::weak_ptr<CE::Obj::PoolState<LateItem>> weak;
     std::shared_ptr<LateItem> object;
@@ -144,7 +144,7 @@ TEST(memory, handles_retain_pool_state_after_facade_destruction) {
     EXPECT_EQ(LateItem::destroyed, 1);
 }
 
-TEST(memory, pool_releases_unconstructed_tail_after_constructor_failure) {
+TEST(memory, pool_constructor_failure) {
     FailingBatchItem::attempted = 0;
     FailingBatchItem::live = 0;
     auto context = std::make_shared<CE::Obj::PoolState<FailingBatchItem>>();
@@ -162,7 +162,7 @@ TEST(memory, pool_releases_unconstructed_tail_after_constructor_failure) {
     EXPECT_EQ(FailingBatchItem::live, 0);
 }
 
-TEST(memory, factory_deallocates_one_batch_after_its_last_element) {
+TEST(memory, factory_batch_lifetime) {
     ReservationItem::live = 0;
     ReservationItem::destroyed = 0;
     using Allocator = CountingAllocator<ReservationItem>;
@@ -188,7 +188,7 @@ TEST(memory, factory_deallocates_one_batch_after_its_last_element) {
     EXPECT_EQ(Allocator::deallocated, 1);
 }
 
-TEST(memory, factory_releases_batch_after_constructor_failure) {
+TEST(memory, factory_constructor_failure) {
     using Allocator = CountingAllocator<FailingBatchItem>;
     Allocator::allocated = 0;
     Allocator::deallocated = 0;

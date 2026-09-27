@@ -31,7 +31,7 @@ namespace {
     }
 }
 
-TEST(system_fonts, discovers_supported_files_case_insensitively) {
+TEST(system_fonts, font_discovery) {
     // Populate a nested directory with mixed-case font extensions and a non-font file.
     const TemporaryDirectory directory;
     create_empty_file(directory.path / "regular.ttf");
@@ -47,14 +47,14 @@ TEST(system_fonts, discovers_supported_files_case_insensitively) {
     EXPECT_EQ(fonts[2], directory.path / "regular.ttf");
 }
 
-TEST(system_fonts, chooses_a_preferred_face_regardless_of_filename_case) {
+TEST(system_fonts, preferred_font) {
     // A preferred face wins even when its filename uses uppercase letters.
     const std::vector<fs::path> fonts{"/fonts/Zeta.ttf", "/fonts/DejaVuSans.ttf", "/fonts/ARIAL.TTF"};
     ASSERT_TRUE(CE::Resources::select_default_system_font(fonts).has_value());
     EXPECT_EQ(*CE::Resources::select_default_system_font(fonts), fs::path("/fonts/ARIAL.TTF"));
 }
 
-TEST(system_fonts, falls_back_to_the_first_sorted_face) {
+TEST(system_fonts, fallback_font) {
     // Without a preferred face, select the first sorted path; an empty list has no selection.
     const std::vector<fs::path> fallback{"/fonts/ZetaCustom.otf", "/fonts/AlphaCustom.otf"};
     ASSERT_TRUE(CE::Resources::select_default_system_font(fallback).has_value());

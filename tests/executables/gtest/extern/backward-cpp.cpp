@@ -21,7 +21,7 @@ void start_nested_calls() {
     call_print_stack();
 }
 
-TEST(externlibs, backwardcpp_prints_nested_calls_in_stack_order) {
+TEST(externlibs, backwardcpp_call_stack) {
     testing::internal::CaptureStderr();
     start_nested_calls();
     const std::string trace = testing::internal::GetCapturedStderr();

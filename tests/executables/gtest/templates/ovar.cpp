@@ -4,7 +4,7 @@
 #include <atomic>
 #include <thread>
 
-TEST(templates_ovar, notifies_both_observers_and_unblocks_a_waiter_on_change) {
+TEST(templates_ovar, observers_and_waiters) {
     std::atomic<int> first_observed{-1};
     std::atomic<int> second_observed{-1};
     ObservedVariable<int, 2> value(0, {

@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-TEST(externlibs, spdlog_routes_info_and_error_to_their_console_streams){
+TEST(externlibs, spdlog_console_streams){
    testing::internal::CaptureStdout();
    testing::internal::CaptureStderr();
    auto console = spdlog::stdout_color_mt("console");

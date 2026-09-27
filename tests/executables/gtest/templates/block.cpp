@@ -9,7 +9,7 @@
 #include <cstdint>
 
 
-TEST(templates_block, splits_one_owned_range_without_losing_its_boundaries) {
+TEST(templates_block, range_splits) {
     auto backing = std::shared_ptr<char>(new char[16], [](char* p) { delete[] p; });
     auto* first_byte = backing.get();
     Block<char> front{backing, backing, CE::ptr::calculate_alignment(first_byte), 16};
@@ -47,7 +47,7 @@ TEST(templates_block, splits_one_owned_range_without_losing_its_boundaries) {
     EXPECT_TRUE(after_two->contains(first_byte + 15));
 }
 
-TEST(templates_block, typed_split_preserves_element_ranges) {
+TEST(templates_block, typed_splits) {
     // Establish four typed elements and their byte boundaries. A split at
     // zero must leave the original range unchanged.
     struct Value { std::uint64_t data; };
@@ -90,7 +90,7 @@ struct CullProbe : AbstractManager<CullProbeItem> {
     using AbstractManager<CullProbeItem>::merge_into_pool;
 };
 
-TEST(templates_block, cull_only_reclaims_complete_stale_owners) {
+TEST(templates_block, stale_owner_culling) {
     // Register two independent allocations and return each complete owner;
     // both should now be stale candidates for culling.
     CullProbe manager;
@@ -127,7 +127,7 @@ struct AdjacentBlockProbe : AbstractManager<char> {
     using AbstractManager<char>::search_right;
 };
 
-TEST(templates_block, finds_the_nearest_left_block_across_a_gap) {
+TEST(templates_block, neighbors_across_gaps) {
     // Set up two ranges with a gap, then query at the first range, inside
     // the gap, and just beyond the second range.
     auto backing = std::shared_ptr<char>(new char[128], [](const char* p) { delete[] p; });
@@ -175,7 +175,7 @@ struct MergeProbe : AbstractManager<MergeProbeItem> {
     using AbstractManager<MergeProbeItem>::record_new;
 };
 
-TEST(templates_block, rejoins_an_owner_when_its_last_section_is_returned) {
+TEST(templates_block, rejoining_an_owner) {
     // Partition one owner into front, middle, and back. Seed the middle as
     // reusable while the two outer pieces are still active.
     auto backing = std::shared_ptr<MergeProbeItem>(new MergeProbeItem[128], [](MergeProbeItem* p) { delete[] p; });
@@ -254,7 +254,7 @@ public:
     }
 };
 
-TEST(templates_block, finds_and_recycles_sections_from_two_owners) {
+TEST(templates_block, recycling_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
         auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
@@ -316,7 +316,7 @@ TEST(templates_block, finds_and_recycles_sections_from_two_owners) {
     EXPECT_EQ(test.fill(128), first);
 }
 
-TEST(templates_block, detects_inconsistent_owner_and_free_range_bookkeeping) {
+TEST(templates_block, bookkeeping_checks) {
     // Use a separate specialization so memory manager tests cannot affect these checks.
     using BMv = BlockManagement<char>;
     std::unique_lock lreg(std::get<0>(BMv::registry));

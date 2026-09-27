@@ -38,7 +38,7 @@ namespace {
     };
 }
 
-TEST(draw_contract, applies_material_parameters_without_a_glsl_program) {
+TEST(draw_contract, material_without_glsl) {
     // Supply a recording shader with distinct alpha, scale, and model values.
     auto material = std::make_shared<RecordingShader>();
     CE::DrawInfo info;
