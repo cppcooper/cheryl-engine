@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <assets/abstracts/resource-provider.h>
+#include <assets/2d/graphic.h>
 #include <assets/primitives/draw-info.h>
 #include <core/engines/runtime-engine.h>
 #include <core/resources/asset-management/shader-mgr.h>
@@ -135,8 +136,12 @@ namespace {
             return std::make_shared<MemoryImage>(size);
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(
-            std::shared_ptr<CE::Vertex2D> vertices, std::uint32_t count) override {
+            std::shared_ptr<CE::Vertex2D> vertices, std::uint32_t count,
+            CE::Assets::PrimitiveTopology topology) override {
             uploaded_vertices = vertices ? count : 0;
+            uploaded_topology = topology;
+            uploaded_geometry.clear();
+            if (vertices) uploaded_geometry.assign(vertices.get(), vertices.get() + count);
             return geometry;
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> compile_stage(const std::filesystem::path&) override {
@@ -148,6 +153,8 @@ namespace {
         }
 
         std::uint32_t uploaded_vertices = 0;
+        CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
+        std::vector<CE::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
     };
@@ -221,7 +228,7 @@ TEST(runtime_adapter, alternate_backend) {
     engine.set_mode(CE::Enum::gfx_mode::R2D);
     EXPECT_FALSE(renderer.depth_enabled);
 
-    // Load a texture, sprite geometry, and shader through the in-memory provider.
+    // Load two frames from a texture, plus their shader, through the in-memory provider.
     const std::filesystem::path texture = "memory-adapter/sprite.png";
     auto& resources = engine.resources();
     CE::Assets::TextureMgr::get().load_assets({texture}, resources);
@@ -229,14 +236,15 @@ TEST(runtime_adapter, alternate_backend) {
     definition.name_space = "memory-adapter";
     definition.name = "sprite";
     definition.texture = texture;
-    definition.grid.frame = {32, 32};
+    definition.grid.frame = {16, 32};
     definition.grid.rows = 1;
-    definition.grid.columns = 1;
+    definition.grid.columns = 2;
     CE::Assets::SpriteMgr::get().load_assets({definition}, resources);
     const std::filesystem::path program = "memory-adapter/shader";
     CE::Assets::ShaderMgr::get().load_program(program, {"vertex", "fragment"}, resources);
 
-    // Draw the loaded sprite and inspect the recorded GPU operations and buffer swap.
+    // Draw each frame in turn. Both reuse the same upload, and the second draw
+    // begins at the next four-vertex range rather than joining the first strip.
     auto sprite = CE::Assets::SpriteMgr::get().get_asset(definition.id());
     auto shader = CE::Assets::ShaderMgr::get().get_asset(program);
     ASSERT_TRUE(sprite);
@@ -244,11 +252,16 @@ TEST(runtime_adapter, alternate_backend) {
     CE::DrawInfo draw;
     draw.material = shader;
     sprite->draw(draw);
+    EXPECT_EQ(provider.geometry->first_vertex, 0u);
+    EXPECT_EQ(provider.geometry->drawn_vertices, 4u);
+    (*sprite)[1].draw(draw);
     engine.post_draw();
-    EXPECT_EQ(provider.uploaded_vertices, 6u);
-    EXPECT_EQ(provider.geometry->drawn_vertices, 6u);
+    EXPECT_EQ(provider.uploaded_vertices, 8u);
+    EXPECT_EQ(provider.uploaded_topology, CE::Assets::PrimitiveTopology::TriangleStrip);
+    EXPECT_EQ(provider.geometry->first_vertex, 4u);
+    EXPECT_EQ(provider.geometry->drawn_vertices, 4u);
     EXPECT_EQ(provider.geometry->bound_size.width, 32u);
-    EXPECT_EQ(provider.shader->uses, 2);
+    EXPECT_EQ(provider.shader->uses, 3);
     EXPECT_EQ(provider.shader->projection, engine.active_camera()->projection_matrix());
     EXPECT_EQ(renderer.swaps, 1);
 
@@ -257,4 +270,30 @@ TEST(runtime_adapter, alternate_backend) {
     EXPECT_TRUE(engine.should_close());
     engine.deinit();
     EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(graphic, whole_image) {
+    MemoryProvider provider;
+
+    // Loading one image gives the graphic a pixel-sized six-vertex quad and
+    // covers the complete texture, including its top-right UV corner.
+    auto graphic = CE::Assets::Graphic::load(std::filesystem::path{"ui/panel.png"}, provider);
+    ASSERT_EQ(provider.uploaded_vertices, 6u);
+    EXPECT_EQ(provider.uploaded_topology, CE::Assets::PrimitiveTopology::Triangles);
+    ASSERT_EQ(provider.uploaded_geometry.size(), std::size_t{6});
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[0].x, 0.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[0].y, -32.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[2].u, 1.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[2].v, 1.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[5].x, 0.0f);
+
+    // A single submission draws all six vertices with the loaded image.
+    CE::DrawInfo info;
+    info.material = provider.shader;
+    graphic.draw(info);
+    EXPECT_EQ(provider.geometry->bound_size.width, 32u);
+    EXPECT_EQ(provider.geometry->bound_size.height, 32u);
+    EXPECT_EQ(provider.geometry->first_vertex, 0u);
+    EXPECT_EQ(provider.geometry->drawn_vertices, 6u);
+    EXPECT_EQ(provider.shader->uses, 1);
 }

@@ -10,7 +10,7 @@ namespace CE::Assets {
         void draw_frame(const std::size_t cell, Geometry2D& geometry, Image& texture, const DrawInfo& info) {
             geometry.bind(texture);
             info.use_shader();
-            geometry.draw(VAONumbers::calculate_num_vertices(cell), VAONumbers::vertices_per_quad);
+            geometry.draw(VAONumbers::calculate_num_strip_vertices(cell), VAONumbers::vertices_per_strip_quad);
         }
     }
 

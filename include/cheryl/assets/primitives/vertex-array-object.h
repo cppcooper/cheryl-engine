@@ -7,7 +7,7 @@
 
 namespace CE {
     struct VAO final : Assets::Geometry2D {
-        VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices);
+        VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices, Assets::PrimitiveTopology topology);
 
         VAO(std::shared_ptr<Vertex3D> vertices, uint32_t num_vertices,
             std::shared_ptr<uint32_t> indices, uint32_t num_indices
@@ -20,6 +20,7 @@ namespace CE {
         enum VAOType {
             flat, mesh
         } type;
+        Assets::PrimitiveTopology topology_ = Assets::PrimitiveTopology::Triangles;
 
         // TODO: Coordinate glDeleteVertexArrays/glDeleteBuffers and Texture's glDeleteTextures with context lifetime.
         GLuint id_vao = 0;

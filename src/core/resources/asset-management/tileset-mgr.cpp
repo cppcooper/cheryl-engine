@@ -37,7 +37,8 @@ namespace CE::Assets {
             // Translate each grid cell into vertices, upload once, then retain geometry and
             // unconsumed animation/autotile metadata in the cached tileset.
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
-            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
+            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count,
+                                                 PrimitiveTopology::TriangleStrip);
             auto asset = reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh),
                                                                   .texture = texture,
                                                                   .definition = definition});

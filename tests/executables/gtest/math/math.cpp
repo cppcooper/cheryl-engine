@@ -204,7 +204,8 @@ TEST(math_anchor, quad_geometry) {
     CE::Vertex2D typed[CE::VAONumbers::vertices_per_quad]{};
     std::array<float, CE::VAONumbers::floats_per_quad> raw{};
 
-    // Both public overloads should describe the same two triangles.
+    // The quad owns two triangles; both pointer overloads copy that same layout.
+    const auto quad = Anchor::MakeQuad(pivot, texture_width, texture_height, width, height, x, y);
     Anchor::MakePivot(pivot, typed, texture_width, texture_height, width, height, x, y);
     Anchor::MakePivot(pivot, raw.data(), texture_width, texture_height, width, height, x, y);
 
@@ -212,6 +213,8 @@ TEST(math_anchor, quad_geometry) {
     EXPECT_FLOAT_EQ(typed[0].y, 0.0f);
     EXPECT_FLOAT_EQ(typed[2].x, 8.0f);
     EXPECT_FLOAT_EQ(typed[2].y, 8.0f);
+    EXPECT_FLOAT_EQ(typed[5].x, -8.0f);
+    EXPECT_FLOAT_EQ(typed[5].y, 8.0f);
     EXPECT_FLOAT_EQ(typed[0].u, 0.25f);
     EXPECT_FLOAT_EQ(typed[0].v, 0.5f);
     EXPECT_FLOAT_EQ(typed[2].u, 0.5f);
@@ -219,6 +222,8 @@ TEST(math_anchor, quad_geometry) {
 
     for (std::size_t i = 0; i < CE::VAONumbers::vertices_per_quad; ++i) {
         const auto offset = i * CE::VAONumbers::floats_per_quad_vertex;
+        EXPECT_FLOAT_EQ(typed[i].x, quad.vertices[i].x);
+        EXPECT_FLOAT_EQ(typed[i].y, quad.vertices[i].y);
         EXPECT_FLOAT_EQ(raw[offset], typed[i].x);
         EXPECT_FLOAT_EQ(raw[offset + 1], typed[i].y);
         EXPECT_FLOAT_EQ(raw[offset + 2], typed[i].z);
@@ -226,11 +231,9 @@ TEST(math_anchor, quad_geometry) {
         EXPECT_FLOAT_EQ(raw[offset + 4], typed[i].v);
     }
 
-    // The two triangles deliberately repeat their shared diagonal.
+    // The two triangles repeat their shared diagonal in the standalone quad.
     EXPECT_FLOAT_EQ(typed[0].x, typed[3].x);
-    EXPECT_FLOAT_EQ(typed[0].y, typed[3].y);
     EXPECT_FLOAT_EQ(typed[2].x, typed[4].x);
-    EXPECT_FLOAT_EQ(typed[2].y, typed[4].y);
 }
 
 TEST(math_anchor, invalid_pivots) {

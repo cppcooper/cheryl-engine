@@ -26,12 +26,13 @@ namespace CE {
     void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
         if (type != flat)
             throw Exceptions::invalid_args(CE_HERE, "Indexed meshes cannot be drawn as 2D geometry");
-        glDrawArrays(GL_TRIANGLES, static_cast<GLint>(first_vertex), static_cast<GLsizei>(vertex_count));
+        const GLenum mode = topology_ == Assets::PrimitiveTopology::TriangleStrip ? GL_TRIANGLE_STRIP : GL_TRIANGLES;
+        glDrawArrays(mode, static_cast<GLint>(first_vertex), static_cast<GLsizei>(vertex_count));
     }
 
-    VAO::VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices)
-            : type(flat) {
-        // Copy expanded 2D triangles to the GPU, then record the position/UV layout
+    VAO::VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices, const Assets::PrimitiveTopology topology)
+            : type(flat), topology_(topology) {
+        // Copy 2D vertices to the GPU, then record the position/UV layout
         // in the VAO. The caller's CPU vertex buffer can be released after upload.
         constexpr GLsizei byte_stride = sizeof(Vertex2D);
         const GLsizei vertices_bytes = num_vertices * byte_stride;

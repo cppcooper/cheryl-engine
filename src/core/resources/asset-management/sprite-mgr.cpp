@@ -37,7 +37,8 @@ namespace CE::Assets {
             // Build CPU vertices from manifest grid/pivot, upload them through the selected backend,
             // and transfer the claimed slot from this reservation into the cache.
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
-            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count);
+            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count,
+                                                 PrimitiveTopology::TriangleStrip);
             auto asset = reservation.emplace(slot++, SpriteData{.geometry = std::move(mesh),
                                                                  .texture = texture,
                                                                  .definition = definition});

@@ -25,22 +25,23 @@ namespace {
 }
 
 TEST(asset_pivot, bottom_center_atlas_tile) {
-    // Anchor an atlas subrectangle at its bottom center, then inspect its vertex
-    // positions, texture coordinates, and repeated corners for two triangles.
+    // Anchor an image rectangle at its bottom center, then inspect its two
+    // independent triangles and their matching texture coordinates.
     CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
     CE::math::Anchor::MakePivot({0.5f, 1.0f}, vertices, 64, 32, 16, 8, 16, 8);
 
     EXPECT_FLOAT_EQ(vertices[0].x, -8.0f);
     EXPECT_FLOAT_EQ(vertices[0].y, 0.0f);
     EXPECT_FLOAT_EQ(vertices[1].x, 8.0f);
+    EXPECT_FLOAT_EQ(vertices[2].x, 8.0f);
     EXPECT_FLOAT_EQ(vertices[2].y, 8.0f);
+    EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
     EXPECT_FLOAT_EQ(vertices[0].u, 0.25f);
     EXPECT_FLOAT_EQ(vertices[1].u, 0.5f);
     EXPECT_FLOAT_EQ(vertices[0].v, 0.5f);
     EXPECT_FLOAT_EQ(vertices[2].v, 0.75f);
-    EXPECT_EQ(vertices[0].x, vertices[3].x);
-    EXPECT_EQ(vertices[2].x, vertices[4].x);
-    EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
+    EXPECT_FLOAT_EQ(vertices[3].x, vertices[0].x);
+    EXPECT_FLOAT_EQ(vertices[4].u, vertices[2].u);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
 }
 
@@ -80,11 +81,26 @@ TEST(asset_grid, tile_geometry) {
     const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
     const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
 
-    ASSERT_EQ(geometry.vertex_count, CE::VAONumbers::vertices_per_quad);
+    ASSERT_EQ(geometry.vertex_count, CE::VAONumbers::vertices_per_strip_quad);
     ASSERT_NE(geometry.vertices, nullptr);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].x, -4.0f);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].u, 0.125f);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].v, 0.5f);
+}
+
+TEST(asset_grid, separate_frame_strips) {
+    // The second atlas cell starts a new four-corner range with its own UVs.
+    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 2};
+    const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
+    ASSERT_EQ(geometry.vertex_count, 8u);
+    ASSERT_NE(geometry.vertices, nullptr);
+
+    const auto* vertices = geometry.vertices.get();
+    EXPECT_FLOAT_EQ(vertices[2].x, -4.0f);
+    EXPECT_FLOAT_EQ(vertices[3].x, 4.0f);
+    EXPECT_FLOAT_EQ(vertices[4].x, -4.0f);
+    EXPECT_FLOAT_EQ(vertices[4].u, 0.375f);
+    EXPECT_FLOAT_EQ(vertices[7].u, 0.625f);
 }
 
 TEST(asset_grid, image_too_small) {
