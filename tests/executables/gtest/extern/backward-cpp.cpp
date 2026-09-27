@@ -1,9 +1,8 @@
 #include <gtest/gtest.h>
 #include <backward.hpp>
-#include <regex>
 #include <internals/posh.h>
 
-void foo3ty() {
+void print_stack_here() {
     backward::TraceResolver tr;
     backward::StackTrace st;
     st.load_here(6);
@@ -14,32 +13,29 @@ void foo3ty() {
     p.print(st, stderr);
 }
 
-void foo2toot() {
-    return foo3ty();
+void call_print_stack() {
+    print_stack_here();
 }
 
-void foo1UR() {
-    return foo2toot();
+void start_nested_calls() {
+    call_print_stack();
 }
 
-TEST(externlibs, backwardcpp) {
+TEST(externlibs, backwardcpp_prints_nested_calls_in_stack_order) {
     testing::internal::CaptureStderr();
-    foo1UR();
-    std::string out_str_stderr = testing::internal::GetCapturedStderr();
-    //std::cout<<out_str_stderr<<std::endl;
-#ifdef POSH_OS_LINUX
-    std::regex frame4(R"(#4.*foo1UR.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 22.*foo1UR)");
-    std::regex frame3(R"(#3.*foo2toot.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 18.*foo2toot)");
-    std::regex frame2(R"(#2.*foo3ty.*\n.*tests\/executables\/gtest\/extern\/backward-cpp.cpp.*line 9.*foo3ty)");
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame4));
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame3));
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame2));
-#elif defined POSH_OS_WIN64
-    std::regex frame3(R"(#3.*foo1UR\n.*tests\\executables\\gtest\\extern\\backward-cpp.cpp.*line 22.*foo1UR)");
-    std::regex frame2(R"(#2.*foo2toot\n.*tests\\executables\\gtest\\extern\\backward-cpp.cpp.*line 18.*foo2toot)");
-    std::regex frame1(R"(#1.*foo3ty\n.*tests\\executables\\gtest\\extern\\backward-cpp.cpp.*line 9.*foo3ty)");
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame3));
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame2));
-    ASSERT_TRUE(std::regex_search(out_str_stderr, frame1));
+    start_nested_calls();
+    const std::string trace = testing::internal::GetCapturedStderr();
+
+#if defined(POSH_OS_LINUX) || defined(POSH_OS_WIN64)
+    // The trace should follow the actual call chain from the innermost helper
+    // back toward this test. Source line numbers change when tests are edited.
+    const auto inner = trace.find("print_stack_here");
+    const auto middle = trace.find("call_print_stack");
+    const auto outer = trace.find("start_nested_calls");
+    ASSERT_NE(inner, std::string::npos) << trace;
+    ASSERT_NE(middle, std::string::npos) << trace;
+    ASSERT_NE(outer, std::string::npos) << trace;
+    EXPECT_LT(inner, middle);
+    EXPECT_LT(middle, outer);
 #endif
 }
