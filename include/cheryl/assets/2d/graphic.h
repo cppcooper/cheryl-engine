@@ -13,12 +13,18 @@ namespace CE::Assets {
     /** A whole-texture image with a local pixel-sized quad, suitable for a UI graphic. */
     struct Graphic final : Asset2D {
         Graphic(std::shared_ptr<Geometry2D> geometry, std::shared_ptr<Image> image)
-            : Asset2D(std::move(geometry), std::move(image)) {}
+        : Asset2D(std::move(geometry), std::move(image)) {}
 
-        [[nodiscard]] static Graphic from_image(std::shared_ptr<Image> image, ResourceProvider& provider,
-                                                 math::Pivot pivot = {0.0f, 0.0f});
-        [[nodiscard]] static Graphic load(const std::filesystem::path& file, ResourceProvider& provider,
-                                          math::Pivot pivot = {0.0f, 0.0f});
+        [[nodiscard]] static Graphic from_image(
+            std::shared_ptr<Image> image,
+            ResourceProvider& provider,
+            math::Pivot pivot = {0.0f, 0.0f}
+        );
+        [[nodiscard]] static Graphic load(
+            const std::filesystem::path& file,
+            ResourceProvider& provider,
+            math::Pivot pivot = {0.0f, 0.0f}
+        );
 
         void draw(const DrawInfo& info) override;
     };

@@ -6,12 +6,12 @@ inline std::string human_readable(const std::size_t bytes) {
     std::stringstream ss;
     double XiB = bytes;
     uint8_t counter = 0;
-    while(XiB > 1024) {
+    while (XiB > 1024) {
         XiB /= 1024;
         counter++;
     }
     std::string suffix;
-    switch(counter) {
+    switch (counter) {
         case 0:
             suffix = " bytes";
             break;
@@ -39,5 +39,5 @@ inline std::string human_readable(const std::size_t bytes) {
         default:
             break;
     }
-    return std::format("{:3.1f}{}",XiB,suffix);
+    return std::format("{:3.1f}{}", XiB, suffix);
 }

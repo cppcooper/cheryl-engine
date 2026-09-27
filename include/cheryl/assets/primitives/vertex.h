@@ -49,7 +49,7 @@ namespace CE {
         std::array<Vertex2D, TriangleCount + 2> vertices;
 
         constexpr TriangleStrip(const Triangle& first, const std::array<Vertex2D, TriangleCount - 1>& remaining)
-            : vertices{} {
+        : vertices{} {
             for (std::size_t i = 0; i < first.vertices.size(); ++i) vertices[i] = first.vertices[i];
             for (std::size_t i = 0; i < remaining.size(); ++i) vertices[i + 3] = remaining[i];
         }
@@ -72,7 +72,7 @@ namespace CE {
         TriangleStrip<2> triangles;
 
         constexpr QuadTriangleStrip(const Triangle& first, const Vertex2D& fourth)
-            : triangles(first, {fourth}) {}
+        : triangles(first, {fourth}) {}
 
         [[nodiscard]] constexpr const std::array<Vertex2D, VAONumbers::vertices_per_strip_quad>& vertices() const {
             return triangles.vertices;
