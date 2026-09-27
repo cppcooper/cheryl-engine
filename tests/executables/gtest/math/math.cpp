@@ -103,7 +103,7 @@ TEST(math_binary, bits_and_words) {
     EXPECT_EQ(readable.words()[0], std::uint8_t{3});
 }
 
-TEST(math_binary, word_boundary) {
+TEST(math_binary, keeps_adjacent_flags_in_their_respective_words) {
     constexpr std::size_t boundary = CE::math::Detail::native_bits;
     using Array = CE::math::BitArray<boundary + 2>;
     using word_type = Array::word_type;
