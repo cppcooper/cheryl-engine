@@ -25,8 +25,10 @@ namespace CE::Assets {
         // TODO: The contract says vertex data is transient and fully copied before return, but
         // shared_ptr communicates retainable ownership. Consider a span/view or explicit upload
         // buffer once the allocator/lifetime boundary can express that non-owning contract cleanly.
+        // Atlas grids upload triangle strips; whole images and glyphs upload independent triangles.
         [[nodiscard]] virtual std::shared_ptr<Geometry2D> upload_geometry(std::shared_ptr<Vertex2D> vertices,
-                                                                           std::uint32_t vertex_count) = 0;
+                                                                           std::uint32_t vertex_count,
+                                                                           PrimitiveTopology topology) = 0;
         // TODO: Distinguish compiled stages from linked executable programs in the type system.
         // Returning Shader for both lets a stage-only resource masquerade as a usable material and
         // leaves stage-cache versus program-cache semantics ambiguous.

@@ -9,7 +9,7 @@ namespace CE::Assets {
     void Tile::draw(const DrawInfo& info) {
         geometry->bind(*texture);
         info.use_shader();
-        geometry->draw(VAONumbers::calculate_num_vertices(offset_), VAONumbers::vertices_per_quad);
+        geometry->draw(VAONumbers::calculate_num_strip_vertices(offset_), VAONumbers::vertices_per_strip_quad);
     }
 
     TileAnimation::TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,

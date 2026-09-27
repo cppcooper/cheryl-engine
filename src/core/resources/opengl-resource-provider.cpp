@@ -27,10 +27,11 @@ namespace CE::Assets {
     }
 
     std::shared_ptr<Geometry2D> OpenGLResourceProvider::upload_geometry(std::shared_ptr<Vertex2D> vertices,
-                                                                          const std::uint32_t vertex_count) {
+                                                                          const std::uint32_t vertex_count,
+                                                                          const PrimitiveTopology topology) {
         if (!vertices || vertex_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "Cannot upload empty 2D geometry");
-        return std::make_shared<VAO>(std::move(vertices), vertex_count);
+        return std::make_shared<VAO>(std::move(vertices), vertex_count, topology);
     }
 
     std::shared_ptr<Shader> OpenGLResourceProvider::compile_stage(const std::filesystem::path& file) {

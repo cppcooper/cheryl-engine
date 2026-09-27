@@ -21,7 +21,7 @@ namespace CE::Assets {
     }
 
     void FFont::draw(const DrawInfo& info) {
-        // The legacy atlas stores one six-vertex range per character, with
+        // The legacy atlas stores one six-vertex quad per character, with
         // alternate glyphs offset into its second half for fancy text.
         const float scale = info.scale / 128;
         geometry->bind(*texture);
@@ -81,7 +81,7 @@ namespace CE::Assets {
         if (!texture)
             throw Exceptions::runtime_exception(CE_HERE, "The legacy font texture is not loaded");
         std::shared_ptr<Vertex2D> verts(vertices, vertices->data());
-        auto geometry = provider.upload_geometry(verts, num_vertices);
+        auto geometry = provider.upload_geometry(verts, num_vertices, PrimitiveTopology::Triangles);
         return {widths, std::move(geometry), std::move(texture)};
     }
 }

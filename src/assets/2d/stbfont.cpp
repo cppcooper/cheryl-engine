@@ -9,6 +9,7 @@
 #include <core/resources/memory/managed-block.hpp>
 #include <ext/matrix_transform.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -37,17 +38,19 @@ namespace CE::Assets {
 
         void set_glyph_vertices(Vertex2D* vertices, const stbtt_aligned_quad& quad) {
             // Flip stb's downward-positive glyph Y into the engine's upward-positive local space;
-            // expand the four corners into two triangles matching the non-indexed 2D geometry.
+            // each glyph keeps the standalone quad's two independent triangles.
             const float left = quad.x0;
             const float right = quad.x1;
             const float bottom = -quad.y1;
             const float top = -quad.y0;
-            vertices[0] = {left, bottom, 0.0f, quad.s0, quad.t1};
-            vertices[1] = {right, bottom, 0.0f, quad.s1, quad.t1};
-            vertices[2] = {right, top, 0.0f, quad.s1, quad.t0};
-            vertices[3] = vertices[0];
-            vertices[4] = vertices[2];
-            vertices[5] = {left, top, 0.0f, quad.s0, quad.t0};
+            Quad glyph{};
+            glyph.vertices[0] = {left, bottom, 0.0f, quad.s0, quad.t1};
+            glyph.vertices[1] = {right, bottom, 0.0f, quad.s1, quad.t1};
+            glyph.vertices[2] = {right, top, 0.0f, quad.s1, quad.t0};
+            glyph.vertices[3] = glyph.vertices[0];
+            glyph.vertices[4] = glyph.vertices[2];
+            glyph.vertices[5] = {left, top, 0.0f, quad.s0, quad.t0};
+            std::copy(glyph.vertices.begin(), glyph.vertices.end(), vertices);
         }
     }
 
@@ -84,7 +87,7 @@ namespace CE::Assets {
         const auto space_index = static_cast<std::size_t>(' ' - first_font_character);
 
         // Move the pen for whitespace, otherwise select one baked glyph (or '?') and draw
-        // its pre-uploaded six-vertex range with a per-glyph model matrix.
+        // its pre-uploaded six-vertex quad with a per-glyph model matrix.
         for (const unsigned char requested_character : print_message_) {
             if (requested_character == '\n') {
                 cursor_x = 0.0f;
@@ -169,7 +172,7 @@ namespace CE::Assets {
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.
-        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count);
+        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count, PrimitiveTopology::Triangles);
         auto atlas = provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size),
                                                                   static_cast<std::uint32_t>(atlas_size)});
         return {std::move(geometry), std::move(atlas), advances, line_height};

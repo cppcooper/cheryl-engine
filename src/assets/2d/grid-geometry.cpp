@@ -5,6 +5,7 @@
 #include <math/anchor.h>
 #include <internals/exceptions.h>
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
@@ -19,17 +20,17 @@ namespace CE::Assets {
         }
 
         const auto cell_count = grid.cell_count();
-        if (cell_count > std::numeric_limits<std::uint32_t>::max() / VAONumbers::vertices_per_quad) {
+        if (cell_count > std::numeric_limits<std::uint32_t>::max() / VAONumbers::vertices_per_strip_quad) {
             throw Exceptions::runtime_exception("overflow", CE_HERE, "Asset grid has too many vertices for a VAO");
         }
-        const auto vertex_count = static_cast<std::uint32_t>(cell_count * VAONumbers::vertices_per_quad);
+        const auto vertex_count = static_cast<std::uint32_t>(cell_count * VAONumbers::vertices_per_strip_quad);
         const auto vertices_bytes = sizeof(Vertex2D) * vertex_count;
         auto& manager = Mem::ExactMMgr::get();
         auto block = manager.checkout_chunk(vertices_bytes, alignof(Vertex2D));
         auto vertices = Mem::make_managed_block<Vertex2D>(manager, std::move(block));
 
-        // Each row-major cell occupies six submitted vertices; Anchor converts its pixel rect
-        // and normalized pivot into local positions and UVs in the shared vertex buffer.
+        // Each atlas cell gets its own four-vertex strip. A draw of a single cell starts
+        // a new strip, so adjacent frames never become triangles across their boundary.
         for (CellIndex cell = 0; cell < cell_count; ++cell) {
             const auto rect = grid.cell_rect(cell);
             if (rect.x > std::numeric_limits<std::uint32_t>::max() ||
@@ -37,9 +38,11 @@ namespace CE::Assets {
                 throw Exceptions::runtime_exception("overflow", CE_HERE,
                                                     "Asset grid pixel coordinate exceeds uint32_t");
             }
-            math::Anchor::MakePivot(pivot, vertices.get() + cell * VAONumbers::vertices_per_quad,
-                                    texture_size.width, texture_size.height, rect.width, rect.height,
-                                    static_cast<std::uint32_t>(rect.x), static_cast<std::uint32_t>(rect.y));
+            const auto strip = math::Anchor::MakeQuadStrip(pivot, texture_size.width, texture_size.height, rect.width,
+                                                          rect.height, static_cast<std::uint32_t>(rect.x),
+                                                          static_cast<std::uint32_t>(rect.y));
+            std::copy(strip.vertices().begin(), strip.vertices().end(),
+                      vertices.get() + cell * VAONumbers::vertices_per_strip_quad);
         }
         return {std::move(vertices), vertex_count};
     }

@@ -1,11 +1,11 @@
 #pragma once
 
+#include <assets/primitives/vertex.h>
+
 #include <cstdint>
 #include <string>
 
 namespace CE {
-    struct Vertex2D;
-
     namespace math {
         /** Normalized origin within a frame: (0,0) is its top-left, (1,1) its bottom-right. */
         struct Pivot {
@@ -30,11 +30,18 @@ namespace CE {
         [[nodiscard]] AnchorType get_anchor(const std::string& anchor);
         [[nodiscard]] Pivot get_pivot(AnchorType anchor);
 
-        /** Expand a top-left-origin image rectangle into two triangles in local Y-up space.
-         * Both overloads write six non-indexed vertices with normalized UVs; callers must
-         * provide enough storage for one complete quad.
+        /** Convert a top-left-origin image rectangle into local Y-up geometry.
+         * The pointer overloads and MakeQuad write six vertices for two independent triangles;
+         * MakeQuadStrip produces a separate four-vertex atlas frame.
          */
         struct Anchor {
+            [[nodiscard]] static Quad MakeQuad(Pivot pivot, std::uint32_t texture_width,
+                                               std::uint32_t texture_height, std::uint32_t width,
+                                               std::uint32_t height, std::uint32_t x0 = 0, std::uint32_t y0 = 0);
+            [[nodiscard]] static QuadTriangleStrip MakeQuadStrip(Pivot pivot, std::uint32_t texture_width,
+                                                                 std::uint32_t texture_height, std::uint32_t width,
+                                                                 std::uint32_t height, std::uint32_t x0 = 0,
+                                                                 std::uint32_t y0 = 0);
             static void MakePivot(Pivot pivot, float* vertices, std::uint32_t texture_width,
                                   std::uint32_t texture_height, std::uint32_t width, std::uint32_t height,
                                   std::uint32_t x0 = 0, std::uint32_t y0 = 0);
