@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <limits>
 #include <sstream>
-#include <string>
 #include <type_traits>
 #include <variant>
 
@@ -35,11 +34,10 @@ namespace {
     }
 }
 
-TEST(math_binary, selects_compact_storage_up_to_native_word) {
+TEST(math_binary, storage) {
     using namespace CE::math::Detail;
 
-    // Each width uses the smallest fixed-width integer available without
-    // exceeding the platform's native word width.
+    // The chosen word grows only as far as the platform's native width.
     using expected_9 = std::conditional_t<(native_bits >= 16), std::uint16_t, native_word>;
     using expected_17 = std::conditional_t<(native_bits >= 32), std::uint32_t, native_word>;
     using expected_33 = std::conditional_t<(native_bits >= 64), std::uint64_t, native_word>;
@@ -50,8 +48,7 @@ TEST(math_binary, selects_compact_storage_up_to_native_word) {
     static_assert(std::is_same_v<bit_word_t<17>, expected_17>);
     static_assert(std::is_same_v<bit_word_t<33>, expected_33>);
 
-    // Crossing the native-word boundary changes storage from one scalar to
-    // two native words without changing the BitArray interface.
+    // Beyond that width, the same interface spans more than one word.
     static_assert(bit_word_count<native_bits> == 1);
     static_assert(bit_word_count<native_bits + 1> == 2);
 
@@ -62,29 +59,30 @@ TEST(math_binary, selects_compact_storage_up_to_native_word) {
     );
 }
 
-TEST(math_binary, reads_writes_and_copies_individual_bits) {
+TEST(math_binary, individual_bits) {
     CE::math::BitArray<8> bits;
 
-    // Mutable indexing returns a proxy that writes through to the packed word.
+    // Read bits through the const interface after setting them individually.
     bits[0] = true;
+    bits[2] = true;
     bits[3] = true;
     bits[7] = true;
 
     const auto& readable = bits;
     EXPECT_TRUE(readable[0]);
     EXPECT_FALSE(readable[1]);
+    EXPECT_TRUE(readable[2]);
     EXPECT_TRUE(readable[3]);
     EXPECT_TRUE(readable[7]);
 
-    // Proxy assignment copies the represented bit value rather than rebinding
-    // the temporary proxy to the source bit.
+    // Copy a set bit and a clear bit through the writable proxy.
     bits[1] = bits[0];
     bits[2] = bits[4];
 
     EXPECT_TRUE(readable[1]);
     EXPECT_FALSE(readable[2]);
 
-    // Explicit self-assignment must preserve the represented bit.
+    // Assigning a proxy to itself must leave its bit alone.
     auto reference = bits[3];
     reference = reference;
     EXPECT_TRUE(readable[3]);
@@ -93,25 +91,46 @@ TEST(math_binary, reads_writes_and_copies_individual_bits) {
     EXPECT_FALSE(readable[3]);
 }
 
-TEST(math_binary, crosses_native_word_boundaries) {
-    constexpr std::size_t native_bits = CE::math::Detail::native_bits;
-    CE::math::BitArray<native_bits + 3> bits;
+TEST(math_binary, bits_and_words) {
+    CE::math::BitArray<8> bits;
+    auto words = bits.words();
 
-    // Touch both sides of the first storage-word boundary and the final bit.
+    // Changing a bit changes the word containing it.
+    EXPECT_EQ(words[0], std::uint8_t{0});
     bits[0] = true;
-    bits[native_bits - 1] = true;
-    bits[native_bits] = true;
-    bits[native_bits + 2] = true;
+    EXPECT_EQ(words[0], std::uint8_t{1});
 
+    // Writing the word changes the individual bits.
+    words[0] = std::uint8_t{3};
     const auto& readable = bits;
     EXPECT_TRUE(readable[0]);
-    EXPECT_TRUE(readable[native_bits - 1]);
-    EXPECT_TRUE(readable[native_bits]);
-    EXPECT_FALSE(readable[native_bits + 1]);
-    EXPECT_TRUE(readable[native_bits + 2]);
+    EXPECT_TRUE(readable[1]);
+    EXPECT_FALSE(readable[2]);
+    EXPECT_EQ(readable.words()[0], std::uint8_t{3});
 }
 
-TEST(math_binary, streams_bits_in_human_readable_order) {
+TEST(math_binary, word_boundary) {
+    constexpr std::size_t boundary = CE::math::Detail::native_bits;
+    using Array = CE::math::BitArray<boundary + 2>;
+    using word_type = Array::word_type;
+
+    Array bits;
+    auto words = bits.words();
+
+    // The bits immediately before and after the boundary belong to different words.
+    bits[boundary - 1] = true;
+    bits[boundary] = true;
+    EXPECT_EQ(words[0], word_type{1} << (boundary - 1));
+    EXPECT_EQ(words[1], word_type{1});
+
+    words[1] = word_type{2};
+    const auto& readable = bits;
+    EXPECT_TRUE(readable[boundary - 1]);
+    EXPECT_FALSE(readable[boundary]);
+    EXPECT_TRUE(readable[boundary + 1]);
+}
+
+TEST(math_binary, output) {
     CE::math::BitArray<8> bits;
     bits[0] = true;
     bits[2] = true;
@@ -125,7 +144,7 @@ TEST(math_binary, streams_bits_in_human_readable_order) {
     EXPECT_EQ(out.str(), "10000101");
 }
 
-TEST(math_anchor, resolves_named_anchors_and_pivots) {
+TEST(math_anchor, names_and_pivots) {
     using namespace CE::math;
 
     struct AnchorCase {
@@ -159,7 +178,7 @@ TEST(math_anchor, resolves_named_anchors_and_pivots) {
     EXPECT_EQ(get_pivot(Center), (Pivot{0.5f, 0.5f}));
 }
 
-TEST(math_anchor, builds_matching_typed_and_float_geometry) {
+TEST(math_anchor, quad_geometry) {
     using namespace CE::math;
 
     constexpr Pivot pivot{0.5f, 1.0f};
@@ -202,7 +221,7 @@ TEST(math_anchor, builds_matching_typed_and_float_geometry) {
     EXPECT_FLOAT_EQ(typed[2].y, typed[4].y);
 }
 
-TEST(math_anchor, rejects_invalid_pivots_and_texture_dimensions) {
+TEST(math_anchor, invalid_input) {
     using namespace CE::math;
 
     std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
@@ -234,7 +253,7 @@ TEST(math_anchor, rejects_invalid_pivots_and_texture_dimensions) {
     );
 }
 
-TEST(math_pointers, offsets_and_ranges_use_byte_addresses) {
+TEST(math_pointers, ranges_and_offsets) {
     std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
     auto* end = begin + memory.size();
@@ -252,7 +271,7 @@ TEST(math_pointers, offsets_and_ranges_use_byte_addresses) {
     EXPECT_EQ(CE::ptr::add_offset<std::byte>(begin, 17), begin + 17);
 }
 
-TEST(math_pointers, computes_alignment_and_alignment_offsets) {
+TEST(math_pointers, alignment) {
     alignas(64) std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
 
@@ -283,7 +302,7 @@ TEST(math_pointers, computes_alignment_and_alignment_offsets) {
     EXPECT_TRUE(is_power_of_two(actual_alignment));
 }
 
-TEST(math_pointers, hashes_pointers_into_requested_integer_widths) {
+TEST(math_pointers, hashes) {
     int value = 0;
     void* pointer = &value;
 
@@ -306,7 +325,7 @@ TEST(math_pointers, hashes_pointers_into_requested_integer_widths) {
     );
 }
 
-TEST(math_fit, adjusts_lengths_and_reduces_fit_policy) {
+TEST(math_fit, length_policies) {
     // exact preserves the request, larger adds fixed growth, and greedy applies
     // multiplicative growth before adding the same fixed amount.
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::exact, 8, 1.5), std::size_t{100});
@@ -318,7 +337,7 @@ TEST(math_fit, adjusts_lengths_and_reduces_fit_policy) {
     EXPECT_EQ(CE::Math::reduce(CE::Enum::exact), CE::Enum::exact);
 }
 
-TEST(math_time, identifies_and_casts_chrono_durations) {
+TEST(math_time, durations) {
     static_assert(is_chrono_duration_v<Milliseconds>);
     static_assert(is_chrono_duration_v<Seconds>);
     static_assert(!is_chrono_duration_v<int>);
@@ -332,7 +351,7 @@ TEST(math_time, identifies_and_casts_chrono_durations) {
     EXPECT_EQ(hcast(Minutes{120}), Hours{2});
 }
 
-TEST(math_bytes, formats_common_binary_units) {
+TEST(math_bytes, units) {
     // Exercise ordinary values without encoding the known exact-power boundary
     // behavior as the desired contract.
     EXPECT_EQ(human_readable(0), "0.0 bytes");
