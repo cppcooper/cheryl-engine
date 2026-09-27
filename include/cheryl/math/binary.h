@@ -110,7 +110,7 @@ namespace CE::math {
 
         private:
             template <std::size_t>
-            friend class BitArray;
+            friend class CE::math::BitArray;
 
             BitReference(Word& word, Word mask) noexcept;
 
