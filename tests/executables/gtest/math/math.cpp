@@ -27,7 +27,7 @@ namespace {
     }
 }
 
-TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
+TEST(math_binary, compact_storage) {
     using namespace CE::math::Detail;
 
     // Each width uses the smallest fixed-width integer available without
@@ -54,7 +54,7 @@ TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
     );
 }
 
-TEST(math_binary, turns_individual_flags_on_and_off) {
+TEST(math_binary, individual_bits) {
     CE::math::BitArray<8> bits;
     const auto& readable = bits;
 
@@ -71,7 +71,7 @@ TEST(math_binary, turns_individual_flags_on_and_off) {
     EXPECT_TRUE(readable[1]);
 }
 
-TEST(math_binary, copies_the_value_of_one_flag_to_another) {
+TEST(math_binary, bit_assignment) {
     CE::math::BitArray<8> bits;
     bits[0] = true;
 
@@ -88,7 +88,7 @@ TEST(math_binary, copies_the_value_of_one_flag_to_another) {
     EXPECT_EQ(bits.words()[0], std::uint8_t{2});
 }
 
-TEST(math_binary, bits_and_words) {
+TEST(math_binary, word_access) {
     CE::math::BitArray<8> bits;
     auto words = bits.words();
 
@@ -106,7 +106,7 @@ TEST(math_binary, bits_and_words) {
     EXPECT_EQ(readable.words()[0], std::uint8_t{3});
 }
 
-TEST(math_binary, keeps_adjacent_flags_in_their_respective_words) {
+TEST(math_binary, word_boundary) {
     constexpr std::size_t boundary = CE::math::Detail::native_bits;
     using Array = CE::math::BitArray<boundary + 2>;
     using word_type = Array::word_type;
@@ -129,7 +129,7 @@ TEST(math_binary, keeps_adjacent_flags_in_their_respective_words) {
     EXPECT_TRUE(readable[boundary + 1]);
 }
 
-TEST(math_binary, reaches_the_last_flag_in_a_two_word_array) {
+TEST(math_binary, last_bit) {
     constexpr std::size_t boundary = CE::math::Detail::native_bits;
     using Array = CE::math::BitArray<boundary + 3>;
     Array bits;
@@ -142,7 +142,7 @@ TEST(math_binary, reaches_the_last_flag_in_a_two_word_array) {
     EXPECT_EQ(readable.words()[1], Array::word_type{4});
 }
 
-TEST(math_binary, prints_flags_from_left_to_right) {
+TEST(math_binary, stream_output) {
     CE::math::BitArray<8> bits;
     bits[0] = true;
     bits[2] = true;
@@ -156,7 +156,7 @@ TEST(math_binary, prints_flags_from_left_to_right) {
     EXPECT_EQ(out.str(), "10000101");
 }
 
-TEST(math_anchor, resolves_named_anchors_and_pivots) {
+TEST(math_anchor, named_anchors) {
     using namespace CE::math;
 
     struct AnchorCase {
@@ -190,7 +190,7 @@ TEST(math_anchor, resolves_named_anchors_and_pivots) {
     EXPECT_EQ(get_pivot(Center), (Pivot{0.5f, 0.5f}));
 }
 
-TEST(math_anchor, builds_matching_typed_and_float_geometry) {
+TEST(math_anchor, quad_geometry) {
     using namespace CE::math;
 
     constexpr Pivot pivot{0.5f, 1.0f};
@@ -233,7 +233,7 @@ TEST(math_anchor, builds_matching_typed_and_float_geometry) {
     EXPECT_FLOAT_EQ(typed[2].y, typed[4].y);
 }
 
-TEST(math_anchor, rejects_pivots_outside_the_image) {
+TEST(math_anchor, invalid_pivots) {
     using namespace CE::math;
 
     std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
@@ -256,7 +256,7 @@ TEST(math_anchor, rejects_pivots_outside_the_image) {
     );
 }
 
-TEST(math_anchor, rejects_images_without_a_width_or_height) {
+TEST(math_anchor, zero_image_dimensions) {
     using namespace CE::math;
     std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
 
@@ -271,7 +271,7 @@ TEST(math_anchor, rejects_images_without_a_width_or_height) {
     );
 }
 
-TEST(math_pointers, treats_the_start_as_in_range_and_the_end_as_out_of_range) {
+TEST(math_pointers, range_endpoints) {
     std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
     auto* end = begin + memory.size();
@@ -282,7 +282,7 @@ TEST(math_pointers, treats_the_start_as_in_range_and_the_end_as_out_of_range) {
     EXPECT_FALSE(CE::ptr::is_in_range(begin, end, end));
 }
 
-TEST(math_pointers, advances_an_address_by_bytes) {
+TEST(math_pointers, byte_offsets) {
     std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
 
@@ -294,7 +294,7 @@ TEST(math_pointers, advances_an_address_by_bytes) {
     EXPECT_EQ(CE::ptr::add_offset<std::byte>(begin, 17), begin + 17);
 }
 
-TEST(math_pointers, moves_forward_to_the_next_aligned_address) {
+TEST(math_pointers, alignment_offsets) {
     alignas(64) std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
 
@@ -314,7 +314,7 @@ TEST(math_pointers, moves_forward_to_the_next_aligned_address) {
     );
 }
 
-TEST(math_pointers, reports_the_alignment_of_an_address) {
+TEST(math_pointers, address_alignment) {
     alignas(64) std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
 
@@ -330,7 +330,7 @@ TEST(math_pointers, reports_the_alignment_of_an_address) {
     EXPECT_TRUE(is_power_of_two(actual_alignment));
 }
 
-TEST(math_pointers, hashes_the_same_address_consistently_at_each_width) {
+TEST(math_pointers, pointer_hashes) {
     int value = 0;
     void* pointer = &value;
 
@@ -353,7 +353,7 @@ TEST(math_pointers, hashes_the_same_address_consistently_at_each_width) {
     );
 }
 
-TEST(math_fit, grows_a_requested_capacity_according_to_policy) {
+TEST(math_fit, growth_policies) {
     // exact preserves the request, larger adds fixed growth, and greedy applies
     // multiplicative growth before adding the same fixed amount.
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::exact, 8, 1.5), std::size_t{100});
@@ -361,14 +361,14 @@ TEST(math_fit, grows_a_requested_capacity_according_to_policy) {
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::greedy, 8, 1.5), std::size_t{158});
 }
 
-TEST(math_fit, steps_back_toward_exact_growth) {
+TEST(math_fit, reducing_growth) {
     // Each reduction relaxes one growth policy until exact is reached.
     EXPECT_EQ(CE::Math::reduce(CE::Enum::greedy), CE::Enum::larger);
     EXPECT_EQ(CE::Math::reduce(CE::Enum::larger), CE::Enum::exact);
     EXPECT_EQ(CE::Math::reduce(CE::Enum::exact), CE::Enum::exact);
 }
 
-TEST(math_time, converts_durations_and_truncates_partial_units) {
+TEST(math_time, duration_conversions) {
     static_assert(is_chrono_duration_v<Milliseconds>);
     static_assert(is_chrono_duration_v<Seconds>);
     static_assert(!is_chrono_duration_v<int>);
@@ -382,7 +382,7 @@ TEST(math_time, converts_durations_and_truncates_partial_units) {
     EXPECT_EQ(hcast(Minutes{120}), Hours{2});
 }
 
-TEST(math_bytes, names_the_units_for_ordinary_byte_counts) {
+TEST(math_bytes, readable_byte_sizes) {
     // Exercise ordinary values without encoding the known exact-power boundary
     // behavior as the desired contract.
     EXPECT_EQ(human_readable(0), "0.0 bytes");

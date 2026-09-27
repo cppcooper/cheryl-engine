@@ -7,7 +7,7 @@ class Foo{};
 
 class Bar{};
 
-TEST(externlibs, ctti_distinguishes_containers_with_different_element_types) {
+TEST(externlibs, ctti_type_ids) {
     int number = 0;
     std::vector<int> integers;
     std::vector<double> decimals;
@@ -19,7 +19,7 @@ TEST(externlibs, ctti_distinguishes_containers_with_different_element_types) {
     EXPECT_NE(ctti::type_id(integers), ctti::type_id(decimals));
 }
 
-TEST(externlibs, ctti_names_a_container_using_its_element_type) {
+TEST(externlibs, ctti_type_names) {
     std::vector<Foo> values;
     const auto integer_name = ctti::detailed_nameof<std::vector<int>>();
     const auto foo_name = ctti::detailed_nameof<std::vector<Foo>>();

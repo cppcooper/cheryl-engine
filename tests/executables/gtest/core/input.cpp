@@ -10,7 +10,7 @@
 
 #include <core/controls/input-bindings.h>
 
-TEST(input_bindings, routes_button_and_axis_events_to_the_matching_device) {
+TEST(input_bindings, device_routing) {
     CE::Input::InputBindings bindings;
     constexpr CE::Input::DeviceButtonId key_code = 256;
     constexpr CE::Input::DeviceButtonId axis_code = 257;
@@ -39,7 +39,7 @@ TEST(input_bindings, routes_button_and_axis_events_to_the_matching_device) {
     EXPECT_FLOAT_EQ(last_axis, 0.75f);
 }
 
-TEST(input_bindings, removes_replaces_and_clears_callbacks) {
+TEST(input_bindings, callback_management) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{2, 256};
     const CE::Input::DeviceBind axis{3, 257};
@@ -66,7 +66,7 @@ TEST(input_bindings, removes_replaces_and_clears_callbacks) {
 }
 
 #ifndef CHERYL_SANDBOX_BUILD
-TEST(glfw_bindings, translates_keys_and_mouse_buttons_to_gainput_ids) {
+TEST(glfw_bindings, key_and_mouse_mapping) {
     // Cover ordinary keys, modifiers, keypad keys, and an unsupported key.
     EXPECT_EQ(CE::Input::gainput_key(GLFW_KEY_A), gainput::KeyA);
     EXPECT_EQ(CE::Input::gainput_key(GLFW_KEY_8), gainput::Key8);

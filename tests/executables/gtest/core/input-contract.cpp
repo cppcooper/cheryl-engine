@@ -46,7 +46,7 @@ namespace {
     };
 }
 
-TEST(input_contract, dispatches_bindings_through_an_alternative_window_adapter) {
+TEST(input_contract, alternate_window) {
     // Attach the in-memory input system to an interface-only window and bind
     // one keyboard event before polling the adapter.
     TestWindow window;

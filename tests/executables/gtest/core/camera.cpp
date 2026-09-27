@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-TEST(camera_2d, maps_framebuffer_corners_into_clip_space) {
+TEST(camera_2d, framebuffer_corners) {
     // Map the two framebuffer corners into clip space to establish the 2D
     // projection's pixel coordinate convention.
     CE::Camera2D camera;
@@ -22,7 +22,7 @@ TEST(camera_2d, maps_framebuffer_corners_into_clip_space) {
 
 }
 
-TEST(camera_2d, advances_the_view_revision_only_when_the_view_changes) {
+TEST(camera_2d, view_revision) {
     CE::Camera2D camera;
 
     // Moving the camera changes its revision; repeating the same view lets a
@@ -37,7 +37,7 @@ TEST(camera_2d, advances_the_view_revision_only_when_the_view_changes) {
     EXPECT_EQ(camera.revision(), updated_revision);
 }
 
-TEST(camera_3d, uses_degree_fov_and_framebuffer_aspect_ratio) {
+TEST(camera_3d, perspective_settings) {
     // Check the default vertical field of view in degrees and the horizontal
     // scaling implied by a framebuffer twice as wide as it is high.
     CE::Camera3D camera;
@@ -56,7 +56,7 @@ TEST(camera_3d, uses_degree_fov_and_framebuffer_aspect_ratio) {
     EXPECT_NEAR(camera.projection_matrix()[1][1], 1.0f, 1e-5f);
 }
 
-TEST(camera, keeps_both_projections_finite_when_the_window_is_minimized) {
+TEST(camera, minimized_window) {
     // A minimized window has no drawable pixels but should leave both
     // projections finite rather than producing NaNs.
     CE::Camera2D two_d;
@@ -69,7 +69,7 @@ TEST(camera, keeps_both_projections_finite_when_the_window_is_minimized) {
 
 }
 
-TEST(camera, rejects_invalid_framebuffer_and_perspective_settings) {
+TEST(camera, invalid_camera_settings) {
     CE::Camera2D two_d;
     CE::Camera3D three_d;
 
@@ -79,7 +79,7 @@ TEST(camera, rejects_invalid_framebuffer_and_perspective_settings) {
     EXPECT_THROW(three_d.set_perspective(45.0f, 10.0f, 1.0f), CE::Exceptions::invalid_args);
 }
 
-TEST(viewport, copied_sizes_are_independent) {
+TEST(viewport, independent_copies) {
     // Mutating the source after copying must leave the copy's dimensions intact.
     CE::ViewPort<int> original(800, 600);
     auto copy = original;

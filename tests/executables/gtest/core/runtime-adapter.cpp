@@ -186,7 +186,7 @@ namespace {
     };
 }
 
-TEST(runtime_adapter, runs_input_resize_loading_and_draw_through_an_alternative_backend) {
+TEST(runtime_adapter, alternate_backend) {
     // Boot the engine with recording implementations. Asset managers retain singleton caches,
     // so the provider must outlive the engine and this test.
     static MemoryProvider provider;
