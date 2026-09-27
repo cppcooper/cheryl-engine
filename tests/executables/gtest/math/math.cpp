@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <sstream>
+#include <string>
 #include <type_traits>
 #include <variant>
 
@@ -29,7 +30,8 @@ namespace {
 TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
     using namespace CE::math::Detail;
 
-    // The chosen word grows only as far as the platform's native width.
+    // Each width uses the smallest fixed-width integer available without
+    // exceeding the platform's native word width.
     using expected_9 = std::conditional_t<(native_bits >= 16), std::uint16_t, native_word>;
     using expected_17 = std::conditional_t<(native_bits >= 32), std::uint32_t, native_word>;
     using expected_33 = std::conditional_t<(native_bits >= 64), std::uint64_t, native_word>;
@@ -40,7 +42,8 @@ TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
     static_assert(std::is_same_v<bit_word_t<17>, expected_17>);
     static_assert(std::is_same_v<bit_word_t<33>, expected_33>);
 
-    // Beyond that width, the same interface spans more than one word.
+    // Crossing the native-word boundary changes storage from one scalar to
+    // two native words without changing the BitArray interface.
     static_assert(bit_word_count<native_bits> == 1);
     static_assert(bit_word_count<native_bits + 1> == 2);
 
@@ -126,6 +129,19 @@ TEST(math_binary, keeps_adjacent_flags_in_their_respective_words) {
     EXPECT_TRUE(readable[boundary + 1]);
 }
 
+TEST(math_binary, reaches_the_last_flag_in_a_two_word_array) {
+    constexpr std::size_t boundary = CE::math::Detail::native_bits;
+    using Array = CE::math::BitArray<boundary + 3>;
+    Array bits;
+
+    // The final represented flag lies two positions into the second word.
+    bits[boundary + 2] = true;
+    const auto& readable = bits;
+    EXPECT_TRUE(readable[boundary + 2]);
+    EXPECT_FALSE(readable[boundary + 1]);
+    EXPECT_EQ(readable.words()[1], Array::word_type{4});
+}
+
 TEST(math_binary, prints_flags_from_left_to_right) {
     CE::math::BitArray<8> bits;
     bits[0] = true;
@@ -140,7 +156,7 @@ TEST(math_binary, prints_flags_from_left_to_right) {
     EXPECT_EQ(out.str(), "10000101");
 }
 
-TEST(math_anchor, names_and_pivots) {
+TEST(math_anchor, resolves_named_anchors_and_pivots) {
     using namespace CE::math;
 
     struct AnchorCase {
@@ -174,7 +190,7 @@ TEST(math_anchor, names_and_pivots) {
     EXPECT_EQ(get_pivot(Center), (Pivot{0.5f, 0.5f}));
 }
 
-TEST(math_anchor, quad_geometry) {
+TEST(math_anchor, builds_matching_typed_and_float_geometry) {
     using namespace CE::math;
 
     constexpr Pivot pivot{0.5f, 1.0f};
