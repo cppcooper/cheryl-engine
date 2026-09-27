@@ -32,6 +32,7 @@ namespace {
             if (!window_)
                 throw std::logic_error("Input is not attached");
             bindings_.on_button({keyboard_id(), test_button}, false, true);
+            (void)bindings_.publish_actions();
         }
         void deinitialize() override { window_ = nullptr; }
 
@@ -44,7 +45,7 @@ namespace {
         CE::iWindow* window_ = nullptr;
         CE::Input::InputBindings bindings_;
     };
-}
+} // namespace
 
 TEST(input_contract, alternate_window) {
     // Attach the in-memory input system to an interface-only window and bind
@@ -53,10 +54,14 @@ TEST(input_contract, alternate_window) {
     std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<BufferedInput>();
     input->initialize(window);
     bool pressed = false;
+    constexpr CE::Input::ActionId action{1};
     input->bindings().bind_button({input->keyboard_id(), test_button},
                                   [&](bool previous, bool current) { pressed = !previous && current; });
+    (void)input->bindings().bind_button({input->keyboard_id(), test_button}, action);
     input->poll();
     EXPECT_TRUE(pressed);
+    const auto published = input->action_snapshot();
+    EXPECT_TRUE(published->button(action).pressed());
 
     // Once detached, polling must fail instead of delivering another event.
     input->deinitialize();

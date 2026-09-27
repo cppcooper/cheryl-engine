@@ -2,16 +2,16 @@
 
 #include "input-bindings.h"
 
+#include <memory>
+
 namespace CE {
     class iWindow;
 }
 
 namespace CE::Input {
-    // TODO: Define which thread poll() runs on and where game-facing input is delivered. A concurrent
-    // implementation should separate platform event collection from simulation consumption rather than
-    // making bindings implicitly execute on whichever thread owns an input backend.
-    /** Engine-facing input adapter. Device/button IDs are opaque to the engine; each
-     * implementation translates platform events and exposes bindings to the game.
+    /** Engine-facing input adapter. Poll on the platform thread, then hand the complete immutable
+     * action snapshot to simulation. Backends publish after processing physical input for each poll.
+     * Legacy binding callbacks still run on the poll thread and require their own thread discipline.
      */
     class iInputSystem {
     public:
@@ -20,6 +20,7 @@ namespace CE::Input {
         virtual void poll() = 0;
         virtual void deinitialize() = 0;
         [[nodiscard]] virtual InputBindings& bindings() = 0;
+        [[nodiscard]] virtual std::shared_ptr<const ActionSnapshot> action_snapshot() { return bindings().action_snapshot(); }
         [[nodiscard]] virtual DeviceId keyboard_id() const = 0;
         [[nodiscard]] virtual DeviceId mouse_id() const = 0;
         [[nodiscard]] virtual DeviceId gamepad_id() const = 0;

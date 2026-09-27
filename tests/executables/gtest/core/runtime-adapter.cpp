@@ -1,14 +1,16 @@
 #include <gtest/gtest.h>
 
-#include <assets/abstracts/resource-provider.h>
 #include <assets/2d/graphic.h>
+#include <assets/abstracts/resource-provider.h>
 #include <assets/primitives/draw-info.h>
 #include <core/engines/runtime-engine.h>
+#include <core/game-runtime.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -69,7 +71,10 @@ namespace {
     class MemoryInput final : public CE::Input::iInputSystem {
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
-        void poll() override { bindings_.on_button({keyboard_id(), test_button}, false, true); }
+        void poll() override {
+            bindings_.on_button({keyboard_id(), test_button}, false, true);
+            (void)bindings_.publish_actions();
+        }
         void deinitialize() override { window_ = nullptr; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
@@ -80,6 +85,31 @@ namespace {
     private:
         CE::iWindow* window_ = nullptr;
         CE::Input::InputBindings bindings_;
+    };
+
+    /** Consumes one published input sample through the game hook, then stops the runtime. */
+    class OneTickGame final : public CE::GFramework::AbstractGame {
+    public:
+        explicit OneTickGame(CE::Input::iInputSystem& input) : input_(input) {}
+
+        void init() override { (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action); }
+        void deinit() override { input_.bindings().clear(); }
+        void update_with_input(double, const CE::Input::ActionSnapshot& snapshot) override {
+            ++updates;
+            pressed = snapshot.button(action).pressed();
+            if (on_tick)
+                on_tick();
+        }
+        void draw(double) override { ++draws; }
+
+        std::function<void()> on_tick;
+        int updates = 0;
+        int draws = 0;
+        bool pressed = false;
+
+    private:
+        static constexpr CE::Input::ActionId action{17};
+        CE::Input::iInputSystem& input_;
     };
 
     class MemoryImage final : public CE::Assets::Image {
@@ -131,24 +161,21 @@ namespace {
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(const std::filesystem::path&) override {
             return std::make_shared<MemoryImage>(CE::Assets::PixelSize{32, 32});
         }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(
-            std::span<const unsigned char>, CE::Assets::PixelSize size) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>,
+                                                                           CE::Assets::PixelSize size) override {
             return std::make_shared<MemoryImage>(size);
         }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(
-            std::shared_ptr<CE::Vertex2D> vertices, std::uint32_t count,
-            CE::Assets::PrimitiveTopology topology) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D>
+        upload_geometry(std::shared_ptr<CE::Vertex2D> vertices, std::uint32_t count, CE::Assets::PrimitiveTopology topology) override {
             uploaded_vertices = vertices ? count : 0;
             uploaded_topology = topology;
             uploaded_geometry.clear();
-            if (vertices) uploaded_geometry.assign(vertices.get(), vertices.get() + count);
+            if (vertices)
+                uploaded_geometry.assign(vertices.get(), vertices.get() + count);
             return geometry;
         }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> compile_stage(const std::filesystem::path&) override {
-            return shader;
-        }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(
-            const std::vector<std::filesystem::path>&) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> compile_stage(const std::filesystem::path&) override { return shader; }
+        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
             return shader;
         }
 
@@ -191,7 +218,7 @@ namespace {
     private:
         MemoryProvider& provider_;
     };
-}
+} // namespace
 
 TEST(runtime_adapter, alternate_backend) {
     // Boot the engine with recording implementations. Asset managers retain singleton caches,
@@ -203,12 +230,15 @@ TEST(runtime_adapter, alternate_backend) {
     engine.init();
     ASSERT_EQ(input.attached_window(), renderer.display->active_window());
 
-    // Poll a synthetic button event through the engine and observe its binding callback.
+    // Poll a synthetic button event through the engine. Legacy callbacks and published
+    // semantic actions can coexist while games move to snapshot consumption.
     bool pressed = false;
-    input.bindings().bind_button({input.keyboard_id(), test_button},
-                                 [&](bool, bool current) { pressed = current; });
+    constexpr CE::Input::ActionId action{1};
+    input.bindings().bind_button({input.keyboard_id(), test_button}, [&](bool, bool current) { pressed = current; });
+    (void)input.bindings().bind_button({input.keyboard_id(), test_button}, action);
     engine.poll_input();
     EXPECT_TRUE(pressed);
+    EXPECT_TRUE(engine.input().action_snapshot()->button(action).pressed());
 
     // Forward display settings, then resize before drawing so the viewport and camera
     // receive the new framebuffer size. Switching render modes also toggles depth testing.
@@ -270,6 +300,23 @@ TEST(runtime_adapter, alternate_backend) {
     EXPECT_TRUE(engine.should_close());
     engine.deinit();
     EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(runtime_adapter, game_receives_completed_input_poll) {
+    static MemoryProvider provider;
+    MemoryRenderer renderer(provider);
+    MemoryInput input;
+    auto engine = std::make_shared<CE::Engine::RuntimeEngine>(renderer, [&]() -> CE::Input::iInputSystem& { return input; });
+    auto game = std::make_shared<OneTickGame>(input);
+    CE::GFramework::GameRuntime runtime(engine, game);
+    game->on_tick = [&] { runtime.stop(); };
+
+    // GameRuntime polls and pins an action snapshot before calling the game update.
+    // The game uses the new hook directly without implementing the older update(double).
+    runtime.run();
+    EXPECT_EQ(game->updates, 1);
+    EXPECT_EQ(game->draws, 1);
+    EXPECT_TRUE(game->pressed);
 }
 
 TEST(graphic, whole_image) {

@@ -176,10 +176,11 @@ namespace CE::Input {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
         const auto size = window_->logical_size();
-        // Refresh normalized pointer dimensions before Gainput consumes this
-        // frame's queued GLFW changes and invokes any registered listeners.
+        // Refresh normalized pointer dimensions before Gainput consumes this frame's queued changes.
         manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
         manager_.Update();
+        // Listeners have now updated pending physical state. Commit the complete semantic sample.
+        (void)bindings_.publish_actions();
     }
 
     void InputSystem::poll() {

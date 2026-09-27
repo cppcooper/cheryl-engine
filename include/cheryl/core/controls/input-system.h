@@ -19,9 +19,8 @@ namespace CE::Input {
 
     // Routes GLFW window input into Gainput; Gainput polls gamepads directly.
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
-    // TODO: Do not move poll() wholesale to a worker thread. GLFW event processing/window callbacks belong
-    // to the platform/main thread; if input processing becomes concurrent, hand gathered state to simulation
-    // and keep callback queues plus Gainput Update on one owner thread or add explicit synchronization.
+    // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
+    // can be handed to simulation without reading live Gainput state from another thread.
     class InputSystem final : public iInputSystem, public Singleton_CTS<InputSystem> {
     public:
         InputSystem();

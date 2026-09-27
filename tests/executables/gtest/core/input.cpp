@@ -65,6 +65,90 @@ TEST(input_bindings, callback_management) {
     EXPECT_FLOAT_EQ(last_axis, 0.0f);
 }
 
+TEST(input_bindings, chords_and_short_taps) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind w{1, 87};
+    const CE::Input::DeviceBind f{1, 70};
+    const CE::Input::DeviceBind u{1, 85};
+    const CE::Input::ActionId move{1};
+    const CE::Input::ActionId chord{2};
+    (void)bindings.bind_button(w, move);
+    (void)bindings.bind_button(CE::Input::InputChord{{f, u}}, chord);
+
+    // A single held key stays held across polls but is pressed only in the first sample.
+    bindings.on_button(w, false, true);
+    const auto first = bindings.publish_actions();
+    EXPECT_TRUE(first->button(move).held());
+    EXPECT_TRUE(first->button(move).pressed());
+    const auto second = bindings.publish_actions();
+    EXPECT_TRUE(second->button(move).held());
+    EXPECT_FALSE(second->button(move).pressed());
+    EXPECT_EQ(second->poll(), first->poll() + 1);
+
+    // The chord becomes active when its second member arrives. A release in the same poll
+    // preserves both transition edges even though the final sample is inactive.
+    bindings.on_button(f, false, true);
+    bindings.on_button(u, false, true);
+    bindings.on_button(u, true, false);
+    bindings.on_button(w, true, false);
+    const auto third = bindings.publish_actions();
+    EXPECT_TRUE(third->button(chord).pressed());
+    EXPECT_TRUE(third->button(chord).released());
+    EXPECT_FALSE(third->button(chord).held());
+    EXPECT_TRUE(third->button(move).released());
+    EXPECT_TRUE(first->button(move).held()); // A retained snapshot never changes under a later poll.
+}
+
+TEST(input_bindings, alternatives_and_remapping) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind keyboard{1, 32};
+    const CE::Input::DeviceBind gamepad{2, 32};
+    const CE::Input::ActionId jump{1};
+    const auto keyboard_binding = bindings.bind_button(keyboard, jump);
+    (void)bindings.bind_button(gamepad, jump);
+
+    // Either physical control holds Jump. Releasing one cannot release the action
+    // until the other alternative is also inactive.
+    bindings.on_button(keyboard, false, true);
+    (void)bindings.publish_actions();
+    bindings.on_button(gamepad, false, true);
+    bindings.on_button(keyboard, true, false);
+    const auto still_held = bindings.publish_actions();
+    EXPECT_TRUE(still_held->button(jump).held());
+    EXPECT_FALSE(still_held->button(jump).released());
+
+    // Removing a binding or the entire action takes effect at the next commit.
+    EXPECT_TRUE(bindings.unbind(keyboard_binding));
+    EXPECT_FALSE(bindings.unbind(keyboard_binding));
+    bindings.unbind_action(jump);
+    const auto removed = bindings.publish_actions();
+    EXPECT_TRUE(removed->button(jump).released());
+    EXPECT_FALSE(bindings.publish_actions()->button(jump).released());
+}
+
+TEST(input_bindings, scaled_axis_with_a_modifier) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind shift{1, 1};
+    const CE::Input::DeviceBind stick{2, 1};
+    const CE::Input::DeviceBind second_stick{3, 1};
+    const CE::Input::ActionId look{1};
+    (void)bindings.bind_axis(CE::Input::InputChord{{shift}}, stick, look, {-2.0f, 0.2f});
+    (void)bindings.bind_axis(second_stick, look);
+
+    // The first stick is gated by Shift and rescales 0.6 beyond its 0.2 dead zone
+    // to 0.5; its negative scale then contributes -1 alongside the other stick's 0.25.
+    bindings.on_axis(stick, 0.0f, 0.6f);
+    bindings.on_axis(second_stick, 0.0f, 0.25f);
+    EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).current, 0.25f);
+    bindings.on_button(shift, false, true);
+    const auto active = bindings.publish_actions();
+    EXPECT_FLOAT_EQ(active->axis(look).current, -0.75f);
+    EXPECT_FLOAT_EQ(active->axis(look).delta(), -1.0f);
+    bindings.on_button(shift, true, false);
+    EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).current, 0.25f);
+    EXPECT_FLOAT_EQ(active->axis(look).current, -0.75f);
+}
+
 #ifndef CHERYL_SANDBOX_BUILD
 TEST(glfw_bindings, key_and_mouse_mapping) {
     // Cover ordinary keys, modifiers, keypad keys, and an unsupported key.

@@ -1,6 +1,6 @@
 #include <core/controls/input-interface.h>
-#include <core/game-runtime.h>
 #include <core/engines/opengl-engine.h>
+#include <core/game-runtime.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/font-mgr.h>
 #include <core/resources/asset-management/shader-mgr.h>
@@ -10,6 +10,7 @@
 #include <templates/singleton.h>
 
 #include <ext/matrix_transform.hpp>
+#include <gainput/gainput.h>
 
 #include <filesystem>
 #include <format>
@@ -17,10 +18,24 @@
 #include <string_view>
 #include <utility>
 
+namespace DemoActions {
+    constexpr CE::Input::ActionId Up{1};
+    constexpr CE::Input::ActionId Left{2};
+    constexpr CE::Input::ActionId Down{3};
+    constexpr CE::Input::ActionId Right{4};
+    constexpr CE::Input::ActionId Reset{5};
+    constexpr CE::Input::ActionId MouseX{6};
+    constexpr CE::Input::ActionId MouseY{7};
+    constexpr CE::Input::ActionId Click{8};
+    constexpr CE::Input::ActionId WheelUp{9};
+    constexpr CE::Input::ActionId WheelDown{10};
+    constexpr CE::Input::ActionId GamepadA{11};
+} // namespace DemoActions
+
 class Game : public CE::GFramework::AbstractGame {
 public:
-    Game(std::shared_ptr<CE::Engine::RuntimeEngine> engine, std::filesystem::path asset_root, bool load_all_assets) :
-        engine_(std::move(engine)), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
+    Game(std::shared_ptr<CE::Engine::RuntimeEngine> engine, std::filesystem::path asset_root, bool load_all_assets)
+        : engine_(std::move(engine)), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
 
     void init() override {
         camera_ = std::make_shared<CE::Camera2D>();
@@ -36,9 +51,7 @@ public:
             if (!font_path)
                 throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
             CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
-            CE::Assets::ShaderMgr::get().load_program(shader2d,
-                                                      {shader2d.string() + ".vert", shader2d.string() + ".frag"},
-                                                      resources);
+            CE::Assets::ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"}, resources);
         }
         font_ = CE::Assets::FontMgr::get().default_font();
         font_shader_ = CE::Assets::ShaderMgr::get().get_asset(shader2d);
@@ -50,46 +63,38 @@ public:
         auto& input = engine_->input();
         auto& bindings = input.bindings();
         const auto keyboard = input.keyboard_id();
-        const auto bind_direction = [&](const gainput::DeviceButtonId key, bool* held) {
-            bindings.bind_button({keyboard, key}, [held](bool, bool pressed) { *held = pressed; });
-        };
-        bind_direction(gainput::KeyW, &up_);
-        bind_direction(gainput::KeyA, &left_);
-        bind_direction(gainput::KeyS, &down_);
-        bind_direction(gainput::KeyD, &right_);
-        bindings.bind_button({keyboard, gainput::KeyR}, [this](bool, bool pressed) {
-            if (pressed) {
-                pan_ = {0.0f, 0.0f};
-                camera_->set_view_matrix(glm::mat4(1.0f));
-            }
-        });
+        (void)bindings.bind_button({keyboard, gainput::KeyW}, DemoActions::Up);
+        (void)bindings.bind_button({keyboard, gainput::KeyA}, DemoActions::Left);
+        (void)bindings.bind_button({keyboard, gainput::KeyS}, DemoActions::Down);
+        (void)bindings.bind_button({keyboard, gainput::KeyD}, DemoActions::Right);
+        (void)bindings.bind_button({keyboard, gainput::KeyR}, DemoActions::Reset);
 
         const auto mouse = input.mouse_id();
-        bindings.bind_axis({mouse, gainput::MouseAxisX}, [this](float, float current) { mouse_x_ = current; });
-        bindings.bind_axis({mouse, gainput::MouseAxisY}, [this](float, float current) { mouse_y_ = current; });
-        bindings.bind_button({mouse, gainput::MouseButtonLeft}, [this](bool, bool pressed) {
-            if (pressed)
-                ++clicks_;
-        });
-        bindings.bind_button({mouse, gainput::MouseButtonWheelUp}, [this](bool, bool pressed) {
-            if (pressed)
-                ++wheel_;
-        });
-        bindings.bind_button({mouse, gainput::MouseButtonWheelDown}, [this](bool, bool pressed) {
-            if (pressed)
-                --wheel_;
-        });
-        bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, [this](bool, bool pressed) {
-            if (pressed)
-                ++gamepad_presses_;
-        });
+        (void)bindings.bind_axis({mouse, gainput::MouseAxisX}, DemoActions::MouseX);
+        (void)bindings.bind_axis({mouse, gainput::MouseAxisY}, DemoActions::MouseY);
+        (void)bindings.bind_button({mouse, gainput::MouseButtonLeft}, DemoActions::Click);
+        (void)bindings.bind_button({mouse, gainput::MouseButtonWheelUp}, DemoActions::WheelUp);
+        (void)bindings.bind_button({mouse, gainput::MouseButtonWheelDown}, DemoActions::WheelDown);
+        (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
     }
 
     void deinit() override { engine_->input().bindings().clear(); }
 
-    void update(const double seconds) override {
-        const glm::vec2 movement{static_cast<float>(right_) - static_cast<float>(left_),
-                                 static_cast<float>(up_) - static_cast<float>(down_)};
+    void update_with_input(const double seconds, const CE::Input::ActionSnapshot& actions) override {
+        if (actions.button(DemoActions::Reset).pressed()) {
+            pan_ = {0.0f, 0.0f};
+            camera_->set_view_matrix(glm::mat4(1.0f));
+        }
+        mouse_x_ = actions.axis(DemoActions::MouseX).current;
+        mouse_y_ = actions.axis(DemoActions::MouseY).current;
+        clicks_ += actions.button(DemoActions::Click).pressed();
+        wheel_ += actions.button(DemoActions::WheelUp).pressed();
+        wheel_ -= actions.button(DemoActions::WheelDown).pressed();
+        gamepad_presses_ += actions.button(DemoActions::GamepadA).pressed();
+
+        const glm::vec2 movement{
+            static_cast<float>(actions.button(DemoActions::Right).held()) - static_cast<float>(actions.button(DemoActions::Left).held()),
+            static_cast<float>(actions.button(DemoActions::Up).held()) - static_cast<float>(actions.button(DemoActions::Down).held())};
         if (glm::length(movement) > 0.0f) {
             pan_ += glm::normalize(movement) * static_cast<float>(seconds * 240.0);
             camera_->set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-pan_, 0.0f)));
@@ -121,10 +126,6 @@ private:
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
     float mouse_y_ = 0.0f;
-    bool up_ = false;
-    bool left_ = false;
-    bool down_ = false;
-    bool right_ = false;
     int clicks_ = 0;
     int wheel_ = 0;
     int gamepad_presses_ = 0;

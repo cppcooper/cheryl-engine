@@ -43,6 +43,9 @@ MacroBlockBegin: ''
 MacroBlockEnd: ''
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: All
+DerivePointerAlignment: false
+PointerAlignment: Left
+FixNamespaceComments: false
 SpaceInEmptyParentheses: false
 SpacesInAngles: false
 SpacesInConditionalStatement: false
