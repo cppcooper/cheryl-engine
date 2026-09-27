@@ -211,11 +211,8 @@ TEST(memory, rejects_duplicate_returns) {
     EXPECT_THROW(manager.return_chunk(block), Exceptions::failed_operation);
 }
 
-TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
+TEST(memory, reuses_a_block_only_if_it_meets_the_requested_alignment) {
     auto& manager = CE::Mem::ExactMMgr::get();
-    // A zero-size request is invalid even before considering the free pool.
-    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
-
     // Return a low-alignment candidate, then request stronger alignment.
     // Reuse must satisfy the new request regardless of the free candidate.
     auto lower = manager.checkout_chunk(77, 64);
@@ -225,6 +222,11 @@ TEST(memory, checks_alignment_when_reusing_pooled_blocks) {
     EXPECT_GE(higher.alignment, std::align_val_t{256});
     manager.return_chunk(higher);
     EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, rejects_an_empty_checkout) {
+    auto& manager = CE::Mem::ExactMMgr::get();
+    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
 }
 
 TEST(memory, preallocation_respects_explicit_growth_and_alignment) {
@@ -238,8 +240,8 @@ TEST(memory, preallocation_respects_explicit_growth_and_alignment) {
         std::shared_lock lock(std::get<0>(bm.registry));
         for (const auto& owner : std::get<1>(bm.registry)) before.emplace(owner.head.get());
     }
-    // Apply the growth parameters and inspect the new owner: one block must
-    // have the computed size and the requested alignment.
+    // Grow 32 bytes by a factor of two, then add 16: one new 80-byte owner
+    // should satisfy the requested 128-byte alignment.
     manager.preallocate(1, 32, 16, 2.0, std::align_val_t{128});
     std::vector<CE::Mem::Block> added;
     {
@@ -326,7 +328,6 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
     {
         AssetCacheProbe cache;
         EXPECT_EQ(cache.get_asset(42), nullptr);
-        EXPECT_TRUE(cache.allocate<TrackedAsset>(0).empty());
         auto assets = cache.allocate<TrackedAsset>(3);
         ASSERT_EQ(assets.size(), 3);
         // The legacy allocate interface provides raw slots; this caller
@@ -361,15 +362,17 @@ TEST(memory, asset_cache_keeps_each_object_alive_until_last_handle) {
     EXPECT_EQ(TrackedAsset::destroyed, 3);
 }
 
-TEST(memory, object_pool_constructs_only_requested_objects) {
+TEST(memory, empty_asset_requests_create_no_objects) {
+    AssetCacheProbe cache;
+    EXPECT_TRUE(cache.allocate<TrackedAsset>(0).empty());
+}
+
+TEST(memory, object_pool_keeps_neighbors_alive_when_one_handle_is_released) {
     TrackedAsset::live = 0;
     TrackedAsset::destroyed = 0;
     auto& pool = CE::Obj::Pool<TrackedAsset>::get();
 
-    // Empty object requests are harmless, but a raw block cannot have zero
-    // length; then construct three real objects to exercise handle ownership.
-    EXPECT_TRUE(pool.retrieve_objects(0, 21).empty());
-    EXPECT_THROW(pool.retrieve_block(0), CE::Exceptions::bad_request);
+    // Ask for three objects, then release only the middle handle.
     auto objects = pool.retrieve_objects(3, 21);
     ASSERT_EQ(objects.size(), 3);
     EXPECT_EQ(TrackedAsset::live, 3);
@@ -384,9 +387,15 @@ TEST(memory, object_pool_constructs_only_requested_objects) {
     objects.clear();
     EXPECT_EQ(TrackedAsset::live, 0);
     EXPECT_EQ(TrackedAsset::destroyed, 3);
+}
+
+TEST(memory, object_pool_rejects_invalid_raw_block_returns) {
+    auto& pool = CE::Obj::Pool<TrackedAsset>::get();
 
     // Whole raw blocks have a separate return path, which rejects duplicate
     // or partial returns after the block is already free.
+    EXPECT_TRUE(pool.retrieve_objects(0, 21).empty());
+    EXPECT_THROW(pool.retrieve_block(0), CE::Exceptions::bad_request);
     const auto raw = pool.retrieve_block(2);
     pool.return_block(raw);
     EXPECT_THROW(pool.return_block(raw), CE::Exceptions::failed_operation);

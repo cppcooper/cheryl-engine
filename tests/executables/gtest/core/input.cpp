@@ -10,7 +10,7 @@
 
 #include <core/controls/input-bindings.h>
 
-TEST(input_bindings, dispatches_buttons_and_axes_to_their_own_bindings) {
+TEST(input_bindings, routes_button_and_axis_events_to_the_matching_device) {
     CE::Input::InputBindings bindings;
     constexpr CE::Input::DeviceButtonId key_code = 256;
     constexpr CE::Input::DeviceButtonId axis_code = 257;
@@ -37,20 +37,32 @@ TEST(input_bindings, dispatches_buttons_and_axes_to_their_own_bindings) {
     bindings.on_button({3, key_code}, false, true);
     EXPECT_EQ(presses, 1);
     EXPECT_FLOAT_EQ(last_axis, 0.75f);
+}
+
+TEST(input_bindings, removes_replaces_and_clears_callbacks) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{2, 256};
+    const CE::Input::DeviceBind axis{3, 257};
+    int original_presses = 0;
+    int replacement_presses = 0;
+    float last_axis = 0.0f;
+    bindings.bind_button(key, [&](bool, bool) { ++original_presses; });
+    bindings.bind_axis(axis, [&](float, float current) { last_axis = current; });
 
     // Remove, replace, and finally clear the callbacks. Only the replacement
-    // should observe another event; clearing stops both types of dispatch.
+    // should observe an event; clearing stops both types of dispatch.
     bindings.bind_button(key, {});
     bindings.on_button(key, false, true);
-    EXPECT_EQ(presses, 1);
-    bindings.bind_button(key, [&](bool, bool) { presses += 10; });
+    EXPECT_EQ(original_presses, 0);
+    bindings.bind_button(key, [&](bool, bool) { ++replacement_presses; });
     bindings.on_button(key, false, true);
-    EXPECT_EQ(presses, 11);
+    EXPECT_EQ(original_presses, 0);
+    EXPECT_EQ(replacement_presses, 1);
     bindings.clear();
     bindings.on_button(key, false, true);
     bindings.on_axis(axis, 0.0f, 0.25f);
-    EXPECT_EQ(presses, 11);
-    EXPECT_FLOAT_EQ(last_axis, 0.75f);
+    EXPECT_EQ(replacement_presses, 1);
+    EXPECT_FLOAT_EQ(last_axis, 0.0f);
 }
 
 #ifndef CHERYL_SANDBOX_BUILD

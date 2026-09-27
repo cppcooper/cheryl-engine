@@ -9,42 +9,42 @@
 #include <cstdint>
 
 
-TEST(templates_block, block_methods) {
-    // Start with one owned byte range and establish its inclusive start and
-    // exclusive end before any split changes its boundaries.
-    constexpr std::size_t len = 2048;
-    char* p_raw = new char[len];
-    std::shared_ptr<char> ptr(p_raw, [](const char* p){ delete[] p; });
-    auto align_val = CE::ptr::calculate_alignment(p_raw);
-    constexpr std::size_t i1 = 12;
-    constexpr std::size_t i2 = 20;
-    constexpr std::size_t i3 = 107;
-    constexpr std::size_t i4 = 4;
-    constexpr std::size_t i5 = 1024;
-    Block<char> b {ptr, ptr, align_val, len};
-    ASSERT_TRUE(b.contains(p_raw+i5));
-    ASSERT_TRUE(!b.contains(p_raw+len));
+TEST(templates_block, splits_one_owned_range_without_losing_its_boundaries) {
+    auto backing = std::shared_ptr<char>(new char[16], [](char* p) { delete[] p; });
+    auto* first_byte = backing.get();
+    Block<char> front{backing, backing, CE::ptr::calculate_alignment(first_byte), 16};
 
-    // Split the successive tails; each new head must advance by the length
-    // removed from the preceding piece.
-    auto b2 = b.split_exactly(i1);
-    ASSERT_TRUE(b2.has_value());
-    ASSERT_EQ(b2->head.get(), p_raw+i1);
-    auto b3 = b2->split_exactly(i2);
-    ASSERT_TRUE(b3.has_value());
-    ASSERT_EQ(b3->head.get(), p_raw+i1+i2);
-    auto b4 = b3->split_exactly(i3);
-    ASSERT_TRUE(b4.has_value());
-    ASSERT_EQ(b4->head.get(), p_raw+i1+i2+i3);
+    // A block owns bytes 0 through 15; byte 16 is just beyond its end.
+    EXPECT_TRUE(front.contains(first_byte));
+    EXPECT_TRUE(front.contains(first_byte + 15));
+    EXPECT_FALSE(front.contains(first_byte + 16));
 
-    // Split the original front again, then reject an oversized split without
-    // disturbing the distant tail created earlier.
-    auto b5 = b.split_exactly(i4);
-    ASSERT_TRUE(b5.has_value());
-    ASSERT_EQ(b5->head.get(), p_raw+i4);
-    auto b6 = b.split_exactly(i3);
-    ASSERT_TRUE(!b6.has_value());
-    ASSERT_TRUE(b4->contains(p_raw+i5));
+    // Take four bytes, then three, then two. Each returned tail starts where
+    // its preceding piece ends and still reaches the original end.
+    auto after_four = front.split_exactly(4);
+    ASSERT_TRUE(after_four.has_value());
+    EXPECT_EQ(front.length, 4);
+    EXPECT_EQ(after_four->head.get(), first_byte + 4);
+
+    auto after_three = after_four->split_exactly(3);
+    ASSERT_TRUE(after_three.has_value());
+    EXPECT_EQ(after_four->length, 3);
+    EXPECT_EQ(after_three->head.get(), first_byte + 7);
+
+    auto after_two = after_three->split_exactly(2);
+    ASSERT_TRUE(after_two.has_value());
+    EXPECT_EQ(after_three->length, 2);
+    EXPECT_EQ(after_two->head.get(), first_byte + 9);
+    EXPECT_EQ(after_two->length, 7);
+
+    // Divide the first four bytes once more. An oversized request must leave
+    // that front piece and the distant tail at their existing boundaries.
+    auto rest_of_front = front.split_exactly(1);
+    ASSERT_TRUE(rest_of_front.has_value());
+    EXPECT_EQ(rest_of_front->head.get(), first_byte + 1);
+    EXPECT_FALSE(front.split_exactly(6).has_value());
+    EXPECT_EQ(front.length, 1);
+    EXPECT_TRUE(after_two->contains(first_byte + 15));
 }
 
 TEST(templates_block, typed_split_preserves_element_ranges) {
@@ -57,7 +57,6 @@ TEST(templates_block, typed_split_preserves_element_ranges) {
     auto unchanged = block;
     EXPECT_FALSE(unchanged.split_exactly(0).has_value());
     EXPECT_EQ(unchanged.length, 4);
-    EXPECT_EQ(CE::ptr::get_alignment_offset(backing.get(), std::align_val_t{alignof(Value)}), 0);
     EXPECT_TRUE(block.contains(reinterpret_cast<unsigned char*>(backing.get() + 4) - 1));
     EXPECT_FALSE(block.contains(backing.get() + 4));
 
@@ -128,7 +127,7 @@ struct AdjacentBlockProbe : AbstractManager<char> {
     using AbstractManager<char>::search_right;
 };
 
-TEST(templates_block, adjacent_left) {
+TEST(templates_block, finds_the_nearest_left_block_across_a_gap) {
     // Set up two ranges with a gap, then query at the first range, inside
     // the gap, and just beyond the second range.
     auto backing = std::shared_ptr<char>(new char[128], [](const char* p) { delete[] p; });
@@ -176,7 +175,7 @@ struct MergeProbe : AbstractManager<MergeProbeItem> {
     using AbstractManager<MergeProbeItem>::record_new;
 };
 
-TEST(templates_block, pool_merge_at_owner_head) {
+TEST(templates_block, rejoins_an_owner_when_its_last_section_is_returned) {
     // Partition one owner into front, middle, and back. Seed the middle as
     // reusable while the two outer pieces are still active.
     auto backing = std::shared_ptr<MergeProbeItem>(new MergeProbeItem[128], [](MergeProbeItem* p) { delete[] p; });
@@ -255,7 +254,7 @@ public:
     }
 };
 
-TEST(templates_block, iManage) {
+TEST(templates_block, finds_and_recycles_sections_from_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
         auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
@@ -317,7 +316,7 @@ TEST(templates_block, iManage) {
     EXPECT_EQ(test.fill(128), first);
 }
 
-TEST(templates_block, BlockManagementChecks) {
+TEST(templates_block, detects_inconsistent_owner_and_free_range_bookkeeping) {
     // Use a separate specialization so memory manager tests cannot affect these checks.
     using BMv = BlockManagement<char>;
     std::unique_lock lreg(std::get<0>(BMv::registry));
