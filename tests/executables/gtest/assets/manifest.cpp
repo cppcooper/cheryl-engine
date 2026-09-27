@@ -24,7 +24,7 @@ namespace {
     }
 }
 
-TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
+TEST(asset_pivot, anchors_an_atlas_tile_at_its_bottom_center) {
     // Anchor an atlas subrectangle at its bottom center, then inspect its vertex
     // positions, texture coordinates, and repeated corners for two triangles.
     CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
@@ -42,6 +42,10 @@ TEST(asset_pivot, supports_arbitrary_normalized_pivots) {
     EXPECT_EQ(vertices[2].x, vertices[4].x);
     EXPECT_FLOAT_EQ(vertices[5].x, -8.0f);
     EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
+}
+
+TEST(asset_pivot, reports_where_an_invalid_pivot_was_used) {
+    CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
 
     // An undefined pivot must report a usable argument error with source context.
     try {
@@ -71,7 +75,7 @@ TEST(asset_grid, resolves_spaced_row_major_cells) {
     EXPECT_THROW(static_cast<void>(grid.cell_rect(6)), CE::Exceptions::bad_request);
 }
 
-TEST(asset_grid, builds_vertices_from_dimensions_without_a_gpu_texture) {
+TEST(asset_grid, builds_a_tile_from_its_grid_and_image_dimensions) {
     // Build one quad against a known image size and inspect both geometry and UVs.
     const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
     const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
@@ -81,8 +85,13 @@ TEST(asset_grid, builds_vertices_from_dimensions_without_a_gpu_texture) {
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].x, -4.0f);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].u, 0.125f);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].v, 0.5f);
+}
 
-    // Invalid dimensions must fail before creating geometry.
+TEST(asset_grid, rejects_an_image_too_small_for_the_grid) {
+    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
+
+    // A zero width and a width that ends before the tile both fail before
+    // producing any geometry.
     EXPECT_THROW(
         static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})),
         CE::Exceptions::runtime_exception
@@ -169,7 +178,7 @@ TEST(asset_manifest, retains_tile_animations_views_and_wang_autotiles) {
     EXPECT_FALSE(pathways.variants.empty());
 }
 
-TEST(asset_manifest, parses_explicit_animations_orientations_and_bitmasks) {
+TEST(asset_manifest, loads_a_sprite_animation_and_neighbor_mask_from_one_sheet) {
     // Define a minimal manifest with a sprite grid, explicit animation frames,
     // and a tileset whose neighbor bitmasks map to cells.
     std::istringstream input(R"json({

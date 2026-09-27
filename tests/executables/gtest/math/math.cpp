@@ -23,10 +23,6 @@
 // coverage. Once this file is integrated, remove that math-specific test from the
 // asset manifest suite rather than maintaining duplicate coverage.
 //
-// TODO(test-layout): templates/block.cpp contains a direct get_alignment_offset()
-// assertion. Its pointer helpers are otherwise mostly test setup for Block itself;
-// move/remove only the math-specific assertion after this suite is established.
-
 namespace {
     template <typename T>
     constexpr bool is_power_of_two(const T value) {
@@ -34,7 +30,7 @@ namespace {
     }
 }
 
-TEST(math_binary, storage) {
+TEST(math_binary, stores_small_flags_compactly_and_spans_larger_ones) {
     using namespace CE::math::Detail;
 
     // The chosen word grows only as far as the platform's native width.
@@ -59,36 +55,42 @@ TEST(math_binary, storage) {
     );
 }
 
-TEST(math_binary, individual_bits) {
+TEST(math_binary, turns_individual_flags_on_and_off) {
     CE::math::BitArray<8> bits;
 
-    // Read bits through the const interface after setting them individually.
+    // Start with no flags, then light up three positions including the last.
+    EXPECT_EQ(bits.words()[0], std::uint8_t{0});
     bits[0] = true;
     bits[2] = true;
-    bits[3] = true;
     bits[7] = true;
+    EXPECT_EQ(bits.words()[0], std::uint8_t{0b10000101});
 
+    // A const reader sees those flags; clearing one leaves the others set.
     const auto& readable = bits;
     EXPECT_TRUE(readable[0]);
     EXPECT_FALSE(readable[1]);
     EXPECT_TRUE(readable[2]);
-    EXPECT_TRUE(readable[3]);
     EXPECT_TRUE(readable[7]);
-
-    // Copy a set bit and a clear bit through the writable proxy.
-    bits[1] = bits[0];
-    bits[2] = bits[4];
-
-    EXPECT_TRUE(readable[1]);
+    bits[2] = false;
+    EXPECT_EQ(readable.words()[0], std::uint8_t{0b10000001});
     EXPECT_FALSE(readable[2]);
+}
 
-    // Assigning a proxy to itself must leave its bit alone.
-    auto reference = bits[3];
+TEST(math_binary, copies_the_value_of_one_flag_to_another) {
+    CE::math::BitArray<8> bits;
+    bits[0] = true;
+
+    // Copy both a set flag and a clear flag; neither assignment moves the
+    // proxy's destination to the source position.
+    bits[1] = bits[0];
+    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000011});
+    bits[0] = bits[2];
+    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000010});
+
+    // Self-assignment also keeps the represented flag intact.
+    auto reference = bits[1];
     reference = reference;
-    EXPECT_TRUE(readable[3]);
-
-    bits[3] = false;
-    EXPECT_FALSE(readable[3]);
+    EXPECT_EQ(bits.words()[0], std::uint8_t{0b00000010});
 }
 
 TEST(math_binary, bits_and_words) {
@@ -125,12 +127,14 @@ TEST(math_binary, word_boundary) {
 
     words[1] = word_type{2};
     const auto& readable = bits;
+    EXPECT_EQ(readable.words()[0], word_type{1} << (boundary - 1));
+    EXPECT_EQ(readable.words()[1], word_type{2});
     EXPECT_TRUE(readable[boundary - 1]);
     EXPECT_FALSE(readable[boundary]);
     EXPECT_TRUE(readable[boundary + 1]);
 }
 
-TEST(math_binary, output) {
+TEST(math_binary, prints_flags_from_left_to_right) {
     CE::math::BitArray<8> bits;
     bits[0] = true;
     bits[2] = true;
@@ -253,7 +257,7 @@ TEST(math_anchor, invalid_input) {
     );
 }
 
-TEST(math_pointers, ranges_and_offsets) {
+TEST(math_pointers, treats_the_start_as_in_range_and_the_end_as_out_of_range) {
     std::array<std::byte, 128> memory{};
     auto* begin = memory.data();
     auto* end = begin + memory.size();
@@ -262,8 +266,13 @@ TEST(math_pointers, ranges_and_offsets) {
     EXPECT_TRUE(CE::ptr::is_in_range(begin, end, begin));
     EXPECT_TRUE(CE::ptr::is_in_range(begin, end, begin + 127));
     EXPECT_FALSE(CE::ptr::is_in_range(begin, end, end));
+}
 
-    // Offset helpers operate in bytes regardless of the eventual pointed-to type.
+TEST(math_pointers, advances_an_address_by_bytes) {
+    std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
+
+    // The two helpers agree on where a byte offset lands in this allocation.
     EXPECT_EQ(
         CE::ptr::offset_address(begin, 17),
         reinterpret_cast<std::uintptr_t>(begin + 17)
@@ -302,7 +311,7 @@ TEST(math_pointers, alignment) {
     EXPECT_TRUE(is_power_of_two(actual_alignment));
 }
 
-TEST(math_pointers, hashes) {
+TEST(math_pointers, hashes_the_same_address_consistently_at_each_width) {
     int value = 0;
     void* pointer = &value;
 
@@ -325,19 +334,22 @@ TEST(math_pointers, hashes) {
     );
 }
 
-TEST(math_fit, length_policies) {
+TEST(math_fit, grows_a_requested_capacity_according_to_policy) {
     // exact preserves the request, larger adds fixed growth, and greedy applies
     // multiplicative growth before adding the same fixed amount.
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::exact, 8, 1.5), std::size_t{100});
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::larger, 8, 1.5), std::size_t{108});
     EXPECT_EQ(CE::Math::adjust_length(100, CE::Enum::greedy, 8, 1.5), std::size_t{158});
+}
 
+TEST(math_fit, steps_back_toward_exact_growth) {
+    // Each reduction relaxes one growth policy until exact is reached.
     EXPECT_EQ(CE::Math::reduce(CE::Enum::greedy), CE::Enum::larger);
     EXPECT_EQ(CE::Math::reduce(CE::Enum::larger), CE::Enum::exact);
     EXPECT_EQ(CE::Math::reduce(CE::Enum::exact), CE::Enum::exact);
 }
 
-TEST(math_time, durations) {
+TEST(math_time, converts_durations_and_truncates_partial_units) {
     static_assert(is_chrono_duration_v<Milliseconds>);
     static_assert(is_chrono_duration_v<Seconds>);
     static_assert(!is_chrono_duration_v<int>);
@@ -351,7 +363,7 @@ TEST(math_time, durations) {
     EXPECT_EQ(hcast(Minutes{120}), Hours{2});
 }
 
-TEST(math_bytes, units) {
+TEST(math_bytes, names_the_units_for_ordinary_byte_counts) {
     // Exercise ordinary values without encoding the known exact-power boundary
     // behavior as the desired contract.
     EXPECT_EQ(human_readable(0), "0.0 bytes");

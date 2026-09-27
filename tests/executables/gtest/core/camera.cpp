@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-TEST(camera_2d, uses_framebuffer_pixels_and_tracks_view) {
+TEST(camera_2d, maps_framebuffer_corners_into_clip_space) {
     // Map the two framebuffer corners into clip space to establish the 2D
     // projection's pixel coordinate convention.
     CE::Camera2D camera;
@@ -20,8 +20,13 @@ TEST(camera_2d, uses_framebuffer_pixels_and_tracks_view) {
     EXPECT_NEAR(upper_right.x, 1.0f, 1e-5f);
     EXPECT_NEAR(upper_right.y, 1.0f, 1e-5f);
 
-    // Changing the view advances its revision. Setting that same view again
-    // leaves the revision alone so consumers can skip an unnecessary update.
+}
+
+TEST(camera_2d, advances_the_view_revision_only_when_the_view_changes) {
+    CE::Camera2D camera;
+
+    // Moving the camera changes its revision; repeating the same view lets a
+    // renderer keep its previous camera state.
     const auto view = glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, -20.0f, 0.0f));
     const auto original_revision = camera.revision();
     camera.set_view_matrix(view);
@@ -51,7 +56,7 @@ TEST(camera_3d, uses_degree_fov_and_framebuffer_aspect_ratio) {
     EXPECT_NEAR(camera.projection_matrix()[1][1], 1.0f, 1e-5f);
 }
 
-TEST(camera, tolerates_minimized_framebuffer_and_rejects_invalid_settings) {
+TEST(camera, keeps_both_projections_finite_when_the_window_is_minimized) {
     // A minimized window has no drawable pixels but should leave both
     // projections finite rather than producing NaNs.
     CE::Camera2D two_d;
@@ -61,6 +66,12 @@ TEST(camera, tolerates_minimized_framebuffer_and_rejects_invalid_settings) {
     EXPECT_EQ(two_d.framebuffer_size(), (CE::FramebufferSize{0, 0}));
     EXPECT_TRUE(std::isfinite(two_d.projection_matrix()[0][0]));
     EXPECT_TRUE(std::isfinite(three_d.projection_matrix()[0][0]));
+
+}
+
+TEST(camera, rejects_invalid_framebuffer_and_perspective_settings) {
+    CE::Camera2D two_d;
+    CE::Camera3D three_d;
 
     // Reject negative dimensions and nonsensical perspective parameters.
     EXPECT_THROW(two_d.set_framebuffer_size({-1, 10}), CE::Exceptions::invalid_args);
