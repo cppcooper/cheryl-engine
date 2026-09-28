@@ -1,5 +1,4 @@
 #include <core/camera.h>
-#include <core/detail/matrix-equal.h>
 
 #include <internals/exceptions.h>
 #include <ext/matrix_clip_space.hpp>
@@ -22,7 +21,7 @@ namespace CE {
     }
 
     void CameraBase::set_view_matrix(const glm::mat4& view) {
-        if (detail::matrix_equal(view_matrix_, view))
+        if (view_matrix_ == view)
             return;
         view_matrix_ = view;
         ++revision_;

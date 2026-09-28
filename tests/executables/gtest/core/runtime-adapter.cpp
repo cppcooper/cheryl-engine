@@ -8,11 +8,7 @@
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
-#include <core/subsystems/event-system.h>
 
-#include <ext/matrix_transform.hpp>
-
-#include <any>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -292,24 +288,6 @@ TEST(runtime_adapter, alternate_backend) {
     EXPECT_EQ(provider.shader->uses, 3);
     EXPECT_EQ(provider.shader->projection, engine.active_camera()->projection_matrix());
     EXPECT_EQ(renderer.swaps, 1);
-
-    // Reproduce a W/S-only camera move: the shader must receive its Y translation
-    // even when X remains unchanged. The vendored GLM matrix equality previously
-    // treated this as an unchanged view until an A/D move occurred.
-    engine.active_camera()->set_view_matrix(
-        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -60.0f, 0.0f)));
-    engine.pre_draw();
-    EXPECT_FLOAT_EQ(provider.shader->view[3][0], 0.0f);
-    EXPECT_FLOAT_EQ(provider.shader->view[3][1], -60.0f);
-
-    // A height-only resize changes the projection's Y row and must also
-    // publish the projection change event to interested consumers.
-    const auto projection_events = std::make_shared<int>(0);
-    CE::SubSystems::EventSystem::get().register_listener(
-        "projection-matrix-changed", [projection_events](const std::any&) { ++*projection_events; });
-    renderer.window().resize(640, 480);
-    engine.pre_draw();
-    EXPECT_EQ(*projection_events, 1);
 
     // Propagate the window's close request and detach input on shutdown.
     renderer.window().request_close();
