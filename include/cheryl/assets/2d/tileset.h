@@ -47,11 +47,9 @@ namespace CE::Assets {
     /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
      * These queries expose metadata; they do not inspect a world or choose neighbors.
      */
-    struct Tileset final : Asset2D, Frame<Tileset> {
+    struct Tileset final : Asset2D {
         explicit Tileset(TilesetData data);
-        ~Tileset() override = default;
 
-        void draw(const DrawInfo& info) override;
         [[nodiscard]] Tile tile(std::size_t cell) const;
         [[nodiscard]] TileAnimation animation(const std::string& name) const;
         [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;

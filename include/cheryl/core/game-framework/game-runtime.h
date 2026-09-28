@@ -11,7 +11,7 @@ namespace CE::GFramework {
      * Each simulation tick receives a TickInput assembled from completed polls. Rendering consumes only
      * published render state, never the game's live mutable simulation state. These boundaries
      * apply whether the runtime executes sequentially or schedules simulation separately.
-     * The render-state representation and scheduling policy remain to be defined.
+     * The scheduler and frame handoff policy remain to be implemented.
      */
     class GameRuntime final {
     public:

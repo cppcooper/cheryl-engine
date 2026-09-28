@@ -8,6 +8,8 @@
 #include <utility>
 
 namespace CE::Assets {
+    // Immediate drawing remains for legacy tile values. Published RenderFrame commands
+    // do not call this interface from the simulation thread.
     struct Draw2D : iDraw {
         const std::shared_ptr<Geometry2D> geometry;
         const std::shared_ptr<Image> texture;

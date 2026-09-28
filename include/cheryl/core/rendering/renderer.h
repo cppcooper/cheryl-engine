@@ -1,13 +1,14 @@
 #pragma once
 
 #include <core/display/framebuffer-size.h>
+#include <core/rendering/render-frame.h>
 #include <glm.hpp>
 
 namespace CE::RenderAPIs {
     /** Renders using a compatible graphics context. Does not own the display,
      * presentation surface, resource provider, or mutable game state.
-     * TODO: Add the top-level frame operation after the published render-state representation
-     * and asset draw-submission contract are defined. The operations below are only primitives.
+     * render() consumes ordered passes from a published frame on the graphics thread.
+     * The operations below are backend primitives for the frame renderer.
      */
     class iRenderer {
     public:
@@ -15,6 +16,7 @@ namespace CE::RenderAPIs {
 
         virtual void initialize() = 0;
         virtual void deinitialize() = 0;
+        virtual void render(const RenderFrame& frame) = 0;
         virtual void clear() = 0;
         virtual void set_viewport(FramebufferSize size) = 0;
         virtual void set_depth_test(bool enabled) = 0;

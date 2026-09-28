@@ -35,7 +35,7 @@ namespace CE::Assets {
                                                    ResourceProvider& provider);
 
     protected:
-        void draw(const DrawInfo& info) override;
+        void draw(const DrawInfo& info);
 
     private:
         std::array<float, font_character_count> advances_{};

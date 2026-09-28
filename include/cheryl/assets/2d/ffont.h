@@ -35,7 +35,7 @@ namespace CE::Assets {
         float print_angle = 0.f;
         std::string print_msg;
     protected:
-        void draw(const DrawInfo& info) override;
+        void draw(const DrawInfo& info);
     };
 }
 #endif

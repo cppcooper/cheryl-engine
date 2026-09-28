@@ -8,7 +8,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace CE::Assets {
     template <typename T>
@@ -20,44 +19,49 @@ namespace CE::Assets {
         SpriteDefinition definition;
     };
 
-    /** A selected clip with mutable frame index; the caller chooses when to advance it.
-     * Indexing selects a cell, with looping or final-frame clamping from the definition.
+    /** Per-instance playback state for one shared clip definition. Advance it on the
+     * simulation thread, then publish cell() rather than sharing this mutable cursor.
      */
-    struct SpriteAnimation final : Draw2D, Frame<SpriteAnimation> {
-        explicit SpriteAnimation(SpriteAnimationDefinition definition, const shptr<Geometry2D>& geometry,
-                                 const shptr<Image>& texture);
-
-        void draw(const DrawInfo& info) override;
-        [[nodiscard]] const SpriteAnimationDefinition& definition() const { return definition_; }
+    class SpriteAnimation final {
+    public:
+        SpriteAnimation& operator[](std::size_t frame);
+        void set_frame(std::size_t frame);
+        void advance(std::chrono::duration<double> elapsed);
+        [[nodiscard]] std::size_t index() const { return index_; }
+        [[nodiscard]] CellIndex cell() const;
+        [[nodiscard]] const SpriteAnimationDefinition& definition() const { return *definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
-        [[nodiscard]] bool loops() const { return definition_.loop; }
+        [[nodiscard]] bool loops() const { return definition_->loop; }
 
     private:
-        SpriteAnimationDefinition definition_;
+        friend struct Sprite;
+        explicit SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition> definition);
+
+        std::shared_ptr<const SpriteAnimationDefinition> definition_;
+        std::size_t index_ = 0;
+        std::chrono::duration<double> elapsed_{};
+        std::chrono::duration<double> cycle_duration_{};
     };
 
-    /** Cached geometry/image and named animation definitions for one sprite grid.
-     * Animation lookup returns a value; keep that value if frame selection should persist.
+    /** Shared grid resources and clip definitions. Each animation() result has its own
+     * playback cursor and retains the definition without copying its frames.
      */
-    struct Sprite final : Asset2D, Frame<Sprite> {
-        using Frame::operator[];
+    struct Sprite final : Asset2D {
         explicit Sprite(SpriteData data);
 
-        void draw(const DrawInfo& info) override;
         SpriteAnimation operator[](const std::string& animation) const;
         SpriteAnimation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
         [[nodiscard]] bool has_animation(const std::string& animation,
                                          std::optional<std::string> facing = std::nullopt) const;
         [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
         [[nodiscard]] CellIndex orientation(const std::string& name) const;
-        [[nodiscard]] const SpriteDefinition& definition() const { return definition_; }
+        [[nodiscard]] const SpriteDefinition& definition() const { return *definition_; }
 
     private:
         [[nodiscard]] static std::string animation_key(const std::string& animation,
                                                        const std::optional<std::string>& facing);
 
-        SpriteDefinition definition_;
-        std::vector<SpriteAnimation> animations_;
+        std::shared_ptr<const SpriteDefinition> definition_;
         std::unordered_map<std::string, std::size_t> animation_indices_;
     };
 }

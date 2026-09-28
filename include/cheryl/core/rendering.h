@@ -1,5 +1,6 @@
 #pragma once
 #include "rendering/camera.h"
+#include "rendering/render-frame.h"
 #include "rendering/presentation-surface.h"
 #include "rendering/opengl-context.h"
 #include "rendering/glfw-opengl-context.h"

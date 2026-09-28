@@ -14,6 +14,7 @@ namespace CE::RenderAPIs {
     // TODO: Restore GL entry-point loading and render state after the context becomes current.
     void OpenGLRenderer::initialize() { renderer_pending(); }
     void OpenGLRenderer::deinitialize() { renderer_pending(); }
+    void OpenGLRenderer::render(const RenderFrame&) { renderer_pending(); }
     void OpenGLRenderer::clear() { renderer_pending(); }
     void OpenGLRenderer::set_viewport(FramebufferSize) { renderer_pending(); }
     void OpenGLRenderer::set_depth_test(bool) { renderer_pending(); }

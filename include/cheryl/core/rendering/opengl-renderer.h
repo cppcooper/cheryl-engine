@@ -14,6 +14,7 @@ namespace CE::RenderAPIs {
 
         void initialize() override;
         void deinitialize() override;
+        void render(const RenderFrame& frame) override;
         void clear() override;
         void set_viewport(FramebufferSize size) override;
         void set_depth_test(bool enabled) override;

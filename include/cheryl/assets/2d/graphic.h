@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assets/abstracts/asset2d.h>
+#include <assets/primitives/draw-info.h>
 #include <math/anchor.h>
 
 #include <filesystem>
@@ -26,6 +27,6 @@ namespace CE::Assets {
             math::Pivot pivot = {0.0f, 0.0f}
         );
 
-        void draw(const DrawInfo& info) override;
+        void draw(const DrawInfo& info);
     };
 }

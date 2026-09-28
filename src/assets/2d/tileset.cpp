@@ -28,7 +28,6 @@ namespace CE::Assets {
 
     Tileset::Tileset(TilesetData data) :
         Asset2D(std::move(data.geometry), std::move(data.texture)),
-        Frame(0, 0, data.definition.grid.cell_count()),
         definition_(std::move(data.definition)) {
         // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
@@ -36,10 +35,6 @@ namespace CE::Assets {
                 throw Exceptions::invalid_args(CE_HERE, "Multiple tile animations target the same cell");
             }
         }
-    }
-
-    void Tileset::draw(const DrawInfo& info) {
-        Tile(index_, geometry, texture).draw(info);
     }
 
     Tile Tileset::tile(const std::size_t cell) const {
