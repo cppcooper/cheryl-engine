@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <core/camera.h>
+#include <core/rendering/camera.h>
 #include <core/display/viewport.h>
 #include <internals/exceptions.h>
 #include <ext/matrix_transform.hpp>

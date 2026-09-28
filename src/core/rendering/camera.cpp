@@ -1,4 +1,4 @@
-#include <core/camera.h>
+#include <core/rendering/camera.h>
 
 #include <internals/exceptions.h>
 #include <ext/matrix_clip_space.hpp>
