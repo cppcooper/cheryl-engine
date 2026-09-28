@@ -3,7 +3,8 @@
 `assets/types/` contains the logical 2D and 3D asset types and portable primitives.
 `assets/types/2d/base/` holds shared bases for 2D asset types.
 `assets/geometry/` builds temporary CPU geometry for asset loaders.
-`assets/manifest.h` describes source assets and their grids, clips, and metadata.
+`assets/definitions/` describes grids, clips, sprites, tilesets, and autotile metadata.
+`assets/manifest.h` collects those definitions into a parsed source document.
 `assets/resources/` holds backend-neutral resource interfaces used by asset types
 and resource providers. `core/rendering/` contains frame submissions, the renderer
 contract, and legacy immediate-draw parameters.

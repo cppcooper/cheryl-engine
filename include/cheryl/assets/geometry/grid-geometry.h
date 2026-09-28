@@ -1,7 +1,8 @@
 #pragma once
 
-#include <assets/manifest.h>
+#include <assets/definitions/grid.h>
 #include <assets/types/primitives/vertex.h>
+#include <math/anchor.h>
 
 #include <cstdint>
 #include <memory>
