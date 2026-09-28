@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <assets/manifest.h>
+#include <assets/definitions/manifest.h>
 #include <assets/geometry/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <internals/exceptions.h>

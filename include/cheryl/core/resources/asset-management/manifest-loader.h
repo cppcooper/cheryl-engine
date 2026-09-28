@@ -1,6 +1,6 @@
 #pragma once
 
-#include <assets/manifest.h>
+#include <assets/definitions/manifest.h>
 
 #include <filesystem>
 #include <istream>

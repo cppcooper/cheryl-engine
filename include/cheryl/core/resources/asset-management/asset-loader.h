@@ -1,5 +1,5 @@
 #pragma once
-#include <assets/manifest.h>
+#include <assets/definitions/manifest.h>
 #include <templates/singleton.h>
 #include <core/resources/fileio/file-mgr.h>
 

@@ -35,7 +35,7 @@ keys remain available; the text program is keyed by `assets/shaders/shader2d` wi
 ## Typed manifest data
 
 `assets/definitions/` is the shared contract between parsing, asset construction, and later engine systems.
-`assets/manifest.h` collects the definitions in one parsed document. The definitions retain:
+`assets/definitions/manifest.h` collects the definitions in one parsed document. The definitions retain:
 
 - grid origins, frame sizes, spacing, and row-major cell addressing;
 - arbitrary normalized pivots, named views, and orientation cells;

@@ -1,4 +1,4 @@
-#include <assets/manifest.h>
+#include <assets/definitions/manifest.h>
 #include <unordered_set>
 
 namespace CE::Assets {
