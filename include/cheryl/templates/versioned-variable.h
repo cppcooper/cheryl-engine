@@ -18,6 +18,11 @@ struct VersionedSnapshot {
 template <typename T>
     requires std::copy_constructible<T> && std::assignable_from<T&, T> && std::equality_comparable<T>
 class VersionedVariable {
+    mutable std::mutex mutex_;
+    mutable std::condition_variable changed_;
+    T value_;
+    std::uint64_t revision_ = 0;
+
 public:
     explicit VersionedVariable(T initial) : value_(std::move(initial)) {}
 
@@ -37,18 +42,19 @@ public:
         return {value_, revision_};
     }
 
-    [[nodiscard]] T get() const { return snapshot().value; }
-    [[nodiscard]] std::uint64_t revision() const { return snapshot().revision; }
+    [[nodiscard]] T get() const {
+        std::unique_lock lock(mutex_);
+        return value_;
+    }
+
+    [[nodiscard]] std::uint64_t revision() const {
+        std::unique_lock lock(mutex_);
+        return revision_;
+    }
 
     [[nodiscard]] VersionedSnapshot<T> wait_for_change(std::uint64_t since) const {
         std::unique_lock lock(mutex_);
         changed_.wait(lock, [&] { return revision_ != since; });
         return {value_, revision_};
     }
-
-private:
-    mutable std::mutex mutex_;
-    mutable std::condition_variable changed_;
-    T value_;
-    std::uint64_t revision_ = 0;
 };

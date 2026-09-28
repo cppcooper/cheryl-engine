@@ -12,11 +12,17 @@
  * changed value. Use VersionedVariable directly when callback thread affinity is undesirable.
  */
 template <typename T, std::uint8_t Observers = 1>
-struct ObservedVariable {
+class ObservedVariable {
+public:
     using Callback = std::function<void(const T&)>;
 
+private:
+    VersionedVariable<T> value_;
+    std::array<Callback, Observers> callbacks_;
+
+public:
     explicit ObservedVariable(T value, std::array<Callback, Observers> observers)
-        : value_(std::move(value)), callbacks(std::move(observers)) {}
+        : value_(std::move(value)), callbacks_(std::move(observers)) {}
 
     ObservedVariable& operator=(T value) {
         set(std::move(value));
@@ -26,7 +32,7 @@ struct ObservedVariable {
     void set(T value) {
         value_.set(value);
         // The argument belongs to this set even if another writer publishes before these callbacks run.
-        for (auto& callback : callbacks) {
+        for (const auto& callback : callbacks_) {
             if (callback)
                 callback(value);
         }
@@ -37,8 +43,4 @@ struct ObservedVariable {
     [[nodiscard]] std::uint64_t revision() const { return value_.revision(); }
     [[nodiscard]] VersionedSnapshot<T> wait_for_change(std::uint64_t since) const { return value_.wait_for_change(since); }
     void wait_until_change() const { (void)wait_for_change(revision()); }
-
-protected:
-    VersionedVariable<T> value_;
-    std::array<Callback, Observers> callbacks;
 };
