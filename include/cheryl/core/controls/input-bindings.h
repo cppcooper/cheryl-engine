@@ -26,7 +26,7 @@ namespace CE::Input {
     using BindingId = std::uint64_t;
 
     /** Owns physical-to-semantic mappings. Device notifications update pending physical state on the
-     * polling thread; publish_actions() commits one immutable result for a simulation tick. Configuration
+     * polling thread; publish_actions() commits one immutable result for a platform poll. Configuration
      * and on_* calls belong to that same owner thread. Published handles may be read on other threads.
      */
     class InputBindings {

@@ -7,8 +7,9 @@ namespace CE::GFramework {
 
     void GameRuntime::run() {
         // TODO: Pair each successful initialization with shutdown, including failure paths.
-        // Initialize renderer and input, then game; poll input and pin one ActionSnapshot;
-        // update simulation; publish complete render state; have the renderer consume that
+        // Initialize renderer and input, then game; collect all completed input polls;
+        // assemble TickInput from polls since the last tick; update simulation with TickContext;
+        // publish complete render state; have the renderer consume that
         // published state; present through the surface; deinitialize in reverse order.
         // Define the frame representation and publication policy before scheduling threads.
         // Platform bootstrap must first create a compatible display/window/surface/renderer set.

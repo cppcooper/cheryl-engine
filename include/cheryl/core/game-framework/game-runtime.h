@@ -8,7 +8,7 @@ namespace CE::GFramework {
     struct AbstractGame;
 
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
-     * Each simulation tick receives one complete input snapshot. Rendering consumes only
+     * Each simulation tick receives a TickInput assembled from completed polls. Rendering consumes only
      * published render state, never the game's live mutable simulation state. These boundaries
      * apply whether the runtime executes sequentially or schedules simulation separately.
      * The render-state representation and scheduling policy remain to be defined.

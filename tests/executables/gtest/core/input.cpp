@@ -9,6 +9,7 @@
 #endif
 
 #include <core/controls/input-bindings.h>
+#include <core/controls/tick-input.h>
 
 TEST(input_bindings, device_routing) {
     CE::Input::InputBindings bindings;
@@ -161,6 +162,62 @@ TEST(input_bindings, unbinding_an_active_axis) {
     EXPECT_FLOAT_EQ(removed->axis(look).delta(), -0.8f);
     EXPECT_FLOAT_EQ(active->axis(look).current, 0.8f);
     EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).delta(), 0.0f);
+}
+
+TEST(tick_input, press_and_release_between_updates) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId jump{1};
+    (void)bindings.bind_button(key, jump);
+    const auto before = bindings.action_snapshot();
+
+    bindings.on_button(key, true);
+    const auto pressed = bindings.publish_actions();
+    bindings.on_button(key, false);
+    const auto released = bindings.publish_actions();
+
+    // Both polls belong to this update. The final state is released, but the
+    // short press remains visible and its poll order is available to the game.
+    const CE::Input::TickInput tick(before, {pressed, released});
+    EXPECT_FALSE(tick.button(jump).held());
+    EXPECT_TRUE(tick.button(jump).pressed());
+    EXPECT_TRUE(tick.button(jump).released());
+    ASSERT_EQ(tick.polls().size(), 2u);
+    EXPECT_TRUE(tick.polls()[0]->button(jump).pressed());
+    EXPECT_TRUE(tick.polls()[1]->button(jump).released());
+
+    // A second update with no new poll keeps the final held state without
+    // replaying either edge.
+    const CE::Input::TickInput next(tick.latest_poll(), {});
+    EXPECT_FALSE(next.button(jump).held());
+    EXPECT_FALSE(next.button(jump).pressed());
+    EXPECT_FALSE(next.button(jump).released());
+}
+
+TEST(tick_input, held_values_without_new_polls) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::DeviceBind stick{2, 1};
+    const CE::Input::ActionId move{1};
+    const CE::Input::ActionId look{2};
+    (void)bindings.bind_button(key, move);
+    (void)bindings.bind_axis(stick, look);
+    const auto before = bindings.action_snapshot();
+
+    bindings.on_button(key, true);
+    bindings.on_axis(stick, 0.75f);
+    const auto poll = bindings.publish_actions();
+    const CE::Input::TickInput first(before, {poll});
+    EXPECT_TRUE(first.button(move).pressed());
+    EXPECT_FLOAT_EQ(first.axis(look).delta(), 0.75f);
+
+    // Simulation can tick again before the platform polls. Held/axis values
+    // persist; the earlier press and axis movement do not happen twice.
+    const CE::Input::TickInput next(first.latest_poll(), {});
+    EXPECT_TRUE(next.button(move).held());
+    EXPECT_FALSE(next.button(move).pressed());
+    EXPECT_FLOAT_EQ(next.axis(look).current, 0.75f);
+    EXPECT_FLOAT_EQ(next.axis(look).delta(), 0.0f);
 }
 
 #ifndef CHERYL_SANDBOX_BUILD

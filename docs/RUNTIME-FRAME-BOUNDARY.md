@@ -6,7 +6,8 @@ renderer, resources, and input adapter. The renderer uses the selected context
 and render target; it does not own the display system or read live game state.
 The presentation surface presents a completed frame.
 
-Each simulation tick receives one complete `ActionSnapshot`. Simulation produces
+Each platform poll produces an `ActionSnapshot`. Each simulation tick receives
+`TickInput` assembled from zero or more polls since the previous tick. Simulation produces
 complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
 These rules also apply when simulation and rendering run sequentially; a later
