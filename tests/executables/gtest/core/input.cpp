@@ -16,53 +16,46 @@ TEST(input_bindings, device_routing) {
     constexpr CE::Input::DeviceButtonId axis_code = 257;
     const CE::Input::DeviceBind key{2, key_code};
     const CE::Input::DeviceBind axis{3, axis_code};
-    int presses = 0;
-    float last_axis = 0.0f;
+    const CE::Input::ActionId jump{1};
+    const CE::Input::ActionId look{2};
 
-    // Register independent callbacks for a button and an axis, each with
-    // expectations about the previous value passed by the binding system.
-    bindings.bind_button(key, [&](bool previous, bool current) {
-        EXPECT_FALSE(previous);
-        EXPECT_TRUE(current);
-        ++presses;
-    });
-    bindings.bind_axis(axis, [&](float previous, float current) {
-        EXPECT_FLOAT_EQ(previous, 0.0f);
-        last_axis = current;
-    });
+    (void)bindings.bind_button(key, jump);
+    (void)bindings.bind_axis(axis, look);
 
-    bindings.on_button(key, false, true);
-    bindings.on_axis(axis, 0.0f, 0.75f);
-    // A matching code from a different device must not trigger the button.
-    bindings.on_button({3, key_code}, false, true);
-    EXPECT_EQ(presses, 1);
-    EXPECT_FLOAT_EQ(last_axis, 0.75f);
+    // A matching button code from a different device cannot activate Jump.
+    bindings.on_button({3, key_code}, true);
+    const auto unrelated = bindings.publish_actions();
+    EXPECT_FALSE(unrelated->button(jump).held());
+
+    bindings.on_button(key, true);
+    bindings.on_axis(axis, 0.75f);
+    const auto active = bindings.publish_actions();
+    EXPECT_TRUE(active->button(jump).pressed());
+    EXPECT_FLOAT_EQ(active->axis(look).current, 0.75f);
 }
 
-TEST(input_bindings, callback_management) {
+TEST(input_bindings, binding_held_controls_and_clearing) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{2, 256};
-    const CE::Input::DeviceBind axis{3, 257};
-    int original_presses = 0;
-    int replacement_presses = 0;
-    float last_axis = 0.0f;
-    bindings.bind_button(key, [&](bool, bool) { ++original_presses; });
-    bindings.bind_axis(axis, [&](float, float current) { last_axis = current; });
+    const CE::Input::ActionId jump{1};
 
-    // Remove, replace, and finally clear the callbacks. Only the replacement
-    // should observe an event; clearing stops both types of dispatch.
-    bindings.bind_button(key, {});
-    bindings.on_button(key, false, true);
-    EXPECT_EQ(original_presses, 0);
-    bindings.bind_button(key, [&](bool, bool) { ++replacement_presses; });
-    bindings.on_button(key, false, true);
-    EXPECT_EQ(original_presses, 0);
-    EXPECT_EQ(replacement_presses, 1);
+    // Physical state is retained even before a game binds it. A binding installed
+    // for a held key becomes active at the next publication.
+    bindings.on_button(key, true);
+    (void)bindings.publish_actions();
+    (void)bindings.bind_button(key, jump);
+    EXPECT_TRUE(bindings.publish_actions()->button(jump).pressed());
+
+    // Clearing publishes one release and forgets held device state, so a later
+    // binding starts inactive until its device reports a new press.
     bindings.clear();
-    bindings.on_button(key, false, true);
-    bindings.on_axis(axis, 0.0f, 0.25f);
-    EXPECT_EQ(replacement_presses, 1);
-    EXPECT_FLOAT_EQ(last_axis, 0.0f);
+    EXPECT_TRUE(bindings.action_snapshot()->button(jump).released());
+    (void)bindings.bind_button(key, jump);
+    EXPECT_FALSE(bindings.publish_actions()->button(jump).held());
+
+    // A backend that discovers the key is still held can restore its state.
+    bindings.on_button(key, true);
+    EXPECT_TRUE(bindings.publish_actions()->button(jump).pressed());
 }
 
 TEST(input_bindings, chords_and_short_taps) {
@@ -76,7 +69,7 @@ TEST(input_bindings, chords_and_short_taps) {
     (void)bindings.bind_button(CE::Input::InputChord{{f, u}}, chord);
 
     // A single held key stays held across polls but is pressed only in the first sample.
-    bindings.on_button(w, false, true);
+    bindings.on_button(w, true);
     const auto first = bindings.publish_actions();
     EXPECT_TRUE(first->button(move).held());
     EXPECT_TRUE(first->button(move).pressed());
@@ -87,10 +80,10 @@ TEST(input_bindings, chords_and_short_taps) {
 
     // The chord becomes active when its second member arrives. A release in the same poll
     // preserves both transition edges even though the final sample is inactive.
-    bindings.on_button(f, false, true);
-    bindings.on_button(u, false, true);
-    bindings.on_button(u, true, false);
-    bindings.on_button(w, true, false);
+    bindings.on_button(f, true);
+    bindings.on_button(u, true);
+    bindings.on_button(u, false);
+    bindings.on_button(w, false);
     const auto third = bindings.publish_actions();
     EXPECT_TRUE(third->button(chord).pressed());
     EXPECT_TRUE(third->button(chord).released());
@@ -109,10 +102,10 @@ TEST(input_bindings, alternatives_and_remapping) {
 
     // Either physical control holds Jump. Releasing one cannot release the action
     // until the other alternative is also inactive.
-    bindings.on_button(keyboard, false, true);
+    bindings.on_button(keyboard, true);
     (void)bindings.publish_actions();
-    bindings.on_button(gamepad, false, true);
-    bindings.on_button(keyboard, true, false);
+    bindings.on_button(gamepad, true);
+    bindings.on_button(keyboard, false);
     const auto still_held = bindings.publish_actions();
     EXPECT_TRUE(still_held->button(jump).held());
     EXPECT_FALSE(still_held->button(jump).released());
@@ -137,16 +130,37 @@ TEST(input_bindings, scaled_axis_with_a_modifier) {
 
     // The first stick is gated by Shift and rescales 0.6 beyond its 0.2 dead zone
     // to 0.5; its negative scale then contributes -1 alongside the other stick's 0.25.
-    bindings.on_axis(stick, 0.0f, 0.6f);
-    bindings.on_axis(second_stick, 0.0f, 0.25f);
+    bindings.on_axis(stick, 0.6f);
+    bindings.on_axis(second_stick, 0.25f);
     EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).current, 0.25f);
-    bindings.on_button(shift, false, true);
+    bindings.on_button(shift, true);
     const auto active = bindings.publish_actions();
     EXPECT_FLOAT_EQ(active->axis(look).current, -0.75f);
     EXPECT_FLOAT_EQ(active->axis(look).delta(), -1.0f);
-    bindings.on_button(shift, true, false);
+    bindings.on_button(shift, false);
     EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).current, 0.25f);
     EXPECT_FLOAT_EQ(active->axis(look).current, -0.75f);
+}
+
+TEST(input_bindings, unbinding_an_active_axis) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind stick{2, 1};
+    const CE::Input::ActionId look{1};
+    const auto mapping = bindings.bind_axis(stick, look);
+
+    bindings.on_axis(stick, 0.8f);
+    const auto active = bindings.publish_actions();
+    EXPECT_FLOAT_EQ(active->axis(look).current, 0.8f);
+
+    // Removing an active axis delivers one zero sample with the previous value,
+    // so a game can react to its last delta. Older snapshots stay unchanged.
+    EXPECT_TRUE(bindings.unbind(mapping));
+    const auto removed = bindings.publish_actions();
+    EXPECT_FLOAT_EQ(removed->axis(look).previous, 0.8f);
+    EXPECT_FLOAT_EQ(removed->axis(look).current, 0.0f);
+    EXPECT_FLOAT_EQ(removed->axis(look).delta(), -0.8f);
+    EXPECT_FLOAT_EQ(active->axis(look).current, 0.8f);
+    EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).delta(), 0.0f);
 }
 
 #ifndef CHERYL_SANDBOX_BUILD

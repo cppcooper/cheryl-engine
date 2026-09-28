@@ -26,12 +26,15 @@ namespace {
 
     /** Emits a button transition while attached; rejects polls after detachment. */
     class BufferedInput final : public CE::Input::iInputSystem {
+        CE::iWindow* window_ = nullptr;
+        CE::Input::InputBindings bindings_;
+
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
             if (!window_)
                 throw std::logic_error("Input is not attached");
-            bindings_.on_button({keyboard_id(), test_button}, false, true);
+            bindings_.on_button({keyboard_id(), test_button}, true);
             (void)bindings_.publish_actions();
         }
         void deinitialize() override { window_ = nullptr; }
@@ -40,10 +43,6 @@ namespace {
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
         [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
-
-    private:
-        CE::iWindow* window_ = nullptr;
-        CE::Input::InputBindings bindings_;
     };
 } // namespace
 
@@ -53,13 +52,9 @@ TEST(input_contract, alternate_window) {
     TestWindow window;
     std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<BufferedInput>();
     input->initialize(window);
-    bool pressed = false;
     constexpr CE::Input::ActionId action{1};
-    input->bindings().bind_button({input->keyboard_id(), test_button},
-                                  [&](bool previous, bool current) { pressed = !previous && current; });
     (void)input->bindings().bind_button({input->keyboard_id(), test_button}, action);
     input->poll();
-    EXPECT_TRUE(pressed);
     const auto published = input->action_snapshot();
     EXPECT_TRUE(published->button(action).pressed());
 

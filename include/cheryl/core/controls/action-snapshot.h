@@ -40,6 +40,11 @@ namespace CE::Input {
 
     /** The complete set of semantic actions from one poll. Copies/handles stay stable after later polls. */
     class ActionSnapshot {
+        friend class InputBindings;
+        std::uint64_t poll_ = 0;
+        std::unordered_map<ActionId, ButtonActionState> buttons_;
+        std::unordered_map<ActionId, AxisActionState> axes_;
+
     public:
         [[nodiscard]] std::uint64_t poll() const { return poll_; }
         [[nodiscard]] ButtonActionState button(ActionId action) const {
@@ -50,11 +55,5 @@ namespace CE::Input {
             const auto found = axes_.find(action);
             return found == axes_.end() ? AxisActionState{} : found->second;
         }
-
-    private:
-        friend class InputBindings;
-        std::uint64_t poll_ = 0;
-        std::unordered_map<ActionId, ButtonActionState> buttons_;
-        std::unordered_map<ActionId, AxisActionState> axes_;
     };
 } // namespace CE::Input

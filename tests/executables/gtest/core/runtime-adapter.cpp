@@ -69,10 +69,13 @@ namespace {
 
     /** Emits one button transition per poll and records its attached window. */
     class MemoryInput final : public CE::Input::iInputSystem {
+        CE::iWindow* window_ = nullptr;
+        CE::Input::InputBindings bindings_;
+
     public:
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
-            bindings_.on_button({keyboard_id(), test_button}, false, true);
+            bindings_.on_button({keyboard_id(), test_button}, true);
             (void)bindings_.publish_actions();
         }
         void deinitialize() override { window_ = nullptr; }
@@ -81,15 +84,19 @@ namespace {
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
         [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
         [[nodiscard]] CE::iWindow* attached_window() const { return window_; }
-
-    private:
-        CE::iWindow* window_ = nullptr;
-        CE::Input::InputBindings bindings_;
     };
 
     /** Consumes one published input sample through the game hook, then stops the runtime. */
     class OneTickGame final : public CE::GFramework::AbstractGame {
+        static constexpr CE::Input::ActionId action{17};
+        CE::Input::iInputSystem& input_;
+
     public:
+        std::function<void()> on_tick;
+        int updates = 0;
+        int draws = 0;
+        bool pressed = false;
+
         explicit OneTickGame(CE::Input::iInputSystem& input) : input_(input) {}
 
         void init() override { (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action); }
@@ -101,15 +108,6 @@ namespace {
                 on_tick();
         }
         void draw(double) override { ++draws; }
-
-        std::function<void()> on_tick;
-        int updates = 0;
-        int draws = 0;
-        bool pressed = false;
-
-    private:
-        static constexpr CE::Input::ActionId action{17};
-        CE::Input::iInputSystem& input_;
     };
 
     class MemoryImage final : public CE::Assets::Image {
@@ -230,14 +228,10 @@ TEST(runtime_adapter, alternate_backend) {
     engine.init();
     ASSERT_EQ(input.attached_window(), renderer.display->active_window());
 
-    // Poll a synthetic button event through the engine. Legacy callbacks and published
-    // semantic actions can coexist while games move to snapshot consumption.
-    bool pressed = false;
+    // Poll a synthetic button event through the engine's semantic bindings.
     constexpr CE::Input::ActionId action{1};
-    input.bindings().bind_button({input.keyboard_id(), test_button}, [&](bool, bool current) { pressed = current; });
     (void)input.bindings().bind_button({input.keyboard_id(), test_button}, action);
     engine.poll_input();
-    EXPECT_TRUE(pressed);
     EXPECT_TRUE(engine.input().action_snapshot()->button(action).pressed());
 
     // Forward display settings, then resize before drawing so the viewport and camera

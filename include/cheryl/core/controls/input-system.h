@@ -22,27 +22,6 @@ namespace CE::Input {
     // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
     // can be handed to simulation without reading live Gainput state from another thread.
     class InputSystem final : public iInputSystem, public Singleton_CTS<InputSystem> {
-    public:
-        InputSystem();
-        ~InputSystem() override;
-
-        void initialize(iWindow& window) override;
-        void poll() override;
-        void update();
-        void deinitialize() override;
-
-        [[nodiscard]] InputMapper& bindings() override { return bindings_; }
-        [[nodiscard]] gainput::InputManager& manager() { return manager_; }
-        [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
-        [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
-        [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
-
-    private:
-        static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
-        static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers);
-        static void on_cursor(GLFWwindow* window, double x, double y);
-        static void on_scroll(GLFWwindow* window, double x, double y);
-
         gainput::InputManager manager_;
         InputMapper bindings_;
         GlfwInputDevice* keyboard_ = nullptr;
@@ -51,6 +30,27 @@ namespace CE::Input {
         gainput::DeviceId mouse_id_ = gainput::InvalidDeviceId;
         gainput::DeviceId gamepad_id_ = gainput::InvalidDeviceId;
         Window* window_ = nullptr;
+
+        static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
+        static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers);
+        static void on_scroll(GLFWwindow* window, double x, double y);
+
+    public:
+        InputSystem();
+        ~InputSystem() override;
+
+        void initialize(iWindow& window) override;
+        void poll() override;
+        // Advance Gainput after a host application pumps GLFW events itself.
+        void update();
+        void deinitialize() override;
+
+        [[nodiscard]] InputBindings& bindings() override { return bindings_; }
+        // Access the backend for extra Gainput devices and configuration.
+        [[nodiscard]] gainput::InputManager& manager() { return manager_; }
+        [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
+        [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
+        [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
     };
 }
 #endif

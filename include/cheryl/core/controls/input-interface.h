@@ -11,7 +11,6 @@ namespace CE {
 namespace CE::Input {
     /** Engine-facing input adapter. Poll on the platform thread, then hand the complete immutable
      * action snapshot to simulation. Backends publish after processing physical input for each poll.
-     * Legacy binding callbacks still run on the poll thread and require their own thread discipline.
      */
     class iInputSystem {
     public:

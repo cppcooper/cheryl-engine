@@ -6,8 +6,10 @@
 
 namespace CE::Input {
     class InputMapper final : public gainput::InputListener, public InputBindings {
+        gainput::InputManager& manager_;
+        gainput::ListenerId id_;
+
     public:
-        InputMapper();
         explicit InputMapper(gainput::InputManager& manager);
         ~InputMapper() override;
         InputMapper(const InputMapper&) = delete;
@@ -16,10 +18,6 @@ namespace CE::Input {
         bool OnDeviceButtonFloat(gainput::DeviceId device, gainput::DeviceButtonId input, float old_value, float new_value) override;
         bool OnDeviceButtonBool(gainput::DeviceId device, gainput::DeviceButtonId input, bool old_value, bool new_value) override;
         [[nodiscard]] int GetPriority() const override { return 0; }
-
-    private:
-        gainput::InputManager& manager_;
-        gainput::ListenerId id_;
     };
 }
 #endif

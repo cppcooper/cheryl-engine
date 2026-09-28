@@ -6,6 +6,9 @@
 
 #include <gainput/GainputInputDeltaState.h>
 #include <gainput/GainputHelpers.h>
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -14,15 +17,26 @@
 
 namespace CE::Input {
     class GlfwInputDevice : public gainput::InputDevice {
+        struct Change {
+            gainput::DeviceButtonId button;
+            gainput::ButtonType type;
+            bool pressed;
+            float value;
+        };
+
+        bool mouse_;
+        std::vector<Change> pending_;
+        std::vector<gainput::DeviceButtonId> release_next_frame_;
+        std::vector<gainput::DeviceButtonId> pending_pulses_;
+
     public:
         GlfwInputDevice(gainput::InputManager& manager, const gainput::DeviceId id, const unsigned index,
-                        const DeviceVariant variant, const bool mouse) :
+                        const DeviceVariant, const bool mouse) :
             InputDevice(manager, id,
                         index == AutoIndex ? manager.GetDeviceCountByType(mouse ? DT_MOUSE : DT_KEYBOARD) : index),
             mouse_(mouse) {
             // Keep current and previous Gainput state for delta generation;
             // GLFW callbacks enqueue changes instead of mutating either here.
-            (void)variant;
             const unsigned count =
                 mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_);
             state_ = manager.GetAllocator().New<gainput::InputState>(manager.GetAllocator(), count);
@@ -62,6 +76,8 @@ namespace CE::Input {
         }
 
         void queue_pulse(const gainput::DeviceButtonId button) {
+            if (!IsValidButtonId(button) || GetButtonType(button) != gainput::BT_BOOL)
+                return;
             // Wheel motion is a button transition lasting one Update, so queue
             // its matching release separately for the following frame.
             queue_button(button, true);
@@ -106,18 +122,6 @@ namespace CE::Input {
         }
 
         [[nodiscard]] DeviceState InternalGetState() const override { return DS_OK; }
-
-    private:
-        bool mouse_;
-        struct Change {
-            gainput::DeviceButtonId button;
-            gainput::ButtonType type;
-            bool pressed;
-            float value;
-        };
-        std::vector<Change> pending_;
-        std::vector<gainput::DeviceButtonId> release_next_frame_;
-        std::vector<gainput::DeviceButtonId> pending_pulses_;
     };
 
     class GlfwKeyboardDevice final : public GlfwInputDevice {
@@ -168,7 +172,6 @@ namespace CE::Input {
         auto* handle = glfw_window->native_handle();
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
-        glfwSetCursorPosCallback(handle, on_cursor);
         glfwSetScrollCallback(handle, on_scroll);
     }
 
@@ -176,9 +179,28 @@ namespace CE::Input {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
         const auto size = window_->logical_size();
-        // Refresh normalized pointer dimensions before Gainput consumes this frame's queued changes.
-        manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
+        const auto width = std::max(size.width, 1);
+        const auto height = std::max(size.height, 1);
+        manager_.SetDisplaySize(width, height);
+        // An absolute pointer axis needs only the final cursor position. Sampling it here
+        // also updates normalized coordinates when the window resized without a move event.
+        double x = 0.0;
+        double y = 0.0;
+        glfwGetCursorPos(window_->native_handle(), &x, &y);
+        mouse_->queue_axis(gainput::MouseAxisX, static_cast<float>(x / width));
+        mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / height));
         manager_.Update();
+        // Gainput only notifies changes. Reconcile the pad's full state so a held button
+        // survives reattachment and a disconnected pad cannot leave an action stuck.
+        const auto* pad = manager_.GetDevice(gamepad_id_);
+        const bool available = pad && pad->IsAvailable();
+        for (gainput::DeviceButtonId button = 0; button < gainput::PadButtonMax_; ++button) {
+            const bool valid = available && pad->IsValidButtonId(button);
+            if (button < gainput::PadButtonStart)
+                bindings_.on_axis({gamepad_id_, button}, valid ? pad->GetFloat(button) : 0.0f);
+            else
+                bindings_.on_button({gamepad_id_, button}, valid && pad->GetBool(button));
+        }
         // Listeners have now updated pending physical state. Commit the complete semantic sample.
         (void)bindings_.publish_actions();
     }
@@ -198,7 +220,6 @@ namespace CE::Input {
         // Detach callbacks while the native window is still alive, then clear per-window input state.
         glfwSetKeyCallback(handle, nullptr);
         glfwSetMouseButtonCallback(handle, nullptr);
-        glfwSetCursorPosCallback(handle, nullptr);
         glfwSetScrollCallback(handle, nullptr);
         window_ = nullptr;
         keyboard_->reset();
@@ -220,17 +241,6 @@ namespace CE::Input {
         if (!input.window_ || input.window_->native_handle() != handle)
             return;
         input.mouse_->queue_button(gainput_mouse_button(button), action == GLFW_PRESS);
-    }
-
-    void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) {
-        auto& input = get();
-        if (!input.window_ || input.window_->native_handle() != handle)
-            return;
-        // Convert GLFW logical coordinates into normalized mouse axes, using
-        // a nonzero divisor while the window is minimized.
-        const auto size = input.window_->logical_size();
-        input.mouse_->queue_axis(gainput::MouseAxisX, static_cast<float>(x / std::max(size.width, 1)));
-        input.mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / std::max(size.height, 1)));
     }
 
     void InputSystem::on_scroll(GLFWwindow* handle, double, const double y) {
