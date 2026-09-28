@@ -5,7 +5,9 @@
 
 namespace CE::RenderAPIs {
     /** Renders using a compatible graphics context. Does not own the display,
-     * presentation surface, resource provider, or the game's active camera.
+     * presentation surface, resource provider, or mutable game state.
+     * TODO: Add the top-level frame operation after the published render-state representation
+     * and asset draw-submission contract are defined. The operations below are only primitives.
      */
     class iRenderer {
     public:

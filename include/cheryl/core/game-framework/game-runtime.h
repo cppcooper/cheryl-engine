@@ -7,9 +7,11 @@ namespace CE::Engine {
 namespace CE::GFramework {
     struct AbstractGame;
 
-    /** Optional sequential game loop over engine services and game hooks.
-     * A future concurrent scheduler must use the same complete input snapshot per tick;
-     * simulation-to-render state will need its own publication boundary.
+    /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
+     * Each simulation tick receives one complete input snapshot. Rendering consumes only
+     * published render state, never the game's live mutable simulation state. These boundaries
+     * apply whether the runtime executes sequentially or schedules simulation separately.
+     * The render-state representation and scheduling policy remain to be defined.
      */
     class GameRuntime final {
     public:
