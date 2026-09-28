@@ -1,5 +1,6 @@
 #include <core/engines/runtime-engine.h>
 
+#include <core/detail/matrix-equal.h>
 #include <core/subsystems/event-system.h>
 #include <internals/exceptions.h>
 
@@ -38,7 +39,7 @@ namespace CE::Engine {
         const auto& projection = active_camera_->projection_matrix();
         // Notify projection consumers only when the projection actually changes; view changes still
         // update the renderer through set_camera_matrices below.
-        const bool projection_changed = !published_camera_ || published_projection_ != projection;
+        const bool projection_changed = !published_camera_ || !detail::matrix_equal(published_projection_, projection);
         renderer->set_camera_matrices(projection, active_camera_->view_matrix());
         if (projection_changed)
             SubSystems::EventSystem::get().dispatch("projection-matrix-changed", projection);

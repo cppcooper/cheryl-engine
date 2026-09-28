@@ -25,12 +25,23 @@ TEST(camera_2d, framebuffer_corners) {
 TEST(camera_2d, view_revision) {
     CE::Camera2D camera;
 
-    // Moving the camera changes its revision; repeating the same view lets a
-    // renderer keep its previous camera state.
+    // A change confined to Y must advance the revision and reach the renderer.
+    const auto vertical = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -20.0f, 0.0f));
+    const auto initial_revision = camera.revision();
+    camera.set_view_matrix(vertical);
+    EXPECT_EQ(camera.view_matrix()[3][1], -20.0f);
+    EXPECT_GT(camera.revision(), initial_revision);
+    const auto vertical_revision = camera.revision();
+    camera.set_view_matrix(vertical);
+    EXPECT_EQ(camera.revision(), vertical_revision);
+
+    // Moving X as well changes the revision again; repeating the same view
+    // lets the renderer keep its previous camera state.
     const auto view = glm::translate(glm::mat4(1.0f), glm::vec3(-40.0f, -20.0f, 0.0f));
     const auto original_revision = camera.revision();
     camera.set_view_matrix(view);
-    EXPECT_EQ(camera.view_matrix(), view);
+    EXPECT_EQ(camera.view_matrix()[3][0], -40.0f);
+    EXPECT_EQ(camera.view_matrix()[3][1], -20.0f);
     EXPECT_GT(camera.revision(), original_revision);
     const auto updated_revision = camera.revision();
     camera.set_view_matrix(view);
