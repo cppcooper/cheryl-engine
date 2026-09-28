@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <assets/manifest.h>
-#include <assets/types/2d/grid-geometry.h>
+#include <assets/geometry/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>

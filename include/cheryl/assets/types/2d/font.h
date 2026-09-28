@@ -1,7 +1,7 @@
 #pragma once
 #ifndef CEFONT_H
 #define CEFONT_H
-#include "asset2d.h"
+#include "base/asset2d.h"
 #include <core/rendering/draw-info.h>
 
 #include <string>

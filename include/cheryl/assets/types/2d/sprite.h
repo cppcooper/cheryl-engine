@@ -1,6 +1,6 @@
 #pragma once
 
-#include <assets/types/2d/asset2d.h>
+#include <assets/types/2d/base/asset2d.h>
 #include <assets/manifest.h>
 
 #include <chrono>

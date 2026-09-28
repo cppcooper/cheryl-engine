@@ -1,7 +1,7 @@
 #pragma once
 
-#include <assets/types/2d/asset2d.h>
-#include <assets/types/2d/draw2d.h>
+#include <assets/types/2d/base/asset2d.h>
+#include <assets/types/2d/base/draw2d.h>
 #include <assets/types/primitives/frame.h>
 #include <assets/manifest.h>
 

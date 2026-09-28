@@ -1,6 +1,8 @@
 # Asset and renderer header boundaries
 
 `assets/types/` contains the logical 2D and 3D asset types and portable primitives.
+`assets/types/2d/base/` holds shared bases for 2D asset types.
+`assets/geometry/` builds temporary CPU geometry for asset loaders.
 `assets/manifest.h` describes source assets and their grids, clips, and metadata.
 `assets/resources/` holds backend-neutral resource interfaces used by asset types
 and resource providers. `core/rendering/` contains frame submissions, the renderer

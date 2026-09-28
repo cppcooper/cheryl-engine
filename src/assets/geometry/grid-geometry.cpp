@@ -1,4 +1,4 @@
-#include <assets/types/2d/grid-geometry.h>
+#include <assets/geometry/grid-geometry.h>
 
 #include <core/resources/memory.h>
 #include <core/resources/memory/managed-block.hpp>

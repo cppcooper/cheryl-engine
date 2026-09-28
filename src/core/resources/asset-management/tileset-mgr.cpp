@@ -1,6 +1,6 @@
 #include <core/resources/asset-management/tileset-mgr.h>
 
-#include <assets/types/2d/grid-geometry.h>
+#include <assets/geometry/grid-geometry.h>
 #include <assets/resources/resource-provider.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
