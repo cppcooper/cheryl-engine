@@ -1,20 +1,17 @@
 #pragma once
 
 #include <core/display/framebuffer-size.h>
-#include <enums/gfx-mode.h>
 #include <glm.hpp>
 
 #include <cstdint>
 
 namespace CE {
-    /** Tracks projection and view changes by revision. The runtime checks the
-     * active camera after framebuffer changes and publishes matrices only when
-     * that revision or the active camera changes.
+    /** Tracks projection and view changes by revision. The game or a render pass
+     * chooses when to use these matrices; the camera does not set render policy.
      */
     class CameraBase {
     public:
         virtual ~CameraBase() = default;
-        [[nodiscard]] virtual Enum::gfx_mode mode() const = 0;
 
         void set_framebuffer_size(FramebufferSize size);
         void set_view_matrix(const glm::mat4& view);
@@ -36,7 +33,6 @@ namespace CE {
     class Camera2D final : public CameraBase {
     public:
         Camera2D();
-        [[nodiscard]] Enum::gfx_mode mode() const override { return Enum::gfx_mode::R2D; }
 
     protected:
         void recalculate_projection() override;
@@ -45,7 +41,6 @@ namespace CE {
     class Camera3D final : public CameraBase {
     public:
         Camera3D();
-        [[nodiscard]] Enum::gfx_mode mode() const override { return Enum::gfx_mode::R3D; }
         void set_perspective(float fov_degrees, float near_plane, float far_plane);
 
     protected:
