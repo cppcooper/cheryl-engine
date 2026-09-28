@@ -1,6 +1,6 @@
 #include <core/resources/asset-management/texture-mgr.h>
 
-#include <assets/abstracts/resource-provider.h>
+#include <assets/resources/resource-provider.h>
 #include <internals/exceptions.h>
 
 namespace CE::Assets {

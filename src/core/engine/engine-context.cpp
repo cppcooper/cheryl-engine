@@ -1,6 +1,6 @@
 #include <core/engine/engine-context.h>
 
-#include <assets/abstracts/resource-provider.h>
+#include <assets/resources/resource-provider.h>
 #include <core/controls/input-interface.h>
 #include <core/display/display-system-interface.h>
 #include <core/rendering/presentation-surface.h>

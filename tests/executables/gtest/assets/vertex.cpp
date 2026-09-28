@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <assets/primitives/vertex.h>
+#include <assets/types/primitives/vertex.h>
 
 #include <array>
 #include <cstddef>

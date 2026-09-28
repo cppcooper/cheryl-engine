@@ -1,7 +1,7 @@
 #include <core/resources/asset-management/asset-loader.h>
 
 #include <core/resources/asset-management.h>
-#include <assets/abstracts/resource-provider.h>
+#include <assets/resources/resource-provider.h>
 #include <core/resources/fileio/fonts-system.h>
 #include <internals/exceptions.h>
 #include <stb_image.h>

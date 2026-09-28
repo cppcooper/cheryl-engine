@@ -1,7 +1,7 @@
 #pragma once
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <assets/abstracts/image.h>
+#include <assets/resources/image.h>
 
 namespace CE::Assets {
     struct ResourceProvider;

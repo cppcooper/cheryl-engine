@@ -1,7 +1,7 @@
 #pragma once
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <assets/abstracts/shader.h>
+#include <assets/resources/shader.h>
 #include <glm.hpp>
 
 using ShaderAssetMgr = CE::Assets::AssetMgr<CE::Assets::Shader>;

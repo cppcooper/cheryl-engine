@@ -1,5 +1,4 @@
 #pragma once
-#include <assets/abstracts.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>

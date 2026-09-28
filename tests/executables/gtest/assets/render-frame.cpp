@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <assets/2d/sprite.h>
+#include <assets/types/2d/sprite.h>
 #include <core/rendering/render-frame.h>
 
 #include <chrono>

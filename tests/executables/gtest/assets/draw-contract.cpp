@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <assets/abstracts/idraw.h>
+#include <core/rendering/idraw.h>
 
 #include <memory>
 #include <string_view>

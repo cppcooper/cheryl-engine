@@ -1,9 +1,9 @@
 #pragma once
 
-#include <assets/2d/graphic.h>
-#include <assets/2d/sprite.h>
-#include <assets/2d/stbfont.h>
-#include <assets/2d/tileset.h>
+#include <assets/types/2d/graphic.h>
+#include <assets/types/2d/sprite.h>
+#include <assets/types/2d/stbfont.h>
+#include <assets/types/2d/tileset.h>
 
 #include <glm.hpp>
 

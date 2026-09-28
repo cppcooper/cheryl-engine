@@ -1,0 +1,36 @@
+#pragma once
+#include <assets/types/primitives/vertex.h>
+#include <assets/resources/geometry2d.h>
+#include <backends/opengl/gl.h>
+#include <memory>
+#include <cstdint>
+
+namespace CE {
+    struct VAO final : Assets::Geometry2D {
+        VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices, Assets::PrimitiveTopology topology);
+
+        VAO(
+            std::shared_ptr<Vertex3D> vertices,
+            uint32_t num_vertices,
+            std::shared_ptr<uint32_t> indices,
+            uint32_t num_indices
+        );
+
+        void bind(const Assets::Image& image) const override;
+        void draw(std::size_t first_vertex, std::size_t vertex_count) const override;
+
+    protected:
+        enum VAOType {
+            flat, mesh
+        } type;
+
+        Assets::PrimitiveTopology topology_ = Assets::PrimitiveTopology::Triangles;
+
+        // TODO: Coordinate glDeleteVertexArrays/glDeleteBuffers and Texture's glDeleteTextures with context lifetime.
+        GLuint id_vao = 0;
+        GLuint id_vbo[2] = {};
+
+    public:
+        const GLuint& id = id_vao;
+    };
+}

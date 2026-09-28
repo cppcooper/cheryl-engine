@@ -1,6 +1,6 @@
 #pragma once
 
-#include <assets/primitives/vertex.h>
+#include <assets/types/primitives/vertex.h>
 
 #include <cstdint>
 #include <string>

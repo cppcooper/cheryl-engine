@@ -1,7 +1,7 @@
 #pragma once
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <assets/abstracts/font.h>
+#include <assets/types/2d/font.h>
 #include <filesystem>
 #include <vector>
 

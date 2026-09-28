@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <variant>
 
-#include <assets/primitives/vertex.h>
+#include <assets/types/primitives/vertex.h>
 #include <enums/fit-type.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>

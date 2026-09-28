@@ -1,6 +1,6 @@
 #include <core/resources/asset-management/shader-mgr.h>
 
-#include <assets/abstracts/resource-provider.h>
+#include <assets/resources/resource-provider.h>
 
 namespace CE::Assets {
     void ShaderMgr::load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider) {

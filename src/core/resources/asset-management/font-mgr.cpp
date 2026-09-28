@@ -1,7 +1,7 @@
 #include <core/resources/asset-management/font-mgr.h>
 
-#include <assets/2d/stbfont.h>
-#include <assets/abstracts/resource-provider.h>
+#include <assets/types/2d/stbfont.h>
+#include <assets/resources/resource-provider.h>
 
 #include <memory>
 

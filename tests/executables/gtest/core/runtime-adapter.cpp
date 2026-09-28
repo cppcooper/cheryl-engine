@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <assets/2d/graphic.h>
-#include <assets/abstracts/resource-provider.h>
-#include <assets/primitives/draw-info.h>
+#include <assets/types/2d/graphic.h>
+#include <assets/resources/resource-provider.h>
+#include <core/rendering/draw-info.h>
 #include <core/engines/runtime-engine.h>
 #include <core/game-runtime.h>
 #include <core/resources/asset-management/shader-mgr.h>
