@@ -73,7 +73,7 @@ shared glyph data without storing the message or angle on the font.
 `OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
 camera, and reads font glyphs without mutating shared assets. GPU handles are
 retired through the renderer's context-owned release queue. Sequential runtime
-polls once per frame, summarizes State activity and elapsed time from a monotonic
+polls when eligible, summarizes State activity and elapsed time from a monotonic
 clock after initialization, prepares and recycles one frame, and tears down game, input, and graphics in that order even
 after a loop failure. Concurrent runtime uses configurable lockstep (default), finite-capacity, or
 unlimited polling, with a minimum completion-to-next-poll spacing. Full batches
@@ -102,3 +102,6 @@ start; pending records retain their original target through the worker handoff.
 Exclusive focus gates gameplay keyboard State while controller/mouse input
 continues. UI code reads ordered text/editing records during simulation; it is
 never invoked by a platform callback. Enter/Escape releases focus.
+
+The input implementation's remaining validation gate is recorded in
+[INPUT-IMPLEMENTATION-STATUS.md](INPUT-IMPLEMENTATION-STATUS.md).
