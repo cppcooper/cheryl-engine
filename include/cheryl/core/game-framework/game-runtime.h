@@ -1,5 +1,7 @@
 #pragma once
 
+#include <core/controls/polling-backlog.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -24,7 +26,10 @@ namespace CE::GFramework {
      */
     class GameRuntime final {
     public:
-        GameRuntime(Engine::EngineContext& engine, AbstractGame& game, RunMode mode = RunMode::Sequential);
+        GameRuntime(Engine::EngineContext& engine,
+                    AbstractGame& game,
+                    RunMode mode = RunMode::Sequential,
+                    Input::PollingOptions polling = {});
 
         void run();
         void stop();
@@ -36,6 +41,7 @@ namespace CE::GFramework {
         Engine::EngineContext& engine_;
         AbstractGame& game_;
         RunMode mode_;
+        Input::PollingOptions polling_;
         std::atomic<bool> stop_requested_{false};
         std::mutex scheduler_mutex_;
         std::condition_variable scheduler_wake_;

@@ -1,10 +1,10 @@
 #include <core/game-framework/game-runtime.h>
 
-#include <core/game-framework/abstract-game.h>
-#include <core/engine/engine-context.h>
-#include <core/controls/input-interface.h>
 #include <core/controls/input-accumulator.h>
+#include <core/controls/input-interface.h>
 #include <core/display/window-interface.h>
+#include <core/engine/engine-context.h>
+#include <core/game-framework/abstract-game.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
@@ -21,15 +21,18 @@
 #include <vector>
 
 namespace CE::GFramework {
-    GameRuntime::GameRuntime(Engine::EngineContext& engine, AbstractGame& game, const RunMode mode) :
-        engine_(engine), game_(game), mode_(mode) {}
+    GameRuntime::GameRuntime(Engine::EngineContext& engine, AbstractGame& game, const RunMode mode, const Input::PollingOptions polling)
+        : engine_(engine), game_(game), mode_(mode), polling_(polling) {
+        // Reject an invalid policy before starting any platform or game resources.
+        (void)Input::PollingBacklog(polling_);
+    }
 
     void GameRuntime::run() {
         switch (mode_) {
-        case RunMode::Sequential:
-            return run_sequential();
-        case RunMode::Concurrent:
-            return run_concurrent();
+            case RunMode::Sequential:
+                return run_sequential();
+            case RunMode::Concurrent:
+                return run_concurrent();
         }
         throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
     }
@@ -63,22 +66,25 @@ namespace CE::GFramework {
             auto viewport = window.framebuffer_size();
             renderer.set_viewport(viewport);
             Input::InputAccumulator accumulator(previous_poll, std::chrono::steady_clock::now());
+            Input::PollingBacklog backlog(polling_);
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
-                // One poll and one independently timed update belong to this
-                // sequential cycle, regardless of the number of input edges.
-                input.poll();
+                // Sequential execution cannot poll during update(), but spacing
+                // still applies. A delayed poll never delays simulation or rendering.
+                if (backlog.poll_due(Input::InputClock::now())) {
+                    input.poll();
+                    if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
+                        break;
+                    backlog.complete(input.action_snapshot(), Input::InputClock::now());
+                }
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                     break;
-                auto completed_poll = input.action_snapshot();
-                if (!completed_poll)
-                    throw Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
                 const auto size = window.framebuffer_size();
                 if (size != viewport) {
                     renderer.set_viewport(size);
                     viewport = size;
                 }
-                auto state = accumulator.consume(std::chrono::steady_clock::now(), {std::move(completed_poll)});
+                auto state = accumulator.consume(Input::InputClock::now(), backlog.consume());
                 game_.update(TickContext{state.elapsed().count(), state, size});
 
                 // One slot is enough because the graphics thread consumes and
@@ -90,7 +96,8 @@ namespace CE::GFramework {
                 engine_.surface().present();
                 frame.recycle();
             }
-        } catch (...) {
+        }
+        catch (...) {
             failure = std::current_exception();
         }
 
@@ -98,14 +105,23 @@ namespace CE::GFramework {
         // are released before the game and its graphics context shut down.
         frame.recycle();
         const auto finish = [&failure](auto&& operation) {
-            try { operation(); }
-            catch (...) { if (!failure) failure = std::current_exception(); }
+            try {
+                operation();
+            }
+            catch (...) {
+                if (!failure)
+                    failure = std::current_exception();
+            }
         };
-        if (game_ready) finish([this] { game_.deinit(); });
+        if (game_ready)
+            finish([this] { game_.deinit(); });
         // Adapters must also clean up if initialize() only completed partway.
-        if (input_started) finish([&input] { input.deinitialize(); });
-        if (renderer_started) finish([&renderer] { renderer.deinitialize(); });
-        if (failure) std::rethrow_exception(failure);
+        if (input_started)
+            finish([&input] { input.deinitialize(); });
+        if (renderer_started)
+            finish([&renderer] { renderer.deinitialize(); });
+        if (failure)
+            std::rethrow_exception(failure);
     }
 
     void GameRuntime::run_concurrent() {
@@ -120,7 +136,7 @@ namespace CE::GFramework {
         struct Handoff {
             // TODO: When Events/Text capture exists, hand its ordered records to
             // simulation at the same cycle boundary without folding them into State.
-            std::vector<std::shared_ptr<const Input::ActionSnapshot>> polls;
+            Input::PollingBacklog backlog;
             FramebufferSize framebuffer_size;
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
@@ -131,7 +147,7 @@ namespace CE::GFramework {
         auto& renderer = engine_.renderer();
         auto& input = engine_.input();
         std::array<Slot, 3> slots;
-        Handoff handoff;
+        Handoff handoff{Input::PollingBacklog(polling_)};
         constexpr auto cadence = std::chrono::microseconds{16667};
         std::thread worker;
         bool renderer_started = false;
@@ -166,15 +182,16 @@ namespace CE::GFramework {
                         Input::InputClock::time_point consumed_at;
                         {
                             std::unique_lock lock(scheduler_mutex_);
-                            scheduler_wake_.wait_until(lock, next_tick, [&] {
-                                return stop_requested_.load(std::memory_order_acquire);
-                            });
+                            scheduler_wake_.wait_until(lock, next_tick, [&] { return stop_requested_.load(std::memory_order_acquire); });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
-                            polls.swap(handoff.polls);
+                            polls = handoff.backlog.consume();
                             size = handoff.framebuffer_size;
                             consumed_at = Input::InputClock::now();
                         }
+                        // Capacity becomes available as soon as the entire batch
+                        // transfers, even while this worker processes its update.
+                        scheduler_wake_.notify_all();
                         // A slow tick never triggers a burst of catch-up updates.
                         // If rendering blocks polling, held input persists without replaying edges.
                         next_tick = std::chrono::steady_clock::now() + cadence;
@@ -212,7 +229,8 @@ namespace CE::GFramework {
                         }
                         scheduler_wake_.notify_all();
                     }
-                } catch (...) {
+                }
+                catch (...) {
                     std::lock_guard lock(scheduler_mutex_);
                     handoff.worker_failure = std::current_exception();
                 }
@@ -223,17 +241,18 @@ namespace CE::GFramework {
                 scheduler_wake_.notify_all();
             });
 
-            // With no completed frame, keep pumping events at a bounded rate.
-            // Rendering can wake this loop sooner; a long present may delay a poll.
-            auto next_poll = std::chrono::steady_clock::now();
+            // Full batches pause only polling. Rendering and recycling remain
+            // available, and consumption wakes the platform to resume polling.
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+                bool poll_due = false;
                 {
                     std::lock_guard lock(scheduler_mutex_);
                     if (handoff.worker_done)
                         break;
+                    poll_due = handoff.backlog.poll_due(Input::InputClock::now());
                 }
 
-                if (std::chrono::steady_clock::now() >= next_poll) {
+                if (poll_due) {
                     input.poll();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
@@ -247,13 +266,11 @@ namespace CE::GFramework {
                     }
                     {
                         std::lock_guard lock(scheduler_mutex_);
-                        // A held state needs no repeated snapshots. Keep every observed edge
-                        // and axis change; they inform State durations without scheduling updates.
-                        if (completed->has_changes())
-                            handoff.polls.push_back(std::move(completed));
+                        // Every completed poll consumes capacity, including an
+                        // unchanged observation. No completed observation is discarded.
+                        handoff.backlog.complete(std::move(completed), Input::InputClock::now());
                         handoff.framebuffer_size = size;
                     }
-                    next_poll = std::chrono::steady_clock::now() + cadence;
                 }
 
                 // Superseded frames still hold asset handles. Only this thread
@@ -291,8 +308,13 @@ namespace CE::GFramework {
                 }
 
                 std::unique_lock lock(scheduler_mutex_);
-                scheduler_wake_.wait_until(lock, next_poll, [&] {
+                const auto deadline = handoff.backlog.next_poll_at();
+                scheduler_wake_.wait_until(lock, deadline, [&] {
                     if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready)
+                        return true;
+                    // Consumption can reopen capacity before spacing has elapsed.
+                    // Recompute the deadline instead of waiting on the old full batch.
+                    if (handoff.backlog.next_poll_at() != deadline)
                         return true;
                     for (const auto& slot : slots)
                         if (slot.state == SlotState::Retired)
@@ -300,27 +322,40 @@ namespace CE::GFramework {
                     return false;
                 });
             }
-        } catch (...) {
+        }
+        catch (...) {
             failure = std::current_exception();
         }
 
         stop();
-        if (worker.joinable()) worker.join();
+        if (worker.joinable())
+            worker.join();
         // The worker cannot be writing now. Even incomplete frames must release
         // their handles before deinitializing the game or graphics context.
         const auto finish = [&failure](auto&& operation) {
-            try { operation(); }
-            catch (...) { if (!failure) failure = std::current_exception(); }
+            try {
+                operation();
+            }
+            catch (...) {
+                if (!failure)
+                    failure = std::current_exception();
+            }
         };
-        for (auto& slot : slots) finish([&slot] { slot.frame.recycle(); });
+        for (auto& slot : slots)
+            finish([&slot] { slot.frame.recycle(); });
         {
             std::lock_guard lock(scheduler_mutex_);
-            if (!failure) failure = handoff.worker_failure;
+            if (!failure)
+                failure = handoff.worker_failure;
         }
-        if (game_ready) finish([this] { game_.deinit(); });
-        if (input_started) finish([&input] { input.deinitialize(); });
-        if (renderer_started) finish([&renderer] { renderer.deinitialize(); });
-        if (failure) std::rethrow_exception(failure);
+        if (game_ready)
+            finish([this] { game_.deinit(); });
+        if (input_started)
+            finish([&input] { input.deinitialize(); });
+        if (renderer_started)
+            finish([&renderer] { renderer.deinitialize(); });
+        if (failure)
+            std::rethrow_exception(failure);
     }
 
     void GameRuntime::stop() {

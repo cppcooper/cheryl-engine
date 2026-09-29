@@ -26,6 +26,22 @@ Input adapters report physical changes; bindings translate them into semantic ac
 
 For code using the earlier API, replace `bind_button(control, callback)` or `bind_axis(control, callback)` with a semantic `ActionId` binding and read it in `update(const TickContext&)`. Custom adapters call `on_button(control, held)` or `on_axis(control, value)`; Gainput's old value is not needed by the binding layer.
 
+## Polling backlog and scheduling
+
+`GameRuntime` accepts `PollingOptions` independently of `RunMode`. The default `Lockstep` policy permits one completed poll between simulation consumptions. `Finite` permits `capacity` completed polls; `Unlimited` removes that limit. Every completed poll counts, even if no action changed. This implementation keeps all completed poll handles in its transport batch; State derives the useful activity from them. Capacity therefore describes observations, not the number of button transitions or retained changed samples.
+
+`spacing` is a configurable minimum delay from the end of one poll to the beginning of the next (default 1 ms; zero permits polling as fast as the platform loop can run). Consumption reopens capacity without resetting that delay. When a finite/lockstep batch fills, the platform stops pumping input until consumption. It continues rendering and recycling frames. Pending OS events remain with the backend; one later `glfwPollEvents()` processes all waiting events. Cheryl can retain the callbacks that GLFW delivers, but cannot reconstruct transitions or hardware timestamps the backend never exposed.
+
+The worker transfers the entire batch under the scheduler lock at the start of a cycle and immediately leaves an empty backlog. Its nominal simulation cadence remains 16.667 ms independently of input availability. Empty consumption preserves held State without replaying activity. Sequential mode uses the same eligibility and consumption rules, but its single thread can complete at most one poll before each update; spacing may skip polling without delaying updates or rendering. `stop()` and worker completion wake the scheduler even when capacity is full.
+
+```cpp
+CE::Input::PollingOptions polling;
+polling.policy = CE::Input::PollingPolicy::Finite;
+polling.capacity = 8;
+polling.spacing = std::chrono::milliseconds(2);
+CE::GFramework::GameRuntime runtime(engine, game, CE::GFramework::RunMode::Concurrent, polling);
+```
+
 ## Capture channels and textbox focus (planned)
 
 `InputMode` names three ways game code may need to observe input. These are capture channels, not an exclusive switch for the entire engine:

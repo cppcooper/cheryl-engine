@@ -6,18 +6,19 @@
 #include <utility>
 
 namespace CE::Input {
-    TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous,
-                         std::vector<std::shared_ptr<const ActionSnapshot>> polls) :
-        TickInput(previous, polls,
-                  previous ? previous->observed_at() : InputClock::time_point{},
-                  !polls.empty() && polls.back() ? polls.back()->observed_at()
-                                                : previous ? previous->observed_at() : InputClock::time_point{}) {}
+    TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls)
+        : TickInput(previous,
+                    polls,
+                    previous ? previous->observed_at() : InputClock::time_point{},
+                    !polls.empty() && polls.back() ? polls.back()->observed_at()
+                        : previous                 ? previous->observed_at()
+                                                   : InputClock::time_point{}) {}
 
     TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous,
                          std::vector<std::shared_ptr<const ActionSnapshot>> polls,
                          const InputClock::time_point since,
-                         const InputClock::time_point until) :
-        previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
+                         const InputClock::time_point until)
+        : previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
         if (!previous_ || since < previous_->observed_at() || until < since)
             throw Exceptions::invalid_args(CE_HERE, "TickInput requires a baseline and a monotonic consumption interval");
         auto last_poll = previous_->poll();
@@ -63,9 +64,8 @@ namespace CE::Input {
         const auto latest = latest_poll()->axis(action);
         // An unbound relative action may disappear from a later sample. Its
         // earlier deltas still belong to this batch and must be consumed once.
-        const bool relative = baseline.kind == AxisKind::Relative || std::ranges::any_of(polls_, [action](const auto& poll) {
-            return poll->axis(action).kind == AxisKind::Relative;
-        });
+        const bool relative = baseline.kind == AxisKind::Relative ||
+            std::ranges::any_of(polls_, [action](const auto& poll) { return poll->axis(action).kind == AxisKind::Relative; });
         if (relative) {
             float delta = 0.0f;
             for (const auto& poll : polls_)
@@ -76,7 +76,5 @@ namespace CE::Input {
         return {latest.current, baseline.current, AxisKind::Absolute};
     }
 
-    std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const {
-        return polls_.empty() ? previous_ : polls_.back();
-    }
+    std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const { return polls_.empty() ? previous_ : polls_.back(); }
 }

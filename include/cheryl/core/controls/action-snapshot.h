@@ -63,9 +63,11 @@ namespace CE::Input {
         [[nodiscard]] std::chrono::steady_clock::time_point observed_at() const { return observed_at_; }
         [[nodiscard]] bool has_changes() const {
             for (const auto& [id, state] : buttons_)
-                if (state.pressed() || state.released()) return true;
+                if (state.pressed() || state.released())
+                    return true;
             for (const auto& [id, state] : axes_)
-                if (state.delta() != 0.0f) return true;
+                if (state.delta() != 0.0f)
+                    return true;
             return false;
         }
         [[nodiscard]] ButtonActionState button(ActionId action) const {

@@ -86,8 +86,8 @@ namespace CE::Input {
         void on_button(DeviceBind binding, bool held);
 
         // Call after the backend finishes one poll. Each handle is a complete stable sample, not live input.
-        [[nodiscard]] std::shared_ptr<const ActionSnapshot> publish_actions(
-            std::chrono::steady_clock::time_point observed_at = std::chrono::steady_clock::now());
+        [[nodiscard]] std::shared_ptr<const ActionSnapshot>
+        publish_actions(std::chrono::steady_clock::time_point observed_at = std::chrono::steady_clock::now());
         [[nodiscard]] std::shared_ptr<const ActionSnapshot> action_snapshot() const;
     };
 } // namespace CE::Input

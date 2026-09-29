@@ -8,8 +8,8 @@
 #include <GLFW/glfw3.h>
 #endif
 
-#include <core/controls/input-bindings.h>
 #include <core/controls/input-accumulator.h>
+#include <core/controls/input-bindings.h>
 #include <core/controls/tick-input.h>
 
 #include <chrono>

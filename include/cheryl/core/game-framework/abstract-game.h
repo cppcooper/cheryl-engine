@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tick-context.h"
 #include <core/rendering/render-frame.h>
+#include "tick-context.h"
 
 namespace CE::GFramework {
     /** Game simulation hooks driven by GameRuntime.

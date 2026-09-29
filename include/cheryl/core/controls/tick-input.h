@@ -42,8 +42,7 @@ namespace CE::Input {
     class TickInput {
     public:
         // For manual consumers, the interval defaults to the sample timestamps.
-        TickInput(std::shared_ptr<const ActionSnapshot> previous,
-                  std::vector<std::shared_ptr<const ActionSnapshot>> polls);
+        TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls);
         TickInput(std::shared_ptr<const ActionSnapshot> previous,
                   std::vector<std::shared_ptr<const ActionSnapshot>> polls,
                   InputClock::time_point since,

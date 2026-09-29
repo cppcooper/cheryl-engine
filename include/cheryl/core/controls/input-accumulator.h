@@ -10,11 +10,10 @@ namespace CE::Input {
      */
     class InputAccumulator final {
     public:
-        InputAccumulator(std::shared_ptr<const ActionSnapshot> baseline, InputClock::time_point start) :
-            previous_(std::move(baseline)), consumed_at_(start) {}
+        InputAccumulator(std::shared_ptr<const ActionSnapshot> baseline, InputClock::time_point start)
+            : previous_(std::move(baseline)), consumed_at_(start) {}
 
-        [[nodiscard]] TickInput consume(InputClock::time_point until,
-                                        std::vector<std::shared_ptr<const ActionSnapshot>> polls) {
+        [[nodiscard]] TickInput consume(InputClock::time_point until, std::vector<std::shared_ptr<const ActionSnapshot>> polls) {
             TickInput input(previous_, std::move(polls), consumed_at_, until);
             previous_ = input.latest_poll();
             consumed_at_ = until;

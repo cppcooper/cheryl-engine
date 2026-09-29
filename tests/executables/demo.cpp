@@ -1,12 +1,12 @@
+#include <assets/types/2d/stbfont.h>
+#include <backends/opengl/glfw-backend.h>
 #include <core/controls/input-interface.h>
 #include <core/controls/input-system.h>
-#include <core/engine/engine-context.h>
 #include <core/display/window-interface.h>
+#include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/rendering/camera.h>
-#include <backends/opengl/glfw-backend.h>
-#include <assets/types/2d/stbfont.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/font-mgr.h>
 #include <core/resources/asset-management/shader-mgr.h>
@@ -16,6 +16,7 @@
 #include <ext/matrix_transform.hpp>
 #include <gainput/gainput.h>
 
+#include <charconv>
 #include <filesystem>
 #include <format>
 #include <memory>
@@ -38,8 +39,8 @@ namespace DemoActions {
 
 class Game : public CE::GFramework::AbstractGame {
 public:
-    Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets) :
-        engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
+    Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets)
+        : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
 
     void init() override {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
@@ -101,11 +102,10 @@ public:
         wheel_ -= actions.button(DemoActions::WheelDown).press_count;
         gamepad_presses_ += actions.button(DemoActions::GamepadA).press_count;
 
-        const glm::vec2 movement{
-            static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
-                               actions.button(DemoActions::Left).down_duration.count()),
-            static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
-                               actions.button(DemoActions::Down).down_duration.count())};
+        const glm::vec2 movement{static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
+                                                    actions.button(DemoActions::Left).down_duration.count()),
+                                 static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
+                                                    actions.button(DemoActions::Down).down_duration.count())};
         if (glm::length(movement) > 0.0f) {
             // Movement uses observed down-time; a completed tap still moves even
             // though the current button state is released at this update.
@@ -120,18 +120,18 @@ public:
         pass.reserve_draws(2);
         CE::RenderAPIs::DrawStyle text;
         text.material = font_shader_;
-        text.model_matrix = glm::translate(glm::mat4(1.0f),
-            glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f,
-                      static_cast<float>(size.height) * 0.5f, 0.0f));
+        text.model_matrix = glm::translate(
+            glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f));
         pass.add(CE::RenderAPIs::TextDraw{font_, "Camera target", text});
 
         // Compensate for the view translation so these controls stay fixed on screen.
-        text.model_matrix = glm::translate(glm::mat4(1.0f),
-            glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
-        pass.add(CE::RenderAPIs::TextDraw{
-            font_, std::format("Cheryl Engine demo\nWASD: pan camera  R: reset\n"
-                               "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {}\nGamepad A: {} presses",
-                               mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_), text});
+        text.model_matrix =
+            glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
+        pass.add(CE::RenderAPIs::TextDraw{font_,
+                                          std::format("Cheryl Engine demo\nWASD: pan camera  R: reset\n"
+                                                      "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {}\nGamepad A: {} presses",
+                                                      mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_),
+                                          text});
     }
 
 private:
@@ -155,16 +155,33 @@ int main(const int argc, char** argv) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
     auto mode = CE::GFramework::RunMode::Sequential;
+    CE::Input::PollingOptions polling;
+    const auto number = [](const std::string_view text) {
+        unsigned int value = 0;
+        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+        if (error != std::errc{} || end != text.data() + text.size())
+            throw CE::Exceptions::invalid_args(CE_HERE, "Input polling options require a nonnegative integer");
+        return value;
+    };
     for (int i = 1; i < argc; ++i) {
+        const std::string_view argument(argv[i]);
         if (std::string_view(argv[i]) == "--full-assets")
             load_all_assets = true;
         else if (std::string_view(argv[i]) == "--concurrent")
             mode = CE::GFramework::RunMode::Concurrent;
+        else if (argument == "--input-unlimited")
+            polling.policy = CE::Input::PollingPolicy::Unlimited;
+        else if (argument.starts_with("--input-capacity=")) {
+            polling.policy = CE::Input::PollingPolicy::Finite;
+            polling.capacity = number(argument.substr(std::string_view("--input-capacity=").size()));
+        }
+        else if (argument.starts_with("--input-spacing-ms="))
+            polling.spacing = std::chrono::milliseconds(number(argument.substr(std::string_view("--input-spacing-ms=").size())));
         else
             asset_root = argv[i];
     }
     auto engine = CE::Engine::make_glfw_opengl_context(CE::Input::InputSystem::get());
     Game game(*engine, asset_root, load_all_assets);
-    GameRuntime game_runtime(*engine, game, mode);
+    GameRuntime game_runtime(*engine, game, mode, polling);
     game_runtime.run();
 }

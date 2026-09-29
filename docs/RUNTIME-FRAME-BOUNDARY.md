@@ -29,7 +29,7 @@ respective thread affinity.
 The caller of `GameRuntime::run()` owns platform polling and the graphics context
 in both modes. Sequential mode polls, updates, prepares, renders, and presents on
 that thread. Concurrent mode runs only `update()` and `prepare_render_frame()` on
-one simulation worker; it passes changed input polls and framebuffer dimensions
+one simulation worker; it passes complete polling batches and framebuffer dimensions
 as values instead of giving that worker access to a live window. A resize
 callback runs on the platform thread and must not mutate simulation state.
 `init()` runs after input and graphics initialization but before starting the
@@ -74,10 +74,11 @@ camera, and reads font glyphs without mutating shared assets. GPU handles are
 retired through the renderer's context-owned release queue. Sequential runtime
 polls once per frame, summarizes State activity and elapsed time from a monotonic
 clock after initialization, prepares and recycles one frame, and tears down game, input, and graphics in that order even
-after a loop failure. Concurrent runtime polls on the platform thread at about
-60 Hz, including while simulation is busy, and swaps the ordered changed polls
-into the worker at each tick boundary. The worker ticks at the same nominal
-rate even if no new input was polled; held state persists and edges are not
+after a loop failure. Concurrent runtime uses configurable lockstep (default), finite-capacity, or
+unlimited polling, with a minimum completion-to-next-poll spacing. Full batches
+pause polling while rendering continues. Every completed poll counts, including
+unchanged samples; the worker takes the entire batch at a cycle boundary and
+wakes polling into an empty backlog. The worker ticks at a nominal 16.667 ms cadence even if no new input was polled; held state persists and edges are not
 repeated. The worker publishes a prepared slot without copying
 it. If it supersedes a waiting frame, the platform thread recycles the older
 slot before lending it out again. At each render handoff the platform thread
@@ -88,3 +89,8 @@ throws.
 The demo uses the same `EngineContext` and frame commands. It starts in
 sequential mode; `--concurrent` selects the worker and latest-frame handoff.
 `--full-assets` loads the asset tree instead of only the font and 2D shader.
+
+The demo accepts `--input-capacity=N` (finite polling), `--input-unlimited`, and
+`--input-spacing-ms=N` in either runtime mode. These alter polling eligibility,
+not the simulation schedule. The platform thread still shares polling with
+presentation, so a blocking present can delay an eligible poll.

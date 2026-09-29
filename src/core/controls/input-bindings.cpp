@@ -64,9 +64,8 @@ namespace CE::Input {
     }
 
     bool InputBindings::button_active(const ActionId action) const {
-        return std::ranges::any_of(button_bindings_, [this, action](const auto& binding) {
-            return binding.action == action && chord_active(binding.chord);
-        });
+        return std::ranges::any_of(button_bindings_,
+                                   [this, action](const auto& binding) { return binding.action == action && chord_active(binding.chord); });
     }
 
     std::unordered_map<ActionId, bool> InputBindings::evaluate_buttons() const {
@@ -97,8 +96,7 @@ namespace CE::Input {
         return result;
     }
 
-    std::shared_ptr<const ActionSnapshot> InputBindings::publish_actions(
-        const std::chrono::steady_clock::time_point observed_at) {
+    std::shared_ptr<const ActionSnapshot> InputBindings::publish_actions(const std::chrono::steady_clock::time_point observed_at) {
         const auto prior = action_snapshot();
         if (observed_at < prior->observed_at())
             throw Exceptions::invalid_args(CE_HERE, "Input poll observation times must be monotonic");
@@ -159,8 +157,8 @@ namespace CE::Input {
         for (const auto& [id, current] : axes) {
             const auto kind = kinds.at(id);
             const auto previous = prior->axis(id);
-            next->axes_.emplace(id, AxisActionState{current,
-                kind == AxisKind::Absolute && previous.kind == kind ? previous.current : 0.0f, kind});
+            next->axes_.emplace(
+                id, AxisActionState{current, kind == AxisKind::Absolute && previous.kind == kind ? previous.current : 0.0f, kind});
         }
 
         pending_buttons_.clear();
