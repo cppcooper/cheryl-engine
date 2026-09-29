@@ -1,14 +1,25 @@
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/gl.h>
 
+#include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
 
+#include <ext/matrix_transform.hpp>
+
 #include <thread>
+#include <type_traits>
 
 namespace CE::RenderAPIs {
     namespace {
-        [[noreturn]] void renderer_pending() {
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL renderer is a skeleton");
+        void draw_grid_cell(const Assets::Asset2D& asset, const Assets::GridDefinition& grid,
+                            const Assets::CellIndex cell) {
+            if (cell >= grid.cell_count())
+                throw Exceptions::invalid_args(CE_HERE, "Render command selects a cell outside its grid");
+            if (!asset.geometry || !asset.texture)
+                throw Exceptions::invalid_args(CE_HERE, "Render command has incomplete grid resources");
+            asset.geometry->bind(*asset.texture);
+            asset.geometry->draw(cell * VAONumbers::vertices_per_strip_quad,
+                                 VAONumbers::vertices_per_strip_quad);
         }
     }
 
@@ -41,6 +52,9 @@ namespace CE::RenderAPIs {
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
             }
             resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id());
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         }
         catch (...) {
             context_.release_current();
@@ -64,16 +78,92 @@ namespace CE::RenderAPIs {
         return resources_;
     }
 
-    void OpenGLRenderer::render(const RenderFrame&) {
-        resources()->collect();
-        renderer_pending();
+    void OpenGLRenderer::bind_style(const DrawStyle& style, Assets::Shader*& active_material) const {
+        if (!style.material)
+            throw Exceptions::invalid_args(CE_HERE, "Render command needs a material");
+        auto* material = style.material.get();
+        if (material != active_material) {
+            material->use();
+            material->set_uniform_matrix("projectionMatrix", projection_);
+            material->set_uniform_matrix("viewMatrix", view_);
+            material->set_uniform_value("mytexture", 0);
+            material->set_uniform_value("in_Scale", 1.0f);
+            active_material = material;
+        }
+        material->set_uniform_value("in_Alpha", style.alpha);
+        material->set_uniform_matrix("modelMatrix", style.model_matrix);
     }
+
+    void OpenGLRenderer::render(const RenderFrame& frame) {
+        resources()->collect();
+        for (const auto& pass : frame.passes()) {
+            set_depth_test(pass.depth_test);
+            set_camera_matrices(pass.projection, pass.view);
+            Assets::Shader* active_material = nullptr;
+            for (const auto& command : pass.draws) {
+                std::visit([&](const auto& draw) {
+                    using Draw = std::decay_t<decltype(draw)>;
+                    if constexpr (std::is_same_v<Draw, SpriteDraw>) {
+                        if (!draw.sprite)
+                            throw Exceptions::invalid_args(CE_HERE, "Sprite draw has no sprite");
+                        bind_style(draw.style, active_material);
+                        draw_grid_cell(*draw.sprite, draw.sprite->definition().grid, draw.cell);
+                    } else if constexpr (std::is_same_v<Draw, TileDraw>) {
+                        if (!draw.tileset)
+                            throw Exceptions::invalid_args(CE_HERE, "Tile draw has no tileset");
+                        bind_style(draw.style, active_material);
+                        draw_grid_cell(*draw.tileset, draw.tileset->definition().grid, draw.cell);
+                    } else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
+                        if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
+                            throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
+                        bind_style(draw.style, active_material);
+                        draw.graphic->geometry->bind(*draw.graphic->texture);
+                        draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
+                    } else if constexpr (std::is_same_v<Draw, TextDraw>) {
+                        if (!draw.font)
+                            throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
+                        bind_style(draw.style, active_material);
+                        const auto& geometry = draw.font->glyph_geometry();
+                        geometry.bind(draw.font->glyph_atlas());
+                        // The font and message are read-only. Only the model uniform
+                        // changes as the pen advances through pre-uploaded glyphs.
+                        draw.font->for_each_glyph(draw.text, [&](const std::size_t index, const float x, const float y) {
+                            const auto model = glm::translate(draw.style.model_matrix, glm::vec3(x, y, 0.0f));
+                            active_material->set_uniform_matrix("modelMatrix", model);
+                            geometry.draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
+                        });
+                    }
+                }, command);
+            }
+        }
+    }
+
     void OpenGLRenderer::clear() {
         resources()->collect();
-        renderer_pending();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
-    void OpenGLRenderer::set_viewport(FramebufferSize) { renderer_pending(); }
-    void OpenGLRenderer::set_depth_test(bool) { renderer_pending(); }
-    void OpenGLRenderer::set_clear_colour(float, float, float, float) { renderer_pending(); }
-    void OpenGLRenderer::set_camera_matrices(const glm::mat4&, const glm::mat4&) { renderer_pending(); }
+
+    void OpenGLRenderer::set_viewport(const FramebufferSize size) {
+        (void)resources();
+        if (size.width < 0 || size.height < 0)
+            throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
+        glViewport(0, 0, size.width, size.height);
+    }
+
+    void OpenGLRenderer::set_depth_test(const bool enabled) {
+        (void)resources();
+        if (enabled) glEnable(GL_DEPTH_TEST);
+        else glDisable(GL_DEPTH_TEST);
+    }
+
+    void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
+        (void)resources();
+        glClearColor(r, g, b, a);
+    }
+
+    void OpenGLRenderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
+        (void)resources();
+        projection_ = projection;
+        view_ = view;
+    }
 }

@@ -27,8 +27,12 @@ namespace CE::RenderAPIs {
         [[nodiscard]] std::shared_ptr<OpenGLResourceLifetime> resources() const;
 
     private:
+        void bind_style(const DrawStyle& style, Assets::Shader*& active_material) const;
+
         iOpenGLContext& context_;
         std::shared_ptr<OpenGLResourceLifetime> resources_;
+        glm::mat4 projection_{1.0f};
+        glm::mat4 view_{1.0f};
         bool initialized_ = false;
         bool stopped_ = false;
     };

@@ -15,6 +15,6 @@ context, and GLFW composition. Its headers are opt-in through
 Concrete resources may use OpenGL types, while shared asset and renderer
 interfaces must not expose them.
 
-This layout does not yet change the resource contracts. `Geometry2D::bind(Image)`,
-shader uniform binding, texture-unit selection, and context-bound GPU destruction
-still need their own design and implementation passes.
+`Geometry2D::bind(Image)`, shader uniform binding, and texture-unit selection
+still need their own design passes. GPU handle destruction is coordinated by
+the OpenGL renderer while its context is current.

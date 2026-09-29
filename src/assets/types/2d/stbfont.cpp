@@ -57,61 +57,31 @@ namespace CE::Assets {
     STBFont::STBFont(STBFontData data) :
         Font({data.geometry, data.texture}), advances_(data.advances),
         line_height_(data.line_height) {
+        if (!geometry || !texture)
+            throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }
 
     void STBFont::print(std::string text, FontDrawInfo* format) {
         if (!format)
             throw Exceptions::invalid_args(CE_HERE, "A font draw requires formatting information");
-        print_message_ = std::move(text);
-        print_angle_ = format->angle;
-        draw(*format);
-    }
-
-    void STBFont::draw(const DrawInfo& info) {
-        if (!info.material)
+        if (!format->material)
             throw Exceptions::invalid_args(CE_HERE, "A font draw requires a shader program");
-        info.material->use();
-        info.material->set_uniform_value("in_Alpha", info.alpha);
-        info.material->set_uniform_value("in_Scale", 1.0f);
-        info.material->set_uniform_value("mytexture", 0);
+        auto& material = *format->material;
+        material.use();
+        material.set_uniform_value("in_Alpha", format->alpha);
+        material.set_uniform_value("in_Scale", 1.0f);
+        material.set_uniform_value("mytexture", 0);
         geometry->bind(*texture);
 
-        // Compose caller transform, print origin, rotation, and scale once. Per-glyph transforms
-        // then add pen offsets without moving the atlas geometry on the CPU.
-        auto text_matrix = glm::translate(info.model_matrix, info.position);
-        text_matrix = glm::rotate(text_matrix, print_angle_, glm::vec3(0.0f, 0.0f, 1.0f));
-        text_matrix = glm::scale(text_matrix, glm::vec3(info.scale, info.scale, 1.0f));
-        float cursor_x = 0.0f;
-        float cursor_y = 0.0f;
-        constexpr auto fallback_character = static_cast<unsigned char>('?');
-        const auto space_index = static_cast<std::size_t>(' ' - first_font_character);
-
-        // Move the pen for whitespace, otherwise select one baked glyph (or '?') and draw
-        // its pre-uploaded six-vertex quad with a per-glyph model matrix.
-        for (const unsigned char requested_character : print_message_) {
-            if (requested_character == '\n') {
-                cursor_x = 0.0f;
-                cursor_y -= line_height_;
-                continue;
-            }
-            if (requested_character == '\r')
-                continue;
-            if (requested_character == '\t') {
-                cursor_x += advances_[space_index] * 4.0f;
-                continue;
-            }
-
-            const auto letter = requested_character < first_font_character || requested_character > last_font_character
-                ? fallback_character
-                : requested_character;
-            const auto index = static_cast<std::size_t>(letter - first_font_character);
-            if (letter != ' ') {
-                const auto model_matrix = glm::translate(text_matrix, glm::vec3(cursor_x, cursor_y, 0.0f));
-                info.material->set_uniform_matrix("modelMatrix", model_matrix);
-                geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
-            }
-            cursor_x += advances_[index];
-        }
+        // The legacy immediate path now shares the same read-only layout as a
+        // published text command. Rotation/scale belong to the caller's model.
+        auto model = glm::translate(format->model_matrix, format->position);
+        model = glm::rotate(model, format->angle, glm::vec3(0.0f, 0.0f, 1.0f));
+        model = glm::scale(model, glm::vec3(format->scale, format->scale, 1.0f));
+        for_each_glyph(text, [&](const std::size_t index, const float x, const float y) {
+            material.set_uniform_matrix("modelMatrix", glm::translate(model, glm::vec3(x, y, 0.0f)));
+            geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
+        });
     }
 
     STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size,

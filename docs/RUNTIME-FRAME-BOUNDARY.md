@@ -56,12 +56,13 @@ advances the latter using simulation time, and publishes `animation.cell()` with
 the sprite handle. The playback value aliases the shared definition; it neither
 copies the frame list nor retains the GPU resources. Cached sprite and tileset
 assets have no mutable selected cell. Legacy `Tile`, `TileAnimation`, `Graphic`,
-and font calls still draw immediately; the renderer must consume frame commands
-without calling these methods from the simulation thread. Text rendering also
-needs to stop mutating the shared font's message and angle.
+and font calls still draw immediately; the renderer consumes frame commands on
+the graphics thread instead. Text commands and the legacy font path now read
+shared glyph data without storing the message or angle on the font.
 
-`OpenGLRenderer::render()` and `GameRuntime::run()` remain skeletons. Implement
-the renderer's ordered passes, material/camera binding, and stateless text path;
-then choose a frame-slot handoff and a graphics-context-safe destruction policy
-for assets retained by frames. The clock cadence and the policy for input polls
-accumulating while simulation is busy also need to be defined with the scheduler.
+`OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
+camera, and reads font glyphs without mutating shared assets. GPU handles are
+retired through the renderer's context-owned release queue. `GameRuntime::run()`
+remains a skeleton: it still needs frame-slot handoff, graphics-context-safe
+teardown, a clock cadence, and a policy for input polls accumulating while
+simulation is busy.
