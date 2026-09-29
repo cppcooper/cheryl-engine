@@ -91,10 +91,12 @@ namespace CE::Input {
         return result;
     }
 
-    std::shared_ptr<const ActionSnapshot> InputBindings::publish_actions() {
+    std::shared_ptr<const ActionSnapshot> InputBindings::publish_actions(
+        const std::chrono::steady_clock::time_point observed_at) {
         const auto prior = action_snapshot();
         auto next = std::make_shared<ActionSnapshot>();
         next->poll_ = next_poll_++;
+        next->observed_at_ = observed_at;
 
         // Complete all bindings before publishing. Retain one release/zero sample for actions unbound
         // since the last poll, so consumers can observe their departure instead of a silent disappearance.

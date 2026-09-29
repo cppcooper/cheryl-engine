@@ -3,11 +3,11 @@
 #include <core/game-framework/abstract-game.h>
 #include <core/engine/engine-context.h>
 #include <core/controls/input-interface.h>
+#include <core/controls/input-timeline.h>
 #include <core/display/window-interface.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
-#include <templates/delta.h>
 
 #include <array>
 #include <chrono>
@@ -15,6 +15,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <span>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -61,23 +62,30 @@ namespace CE::GFramework {
                 throw Exceptions::failed_operation(CE_HERE, "Input adapter did not supply an initial snapshot");
             auto viewport = window.framebuffer_size();
             renderer.set_viewport(viewport);
-            DeltaTime clock;
+            Input::InputTimeline timeline(previous_poll, std::chrono::steady_clock::now());
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
-                // Sequential mode consumes exactly the one poll it performed for
-                // this tick. The snapshot stays stable through game update.
+                // Sequential mode polls once, then advances simulation through
+                // any observed change before preparing the next frame.
                 input.poll();
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                     break;
                 auto completed_poll = input.action_snapshot();
-                Input::TickInput tick_input(previous_poll, {completed_poll});
+                if (!completed_poll)
+                    throw Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
                 const auto size = window.framebuffer_size();
                 if (size != viewport) {
                     renderer.set_viewport(size);
                     viewport = size;
                 }
-                game_.update(TickContext{clock(), tick_input, size});
-                previous_poll = std::move(completed_poll);
+                const auto changes = completed_poll->has_changes()
+                    ? std::span<const std::shared_ptr<const Input::ActionSnapshot>>{&completed_poll, 1}
+                    : std::span<const std::shared_ptr<const Input::ActionSnapshot>>{};
+                timeline.advance(std::chrono::steady_clock::now(), changes, [&](const double seconds,
+                                                                                const Input::TickInput& state) {
+                    if (!stop_requested_.load(std::memory_order_acquire))
+                        game_.update(TickContext{seconds, state, size});
+                });
 
                 // One slot is enough because the graphics thread consumes and
                 // recycles it before the next simulation update.
@@ -154,10 +162,10 @@ namespace CE::GFramework {
             // touches the window, input adapter, renderer, and presentation surface.
             worker = std::thread([&, previous_poll = std::move(previous_poll)]() mutable {
                 try {
-                    DeltaTime clock;
+                    Input::InputTimeline timeline(previous_poll, std::chrono::steady_clock::now());
+                    std::vector<std::shared_ptr<const Input::ActionSnapshot>> polls;
                     auto next_tick = std::chrono::steady_clock::now() + cadence;
                     while (!stop_requested_.load(std::memory_order_acquire)) {
-                        std::vector<std::shared_ptr<const Input::ActionSnapshot>> polls;
                         FramebufferSize size;
                         {
                             std::unique_lock lock(scheduler_mutex_);
@@ -173,9 +181,12 @@ namespace CE::GFramework {
                         // If rendering blocks polling, held input persists without replaying edges.
                         next_tick = std::chrono::steady_clock::now() + cadence;
 
-                        Input::TickInput tick_input(previous_poll, std::move(polls));
-                        game_.update(TickContext{clock(), tick_input, size});
-                        previous_poll = tick_input.latest_poll();
+                        timeline.advance(std::chrono::steady_clock::now(), polls,
+                                         [&](const double seconds, const Input::TickInput& state) {
+                            if (!stop_requested_.load(std::memory_order_acquire))
+                                game_.update(TickContext{seconds, state, size});
+                        });
+                        polls.clear(); // Keep both handoff vectors' capacity for later ticks.
                         if (stop_requested_.load(std::memory_order_acquire))
                             break;
 
@@ -241,7 +252,10 @@ namespace CE::GFramework {
                     }
                     {
                         std::lock_guard lock(scheduler_mutex_);
-                        handoff.polls.push_back(std::move(completed));
+                        // A held state needs no repeated snapshots. Keep every observed edge
+                        // and axis change; the worker applies their timing in publication order.
+                        if (completed->has_changes())
+                            handoff.polls.push_back(std::move(completed));
                         handoff.framebuffer_size = size;
                     }
                     next_poll = std::chrono::steady_clock::now() + cadence;

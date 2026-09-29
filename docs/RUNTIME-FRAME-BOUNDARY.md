@@ -10,9 +10,11 @@ display and window, and lends the window to its presentation context. The displa
 owns the GLFW library lifetime; renderer initialization makes the context current
 and loads OpenGL entry points before game initialization uploads assets.
 
-Each platform poll produces an `ActionSnapshot`. Each simulation tick receives
-`TickInput` assembled from zero or more polls since the previous tick. Simulation produces
-complete render state, which remains stable while rendering consumes it. The
+Each platform poll produces a timestamped `ActionSnapshot`. Unchanged polls need
+no handoff. The runtime divides elapsed time at observed input changes; each
+`update()` sees one input state and the seconds spent in that state. Several
+updates can precede one frame preparation when polls accumulated. Simulation
+produces complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
 These rules also apply when simulation and rendering run sequentially. The
 sequential runtime owns one reusable frame. Concurrent mode owns three slots:
@@ -23,8 +25,8 @@ respective thread affinity.
 The caller of `GameRuntime::run()` owns platform polling and the graphics context
 in both modes. Sequential mode polls, updates, prepares, renders, and presents on
 that thread. Concurrent mode runs only `update()` and `prepare_render_frame()` on
-one simulation worker; it passes completed input polls and framebuffer dimensions
-as tick values instead of giving that worker access to a live window. A resize
+one simulation worker; it passes changed input polls and framebuffer dimensions
+as values instead of giving that worker access to a live window. A resize
 callback runs on the platform thread and must not mutate simulation state.
 `init()` runs after input and graphics initialization but before starting the
 worker, so it can register bindings and load GPU assets. After the worker joins
@@ -66,15 +68,19 @@ shared glyph data without storing the message or angle on the font.
 `OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
 camera, and reads font glyphs without mutating shared assets. GPU handles are
 retired through the renderer's context-owned release queue. Sequential runtime
-polls once per tick, samples delta time after initialization, prepares and
-recycles one frame, and tears down game, input, and graphics in that order even
+polls once per frame, advances input intervals from a monotonic clock after
+initialization, prepares and recycles one frame, and tears down game, input, and graphics in that order even
 after a loop failure. Concurrent runtime polls on the platform thread at about
-60 Hz, including while simulation is busy, and swaps the ordered batch of
-completed polls into the worker at each update boundary. The worker ticks at
-the same nominal rate even if no new input was polled; held state persists and
-edges are not repeated. The worker publishes a prepared slot without copying
+60 Hz, including while simulation is busy, and swaps the ordered changed polls
+into the worker at each tick boundary. The worker ticks at the same nominal
+rate even if no new input was polled; held state persists and edges are not
+repeated. The worker publishes a prepared slot without copying
 it. If it supersedes a waiting frame, the platform thread recycles the older
 slot before lending it out again. At each render handoff the platform thread
 claims the newest completed slot. Shutdown joins the worker and recycles all
 frames before releasing the graphics context, including after either thread
 throws.
+
+The demo uses the same `EngineContext` and frame commands. It starts in
+sequential mode; `--concurrent` selects the worker and latest-frame handoff.
+`--full-assets` loads the asset tree instead of only the font and 2D shader.

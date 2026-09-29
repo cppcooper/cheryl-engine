@@ -5,11 +5,12 @@
 
 namespace CE::GFramework {
     /** Game simulation hooks driven by GameRuntime.
-     * update() receives input assembled for one simulation tick, regardless of whether
+     * update() receives one input state and its elapsed time, regardless of whether
      * simulation runs on the platform thread or on a worker. The game is free to organize
      * its logic without a prescribed controller or state-machine architecture.
-     * Drawing does not run on this interface. After update(), the runtime may lend a free
-     * frame slot to prepare_render_frame() on the simulation thread, then publish it.
+     * Drawing does not run on this interface. After advancing input intervals,
+     * the runtime may lend a free frame slot to prepare_render_frame() on the
+     * simulation thread, then publish it.
      * Concurrent mode can skip preparation when all slots are occupied; later updates
      * still advance the authoritative simulation state.
      * init() and deinit() run on the platform/graphics thread, before the worker starts and

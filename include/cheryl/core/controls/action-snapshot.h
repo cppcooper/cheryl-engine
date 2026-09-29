@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
@@ -42,11 +43,20 @@ namespace CE::Input {
     class ActionSnapshot {
         friend class InputBindings;
         std::uint64_t poll_ = 0;
+        std::chrono::steady_clock::time_point observed_at_ = std::chrono::steady_clock::now();
         std::unordered_map<ActionId, ButtonActionState> buttons_;
         std::unordered_map<ActionId, AxisActionState> axes_;
 
     public:
         [[nodiscard]] std::uint64_t poll() const { return poll_; }
+        [[nodiscard]] std::chrono::steady_clock::time_point observed_at() const { return observed_at_; }
+        [[nodiscard]] bool has_changes() const {
+            for (const auto& [id, state] : buttons_)
+                if (state.pressed() || state.released()) return true;
+            for (const auto& [id, state] : axes_)
+                if (state.delta() != 0.0f) return true;
+            return false;
+        }
         [[nodiscard]] ButtonActionState button(ActionId action) const {
             const auto found = buttons_.find(action);
             return found == buttons_.end() ? ButtonActionState{} : found->second;

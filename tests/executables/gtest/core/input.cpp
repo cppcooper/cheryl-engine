@@ -9,7 +9,11 @@
 #endif
 
 #include <core/controls/input-bindings.h>
+#include <core/controls/input-timeline.h>
 #include <core/controls/tick-input.h>
+
+#include <chrono>
+#include <vector>
 
 TEST(input_bindings, device_routing) {
     CE::Input::InputBindings bindings;
@@ -218,6 +222,93 @@ TEST(tick_input, held_values_without_new_polls) {
     EXPECT_FALSE(next.button(move).pressed());
     EXPECT_FLOAT_EQ(next.axis(look).current, 0.75f);
     EXPECT_FLOAT_EQ(next.axis(look).delta(), 0.0f);
+}
+
+TEST(input_timeline, a_delayed_tick_moves_only_while_the_key_was_observed_held) {
+    using namespace std::chrono_literals;
+    using Clock = std::chrono::steady_clock;
+    const auto start = Clock::now();
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId move{1};
+    CE::Input::InputBindings bindings;
+    (void)bindings.bind_button(key, move);
+    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+
+    bindings.on_button(key, true);
+    auto press = bindings.publish_actions(start + 20ms);
+    bindings.on_button(key, false);
+    auto release = bindings.publish_actions(start + 80ms);
+    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{press, release};
+    struct Step { double seconds; CE::Input::ButtonTickState button; };
+    std::vector<Step> steps;
+    timeline.advance(start + 100ms, changes, [&](double seconds, const CE::Input::TickInput& input) {
+        steps.push_back({seconds, input.button(move)});
+    });
+
+    ASSERT_EQ(steps.size(), 3u);
+    EXPECT_NEAR(steps[0].seconds, 0.020, 1e-9);
+    EXPECT_FALSE(steps[0].button.held());
+    EXPECT_NEAR(steps[1].seconds, 0.060, 1e-9);
+    EXPECT_TRUE(steps[1].button.held());
+    EXPECT_TRUE(steps[1].button.pressed());
+    EXPECT_NEAR(steps[2].seconds, 0.020, 1e-9);
+    EXPECT_FALSE(steps[2].button.held());
+    EXPECT_TRUE(steps[2].button.released());
+
+    timeline.advance(start + 120ms, {}, [&](double seconds, const CE::Input::TickInput& input) {
+        EXPECT_NEAR(seconds, 0.020, 1e-9);
+        EXPECT_FALSE(input.button(move).released());
+    });
+}
+
+TEST(input_timeline, a_tap_in_one_poll_remains_an_edge_even_without_a_held_interval) {
+    using namespace std::chrono_literals;
+    const auto start = std::chrono::steady_clock::now();
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId select{2};
+    CE::Input::InputBindings bindings;
+    (void)bindings.bind_button(key, select);
+    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+    bindings.on_button(key, true);
+    bindings.on_button(key, false);
+    auto tap = bindings.publish_actions(start + 5ms);
+    ASSERT_TRUE(tap->has_changes());
+
+    int taps = 0;
+    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{tap};
+    timeline.advance(start + 10ms, changes, [&](double, const CE::Input::TickInput& input) {
+        if (input.button(select).pressed() && input.button(select).released()) ++taps;
+        EXPECT_FALSE(input.button(select).held());
+    });
+    EXPECT_EQ(taps, 1);
+}
+
+TEST(input_timeline, separate_changes_at_one_timestamp_keep_both_edges) {
+    using namespace std::chrono_literals;
+    const auto start = std::chrono::steady_clock::now();
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId select{2};
+    CE::Input::InputBindings bindings;
+    (void)bindings.bind_button(key, select);
+    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+    bindings.on_button(key, true);
+    auto press = bindings.publish_actions(start + 5ms);
+    bindings.on_button(key, false);
+    auto release = bindings.publish_actions(start + 5ms);
+    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{press, release};
+
+    int presses = 0;
+    int releases = 0;
+    timeline.advance(start + 10ms, changes, [&](double seconds, const CE::Input::TickInput& input) {
+        const auto state = input.button(select);
+        if (state.pressed()) {
+            ++presses;
+            EXPECT_DOUBLE_EQ(seconds, 0.0);
+        }
+        if (state.released()) ++releases;
+    });
+    EXPECT_EQ(presses, 1);
+    EXPECT_EQ(releases, 1);
 }
 
 #ifndef CHERYL_SANDBOX_BUILD

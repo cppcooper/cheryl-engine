@@ -3,17 +3,26 @@
 #include <assets/types/2d/graphic.h>
 #include <assets/resources/resource-provider.h>
 #include <core/rendering/draw-info.h>
-#include <core/engines/runtime-engine.h>
-#include <core/game-runtime.h>
+#include <core/engine/engine-context.h>
+#include <core/game-framework/abstract-game.h>
+#include <core/game-framework/game-runtime.h>
+#include <core/rendering/presentation-surface.h>
+#include <core/rendering/renderer.h>
+#include <core/display/display-system-interface.h>
+#include <core/display/window-interface.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
 
+#include <atomic>
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string_view>
+#include <thread>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #if defined(GL_VERSION_3_3) || defined(GLFW_VERSION_MAJOR)
@@ -73,8 +82,10 @@ namespace {
         CE::Input::InputBindings bindings_;
 
     public:
+        std::function<void()> on_poll;
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
+            if (on_poll) on_poll();
             bindings_.on_button({keyboard_id(), test_button}, true);
             (void)bindings_.publish_actions();
         }
@@ -86,7 +97,7 @@ namespace {
         [[nodiscard]] CE::iWindow* attached_window() const { return window_; }
     };
 
-    /** Consumes one published input sample through the game hook, then stops the runtime. */
+    /** Records which thread receives the semantic press and owns frame preparation. */
     class OneTickGame final : public CE::GFramework::AbstractGame {
         static constexpr CE::Input::ActionId action{17};
         CE::Input::iInputSystem& input_;
@@ -94,20 +105,29 @@ namespace {
     public:
         std::function<void()> on_tick;
         int updates = 0;
-        int draws = 0;
-        bool pressed = false;
+        mutable int draws = 0;
+        std::atomic<bool> pressed{false};
+        std::thread::id update_thread;
+        CE::FramebufferSize size{};
 
         explicit OneTickGame(CE::Input::iInputSystem& input) : input_(input) {}
 
         void init() override { (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action); }
         void deinit() override { input_.bindings().clear(); }
-        void update_with_input(double, const CE::Input::ActionSnapshot& snapshot) override {
+        void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
-            pressed = snapshot.button(action).pressed();
-            if (on_tick)
+            update_thread = std::this_thread::get_id();
+            size = tick.framebuffer_size;
+            if (tick.input.button(action).pressed()) pressed.store(true);
+            if (pressed.load() && on_tick)
                 on_tick();
         }
-        void draw(double) override { ++draws; }
+        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+            ++draws;
+            glm::mat4 view{1.0f};
+            view[3][0] = pressed.load() ? 1.0f : 0.0f;
+            (void)frame.begin_pass(glm::mat4{1.0f}, view);
+        }
     };
 
     class MemoryImage final : public CE::Assets::Image {
@@ -183,78 +203,152 @@ namespace {
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
     };
 
-    /** Hosts the display and records rendering state for the engine integration test. */
+    /** Records frame handoff while the test supplies its own display and input. */
     class MemoryRenderer final : public CE::RenderAPIs::iRenderer {
     public:
-        explicit MemoryRenderer(MemoryProvider& provider) : provider_(provider) {}
-        void initialize_libraries() override {
-            auto memory = std::make_unique<MemoryDisplay>();
-            auto* window = memory->create_window(memory->primary_monitor(), CE::Enum::window_mode::NORMAL, 320, 240);
-            memory->activate_window(*window);
-            display = std::move(memory);
-        }
-        void initialize_rendering_context() override {}
-        void deinitialize() override {}
+        void initialize() override { ++initializations; }
+        void deinitialize() override { ++shutdowns; }
         void clear() override { ++clears; }
+        void render(const CE::RenderAPIs::RenderFrame& frame) override {
+            ++renders;
+            last_pass_count = frame.passes().size();
+            last_marked_pressed = !frame.passes().empty() && frame.passes().front().view[3][0] == 1.0f;
+            render_thread = std::this_thread::get_id();
+            if (on_render) on_render();
+        }
         void set_viewport(CE::FramebufferSize size) override { viewport = size; }
         void set_depth_test(bool enabled) override { depth_enabled = enabled; }
         void set_clear_colour(float r, float g, float b, float a) override { clear_colour = {r, g, b, a}; }
         void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override {
-            CE::Assets::ShaderMgr::get().set_camera_matrices(projection, view);
+            camera_projection = projection;
+            camera_view = view;
         }
-        void swap_buffer() override { ++swaps; }
-        [[nodiscard]] CE::Assets::ResourceProvider& resources() override { return provider_; }
-        [[nodiscard]] MemoryWindow& window() { return static_cast<MemoryDisplay&>(*display).window(); }
 
+        std::function<void()> on_render;
         CE::FramebufferSize viewport{};
         bool depth_enabled = false;
         glm::vec4 clear_colour{0.0f};
+        glm::mat4 camera_projection{1.0f};
+        glm::mat4 camera_view{1.0f};
+        std::thread::id render_thread;
+        std::size_t last_pass_count = 0;
+        bool last_marked_pressed = false;
+        int initializations = 0;
+        int shutdowns = 0;
         int clears = 0;
-        int swaps = 0;
-
-    private:
-        MemoryProvider& provider_;
+        int renders = 0;
     };
+
+    class MemorySurface final : public CE::RenderAPIs::iPresentationSurface {
+    public:
+        void present() override { ++presents; }
+        int presents = 0;
+    };
+
+    // Construct the same owned adapter graph as the GLFW factory, with no native graphics API.
+    std::unique_ptr<CE::Engine::EngineContext> make_test_context(MemoryInput& input,
+                                                                  MemoryRenderer*& renderer,
+                                                                  MemorySurface*& surface) {
+        auto display = std::make_unique<MemoryDisplay>();
+        auto* window = display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 320, 240);
+        display->activate_window(*window);
+        auto presentation = std::make_unique<MemorySurface>();
+        surface = presentation.get();
+        auto rendering = std::make_unique<MemoryRenderer>();
+        renderer = rendering.get();
+        return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation),
+                                                            std::move(rendering), std::make_unique<MemoryProvider>(),
+                                                            input);
+    }
 } // namespace
 
-TEST(runtime_adapter, alternate_backend) {
-    // Boot the engine with recording implementations. Asset managers retain singleton caches,
-    // so the provider must outlive the engine and this test.
-    static MemoryProvider provider;
-    MemoryRenderer renderer(provider);
+TEST(runtime_adapter, sequential_frame_from_completed_input) {
     MemoryInput input;
-    CE::Engine::RuntimeEngine engine(renderer, [&]() -> CE::Input::iInputSystem& { return input; });
-    engine.init();
-    ASSERT_EQ(input.attached_window(), renderer.display->active_window());
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    input.on_poll = [&] { engine->window().resize(640, 360); };
 
-    // Poll a synthetic button event through the engine's semantic bindings.
-    constexpr CE::Input::ActionId action{1};
-    (void)input.bindings().bind_button({input.keyboard_id(), test_button}, action);
-    engine.poll_input();
-    EXPECT_TRUE(engine.input().action_snapshot()->button(action).pressed());
+    runtime.run();
 
-    // Forward display settings, then resize before drawing so the viewport and camera
-    // receive the new framebuffer size. Switching render modes also toggles depth testing.
-    engine.set_clear_colour(0.1f, 0.2f, 0.3f, 1.0f);
-    EXPECT_FLOAT_EQ(renderer.clear_colour.r, 0.1f);
-    engine.hide_cursor(true);
-    EXPECT_TRUE(renderer.window().cursor_hidden());
-    engine.set_mode(CE::Enum::window_mode::BORDERLESS);
-    EXPECT_EQ(renderer.window().mode(), CE::Enum::window_mode::BORDERLESS);
-    renderer.window().resize(640, 360);
-    engine.pre_draw();
-    EXPECT_EQ(renderer.viewport, (CE::FramebufferSize{640, 360}));
-    EXPECT_EQ(engine.active_camera()->framebuffer_size(), renderer.viewport);
-    EXPECT_EQ(renderer.clears, 1);
-    engine.set_mode(CE::Enum::gfx_mode::R3D);
-    EXPECT_TRUE(renderer.depth_enabled);
-    engine.set_mode(CE::Enum::gfx_mode::R2D);
-    EXPECT_FALSE(renderer.depth_enabled);
+    // The press is observed after the first poll; a frame is prepared and presented
+    // using the completed simulation state before all adapters are detached.
+    EXPECT_TRUE(game.pressed.load());
+    EXPECT_GE(game.updates, 1);
+    EXPECT_EQ(game.draws, 1);
+    EXPECT_EQ(game.size, (CE::FramebufferSize{640, 360}));
+    EXPECT_EQ(renderer->viewport, game.size);
+    EXPECT_EQ(renderer->last_pass_count, 1u);
+    EXPECT_EQ(renderer->renders, 1);
+    EXPECT_EQ(surface->presents, 1);
+    EXPECT_EQ(renderer->initializations, 1);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_EQ(game.update_thread, std::this_thread::get_id());
+}
 
-    // Load two frames from a texture, plus their shader, through the in-memory provider.
+TEST(runtime_adapter, concurrent_simulation_presents_on_platform_thread) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game, CE::GFramework::RunMode::Concurrent);
+    renderer->on_render = [&] { if (renderer->last_marked_pressed) runtime.stop(); };
+
+    runtime.run();
+
+    EXPECT_TRUE(game.pressed.load());
+    EXPECT_NE(game.update_thread, std::this_thread::get_id());
+    EXPECT_EQ(renderer->render_thread, std::this_thread::get_id());
+    EXPECT_EQ(renderer->last_pass_count, 1u);
+    EXPECT_GE(renderer->renders, 1);
+    EXPECT_EQ(surface->presents, renderer->renders);
+    EXPECT_TRUE(renderer->last_marked_pressed);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(runtime_adapter, closing_before_an_update_still_shuts_down_adapters) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    input.on_poll = [&] { static_cast<MemoryWindow&>(engine->window()).request_close(); };
+
+    runtime.run();
+
+    EXPECT_EQ(game.updates, 0);
+    EXPECT_EQ(renderer->renders, 0);
+    EXPECT_EQ(surface->presents, 0);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(runtime_adapter, render_failure_still_shuts_down_adapters) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    renderer->on_render = [] { throw std::runtime_error("recorded render failed"); };
+
+    EXPECT_THROW(runtime.run(), std::runtime_error);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_EQ(surface->presents, 0);
+}
+
+TEST(runtime_adapter, sprite_cells_share_one_uploaded_grid) {
+    MemoryProvider provider;
     const std::filesystem::path texture = "memory-adapter/sprite.png";
-    auto& resources = engine.resources();
-    CE::Assets::TextureMgr::get().load_assets({texture}, resources);
+    CE::Assets::TextureMgr::get().load_assets({texture}, provider);
     CE::Assets::SpriteDefinition definition;
     definition.name_space = "memory-adapter";
     definition.name = "sprite";
@@ -262,54 +356,35 @@ TEST(runtime_adapter, alternate_backend) {
     definition.grid.frame = {16, 32};
     definition.grid.rows = 1;
     definition.grid.columns = 2;
-    CE::Assets::SpriteMgr::get().load_assets({definition}, resources);
+    CE::Assets::SpriteMgr::get().load_assets({definition}, provider);
     const std::filesystem::path program = "memory-adapter/shader";
-    CE::Assets::ShaderMgr::get().load_program(program, {"vertex", "fragment"}, resources);
+    CE::Assets::ShaderMgr::get().load_program(program, {"vertex", "fragment"}, provider);
 
-    // Draw each frame in turn. Both reuse the same upload, and the second draw
-    // begins at the next four-vertex range rather than joining the first strip.
     auto sprite = CE::Assets::SpriteMgr::get().get_asset(definition.id());
     auto shader = CE::Assets::ShaderMgr::get().get_asset(program);
     ASSERT_TRUE(sprite);
     ASSERT_TRUE(shader);
-    CE::DrawInfo draw;
-    draw.material = shader;
-    sprite->draw(draw);
-    EXPECT_EQ(provider.geometry->first_vertex, 0u);
-    EXPECT_EQ(provider.geometry->drawn_vertices, 4u);
-    (*sprite)[1].draw(draw);
-    engine.post_draw();
+
+    CE::RenderAPIs::RenderFrame frame;
+    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+    CE::RenderAPIs::DrawStyle style;
+    style.material = shader;
+    pass.add(CE::RenderAPIs::SpriteDraw{sprite, 0, style});
+    pass.add(CE::RenderAPIs::SpriteDraw{sprite, 1, style});
+
     EXPECT_EQ(provider.uploaded_vertices, 8u);
     EXPECT_EQ(provider.uploaded_topology, CE::Assets::PrimitiveTopology::TriangleStrip);
-    EXPECT_EQ(provider.geometry->first_vertex, 4u);
-    EXPECT_EQ(provider.geometry->drawn_vertices, 4u);
-    EXPECT_EQ(provider.geometry->bound_size.width, 32u);
-    EXPECT_EQ(provider.shader->uses, 3);
-    EXPECT_EQ(provider.shader->projection, engine.active_camera()->projection_matrix());
-    EXPECT_EQ(renderer.swaps, 1);
-
-    // Propagate the window's close request and detach input on shutdown.
-    renderer.window().request_close();
-    EXPECT_TRUE(engine.should_close());
-    engine.deinit();
-    EXPECT_EQ(input.attached_window(), nullptr);
-}
-
-TEST(runtime_adapter, game_receives_completed_input_poll) {
-    static MemoryProvider provider;
-    MemoryRenderer renderer(provider);
-    MemoryInput input;
-    auto engine = std::make_shared<CE::Engine::RuntimeEngine>(renderer, [&]() -> CE::Input::iInputSystem& { return input; });
-    auto game = std::make_shared<OneTickGame>(input);
-    CE::GFramework::GameRuntime runtime(engine, game);
-    game->on_tick = [&] { runtime.stop(); };
-
-    // GameRuntime polls and pins an action snapshot before calling the game update.
-    // The game uses the new hook directly without implementing the older update(double).
-    runtime.run();
-    EXPECT_EQ(game->updates, 1);
-    EXPECT_EQ(game->draws, 1);
-    EXPECT_TRUE(game->pressed);
+    ASSERT_EQ(frame.passes().size(), 1u);
+    ASSERT_EQ(frame.passes()[0].draws.size(), 2u);
+    const auto* first = std::get_if<CE::RenderAPIs::SpriteDraw>(&frame.passes()[0].draws[0]);
+    const auto* second = std::get_if<CE::RenderAPIs::SpriteDraw>(&frame.passes()[0].draws[1]);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(first->sprite, second->sprite);
+    EXPECT_EQ(first->cell, 0u);
+    EXPECT_EQ(second->cell, 1u);
+    frame.recycle();
 }
 
 TEST(graphic, whole_image) {
