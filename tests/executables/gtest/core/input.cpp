@@ -2,6 +2,7 @@
 
 #ifndef CHERYL_SANDBOX_BUILD
 #include <core/controls/glfw-bindings.h>
+#include <core/controls/input-mapper.h>
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
@@ -380,7 +381,74 @@ TEST(input_state, relative_motion_accumulates_once_while_absolute_position_persi
     EXPECT_FLOAT_EQ(next.axis(wheel).delta(), 0.0f);
 }
 
+TEST(input_state, relative_motion_uses_modifiers_at_arrival_and_survives_unbinding) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind control{1, 1};
+    const CE::Input::DeviceBind wheel{2, 1};
+    const CE::Input::ActionId zoom{1};
+    const auto mapping = bindings.bind_axis(CE::Input::InputChord{{control}}, wheel, zoom, {2.0f, 0.0f, CE::Input::AxisKind::Relative});
+    const auto before = bindings.action_snapshot();
+    bindings.on_delta(wheel, 1.0f); // No modifier: no Zoom movement.
+    bindings.on_button(control, true);
+    bindings.on_delta(wheel, 0.5f);
+    bindings.on_button(control, false);
+    EXPECT_TRUE(bindings.unbind(mapping));
+    const auto movement = bindings.publish_actions();
+    const auto later = bindings.publish_actions();
+    const CE::Input::TickInput input(before, {movement, later});
+    EXPECT_FLOAT_EQ(input.axis(zoom).delta(), 1.0f);
+    EXPECT_FLOAT_EQ(CE::Input::TickInput(input.latest_poll(), {}).axis(zoom).delta(), 0.0f);
+}
+
+TEST(input_state, an_axis_can_change_kind_between_consumptions_without_replaying_old_motion) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind axis{1, 1};
+    const CE::Input::ActionId action{1};
+    const auto mapping = bindings.bind_axis(axis, action, {1.0f, 0.0f, CE::Input::AxisKind::Relative});
+    const auto before = bindings.action_snapshot();
+    bindings.on_delta(axis, 3.0f);
+    const auto relative = bindings.publish_actions();
+    const CE::Input::TickInput first(before, {relative});
+    EXPECT_FLOAT_EQ(first.axis(action).delta(), 3.0f);
+    EXPECT_TRUE(bindings.unbind(mapping));
+    (void)bindings.bind_axis(axis, action);
+    bindings.on_axis(axis, 0.75f);
+    const auto absolute = bindings.publish_actions();
+    const CE::Input::TickInput next(first.latest_poll(), {absolute});
+    EXPECT_EQ(next.axis(action).kind, CE::Input::AxisKind::Absolute);
+    EXPECT_FLOAT_EQ(next.axis(action).current, 0.75f);
+    EXPECT_FLOAT_EQ(next.axis(action).delta(), 0.75f);
+}
+
 #ifndef CHERYL_SANDBOX_BUILD
+TEST(input_mapper, gainput_notifications_cannot_reorder_an_externally_mapped_cross_device_chord) {
+    gainput::InputManager manager;
+    CE::Input::InputMapper bindings(manager);
+    bindings.use_external_state(1);
+    bindings.use_external_state(2);
+    const CE::Input::ActionId modified_click{1};
+    const CE::Input::ActionId pad_action{2};
+    (void)bindings.bind_button(CE::Input::InputChord{{{1, 1}, {2, 1}}}, modified_click);
+    (void)bindings.bind_button({3, 1}, pad_action);
+
+    // The modifier really enclosed the click. Later per-device Gainput callbacks
+    // must not replay this order as all keyboard changes followed by all mouse changes.
+    bindings.on_button({1, 1}, true);
+    bindings.on_button({2, 1}, true);
+    bindings.on_button({2, 1}, false);
+    bindings.on_button({1, 1}, false);
+    (void)bindings.OnDeviceButtonBool(1, 1, false, true);
+    (void)bindings.OnDeviceButtonBool(1, 1, true, false);
+    (void)bindings.OnDeviceButtonBool(2, 1, false, true);
+    (void)bindings.OnDeviceButtonBool(2, 1, true, false);
+    (void)bindings.OnDeviceButtonBool(3, 1, false, true); // A Gainput-owned pad still maps normally.
+    const auto poll = bindings.publish_actions();
+    EXPECT_EQ(poll->button(modified_click).press_count, 1u);
+    EXPECT_EQ(poll->button(modified_click).release_count, 1u);
+    EXPECT_FALSE(poll->button(modified_click).held());
+    EXPECT_TRUE(poll->button(pad_action).pressed());
+}
+
 TEST(glfw_bindings, key_and_mouse_mapping) {
     // Cover ordinary keys, modifiers, keypad keys, and an unsupported key.
     EXPECT_EQ(CE::Input::gainput_key(GLFW_KEY_A), gainput::KeyA);

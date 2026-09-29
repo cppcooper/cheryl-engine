@@ -42,6 +42,9 @@ namespace CE::Input {
      */
     class InputCapture final {
     public:
+        InputCapture() = default;
+        InputCapture(const InputCapture&) = delete;
+        InputCapture& operator=(const InputCapture&) = delete;
         [[nodiscard]] CaptureLease request(InputMode mode);
         void begin_poll(KeyboardFocus focus = {});
         void record(DeviceId device, DeviceKind kind, InputRecordData data, InputClock::time_point observed_at = InputClock::now());

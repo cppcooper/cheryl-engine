@@ -17,6 +17,12 @@ namespace CE::Input {
         return capture_.request(mode);
     }
 
+    InputRouting& iInputSystem::routing() {
+        if (!supports_focus())
+            throw Exceptions::failed_operation(CE_HERE, "This input adapter does not support keyboard focus routing");
+        return routing_;
+    }
+
     std::shared_ptr<const PollSnapshot> iInputSystem::publish_input(const InputClock::time_point observed_at) {
         auto next = std::make_shared<PollSnapshot>();
         next->state = bindings().publish_actions(observed_at);
@@ -30,6 +36,8 @@ namespace CE::Input {
         const auto complete = published_poll_.load(std::memory_order_acquire);
         if (complete && complete->state == state)
             return complete;
+        if (supports(InputMode::Events) || supports(InputMode::Text))
+            throw Exceptions::failed_operation(CE_HERE, "A capture-capable adapter must publish the complete input poll");
         // Existing State-only adapters may still call publish_actions(). Their
         // complete poll has no ordered records and cannot claim Events/Text support.
         return std::make_shared<PollSnapshot>(PollSnapshot{state, {}});

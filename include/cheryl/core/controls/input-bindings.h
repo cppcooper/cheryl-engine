@@ -59,7 +59,7 @@ namespace CE::Input {
         std::unordered_set<DeviceBind> held_buttons_;
         std::unordered_set<DeviceId> disabled_devices_;
         std::unordered_map<DeviceBind, float> physical_axes_;
-        std::unordered_map<DeviceBind, float> physical_deltas_;
+        std::unordered_map<ActionId, float> relative_actions_;
         std::unordered_map<ActionId, PendingButton> pending_buttons_;
         std::atomic<std::shared_ptr<const ActionSnapshot>> published_{std::make_shared<ActionSnapshot>()};
 

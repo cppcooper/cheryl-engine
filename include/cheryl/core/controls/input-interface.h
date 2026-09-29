@@ -27,8 +27,9 @@ namespace CE::Input {
         [[nodiscard]] virtual DeviceId mouse_id() const = 0;
         [[nodiscard]] virtual DeviceId gamepad_id() const = 0;
         [[nodiscard]] virtual bool supports(InputMode mode) const { return mode == InputMode::State; }
+        [[nodiscard]] virtual bool supports_focus() const { return false; }
         [[nodiscard]] CaptureLease capture(InputMode mode);
-        [[nodiscard]] InputRouting& routing() { return routing_; }
+        [[nodiscard]] InputRouting& routing();
         [[nodiscard]] virtual std::shared_ptr<const PollSnapshot> poll_snapshot();
 
     protected:

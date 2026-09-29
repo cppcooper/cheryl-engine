@@ -37,6 +37,7 @@ namespace {
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
         [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
         [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
+        [[nodiscard]] bool supports_focus() const override { return true; }
     };
 }
 

@@ -2,6 +2,7 @@
 
 #include <core/controls/input-interface.h>
 #include <core/display/window-interface.h>
+#include <internals/exceptions.h>
 
 #include <memory>
 #include <stdexcept>
@@ -30,6 +31,10 @@ namespace {
         CE::Input::InputBindings bindings_;
 
     public:
+        bool advertises_events = false;
+        [[nodiscard]] bool supports(CE::Input::InputMode mode) const override {
+            return mode == CE::Input::InputMode::State || (advertises_events && mode == CE::Input::InputMode::Events);
+        }
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
             if (!window_)
@@ -61,4 +66,21 @@ TEST(input_contract, alternate_window) {
     // Once detached, polling must fail instead of delivering another event.
     input->deinitialize();
     EXPECT_THROW(input->poll(), std::logic_error);
+}
+
+TEST(input_contract, unsupported_capture_and_focus_are_explicit_failures) {
+    BufferedInput input;
+    auto state = input.capture(CE::Input::InputMode::State);
+    EXPECT_THROW((void)input.capture(CE::Input::InputMode::Events), CE::Exceptions::failed_operation);
+    EXPECT_THROW((void)input.capture(CE::Input::InputMode::Text), CE::Exceptions::failed_operation);
+    EXPECT_THROW((void)input.routing(), CE::Exceptions::failed_operation);
+}
+
+TEST(input_contract, an_adapter_cannot_claim_events_and_silently_publish_state_only) {
+    TestWindow window;
+    BufferedInput input;
+    input.advertises_events = true;
+    input.initialize(window);
+    input.poll();
+    EXPECT_THROW((void)input.poll_snapshot(), CE::Exceptions::failed_operation);
 }

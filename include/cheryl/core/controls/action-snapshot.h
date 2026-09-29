@@ -78,5 +78,6 @@ namespace CE::Input {
             const auto found = axes_.find(action);
             return found == axes_.end() ? AxisActionState{} : found->second;
         }
+        [[nodiscard]] bool has_axis(ActionId action) const { return axes_.contains(action); }
     };
 } // namespace CE::Input

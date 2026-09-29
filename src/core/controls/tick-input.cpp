@@ -62,18 +62,25 @@ namespace CE::Input {
     AxisTickState TickInput::axis(const ActionId action) const {
         const auto baseline = previous_->axis(action);
         const auto latest = latest_poll()->axis(action);
-        // An unbound relative action may disappear from a later sample. Its
-        // earlier deltas still belong to this batch and must be consumed once.
-        const bool relative = baseline.kind == AxisKind::Relative ||
-            std::ranges::any_of(polls_, [action](const auto& poll) { return poll->axis(action).kind == AxisKind::Relative; });
-        if (relative) {
+        // An unbound relative action can disappear from later samples. Keep
+        // the last explicitly reported kind rather than treating absence as Absolute.
+        std::optional<AxisKind> kind;
+        for (const auto& poll : polls_) {
+            if (!poll->has_axis(action))
+                continue;
+            const auto observed = poll->axis(action).kind;
+            if (kind && *kind != observed)
+                throw Exceptions::invalid_args(CE_HERE, "Changing an axis kind requires an input consumption boundary");
+            kind = observed;
+        }
+        if (kind.value_or(baseline.kind) == AxisKind::Relative) {
             float delta = 0.0f;
             for (const auto& poll : polls_)
                 if (const auto state = poll->axis(action); state.kind == AxisKind::Relative)
                     delta += state.current;
             return {delta, 0.0f, AxisKind::Relative};
         }
-        return {latest.current, baseline.current, AxisKind::Absolute};
+        return {latest.current, baseline.kind == AxisKind::Absolute ? baseline.current : 0.0f, AxisKind::Absolute};
     }
 
     std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const { return polls_.empty() ? previous_ : polls_.back(); }

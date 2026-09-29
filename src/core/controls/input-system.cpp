@@ -158,7 +158,15 @@ namespace CE::Input {
 
     InputSystem::InputSystem() : bindings_(manager_) {}
 
-    InputSystem::~InputSystem() { deinitialize(); }
+    InputSystem::~InputSystem() {
+        // Explicit runtime teardown reports failures. Destruction must still
+        // finish detachment without allowing a publication failure to escape.
+        try {
+            deinitialize();
+        }
+        catch (...) {
+        }
+    }
 
     void InputSystem::initialize(iWindow& window) {
         // This adapter needs the GLFW-backed window; a different backend supplies its own input adapter.
@@ -181,6 +189,10 @@ namespace CE::Input {
         }
         if (gamepad_id_ == gainput::InvalidDeviceId)
             gamepad_id_ = manager_.CreateDevice<gainput::InputDevicePad>();
+        // Map GLFW controls in their shared callback order. Gainput's per-device
+        // queue order must not erase a keyboard-modified mouse tap in this poll.
+        bindings_.use_external_state(keyboard_id_);
+        bindings_.use_external_state(mouse_id_);
 
         auto* handle = glfw_window->native_handle();
         if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
@@ -204,6 +216,8 @@ namespace CE::Input {
     void InputSystem::update() {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
+        if (callback_failure_)
+            std::rethrow_exception(std::exchange(callback_failure_, {}));
         const auto size = window_->logical_size();
         const auto width = std::max(size.width, 1);
         const auto height = std::max(size.height, 1);
@@ -215,6 +229,8 @@ namespace CE::Input {
         glfwGetCursorPos(window_->native_handle(), &x, &y);
         mouse_->queue_axis(gainput::MouseAxisX, static_cast<float>(x / width));
         mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / height));
+        bindings_.on_axis({mouse_id_, gainput::MouseAxisX}, static_cast<float>(x / width));
+        bindings_.on_axis({mouse_id_, gainput::MouseAxisY}, static_cast<float>(y / height));
         manager_.Update();
         // Gainput only notifies changes. Reconcile the pad's full state so a held button
         // survives reattachment and a disconnected pad cannot leave an action stuck.
@@ -246,6 +262,10 @@ namespace CE::Input {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before beginning a poll");
         begin_input_poll();
+        // Legacy wheel buttons are one-poll State pulses; actual scroll records
+        // and relative offsets retain all delivered movement independently.
+        bindings_.on_button({mouse_id_, gainput::MouseButtonWheelUp}, false);
+        bindings_.on_button({mouse_id_, gainput::MouseButtonWheelDown}, false);
     }
 
     void InputSystem::poll() {
@@ -258,8 +278,11 @@ namespace CE::Input {
     }
 
     void InputSystem::deinitialize() {
-        if (!window_)
+        if (!window_) {
+            discard_captured_input();
+            callback_failure_ = {};
             return;
+        }
         auto* handle = window_->native_handle();
         // Detach callbacks while the native window is still alive, then clear per-window input state.
         glfwSetKeyCallback(handle, nullptr);
@@ -271,10 +294,13 @@ namespace CE::Input {
         window_ = nullptr;
         keyboard_->reset();
         mouse_->reset();
-        bindings_.clear();
+        // Release routing/capture first: the final State publication may allocate
+        // and fail, but callbacks, focus, and pending records must already be detached.
         discard_captured_input();
         pad_axes_.clear();
         pad_buttons_.clear();
+        callback_failure_ = {};
+        bindings_.clear();
     }
 
     InputSystem* InputSystem::attached(GLFWwindow* handle) {
@@ -283,54 +309,63 @@ namespace CE::Input {
     }
 
     void InputSystem::on_key(GLFWwindow* handle, const int key, const int scancode, const int action, const int modifiers) {
-        auto* input = attached(handle);
-        if (!input)
-            return;
-        const auto phase = action == GLFW_REPEAT ? ButtonPhase::Repeat : action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release;
-        const auto button = gainput_key(key);
-        // Preserve every delivered callback, including unmapped keys and repeats,
-        // before the ordinary State path ignores repeats or condenses transitions.
-        input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard,
-                                       ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode});
-        if (action != GLFW_REPEAT)
-            input->keyboard_->queue_button(button, action == GLFW_PRESS);
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                const auto phase = action == GLFW_REPEAT ? ButtonPhase::Repeat
+                    : action == GLFW_PRESS               ? ButtonPhase::Press
+                                                         : ButtonPhase::Release;
+                const auto button = gainput_key(key);
+                // Preserve delivered callbacks before State ignores repeats or condenses transitions.
+                input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard,
+                                               ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode});
+                if (action != GLFW_REPEAT && button != gainput::InvalidDeviceButtonId) {
+                    input->bindings_.on_button({input->keyboard_id_, button}, action == GLFW_PRESS);
+                    input->keyboard_->queue_button(button, action == GLFW_PRESS);
+                }
+            });
     }
 
     void InputSystem::on_mouse_button(GLFWwindow* handle, const int button, const int action, const int modifiers) {
-        auto* input = attached(handle);
-        if (!input)
-            return;
-        const auto control = gainput_mouse_button(button);
-        input->capture_buffer().record(
-            input->mouse_id_, DeviceKind::Mouse,
-            ButtonEvent{control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release, input_modifiers(modifiers), button});
-        input->mouse_->queue_button(control, action == GLFW_PRESS);
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                const auto control = gainput_mouse_button(button);
+                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse,
+                                               ButtonEvent{control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release,
+                                                           input_modifiers(modifiers), button});
+                input->mouse_->queue_button(control, action == GLFW_PRESS);
+                input->bindings_.on_button({input->mouse_id_, control}, action == GLFW_PRESS);
+            });
     }
 
     void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) {
-        auto* input = attached(handle);
-        if (!input)
-            return;
-        input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, ScrollEvent{x, y});
-        input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollX}, static_cast<float>(x));
-        input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollY}, static_cast<float>(y));
-        if (y != 0.0)
-            input->mouse_->queue_pulse(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, ScrollEvent{x, y});
+                input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollX}, static_cast<float>(x));
+                input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollY}, static_cast<float>(y));
+                if (y != 0.0) {
+                    input->bindings_.on_button({input->mouse_id_, y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown},
+                                               true);
+                    input->mouse_->queue_pulse(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
+                }
+            });
     }
 
     void InputSystem::on_character(GLFWwindow* handle, const unsigned int codepoint) {
         if (auto* input = attached(handle))
-            input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard, TextEvent{static_cast<char32_t>(codepoint)});
+            input->receive([&] {
+                input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard, TextEvent{static_cast<char32_t>(codepoint)});
+            });
     }
 
     void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) {
-        auto* input = attached(handle);
-        if (!input)
-            return;
-        input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, PointerEvent{x, y});
-        input->bindings_.on_delta({input->mouse_id_, MouseControl::DeltaX}, static_cast<float>(x - input->cursor_x_));
-        input->bindings_.on_delta({input->mouse_id_, MouseControl::DeltaY}, static_cast<float>(y - input->cursor_y_));
-        input->cursor_x_ = x;
-        input->cursor_y_ = y;
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, PointerEvent{x, y});
+                input->bindings_.on_delta({input->mouse_id_, MouseControl::DeltaX}, static_cast<float>(x - input->cursor_x_));
+                input->bindings_.on_delta({input->mouse_id_, MouseControl::DeltaY}, static_cast<float>(y - input->cursor_y_));
+                input->cursor_x_ = x;
+                input->cursor_y_ = y;
+            });
     }
 }

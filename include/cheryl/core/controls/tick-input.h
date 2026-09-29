@@ -37,7 +37,7 @@ namespace CE::Input {
         [[nodiscard]] float delta() const { return kind == AxisKind::Relative ? current : current - previous; }
     };
 
-    /** Immutable State view for one independently scheduled simulation update.
+    /** Immutable State and ordered records for one independently scheduled update.
      * The baseline is the last consumed sample. New polls are consumed together
      * in publication order, regardless of how many transitions they contain.
      */

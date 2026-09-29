@@ -5,12 +5,29 @@
 #include <cmath>
 #include <utility>
 
+namespace {
+    float scaled_axis(const float value, const CE::Input::AxisOptions options) {
+        const float magnitude = std::abs(value);
+        float adjusted = value;
+        if (magnitude <= options.dead_zone)
+            adjusted = 0.0f;
+        else if (options.dead_zone > 0.0f)
+            adjusted = std::copysign((magnitude - options.dead_zone) / (1.0f - options.dead_zone), value);
+        const float result = adjusted * options.scale;
+        if (!std::isfinite(result))
+            throw CE::Exceptions::invalid_args(CE_HERE, "Scaled input axes must remain finite");
+        return result;
+    }
+}
+
 namespace CE::Input {
     BindingId InputBindings::bind_button(const DeviceBind control, const ActionId action) {
         return bind_button(InputChord{{control}}, action);
     }
 
     BindingId InputBindings::bind_button(InputChord chord, const ActionId action) {
+        if (relative_actions_.contains(action))
+            throw Exceptions::invalid_args(CE_HERE, "Publish pending relative input before rebinding its action as a button");
         if (chord.required.empty())
             throw Exceptions::invalid_args(CE_HERE, "A button action needs at least one physical control");
         if (std::ranges::any_of(axis_bindings_, [action](const auto& binding) { return binding.action == action; }))
@@ -25,7 +42,10 @@ namespace CE::Input {
     }
 
     BindingId InputBindings::bind_axis(InputChord modifiers, const DeviceBind axis, const ActionId action, const AxisOptions options) {
-        if (!std::isfinite(options.scale) || !std::isfinite(options.dead_zone) || options.dead_zone < 0.0f || options.dead_zone >= 1.0f)
+        if (relative_actions_.contains(action) && options.kind != AxisKind::Relative)
+            throw Exceptions::invalid_args(CE_HERE, "Publish pending relative input before changing its axis kind");
+        if (!std::isfinite(options.scale) || !std::isfinite(options.dead_zone) || options.dead_zone < 0.0f || options.dead_zone >= 1.0f ||
+            (options.kind != AxisKind::Absolute && options.kind != AxisKind::Relative))
             throw Exceptions::invalid_args(CE_HERE, "An axis requires a finite scale and a dead zone in [0, 1)");
         if (std::ranges::any_of(button_bindings_, [action](const auto& binding) { return binding.action == action; }))
             throw Exceptions::invalid_args(CE_HERE, "An action cannot be bound as both a button and an axis");
@@ -55,7 +75,7 @@ namespace CE::Input {
         held_buttons_.clear();
         disabled_devices_.clear();
         physical_axes_.clear();
-        physical_deltas_.clear();
+        relative_actions_.clear();
         pending_buttons_.clear();
         (void)publish_actions();
     }
@@ -90,20 +110,23 @@ namespace CE::Input {
     }
 
     std::unordered_map<ActionId, float> InputBindings::evaluate_axes() const {
-        std::unordered_map<ActionId, float> result;
+        // Relative activity is mapped when delivered, including motion before an
+        // unbind. Absolute values are evaluated against the final physical state.
+        std::unordered_map<ActionId, float> result = relative_actions_;
         for (const auto& binding : axis_bindings_) {
+            if (binding.options.kind == AxisKind::Relative) {
+                result.try_emplace(binding.action, 0.0f);
+                continue;
+            }
             float value = 0.0f;
             if (!disabled_devices_.contains(binding.axis.id) && chord_active(binding.modifiers)) {
-                const auto& source = binding.options.kind == AxisKind::Relative ? physical_deltas_ : physical_axes_;
-                if (const auto it = source.find(binding.axis); it != source.end())
+                if (const auto it = physical_axes_.find(binding.axis); it != physical_axes_.end())
                     value = it->second;
             }
-            const float magnitude = std::abs(value);
-            if (magnitude <= binding.options.dead_zone)
-                value = 0.0f;
-            else if (binding.options.dead_zone > 0.0f)
-                value = std::copysign((magnitude - binding.options.dead_zone) / (1.0f - binding.options.dead_zone), value);
-            result[binding.action] += value * binding.options.scale;
+            const float combined = result[binding.action] + scaled_axis(value, binding.options);
+            if (!std::isfinite(combined))
+                throw Exceptions::invalid_args(CE_HERE, "Combined input axes must remain finite");
+            result[binding.action] = combined;
         }
         return result;
     }
@@ -160,6 +183,8 @@ namespace CE::Input {
         std::unordered_map<ActionId, AxisKind> kinds;
         for (const auto& binding : axis_bindings_)
             kinds.emplace(binding.action, binding.options.kind);
+        for (const auto& [action, value] : relative_actions_)
+            kinds.try_emplace(action, AxisKind::Relative);
         for (const auto& [id, state] : prior->axes_) {
             if (state.kind == AxisKind::Absolute && state.current != 0.0f) {
                 axes.try_emplace(id, 0.0f);
@@ -174,7 +199,7 @@ namespace CE::Input {
         }
 
         pending_buttons_.clear();
-        physical_deltas_.clear();
+        relative_actions_.clear();
         std::shared_ptr<const ActionSnapshot> completed = std::move(next);
         published_.store(completed, std::memory_order_release);
         return completed;
@@ -194,7 +219,19 @@ namespace CE::Input {
     void InputBindings::on_delta(const DeviceBind binding, const float delta) {
         if (!std::isfinite(delta))
             throw Exceptions::invalid_args(CE_HERE, "Input deltas must have finite values");
-        physical_deltas_[binding] += delta;
+        if (disabled_devices_.contains(binding.id))
+            return;
+        // Apply modifiers at the observation, not at the end of a later poll:
+        // releasing Ctrl after Ctrl+wheel must not erase the earlier movement.
+        for (const auto& mapping : axis_bindings_) {
+            if (mapping.axis != binding || mapping.options.kind != AxisKind::Relative || !chord_active(mapping.modifiers))
+                continue;
+            auto& accumulated = relative_actions_[mapping.action];
+            const float combined = accumulated + scaled_axis(delta, mapping.options);
+            if (!std::isfinite(combined))
+                throw Exceptions::invalid_args(CE_HERE, "Accumulated input deltas must remain finite");
+            accumulated = combined;
+        }
     }
 
     void InputBindings::refresh_button(const ActionId action) {

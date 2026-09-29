@@ -50,6 +50,9 @@ namespace CE::Input {
      */
     class InputRouting final {
     public:
+        InputRouting() = default;
+        InputRouting(const InputRouting&) = delete;
+        InputRouting& operator=(const InputRouting&) = delete;
         [[nodiscard]] FocusLease focus(FocusId target, KeyboardRouting routing = KeyboardRouting::Exclusive);
         [[nodiscard]] std::shared_ptr<const KeyboardFocus> current() const { return state_->current.load(); }
         void clear() { state_->current.store(state_->empty); }

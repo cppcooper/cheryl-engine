@@ -83,15 +83,31 @@ namespace {
 
     public:
         std::function<void()> on_poll;
+        bool default_press = true;
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
             begin_input_poll();
             if (on_poll)
                 on_poll();
-            bindings_.on_button({keyboard_id(), test_button}, true);
+            if (default_press)
+                bindings_.on_button({keyboard_id(), test_button}, true);
             (void)publish_input();
         }
-        void deinitialize() override { window_ = nullptr; }
+        void deinitialize() override {
+            window_ = nullptr;
+            discard_captured_input();
+            bindings_.clear();
+        }
+        void key(CE::Input::ButtonPhase phase) {
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{test_button, phase});
+            if (phase != CE::Input::ButtonPhase::Repeat)
+                bindings_.on_button({keyboard_id(), test_button}, phase == CE::Input::ButtonPhase::Press);
+        }
+        void text(char32_t codepoint) {
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{codepoint});
+        }
+        [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
+        [[nodiscard]] bool supports_focus() const override { return true; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
@@ -103,6 +119,10 @@ namespace {
     class OneTickGame final : public CE::GFramework::AbstractGame {
         static constexpr CE::Input::ActionId action{17};
         CE::Input::iInputSystem& input_;
+        bool capture_;
+        CE::Input::CaptureLease events_;
+        CE::Input::CaptureLease text_;
+        CE::Input::FocusLease focus_;
 
     public:
         std::function<void()> on_tick;
@@ -111,15 +131,29 @@ namespace {
         std::atomic<bool> pressed{false};
         std::thread::id update_thread;
         CE::FramebufferSize size{};
+        std::vector<CE::Input::InputRecord> received_records;
 
-        explicit OneTickGame(CE::Input::iInputSystem& input) : input_(input) {}
+        explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false) : input_(input), capture_(capture) {}
 
-        void init() override { (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action); }
-        void deinit() override { input_.bindings().clear(); }
+        void init() override {
+            (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action);
+            if (capture_) {
+                events_ = input_.capture(CE::Input::InputMode::Events);
+                text_ = input_.capture(CE::Input::InputMode::Text);
+                focus_ = input_.routing().focus(29, CE::Input::KeyboardRouting::PassThrough);
+            }
+        }
+        void deinit() override {
+            focus_.reset();
+            text_.reset();
+            events_.reset();
+            input_.bindings().clear();
+        }
         void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
             update_thread = std::this_thread::get_id();
             size = tick.framebuffer_size;
+            received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
             if (tick.input.button(action).pressed())
                 pressed.store(true);
             if (pressed.load() && on_tick)
@@ -278,7 +312,7 @@ TEST(runtime_adapter, sequential_frame_from_completed_input) {
     // The press is observed after the first poll; a frame is prepared and presented
     // using the completed simulation state before all adapters are detached.
     EXPECT_TRUE(game.pressed.load());
-    EXPECT_GE(game.updates, 1);
+    EXPECT_EQ(game.updates, 1);
     EXPECT_EQ(game.draws, 1);
     EXPECT_EQ(game.size, (CE::FramebufferSize{640, 360}));
     EXPECT_EQ(renderer->viewport, game.size);
@@ -314,6 +348,66 @@ TEST(runtime_adapter, concurrent_simulation_presents_on_platform_thread) {
     EXPECT_TRUE(renderer->last_marked_pressed);
     EXPECT_EQ(renderer->shutdowns, 1);
     EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(runtime_adapter, sequential_and_concurrent_handoffs_preserve_routed_event_and_text_order) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        input.default_press = false;
+        bool emitted = false;
+        input.on_poll = [&] {
+            if (std::exchange(emitted, true))
+                return;
+            input.key(CE::Input::ButtonPhase::Press);
+            input.text(U'\u00e9');
+            input.key(CE::Input::ButtonPhase::Repeat);
+            input.text(U'\u00e9');
+            input.key(CE::Input::ButtonPhase::Release);
+        };
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        const CE::Input::PollingOptions polling{CE::Input::PollingPolicy::Finite, 3, std::chrono::milliseconds(1)};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, polling);
+        renderer->on_render = [&] {
+            if (renderer->last_marked_pressed)
+                runtime.stop();
+        };
+        runtime.run();
+
+        // These results are inspected only after the runtime has joined its worker.
+        ASSERT_EQ(game.received_records.size(), 5u);
+        EXPECT_EQ(std::get<CE::Input::ButtonEvent>(game.received_records[0].data).phase, CE::Input::ButtonPhase::Press);
+        EXPECT_EQ(std::get<CE::Input::TextEvent>(game.received_records[1].data).codepoint, U'\u00e9');
+        EXPECT_EQ(std::get<CE::Input::ButtonEvent>(game.received_records[2].data).phase, CE::Input::ButtonPhase::Repeat);
+        EXPECT_EQ(std::get<CE::Input::TextEvent>(game.received_records[3].data).codepoint, U'\u00e9');
+        EXPECT_EQ(std::get<CE::Input::ButtonEvent>(game.received_records[4].data).phase, CE::Input::ButtonPhase::Release);
+        for (const auto& record : game.received_records) {
+            EXPECT_EQ(record.target, 29u);
+            EXPECT_NE(record.focus_epoch, 0u);
+            EXPECT_TRUE(record.to_gameplay);
+        }
+        EXPECT_TRUE(game.pressed.load());
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
+}
+
+TEST(runtime_adapter, poll_failure_shuts_down_both_runtime_modes_and_active_capture) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        input.on_poll = [] { throw std::runtime_error("recorded poll failed"); };
+        EXPECT_THROW(runtime.run(), std::runtime_error);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
 }
 
 TEST(runtime_adapter, closing_before_an_update_still_shuts_down_adapters) {

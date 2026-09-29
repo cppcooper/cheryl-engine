@@ -5,7 +5,9 @@
 #ifndef CHERYL_SANDBOX_BUILD
 #include "input-mapper.h"
 
+#include <exception>
 #include <templates/singleton.h>
+#include <utility>
 
 class GLFWwindow;
 
@@ -36,6 +38,21 @@ namespace CE::Input {
         double cursor_y_ = 0.0;
         std::vector<float> pad_axes_;
         std::vector<bool> pad_buttons_;
+        std::exception_ptr callback_failure_;
+
+        template <typename Work>
+        void receive(Work&& work) noexcept {
+            if (callback_failure_)
+                return;
+            try {
+                std::forward<Work>(work)();
+            }
+            catch (...) {
+                // Do not unwind through GLFW's C callback stack. update() reports
+                // the first failure on the normal runtime/teardown path instead.
+                callback_failure_ = std::current_exception();
+            }
+        }
 
         static InputSystem* attached(GLFWwindow* window);
         static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
@@ -61,6 +78,7 @@ namespace CE::Input {
         [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
         [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
         [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
+        [[nodiscard]] bool supports_focus() const override { return true; }
         [[nodiscard]] bool supports(InputMode mode) const override {
             return mode == InputMode::State || mode == InputMode::Events || mode == InputMode::Text;
         }
