@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 #include <variant>
-#include <vector>
 
 namespace {
     std::shared_ptr<CE::Assets::Sprite> make_sprite() {
@@ -68,18 +67,66 @@ TEST(render_frame, published_values_do_not_follow_simulation_changes) {
 
     glm::mat4 view{1.0f};
     view[3][0] = -40.0f;
-    CE::RenderAPIs::RenderPass world;
-    world.view = view;
-    world.draws.emplace_back(CE::RenderAPIs::SpriteDraw{sprite, playback.cell(), {}});
-    std::vector<CE::RenderAPIs::RenderPass> passes;
-    passes.push_back(std::move(world));
-    const CE::RenderAPIs::RenderFrame frame(std::move(passes));
+    glm::mat4 model{1.0f};
+    model[3][0] = 5.0f;
+    CE::RenderAPIs::RenderFrame frame;
+    {
+        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        auto world = writer.begin_pass(glm::mat4{1.0f}, view);
+        CE::RenderAPIs::DrawStyle style;
+        style.model_matrix = model;
+        world.add(CE::RenderAPIs::SpriteDraw{sprite, playback.cell(), style});
+    }
 
     playback.advance(100ms);
     view[3][0] = -80.0f;
+    model[3][0] = 6.0f;
     sprite.reset();
     const auto& draw = std::get<CE::RenderAPIs::SpriteDraw>(frame.passes()[0].draws[0]);
     EXPECT_EQ(draw.cell, 1u);
     ASSERT_TRUE(draw.sprite);
     EXPECT_FLOAT_EQ(frame.passes()[0].view[3][0], -40.0f);
+    EXPECT_FLOAT_EQ(draw.style.model_matrix[3][0], 5.0f);
+}
+
+TEST(render_frame, recycled_slot_keeps_storage_and_releases_old_assets) {
+    auto sprite = make_sprite();
+    std::weak_ptr<const CE::Assets::Sprite> retained = sprite;
+    CE::RenderAPIs::RenderFrame frame;
+    const CE::RenderAPIs::RenderPass* pass_storage = nullptr;
+    const CE::RenderAPIs::DrawCommand* draw_storage = nullptr;
+    {
+        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        auto first = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+        first.reserve_draws(2);
+        auto second = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+        // Adding another pass may grow the outer vector; the first writer still addresses pass zero.
+        first.add(CE::RenderAPIs::SpriteDraw{sprite, 0, {}});
+        first.add(CE::RenderAPIs::SpriteDraw{sprite, 1, {}});
+        second.add(CE::RenderAPIs::SpriteDraw{sprite, 2, {}});
+        ASSERT_EQ(frame.passes().size(), 2u);
+        EXPECT_EQ(frame.passes()[0].draws.size(), 2u);
+        EXPECT_EQ(frame.passes()[1].draws.size(), 1u);
+        pass_storage = frame.passes().data();
+        draw_storage = frame.passes()[0].draws.data();
+    }
+
+    sprite.reset();
+    ASSERT_FALSE(retained.expired());
+    frame.recycle(); // Runtime calls this after rendering, while the graphics context is current.
+    EXPECT_TRUE(retained.expired());
+    EXPECT_TRUE(frame.passes().empty());
+
+    {
+        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        glm::mat4 next_view{1.0f};
+        next_view[3][0] = -6.0f;
+        auto first = writer.begin_pass(glm::mat4{1.0f}, next_view);
+        first.add(CE::RenderAPIs::SpriteDraw{make_sprite(), 2, {}});
+    }
+    ASSERT_EQ(frame.passes().size(), 1u);
+    EXPECT_EQ(frame.passes().data(), pass_storage);
+    EXPECT_EQ(frame.passes()[0].draws.data(), draw_storage);
+    EXPECT_EQ(frame.passes()[0].draws.size(), 1u);
+    EXPECT_FLOAT_EQ(frame.passes()[0].view[3][0], -6.0f);
 }
