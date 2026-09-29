@@ -15,7 +15,7 @@ namespace CE::Assets {
     // Uploads transient CPU data into resources owned by the selected backend.
     // Implementations must finish copying the supplied pixels and vertices before returning.
     struct ResourceProvider {
-        virtual ~ResourceProvider() = default;
+        virtual ~ResourceProvider();
         // TODO: Split CPU-side file decoding/preparation from backend upload and document thread affinity.
         // Parsing and decoding are worker-pool candidates, while an OpenGL provider must marshal context-bound
         // resource creation to the thread that owns the current rendering context.
@@ -29,10 +29,7 @@ namespace CE::Assets {
         [[nodiscard]] virtual std::shared_ptr<Geometry2D> upload_geometry(std::shared_ptr<Vertex2D> vertices,
                                                                            std::uint32_t vertex_count,
                                                                            PrimitiveTopology topology) = 0;
-        // TODO: Distinguish compiled stages from linked executable programs in the type system.
-        // Returning Shader for both lets a stage-only resource masquerade as a usable material and
-        // leaves stage-cache versus program-cache semantics ambiguous.
-        [[nodiscard]] virtual std::shared_ptr<Shader> compile_stage(const std::filesystem::path& file) = 0;
+        // A Shader is executable; the provider compiles its stages and links them before returning.
         [[nodiscard]] virtual std::shared_ptr<Shader> link_program(
             const std::vector<std::filesystem::path>& stages) = 0;
     };

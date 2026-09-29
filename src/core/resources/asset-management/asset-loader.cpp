@@ -7,7 +7,6 @@
 #include <stb_image.h>
 
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <string>
 #include <unordered_map>
@@ -148,16 +147,7 @@ namespace CE::Assets {
             FontMgr::get().load_assets({*default_font}, provider);
         }
 
-        std::vector<fs::path> shaders;
-        constexpr std::array shader_extensions{".vert", ".geo", ".frag", ".tesc", ".tese"};
-        for (const auto extension : shader_extensions) {
-            const auto& files = get_files_of_type(extension);
-            shaders.insert(shaders.end(), files.begin(), files.end());
-        }
-        // TODO: Define shader-program recipes outside this generic loader. The OpenGL provider
-        // currently compiles individual stages into the cache here, then recompiles shader2d's
-        // source files while linking the hard-coded default program below.
-        ShaderMgr::get().load_assets(shaders, provider);
+        // TODO: Describe shader-program recipes outside this generic loader.
         const auto shader2d = root_path_ / "shaders" / "shader2d";
         ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"},
                                       provider);

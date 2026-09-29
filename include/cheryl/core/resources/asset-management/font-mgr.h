@@ -14,6 +14,7 @@ namespace CE::Assets {
         ~FontMgr() override = default;
         void load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider);
         [[nodiscard]] spointer default_font() const;
+        void clear_assets() noexcept override;
 
     private:
         std::filesystem::path default_font_path_;

@@ -21,7 +21,6 @@ namespace CE::Assets {
         [[nodiscard]] std::shared_ptr<Geometry2D> upload_geometry(std::shared_ptr<Vertex2D> vertices,
                                                                     std::uint32_t vertex_count,
                                                                     PrimitiveTopology topology) override;
-        [[nodiscard]] std::shared_ptr<Shader> compile_stage(const std::filesystem::path& file) override;
         [[nodiscard]] std::shared_ptr<Shader> link_program(
             const std::vector<std::filesystem::path>& stages) override;
 

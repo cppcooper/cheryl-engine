@@ -2,14 +2,18 @@
 #include <assets/types/primitives/vertex.h>
 #include <assets/resources/geometry2d.h>
 #include <backends/opengl/gl.h>
+#include <backends/opengl/resource-lifetime.h>
+#include <array>
 #include <memory>
 #include <cstdint>
 
 namespace CE {
     struct VAO final : Assets::Geometry2D {
-        VAO(std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices, Assets::PrimitiveTopology topology);
+        VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+            std::shared_ptr<Vertex2D> vertices, uint32_t num_vertices, Assets::PrimitiveTopology topology);
 
         VAO(
+            std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
             std::shared_ptr<Vertex3D> vertices,
             uint32_t num_vertices,
             std::shared_ptr<uint32_t> indices,
@@ -26,11 +30,7 @@ namespace CE {
 
         Assets::PrimitiveTopology topology_ = Assets::PrimitiveTopology::Triangles;
 
-        // TODO: Coordinate glDeleteVertexArrays/glDeleteBuffers and Texture's glDeleteTextures with context lifetime.
-        GLuint id_vao = 0;
-        GLuint id_vbo[2] = {};
-
-    public:
-        const GLuint& id = id_vao;
+        RenderAPIs::OpenGLHandle vao_;
+        std::array<RenderAPIs::OpenGLHandle, 2> vbo_;
     };
 }

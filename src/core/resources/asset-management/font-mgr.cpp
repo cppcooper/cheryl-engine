@@ -22,4 +22,9 @@ namespace CE::Assets {
     FontMgr::spointer FontMgr::default_font() const {
         return default_font_path_.empty() ? nullptr : get_asset(default_font_path_);
     }
+
+    void FontMgr::clear_assets() noexcept {
+        FMgr::clear_assets();
+        default_font_path_.clear();
+    }
 }

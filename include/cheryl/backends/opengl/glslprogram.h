@@ -6,32 +6,17 @@
 #include <assets/resources/shader.h>
 
 #include <backends/opengl/gl.h>
+#include <backends/opengl/resource-lifetime.h>
 #include <glm.hpp>
 #include <string>
 #include <map>
 #include <cassert>
 #include <type_traits>
 
-using GLboolean = unsigned char;
-using GLbyte = signed char;
-using GLubyte = unsigned char;
-using GLshort = short;
-using GLushort = unsigned short;
-using GLint = int;
-using GLuint = unsigned int;
-using GLsizei = int;
-using GLfloat = float;
-using GLdouble = double;
-using GLchar = char;
-
 namespace CE::Assets {
     struct GLSLProgram final : Shader {
-        explicit GLSLProgram(int program_id);
-        ~GLSLProgram() override;
+        GLSLProgram(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime, GLuint program_id);
         void use() override;
-
-        void bind_attrib_location(GLuint location, const char* name) const;
-        void bind_frag_data_location(GLuint location, const char* name) const;
 
         template<glm::length_t dim>
         void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
@@ -57,14 +42,9 @@ namespace CE::Assets {
         int get_uniform_location(const char* name);
         int get_attribute_location(const char* name);
     private:
-        int id_prog;
-        bool linked;
-        // TODO: Keep uniform and attribute lookup caches separate. OpenGL gives them distinct
-        // namespaces, so identical names can legally resolve to different locations.
-        // Cache driver lookups after linking for repeated draw submissions.
-        std::map<std::string, int> locations;
-
-        bool link();
+        RenderAPIs::OpenGLHandle program_;
+        std::map<std::string, int> uniforms_;
+        std::map<std::string, int> attributes_;
 
     };
 

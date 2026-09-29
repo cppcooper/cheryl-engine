@@ -1,79 +1,16 @@
 
 #include <backends/opengl/glslprogram.h>
+#include <cstdlib>
 #include <iostream>
-#include <fstream>
-#include <filesystem>
-#include <internals/celog.h>
-#include <internals/exceptions.h>
-
-using std::ifstream;
-using std::ios;
-
-#include <sstream>
-
-using std::ostringstream;
-namespace fs = std::filesystem;
+#include <utility>
 
 namespace CE::Assets {
-    GLSLProgram::GLSLProgram(int program_id) : id_prog(program_id), linked(false) {
-        GLint status = GL_FALSE;
-        glGetProgramiv(id_prog, GL_LINK_STATUS, &status);
-        linked = status == GL_TRUE;
-    }
-
-    GLSLProgram::~GLSLProgram() {
-        // TODO: Route deletion through a retained GL context/release queue. This
-        // call requires a current context; a shader outliving it is still unsafe.
-        if (id_prog) {
-            glDeleteProgram(id_prog);
-        }
-    }
-
-    bool GLSLProgram::link() {
-        // A provider may supply either a linked program or a stage-bearing program awaiting
-        // the link step; avoid relinking an executable that is already ready to use.
-        if (linked) {
-            return true;
-        }
-        if (id_prog <= 0) {
-            return false;
-        }
-        // Link attached stages, then query the program status before permitting use().
-        glLinkProgram(id_prog);
-
-        int status = 0;
-        glGetProgramiv(id_prog, GL_LINK_STATUS, &status);
-        if (GL_FALSE == status) {
-            // Preserve the driver's diagnostic when a stage interface fails to link.
-            int length = 0;
-            glGetProgramiv(id_prog, GL_INFO_LOG_LENGTH, &length);
-
-            if (length > 0) {
-                char* c_log = new char[length];
-                int written = 0;
-                glGetProgramInfoLog(id_prog, length, &written, c_log);
-                CELog::error("An error happened trying to link. details: {}", c_log);
-                delete[] c_log;
-            }
-            return false;
-        }
-        linked = true;
-        return true;
-    }
+    GLSLProgram::GLSLProgram(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+                             const GLuint program_id) :
+        program_(std::move(lifetime), RenderAPIs::GLResourceKind::Program, program_id) {}
 
     void GLSLProgram::use() {
-        if (!link()) {
-            throw Exceptions::runtime_exception(CE_HERE, "Cannot use an unlinked shader program");
-        }
-        glUseProgram(id_prog);
-    }
-
-    void GLSLProgram::bind_attrib_location(GLuint location, const char* name) const {
-        glBindAttribLocation(id_prog, location, name);
-    }
-
-    void GLSLProgram::bind_frag_data_location(GLuint location, const char* name) const {
-        glBindFragDataLocation(id_prog, location, name);
+        glUseProgram(program_.id());
     }
 
     void GLSLProgram::print_active_uniforms() const {
@@ -82,6 +19,7 @@ namespace CE::Assets {
         GLsizei written;
         GLenum type;
 
+        const auto id_prog = program_.id();
         glGetProgramiv(id_prog, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
         glGetProgramiv(id_prog, GL_ACTIVE_UNIFORMS, &nUniforms);
 
@@ -104,6 +42,7 @@ namespace CE::Assets {
         GLint written, size, maxLength, nAttribs;
         GLenum type;
 
+        const auto id_prog = program_.id();
         glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxLength);
         glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTES, &nAttribs);
 
@@ -122,26 +61,18 @@ namespace CE::Assets {
 
     int GLSLProgram::get_uniform_location(const char* name) {
         // Query OpenGL once after linking, caching valid locations for repeated draw calls.
-        int result = -1;
-        if (linked) {
-            if (locations.contains(name)) {
-                return locations[name];
-            }
-            result = glGetUniformLocation(id_prog, name);
-            if (result != -1) locations[name] = result;
-        }
+        const auto id_prog = program_.id();
+        if (const auto it = uniforms_.find(name); it != uniforms_.end()) return it->second;
+        const int result = glGetUniformLocation(id_prog, name);
+        uniforms_.emplace(name, result);
         return result;
     }
 
     int GLSLProgram::get_attribute_location(const char* name) {
-        int result = -1;
-        if (linked) {
-            if (locations.contains(name)) {
-                return locations[name];
-            }
-            result = glGetAttribLocation(id_prog, name);
-            if (result != -1) locations[name] = result;
-        }
+        const auto id_prog = program_.id();
+        if (const auto it = attributes_.find(name); it != attributes_.end()) return it->second;
+        const int result = glGetAttribLocation(id_prog, name);
+        attributes_.emplace(name, result);
         return result;
     }
 }

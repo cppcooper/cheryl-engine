@@ -4,8 +4,24 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/gl.h>
+#include <memory>
+#include <utility>
 
 namespace CE::Assets {
+    namespace {
+        RenderAPIs::OpenGLHandle create_texture_handle(
+            std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime) {
+            GLuint id = 0;
+            glGenTextures(1, &id);
+            try {
+                return {std::move(lifetime), RenderAPIs::GLResourceKind::Texture, id};
+            } catch (...) {
+                if (id) glDeleteTextures(1, &id);
+                throw;
+            }
+        }
+    }
+
     template<typename T>
     void upload(const T* bits, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
@@ -43,18 +59,18 @@ namespace CE::Assets {
         }
     }
 
-    Texture::Texture(const char* file, int slot, bool use_mipmaps, bool pixelate, int wrap_opt)
+    Texture::Texture(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime, const char* file,
+                     int slot, bool use_mipmaps, bool pixelate, int wrap_opt)
     : unit(slot) {
         // Decode files into a consistent four-channel upload even when the
         // source file stores a different number of channels.
         int channels(0);
 
-        stbi_uc* bits = stbi_load(file,
-            &width, &height, &channels, 4);
-        if (bits == nullptr || width <= 0 || height <= 0) {
+        std::unique_ptr<stbi_uc, decltype(&stbi_image_free)> bits(stbi_load(file, &width, &height, &channels, 4),
+                                                                    &stbi_image_free);
+        if (!bits || width <= 0 || height <= 0) {
             CELog::error("ERROR loading file: {}", file);
-            if (bits == nullptr) CELog::critical("bits is nullptr");
-            stbi_image_free(bits);
+            if (!bits) CELog::critical("bits is nullptr");
             if (width <= 0) CELog::error("width must be a positive non-zero integer");
             if (height <= 0) CELog::error("height must be a positive non-zero integer");
             throw Exceptions::runtime_exception(CE_HERE, "A problem was encountered when loading an image from disk.");
@@ -62,37 +78,27 @@ namespace CE::Assets {
 
         // OpenGL copies stb's decoded bytes during upload; release that CPU
         // buffer after the texture is populated.
-        glGenTextures(1, &id);
+        handle_ = create_texture_handle(std::move(lifetime));
         bind();
-        upload(bits, width, height, unit, use_mipmaps, pixelate, wrap_opt,GL_RGBA);
-        stbi_image_free(bits);
+        upload(bits.get(), width, height, unit, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
         unbind();
     }
 
-    Texture::Texture(const unsigned char* bitmap_data, int width, int height, GLuint slot,
+    Texture::Texture(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+                     const unsigned char* bitmap_data, int width, int height, GLuint slot,
         bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt)
     : width(width), height(height), unit(slot) {
 
         // The font path supplies an already baked alpha atlas; upload() applies
         // its one-channel swizzle without running a file decoder.
-        glGenTextures(1, &id);
+        handle_ = create_texture_handle(std::move(lifetime));
         bind();
         upload(bitmap_data, width, height, unit, use_mipmaps, pixelate, wrap_opt, fmt);
         unbind();
     }
 
-    // Texture::Texture(unsigned char *bitmap, int width, int height, int slot,
-    //     bool mipmaps, bool pixelate, int wrap_opt, int fmt) {
-    //
-    //     // Generate and bind the texture
-    //     glGenTextures(1, &id);
-    //     bind();
-    //     upload(bitmap, width, height, slot, mipmaps, pixelate, wrap_opt, fmt);
-    //     unbind();
-    // }
-
-
     void Texture::bind() const {
+        const auto id = handle_.id();
         glActiveTexture(unit);
         glBindTexture(GL_TEXTURE_2D, id);
     }

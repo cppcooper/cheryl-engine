@@ -15,10 +15,8 @@
 namespace CE::Assets {
     struct ResourceProvider;
 
-    // Singleton asset managers use one resource provider for their process lifetime.
-    // TODO: Give this binding an explicit cache/resource lifecycle. The process-global provider
-    // pointer never resets, so backend replacement, multiple providers, and coordinated GPU
-    // teardown cannot currently be represented by the cache model.
+    // Singleton asset managers share one provider at a time. Its destruction clears
+    // cached handles and releases the binding before another provider can load.
     // TODO: Include provider binding in the concurrency contract. bound_provider_ is unsynchronized, so
     // concurrent first loads or backend/cache lifecycle changes would race even before asset maps are touched.
     class ProviderBoundCache {
@@ -27,6 +25,12 @@ namespace CE::Assets {
             if (bound_provider_ && bound_provider_ != &provider)
                 throw Exceptions::failed_operation(
                     CE_HERE, "Asset caches are already bound to another resource provider");
+        }
+        [[nodiscard]] static bool is_bound_to(const ResourceProvider& provider) noexcept {
+            return bound_provider_ == &provider;
+        }
+        static void release_provider(const ResourceProvider& provider) noexcept {
+            if (is_bound_to(provider)) bound_provider_ = nullptr;
         }
 
     protected:
@@ -61,6 +65,7 @@ namespace CE::Assets {
         }
         [[nodiscard]] bool contains(const Key& key) const { return loaded_assets.contains(key); }
         [[nodiscard]] std::size_t size() const { return loaded_assets.size(); }
+        virtual void clear_assets() noexcept { loaded_assets.clear(); }
 
     protected:
         /** Reserve raw slots for selective construction with emplace(). */

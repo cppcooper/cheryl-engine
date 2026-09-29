@@ -172,7 +172,6 @@ namespace {
                 uploaded_geometry.assign(vertices.get(), vertices.get() + count);
             return geometry;
         }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> compile_stage(const std::filesystem::path&) override { return shader; }
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
             return shader;
         }
