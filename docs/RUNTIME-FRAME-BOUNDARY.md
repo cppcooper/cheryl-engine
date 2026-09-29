@@ -15,6 +15,19 @@ scheduler may put them on separate threads without changing their meaning.
 `GameRuntime` will own that scheduling and the handoff, while platform event
 polling and graphics-context use must respect their respective thread affinity.
 
+The caller of `GameRuntime::run()` owns platform polling and the graphics context
+in both modes. Sequential mode polls, updates, prepares, renders, and presents on
+that thread. Concurrent mode runs only `update()` and `prepare_render_frame()` on
+one simulation worker; it passes completed input polls and framebuffer dimensions
+as tick values instead of giving that worker access to a live window. A resize
+callback runs on the platform thread and must not mutate simulation state.
+`init()` runs after input and graphics initialization but before starting the
+worker, so it can register bindings and load GPU assets. After the worker joins
+and frames are recycled, `deinit()` runs while the graphics context is current.
+Future resource uploads requested during simulation need a graphics-thread queue.
+`stop()` uses an atomic request; the concurrent scheduler must wake any waits
+when that request is made.
+
 `AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
 an update. The runtime lends it a free, reusable `RenderFrame` slot through the
 writer. The game fills ordered passes with copied projection/view matrices and
@@ -46,5 +59,5 @@ needs to stop mutating the shared font's message and angle.
 `OpenGLRenderer::render()` and `GameRuntime::run()` remain skeletons. Implement
 the renderer's ordered passes, material/camera binding, and stateless text path;
 then choose a frame-slot handoff and a graphics-context-safe destruction policy
-for assets retained by frames. The thread and service requirements of game
-`init()`/`deinit()` also need definition before a concurrent runtime calls them.
+for assets retained by frames. The clock cadence and the policy for input polls
+accumulating while simulation is busy also need to be defined with the scheduler.

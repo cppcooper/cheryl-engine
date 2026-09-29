@@ -10,7 +10,9 @@ namespace CE::GFramework {
      * its logic without a prescribed controller or state-machine architecture.
      * Drawing does not run on this interface. After update(), the runtime lends a free
      * frame slot to prepare_render_frame() on the simulation thread, then publishes it.
-     * The thread and service requirements of init()/deinit() also remain to be defined.
+     * init() and deinit() run on the platform/graphics thread, before the worker starts and
+     * after it joins. In concurrent mode, update() and prepare_render_frame() run only on that
+     * worker. The game must not change input bindings or upload GPU resources from the worker.
      */
     struct AbstractGame {
         virtual ~AbstractGame() = default;
