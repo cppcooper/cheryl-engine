@@ -23,5 +23,6 @@ namespace CE::RenderAPIs {
 
     private:
         iOpenGLContext& context_;
+        bool initialized_ = false;
     };
 }

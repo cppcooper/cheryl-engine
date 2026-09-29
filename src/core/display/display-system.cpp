@@ -10,10 +10,26 @@
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <mutex>
 
 namespace CE {
     namespace {
         std::atomic<std::uint64_t> next_monitor_id{1};
+        std::mutex glfw_lifetime_mutex;
+        std::size_t glfw_displays = 0;
+    }
+
+    DisplaySystem::GlfwLibrary::GlfwLibrary() {
+        std::lock_guard lock(glfw_lifetime_mutex);
+        if (glfw_displays == 0 && glfwInit() != GLFW_TRUE)
+            throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW");
+        ++glfw_displays;
+    }
+
+    DisplaySystem::GlfwLibrary::~GlfwLibrary() {
+        std::lock_guard lock(glfw_lifetime_mutex);
+        if (--glfw_displays == 0)
+            glfwTerminate();
     }
 
     Monitor DisplaySystem::create_primary_monitor() {
@@ -64,7 +80,12 @@ namespace CE {
 
     Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const int width,
                                          const int height) {
-        auto window = std::unique_ptr<Window>(new Window(monitor, native_monitor(monitor), mode, width, height));
+        return create_window(monitor, mode, width, height, "");
+    }
+
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const int width,
+                                         const int height, const std::string& title) {
+        auto window = std::unique_ptr<Window>(new Window(monitor, native_monitor(monitor), mode, width, height, title));
         auto* result = window.get();
         windows_.push_back(std::move(window));
         return result;

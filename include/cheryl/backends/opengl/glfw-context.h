@@ -8,11 +8,11 @@ namespace CE {
 
 namespace CE::RenderAPIs {
     /** Adapts a display-owned GLFW window to the OpenGL presentation contract.
-     * GLFW initialization and window creation belong to platform bootstrap, not here.
+     * DisplaySystem owns GLFW and the window; this adapter borrows the window.
      */
     class GlfwOpenGLContext final : public iOpenGLContext {
     public:
-        explicit GlfwOpenGLContext(Window& window);
+        explicit GlfwOpenGLContext(Window& window, int swap_interval = 1);
 
         void make_current() override;
         void release_current() override;
@@ -21,5 +21,6 @@ namespace CE::RenderAPIs {
 
     private:
         Window& window_;
+        int swap_interval_;
     };
 }

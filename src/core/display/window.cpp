@@ -8,15 +8,18 @@
 #endif
 #include <GLFW/glfw3.h>
 #include <random>
+#include <string>
 
-const char* generate_title();
-GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int);
+namespace {
+    const char* generate_title();
+    GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int, const std::string&);
+}
 
 namespace CE {
     Window::Window(const Monitor& monitor, GLFWmonitor* native_monitor, const Enum::window_mode mode, const int width,
-                   const int height) :
+                   const int height, const std::string& title) :
         logical_size_(width, height), window_mode_(mode), monitor_(monitor), glfw_monitor_(native_monitor),
-        glfw_window_(create_native_window(native_monitor, mode, width, height)), windowed_width_(width),
+        glfw_window_(create_native_window(native_monitor, mode, width, height, title)), windowed_width_(width),
         windowed_height_(height) {
         glfwGetMonitorPos(glfw_monitor_, &windowed_x_, &windowed_y_);
         if (mode == Enum::window_mode::NORMAL) {
@@ -131,70 +134,71 @@ namespace CE {
     }
 }
 
-namespace Enum = CE::Enum;
-GLFWwindow* create_native_window(GLFWmonitor* monitor, const Enum::window_mode mode, const int width,
-                                 const int height) {
-    if (width <= 0 || height <= 0)
-        throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
-    if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS &&
-        mode != Enum::window_mode::FULLSCREEN)
-        throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+namespace {
+    GLFWwindow* create_native_window(GLFWmonitor* monitor, const CE::Enum::window_mode mode, const int width,
+                                     const int height, const std::string& title) {
+        if (width <= 0 || height <= 0)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+        if (mode != CE::Enum::window_mode::NORMAL && mode != CE::Enum::window_mode::BORDERLESS &&
+            mode != CE::Enum::window_mode::FULLSCREEN)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
-    // The initial mode decides both decoration and whether GLFW creates the
-    // window directly on the monitor; later switches use Window::set_mode.
-    glfwWindowHint(GLFW_DECORATED, mode == Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
-    auto* fullscreen_monitor = mode == Enum::window_mode::FULLSCREEN ? monitor : nullptr;
-    auto* native = glfwCreateWindow(width, height, generate_title(), fullscreen_monitor, nullptr);
-    if (!native)
-        throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
-    return native;
-}
+        // The initial mode decides decoration and whether GLFW attaches the monitor.
+        glfwWindowHint(GLFW_DECORATED, mode == CE::Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
+        auto* fullscreen_monitor = mode == CE::Enum::window_mode::FULLSCREEN ? monitor : nullptr;
+        auto* native = glfwCreateWindow(width, height, title.empty() ? generate_title() : title.c_str(),
+                                        fullscreen_monitor, nullptr);
+        if (!native)
+            throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
+        return native;
+    }
 
     const char* generate_title() {
         std::random_device rng;
         std::uniform_int_distribution<> uid(1, 20);
         switch (uid(rng)) {
-            case 1:
-                return "One is the loneliest number.";
-            case 2:
-                return "Two's company, three's a crowd.";
-            case 3:
-                return "Three's a charm!";
-            case 4:
-                return "Four-leaf clover, lucky number!";
-            case 5:
-                return "High five!";
-            case 6:
-                return "Six feet under.";
-            case 7:
-                return "Lucky number seven!";
-            case 8:
-                return "Eight ball, corner pocket.";
-            case 9:
-                return "Nine lives, like a cat!";
-            case 10:
-                return "Perfect ten!";
-            case 11:
-                return "Eleven pipers piping!";
-            case 12:
-                return "Twelve days of Christmas!";
-            case 13:
-                return "Unlucky thirteen!";
-            case 14:
-                return "Fourteen karat gold.";
-            case 15:
-                return "Fifteen minutes of fame!";
-            case 16:
-                return "Sweet sixteen!";
-            case 17:
-                return "Seventeen candles on the cake.";
-            case 18:
-                return "Eighteen holes on the golf course.";
-            case 19:
-                return "Nineteen is prime!";
-            case 20:
-                return "Twenty questions!";
-            default:
-                return "Out of range!";
+        case 1:
+            return "One is the loneliest number.";
+        case 2:
+            return "Two's company, three's a crowd.";
+        case 3:
+            return "Three's a charm!";
+        case 4:
+            return "Four-leaf clover, lucky number!";
+        case 5:
+            return "High five!";
+        case 6:
+            return "Six feet under.";
+        case 7:
+            return "Lucky number seven!";
+        case 8:
+            return "Eight ball, corner pocket.";
+        case 9:
+            return "Nine lives, like a cat!";
+        case 10:
+            return "Perfect ten!";
+        case 11:
+            return "Eleven pipers piping!";
+        case 12:
+            return "Twelve days of Christmas!";
+        case 13:
+            return "Unlucky thirteen!";
+        case 14:
+            return "Fourteen karat gold.";
+        case 15:
+            return "Fifteen minutes of fame!";
+        case 16:
+            return "Sweet sixteen!";
+        case 17:
+            return "Seventeen candles on the cake.";
+        case 18:
+            return "Eighteen holes on the golf course.";
+        case 19:
+            return "Nineteen is prime!";
+        case 20:
+            return "Twenty questions!";
+        default:
+            return "Out of range!";
         }
     }
+}

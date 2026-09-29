@@ -5,6 +5,10 @@ shutdown. The application chooses a compatible platform, graphics context,
 renderer, resources, and input adapter. The renderer uses the selected context
 and render target; it does not own the display system or read live game state.
 The presentation surface presents a completed frame.
+The GLFW/OpenGL factory accepts the game's window configuration, constructs the
+display and window, and lends the window to its presentation context. The display
+owns the GLFW library lifetime; renderer initialization makes the context current
+and loads OpenGL entry points before game initialization uploads assets.
 
 Each platform poll produces an `ActionSnapshot`. Each simulation tick receives
 `TickInput` assembled from zero or more polls since the previous tick. Simulation produces
