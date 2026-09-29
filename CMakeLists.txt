@@ -39,6 +39,7 @@ message("Library sources: ${LIB_SOURCES}")
 message("Common test sources: ${TEST_SOURCES}")
 
 # dependencies
+find_package(Threads REQUIRED)
 set(BACKWARD_SHARED STATIC)
 set(SPDLOG_USE_STD_FORMAT ON)
 set(GLM_ENABLE_EXPERIMENTAL ON)
@@ -84,6 +85,7 @@ endif()
 
 # library
 add_library(${LIB_TARGET} STATIC ${LIB_SOURCES})
+target_link_libraries(${LIB_TARGET} PUBLIC Threads::Threads)
 if(CHERYL_SANDBOX_BUILD)
     target_compile_definitions(${LIB_TARGET} PUBLIC CHERYL_SANDBOX_BUILD=1)
 endif()
@@ -93,6 +95,7 @@ add_dependencies(${LIB_TARGET} gl46)
 include(GoogleTest)
 enable_testing()
 add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
+target_link_libraries(${TEST_TARGET} PRIVATE Threads::Threads)
 TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
 target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

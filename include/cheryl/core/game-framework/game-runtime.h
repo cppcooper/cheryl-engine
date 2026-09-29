@@ -1,6 +1,8 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 namespace CE::Engine {
     class EngineContext;
@@ -16,8 +18,8 @@ namespace CE::GFramework {
      * published render state, never the game's live mutable simulation state. These boundaries
      * apply in either mode. The calling thread owns platform polling and graphics operations;
      * concurrent mode gives update and frame preparation to one simulation worker.
-     * Sequential mode uses one recycled frame; concurrent frame handoff remains
-     * to be implemented.
+     * Sequential mode uses one recycled frame. Concurrent mode uses three slots
+     * and renders the newest complete frame available at each handoff.
      */
     class GameRuntime final {
     public:
@@ -34,5 +36,7 @@ namespace CE::GFramework {
         AbstractGame& game_;
         RunMode mode_;
         std::atomic<bool> stop_requested_{false};
+        std::mutex scheduler_mutex_;
+        std::condition_variable scheduler_wake_;
     };
 }

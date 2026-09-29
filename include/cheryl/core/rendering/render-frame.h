@@ -79,8 +79,8 @@ namespace CE::RenderAPIs {
 
         [[nodiscard]] std::span<const RenderPass> passes() const { return {passes_.data(), active_passes_}; }
 
-        // After rendering finishes, release command handles on the graphics thread
-        // while its context is current, then return this slot to the simulation.
+        // After rendering or supersession, release command handles on the graphics
+        // thread while its context is current, then return the slot to simulation.
         void recycle() {
             for (std::size_t i = 0; i < active_passes_; ++i) passes_[i].draws.clear();
             active_passes_ = 0;
