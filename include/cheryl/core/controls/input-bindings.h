@@ -22,6 +22,7 @@ namespace CE::Input {
     struct AxisOptions {
         float scale = 1.0f; // A negative scale inverts the input.
         float dead_zone = 0.0f; // Values inside the zone become zero; the rest is rescaled.
+        AxisKind kind = AxisKind::Absolute;
     };
 
     using BindingId = std::uint64_t;
@@ -46,8 +47,9 @@ namespace CE::Input {
 
         struct PendingButton {
             bool active = false;
-            bool pressed = false;
-            bool released = false;
+            // Semantic transitions are retained until publication. State assigns
+            // them the completed poll's observation time, including same-poll taps.
+            std::vector<bool> transitions;
         };
 
         BindingId next_binding_ = 1;
@@ -56,6 +58,7 @@ namespace CE::Input {
         std::vector<AxisBinding> axis_bindings_;
         std::unordered_set<DeviceBind> held_buttons_;
         std::unordered_map<DeviceBind, float> physical_axes_;
+        std::unordered_map<DeviceBind, float> physical_deltas_;
         std::unordered_map<ActionId, PendingButton> pending_buttons_;
         std::atomic<std::shared_ptr<const ActionSnapshot>> published_{std::make_shared<ActionSnapshot>()};
 
@@ -78,6 +81,8 @@ namespace CE::Input {
 
         // Backends report current physical state; prior values are tracked here.
         void on_axis(DeviceBind binding, float value);
+        // Relative motion accumulates until publication; it does not persist into later polls.
+        void on_delta(DeviceBind binding, float delta);
         void on_button(DeviceBind binding, bool held);
 
         // Call after the backend finishes one poll. Each handle is a complete stable sample, not live input.

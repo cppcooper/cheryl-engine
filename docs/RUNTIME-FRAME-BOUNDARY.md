@@ -10,10 +10,10 @@ display and window, and lends the window to its presentation context. The displa
 owns the GLFW library lifetime; renderer initialization makes the context current
 and loads OpenGL entry points before game initialization uploads assets.
 
-Each platform poll produces a timestamped `ActionSnapshot`. Unchanged polls need
-no handoff. The runtime divides elapsed time at observed input changes; each
-`update()` sees one input state and the seconds spent in that state. Several
-updates can precede one frame preparation when polls accumulated. Simulation
+Each platform poll produces a timestamped `ActionSnapshot`. Each independently
+scheduled `update()` consumes the complete pending batch in one `TickInput`.
+Input supplies edges, counts, and observed hold durations; it never subdivides
+simulation time or schedules extra updates. Simulation
 produces complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
 This handoff implements the `State` capture channel only. Planned ordered
@@ -72,8 +72,8 @@ shared glyph data without storing the message or angle on the font.
 `OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
 camera, and reads font glyphs without mutating shared assets. GPU handles are
 retired through the renderer's context-owned release queue. Sequential runtime
-polls once per frame, advances input intervals from a monotonic clock after
-initialization, prepares and recycles one frame, and tears down game, input, and graphics in that order even
+polls once per frame, summarizes State activity and elapsed time from a monotonic
+clock after initialization, prepares and recycles one frame, and tears down game, input, and graphics in that order even
 after a loop failure. Concurrent runtime polls on the platform thread at about
 60 Hz, including while simulation is busy, and swaps the ordered changed polls
 into the worker at each tick boundary. The worker ticks at the same nominal

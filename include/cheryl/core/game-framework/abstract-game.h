@@ -8,7 +8,7 @@ namespace CE::GFramework {
      * update() receives one input state and its elapsed time, regardless of whether
      * simulation runs on the platform thread or on a worker. The game is free to organize
      * its logic without a prescribed controller or state-machine architecture.
-     * Drawing does not run on this interface. After advancing input intervals,
+     * Drawing does not run on this interface. After advancing simulation,
      * the runtime may lend a free frame slot to prepare_render_frame() on the
      * simulation thread, then publish it.
      * Concurrent mode can skip preparation when all slots are occupied; later updates

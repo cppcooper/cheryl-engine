@@ -3,9 +3,15 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace CE::Input {
+    using InputClock = std::chrono::steady_clock;
+    using InputDuration = std::chrono::duration<double>;
+    enum class AxisKind { Absolute, Relative };
+
     /** Game-defined semantic identifier. A game's enums can be converted explicitly at its boundary. */
     struct ActionId {
         std::uint32_t value;
@@ -26,6 +32,10 @@ namespace CE::Input {
         bool previous = false;
         bool pressed_this_poll = false;
         bool released_this_poll = false;
+        std::uint64_t press_count = 0;
+        std::uint64_t release_count = 0;
+        std::optional<InputClock::time_point> hold_started_at;
+        std::vector<InputDuration> completed_holds;
 
         [[nodiscard]] bool held() const { return current; }
         [[nodiscard]] bool pressed() const { return pressed_this_poll; }
@@ -35,8 +45,9 @@ namespace CE::Input {
     struct AxisActionState {
         float current = 0.0f;
         float previous = 0.0f;
+        AxisKind kind = AxisKind::Absolute;
 
-        [[nodiscard]] float delta() const { return current - previous; }
+        [[nodiscard]] float delta() const { return kind == AxisKind::Relative ? current : current - previous; }
     };
 
     /** The complete set of semantic actions from one poll. Copies/handles stay stable after later polls. */

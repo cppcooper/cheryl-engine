@@ -29,6 +29,10 @@ namespace CE::Input {
             throw Exceptions::invalid_args(CE_HERE, "An axis requires a finite scale and a dead zone in [0, 1)");
         if (std::ranges::any_of(button_bindings_, [action](const auto& binding) { return binding.action == action; }))
             throw Exceptions::invalid_args(CE_HERE, "An action cannot be bound as both a button and an axis");
+        if (std::ranges::any_of(axis_bindings_, [action, options](const auto& binding) {
+                return binding.action == action && binding.options.kind != options.kind;
+            }))
+            throw Exceptions::invalid_args(CE_HERE, "An axis action cannot combine absolute and relative bindings");
         const BindingId id = next_binding_++;
         axis_bindings_.push_back({id, std::move(modifiers), axis, action, options});
         return id;
@@ -50,6 +54,7 @@ namespace CE::Input {
         axis_bindings_.clear();
         held_buttons_.clear();
         physical_axes_.clear();
+        physical_deltas_.clear();
         pending_buttons_.clear();
         (void)publish_actions();
     }
@@ -78,7 +83,8 @@ namespace CE::Input {
         for (const auto& binding : axis_bindings_) {
             float value = 0.0f;
             if (chord_active(binding.modifiers)) {
-                if (const auto it = physical_axes_.find(binding.axis); it != physical_axes_.end())
+                const auto& source = binding.options.kind == AxisKind::Relative ? physical_deltas_ : physical_axes_;
+                if (const auto it = source.find(binding.axis); it != source.end())
                     value = it->second;
             }
             const float magnitude = std::abs(value);
@@ -94,6 +100,8 @@ namespace CE::Input {
     std::shared_ptr<const ActionSnapshot> InputBindings::publish_actions(
         const std::chrono::steady_clock::time_point observed_at) {
         const auto prior = action_snapshot();
+        if (observed_at < prior->observed_at())
+            throw Exceptions::invalid_args(CE_HERE, "Input poll observation times must be monotonic");
         auto next = std::make_shared<ActionSnapshot>();
         next->poll_ = next_poll_++;
         next->observed_at_ = observed_at;
@@ -105,25 +113,58 @@ namespace CE::Input {
             if (state.current)
                 buttons.try_emplace(id, false);
         }
+        for (const auto& [id, pending] : pending_buttons_)
+            buttons.try_emplace(id, false);
         for (const auto& [id, current] : buttons) {
-            const bool previous = prior->button(id).current;
-            const auto pending = pending_buttons_.find(id);
-            const bool pressed = pending != pending_buttons_.end() && pending->second.pressed;
-            const bool released = pending != pending_buttons_.end() && pending->second.released;
-            next->buttons_.emplace(id,
-                                   ButtonActionState{current, previous, pressed || (current && !previous),
-                                                     released || (!current && previous)});
+            const auto previous = prior->button(id);
+            ButtonActionState state;
+            state.current = previous.current;
+            state.previous = previous.current;
+            state.hold_started_at = previous.hold_started_at;
+            const auto transition = [&](const bool held) {
+                if (held == state.current)
+                    return;
+                state.current = held;
+                if (held) {
+                    ++state.press_count;
+                    state.hold_started_at = observed_at;
+                }
+                else {
+                    ++state.release_count;
+                    state.completed_holds.emplace_back(observed_at - state.hold_started_at.value_or(observed_at));
+                    state.hold_started_at.reset();
+                }
+            };
+            if (const auto pending = pending_buttons_.find(id); pending != pending_buttons_.end())
+                for (const bool held : pending->second.transitions)
+                    transition(held);
+            // Binding installation/removal also changes semantic state without
+            // requiring another physical notification from the device.
+            transition(current);
+            state.pressed_this_poll = state.press_count != 0;
+            state.released_this_poll = state.release_count != 0;
+            next->buttons_.emplace(id, std::move(state));
         }
 
         auto axes = evaluate_axes();
+        std::unordered_map<ActionId, AxisKind> kinds;
+        for (const auto& binding : axis_bindings_)
+            kinds.emplace(binding.action, binding.options.kind);
         for (const auto& [id, state] : prior->axes_) {
-            if (state.current != 0.0f)
+            if (state.kind == AxisKind::Absolute && state.current != 0.0f) {
                 axes.try_emplace(id, 0.0f);
+                kinds.try_emplace(id, state.kind);
+            }
         }
-        for (const auto& [id, current] : axes)
-            next->axes_.emplace(id, AxisActionState{current, prior->axis(id).current});
+        for (const auto& [id, current] : axes) {
+            const auto kind = kinds.at(id);
+            const auto previous = prior->axis(id);
+            next->axes_.emplace(id, AxisActionState{current,
+                kind == AxisKind::Absolute && previous.kind == kind ? previous.current : 0.0f, kind});
+        }
 
         pending_buttons_.clear();
+        physical_deltas_.clear();
         std::shared_ptr<const ActionSnapshot> completed = std::move(next);
         published_.store(completed, std::memory_order_release);
         return completed;
@@ -132,10 +173,18 @@ namespace CE::Input {
     std::shared_ptr<const ActionSnapshot> InputBindings::action_snapshot() const { return published_.load(std::memory_order_acquire); }
 
     void InputBindings::on_axis(const DeviceBind binding, const float value) {
+        if (!std::isfinite(value))
+            throw Exceptions::invalid_args(CE_HERE, "Input axes must have finite values");
         if (value == 0.0f)
             physical_axes_.erase(binding);
         else
             physical_axes_.insert_or_assign(binding, value);
+    }
+
+    void InputBindings::on_delta(const DeviceBind binding, const float delta) {
+        if (!std::isfinite(delta))
+            throw Exceptions::invalid_args(CE_HERE, "Input deltas must have finite values");
+        physical_deltas_[binding] += delta;
     }
 
     void InputBindings::refresh_button(const ActionId action) {
@@ -148,10 +197,7 @@ namespace CE::Input {
         if (active == pending.active)
             return;
         pending.active = active;
-        if (active)
-            pending.pressed = true;
-        else
-            pending.released = true;
+        pending.transitions.push_back(active);
     }
 
     void InputBindings::on_button(const DeviceBind control, const bool held) {

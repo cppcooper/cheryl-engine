@@ -9,7 +9,7 @@
 #endif
 
 #include <core/controls/input-bindings.h>
-#include <core/controls/input-timeline.h>
+#include <core/controls/input-accumulator.h>
 #include <core/controls/tick-input.h>
 
 #include <chrono>
@@ -224,91 +224,160 @@ TEST(tick_input, held_values_without_new_polls) {
     EXPECT_FLOAT_EQ(next.axis(look).delta(), 0.0f);
 }
 
-TEST(input_timeline, a_delayed_tick_moves_only_while_the_key_was_observed_held) {
+TEST(input_state, a_delayed_update_receives_the_whole_tap_and_its_duration) {
     using namespace std::chrono_literals;
-    using Clock = std::chrono::steady_clock;
-    const auto start = Clock::now();
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
     CE::Input::InputBindings bindings;
     (void)bindings.bind_button(key, move);
-    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
 
     bindings.on_button(key, true);
     auto press = bindings.publish_actions(start + 20ms);
     bindings.on_button(key, false);
     auto release = bindings.publish_actions(start + 80ms);
-    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{press, release};
-    struct Step { double seconds; CE::Input::ButtonTickState button; };
-    std::vector<Step> steps;
-    timeline.advance(start + 100ms, changes, [&](double seconds, const CE::Input::TickInput& input) {
-        steps.push_back({seconds, input.button(move)});
-    });
 
-    ASSERT_EQ(steps.size(), 3u);
-    EXPECT_NEAR(steps[0].seconds, 0.020, 1e-9);
-    EXPECT_FALSE(steps[0].button.held());
-    EXPECT_NEAR(steps[1].seconds, 0.060, 1e-9);
-    EXPECT_TRUE(steps[1].button.held());
-    EXPECT_TRUE(steps[1].button.pressed());
-    EXPECT_NEAR(steps[2].seconds, 0.020, 1e-9);
-    EXPECT_FALSE(steps[2].button.held());
-    EXPECT_TRUE(steps[2].button.released());
+    // One consumption represents the whole 100 ms simulation interval. Input
+    // supplies 60 ms of down-time without invoking or subdividing game updates.
+    const auto input = accumulator.consume(start + 100ms, {press, release});
+    const auto state = input.button(move);
+    EXPECT_NEAR(input.elapsed().count(), 0.100, 1e-9);
+    EXPECT_FALSE(state.held());
+    EXPECT_TRUE(state.pressed());
+    EXPECT_TRUE(state.released());
+    EXPECT_EQ(state.press_count, 1u);
+    EXPECT_EQ(state.release_count, 1u);
+    EXPECT_NEAR(state.down_duration.count(), 0.060, 1e-9);
+    EXPECT_DOUBLE_EQ(state.held_duration.count(), 0.0);
+    ASSERT_EQ(state.completed_holds.size(), 1u);
+    EXPECT_NEAR(state.completed_holds[0].count(), 0.060, 1e-9);
 
-    timeline.advance(start + 120ms, {}, [&](double seconds, const CE::Input::TickInput& input) {
-        EXPECT_NEAR(seconds, 0.020, 1e-9);
-        EXPECT_FALSE(input.button(move).released());
-    });
+    const auto next = accumulator.consume(start + 120ms, {});
+    EXPECT_NEAR(next.elapsed().count(), 0.020, 1e-9);
+    EXPECT_FALSE(next.button(move).released());
+    EXPECT_TRUE(next.button(move).completed_holds.empty());
+    EXPECT_DOUBLE_EQ(next.button(move).down_duration.count(), 0.0);
 }
 
-TEST(input_timeline, a_tap_in_one_poll_remains_an_edge_even_without_a_held_interval) {
+TEST(input_state, a_hold_survives_consumption_and_reports_its_full_age) {
     using namespace std::chrono_literals;
-    const auto start = std::chrono::steady_clock::now();
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId select{2};
     CE::Input::InputBindings bindings;
-    (void)bindings.bind_button(key, select);
-    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId move{1};
+    (void)bindings.bind_button(key, move);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
     bindings.on_button(key, true);
-    bindings.on_button(key, false);
-    auto tap = bindings.publish_actions(start + 5ms);
-    ASSERT_TRUE(tap->has_changes());
+    const auto press = bindings.publish_actions(start + 20ms);
+    const auto first = accumulator.consume(start + 100ms, {press});
+    EXPECT_NEAR(first.button(move).held_duration.count(), 0.080, 1e-9);
 
-    int taps = 0;
-    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{tap};
-    timeline.advance(start + 10ms, changes, [&](double, const CE::Input::TickInput& input) {
-        if (input.button(select).pressed() && input.button(select).released()) ++taps;
-        EXPECT_FALSE(input.button(select).held());
-    });
-    EXPECT_EQ(taps, 1);
+    // A new update with no poll adds time to the same hold without repeating its edge.
+    const auto second = accumulator.consume(start + 150ms, {});
+    EXPECT_FALSE(second.button(move).pressed());
+    EXPECT_NEAR(second.button(move).held_duration.count(), 0.130, 1e-9);
+    EXPECT_NEAR(second.button(move).down_duration.count(), 0.050, 1e-9);
+
+    bindings.on_button(key, false);
+    const auto release = bindings.publish_actions(start + 180ms);
+    const auto third = accumulator.consume(start + 200ms, {release});
+    EXPECT_NEAR(third.button(move).down_duration.count(), 0.030, 1e-9);
+    const auto released = third.button(move);
+    ASSERT_EQ(released.completed_holds.size(), 1u);
+    EXPECT_NEAR(released.completed_holds[0].count(), 0.160, 1e-9);
 }
 
-TEST(input_timeline, separate_changes_at_one_timestamp_keep_both_edges) {
+TEST(input_state, multiple_holds_keep_their_counts_and_individual_durations) {
     using namespace std::chrono_literals;
-    const auto start = std::chrono::steady_clock::now();
+    CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId select{2};
-    CE::Input::InputBindings bindings;
     (void)bindings.bind_button(key, select);
-    CE::Input::InputTimeline timeline(bindings.action_snapshot(), start);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> polls;
     bindings.on_button(key, true);
-    auto press = bindings.publish_actions(start + 5ms);
+    polls.push_back(bindings.publish_actions(start + 10ms));
     bindings.on_button(key, false);
-    auto release = bindings.publish_actions(start + 5ms);
-    const std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> changes{press, release};
+    polls.push_back(bindings.publish_actions(start + 30ms));
+    bindings.on_button(key, true);
+    polls.push_back(bindings.publish_actions(start + 40ms));
+    bindings.on_button(key, false);
+    polls.push_back(bindings.publish_actions(start + 70ms));
+    const auto input = accumulator.consume(start + 100ms, std::move(polls));
+    const auto state = input.button(select);
+    EXPECT_EQ(state.press_count, 2u);
+    EXPECT_EQ(state.release_count, 2u);
+    ASSERT_EQ(state.completed_holds.size(), 2u);
+    EXPECT_NEAR(state.completed_holds[0].count(), 0.020, 1e-9);
+    EXPECT_NEAR(state.completed_holds[1].count(), 0.030, 1e-9);
+    EXPECT_NEAR(state.down_duration.count(), 0.050, 1e-9);
+}
 
-    int presses = 0;
-    int releases = 0;
-    timeline.advance(start + 10ms, changes, [&](double seconds, const CE::Input::TickInput& input) {
-        const auto state = input.button(select);
-        if (state.pressed()) {
-            ++presses;
-            EXPECT_DOUBLE_EQ(seconds, 0.0);
-        }
-        if (state.released()) ++releases;
-    });
-    EXPECT_EQ(presses, 1);
-    EXPECT_EQ(releases, 1);
+TEST(input_state, same_poll_taps_keep_counts_without_inventing_hardware_duration) {
+    using namespace std::chrono_literals;
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId select{2};
+    (void)bindings.bind_button(key, select);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    for (int tap = 0; tap < 2; ++tap) {
+        bindings.on_button(key, true);
+        bindings.on_button(key, false);
+    }
+    const auto poll = bindings.publish_actions(start + 5ms);
+    const auto input = accumulator.consume(start + 10ms, {poll});
+    const auto state = input.button(select);
+    EXPECT_FALSE(state.held());
+    EXPECT_EQ(state.press_count, 2u);
+    EXPECT_EQ(state.release_count, 2u);
+    ASSERT_EQ(state.completed_holds.size(), 2u);
+    EXPECT_DOUBLE_EQ(state.completed_holds[0].count(), 0.0);
+    EXPECT_DOUBLE_EQ(state.completed_holds[1].count(), 0.0);
+    EXPECT_DOUBLE_EQ(state.down_duration.count(), 0.0);
+}
+
+TEST(input_state, separate_polls_at_the_same_timestamp_are_consumed_together) {
+    using namespace std::chrono_literals;
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::ActionId select{2};
+    (void)bindings.bind_button(key, select);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    bindings.on_button(key, true);
+    const auto press = bindings.publish_actions(start + 5ms);
+    bindings.on_button(key, false);
+    const auto release = bindings.publish_actions(start + 5ms);
+    const auto input = accumulator.consume(start + 10ms, {press, release});
+    EXPECT_NEAR(input.elapsed().count(), 0.010, 1e-9);
+    EXPECT_TRUE(input.button(select).pressed());
+    EXPECT_TRUE(input.button(select).released());
+    EXPECT_FALSE(input.button(select).held());
+    EXPECT_DOUBLE_EQ(input.button(select).down_duration.count(), 0.0);
+}
+
+TEST(input_state, relative_motion_accumulates_once_while_absolute_position_persists) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::ActionId position{1};
+    const CE::Input::ActionId wheel{2};
+    (void)bindings.bind_axis({2, 1}, position);
+    (void)bindings.bind_axis({2, 2}, wheel, {1.0f, 0.0f, CE::Input::AxisKind::Relative});
+    const auto before = bindings.action_snapshot();
+    bindings.on_axis({2, 1}, 0.75f);
+    bindings.on_delta({2, 2}, 2.0f);
+    bindings.on_delta({2, 2}, -0.5f);
+    const auto first = bindings.publish_actions();
+    bindings.on_delta({2, 2}, 3.0f);
+    const auto second = bindings.publish_actions();
+    const CE::Input::TickInput input(before, {first, second});
+    EXPECT_FLOAT_EQ(input.axis(position).current, 0.75f);
+    EXPECT_FLOAT_EQ(input.axis(wheel).delta(), 4.5f);
+    const CE::Input::TickInput next(input.latest_poll(), {});
+    EXPECT_FLOAT_EQ(next.axis(position).current, 0.75f);
+    EXPECT_FLOAT_EQ(next.axis(wheel).delta(), 0.0f);
 }
 
 #ifndef CHERYL_SANDBOX_BUILD

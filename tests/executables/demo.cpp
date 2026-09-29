@@ -89,7 +89,6 @@ public:
 
     void update(const CE::GFramework::TickContext& tick) override {
         const auto& actions = tick.input;
-        const auto seconds = tick.delta_seconds;
         camera_.set_framebuffer_size(tick.framebuffer_size);
         if (actions.button(DemoActions::Reset).pressed()) {
             pan_ = {0.0f, 0.0f};
@@ -97,16 +96,20 @@ public:
         }
         mouse_x_ = actions.axis(DemoActions::MouseX).current;
         mouse_y_ = actions.axis(DemoActions::MouseY).current;
-        clicks_ += actions.button(DemoActions::Click).pressed();
-        wheel_ += actions.button(DemoActions::WheelUp).pressed();
-        wheel_ -= actions.button(DemoActions::WheelDown).pressed();
-        gamepad_presses_ += actions.button(DemoActions::GamepadA).pressed();
+        clicks_ += actions.button(DemoActions::Click).press_count;
+        wheel_ += actions.button(DemoActions::WheelUp).press_count;
+        wheel_ -= actions.button(DemoActions::WheelDown).press_count;
+        gamepad_presses_ += actions.button(DemoActions::GamepadA).press_count;
 
         const glm::vec2 movement{
-            static_cast<float>(actions.button(DemoActions::Right).held()) - static_cast<float>(actions.button(DemoActions::Left).held()),
-            static_cast<float>(actions.button(DemoActions::Up).held()) - static_cast<float>(actions.button(DemoActions::Down).held())};
+            static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
+                               actions.button(DemoActions::Left).down_duration.count()),
+            static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
+                               actions.button(DemoActions::Down).down_duration.count())};
         if (glm::length(movement) > 0.0f) {
-            pan_ += glm::normalize(movement) * static_cast<float>(seconds * 240.0);
+            // Movement uses observed down-time; a completed tap still moves even
+            // though the current button state is released at this update.
+            pan_ += movement * 240.0f;
             camera_.set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-pan_, 0.0f)));
         }
     }

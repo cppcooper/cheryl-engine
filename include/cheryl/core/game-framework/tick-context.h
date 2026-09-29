@@ -5,8 +5,8 @@
 
 namespace CE::GFramework {
     /** One simulation update. The runtime owns the input view for the duration of update().
-     * delta_seconds advances the interval in which input has this state. Several
-     * updates may run before a single render frame when polls accumulated.
+     * delta_seconds is the time since the previous simulation consumption.
+     * Input transitions contribute activity/durations without subdividing updates.
      * framebuffer_size is sampled on the platform thread and copied into this tick.
      */
     struct TickContext {
