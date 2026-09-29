@@ -4,6 +4,7 @@
 #include "input-record.h"
 
 #include <memory>
+#include <ranges>
 #include <span>
 #include <vector>
 
@@ -58,6 +59,15 @@ namespace CE::Input {
         [[nodiscard]] InputDuration elapsed() const { return until_ - since_; }
         // Shared, non-destructive view for every consumer in this simulation update.
         [[nodiscard]] std::span<const InputRecord> records() const { return records_; }
+        // Routed text and editing controls remain interleaved in observation order.
+        [[nodiscard]] auto records_for(const FocusId target, const std::optional<std::uint64_t> epoch = {}) const {
+            return records() | std::views::filter([target, epoch](const InputRecord& record) {
+                       return record.target == target && (!epoch || record.focus_epoch == *epoch);
+                   });
+        }
+        [[nodiscard]] auto gameplay_events() const {
+            return records() | std::views::filter([](const InputRecord& record) { return !record.is_text() && record.to_gameplay; });
+        }
 
     private:
         std::shared_ptr<const ActionSnapshot> previous_;

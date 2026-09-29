@@ -1,9 +1,13 @@
 #pragma once
 
+#include <cstdint>
+
 namespace CE::Input {
     // Opaque numeric identifiers shared by input adapters and game bindings.
     using DeviceId = unsigned int;
     using DeviceButtonId = unsigned int;
+    using FocusId = std::uint64_t; // Zero denotes no focused UI owner.
+    enum class KeyboardRouting { Exclusive, PassThrough };
 
     /** Independently requested capture channels. State is always collected;
      * Events/Text requests preserve records without replacing ordinary State.

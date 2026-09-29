@@ -53,14 +53,26 @@ namespace CE::Input {
         button_bindings_.clear();
         axis_bindings_.clear();
         held_buttons_.clear();
+        disabled_devices_.clear();
         physical_axes_.clear();
         physical_deltas_.clear();
         pending_buttons_.clear();
         (void)publish_actions();
     }
 
+    void InputBindings::set_device_enabled(const DeviceId device, const bool enabled) {
+        const bool changed = enabled ? disabled_devices_.erase(device) != 0 : disabled_devices_.insert(device).second;
+        if (!changed)
+            return;
+        for (const auto& binding : button_bindings_)
+            if (std::ranges::any_of(binding.chord.required, [device](const DeviceBind control) { return control.id == device; }))
+                refresh_button(binding.action);
+    }
+
     bool InputBindings::chord_active(const InputChord& chord) const {
-        return std::ranges::all_of(chord.required, [this](const DeviceBind control) { return held_buttons_.contains(control); });
+        return std::ranges::all_of(chord.required, [this](const DeviceBind control) {
+            return !disabled_devices_.contains(control.id) && held_buttons_.contains(control);
+        });
     }
 
     bool InputBindings::button_active(const ActionId action) const {
@@ -81,7 +93,7 @@ namespace CE::Input {
         std::unordered_map<ActionId, float> result;
         for (const auto& binding : axis_bindings_) {
             float value = 0.0f;
-            if (chord_active(binding.modifiers)) {
+            if (!disabled_devices_.contains(binding.axis.id) && chord_active(binding.modifiers)) {
                 const auto& source = binding.options.kind == AxisKind::Relative ? physical_deltas_ : physical_axes_;
                 if (const auto it = source.find(binding.axis); it != source.end())
                     value = it->second;

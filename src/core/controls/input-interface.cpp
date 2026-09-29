@@ -3,6 +3,14 @@
 #include <internals/exceptions.h>
 
 namespace CE::Input {
+    void iInputSystem::begin_input_poll() {
+        // Apply the same focus snapshot to State gating and ordered routing.
+        // Requests made during this pump take effect at the next poll.
+        const auto focus = routing_.current();
+        capture_.begin_poll(*focus);
+        bindings().set_device_enabled(keyboard_id(), focus->target == 0 || focus->routing == KeyboardRouting::PassThrough);
+    }
+
     CaptureLease iInputSystem::capture(const InputMode mode) {
         if (!supports(mode))
             throw Exceptions::failed_operation(CE_HERE, "This input adapter does not support the requested capture channel");
@@ -29,6 +37,7 @@ namespace CE::Input {
 
     void iInputSystem::discard_captured_input() {
         capture_.discard_pending();
+        routing_.clear();
         published_poll_.store({}, std::memory_order_release);
     }
 }

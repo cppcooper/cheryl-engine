@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input-record.h"
+#include "input-routing.h"
 
 #include <atomic>
 #include <memory>
@@ -42,7 +43,7 @@ namespace CE::Input {
     class InputCapture final {
     public:
         [[nodiscard]] CaptureLease request(InputMode mode);
-        void begin_poll();
+        void begin_poll(KeyboardFocus focus = {});
         void record(DeviceId device, DeviceKind kind, InputRecordData data, InputClock::time_point observed_at = InputClock::now());
         [[nodiscard]] std::vector<InputRecord> complete();
         void discard_pending();
@@ -53,5 +54,6 @@ namespace CE::Input {
         bool text_enabled_ = false;
         std::uint64_t next_sequence_ = 1;
         std::vector<InputRecord> pending_;
+        KeyboardFocus focus_;
     };
 }

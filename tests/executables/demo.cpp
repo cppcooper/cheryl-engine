@@ -17,9 +17,11 @@
 #include <gainput/gainput.h>
 
 #include <charconv>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -32,8 +34,7 @@ namespace DemoActions {
     constexpr CE::Input::ActionId MouseX{6};
     constexpr CE::Input::ActionId MouseY{7};
     constexpr CE::Input::ActionId Click{8};
-    constexpr CE::Input::ActionId WheelUp{9};
-    constexpr CE::Input::ActionId WheelDown{10};
+    constexpr CE::Input::ActionId WheelY{9};
     constexpr CE::Input::ActionId GamepadA{11};
 } // namespace DemoActions
 
@@ -77,12 +78,16 @@ public:
         (void)bindings.bind_axis({mouse, gainput::MouseAxisX}, DemoActions::MouseX);
         (void)bindings.bind_axis({mouse, gainput::MouseAxisY}, DemoActions::MouseY);
         (void)bindings.bind_button({mouse, gainput::MouseButtonLeft}, DemoActions::Click);
-        (void)bindings.bind_button({mouse, gainput::MouseButtonWheelUp}, DemoActions::WheelUp);
-        (void)bindings.bind_button({mouse, gainput::MouseButtonWheelDown}, DemoActions::WheelDown);
+        (void)bindings.bind_axis({mouse, CE::Input::MouseControl::ScrollY}, DemoActions::WheelY,
+                                 {1.0f, 0.0f, CE::Input::AxisKind::Relative});
         (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
+        events_ = input.capture(CE::Input::InputMode::Events);
     }
 
     void deinit() override {
+        focus_.reset();
+        text_capture_.reset();
+        events_.reset();
         engine_.input().bindings().clear();
         font_.reset();
         font_shader_.reset();
@@ -98,9 +103,65 @@ public:
         mouse_x_ = actions.axis(DemoActions::MouseX).current;
         mouse_y_ = actions.axis(DemoActions::MouseY).current;
         clicks_ += actions.button(DemoActions::Click).press_count;
-        wheel_ += actions.button(DemoActions::WheelUp).press_count;
-        wheel_ -= actions.button(DemoActions::WheelDown).press_count;
+        wheel_ += actions.axis(DemoActions::WheelY).delta();
         gamepad_presses_ += actions.button(DemoActions::GamepadA).press_count;
+
+        // Records carry the owner selected when they were collected, including
+        // those still pending when this update requests a focus transfer.
+        for (const auto& record : actions.records()) {
+            const auto* button = std::get_if<CE::Input::ButtonEvent>(&record.data);
+            if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
+                button->phase == CE::Input::ButtonPhase::Press) {
+                if (focus_.owns_focus()) {
+                    focus_.reset();
+                    text_capture_.reset();
+                }
+                else {
+                    text_capture_ = engine_.input().capture(CE::Input::InputMode::Text);
+                    focus_ = engine_.input().routing().focus(text_box);
+                }
+                continue;
+            }
+            if (record.target != text_box)
+                continue;
+            if (const auto* text = std::get_if<CE::Input::TextEvent>(&record.data)) {
+                text_.insert(caret_, 1, text->codepoint);
+                ++caret_;
+            }
+            else if (button && button->phase != CE::Input::ButtonPhase::Release) {
+                switch (button->button) {
+                    case gainput::KeyBackSpace:
+                        if (caret_ > 0)
+                            text_.erase(--caret_, 1);
+                        break;
+                    case gainput::KeyDelete:
+                        if (caret_ < text_.size())
+                            text_.erase(caret_, 1);
+                        break;
+                    case gainput::KeyLeft:
+                        if (caret_ > 0)
+                            --caret_;
+                        break;
+                    case gainput::KeyRight:
+                        if (caret_ < text_.size())
+                            ++caret_;
+                        break;
+                    case gainput::KeyHome:
+                        caret_ = 0;
+                        break;
+                    case gainput::KeyEnd:
+                        caret_ = text_.size();
+                        break;
+                    case gainput::KeyEscape:
+                    case gainput::KeyReturn:
+                        focus_.reset();
+                        text_capture_.reset();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
 
         const glm::vec2 movement{static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
                                                     actions.button(DemoActions::Left).down_duration.count()),
@@ -129,12 +190,33 @@ public:
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
         pass.add(CE::RenderAPIs::TextDraw{font_,
                                           std::format("Cheryl Engine demo\nWASD: pan camera  R: reset\n"
-                                                      "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {}\nGamepad A: {} presses",
-                                                      mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_),
+                                                      "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
+                                                      "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}",
+                                                      mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
+                                                      focus_.owns_focus() ? "focused" : "unfocused", text_preview()),
                                           text});
     }
 
 private:
+    [[nodiscard]] std::string text_preview() const {
+        // The current font atlas contains ASCII. Editing retains Unicode scalars;
+        // display one fallback per unsupported scalar instead of pretending to shape text.
+        std::string preview;
+        for (std::size_t i = 0; i <= text_.size(); ++i) {
+            if (i == caret_)
+                preview += '|';
+            if (i < text_.size())
+                preview += text_[i] >= 32 && text_[i] <= 126 ? static_cast<char>(text_[i]) : '?';
+        }
+        return preview;
+    }
+
+    static constexpr CE::Input::FocusId text_box = 1;
+    CE::Input::CaptureLease events_;
+    CE::Input::CaptureLease text_capture_;
+    CE::Input::FocusLease focus_;
+    std::u32string text_;
+    std::size_t caret_ = 0;
     CE::Engine::EngineContext& engine_;
     CE::Camera2D camera_;
     std::filesystem::path asset_root_;
@@ -144,9 +226,9 @@ private:
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
     float mouse_y_ = 0.0f;
-    int clicks_ = 0;
-    int wheel_ = 0;
-    int gamepad_presses_ = 0;
+    std::uint64_t clicks_ = 0;
+    double wheel_ = 0.0;
+    std::uint64_t gamepad_presses_ = 0;
 };
 
 using CE::GFramework::GameRuntime;

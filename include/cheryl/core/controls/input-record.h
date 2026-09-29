@@ -54,6 +54,9 @@ namespace CE::Input {
         DeviceId device;
         DeviceKind device_kind;
         InputRecordData data;
+        FocusId target = 0;
+        std::uint64_t focus_epoch = 0;
+        bool to_gameplay = true; // PassThrough can also deliver a focused keyboard event to gameplay.
 
         [[nodiscard]] bool is_text() const { return std::holds_alternative<TextEvent>(data); }
     };

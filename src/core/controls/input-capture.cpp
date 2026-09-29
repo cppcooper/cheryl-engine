@@ -43,9 +43,10 @@ namespace CE::Input {
         throw Exceptions::invalid_args(CE_HERE, "Unknown input capture channel");
     }
 
-    void InputCapture::begin_poll() {
+    void InputCapture::begin_poll(const KeyboardFocus focus) {
         events_enabled_ = counts_->events.load() != 0;
         text_enabled_ = counts_->text.load() != 0;
+        focus_ = focus;
     }
 
     void
@@ -55,7 +56,10 @@ namespace CE::Input {
             return;
         if (text && (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF)))
             throw Exceptions::invalid_args(CE_HERE, "Text input requires a Unicode scalar value");
-        pending_.push_back({next_sequence_++, observed_at, device, kind, std::move(data)});
+        const bool keyboard = kind == DeviceKind::Keyboard || text;
+        pending_.push_back({next_sequence_++, observed_at, device, kind, std::move(data), keyboard ? focus_.target : 0,
+                            keyboard ? focus_.epoch : 0,
+                            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough});
     }
 
     std::vector<InputRecord> InputCapture::complete() { return std::exchange(pending_, {}); }
@@ -63,5 +67,6 @@ namespace CE::Input {
         pending_.clear();
         events_enabled_ = false;
         text_enabled_ = false;
+        focus_ = {};
     }
 }

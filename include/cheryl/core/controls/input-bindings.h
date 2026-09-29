@@ -57,6 +57,7 @@ namespace CE::Input {
         std::vector<ButtonBinding> button_bindings_;
         std::vector<AxisBinding> axis_bindings_;
         std::unordered_set<DeviceBind> held_buttons_;
+        std::unordered_set<DeviceId> disabled_devices_;
         std::unordered_map<DeviceBind, float> physical_axes_;
         std::unordered_map<DeviceBind, float> physical_deltas_;
         std::unordered_map<ActionId, PendingButton> pending_buttons_;
@@ -78,6 +79,9 @@ namespace CE::Input {
         bool unbind(BindingId binding);
         void unbind_action(ActionId action);
         void clear();
+        // Platform-owned routing gate. Physical state is retained while semantic
+        // actions are suppressed, so other devices and alternative mappings survive.
+        void set_device_enabled(DeviceId device, bool enabled);
 
         // Backends report current physical state; prior values are tracked here.
         void on_axis(DeviceBind binding, float value);

@@ -56,8 +56,24 @@ The GLFW adapter also reports relative State axes under `MouseControl::DeltaX`, 
 
 Custom adapters use `begin_input_poll()` before collection and `publish_input()` once afterwards to publish the State/record pair. Existing State-only adapters can still publish actions directly. A host managing GLFW pumping explicitly calls `InputSystem::begin_poll()`, pumps events, then calls `update()`. Polling, bindings, collection, and publication remain platform-thread operations; capture handles and immutable delivered data cross the thread boundary. Deinitialization detaches all callbacks and discards pending records without invalidating already delivered handles.
 
-## Textbox focus (next integration task)
+## Focus, routing, and editing controls
 
-Capture preserves input; focus determines its destination. A textbox must separately request Events/Text and own keyboard focus. Routing still needs an explicit target and gameplay suppression policy. Capturing channels alone does not suppress gameplay keyboard actions or assign a textbox destination.
+`InputRouting` is a separate focus-request abstraction accessed through `iInputSystem::routing()`. `focus(nonzero_target_id, policy)` returns a move-only `FocusLease`. The latest request owns keyboard focus; releasing an older lease cannot clear a newer owner, even when the same target ID is reused. `FocusLease::epoch()` identifies that particular request. Capture requests and focus leases may be held by UI objects on the simulation thread; all platform input work remains on the platform thread.
+
+The platform latches focus at the beginning of each poll, together with capture activation. This one focus snapshot controls both keyboard State gating and record routing. Requests made during collection take effect at the next poll. `InputRecord::target` and `focus_epoch` retain the owner at collection time; pending input is never retroactively assigned to a new focus target. Target zero means no UI owner. `TickInput::records_for(target[, epoch])` exposes the ordered Text and editing-control records for a consumer, while `gameplay_events()` filters physical records allowed through to gameplay. These are non-destructive views, not platform-thread widget callbacks; the game/UI dispatches or reads them during its update. A reused ID can filter by epoch when it represents a new consumer lifetime.
+
+`KeyboardRouting::Exclusive` (default) withholds keyboard-derived semantic actions and keyboard records from gameplay while leaving mouse/controller input available. Other-device alternatives for the same action still work. `PassThrough` assigns the focused target and also permits keyboard gameplay input. InputBindings implements only the general device gate, not textbox policy: it continues tracking physical keys while disabled. When focus ends, the next poll resumes currently held keys as semantic presses; physical Events do not fabricate matching hardware presses. A focus transition can therefore change State independently of a physical event.
+
+Focusing does not activate capture. A textbox separately holds Events and Text leases, then reads its routed records in shared sequence order. `TextEvent` inserts committed Unicode scalars. `ButtonEvent` carries press/repeat/release and modifiers for Backspace, Delete, arrows, Home/End, and shortcuts. The widget decides editing semantics, selection, clipboard behavior, and whether a repeated control applies. Capture supplies the records without prescribing a complete text editor or calling UI objects from GLFW callbacks.
+
+```cpp
+auto events = input.capture(CE::Input::InputMode::Events);
+auto text = input.capture(CE::Input::InputMode::Text);
+auto focus = input.routing().focus(textbox_id); // Retain these handles while active.
+// During update: read tick.input.records_for(textbox_id) in order.
+// On blur: focus.reset(); text.reset(); events.reset();
+```
+
+The demo requests Events for its F2 focus toggle and requests Text while its textbox is focused. It edits Unicode scalar values with Backspace/Delete, arrows, Home/End, and exits focus with Enter/Escape. WASD gameplay is gated while typing; gamepad input and fractional scroll remain available. Its existing font atlas is ASCII, so the preview displays one `?` for each unsupported scalar. Text capture and storage retain the actual Unicode scalar; font shaping and grapheme-aware editing remain separate work.
 
 Generic tools are independent of input: `StateTracker<T>` compares successive samples; `VersionedVariable<T>` synchronizes a value, revision, and change waiter; `ObservedVariable<T>` layers immediate callbacks on that storage; and `StateMachine<State, Trigger>` defines typed transition rules, guards, and hooks. `State` and `Trigger` are the types of whole domains, such as enums with several values. A game may compose multiple machines and let a guard inspect another machine. None of these tools assumes the game has controllers or runs its simulation on another thread.

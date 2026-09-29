@@ -28,16 +28,18 @@ namespace CE::Input {
         [[nodiscard]] virtual DeviceId gamepad_id() const = 0;
         [[nodiscard]] virtual bool supports(InputMode mode) const { return mode == InputMode::State; }
         [[nodiscard]] CaptureLease capture(InputMode mode);
+        [[nodiscard]] InputRouting& routing() { return routing_; }
         [[nodiscard]] virtual std::shared_ptr<const PollSnapshot> poll_snapshot();
 
     protected:
-        void begin_input_poll() { capture_.begin_poll(); }
+        void begin_input_poll();
         [[nodiscard]] InputCapture& capture_buffer() { return capture_; }
         [[nodiscard]] std::shared_ptr<const PollSnapshot> publish_input(InputClock::time_point observed_at = InputClock::now());
         void discard_captured_input();
 
     private:
         InputCapture capture_;
+        InputRouting routing_;
         std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_;
     };
 }

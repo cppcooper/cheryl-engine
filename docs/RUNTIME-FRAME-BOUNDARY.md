@@ -95,3 +95,10 @@ The demo accepts `--input-capacity=N` (finite polling), `--input-unlimited`, and
 `--input-spacing-ms=N` in either runtime mode. These alter polling eligibility,
 not the simulation schedule. The platform thread still shares polling with
 presentation, so a blocking present can delay an eligible poll.
+
+The demo's F2 textbox exercises independently requested Events/Text capture and
+keyboard focus in either runtime mode. Focus is latched on the platform at poll
+start; pending records retain their original target through the worker handoff.
+Exclusive focus gates gameplay keyboard State while controller/mouse input
+continues. UI code reads ordered text/editing records during simulation; it is
+never invoked by a platform callback. Enter/Escape releases focus.
