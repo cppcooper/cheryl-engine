@@ -1,6 +1,7 @@
 #pragma once
 
 #include "action-snapshot.h"
+#include "input-record.h"
 
 #include <memory>
 #include <span>
@@ -40,6 +41,8 @@ namespace CE::Input {
      * in publication order, regardless of how many transitions they contain.
      */
     class TickInput {
+        friend class InputAccumulator;
+
     public:
         // For manual consumers, the interval defaults to the sample timestamps.
         TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls);
@@ -53,11 +56,14 @@ namespace CE::Input {
         [[nodiscard]] std::span<const std::shared_ptr<const ActionSnapshot>> polls() const { return polls_; }
         [[nodiscard]] std::shared_ptr<const ActionSnapshot> latest_poll() const;
         [[nodiscard]] InputDuration elapsed() const { return until_ - since_; }
+        // Shared, non-destructive view for every consumer in this simulation update.
+        [[nodiscard]] std::span<const InputRecord> records() const { return records_; }
 
     private:
         std::shared_ptr<const ActionSnapshot> previous_;
         std::vector<std::shared_ptr<const ActionSnapshot>> polls_;
         InputClock::time_point since_;
         InputClock::time_point until_;
+        std::vector<InputRecord> records_;
     };
 }

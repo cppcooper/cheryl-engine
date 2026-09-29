@@ -1,5 +1,6 @@
 #pragma once
 
+#include "poll-snapshot.h"
 #include "tick-input.h"
 
 #include <utility>
@@ -19,6 +20,8 @@ namespace CE::Input {
             consumed_at_ = until;
             return input;
         }
+
+        [[nodiscard]] TickInput consume_polls(InputClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls);
 
     private:
         std::shared_ptr<const ActionSnapshot> previous_;

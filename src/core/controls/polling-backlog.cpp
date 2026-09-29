@@ -30,10 +30,11 @@ namespace CE::Input {
 
     InputClock::time_point PollingBacklog::next_poll_at() const { return can_poll() ? next_poll_ : InputClock::time_point::max(); }
 
-    void PollingBacklog::complete(std::shared_ptr<const ActionSnapshot> poll, const InputClock::time_point completed_at) {
-        if (!poll_due(completed_at) || !poll || poll->poll() <= last_poll_ || poll->observed_at() > completed_at)
+    void PollingBacklog::complete(std::shared_ptr<const PollSnapshot> poll, const InputClock::time_point completed_at) {
+        if (!poll_due(completed_at) || !poll || !poll->state || poll->state->poll() <= last_poll_ ||
+            poll->state->observed_at() > completed_at)
             throw Exceptions::invalid_args(CE_HERE, "Polling backlog requires an eligible, newer completed observation");
-        last_poll_ = poll->poll();
+        last_poll_ = poll->state->poll();
         polls_.push_back(std::move(poll));
         // Handoff resets capacity, not this delay: two polls on either side of
         // consumption still respect the completion-to-next-poll spacing.
@@ -41,5 +42,9 @@ namespace CE::Input {
         next_poll_ = options_.spacing < remaining ? completed_at + options_.spacing : InputClock::time_point::max();
     }
 
-    std::vector<std::shared_ptr<const ActionSnapshot>> PollingBacklog::consume() { return std::exchange(polls_, {}); }
+    void PollingBacklog::complete(std::shared_ptr<const ActionSnapshot> state, const InputClock::time_point completed_at) {
+        complete(std::make_shared<PollSnapshot>(PollSnapshot{std::move(state), {}}), completed_at);
+    }
+
+    std::vector<std::shared_ptr<const PollSnapshot>> PollingBacklog::consume() { return std::exchange(polls_, {}); }
 }

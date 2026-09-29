@@ -1,6 +1,6 @@
 #pragma once
 
-#include "action-snapshot.h"
+#include "poll-snapshot.h"
 
 #include <cstddef>
 #include <memory>
@@ -27,14 +27,15 @@ namespace CE::Input {
         [[nodiscard]] bool poll_due(InputClock::time_point now) const;
         [[nodiscard]] InputClock::time_point next_poll_at() const;
         [[nodiscard]] std::size_t completed_polls() const { return polls_.size(); }
-        void complete(std::shared_ptr<const ActionSnapshot> poll, InputClock::time_point completed_at);
+        void complete(std::shared_ptr<const PollSnapshot> poll, InputClock::time_point completed_at);
+        void complete(std::shared_ptr<const ActionSnapshot> state, InputClock::time_point completed_at);
         // Transfers the whole batch and immediately leaves a fresh empty backlog.
-        [[nodiscard]] std::vector<std::shared_ptr<const ActionSnapshot>> consume();
+        [[nodiscard]] std::vector<std::shared_ptr<const PollSnapshot>> consume();
 
     private:
         PollingOptions options_;
         InputClock::time_point next_poll_ = InputClock::time_point::min();
         std::uint64_t last_poll_ = 0;
-        std::vector<std::shared_ptr<const ActionSnapshot>> polls_;
+        std::vector<std::shared_ptr<const PollSnapshot>> polls_;
     };
 }

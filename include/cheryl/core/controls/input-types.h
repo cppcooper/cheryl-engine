@@ -5,11 +5,17 @@ namespace CE::Input {
     using DeviceId = unsigned int;
     using DeviceButtonId = unsigned int;
 
-    /** Capture channels, not mutually exclusive global modes.
-     * State is implemented by ActionSnapshot/TickInput. Events and Text name
-     * future contracts; selecting them is not supported by iInputSystem yet.
-     * Focus/routing (for example, keyboard input into a textbox instead of
-     * gameplay actions) is a separate concern from capture fidelity.
+    /** Independently requested capture channels. State is always collected;
+     * Events/Text requests preserve records without replacing ordinary State.
+     * Focus/routing remains independent of channel activation.
      */
     enum class InputMode { State, Events, Text };
+
+    // Portable IDs reserved for relative mouse inputs; position IDs remain backend-defined.
+    namespace MouseControl {
+        inline constexpr DeviceButtonId DeltaX = 0xFFFFFFF0;
+        inline constexpr DeviceButtonId DeltaY = 0xFFFFFFF1;
+        inline constexpr DeviceButtonId ScrollX = 0xFFFFFFF2;
+        inline constexpr DeviceButtonId ScrollY = 0xFFFFFFF3;
+    }
 }

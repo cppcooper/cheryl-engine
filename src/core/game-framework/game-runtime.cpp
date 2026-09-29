@@ -75,7 +75,7 @@ namespace CE::GFramework {
                     input.poll();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
-                    backlog.complete(input.action_snapshot(), Input::InputClock::now());
+                    backlog.complete(input.poll_snapshot(), Input::InputClock::now());
                 }
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                     break;
@@ -84,7 +84,7 @@ namespace CE::GFramework {
                     renderer.set_viewport(size);
                     viewport = size;
                 }
-                auto state = accumulator.consume(Input::InputClock::now(), backlog.consume());
+                auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                 game_.update(TickContext{state.elapsed().count(), state, size});
 
                 // One slot is enough because the graphics thread consumes and
@@ -134,8 +134,6 @@ namespace CE::GFramework {
             SlotState state = SlotState::Free; // Guarded by scheduler_mutex_.
         };
         struct Handoff {
-            // TODO: When Events/Text capture exists, hand its ordered records to
-            // simulation at the same cycle boundary without folding them into State.
             Input::PollingBacklog backlog;
             FramebufferSize framebuffer_size;
             std::optional<std::size_t> ready;
@@ -175,7 +173,7 @@ namespace CE::GFramework {
             worker = std::thread([&, previous_poll = std::move(previous_poll)]() mutable {
                 try {
                     Input::InputAccumulator accumulator(previous_poll, std::chrono::steady_clock::now());
-                    std::vector<std::shared_ptr<const Input::ActionSnapshot>> polls;
+                    std::vector<std::shared_ptr<const Input::PollSnapshot>> polls;
                     auto next_tick = std::chrono::steady_clock::now() + cadence;
                     while (!stop_requested_.load(std::memory_order_acquire)) {
                         FramebufferSize size;
@@ -196,7 +194,7 @@ namespace CE::GFramework {
                         // If rendering blocks polling, held input persists without replaying edges.
                         next_tick = std::chrono::steady_clock::now() + cadence;
 
-                        auto state = accumulator.consume(consumed_at, std::move(polls));
+                        auto state = accumulator.consume_polls(consumed_at, std::move(polls));
                         game_.update(TickContext{state.elapsed().count(), state, size});
                         polls = {}; // Every poll in this batch has been consumed together.
                         if (stop_requested_.load(std::memory_order_acquire))
@@ -256,7 +254,7 @@ namespace CE::GFramework {
                     input.poll();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
-                    auto completed = input.action_snapshot();
+                    auto completed = input.poll_snapshot();
                     if (!completed)
                         throw Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
                     const auto size = window.framebuffer_size();

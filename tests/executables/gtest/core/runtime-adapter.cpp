@@ -1,15 +1,15 @@
 #include <gtest/gtest.h>
 
-#include <assets/types/2d/graphic.h>
 #include <assets/resources/resource-provider.h>
-#include <core/rendering/draw-info.h>
+#include <assets/types/2d/graphic.h>
+#include <core/display/display-system-interface.h>
+#include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
+#include <core/rendering/draw-info.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
-#include <core/display/display-system-interface.h>
-#include <core/display/window-interface.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
@@ -85,9 +85,11 @@ namespace {
         std::function<void()> on_poll;
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
-            if (on_poll) on_poll();
+            begin_input_poll();
+            if (on_poll)
+                on_poll();
             bindings_.on_button({keyboard_id(), test_button}, true);
-            (void)bindings_.publish_actions();
+            (void)publish_input();
         }
         void deinitialize() override { window_ = nullptr; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
@@ -118,7 +120,8 @@ namespace {
             ++updates;
             update_thread = std::this_thread::get_id();
             size = tick.framebuffer_size;
-            if (tick.input.button(action).pressed()) pressed.store(true);
+            if (tick.input.button(action).pressed())
+                pressed.store(true);
             if (pressed.load() && on_tick)
                 on_tick();
         }
@@ -214,7 +217,8 @@ namespace {
             last_pass_count = frame.passes().size();
             last_marked_pressed = !frame.passes().empty() && frame.passes().front().view[3][0] == 1.0f;
             render_thread = std::this_thread::get_id();
-            if (on_render) on_render();
+            if (on_render)
+                on_render();
         }
         void set_viewport(CE::FramebufferSize size) override { viewport = size; }
         void set_depth_test(bool enabled) override { depth_enabled = enabled; }
@@ -246,9 +250,7 @@ namespace {
     };
 
     // Construct the same owned adapter graph as the GLFW factory, with no native graphics API.
-    std::unique_ptr<CE::Engine::EngineContext> make_test_context(MemoryInput& input,
-                                                                  MemoryRenderer*& renderer,
-                                                                  MemorySurface*& surface) {
+    std::unique_ptr<CE::Engine::EngineContext> make_test_context(MemoryInput& input, MemoryRenderer*& renderer, MemorySurface*& surface) {
         auto display = std::make_unique<MemoryDisplay>();
         auto* window = display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 320, 240);
         display->activate_window(*window);
@@ -256,9 +258,8 @@ namespace {
         surface = presentation.get();
         auto rendering = std::make_unique<MemoryRenderer>();
         renderer = rendering.get();
-        return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation),
-                                                            std::move(rendering), std::make_unique<MemoryProvider>(),
-                                                            input);
+        return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation), std::move(rendering),
+                                                           std::make_unique<MemoryProvider>(), input);
     }
 } // namespace
 
@@ -297,7 +298,10 @@ TEST(runtime_adapter, concurrent_simulation_presents_on_platform_thread) {
     auto engine = make_test_context(input, renderer, surface);
     OneTickGame game(input);
     CE::GFramework::GameRuntime runtime(*engine, game, CE::GFramework::RunMode::Concurrent);
-    renderer->on_render = [&] { if (renderer->last_marked_pressed) runtime.stop(); };
+    renderer->on_render = [&] {
+        if (renderer->last_marked_pressed)
+            runtime.stop();
+    };
 
     runtime.run();
 

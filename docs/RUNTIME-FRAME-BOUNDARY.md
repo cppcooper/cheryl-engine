@@ -16,10 +16,11 @@ Input supplies edges, counts, and observed hold durations; it never subdivides
 simulation time or schedules extra updates. Simulation
 produces complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
-This handoff implements the `State` capture channel only. Planned ordered
-physical `Events` and OS `Text` channels, including textbox focus routing, are
-recorded in [input-state-model.md](input-state-model.md#capture-channels-and-textbox-focus-planned);
-they are not yet exposed by the runtime.
+Each complete `PollSnapshot` carries State and independently captured ordered
+Events/Text records. The runtime transfers both at the same consumption boundary;
+`TickInput::records()` retains their shared observation order. Scoped capture
+requests and backend fidelity are documented in
+[input-state-model.md](input-state-model.md#ordered-events-and-os-text).
 These rules also apply when simulation and rendering run sequentially. The
 sequential runtime owns one reusable frame. Concurrent mode owns three slots:
 one may be rendered, one may be the latest completed frame, and one may be in

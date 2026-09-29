@@ -1,6 +1,8 @@
 #pragma once
 
 #include "input-bindings.h"
+#include "input-capture.h"
+#include "poll-snapshot.h"
 
 #include <memory>
 
@@ -9,10 +11,9 @@ namespace CE {
 }
 
 namespace CE::Input {
-    /** Engine-facing input adapter. Poll on the platform thread, then hand the complete immutable
-     * action snapshot to simulation. Backends publish after processing physical input for each poll.
-     * This is currently the InputMode::State path. InputMode::Events and InputMode::Text
-     * are planned separately; neither is exposed by this interface yet.
+    /** Platform-thread adapter. State is always available; supported Events/Text
+     * channels are independently requested through scoped capture handles.
+     * Backends latch capture before pumping and publish the complete poll once.
      */
     class iInputSystem {
     public:
@@ -25,5 +26,18 @@ namespace CE::Input {
         [[nodiscard]] virtual DeviceId keyboard_id() const = 0;
         [[nodiscard]] virtual DeviceId mouse_id() const = 0;
         [[nodiscard]] virtual DeviceId gamepad_id() const = 0;
+        [[nodiscard]] virtual bool supports(InputMode mode) const { return mode == InputMode::State; }
+        [[nodiscard]] CaptureLease capture(InputMode mode);
+        [[nodiscard]] virtual std::shared_ptr<const PollSnapshot> poll_snapshot();
+
+    protected:
+        void begin_input_poll() { capture_.begin_poll(); }
+        [[nodiscard]] InputCapture& capture_buffer() { return capture_; }
+        [[nodiscard]] std::shared_ptr<const PollSnapshot> publish_input(InputClock::time_point observed_at = InputClock::now());
+        void discard_captured_input();
+
+    private:
+        InputCapture capture_;
+        std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_;
     };
 }

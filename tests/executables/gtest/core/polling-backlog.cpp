@@ -18,7 +18,7 @@ TEST(polling_backlog, lockstep_allows_one_completed_poll_until_consumption) {
 
     const auto batch = backlog.consume();
     ASSERT_EQ(batch.size(), 1u);
-    EXPECT_EQ(batch[0], poll);
+    EXPECT_EQ(batch[0]->state, poll);
     EXPECT_EQ(backlog.completed_polls(), 0u);
     EXPECT_TRUE(backlog.can_poll());
     EXPECT_FALSE(backlog.poll_due(now));
@@ -38,8 +38,8 @@ TEST(polling_backlog, finite_capacity_counts_unchanged_polls_and_hands_off_the_w
     EXPECT_EQ(backlog.completed_polls(), 3u);
     const auto batch = backlog.consume();
     ASSERT_EQ(batch.size(), 3u);
-    EXPECT_LT(batch[0]->poll(), batch[1]->poll());
-    EXPECT_LT(batch[1]->poll(), batch[2]->poll());
+    EXPECT_LT(batch[0]->state->poll(), batch[1]->state->poll());
+    EXPECT_LT(batch[1]->state->poll(), batch[2]->state->poll());
     EXPECT_TRUE(backlog.can_poll());
     EXPECT_TRUE(backlog.consume().empty());
 }
