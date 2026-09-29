@@ -21,6 +21,10 @@ namespace CE::Input {
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
     // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
     // can be handed to simulation without reading live Gainput state from another thread.
+    // TODO: For InputMode::Events, retain ordered, timestamped physical transitions before
+    // Gainput condenses them. For InputMode::Text, capture OS text (including repeats)
+    // through character input and deliver editing controls separately. Textbox focus
+    // routes keyboard input; it must not be implemented by converting action keys to characters.
     class InputSystem final : public iInputSystem, public Singleton_CTS<InputSystem> {
         gainput::InputManager manager_;
         InputMapper bindings_;

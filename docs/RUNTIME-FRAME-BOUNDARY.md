@@ -16,6 +16,10 @@ no handoff. The runtime divides elapsed time at observed input changes; each
 updates can precede one frame preparation when polls accumulated. Simulation
 produces complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
+This handoff implements the `State` capture channel only. Planned ordered
+physical `Events` and OS `Text` channels, including textbox focus routing, are
+recorded in [input-state-model.md](input-state-model.md#capture-channels-and-textbox-focus-planned);
+they are not yet exposed by the runtime.
 These rules also apply when simulation and rendering run sequentially. The
 sequential runtime owns one reusable frame. Concurrent mode owns three slots:
 one may be rendered, one may be the latest completed frame, and one may be in

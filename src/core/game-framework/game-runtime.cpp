@@ -124,6 +124,8 @@ namespace CE::GFramework {
             SlotState state = SlotState::Free; // Guarded by scheduler_mutex_.
         };
         struct Handoff {
+            // TODO: When Events/Text capture exists, hand its ordered records to
+            // simulation at the same cycle boundary without folding them into State.
             std::vector<std::shared_ptr<const Input::ActionSnapshot>> polls;
             FramebufferSize framebuffer_size;
             std::optional<std::size_t> ready;

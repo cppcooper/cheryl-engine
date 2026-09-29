@@ -228,8 +228,9 @@ namespace CE::Input {
     }
 
     void InputSystem::on_key(GLFWwindow* handle, const int key, int, const int action, int) {
-        // The singleton receives GLFW's global callback; ignore stale windows
-        // and repeat events so button transitions match press/release edges.
+        // The singleton receives GLFW's global callback. State snapshots ignore
+        // key repeats; the planned ordered event/text channels must retain the
+        // relevant repeats before this state-only path discards them.
         auto& input = get();
         if (!input.window_ || input.window_->native_handle() != handle || action == GLFW_REPEAT)
             return;

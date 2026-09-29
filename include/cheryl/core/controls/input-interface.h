@@ -11,6 +11,8 @@ namespace CE {
 namespace CE::Input {
     /** Engine-facing input adapter. Poll on the platform thread, then hand the complete immutable
      * action snapshot to simulation. Backends publish after processing physical input for each poll.
+     * This is currently the InputMode::State path. InputMode::Events and InputMode::Text
+     * are planned separately; neither is exposed by this interface yet.
      */
     class iInputSystem {
     public:
