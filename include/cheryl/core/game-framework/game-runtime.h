@@ -16,7 +16,8 @@ namespace CE::GFramework {
      * published render state, never the game's live mutable simulation state. These boundaries
      * apply in either mode. The calling thread owns platform polling and graphics operations;
      * concurrent mode gives update and frame preparation to one simulation worker.
-     * The scheduler and ownership handoff for reusable frame slots remain to be implemented.
+     * Sequential mode uses one recycled frame; concurrent frame handoff remains
+     * to be implemented.
      */
     class GameRuntime final {
     public:

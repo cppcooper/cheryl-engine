@@ -14,10 +14,10 @@ Each platform poll produces an `ActionSnapshot`. Each simulation tick receives
 `TickInput` assembled from zero or more polls since the previous tick. Simulation produces
 complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
-These rules also apply when simulation and rendering run sequentially; a later
-scheduler may put them on separate threads without changing their meaning.
-`GameRuntime` will own that scheduling and the handoff, while platform event
-polling and graphics-context use must respect their respective thread affinity.
+These rules also apply when simulation and rendering run sequentially. The
+sequential runtime owns one reusable frame; its concurrent scheduler still needs
+an ownership handoff. Platform event polling and graphics-context use must
+respect their respective thread affinity.
 
 The caller of `GameRuntime::run()` owns platform polling and the graphics context
 in both modes. Sequential mode polls, updates, prepares, renders, and presents on
@@ -62,7 +62,8 @@ shared glyph data without storing the message or angle on the font.
 
 `OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
 camera, and reads font glyphs without mutating shared assets. GPU handles are
-retired through the renderer's context-owned release queue. `GameRuntime::run()`
-remains a skeleton: it still needs frame-slot handoff, graphics-context-safe
-teardown, a clock cadence, and a policy for input polls accumulating while
-simulation is busy.
+retired through the renderer's context-owned release queue. Sequential runtime
+polls once per tick, samples delta time after initialization, prepares and
+recycles one frame, and tears down game, input, and graphics in that order even
+after a loop failure. Concurrent runtime still needs frame-slot handoff, a
+clock cadence, and a policy for input polls accumulating while simulation is busy.
