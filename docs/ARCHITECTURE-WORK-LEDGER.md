@@ -28,13 +28,15 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 2.5–2.6 complete: copied payloads, per-listener enqueue serialization,
   deferred targets, cancellation tickets, and mandatory observable error sinks.
   Platform/simulation composition adapters cover the corresponding part of 4.2.
-- Task 2.7 awaits the ordered worker-stream adapter.
+- Task 2 complete: worker delivery uses an owned serial stream on shared group
+  capacity; copies share ordering, separate streams retain concurrency.
 - Task 3.1–3.2 and 3.7 complete: owned threads/groups, futures, group caps,
   explicit close/drain/join, startup rollback, and self-wait rejection.
 - Task 3 complete in source: weighted priority, caps, previous-worker preference,
   Linux affinity with readback, effective policy, unsupported hard topology paths,
   and native failure futures. Native acceptance remains unexecuted.
-- Task 2.7 next: ordered worker-stream adapter. Tasks 4–8 remain pending.
+- Task 4.2 complete: all three execution targets are optional composition
+  adapters without EventBus header dependencies. Other task 4 work and 5–8 pending.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions

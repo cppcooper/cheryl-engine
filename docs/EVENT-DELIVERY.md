@@ -64,5 +64,13 @@ be accepted but will not enter the invalidated listener.
 `platform_event_delivery(engine.platform_dispatcher().submission())` and
 `simulation_event_delivery(runtime.simulation_dispatcher().submission())` are
 optional composition adapters in `core/engine/event-delivery.h`. Their saved
-endpoints reject safely after service closure. A general parallel worker pool
-needs the ordered stream adapter in task 2.7; FIFO dequeue alone is insufficient.
+endpoints reject safely after service closure. `worker_event_delivery(group)` provides one serial drain stream on the group's
+shared parallel capacity. Copies of that delivery callable share FIFO execution
+and completion order, including across listeners. Separate adapter construction
+creates independent streams. Ordinary jobs in the group remain parallel; a pool's
+FIFO selection alone does not impose completion order.
+
+Accepted stream work drains before group completion. Group closure rejects new
+stream work even when a pump is active. A failed/cancelled pump releases its
+pending captures outside stream locks, letting owned event tickets report loss.
+Do not block a stream callback on another callback in that same stream.

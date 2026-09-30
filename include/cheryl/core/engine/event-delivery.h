@@ -2,6 +2,7 @@
 
 #include "platform-dispatcher.h"
 #include "simulation-dispatcher.h"
+#include "worker-pool.h"
 #include <core/subsystems/event-bus.h>
 
 namespace CE::Engine {
@@ -11,4 +12,7 @@ namespace CE::Engine {
      */
     [[nodiscard]] SubSystems::EventBus::Delivery platform_event_delivery(PlatformDispatcher::Submission endpoint);
     [[nodiscard]] SubSystems::EventBus::Delivery simulation_event_delivery(SimulationDispatcher::Submission endpoint);
+    // One serial stream on shared WorkerGroup capacity. Copies of the returned
+    // callable share ordering; separate calls create independently concurrent streams.
+    [[nodiscard]] SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group);
 }

@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <core/subsystems/event-bus.h>
+#include <core/engine/event-delivery.h>
 #include <internals/exceptions.h>
 
 #include <any>
+#include <atomic>
 #include <chrono>
 #include <future>
 #include <stdexcept>
@@ -222,4 +224,53 @@ TEST(event_bus, queued_delivery_requires_an_observable_error_sink) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     EXPECT_THROW(bus.register_listener("tick", [](std::any) {}, target.target()), CE::Exceptions::invalid_args);
+}
+
+TEST(event_bus, a_worker_delivery_stream_preserves_callback_completion_order_on_a_parallel_pool) {
+    CE::Engine::WorkerPool pool(3);
+    auto group = pool.make_group();
+    auto delivery = CE::Engine::worker_event_delivery(group);
+    CE::SubSystems::EventBus bus;
+    std::vector<int> received;
+    std::atomic<int> errors{0};
+    bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); },
+        delivery, [&](std::exception_ptr) { ++errors; });
+    for (int value = 0; value < 16; ++value)
+        bus.dispatch("tick", value);
+    group.close();
+    group.drain();
+    ASSERT_EQ(received.size(), 16u);
+    for (int value = 0; value < 16; ++value)
+        EXPECT_EQ(received[static_cast<std::size_t>(value)], value);
+    EXPECT_EQ(errors.load(), 0);
+    bus.close();
+}
+
+TEST(event_bus, copied_worker_targets_share_a_stream_across_listeners) {
+    CE::Engine::WorkerPool pool(3);
+    auto group = pool.make_group();
+    auto delivery = CE::Engine::worker_event_delivery(group);
+    CE::SubSystems::EventBus bus;
+    std::vector<int> order;
+    const auto report = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected worker delivery error"; };
+    bus.register_listener("tick", [&](std::any) { order.push_back(1); }, delivery, report);
+    bus.register_listener("tick", [&](std::any) { order.push_back(2); }, delivery, report);
+    bus.dispatch("tick", 0);
+    bus.dispatch("tick", 0);
+    group.close();
+    group.drain();
+    EXPECT_EQ(order, (std::vector<int>{1, 2, 1, 2}));
+    bus.close();
+}
+
+TEST(event_bus, a_saved_worker_target_reports_rejection_after_its_pool_is_destroyed) {
+    auto pool = std::make_unique<CE::Engine::WorkerPool>();
+    auto delivery = CE::Engine::worker_event_delivery(pool->make_group());
+    CE::SubSystems::EventBus bus;
+    int errors = 0;
+    bus.register_listener("tick", [](std::any) {}, delivery, [&](std::exception_ptr) { ++errors; });
+    pool.reset();
+    bus.dispatch("tick", 0);
+    EXPECT_EQ(errors, 1);
+    bus.close();
 }

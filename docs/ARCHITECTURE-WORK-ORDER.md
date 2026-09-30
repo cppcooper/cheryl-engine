@@ -87,7 +87,7 @@ These are the proposed concrete choices within the agreed architecture:
 - [x] **2.4** Distinguish removal from waiting for an already-running callback. Proposed API: nonblocking `unregister()` prevents new invocations; an explicit completion barrier permits safe destruction of borrowed callback targets. Handle self-unregister without deadlock and reject waiting on one's own callback. Queued cancellation alone does not protect a raw `this` already in use.
 - [x] **2.5** Preserve owned payloads and ordered delivery. Serialize enqueue order for concurrent producers within a delivery stream. Immediate callbacks retain registration order within one dispatch; document nested dispatch and overlapping producer calls rather than promising impossible global completion order.
 - [x] **2.6** Give queued delivery a small owned/type-erased callable and an explicit rejection contract. Immediate listener exceptions may propagate; asynchronous errors need an observable error sink/result path rather than a discarded future. Keep string/`std::any` channels for this round.
-- [ ] **2.7** Provide an ordered worker-delivery adapter: one serial drain per stream on WorkerGroup. A general pool's FIFO dequeue does not guarantee callback completion order. Other independent streams remain concurrent.
+- [x] **2.7** Provide an ordered worker-delivery adapter: one serial drain per stream on WorkerGroup. A general pool's FIFO dequeue does not guarantee callback completion order. Other independent streams remain concurrent.
 
 **Boundary D2 — unsubscribe and ordering:** walk through self-removal, removal of another listener, nested dispatch, simultaneous producers, target closure, and callback failure. Add separate in-flight accounting/serial-delivery subtasks before adopting the API. Surface any required change to the persistent-registration contract.
 
@@ -114,7 +114,7 @@ These are the proposed concrete choices within the agreed architecture:
 **Depends on:** tasks 1–3.
 
 - [ ] **4.1** Add central execution configuration and EngineContext-owned/injected pool support. Engine shutdown drains its groups; it does not close an unrelated application-owned shared pool. Avoid eagerly reserving a large machine-wide pool by default.
-- [ ] **4.2** Install event adapters through composition. EventBus/EventSystem headers must not include WorkerPool, PlatformDispatcher, or GameRuntime. Adapter callbacks retain safe submission state, not borrowed queue pointers.
+- [x] **4.2** Install event adapters through composition. EventBus/EventSystem headers must not include WorkerPool, PlatformDispatcher, or GameRuntime. Adapter callbacks retain safe submission state, not borrowed queue pointers.
 - [ ] **4.3** Replace the generic asset-preparation example with WorkerGroup preparation followed by PlatformDispatcher upload. Own Loader and PreparedAssets through the handoff. Simulation checks completion without waiting on GPU work.
 - [ ] **4.4** Define stopping as a staged protocol: quiesce producers/subscriptions; stop new group submissions; resolve or cancel simulation requests; keep resources and platform dispatch alive while accepted work finishes; join owned workers/simulation; finish/cancel remaining platform requests; recycle frames; then clean up game, input, and graphics.
 - [ ] **4.5** Pump platform requests while waiting for jobs that can depend on platform completion. Do not block the platform thread in a worker join while a worker waits on its platform future. State whether each accepted cross-domain request drains or resolves as cancelled.
