@@ -97,4 +97,29 @@ outside the repository, avoiding a commit that refers to its own hash.
 ## Validation so far
 
 Source/diff review and `git diff --check` completed at each checkpoint.
-Dispatcher regression sources are prepared, not compiled or executed.
+Dispatcher/event/worker/shutdown regression sources are prepared, not compiled
+or executed. Current C++ files undergo syntax-tree inspection; type/link/native
+behavior remains unverified. Mailbox replay checks source tree and author/message
+ordering without compiling or running regression programs.
+
+
+## Stopping checkpoint and continuation
+
+Completed source tasks: 0–4, including discovery addition 4.7 (factory forwarding).
+Task 9 documentation/regression preparation accompanies those changes; executed
+acceptance remains open. Continue at task 5. Do not silently defer VariableCatchUp,
+consume/replay transient input incorrectly during recovery, or change strong cache
+residency when implementing later tasks.
+
+This checkpoint reserves numbered patches 01–15. The next unused incremental
+filename is **cheryl-engine-16.patch**. The cumulative **cheryl-engine.patch**
+contains all fifteen local commits from the fixed original base. Its final mail
+header identifies the ending local commit; the continuing checkout's HEAD and
+repository-local patch checkpoint record identify the same incremental base.
+Apply the cumulative patch at the original base, or use the numbered sequence
+in order. The cumulative file contains the earlier checkpoints again.
+
+No commits/branches were pushed. No compilation, CMake configuration, regression
+execution, or real GLFW/OpenGL acceptance was performed in this continuation.
+Unsupported native affinity/topology capabilities are explicit; the Linux adapter
+and scheduling policies still need executed acceptance when authorized.

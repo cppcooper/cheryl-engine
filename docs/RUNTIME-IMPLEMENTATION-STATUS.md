@@ -1,11 +1,16 @@
 # Runtime and framework implementation status
 
-Prepared on 2026-09-30, extending the input work from original task base
-`d690266c389f08e74efe0481c5fc6b744870ea29`. Branch and PR organization remain
-deferred. Individual implementation commits are retained in the cumulative patch.
-Initial source preparation deferred compilation and execution. The compilation
-follow-up now passes the normal and sandbox builds. Automated tests and real demo
-execution remain unrun.
+Current continuation: original task base
+`e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
+`refactor-runtime-render-resource-architecture`. Tasks 1–4 of the second-pass
+work order are implemented in source. **This continuation has not been compiled
+or tested.** Historical normal/sandbox build results below predate these changes
+and do not validate the current HEAD. Individual local commits remain intact.
+
+Earlier input/runtime work began at
+`d690266c389f08e74efe0481c5fc6b744870ea29`. Its compilation follow-up is retained
+below as historical evidence; automated tests and real demo acceptance remain
+open. Source preparation checks are separate from executed acceptance.
 
 | Work item | Prepared source and regression coverage | Execution state |
 | --- | --- | --- |
@@ -107,3 +112,31 @@ Tile-map neighbor selection, autotiling gameplay, application view/orientation
 meaning, audio, networking, world/physics systems, and full text editing/shaping
 are separate work. Committed text scalars do not add IME composition, grapheme,
 clipboard, or Unicode font shaping support.
+
+
+## Execution architecture checkpoint
+
+Completed in source: PlatformDispatcher rename and safe saved endpoints;
+SimulationDispatcher delivery before whole-backlog input transfer; persistent
+EventBus registrations, removal/in-flight barriers, owned queued delivery and
+observable failure sinks; serial event streams on WorkerGroup; owned WorkerPool,
+futures, weighted group scheduling, concurrency caps, capability-aware Linux CPU
+policy, effective-mask verification, and explicit unsupported hard topology paths.
+
+EngineContext supports lazy owned workers or an injected shared root. Both runtime
+modes close context groups, stop simulation, quiesce application producers, and
+pump platform requests while accepted work settles. Unrelated injected groups
+remain open. Remaining platform requests cancel before frames/game/resources are
+released. Partial startup and the first failure survive later cleanup failures.
+The GLFW factory forwards execution configuration, and the loader example uses
+an owned worker-to-platform handoff without blocking simulation.
+
+Regression scenarios are prepared for event lifetime/order/cancellation, saved
+dispatch handles, worker results/closure/caps/shares/CPU eligibility, and shutdown
+with platform-dependent work. They have not been compiled or executed. Static
+syntax parsing does not establish C++ type correctness or concurrency behavior.
+
+Continue with task 5 (timing and hybrid recovery), then task 6 (residency and idle
+retirement), task 7 (pipeline/material contracts), and task 8 (resolved render
+packets). The numbered work order and discoveries are retained in
+[ARCHITECTURE-WORK-LEDGER.md](ARCHITECTURE-WORK-LEDGER.md).
