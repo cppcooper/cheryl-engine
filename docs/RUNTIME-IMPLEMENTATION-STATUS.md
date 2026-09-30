@@ -3,8 +3,9 @@
 Prepared on 2026-09-30, extending the input work from original task base
 `d690266c389f08e74efe0481c5fc6b744870ea29`. Branch and PR organization remain
 deferred. Individual implementation commits are retained in the cumulative patch.
-Compilation, automated tests, and real demo execution have not been run in this
-patch-preparation pass, as requested.
+Initial source preparation deferred compilation and execution. The compilation
+follow-up now passes the normal and sandbox builds. Automated tests and real demo
+execution remain unrun.
 
 | Work item | Prepared source and regression coverage | Execution state |
 | --- | --- | --- |
@@ -17,12 +18,35 @@ patch-preparation pass, as requested.
 | Cache publication | Shared-lock lookups, unique-lock publication, retained handles, destruction outside cache locks, loading-thread/provider checks, and refill rejection during provider teardown. | Not executed. |
 | Asset preparation and upload | Owned loaders with independent roots, fresh deterministic scans, worker-safe parsing/decoding, validation against owned pixels, metadata snapshots, explicit application bootstrap, and transient vertex upload. | Not executed. |
 | OpenGL context and lifetime | Owner plus actual-current-context guards, upload/draw bounds, deferred retirement, context restoration for shutdown, closed-handle rejection, and failure invalidation without GL calls. | Not executed. |
-| Acceptance | Supported builds, the aggregated regression suite, and real GLFW/OpenGL checks in both runtime modes. | Open. |
+| Acceptance | Normal and sandbox builds pass; the aggregated regression suite and real GLFW/OpenGL checks in both runtime modes remain unrun. | Execution open. |
 
 Source formatting, C++ syntax parsing, whitespace checks, and local mailbox replay
 are preparation checks. They do not establish C++ type/link correctness, thread
 correctness, GPU behavior, or platform acceptance. Any executed validation should
 record its configurations, commands, and observed results here.
+
+## Compilation follow-up
+
+Based on pushed commit `84df4f39b26f8d21ccabee7e722ac1585ff4338e`, all default
+targets compile and link with GCC 13.3, C++23, and CMake 3.31.10 on Linux:
+
+- Normal Release configuration: X11 enabled, Wayland disabled, Gainput samples/tests
+  disabled. The library, `demo`, `all-tests`, `cpp-testing`, and `backward-cpp` build.
+- Sandbox Release configuration: `CHERYL_SANDBOX_BUILD=ON`. The library,
+  `all-tests`, `cpp-testing`, and `backward-cpp` build; the demo is omitted by design.
+
+Both configured builds complete successfully with:
+
+```sh
+cmake --build build-normal --parallel 3
+cmake --build build-sandbox --parallel 3
+```
+
+GLAD uses its pinned specification with `REPRODUCIBLE`; its selected Python 3.12
+interpreter has Jinja2 installed. Both configurations use
+`CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST` so building does not execute
+the test binary. No automated tests or real demo checks were run. These results
+establish compilation/linking for the configurations above, not runtime acceptance.
 
 ## Discoveries resolved in this continuation
 
@@ -46,8 +70,8 @@ record its configurations, commands, and observed results here.
 
 ## Remaining acceptance
 
-After compilation and execution are explicitly requested, build the supported
-normal and sandbox configurations and run the `all-tests` regression suite.
+When execution is explicitly requested, run the `all-tests` regression suite in
+the normal and sandbox configurations; rebuild if source or configuration changes.
 Include runtime-adapter, platform-request, material/cache, asset-preparation,
 OpenGL-lifetime, camera, manifest, rendering, and input cases. Sandbox adapters
 cannot establish real GLFW/Gainput or GPU behavior.

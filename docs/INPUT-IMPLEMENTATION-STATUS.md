@@ -2,9 +2,10 @@
 
 Prepared on 2026-09-29 from original task base
 `d690266c389f08e74efe0481c5fc6b744870ea29`.
-Source implementation is prepared; build, automated-test, and real-platform
-acceptance remain open. Compilation and test execution were excluded from this
-patch-preparation pass by request.
+Source implementation is prepared. Normal and sandbox compilation/linking pass
+in the follow-up recorded in the runtime status document; automated-test and
+real-platform acceptance remain open. The initial preparation pass deferred both
+compilation and test execution by request.
 
 The broader runtime/resource/render continuation is tracked in
 [RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md). Its additional
@@ -18,7 +19,7 @@ source work does not close the input execution gate below.
 | 4. Text | Independently requested OS committed Unicode scalars, retained in order with physical editing controls. | Source reviewed; channel lifetime and Unicode cases authored, not executed. |
 | 5. Focus and routing | Scoped focus leases, ownership epochs, exclusive/pass-through keyboard routing, and simulation-side filtered views. | Source reviewed; ownership and gating cases authored, not executed. |
 | 6. Integration | GLFW and Gainput State ordering, explicit adapter capabilities, callback failure propagation, runtime handoff/cleanup, demo textbox, and updated contract documentation. | Source reviewed; adapter and both-runtime-mode cases authored, not executed. |
-| 7. Acceptance | Build, automated tests, and real demo/runtime checks. | Not performed; required before treating the implementation as runtime-validated. |
+| 7. Acceptance | Build, automated tests, and real demo/runtime checks. | Normal/sandbox builds pass; automated tests and real demo checks remain unrun and are required for runtime validation. |
 
 Static source parsing and Git whitespace checks do not establish C++ type,
 link, threading, or platform correctness. Mailbox replay checks the deliverable's
@@ -26,8 +27,7 @@ commit sequence and resulting tree, not runtime behavior.
 
 ## Remaining acceptance gate
 
-When compilation and execution are authorized, build the supported target
-configurations and run the updated input, polling, capture, routing, adapter, and
+When execution is authorized, run the updated input, polling, capture, routing, adapter, and
 runtime cases alongside the existing regression suite. Then check the real
 GLFW/OpenGL demo in sequential and concurrent modes:
 
