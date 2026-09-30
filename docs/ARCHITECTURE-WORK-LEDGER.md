@@ -18,7 +18,10 @@ Compilation, test execution, and remote writes have not been requested.
   owner checks, FIFO detached drains, cancellation, and nested-drain exclusion.
 - Task 1.3 dispatcher implementation complete: owned no-argument work,
   initialization-time acceptance, explicit owner binding, futures, and cancellation.
-- Task 1.4 runtime integration active; 1.5 endpoint mechanics complete for both dispatchers.
+- Task 1 complete: both modes drain simulation work before whole-backlog transfer.
+  Pending simulation captures cancel on their owner; initialization failure closes
+  unbound queues before game cleanup. Five simulation regression scenarios prepared.
+- Task 2 active: persistent EventBus registrations and invocation lifetime.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
@@ -45,3 +48,8 @@ sequence in order; do not apply both series to the same checkout.
 
 Delivery bases and the next unused number are recorded in the session checkpoint
 outside the repository, avoiding a commit that refers to its own hash.
+
+## Validation so far
+
+Source/diff review and `git diff --check` completed at each checkpoint.
+Dispatcher regression sources are prepared, not compiled or executed.

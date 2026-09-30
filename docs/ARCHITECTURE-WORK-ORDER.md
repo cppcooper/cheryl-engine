@@ -69,9 +69,9 @@ These are the proposed concrete choices within the agreed architecture:
 
 - [x] **1.1** Rename PlatformTaskQueue/files/accessors to PlatformDispatcher and `platform_dispatcher()`. Update aggregators, demo, regression sources, and documentation together.
 - [x] **1.2** Preserve FIFO detached-batch drains, owner-thread checks, owned captures, future results, failure propagation, and close-time cancellation. Work submitted during a drain belongs to a later drain; delivery does not become inline merely because the caller is already on the owner thread.
-- [ ] **1.3** Add SimulationDispatcher with owned work, explicit open/close state, safe submission rejection, wake-up, and cancellation/result semantics. Its drain belongs to the simulation owner in both runtime modes.
-- [ ] **1.4** At an update boundary, drain the detached simulation-work batch, then transfer the complete polling backlog immediately before the update. Document this order; do not promise a total ordering between independently produced mailbox work and input records.
-- [ ] **1.5** Use lifetime-safe submission handles so saved delivery adapters reject work after the runtime closes rather than dereferencing destroyed dispatchers.
+- [x] **1.3** Add SimulationDispatcher with owned work, explicit open/close state, safe submission rejection, wake-up, and cancellation/result semantics. Its drain belongs to the simulation owner in both runtime modes.
+- [x] **1.4** At an update boundary, drain the detached simulation-work batch, then transfer the complete polling backlog immediately before the update. Document this order; do not promise a total ordering between independently produced mailbox work and input records.
+- [x] **1.5** Use lifetime-safe submission handles so saved delivery adapters reject work after the runtime closes rather than dereferencing destroyed dispatchers.
 
 **Boundary D1 — queue lifetime:** inspect shutdown races, callback destruction, reentrant posting, and owner-thread futures. Add shared submission-state or explicit error-reporting subtasks if needed. Do not create an Executor base class to solve them.
 

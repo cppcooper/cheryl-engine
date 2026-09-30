@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/controls/polling-backlog.h>
+#include <core/engine/simulation-dispatcher.h>
 
 #include <atomic>
 #include <condition_variable>
@@ -26,19 +27,6 @@ namespace CE::GFramework {
      * and renders the newest complete frame available at each handoff.
      */
     class GameRuntime final {
-    public:
-        GameRuntime(Engine::EngineContext& engine,
-                    AbstractGame& game,
-                    RunMode mode = RunMode::Sequential,
-                    Input::PollingOptions polling = {});
-
-        void run();
-        void stop();
-
-    private:
-        void run_sequential();
-        void run_concurrent();
-
         Engine::EngineContext& engine_;
         AbstractGame& game_;
         RunMode mode_;
@@ -50,5 +38,22 @@ namespace CE::GFramework {
             std::condition_variable wake;
         };
         std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
+        Engine::SimulationDispatcher simulation_dispatcher_;
+
+    public:
+        GameRuntime(
+            Engine::EngineContext& engine,
+            AbstractGame& game,
+            RunMode mode = RunMode::Sequential,
+            Input::PollingOptions polling = {}
+        );
+
+        void run();
+        void stop();
+        [[nodiscard]] Engine::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
+
+    private:
+        void run_sequential();
+        void run_concurrent();
     };
 }

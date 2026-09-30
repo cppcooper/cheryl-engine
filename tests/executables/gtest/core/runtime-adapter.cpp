@@ -19,9 +19,11 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
@@ -998,4 +1000,149 @@ TEST(platform_requests, posting_during_a_drain_defers_work_to_the_next_drain) {
     outer.get();
     inner.get();
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
+}
+
+TEST(simulation_requests, mailbox_work_precedes_update_on_the_simulation_owner) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto endpoint = runtime.simulation_dispatcher().submission();
+        std::future<int> completed;
+        std::thread::id delivery_thread;
+        int value = 0;
+        EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+        game.on_init = [&] {
+            auto owned = std::make_unique<int>(42);
+            completed = endpoint.submit([&, owned = std::move(owned)] {
+                delivery_thread = std::this_thread::get_id();
+                value = *owned;
+                return value;
+            });
+        };
+        game.on_tick = [&] {
+            EXPECT_EQ(value, 42);
+            EXPECT_EQ(delivery_thread, std::this_thread::get_id());
+            EXPECT_EQ(completed.get(), 42);
+            runtime.stop();
+        };
+        runtime.run();
+        EXPECT_EQ(delivery_thread, game.update_thread);
+        if (mode == CE::GFramework::RunMode::Concurrent)
+            EXPECT_NE(delivery_thread, std::this_thread::get_id());
+        EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(simulation_requests, a_reentrant_post_waits_for_the_next_update_boundary) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto endpoint = runtime.simulation_dispatcher().submission();
+        std::future<void> outer;
+        std::future<void> inner;
+        std::vector<int> order;
+        int updates = 0;
+        game.on_init = [&] {
+            outer = endpoint.submit([&] {
+                order.push_back(1);
+                inner = endpoint.submit([&] { order.push_back(3); });
+            });
+        };
+        game.on_tick = [&] {
+            if (++updates == 1) {
+                EXPECT_EQ(order, std::vector<int>{1});
+                EXPECT_EQ(inner.wait_for(std::chrono::seconds{0}), std::future_status::timeout);
+                order.push_back(2);
+            }
+            else {
+                EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        outer.get();
+        inner.get();
+        EXPECT_EQ(updates, 2);
+    }
+}
+
+TEST(simulation_requests, shutdown_cancels_pending_captures_on_the_simulation_owner) {
+    struct CapturedData {
+        bool& destroyed;
+        std::thread::id& destruction_thread;
+        ~CapturedData() {
+            destroyed = true;
+            destruction_thread = std::this_thread::get_id();
+        }
+    };
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        std::future<void> cancelled;
+        bool destroyed = false;
+        std::thread::id destruction_thread;
+        game.on_tick = [&] {
+            auto data = std::make_unique<CapturedData>(destroyed, destruction_thread);
+            cancelled = runtime.simulation_dispatcher().submit([data = std::move(data)] {});
+            runtime.stop();
+        };
+        game.on_deinit = [&] { EXPECT_TRUE(destroyed); };
+        runtime.run();
+        EXPECT_EQ(destruction_thread, game.update_thread);
+        try {
+            cancelled.get();
+            FAIL() << "Stopped simulation work must be cancelled";
+        }
+        catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+    }
+}
+
+TEST(simulation_requests, initialization_failure_cancels_before_game_cleanup_without_a_worker) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        std::future<void> cancelled;
+        game.on_init = [&] {
+            cancelled = runtime.simulation_dispatcher().submit([] {});
+            throw std::runtime_error("initialization failed");
+        };
+        game.on_deinit = [&] {
+            EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        };
+        EXPECT_THROW(runtime.run(), std::runtime_error);
+        EXPECT_THROW(cancelled.get(), std::future_error);
+        EXPECT_EQ(game.shutdowns, 1);
+    }
+}
+
+TEST(simulation_requests, a_saved_endpoint_rejects_after_runtime_destruction) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    auto runtime = std::make_unique<CE::GFramework::GameRuntime>(*engine, game);
+    auto endpoint = runtime->simulation_dispatcher().submission();
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
+    runtime.reset();
+    EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
 }

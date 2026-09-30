@@ -66,6 +66,11 @@ namespace CE::GFramework {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
             });
+            simulation_dispatcher_.open([scheduler = scheduler_] {
+                std::lock_guard lock(scheduler->mutex);
+                scheduler->wake.notify_all();
+            });
+            simulation_dispatcher_.bind_owner();
             input_started = true;
             input.initialize(window);
             game_started = true;
@@ -100,6 +105,11 @@ namespace CE::GFramework {
                     renderer.set_viewport(size);
                     viewport = size;
                 }
+                // Detached mailbox work precedes transfer of the complete polling
+                // backlog. Posts from that work wait until the next boundary.
+                simulation_dispatcher_.drain();
+                if (stop_requested_.load(std::memory_order_acquire))
+                    break;
                 auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                 game_.update(TickContext{state.elapsed().count(), state, size});
                 if (!stop_requested_.load(std::memory_order_acquire))
@@ -121,6 +131,7 @@ namespace CE::GFramework {
         // Recycle even after a failed prepare/render so frame-held GPU resources
         // are released before the game and its graphics context shut down.
         frame.recycle();
+        simulation_dispatcher_.close();
         engine_.platform_dispatcher().close();
         const auto finish = [&failure](auto&& operation) {
             try {
@@ -177,6 +188,12 @@ namespace CE::GFramework {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
             });
+            // Accept initialization-time posts before the dedicated simulation
+            // worker exists; execution ownership is bound by that worker.
+            simulation_dispatcher_.open([scheduler = scheduler_] {
+                std::lock_guard lock(scheduler->mutex);
+                scheduler->wake.notify_all();
+            });
             input_started = true;
             input.initialize(window);
             game_started = true;
@@ -195,6 +212,7 @@ namespace CE::GFramework {
             // touches the window, input adapter, renderer, and presentation surface.
             worker = std::thread([&, previous_poll = std::move(previous_poll)]() mutable {
                 try {
+                    simulation_dispatcher_.bind_owner();
                     Input::InputAccumulator accumulator(previous_poll, std::chrono::steady_clock::now());
                     std::vector<std::shared_ptr<const Input::PollSnapshot>> polls;
                     auto next_tick = std::chrono::steady_clock::now() + cadence;
@@ -206,6 +224,14 @@ namespace CE::GFramework {
                             scheduler_->wake.wait_until(lock, next_tick, [&] { return stop_requested_.load(std::memory_order_acquire); });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
+                        }
+                        // Run application callbacks without the scheduler lock.
+                        // A callback may post platform work or request stop().
+                        simulation_dispatcher_.drain();
+                        if (stop_requested_.load(std::memory_order_acquire))
+                            break;
+                        {
+                            std::lock_guard lock(scheduler_->mutex);
                             polls = handoff.backlog.consume();
                             size = handoff.framebuffer_size;
                             consumed_at = Input::InputClock::now();
@@ -253,6 +279,15 @@ namespace CE::GFramework {
                 } catch (...) {
                     std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_failure = std::current_exception();
+                }
+                // Release unexecuted simulation captures on their owner while
+                // game/resources still exist, before publishing worker_done.
+                try {
+                    simulation_dispatcher_.close();
+                } catch (...) {
+                    std::lock_guard lock(scheduler_->mutex);
+                    if (!handoff.worker_failure)
+                        handoff.worker_failure = std::current_exception();
                 }
                 {
                     std::lock_guard lock(scheduler_->mutex);
@@ -352,6 +387,8 @@ namespace CE::GFramework {
         engine_.platform_dispatcher().close();
         if (worker.joinable())
             worker.join();
+        // Also handles initialization/thread-start failure before owner binding.
+        simulation_dispatcher_.close();
         // The worker cannot be writing now. Even incomplete frames must release
         // their handles before deinitializing the game or graphics context.
         const auto finish = [&failure](auto&& operation) {

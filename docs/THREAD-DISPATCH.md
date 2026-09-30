@@ -28,3 +28,26 @@ scheduler state so an enqueue racing closure can safely finish its notification.
 These dispatchers have distinct APIs and ownership domains. Event delivery can
 later adapt their endpoints through a callable without an Executor base class or
 an EventSystem dependency on either dispatcher.
+
+## Simulation boundary
+
+`runtime.simulation_dispatcher().submit(work)` accepts work after runtime
+initialization opens the queue. Obtain `submission()` when a longer-lived adapter
+needs to save the endpoint. At every scheduled update, the runtime drains one
+simulation batch, checks stop, then transfers the entire available polling
+backlog immediately before `game.update()`. No input observations are removed
+merely because mailbox work ran. There is no total ordering between independent
+input and mailbox producers.
+
+In concurrent mode submission notifies the shared scheduler but does not advance
+the scheduled update deadline. Delivery occurs at the next scheduled simulation
+boundary; posting must not create an early simulation tick. Task 5 will make that
+cadence configurable. In sequential mode the same boundary runs on the calling
+thread. Owner callbacks execute without the scheduler lock, permitting `stop()`
+and further platform/simulation submissions.
+
+Simulation shutdown cancels its pending batch on the simulation owner before
+publishing worker completion. Initialization failure before owner binding cancels
+on the initializing thread. The platform joins simulation before game cleanup.
+The later worker-integration task still needs to coordinate general-worker drain
+with platform dependencies; these dispatcher changes do not replace that task.
