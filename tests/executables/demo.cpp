@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <future>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -90,10 +91,13 @@ public:
         events_.reset();
         engine_.input().bindings().clear();
         font_.reset();
+        pending_shader_ = {};
         font_shader_.reset();
     }
 
     void update(const CE::GFramework::TickContext& tick) override {
+        if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
+            font_shader_ = pending_shader_.get();
         const auto& actions = tick.input;
         camera_.set_framebuffer_size(tick.framebuffer_size);
         if (actions.button(DemoActions::Reset).pressed()) {
@@ -110,6 +114,15 @@ public:
         // those still pending when this update requests a focus transfer.
         for (const auto& record : actions.records()) {
             const auto* button = std::get_if<CE::Input::ButtonEvent>(&record.data);
+            if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
+                button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
+                const auto key = asset_root_ / "shaders" / "shader2d";
+                pending_shader_ = engine_.platform_tasks().submit([key](CE::Engine::EngineContext& platform) {
+                    auto& shaders = CE::Assets::ShaderMgr::get();
+                    shaders.load_program(key, {key.string() + ".vert", key.string() + ".frag"}, platform.resources());
+                    return shaders.get_asset(key);
+                });
+            }
             if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
                 button->phase == CE::Input::ButtonPhase::Press) {
                 if (focus_.owns_focus()) {
@@ -189,7 +202,7 @@ public:
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
         pass.add(CE::RenderAPIs::TextDraw{font_,
-                                          std::format("Cheryl Engine demo\nWASD: pan camera  R: reset\n"
+                                          std::format("Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
                                                       "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
                                                       "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}",
                                                       mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
@@ -223,6 +236,7 @@ private:
     bool load_all_assets_;
     std::shared_ptr<CE::Assets::STBFont> font_;
     std::shared_ptr<CE::Assets::Shader> font_shader_;
+    std::future<std::shared_ptr<CE::Assets::Shader>> pending_shader_;
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
     float mouse_y_ = 0.0f;

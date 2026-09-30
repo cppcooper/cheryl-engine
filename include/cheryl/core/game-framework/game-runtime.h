@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 
 namespace CE::Engine {
@@ -44,7 +45,10 @@ namespace CE::GFramework {
         Input::PollingOptions polling_;
         std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
-        std::mutex scheduler_mutex_;
-        std::condition_variable scheduler_wake_;
+        struct Scheduler {
+            std::mutex mutex;
+            std::condition_variable wake;
+        };
+        std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
     };
 }

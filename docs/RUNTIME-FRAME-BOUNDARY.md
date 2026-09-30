@@ -41,7 +41,17 @@ input reference borrows it through context destruction. Owned input detaches
 before the window is destroyed. A runtime and its context each permit one session.
 Game cleanup is paired with attempted initialization, including partial failure;
 cleanup preserves the first failure while still shutting down both adapters.
-Future resource uploads requested during simulation need a graphics-thread queue.
+`engine.platform_tasks().submit(work)` transfers owned request data to the platform
+thread, where graphics is current. The result is a future: inspect readiness from
+`update()`, then publish the resulting handle through the next render frame. Do not
+block simulation on it or capture live simulation objects in platform callbacks.
+The queue drains FIFO batches before polling, including while the input backlog
+is full; nested requests wait for the next batch. Each failure reaches its own
+future. Shutdown rejects new requests and destroys unexecuted captures on the
+platform before joining the worker and cleaning up the game; their futures report
+`broken_promise`. A shared scheduler wake remains valid through concurrent submit
+and close without retaining the runtime itself. F5 in the demo queues a shader
+reload and adopts the resulting handle during a later update.
 `stop()` sets an atomic request and wakes the concurrent scheduler's waits.
 
 `AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "platform-queue.h"
+
 #include <atomic>
 #include <memory>
 
@@ -55,6 +57,7 @@ namespace CE::Engine {
         [[nodiscard]] RenderAPIs::iRenderer& renderer() const;
         [[nodiscard]] Assets::ResourceProvider& resources() const;
         [[nodiscard]] Input::iInputSystem& input() const;
+        [[nodiscard]] PlatformTaskQueue& platform_tasks() { return platform_tasks_; }
 
     private:
         friend class GFramework::GameRuntime;
@@ -68,5 +71,6 @@ namespace CE::Engine {
         std::unique_ptr<Input::iInputSystem> owned_input_;
         Input::iInputSystem* input_;
         std::atomic<bool> session_started_{false};
+        PlatformTaskQueue platform_tasks_;
     };
 }

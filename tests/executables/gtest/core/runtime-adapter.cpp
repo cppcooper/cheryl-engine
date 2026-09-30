@@ -239,6 +239,8 @@ namespace {
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>,
                                                                            CE::Assets::PixelSize size) override {
+            resource_thread = std::this_thread::get_id();
+            ++atlas_uploads;
             return std::make_shared<MemoryImage>(size);
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D>
@@ -255,6 +257,8 @@ namespace {
         }
 
         std::uint32_t uploaded_vertices = 0;
+        std::thread::id resource_thread;
+        int atlas_uploads = 0;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::vector<CE::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
@@ -425,6 +429,98 @@ TEST(runtime_adapter, owned_input_is_destroyed_while_its_window_is_alive) {
     engine.reset();
     EXPECT_TRUE(input_destroyed);
     EXPECT_FALSE(display_alive);
+}
+
+TEST(platform_requests, simulation_transfers_owned_pixels_to_the_platform) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        std::future<std::shared_ptr<CE::Assets::Image>> pending;
+        std::shared_ptr<CE::Assets::Image> image;
+        game.on_tick = [&] {
+            if (!pending.valid()) {
+                auto pixels = std::make_unique<std::vector<unsigned char>>(4, 255);
+                pending = engine->platform_tasks().submit([pixels = std::move(pixels)](CE::Engine::EngineContext& platform) {
+                    return platform.resources().create_font_atlas(*pixels, {2, 2});
+                });
+            }
+            else if (pending.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                image = pending.get();
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        ASSERT_TRUE(image);
+        EXPECT_EQ(image->pixel_size().width, 2u);
+        const auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        EXPECT_EQ(provider.atlas_uploads, 1);
+        EXPECT_EQ(provider.resource_thread, std::this_thread::get_id());
+        if (mode == CE::GFramework::RunMode::Concurrent)
+            EXPECT_NE(game.update_thread, provider.resource_thread);
+        EXPECT_THROW(engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 1; }), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(platform_requests, one_failed_callback_does_not_abort_another_request) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    std::future<int> failure;
+    std::future<int> success;
+    game.on_init = [&] {
+        failure = engine->platform_tasks().submit([](CE::Engine::EngineContext&) -> int { throw std::runtime_error("request failed"); });
+        success = engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 17; });
+    };
+    game.on_tick = [&] {
+        EXPECT_THROW(failure.get(), std::runtime_error);
+        EXPECT_EQ(success.get(), 17);
+        runtime.stop();
+    };
+    runtime.run();
+    EXPECT_EQ(game.shutdowns, 1);
+}
+
+TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
+    struct CapturedData {
+        bool& destroyed;
+        std::thread::id& thread;
+        ~CapturedData() {
+            destroyed = true;
+            thread = std::this_thread::get_id();
+        }
+    };
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    EXPECT_THROW(engine->platform_tasks().submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    std::future<int> pending;
+    bool destroyed = false;
+    std::thread::id destruction_thread;
+    game.on_init = [&] {
+        auto data = std::make_unique<CapturedData>(destroyed, destruction_thread);
+        pending = engine->platform_tasks().submit([data = std::move(data)](CE::Engine::EngineContext&) { return 1; });
+        runtime.stop();
+    };
+    game.on_deinit = [&] { EXPECT_TRUE(destroyed); };
+    runtime.run();
+    EXPECT_EQ(destruction_thread, std::this_thread::get_id());
+    try {
+        (void)pending.get();
+        FAIL() << "The unexecuted request must be cancelled";
+    }
+    catch (const std::future_error& error) {
+        EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+    }
 }
 
 TEST(runtime_adapter, concurrent_simulation_presents_on_platform_thread) {

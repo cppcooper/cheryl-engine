@@ -63,10 +63,16 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
+            engine_.platform_tasks().open([scheduler = scheduler_] {
+                std::lock_guard lock(scheduler->mutex);
+                scheduler->wake.notify_all();
+            });
             input_started = true;
             input.initialize(window);
             game_started = true;
             game_.init();
+            if (!stop_requested_.load(std::memory_order_acquire))
+                engine_.platform_tasks().drain(engine_);
 
             // Game initialization may register bindings and upload assets. Start
             // timing and sample the baseline only after it has completed.
@@ -79,6 +85,7 @@ namespace CE::GFramework {
             Input::PollingBacklog backlog(polling_);
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+                engine_.platform_tasks().drain(engine_);
                 // Sequential execution cannot poll during update(), but spacing
                 // still applies. A delayed poll never delays simulation or rendering.
                 if (backlog.poll_due(Input::InputClock::now())) {
@@ -96,6 +103,8 @@ namespace CE::GFramework {
                 }
                 auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                 game_.update(TickContext{state.elapsed().count(), state, size});
+                if (!stop_requested_.load(std::memory_order_acquire))
+                    engine_.platform_tasks().drain(engine_);
 
                 // One slot is enough because the graphics thread consumes and
                 // recycles it before the next simulation update.
@@ -114,6 +123,7 @@ namespace CE::GFramework {
         // Recycle even after a failed prepare/render so frame-held GPU resources
         // are released before the game and its graphics context shut down.
         frame.recycle();
+        engine_.platform_tasks().close();
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
@@ -141,7 +151,7 @@ namespace CE::GFramework {
         enum class SlotState { Free, Writing, Ready, Rendering, Retired, Recycling };
         struct Slot {
             RenderAPIs::RenderFrame frame;
-            SlotState state = SlotState::Free; // Guarded by scheduler_mutex_.
+            SlotState state = SlotState::Free; // Guarded by scheduler_->mutex.
         };
         struct Handoff {
             Input::PollingBacklog backlog;
@@ -166,10 +176,16 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
+            engine_.platform_tasks().open([scheduler = scheduler_] {
+                std::lock_guard lock(scheduler->mutex);
+                scheduler->wake.notify_all();
+            });
             input_started = true;
             input.initialize(window);
             game_started = true;
             game_.init();
+            if (!stop_requested_.load(std::memory_order_acquire))
+                engine_.platform_tasks().drain(engine_);
 
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
@@ -189,8 +205,8 @@ namespace CE::GFramework {
                         FramebufferSize size;
                         Input::InputClock::time_point consumed_at;
                         {
-                            std::unique_lock lock(scheduler_mutex_);
-                            scheduler_wake_.wait_until(lock, next_tick, [&] { return stop_requested_.load(std::memory_order_acquire); });
+                            std::unique_lock lock(scheduler_->mutex);
+                            scheduler_->wake.wait_until(lock, next_tick, [&] { return stop_requested_.load(std::memory_order_acquire); });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
                             polls = handoff.backlog.consume();
@@ -199,7 +215,7 @@ namespace CE::GFramework {
                         }
                         // Capacity becomes available as soon as the entire batch
                         // transfers, even while this worker processes its update.
-                        scheduler_wake_.notify_all();
+                        scheduler_->wake.notify_all();
                         // A slow tick never triggers a burst of catch-up updates.
                         // If rendering blocks polling, held input persists without replaying edges.
                         next_tick = std::chrono::steady_clock::now() + cadence;
@@ -214,7 +230,7 @@ namespace CE::GFramework {
                         // keeps updating; only a visual snapshot is skipped.
                         std::optional<std::size_t> writable;
                         {
-                            std::lock_guard lock(scheduler_mutex_);
+                            std::lock_guard lock(scheduler_->mutex);
                             for (std::size_t i = 0; i < slots.size(); ++i) {
                                 if (slots[i].state == SlotState::Free) {
                                     slots[i].state = SlotState::Writing;
@@ -229,32 +245,33 @@ namespace CE::GFramework {
                         RenderAPIs::RenderFrameWriter writer(slots[*writable].frame);
                         game_.prepare_render_frame(writer);
                         {
-                            std::lock_guard lock(scheduler_mutex_);
+                            std::lock_guard lock(scheduler_->mutex);
                             if (handoff.ready)
                                 slots[*handoff.ready].state = SlotState::Retired;
                             slots[*writable].state = SlotState::Ready;
                             handoff.ready = *writable;
                         }
-                        scheduler_wake_.notify_all();
+                        scheduler_->wake.notify_all();
                     }
                 }
                 catch (...) {
-                    std::lock_guard lock(scheduler_mutex_);
+                    std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_failure = std::current_exception();
                 }
                 {
-                    std::lock_guard lock(scheduler_mutex_);
+                    std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_done = true;
                 }
-                scheduler_wake_.notify_all();
+                scheduler_->wake.notify_all();
             });
 
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+                engine_.platform_tasks().drain(engine_);
                 bool poll_due = false;
                 {
-                    std::lock_guard lock(scheduler_mutex_);
+                    std::lock_guard lock(scheduler_->mutex);
                     if (handoff.worker_done)
                         break;
                     poll_due = handoff.backlog.poll_due(Input::InputClock::now());
@@ -273,7 +290,7 @@ namespace CE::GFramework {
                         viewport = size;
                     }
                     {
-                        std::lock_guard lock(scheduler_mutex_);
+                        std::lock_guard lock(scheduler_->mutex);
                         // Every completed poll consumes capacity, including an
                         // unchanged observation. No completed observation is discarded.
                         handoff.backlog.complete(std::move(completed), Input::InputClock::now());
@@ -285,21 +302,21 @@ namespace CE::GFramework {
                 // may recycle them, while the graphics context is current.
                 for (auto& slot : slots) {
                     {
-                        std::lock_guard lock(scheduler_mutex_);
+                        std::lock_guard lock(scheduler_->mutex);
                         if (slot.state != SlotState::Retired)
                             continue;
                         slot.state = SlotState::Recycling;
                     }
                     slot.frame.recycle();
                     {
-                        std::lock_guard lock(scheduler_mutex_);
+                        std::lock_guard lock(scheduler_->mutex);
                         slot.state = SlotState::Free;
                     }
                 }
 
                 std::optional<std::size_t> ready;
                 {
-                    std::lock_guard lock(scheduler_mutex_);
+                    std::lock_guard lock(scheduler_->mutex);
                     ready = std::exchange(handoff.ready, std::nullopt);
                     if (ready)
                         slots[*ready].state = SlotState::Rendering;
@@ -310,15 +327,16 @@ namespace CE::GFramework {
                     engine_.surface().present();
                     slots[*ready].frame.recycle();
                     {
-                        std::lock_guard lock(scheduler_mutex_);
+                        std::lock_guard lock(scheduler_->mutex);
                         slots[*ready].state = SlotState::Free;
                     }
                 }
 
-                std::unique_lock lock(scheduler_mutex_);
+                std::unique_lock lock(scheduler_->mutex);
                 const auto deadline = handoff.backlog.next_poll_at();
-                scheduler_wake_.wait_until(lock, deadline, [&] {
-                    if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready)
+                scheduler_->wake.wait_until(lock, deadline, [&] {
+                    if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready ||
+                        engine_.platform_tasks().has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.
                     // Recompute the deadline instead of waiting on the old full batch.
@@ -336,6 +354,7 @@ namespace CE::GFramework {
         }
 
         stop();
+        engine_.platform_tasks().close();
         if (worker.joinable())
             worker.join();
         // The worker cannot be writing now. Even incomplete frames must release
@@ -352,7 +371,7 @@ namespace CE::GFramework {
         for (auto& slot : slots)
             finish([&slot] { slot.frame.recycle(); });
         {
-            std::lock_guard lock(scheduler_mutex_);
+            std::lock_guard lock(scheduler_->mutex);
             if (!failure)
                 failure = handoff.worker_failure;
         }
@@ -368,9 +387,9 @@ namespace CE::GFramework {
 
     void GameRuntime::stop() {
         {
-            std::lock_guard lock(scheduler_mutex_);
+            std::lock_guard lock(scheduler_->mutex);
             stop_requested_.store(true, std::memory_order_release);
         }
-        scheduler_wake_.notify_all();
+        scheduler_->wake.notify_all();
     }
 }
