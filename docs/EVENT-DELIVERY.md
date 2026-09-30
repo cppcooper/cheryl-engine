@@ -22,4 +22,18 @@ inside the outer callback. Exceptions propagate to the immediate caller.
 The registry lock is released before callbacks run. Registration during dispatch
 joins the next snapshot, not the already detached one. String channel names and
 `std::any` payload typing retain their current application-level contract.
-Unregister/in-flight completion and queued delivery follow as separate subtasks.
+`unregister_listener(id)` invalidates invocation entry before it returns. A
+listener already running may finish. For a callback borrowing an object (for
+example `[this]`), call `unregister_and_wait(id)` before destroying that object, or
+unregister then call `wait_for_listener(id)`. The barrier waits only for invocations
+already entered, not for queued tasks which can safely discard invalid entries.
+Do not wait while holding a lock needed by the callback. Self-unregister works;
+waiting from the same listener, including nested invocation, rejects instead of
+deadlocking. Callback exceptions still release in-flight accounting.
+
+`close()` invalidates all registrations and rejects subsequent registration and
+dispatch. Bus destruction closes without blocking; callers must settle any
+in-flight callbacks that borrow a bus or other target before destroying it.
+Registry snapshots and invocation guards retain callback ownership as needed,
+without permitting a fresh invocation after invalidation. Queued delivery follows
+as a separate subtask.

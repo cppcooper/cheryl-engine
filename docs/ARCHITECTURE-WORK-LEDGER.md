@@ -23,7 +23,9 @@ Compilation, test execution, and remote writes have not been requested.
   unbound queues before game cleanup. Five simulation regression scenarios prepared.
 - Task 2.1–2.2 complete: isolated owned buses behind the singleton, persistent
   registration IDs, and immediate producer-thread delivery.
-- Task 2.3–2.6 active: invocation lifetime, completion barriers, queued delivery.
+- Task 2.3–2.4 complete: entry/invalidation handshake, nonblocking removal,
+  in-flight completion barrier, nested self-wait rejection, and bus close.
+- Task 2.5–2.6 active: ordered queued delivery and observable failures.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
@@ -38,6 +40,10 @@ Compilation, test execution, and remote writes have not been requested.
 - D1: posting during a detached-batch drain must remain pending for the next
   boundary. A recursive drain must not turn that promise into inline delivery.
   Add a reentrancy guard under 1.2/1.3 and a corresponding regression scenario.
+
+- D2: duplicate concurrent unregister calls can observe removal before the first
+  remover invalidates. Every matching remover must perform invalidation before
+  returning, even when it reports no new removal. Recorded under 2.3.
 
 ## Patch protocol
 

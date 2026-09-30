@@ -9,8 +9,10 @@ namespace CE::SubSystems {
      * all buses use immediate producer-thread delivery unless explicitly adapted.
      */
     struct EventSystem : Singleton_CTS<EventSystem> {
+    private:
         EventBus bus_;
 
+    public:
         using Callback = EventBus::Callback;
         using Registration = EventBus::Registration;
 
@@ -18,5 +20,8 @@ namespace CE::SubSystems {
         [[nodiscard]] EventBus& bus() { return bus_; }
         Registration register_listener(const std::string& event, Callback callback);
         void dispatch(const std::string& event, const std::any& payload);
+        bool unregister_listener(const Registration& registration) { return bus_.unregister_listener(registration); }
+        void wait_for_listener(const Registration& registration) const { bus_.wait_for_listener(registration); }
+        bool unregister_and_wait(const Registration& registration) { return bus_.unregister_and_wait(registration); }
     };
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <any>
+#include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -23,11 +25,16 @@ namespace CE::SubSystems {
         struct Listener {
             std::string event;
             Callback callback;
+            std::mutex mutex;
+            std::condition_variable idle;
+            std::size_t running = 0;
+            bool active = true;
         };
         struct State {
             std::mutex mutex;
             std::unordered_map<std::string, std::vector<std::shared_ptr<Listener>>> channels;
             std::uint64_t next_id = 1;
+            bool closed = false;
         };
         std::shared_ptr<State> state_ = std::make_shared<State>();
 
@@ -50,11 +57,22 @@ namespace CE::SubSystems {
         };
 
         EventBus() = default;
+        ~EventBus();
         EventBus(const EventBus&) = delete;
         EventBus& operator=(const EventBus&) = delete;
 
         // A registration is intentionally persistent even when its ID is ignored.
         Registration register_listener(const std::string& event, Callback callback);
         void dispatch(const std::string& event, const std::any& payload);
+        // Invalidation prevents new invocation entry; already-running work finishes.
+        bool unregister_listener(const Registration& registration);
+        // Only wait after invalidation. Waiting on one's own invocation rejects.
+        void wait_for_listener(const Registration& registration) const;
+        bool unregister_and_wait(const Registration& registration);
+        void close();
+
+    private:
+        static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
+        static void invalidate(const std::shared_ptr<Listener>& listener);
     };
 }
