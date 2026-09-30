@@ -41,8 +41,9 @@ namespace {
 
         TemporaryAssets()
         : root(std::filesystem::temp_directory_path() /
-            ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
-                std::to_string(next.fetch_add(1)))) {
+            ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+                + "-" + std::to_string(next.fetch_add(1)))
+        ) {
             std::filesystem::create_directories(root);
         }
 
@@ -53,9 +54,9 @@ namespace {
 
         void write_png(const std::string& name = "pixel.png") const {
             constexpr std::array<unsigned char, 70> bytes{
-                137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0,
-                0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68,
-                174, 66, 96, 130
+                137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0,
+                31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255,
+                137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130
             };
             const auto file = root / name;
             std::filesystem::create_directories(file.parent_path());
@@ -559,6 +560,7 @@ TEST(platform_requests, one_failed_callback_does_not_abort_another_request) {
     game.on_init = [&] {
         failure = engine->platform_tasks().submit([](
             CE::Engine::EngineContext&
+
 
 
         ) ->
