@@ -55,7 +55,8 @@ add_subdirectory(extern/glad/cmake)
 add_subdirectory(extern/glm EXCLUDE_FROM_ALL)
 add_subdirectory(extern/glfw EXCLUDE_FROM_ALL)
 
-glad_add_library(gl46 STATIC EXCLUDE_FROM_ALL API gl:core=4.6 EXTENSIONS GL_EXT_texture_filter_anisotropic )
+# Use the pinned GLAD specification instead of downloading a newer one during compilation.
+glad_add_library(gl46 STATIC EXCLUDE_FROM_ALL REPRODUCIBLE API gl:core=4.6 EXTENSIONS GL_EXT_texture_filter_anisotropic )
 
 # includes
 include_directories(include)

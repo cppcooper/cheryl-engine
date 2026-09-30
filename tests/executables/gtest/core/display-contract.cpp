@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <core/display/display-system-interface.h>
 #include <core/rendering/renderer.h>
 
 #include <memory>

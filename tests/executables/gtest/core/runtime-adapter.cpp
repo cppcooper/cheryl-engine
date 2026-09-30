@@ -2,6 +2,7 @@
 
 #include <assets/resources/resource-provider.h>
 #include <assets/types/2d/graphic.h>
+#include <core/controls/input-interface.h>
 #include <core/display/display-system-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>

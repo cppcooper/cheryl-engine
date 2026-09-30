@@ -4,8 +4,10 @@
 #include <core/display/window.h>
 #include <internals/exceptions.h>
 
-#include <gainput/GainputHelpers.h>
 #include <gainput/GainputInputDeltaState.h>
+
+// Gainput's inline helpers call methods on the complete delta-state type.
+#include <gainput/GainputHelpers.h>
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
