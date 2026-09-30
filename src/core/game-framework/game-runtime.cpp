@@ -25,16 +25,26 @@ namespace CE::GFramework {
         : engine_(engine), game_(game), mode_(mode), polling_(polling) {
         // Reject an invalid policy before starting any platform or game resources.
         (void)Input::PollingBacklog(polling_);
+        if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
+            throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
     }
 
     void GameRuntime::run() {
-        switch (mode_) {
-            case RunMode::Sequential:
-                return run_sequential();
-            case RunMode::Concurrent:
-                return run_concurrent();
+        if (run_started_.exchange(true, std::memory_order_acq_rel))
+            throw Exceptions::failed_operation(CE_HERE, "GameRuntime::run is single-use");
+        // Reserve the graph before either runtime can initialize or clean up its adapters.
+        engine_.begin_session();
+        try {
+            if (mode_ == RunMode::Sequential)
+                run_sequential();
+            else
+                run_concurrent();
         }
-        throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
+        catch (...) {
+            stop();
+            throw;
+        }
+        stop();
     }
 
     void GameRuntime::run_sequential() {
@@ -47,7 +57,7 @@ namespace CE::GFramework {
         RenderAPIs::RenderFrame frame;
         bool renderer_started = false;
         bool input_started = false;
-        bool game_ready = false;
+        bool game_started = false;
         std::exception_ptr failure;
 
         try {
@@ -55,8 +65,8 @@ namespace CE::GFramework {
             renderer.initialize();
             input_started = true;
             input.initialize(window);
+            game_started = true;
             game_.init();
-            game_ready = true;
 
             // Game initialization may register bindings and upload assets. Start
             // timing and sample the baseline only after it has completed.
@@ -113,7 +123,7 @@ namespace CE::GFramework {
                     failure = std::current_exception();
             }
         };
-        if (game_ready)
+        if (game_started)
             finish([this] { game_.deinit(); });
         // Adapters must also clean up if initialize() only completed partway.
         if (input_started)
@@ -150,7 +160,7 @@ namespace CE::GFramework {
         std::thread worker;
         bool renderer_started = false;
         bool input_started = false;
-        bool game_ready = false;
+        bool game_started = false;
         std::exception_ptr failure;
 
         try {
@@ -158,8 +168,8 @@ namespace CE::GFramework {
             renderer.initialize();
             input_started = true;
             input.initialize(window);
+            game_started = true;
             game_.init();
-            game_ready = true;
 
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
@@ -346,7 +356,7 @@ namespace CE::GFramework {
             if (!failure)
                 failure = handoff.worker_failure;
         }
-        if (game_ready)
+        if (game_started)
             finish([this] { game_.deinit(); });
         if (input_started)
             finish([&input] { input.deinitialize(); });

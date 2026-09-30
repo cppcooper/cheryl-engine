@@ -36,6 +36,11 @@ callback runs on the platform thread and must not mutate simulation state.
 `init()` runs after input and graphics initialization but before starting the
 worker, so it can register bindings and load GPU assets. After the worker joins
 and frames are recycled, `deinit()` runs while the graphics context is current.
+The default GLFW/OpenGL factory owns its input adapter; the overload taking an
+input reference borrows it through context destruction. Owned input detaches
+before the window is destroyed. A runtime and its context each permit one session.
+Game cleanup is paired with attempted initialization, including partial failure;
+cleanup preserves the first failure while still shutting down both adapters.
 Future resource uploads requested during simulation need a graphics-thread queue.
 `stop()` sets an atomic request and wakes the concurrent scheduler's waits.
 

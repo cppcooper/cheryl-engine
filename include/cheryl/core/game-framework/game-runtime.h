@@ -42,6 +42,7 @@ namespace CE::GFramework {
         AbstractGame& game_;
         RunMode mode_;
         Input::PollingOptions polling_;
+        std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
         std::mutex scheduler_mutex_;
         std::condition_variable scheduler_wake_;

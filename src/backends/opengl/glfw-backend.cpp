@@ -3,6 +3,7 @@
 #include <backends/opengl/glfw-context.h>
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/resource-provider.h>
+#include <core/controls/input-system.h>
 #include <core/display/display-system.h>
 #include <internals/exceptions.h>
 
@@ -15,8 +16,8 @@
 #include <utility>
 
 namespace CE::Engine {
-    std::unique_ptr<EngineContext> make_glfw_opengl_context(Input::iInputSystem& input,
-                                                            const GlfwOpenGLConfig& config) {
+    template <typename InputAdapter>
+    static std::unique_ptr<EngineContext> assemble_context(InputAdapter&& input, const GlfwOpenGLConfig& config) {
         if (config.width <= 0 || config.height <= 0 || config.swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions and swap interval must be valid");
 
@@ -31,14 +32,23 @@ namespace CE::Engine {
 #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 #endif
-        auto* window = display->create_window(display->primary_monitor(), config.mode, config.width, config.height,
-                                              config.title);
+        auto* window = display->create_window(display->primary_monitor(), config.mode, config.width, config.height, config.title);
         display->activate_window(*window);
 
         auto surface = std::make_unique<RenderAPIs::GlfwOpenGLContext>(*window, config.swap_interval);
         auto renderer = std::make_unique<RenderAPIs::OpenGLRenderer>(*surface);
         auto resources = std::make_unique<Assets::OpenGLResourceProvider>(*renderer);
-        return std::make_unique<EngineContext>(std::move(display), std::move(surface), std::move(renderer),
-                                               std::move(resources), input);
+        return std::make_unique<EngineContext>(std::move(display), std::move(surface), std::move(renderer), std::move(resources),
+                                               std::forward<InputAdapter>(input));
     }
+
+    std::unique_ptr<EngineContext> make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config) {
+        return assemble_context(input, config);
+    }
+
+#ifndef CHERYL_SANDBOX_BUILD
+    std::unique_ptr<EngineContext> make_glfw_opengl_context(const GlfwOpenGLConfig& config) {
+        return assemble_context(std::make_unique<Input::InputSystem>(), config);
+    }
+#endif
 }

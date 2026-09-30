@@ -262,7 +262,7 @@ int main(const int argc, char** argv) {
         else
             asset_root = argv[i];
     }
-    auto engine = CE::Engine::make_glfw_opengl_context(CE::Input::InputSystem::get());
+    auto engine = CE::Engine::make_glfw_opengl_context();
     Game game(*engine, asset_root, load_all_assets);
     GameRuntime game_runtime(*engine, game, mode, polling);
     game_runtime.run();

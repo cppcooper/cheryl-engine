@@ -13,6 +13,7 @@
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
+#include <internals/exceptions.h>
 
 #include <atomic>
 #include <filesystem>
@@ -55,6 +56,11 @@ namespace {
     /** Creates and activates MemoryWindow through the display interface. */
     class MemoryDisplay final : public CE::iDisplaySystem {
     public:
+        std::function<void()> on_destroy;
+        ~MemoryDisplay() override {
+            if (on_destroy)
+                on_destroy();
+        }
         [[nodiscard]] const std::vector<CE::Monitor>& monitors() const override { return monitors_; }
         [[nodiscard]] int monitor_count() const override { return static_cast<int>(monitors_.size()); }
         [[nodiscard]] const CE::Monitor& primary_monitor() const override { return monitors_.front(); }
@@ -83,6 +89,11 @@ namespace {
 
     public:
         std::function<void()> on_poll;
+        std::function<void()> on_destroy;
+        ~MemoryInput() override {
+            if (on_destroy)
+                on_destroy();
+        }
         bool default_press = true;
         void initialize(CE::iWindow& window) override { window_ = &window; }
         void poll() override {
@@ -126,6 +137,10 @@ namespace {
 
     public:
         std::function<void()> on_tick;
+        std::function<void()> on_init;
+        std::function<void()> on_deinit;
+        int initializations = 0;
+        int shutdowns = 0;
         int updates = 0;
         mutable int draws = 0;
         std::atomic<bool> pressed{false};
@@ -136,18 +151,24 @@ namespace {
         explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false) : input_(input), capture_(capture) {}
 
         void init() override {
+            ++initializations;
             (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action);
             if (capture_) {
                 events_ = input_.capture(CE::Input::InputMode::Events);
                 text_ = input_.capture(CE::Input::InputMode::Text);
                 focus_ = input_.routing().focus(29, CE::Input::KeyboardRouting::PassThrough);
             }
+            if (on_init)
+                on_init();
         }
         void deinit() override {
+            ++shutdowns;
             focus_.reset();
             text_.reset();
             events_.reset();
             input_.bindings().clear();
+            if (on_deinit)
+                on_deinit();
         }
         void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
@@ -243,7 +264,11 @@ namespace {
     /** Records frame handoff while the test supplies its own display and input. */
     class MemoryRenderer final : public CE::RenderAPIs::iRenderer {
     public:
-        void initialize() override { ++initializations; }
+        void initialize() override {
+            ++initializations;
+            if (on_initialize)
+                on_initialize();
+        }
         void deinitialize() override { ++shutdowns; }
         void clear() override { ++clears; }
         void render(const CE::RenderAPIs::RenderFrame& frame) override {
@@ -263,6 +288,7 @@ namespace {
         }
 
         std::function<void()> on_render;
+        std::function<void()> on_initialize;
         CE::FramebufferSize viewport{};
         bool depth_enabled = false;
         glm::vec4 clear_colour{0.0f};
@@ -323,6 +349,82 @@ TEST(runtime_adapter, sequential_frame_from_completed_input) {
     EXPECT_EQ(renderer->shutdowns, 1);
     EXPECT_EQ(input.attached_window(), nullptr);
     EXPECT_EQ(game.update_thread, std::this_thread::get_id());
+}
+
+TEST(runtime_adapter, partial_game_initialization_is_cleaned_up_in_both_modes) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        game.on_init = [] { throw std::runtime_error("game initialization failed"); };
+        game.on_deinit = [] { throw std::runtime_error("cleanup also failed"); };
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        try {
+            runtime.run();
+            FAIL() << "Initialization must fail";
+        }
+        catch (const std::runtime_error& failure) {
+            EXPECT_STREQ(failure.what(), "game initialization failed");
+        }
+        EXPECT_EQ(game.initializations, 1);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(runtime_adapter, failed_renderer_initialization_does_not_start_the_game) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    renderer->on_initialize = [] { throw std::runtime_error("renderer initialization failed"); };
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    EXPECT_THROW(runtime.run(), std::runtime_error);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(game.initializations, 0);
+    EXPECT_EQ(game.shutdowns, 0);
+}
+
+TEST(runtime_adapter, a_stopped_adapter_graph_cannot_be_started_by_another_runtime) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime first(*engine, game);
+    game.on_tick = [&] { first.stop(); };
+    first.run();
+    CE::GFramework::GameRuntime second(*engine, game);
+    EXPECT_THROW(second.run(), CE::Exceptions::failed_operation);
+    EXPECT_THROW(first.run(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(renderer->initializations, 1);
+    EXPECT_EQ(renderer->shutdowns, 1);
+}
+
+TEST(runtime_adapter, owned_input_is_destroyed_while_its_window_is_alive) {
+    bool display_alive = true;
+    bool input_destroyed = false;
+    auto display = std::make_unique<MemoryDisplay>();
+    display->on_destroy = [&] { display_alive = false; };
+    auto* window = display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 320, 240);
+    display->activate_window(*window);
+    auto input = std::make_unique<MemoryInput>();
+    input->on_destroy = [&] {
+        input_destroyed = true;
+        EXPECT_TRUE(display_alive);
+    };
+    auto engine = std::make_unique<CE::Engine::EngineContext>(std::move(display), std::make_unique<MemorySurface>(),
+                                                              std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(),
+                                                              std::move(input));
+    engine.reset();
+    EXPECT_TRUE(input_destroyed);
+    EXPECT_FALSE(display_alive);
 }
 
 TEST(runtime_adapter, concurrent_simulation_presents_on_platform_thread) {
