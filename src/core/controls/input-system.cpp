@@ -125,8 +125,7 @@ namespace CE::Input {
                 if (GetButtonType(button) == gainput::BT_BOOL) {
                     state_->Set(button, false);
                     previousState_->Set(button, false);
-                }
-                else {
+                } else {
                     state_->Set(button, 0.0f);
                     previousState_->Set(button, 0.0f);
                 }
@@ -174,8 +173,7 @@ namespace CE::Input {
         // finish detachment without allowing a publication failure to escape.
         try {
             deinitialize();
-        }
-        catch (...) {}
+        } catch (...) {}
     }
 
     void InputSystem::initialize(iWindow& window) {
@@ -254,8 +252,7 @@ namespace CE::Input {
                     capture_buffer().record(gamepad_id_, DeviceKind::Gamepad, AxisEvent{button, value});
                 pad_axes_[button] = value;
                 bindings_.on_axis({gamepad_id_, button}, value);
-            }
-            else {
+            } else {
                 const bool held = valid && pad->GetBool(button);
                 if (held != pad_buttons_[button])
                     capture_buffer().record(gamepad_id_, DeviceKind::Gamepad,

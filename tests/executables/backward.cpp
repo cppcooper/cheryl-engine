@@ -7,8 +7,7 @@ int main() {
     backward::StackTrace st;
     try {
         *(int*)0 = 0;
-    }
-    catch (...) {
+    } catch (...) {
         return 0;
     }
     return 0;

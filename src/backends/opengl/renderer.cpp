@@ -28,8 +28,7 @@ namespace CE::RenderAPIs {
         if (initialized_) {
             try {
                 deinitialize();
-            }
-            catch (...) {
+            } catch (...) {
                 // Retained assets must never query a context after its owner is destroyed.
                 resources_->abandon();
             }
@@ -52,7 +51,13 @@ namespace CE::RenderAPIs {
             // The renderer receives procedure addresses through the context interface,
             // without depending on the display's native window type.
             const auto version = gladLoadGLUserPtr(
-                [](void* user, const char* name) -> GLADapiproc { return static_cast<iOpenGLContext*>(user)->proc_address(name); },
+                [](
+                void* user,
+                const char* name
+            ) ->
+                GLADapiproc {
+                    return static_cast<iOpenGLContext*>(user)->proc_address(name);
+                },
                 &context_);
             if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3)) {
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
@@ -62,13 +67,11 @@ namespace CE::RenderAPIs {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        }
-        catch (...) {
+        } catch (...) {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
                 context_.release_current();
-            }
-            catch (...) {}
+            } catch (...) {}
             throw;
         }
         initialized_ = true;
@@ -118,21 +121,18 @@ namespace CE::RenderAPIs {
                                 throw Exceptions::invalid_args(CE_HERE, "Sprite draw has no sprite");
                             bind_style(draw.style, active_material);
                             draw_grid_cell(*draw.sprite, draw.sprite->definition().grid, draw.cell);
-                        }
-                        else if constexpr (std::is_same_v<Draw, TileDraw>) {
+                        } else if constexpr (std::is_same_v<Draw, TileDraw>) {
                             if (!draw.tileset)
                                 throw Exceptions::invalid_args(CE_HERE, "Tile draw has no tileset");
                             bind_style(draw.style, active_material);
                             draw_grid_cell(*draw.tileset, draw.tileset->definition().grid, draw.cell);
-                        }
-                        else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
+                        } else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
                             if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
                                 throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
                             bind_style(draw.style, active_material);
                             draw.graphic->geometry->bind(*draw.graphic->texture);
                             draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
-                        }
-                        else if constexpr (std::is_same_v<Draw, TextDraw>) {
+                        } else if constexpr (std::is_same_v<Draw, TextDraw>) {
                             if (!draw.font)
                                 throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
                             bind_style(draw.style, active_material);

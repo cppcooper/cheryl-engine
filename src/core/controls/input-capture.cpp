@@ -61,14 +61,11 @@ namespace CE::Input {
         if (text && (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF)))
             throw Exceptions::invalid_args(CE_HERE, "Text input requires a Unicode scalar value");
         const bool keyboard = kind == DeviceKind::Keyboard || text;
-        pending_.push_back({next_sequence_++,
-                            observed_at,
-                            device,
-                            kind,
-                            std::move(data),
-                            keyboard ? focus_.target : 0,
-                            keyboard ? focus_.epoch : 0,
-                            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough
+        pending_.push_back({
+            next_sequence_++, observed_at, device, kind, std::move(data),
+            keyboard ? focus_.target : 0,
+            keyboard ? focus_.epoch : 0,
+            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough
         });
     }
 

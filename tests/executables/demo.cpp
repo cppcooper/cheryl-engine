@@ -128,8 +128,7 @@ public:
                 if (focus_.owns_focus()) {
                     focus_.reset();
                     text_capture_.reset();
-                }
-                else {
+                } else {
                     text_capture_ = engine_.input().capture(CE::Input::InputMode::Text);
                     focus_ = engine_.input().routing().focus(text_box);
                 }
@@ -140,8 +139,7 @@ public:
             if (const auto* text = std::get_if<CE::Input::TextEvent>(&record.data)) {
                 text_.insert(caret_, 1, text->codepoint);
                 ++caret_;
-            }
-            else if (button && button->phase != CE::Input::ButtonPhase::Release) {
+            } else if (button && button->phase != CE::Input::ButtonPhase::Release) {
                 switch (button->button) {
                     case gainput::KeyBackSpace:
                         if (caret_ > 0)
@@ -272,8 +270,7 @@ int main(const int argc, char** argv) {
         else if (argument.starts_with("--input-capacity=")) {
             polling.policy = CE::Input::PollingPolicy::Finite;
             polling.capacity = number(argument.substr(std::string_view("--input-capacity=").size()));
-        }
-        else if (argument.starts_with("--input-spacing-ms="))
+        } else if (argument.starts_with("--input-spacing-ms="))
             polling.spacing = std::chrono::milliseconds(number(argument.substr(std::string_view("--input-spacing-ms=").size())));
         else
             asset_root = argv[i];

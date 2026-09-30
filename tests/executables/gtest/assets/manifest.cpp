@@ -52,8 +52,7 @@ TEST(asset_pivot, invalid_pivot_diagnostics) {
     try {
         CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
         FAIL() << "An invalid pivot should throw";
-    }
-    catch (const CE::Exceptions::invalid_args& error) {
+    } catch (const CE::Exceptions::invalid_args& error) {
         EXPECT_NE(std::string(error.what()).find("A pivot must be normalized"), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);
@@ -296,8 +295,7 @@ TEST(asset_manifest, invalid_cell_reference) {
     try {
         static_cast<void>(ManifestLoader::parse(input, "bad.json"));
         FAIL() << "An out-of-range cell should throw";
-    }
-    catch (const CE::Exceptions::runtime_exception& error) {
+    } catch (const CE::Exceptions::runtime_exception& error) {
         EXPECT_NE(std::string(error.what()).find("bad.json"), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);

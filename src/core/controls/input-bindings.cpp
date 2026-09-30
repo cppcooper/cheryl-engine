@@ -161,8 +161,7 @@ namespace CE::Input {
                 if (held) {
                     ++state.press_count;
                     state.hold_started_at = observed_at;
-                }
-                else {
+                } else {
                     ++state.release_count;
                     state.completed_holds.emplace_back(observed_at - state.hold_started_at.value_or(observed_at));
                     state.hold_started_at.reset();

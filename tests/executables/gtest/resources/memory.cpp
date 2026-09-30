@@ -58,8 +58,7 @@ namespace {
                 if (exact(pool, owner) != (stale.contains(owner) || exact(release, owner))) {
                     return ::testing::AssertionFailure() << "Owner pool/stale mismatch " << owner;
                 }
-            }
-            else {
+            } else {
                 if (exact(pool, owner))
                     return ::testing::AssertionFailure() << "Pooled owner has sections " << owner;
                 auto cursor = start;
@@ -144,8 +143,7 @@ TEST(memory, mixed_checkouts_and_returns) {
             const auto pattern = static_cast<unsigned char>(1 + step % 250);
             std::memset(block.head.get(), pattern, block.length);
             live.push_back({block, pattern});
-        }
-        else {
+        } else {
             const auto index = rng() % live.size();
             manager.return_chunk(live[index].block);
             live.erase(live.begin() + index);

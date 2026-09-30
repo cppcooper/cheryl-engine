@@ -51,8 +51,7 @@ namespace CE::Assets {
                     break;
                 }
                 index_ = 0;
-            }
-            else {
+            } else {
                 ++index_;
             }
         }

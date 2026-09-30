@@ -104,8 +104,7 @@ namespace {
         ~DefaultLoggerGuard() {
             try {
                 restore();
-            }
-            catch (...) {
+            } catch (...) {
                 // Never allow global test cleanup to terminate the test process.
             }
         }
@@ -295,8 +294,7 @@ TEST(logging, timed_close) {
                 while (!stop_writing.load(std::memory_order_acquire)) {
                     log.info("concurrent-write");
                 }
-            }
-            catch (...) {
+            } catch (...) {
                 writer_failed.store(true, std::memory_order_release);
             }
         });

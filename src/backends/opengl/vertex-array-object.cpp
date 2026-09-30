@@ -27,8 +27,7 @@ namespace CE {
             glGenVertexArrays(1, &id);
             try {
                 return {lifetime, RenderAPIs::GLResourceKind::VertexArray, id};
-            }
-            catch (...) {
+            } catch (...) {
                 if (id)
                     glDeleteVertexArrays(1, &id);
                 throw;
@@ -43,8 +42,7 @@ namespace CE {
             glGenBuffers(1, &id);
             try {
                 return {lifetime, RenderAPIs::GLResourceKind::Buffer, id};
-            }
-            catch (...) {
+            } catch (...) {
                 if (id)
                     glDeleteBuffers(1, &id);
                 throw;

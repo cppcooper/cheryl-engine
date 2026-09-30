@@ -33,10 +33,11 @@ namespace CE::Resources {
     }
 
     std::vector<fs::path> system_font_directories() {
-        std::vector<fs::path> directories{"/usr/share/fonts",
-                                          "/usr/local/share/fonts",
-                                          "/Library/Fonts",
-                                          "/System/Library/Fonts"
+        std::vector<fs::path> directories{
+            "/usr/share/fonts",
+            "/usr/local/share/fonts",
+            "/Library/Fonts",
+            "/System/Library/Fonts"
         };
         append_environment_path(directories, "HOME", ".fonts");
         append_environment_path(directories, "HOME", ".local/share/fonts");
@@ -80,18 +81,19 @@ namespace CE::Resources {
     std::optional<fs::path> select_default_system_font(const std::vector<fs::path>& fonts) {
         if (fonts.empty())
             return std::nullopt;
-        constexpr std::string_view preferred_names[]{"arial.ttf",
-                                                     "helvetica.ttc",
-                                                     "dejavusans.ttf",
-                                                     "liberationsans-regular.ttf",
-                                                     "nimbussans-regular.otf",
-                                                     "notosans-regular.ttf",
-                                                     "freesans.ttf",
-                                                     "segoeui.ttf",
-                                                     "roboto-regular.ttf",
-                                                     "calibri.ttf",
-                                                     "consola.ttf",
-                                                     "proggyvector regular.ttf"
+        constexpr std::string_view preferred_names[]{
+            "arial.ttf",
+            "helvetica.ttc",
+            "dejavusans.ttf",
+            "liberationsans-regular.ttf",
+            "nimbussans-regular.otf",
+            "notosans-regular.ttf",
+            "freesans.ttf",
+            "segoeui.ttf",
+            "roboto-regular.ttf",
+            "calibri.ttf",
+            "consola.ttf",
+            "proggyvector regular.ttf"
         };
         // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
         for (const auto preferred : preferred_names) {

@@ -730,22 +730,18 @@ namespace CE::Assets {
                 if (type == "wang-corner") {
                     result.emplace(name,
                         parse_wang_autotile(autotile, grid, WangType::Corner, source, autotile_location));
-                }
-                else if (type == "wang-edge") {
+                } else if (type == "wang-edge") {
                     result.emplace(name,
                         parse_wang_autotile(autotile, grid, WangType::Edge, source, autotile_location));
-                }
-                else if (type == "four-neighbor") {
+                } else if (type == "four-neighbor") {
                     result.emplace(
                         name,
                         parse_bitmask_autotile(autotile, grid, BitmaskType::FourNeighbor, source, autotile_location));
-                }
-                else if (type == "eight-neighbor") {
+                } else if (type == "eight-neighbor") {
                     result.emplace(
                         name,
                         parse_bitmask_autotile(autotile, grid, BitmaskType::EightNeighbor, source, autotile_location));
-                }
-                else {
+                } else {
                     fail(source, autotile_location + ".type", "unknown autotile type '" + type + "'");
                 }
             }
@@ -1005,8 +1001,7 @@ namespace CE::Assets {
     AssetManifest ManifestLoader::parse(std::istream& input, const std::filesystem::path& source) {
         try {
             return Parser(source).parse(json::parse(input));
-        }
-        catch (const json::exception& error) {
+        } catch (const json::exception& error) {
             throw Exceptions::runtime_exception(
                 CE_HERE, "Unable to parse asset manifest '" + source.string() + "': " + error.what());
         }

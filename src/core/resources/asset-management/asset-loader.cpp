@@ -95,8 +95,7 @@ namespace CE::Assets {
                     validate_grid_bounds(tileset.grid, tileset.texture, dimensions.at(tileset.texture), tileset.id());
             }
             return result;
-        }
-        catch (const fs::filesystem_error& error) {
+        } catch (const fs::filesystem_error& error) {
             throw Exceptions::runtime_exception(CE_HERE, error.what());
         }
     }

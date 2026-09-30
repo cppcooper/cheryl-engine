@@ -41,6 +41,6 @@ namespace CE::Input {
     private:
         InputCapture capture_;
         InputRouting routing_;
-        std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_;
+        std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_{nullptr};
     };
 }

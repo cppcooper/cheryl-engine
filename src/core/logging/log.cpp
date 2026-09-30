@@ -30,8 +30,7 @@ namespace CE {
         // ideally we're going to shorten the stack trace to near addr0
         if (addr0) {
             st.load_from(addr0, 7);
-        }
-        else {
+        } else {
             st.load_here(17);
         }
         TraceResolver tr;

@@ -75,8 +75,7 @@ namespace CE::RenderAPIs {
             entries_[slot].pending = true;
             entries_[slot].next = pending_;
             pending_ = slot;
-        }
-        catch (...) {
+        } catch (...) {
             // The shutdown sweep still owns this handle if a mutex operation fails.
         }
     }
@@ -114,8 +113,7 @@ namespace CE::RenderAPIs {
             active_ = false;
             entries_.clear();
             pending_ = free_ = none;
-        }
-        catch (...) {
+        } catch (...) {
             // No OpenGL call is permitted from this failure fallback.
         }
     }

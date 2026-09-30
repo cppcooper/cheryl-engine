@@ -39,8 +39,7 @@ namespace CE::GFramework {
                 run_sequential();
             else
                 run_concurrent();
-        }
-        catch (...) {
+        } catch (...) {
             stop();
             throw;
         }
@@ -115,8 +114,7 @@ namespace CE::GFramework {
                 engine_.surface().present();
                 frame.recycle();
             }
-        }
-        catch (...) {
+        } catch (...) {
             failure = std::current_exception();
         }
 
@@ -127,8 +125,7 @@ namespace CE::GFramework {
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
-            }
-            catch (...) {
+            } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }
@@ -253,8 +250,7 @@ namespace CE::GFramework {
                         }
                         scheduler_->wake.notify_all();
                     }
-                }
-                catch (...) {
+                } catch (...) {
                     std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_failure = std::current_exception();
                 }
@@ -348,8 +344,7 @@ namespace CE::GFramework {
                     return false;
                 });
             }
-        }
-        catch (...) {
+        } catch (...) {
             failure = std::current_exception();
         }
 
@@ -362,8 +357,7 @@ namespace CE::GFramework {
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
-            }
-            catch (...) {
+            } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }

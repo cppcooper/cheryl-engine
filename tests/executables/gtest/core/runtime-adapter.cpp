@@ -52,76 +52,10 @@ namespace {
         }
 
         void write_png(const std::string& name = "pixel.png") const {
-            constexpr std::array<unsigned char, 70> bytes{137,
-                                                          80,
-                                                          78,
-                                                          71,
-                                                          13,
-                                                          10,
-                                                          26,
-                                                          10,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          13,
-                                                          73,
-                                                          72,
-                                                          68,
-                                                          82,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          1,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          1,
-                                                          8,
-                                                          6,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          31,
-                                                          21,
-                                                          196,
-                                                          137,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          13,
-                                                          73,
-                                                          68,
-                                                          65,
-                                                          84,
-                                                          120,
-                                                          156,
-                                                          99,
-                                                          248,
-                                                          207,
-                                                          192,
-                                                          240,
-                                                          31,
-                                                          0,
-                                                          5,
-                                                          0,
-                                                          1,
-                                                          255,
-                                                          137,
-                                                          153,
-                                                          61,
-                                                          29,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          0,
-                                                          73,
-                                                          69,
-                                                          78,
-                                                          68,
-                                                          174,
-                                                          66,
-                                                          96,
-                                                          130
+            constexpr std::array<unsigned char, 70> bytes{
+                137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0,
+                0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137, 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68,
+                174, 66, 96, 130
             };
             const auto file = root / name;
             std::filesystem::create_directories(file.parent_path());
@@ -517,8 +451,7 @@ TEST(runtime_adapter, partial_game_initialization_is_cleaned_up_in_both_modes) {
         try {
             runtime.run();
             FAIL() << "Initialization must fail";
-        }
-        catch (const std::runtime_error& failure) {
+        } catch (const std::runtime_error& failure) {
             EXPECT_STREQ(failure.what(), "game initialization failed");
         }
         EXPECT_EQ(game.initializations, 1);
@@ -596,8 +529,7 @@ TEST(platform_requests, simulation_transfers_owned_pixels_to_the_platform) {
                 pending = engine->platform_tasks().submit([pixels = std::move(pixels)](CE::Engine::EngineContext& platform) {
                     return platform.resources().create_font_atlas(*pixels, {2, 2});
                 });
-            }
-            else if (pending.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+            } else if (pending.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
                 image = pending.get();
                 runtime.stop();
             }
@@ -625,7 +557,14 @@ TEST(platform_requests, one_failed_callback_does_not_abort_another_request) {
     std::future<int> failure;
     std::future<int> success;
     game.on_init = [&] {
-        failure = engine->platform_tasks().submit([](CE::Engine::EngineContext&) -> int { throw std::runtime_error("request failed"); });
+        failure = engine->platform_tasks().submit([](
+            CE::Engine::EngineContext&
+
+
+        ) ->
+            int {
+                throw std::runtime_error("request failed");
+            });
         success = engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 17; });
     };
     game.on_tick = [&] {
@@ -668,8 +607,7 @@ TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
     try {
         (void)pending.get();
         FAIL() << "The unexecuted request must be cancelled";
-    }
-    catch (const std::future_error& error) {
+    } catch (const std::future_error& error) {
         EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
     }
 }
@@ -898,8 +836,7 @@ TEST(asset_cache, readers_keep_complete_handles_while_assets_are_published) {
                 (void)cache.contains(key);
                 (void)cache.size();
             }
-        }
-        while (!finished.load(std::memory_order_acquire));
+        } while (!finished.load(std::memory_order_acquire));
         return complete;
     });
     for (int key = 0; key < 100; ++key)
@@ -934,8 +871,7 @@ TEST(asset_cache, provider_loads_reject_another_thread_and_teardown_refills) {
         return std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
             try {
                 CE::Assets::TextureMgr::get().load_assets({"late-refill.png"}, *owner);
-            }
-            catch (const CE::Exceptions::failed_operation&) {
+            } catch (const CE::Exceptions::failed_operation&) {
                 refill_rejected = true;
             }
             delete image;
@@ -946,8 +882,7 @@ TEST(asset_cache, provider_loads_reject_another_thread_and_teardown_refills) {
     auto another_thread = std::async(std::launch::async, [&] {
         try {
             textures.load_assets({"wrong-thread.png"}, *provider);
-        }
-        catch (const CE::Exceptions::failed_operation&) {
+        } catch (const CE::Exceptions::failed_operation&) {
             return true;
         }
         return false;

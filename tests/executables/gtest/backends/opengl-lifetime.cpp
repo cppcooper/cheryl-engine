@@ -45,8 +45,7 @@ TEST(opengl_lifetime, foreign_threads_and_closed_lifetimes_never_query_a_borrowe
         try {
             lifetime->require_current();
             return false;
-        }
-        catch (const failed_operation&) {
+        } catch (const failed_operation&) {
             return true;
         }
     });
