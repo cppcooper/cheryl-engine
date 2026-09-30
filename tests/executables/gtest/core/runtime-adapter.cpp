@@ -365,6 +365,24 @@ namespace {
     /** Records frame handoff while the test supplies its own display and input. */
     class MemoryRenderer final : public CE::RenderAPIs::iRenderer {
     public:
+        std::function<void()> on_render;
+        std::function<void()> on_maintenance;
+        int maintenance_calls = 0;
+        std::thread::id maintenance_thread;
+        std::function<void()> on_initialize;
+        CE::FramebufferSize viewport{};
+        bool depth_enabled = false;
+        glm::vec4 clear_colour{0.0f};
+        glm::mat4 camera_projection{1.0f};
+        glm::mat4 camera_view{1.0f};
+        std::thread::id render_thread;
+        std::size_t last_pass_count = 0;
+        bool last_marked_pressed = false;
+        int initializations = 0;
+        int shutdowns = 0;
+        int clears = 0;
+        int renders = 0;
+
         void initialize() override {
             ++initializations;
             if (on_initialize)
@@ -398,23 +416,6 @@ namespace {
             camera_view = view;
         }
 
-        std::function<void()> on_render;
-        std::function<void()> on_maintenance;
-        int maintenance_calls = 0;
-        std::thread::id maintenance_thread;
-        std::function<void()> on_initialize;
-        CE::FramebufferSize viewport{};
-        bool depth_enabled = false;
-        glm::vec4 clear_colour{0.0f};
-        glm::mat4 camera_projection{1.0f};
-        glm::mat4 camera_view{1.0f};
-        std::thread::id render_thread;
-        std::size_t last_pass_count = 0;
-        bool last_marked_pressed = false;
-        int initializations = 0;
-        int shutdowns = 0;
-        int clears = 0;
-        int renders = 0;
     };
 
     class MemorySurface final : public CE::RenderAPIs::iPresentationSurface {

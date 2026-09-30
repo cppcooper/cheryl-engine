@@ -63,7 +63,9 @@ material/geometry domain validation.
 Native creation guards retain an untracked ID until registration succeeds.
 Program linking then transfers ownership to an OpenGLHandle before constructing
 the logical GLSLProgram, so later allocation failure has only one retirement
-owner. Texture/VAO/buffer failure guards and program/stage guards use
+owner. Logical program adoption validates that this registration is a program,
+preserving retirement when another native resource kind is rejected.
+Texture/VAO/buffer failure guards and program/stage guards use
 `discard_untracked()`: it checks owner/current context and cannot replace the
 original failure. If the context is unavailable, it leaves native cleanup to
 platform context destruction. Renderer destruction similarly uses `abandon()`

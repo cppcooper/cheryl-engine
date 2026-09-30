@@ -154,26 +154,31 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-Completed source tasks: 0–5, including discovery addition 4.7 (factory forwarding).
+Completed source tasks: 0–6, including discovery addition 4.7 (factory forwarding).
 Task 9 documentation/regression preparation accompanies those changes; executed
-acceptance remains open. Continue at task 6 (cache context/residency and idle GPU
-retirement), then tasks 7–8. Keep the established timing/input consumption contracts
-when adding platform maintenance and preserve strong cache residency.
+acceptance remains open. Continue at task 7 (pipeline/material contracts), then
+task 8 (resolved packets and immediate-draw migration). Preserve strong residency,
+the established timing/input contracts, owner maintenance, and native-domain checks.
 
-This continuation reserves numbered patches **16–20**; the next unused filename
-is **cheryl-engine-21.patch**. The user has already applied/pushed checkpoints
-01–15. Apply **cheryl-engine-continuation.patch** to that pushed base,
-`ef4ec51402ebadd2f1319dfd03bb0ed3a0b6007d`, or apply 16–20 individually in order.
+This continuation reserves numbered patches **21–25**; the next unused filename
+is **cheryl-engine-26.patch**. The user-pushed branch includes checkpoints 01–20.
+Apply **cheryl-engine-continuation.patch** to pushed base
+`14d5a818386582a0c22332cbfdb5161135e92093`, or apply 21–25 individually in order.
 The separately retained **cheryl-engine.patch** is cumulative from the fixed
-original base and includes the fifteen earlier commits again. Use that file only
-for a fresh checkout at the original base. Do not combine these application routes.
-Earlier local commits remain preserved on the checkpoint branch; current commits
-continue from the identical user-pushed tree, with their individual authors/messages.
+original base and includes twenty earlier commits again. Use it for a fresh
+checkout at the original base; do not combine these application routes.
+Earlier local execution/timing commits remain on checkpoint branches. Current
+commits retain individual authors/messages after reconciling identical pushed trees.
 
-Task 6's initial review confirms strong cache ownership and collection only from
-OpenGL clear/render. Its remaining idle-maintenance work needs a neutral operation
-plus a wake or bounded wait, including loops with no published frame or a full
-polling backlog. No residency or material implementation changed in this batch.
+Resource residency/maintenance is complete in source. Task 7 must retain logical
+program/material generations and introduce explicit geometry/resource parameter
+binding. Current DrawStyle still retains Shader and Geometry2D still binds Image;
+their architectural migration is pending, rather than silently claimed complete.
+
+The residency continuation statically parses seventeen changed C++ files. The
+GLAD calling-convention declaration macro is normalized for syntax-tree inspection
+on this Linux target; this is not preprocessing/type checking or compilation.
+Whitespace and combined/incremental mailbox checks are preparation evidence.
 
 No commits/branches were pushed by the assistant. No compilation, CMake configuration, regression
 execution, or real GLFW/OpenGL acceptance was performed in this continuation.

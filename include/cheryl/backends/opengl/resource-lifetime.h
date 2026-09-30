@@ -61,6 +61,7 @@ namespace CE::RenderAPIs {
         std::shared_ptr<OpenGLResourceLifetime> lifetime_;
         std::size_t slot_ = std::numeric_limits<std::size_t>::max();
         GLuint id_ = 0;
+        GLResourceKind kind_ = GLResourceKind::Texture;
 
     public:
         OpenGLHandle() = default;
@@ -73,6 +74,7 @@ namespace CE::RenderAPIs {
         OpenGLHandle& operator=(OpenGLHandle&& other) noexcept;
 
         [[nodiscard]] GLuint id() const;
+        [[nodiscard]] GLResourceKind kind() const noexcept { return kind_; }
 
     private:
         void reset() noexcept;

@@ -138,7 +138,7 @@ namespace CE::RenderAPIs {
     }
 
     OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, const GLResourceKind kind, const GLuint id)
-    : lifetime_(std::move(lifetime)), id_(id) {
+    : lifetime_(std::move(lifetime)), id_(id), kind_(kind) {
         if (!lifetime_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
         slot_ = lifetime_->track(kind, id);
@@ -147,7 +147,7 @@ namespace CE::RenderAPIs {
     OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept
     : lifetime_(std::move(other.lifetime_)),
       slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
-      id_(std::exchange(other.id_, 0)) {}
+      id_(std::exchange(other.id_, 0)), kind_(other.kind_) {}
 
     OpenGLHandle& OpenGLHandle::operator=(OpenGLHandle&& other) noexcept {
         if (this != &other) {
@@ -155,6 +155,7 @@ namespace CE::RenderAPIs {
             lifetime_ = std::move(other.lifetime_);
             slot_ = std::exchange(other.slot_, std::numeric_limits<std::size_t>::max());
             id_ = std::exchange(other.id_, 0);
+            kind_ = other.kind_;
         }
         return *this;
     }

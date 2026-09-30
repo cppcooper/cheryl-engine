@@ -1,4 +1,5 @@
 #include <backends/opengl/resource-lifetime.h>
+#include <backends/opengl/glslprogram.h>
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
 
@@ -27,6 +28,11 @@ namespace {
         decltype(glad_glDeleteShader) shaders_ = glad_glDeleteShader;
         inline static DeletionRecorder* active_ = nullptr;
 
+    public:
+        std::vector<std::pair<GLResourceKind, GLuint>> deletions;
+        std::thread::id deletion_thread;
+
+    private:
         static void record(const GLResourceKind kind, const GLsizei count, const GLuint* ids) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->deletions.emplace_back(kind, ids[i]);
@@ -39,9 +45,6 @@ namespace {
         static void GLAD_API_PTR shader(const GLuint id) { record(GLResourceKind::ShaderStage, 1, &id); }
 
     public:
-        std::vector<std::pair<GLResourceKind, GLuint>> deletions;
-        std::thread::id deletion_thread;
-
         DeletionRecorder() {
             active_ = this;
             glad_glDeleteTextures = textures;
@@ -202,4 +205,26 @@ TEST(opengl_lifetime, maintenance_with_a_different_current_context_does_not_dele
     lifetime->collect();
     ASSERT_EQ(native.deletions.size(), 1u);
     lifetime->shutdown();
+}
+
+TEST(opengl_lifetime, logical_program_adoption_rejects_a_texture_without_losing_its_retirement_owner) {
+    DeletionRecorder native;
+    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+    OpenGLHandle texture(lifetime, GLResourceKind::Texture, 29);
+    EXPECT_THROW((void)CE::Assets::GLSLProgram(std::move(texture)), CE::Exceptions::invalid_args);
+    EXPECT_TRUE(native.deletions.empty());
+    lifetime->collect();
+    ASSERT_EQ(native.deletions.size(), 1u);
+    EXPECT_EQ(native.deletions.front(), (std::pair{GLResourceKind::Texture, GLuint{29}}));
+    lifetime->shutdown();
+    EXPECT_EQ(native.deletions.size(), 1u);
+}
+
+TEST(opengl_lifetime, invalid_native_registrations_do_not_enter_the_shutdown_sweep) {
+    DeletionRecorder native;
+    OpenGLResourceLifetime lifetime(std::this_thread::get_id(), [] { return true; });
+    EXPECT_THROW((void)lifetime.track(static_cast<GLResourceKind>(-1), 31), CE::Exceptions::invalid_args);
+    EXPECT_THROW((void)lifetime.track(GLResourceKind::Program, 0), failed_operation);
+    lifetime.shutdown();
+    EXPECT_TRUE(native.deletions.empty());
 }

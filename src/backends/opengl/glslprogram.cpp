@@ -1,4 +1,5 @@
 #include <backends/opengl/glslprogram.h>
+#include <internals/exceptions.h>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
@@ -7,6 +8,8 @@ namespace CE::Assets {
     GLSLProgram::GLSLProgram(RenderAPIs::OpenGLHandle program)
     : program_(std::move(program)) {
         (void)program_.id();
+        if (program_.kind() != RenderAPIs::GLResourceKind::Program)
+            throw Exceptions::invalid_args(CE_HERE, "GLSLProgram requires a tracked program handle");
     }
 
     void GLSLProgram::use() {
