@@ -128,11 +128,6 @@ namespace CE::GFramework {
             failure = std::current_exception();
         }
 
-        // Recycle even after a failed prepare/render so frame-held GPU resources
-        // are released before the game and its graphics context shut down.
-        frame.recycle();
-        simulation_dispatcher_.close();
-        engine_.platform_dispatcher().close();
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
@@ -141,6 +136,15 @@ namespace CE::GFramework {
                     failure = std::current_exception();
             }
         };
+        stop();
+        finish([this] { engine_.close_worker_submissions(); });
+        finish([this] { simulation_dispatcher_.close(); });
+        if (game_started)
+            finish([this] { game_.quiesce(); });
+        finish_worker_shutdown(failure);
+        finish([this] { engine_.platform_dispatcher().close(); });
+        // Frames and game dependencies remain alive through accepted CPU work.
+        finish([&frame] { frame.recycle(); });
         if (game_started)
             finish([this] { game_.deinit(); });
         // Adapters must also clean up if initialize() only completed partway.
@@ -384,13 +388,6 @@ namespace CE::GFramework {
         }
 
         stop();
-        engine_.platform_dispatcher().close();
-        if (worker.joinable())
-            worker.join();
-        // Also handles initialization/thread-start failure before owner binding.
-        simulation_dispatcher_.close();
-        // The worker cannot be writing now. Even incomplete frames must release
-        // their handles before deinitializing the game or graphics context.
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
@@ -399,13 +396,37 @@ namespace CE::GFramework {
                     failure = std::current_exception();
             }
         };
-        for (auto& slot : slots)
-            finish([&slot] { slot.frame.recycle(); });
+        finish([this] { engine_.close_worker_submissions(); });
+        if (worker.joinable()) {
+            // A finishing simulation callback may depend on platform completion.
+            // Wait on published completion while still servicing that owner.
+            while (true) {
+                {
+                    std::lock_guard lock(scheduler_->mutex);
+                    if (handoff.worker_done)
+                        break;
+                }
+                pump_shutdown_requests(failure);
+                std::unique_lock lock(scheduler_->mutex);
+                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [&] {
+                    return handoff.worker_done || engine_.platform_dispatcher().has_pending();
+                });
+            }
+            worker.join();
+        }
         {
             std::lock_guard lock(scheduler_->mutex);
             if (!failure)
                 failure = handoff.worker_failure;
         }
+        // Also handles initialization/thread-start failure before owner binding.
+        finish([this] { simulation_dispatcher_.close(); });
+        if (game_started)
+            finish([this] { game_.quiesce(); });
+        finish_worker_shutdown(failure);
+        finish([this] { engine_.platform_dispatcher().close(); });
+        for (auto& slot : slots)
+            finish([&slot] { slot.frame.recycle(); });
         if (game_started)
             finish([this] { game_.deinit(); });
         if (input_started)
@@ -422,5 +443,43 @@ namespace CE::GFramework {
             stop_requested_.store(true, std::memory_order_release);
         }
         scheduler_->wake.notify_all();
+    }
+
+    void GameRuntime::pump_shutdown_requests(std::exception_ptr& failure) {
+        try {
+            engine_.platform_dispatcher().drain(engine_);
+        }
+        catch (...) {
+            if (!failure)
+                failure = std::current_exception();
+            // If dispatch itself fails, cancel rather than strand futures which
+            // a worker is waiting for. Preserve the first failure during cleanup.
+            try {
+                engine_.platform_dispatcher().close();
+            }
+            catch (...) {
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        }
+    }
+
+    void GameRuntime::finish_worker_shutdown(std::exception_ptr& failure) {
+        while (!engine_.workers_idle()) {
+            pump_shutdown_requests(failure);
+            std::unique_lock lock(scheduler_->mutex);
+            // Worker accounting has no borrowed runtime wake callback. A bounded
+            // wait observes completion while platform posts wake immediately.
+            scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [this] {
+                return engine_.platform_dispatcher().has_pending();
+            });
+        }
+        try {
+            engine_.finish_workers();
+        }
+        catch (...) {
+            if (!failure)
+                failure = std::current_exception();
+        }
     }
 }

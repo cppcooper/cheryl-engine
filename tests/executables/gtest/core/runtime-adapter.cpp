@@ -194,6 +194,7 @@ namespace {
         std::function<void()> on_tick;
         std::function<void()> on_init;
         std::function<void()> on_deinit;
+        std::function<void()> on_quiesce;
         int initializations = 0;
         int shutdowns = 0;
         int updates = 0;
@@ -216,6 +217,11 @@ namespace {
             }
             if (on_init)
                 on_init();
+        }
+
+        void quiesce() override {
+            if (on_quiesce)
+                on_quiesce();
         }
 
         void deinit() override {
@@ -401,7 +407,8 @@ namespace {
     };
 
     // Construct the same owned adapter graph as the GLFW factory, with no native graphics API.
-    std::unique_ptr<CE::Engine::EngineContext> make_test_context(MemoryInput& input, MemoryRenderer*& renderer, MemorySurface*& surface) {
+    std::unique_ptr<CE::Engine::EngineContext> make_test_context(MemoryInput& input, MemoryRenderer*& renderer, MemorySurface*& surface,
+        CE::Engine::ExecutionOptions execution = CE::Engine::ExecutionOptions{}) {
         auto display = std::make_unique<MemoryDisplay>();
         auto* window = display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 320, 240);
         display->activate_window(*window);
@@ -410,7 +417,7 @@ namespace {
         auto rendering = std::make_unique<MemoryRenderer>();
         renderer = rendering.get();
         return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation), std::move(rendering),
-            std::make_unique<MemoryProvider>(), input);
+            std::make_unique<MemoryProvider>(), input, std::move(execution));
     }
 } // namespace
 
@@ -1171,4 +1178,84 @@ TEST(event_delivery, platform_and_simulation_targets_execute_on_their_runtime_ow
         EXPECT_EQ(simulation_thread, game.update_thread);
         bus.close();
     }
+}
+
+TEST(execution_shutdown, accepted_worker_upload_can_finish_while_the_platform_is_stopping) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        std::future<int> result;
+        std::promise<void> posted;
+        bool quiesced = false;
+        std::thread::id upload_thread;
+        game.on_init = [&] {
+            result = group.submit([&] {
+                auto uploading = platform.submit([&](CE::Engine::EngineContext&) {
+                    upload_thread = std::this_thread::get_id();
+                    return 42;
+                });
+                posted.set_value();
+                // A CPU worker may await platform completion; shutdown must pump.
+                return uploading.get();
+            });
+            posted.get_future().wait();
+            runtime.stop();
+        };
+        game.on_quiesce = [&] { quiesced = true; };
+        game.on_deinit = [&] {
+            EXPECT_TRUE(quiesced);
+            EXPECT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        };
+        runtime.run();
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_EQ(upload_thread, std::this_thread::get_id());
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_THROW(static_cast<void>(engine->make_worker_group()), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, an_injected_root_keeps_unrelated_application_groups_available) {
+    auto root = std::make_shared<CE::Engine::WorkerPool>(2);
+    auto unrelated = root->make_group();
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    CE::Engine::ExecutionOptions execution;
+    execution.shared_pool = root;
+    auto engine = make_test_context(input, renderer, surface, execution);
+    auto game_group = engine->make_worker_group();
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    runtime.run();
+    EXPECT_FALSE(game_group.status().accepting);
+    EXPECT_TRUE(unrelated.status().accepting);
+    EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+    engine.reset();
+    EXPECT_TRUE(unrelated.status().accepting);
+}
+
+TEST(execution_shutdown, quiesce_failure_does_not_replace_initialization_failure) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    game.on_init = [] { throw std::runtime_error("original initialization failure"); };
+    game.on_quiesce = [] { throw std::runtime_error("later quiesce failure"); };
+    try {
+        runtime.run();
+        FAIL() << "Initialization must fail";
+    }
+    catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string_view(error.what()), "original initialization failure");
+    }
+    EXPECT_EQ(game.shutdowns, 1);
 }

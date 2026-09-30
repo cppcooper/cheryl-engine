@@ -20,6 +20,11 @@ namespace CE::GFramework {
     struct AbstractGame {
         virtual ~AbstractGame() = default;
         virtual void init() = 0;
+        // Platform hook after simulation stops, before accepted CPU work settles.
+        // Stop external producers and invalidate borrowed event registrations.
+        // Keep dependencies alive; deinit() performs final destruction later.
+        // Do not block here on callbacks/jobs requiring platform dispatch.
+        virtual void quiesce() {}
         virtual void deinit() = 0;
         virtual void update(const TickContext& tick) = 0;
         virtual void prepare_render_frame(RenderAPIs::RenderFrameWriter& frame) const = 0;

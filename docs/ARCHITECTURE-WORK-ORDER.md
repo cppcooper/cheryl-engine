@@ -115,10 +115,10 @@ These are the proposed concrete choices within the agreed architecture:
 
 - [x] **4.1** Add central execution configuration and EngineContext-owned/injected pool support. Engine shutdown drains its groups; it does not close an unrelated application-owned shared pool. Avoid eagerly reserving a large machine-wide pool by default.
 - [x] **4.2** Install event adapters through composition. EventBus/EventSystem headers must not include WorkerPool, PlatformDispatcher, or GameRuntime. Adapter callbacks retain safe submission state, not borrowed queue pointers.
-- [ ] **4.3** Replace the generic asset-preparation example with WorkerGroup preparation followed by PlatformDispatcher upload. Own Loader and PreparedAssets through the handoff. Simulation checks completion without waiting on GPU work.
-- [ ] **4.4** Define stopping as a staged protocol: quiesce producers/subscriptions; stop new group submissions; resolve or cancel simulation requests; keep resources and platform dispatch alive while accepted work finishes; join owned workers/simulation; finish/cancel remaining platform requests; recycle frames; then clean up game, input, and graphics.
-- [ ] **4.5** Pump platform requests while waiting for jobs that can depend on platform completion. Do not block the platform thread in a worker join while a worker waits on its platform future. State whether each accepted cross-domain request drains or resolves as cancelled.
-- [ ] **4.6** Preserve the original failure during cleanup; cover partial initialization, closed targets, worker errors, and externally retained group/delivery handles.
+- [x] **4.3** Replace the generic asset-preparation example with WorkerGroup preparation followed by PlatformDispatcher upload. Own Loader and PreparedAssets through the handoff. Simulation checks completion without waiting on GPU work.
+- [x] **4.4** Define stopping as a staged protocol: quiesce producers/subscriptions; stop new group submissions; resolve or cancel simulation requests; keep resources and platform dispatch alive while accepted work finishes; join owned workers/simulation; finish/cancel remaining platform requests; recycle frames; then clean up game, input, and graphics.
+- [x] **4.5** Pump platform requests while waiting for jobs that can depend on platform completion. Do not block the platform thread in a worker join while a worker waits on its platform future. State whether each accepted cross-domain request drains or resolves as cancelled.
+- [x] **4.6** Preserve the original failure during cleanup; cover partial initialization, closed targets, worker errors, and externally retained group/delivery handles.
 
 **Boundary D4 — cross-thread dependency:** trace preparation → upload → completion → shutdown, including a stopped simulation. Add a shutdown coordinator/nonblocking completion subtask if joining would strand a request. Separate pool drain semantics from dispatcher cancellation semantics explicitly.
 

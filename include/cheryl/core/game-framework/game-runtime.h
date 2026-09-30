@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <exception>
 #include <memory>
 #include <mutex>
 
@@ -55,5 +56,7 @@ namespace CE::GFramework {
     private:
         void run_sequential();
         void run_concurrent();
+        void pump_shutdown_requests(std::exception_ptr& failure);
+        void finish_worker_shutdown(std::exception_ptr& failure);
     };
 }

@@ -24,21 +24,32 @@ IDs and every grid's bounds are checked against those exact decoded dimensions
 before any upload. Upload consumes the owned pixels without reopening image files.
 Pixels are four-channel RGBA in the decoder's default top-to-bottom row order.
 
-Preparation may run on an application-owned worker. Transfer its completed result
-to an active runtime's platform queue; keep the loader alive through that request:
+Preparation can use a tracked context WorkerGroup. Own both the Loader and
+PreparedAssets through the platform handoff; simulation only retrieves ready
+futures, and never blocks on CPU preparation or GPU upload:
 
 ```cpp
+auto workers = engine.make_worker_group();
+auto platform = engine.platform_dispatcher().submission();
 auto loader = std::make_shared<CE::Assets::Loader>("assets");
-auto preparing = std::async(std::launch::async, [loader] { return loader->prepare(); });
-// Once preparing is ready, transfer its owned result rather than live game state.
-auto prepared = preparing.get();
-auto uploading = engine.platform_dispatcher().submit(
-    [loader, prepared = std::move(prepared)](CE::Engine::EngineContext& platform) mutable {
-        loader->upload(std::move(prepared), platform.resources());
-        return loader->manifests();
-    });
-// In a later update, check uploading.wait_for(std::chrono::seconds{0}) before get().
+auto preparing = workers.submit([loader, platform] {
+    auto prepared = loader->prepare();
+    return platform.submit(
+        [loader, prepared = std::move(prepared)](CE::Engine::EngineContext& owner) mutable {
+            loader->upload(std::move(prepared), owner.resources());
+            return loader->manifests();
+        }
+    );
+});
+// A later update: only after preparing.wait_for(0s) reports ready, get the
+// returned upload future. Check that future's readiness before reading metadata.
 ```
+
+An owned root or injected shared root supplies physical capacity; this group
+belongs to the context shutdown domain. Accepted CPU jobs finish while the
+platform dispatcher remains available. Any final unexecuted upload is cancelled
+before resource teardown, so its future reports failure instead of hanging.
+Use platform submission endpoints rather than borrowed dispatcher pointers.
 
 `load_assets(provider)` is the synchronous convenience path. Preparation failure
 changes no caches or published metadata. Upload failure may retain already-created

@@ -70,5 +70,5 @@ make_worker_group() is first called. Groups obtained there belong to that
 context's shutdown domain. Shutdown closes/drains those groups and joins an owned
 root; unrelated groups on an injected pool remain open. A saved context group
 rejects after context shutdown, while separately owned physical pools remain
-independent. Do not destroy a context from one of its jobs. Runtime shutdown
-integration follows in the next checkpoint so platform dependencies keep moving.
+independent. Do not destroy a context from one of its jobs. Runtime shutdown pumps platform dispatch while accepted work finishes,
+then joins an owned root before game/resource cleanup.

@@ -38,7 +38,10 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 4.2 complete: all three execution targets are optional composition
   adapters without EventBus header dependencies. Task 4.1 complete: lazy configured owned root or injected shared capacity,
   context-scoped groups, and no shutdown of unrelated injected groups.
-- Task 4.3–4.6 active; tasks 5–8 pending.
+- Task 4 complete in source: WorkerGroup preparation example, quiesce hook,
+  dependency-aware platform pumping through simulation/CPU shutdown, cancellation
+  of remaining requests, injected ownership isolation, and original-error retention.
+- Tasks 5–8 pending. Task 9 acceptance remains unexecuted.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
@@ -67,6 +70,13 @@ Compilation, test execution, and remote writes have not been requested.
   adapter reads back eligibility before invoking work; hard requirements reject
   unavailable CPUs/topology, and policy failure cannot silently execute a job.
   Fixed CPU_SETSIZE limits and unsupported targets are explicit capabilities.
+
+- D4: joining CPU workers before servicing their accepted platform futures
+  deadlocks shutdown. Pump the platform while waiting for simulation/CPU completion,
+  then cancel remaining platform work before resource teardown. Added under 4.5.
+- D4: persistent global subscriptions cannot be blindly removed by one context.
+  Add AbstractGame::quiesce() to stop application producers and explicitly invalidate
+  borrowed registrations while targets remain alive. Final teardown stays in deinit().
 
 ## Patch protocol
 
