@@ -129,3 +129,11 @@ publishes programs without binding or broadcasting camera state. Use pass matric
 or `DrawInfo::camera` instead of the removed shader-cache camera setters.
 `reload_program` publishes a successfully linked replacement while older frames
 retain the old handle; a failed reload leaves the previous entry intact.
+
+Asset-manager lookups copy published handles under shared locks; publication and
+clearing use unique locks. Asset construction and removed-handle destruction run
+outside those locks. Provider binding serializes loads to the first loading
+thread and rejects another provider until teardown finishes. Teardown marks the
+binding as releasing before clearing caches, so reentrant deleters cannot refill
+them. Retained external handles survive cache clearing; their backend lifetime
+still governs use and final release. CPU preparation does not bind these caches.

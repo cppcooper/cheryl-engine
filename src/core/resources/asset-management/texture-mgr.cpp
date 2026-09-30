@@ -8,6 +8,7 @@ namespace CE::Assets {
         // Prefer the resolved path used at load time; a bare filename is a convenience
         // lookup only when it uniquely identifies one cached texture.
         const auto normalized = file.lexically_normal();
+        std::shared_lock lock(assets_mutex_);
         if (const auto exact = loaded_assets.find(normalized); exact != loaded_assets.end()) {
             return exact->second;
         }
@@ -21,8 +22,8 @@ namespace CE::Assets {
                 continue;
             }
             if (result) {
-                throw Exceptions::runtime_exception(
-                    CE_HERE, "Texture filename '" + file.string() + "' is ambiguous; use its resolved path");
+                throw Exceptions::runtime_exception(CE_HERE,
+                                                    "Texture filename '" + file.string() + "' is ambiguous; use its resolved path");
             }
             result = texture;
         }
@@ -33,8 +34,8 @@ namespace CE::Assets {
         bind_provider(provider);
         for (const auto& requested : files) {
             const auto file = requested.lexically_normal();
-            if (!loaded_assets.contains(file)) {
-                loaded_assets.emplace(file, provider.load_image(file));
+            if (!contains(file)) {
+                publish_asset(file, provider.load_image(file));
             }
         }
     }

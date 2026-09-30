@@ -20,6 +20,6 @@ namespace CE::Assets {
         if (!program)
             throw Exceptions::failed_operation(CE_HERE, "Resource provider returned no shader program");
         // Cache only executable resources. A successful replacement is published after linking.
-        loaded_assets.insert_or_assign(key, std::move(program));
+        replace_asset(key, std::move(program));
     }
 }

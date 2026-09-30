@@ -8,16 +8,22 @@
 
 namespace CE::Assets {
     ResourceProvider::~ResourceProvider() {
-        if (!ProviderBoundCache::is_bound_to(*this)) return;
+        if (!ProviderBoundCache::begin_provider_release(*this))
+            return;
 
         // Drop assets which retain images and geometry before their image cache.
         // External shared owners can outlive the cache; their GPU handles still
         // belong to the renderer's shutdown sweep.
-        if (auto* manager = SpriteMgr::get_existing()) manager->clear_assets();
-        if (auto* manager = TilesetMgr::get_existing()) manager->clear_assets();
-        if (auto* manager = FontMgr::get_existing()) manager->clear_assets();
-        if (auto* manager = ShaderMgr::get_existing()) manager->clear_assets();
-        if (auto* manager = TextureMgr::get_existing()) manager->clear_assets();
+        if (auto* manager = SpriteMgr::get_existing())
+            manager->clear_assets();
+        if (auto* manager = TilesetMgr::get_existing())
+            manager->clear_assets();
+        if (auto* manager = FontMgr::get_existing())
+            manager->clear_assets();
+        if (auto* manager = ShaderMgr::get_existing())
+            manager->clear_assets();
+        if (auto* manager = TextureMgr::get_existing())
+            manager->clear_assets();
         ProviderBoundCache::release_provider(*this);
     }
 }

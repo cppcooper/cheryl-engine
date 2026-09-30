@@ -6,29 +6,29 @@
 #include <core/resources/objects/object-construction.hpp>
 #include <internals/exceptions.h>
 
-#include <utility>
 #include <algorithm>
+#include <utility>
 
 namespace CE::Assets {
     void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
         bind_provider(provider);
         // Reserve for new IDs only; a repeated load does not replace a cached tileset.
-        const auto needed = std::count_if(definitions.begin(), definitions.end(), [this](const auto& definition) {
-            return !loaded_assets.contains(definition.id());
-        });
-        auto reservation = reserve<Tileset>(needed);
+        std::vector<const TilesetDefinition*> pending;
+        for (const auto& definition : definitions)
+            if (!contains(definition.id()))
+                pending.push_back(&definition);
+        auto reservation = reserve<Tileset>(pending.size());
         std::size_t slot = 0;
-        for (std::size_t index = 0; index < definitions.size(); ++index) {
-            const auto& definition = definitions[index];
+        for (const auto* selected : pending) {
+            const auto& definition = *selected;
             const auto id = definition.id();
-            if (loaded_assets.contains(id)) {
+            if (contains(id)) {
                 continue;
             }
             const auto texture = TextureMgr::get().get_asset(definition.texture);
             if (!texture) {
-                throw Exceptions::runtime_exception(CE_HERE,
-                                                    "Tileset '" + id + "' references an unloaded texture '" +
-                                                        definition.texture.string() + "'");
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Tileset '" + id + "' references an unloaded texture '" + definition.texture.string() + "'");
             }
             const auto texture_size = texture->pixel_size();
             if (texture_size.width == 0 || texture_size.height == 0) {
@@ -37,12 +37,10 @@ namespace CE::Assets {
             // Translate each grid cell into vertices, upload once, then retain geometry and
             // unconsumed animation/autotile metadata in the cached tileset.
             auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
-            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count,
-                                                 PrimitiveTopology::TriangleStrip);
-            auto asset = reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh),
-                                                                  .texture = texture,
-                                                                  .definition = definition});
-            loaded_assets.emplace(id, asset);
+            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count, PrimitiveTopology::TriangleStrip);
+            auto asset =
+                reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh), .texture = texture, .definition = definition});
+            publish_asset(id, std::move(asset));
         }
     }
 }

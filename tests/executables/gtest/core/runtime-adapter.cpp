@@ -237,6 +237,8 @@ namespace {
     class MemoryProvider final : public CE::Assets::ResourceProvider {
     public:
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(const std::filesystem::path&) override {
+            if (on_load_image)
+                return on_load_image();
             return std::make_shared<MemoryImage>(CE::Assets::PixelSize{32, 32});
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>,
@@ -263,6 +265,7 @@ namespace {
         std::thread::id resource_thread;
         int atlas_uploads = 0;
         int linked_programs = 0;
+        std::function<std::shared_ptr<CE::Assets::Image>()> on_load_image;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::vector<CE::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
@@ -734,4 +737,80 @@ TEST(material_cache, linking_does_not_bind_draw_state_and_reload_preserves_old_h
     provider.shader.reset();
     EXPECT_THROW(shaders.reload_program(key, {"vertex", "fragment"}, provider), CE::Exceptions::failed_operation);
     EXPECT_EQ(shaders.get_asset(key), replacement);
+}
+
+TEST(asset_cache, readers_keep_complete_handles_while_assets_are_published) {
+    struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
+        void publish(int key) { publish_asset(key, std::make_shared<MemoryImage>(CE::Assets::PixelSize{1, 1})); }
+    } cache;
+    std::atomic<bool> finished{false};
+    auto reader = std::async(std::launch::async, [&] {
+        bool complete = true;
+        do {
+            for (int key = 0; key < 100; ++key) {
+                const auto image = cache.get_asset(key);
+                if (image)
+                    complete = complete && image->pixel_size().width == 1;
+                (void)cache.contains(key);
+                (void)cache.size();
+            }
+        }
+        while (!finished.load(std::memory_order_acquire));
+        return complete;
+    });
+    for (int key = 0; key < 100; ++key)
+        cache.publish(key);
+    finished.store(true, std::memory_order_release);
+    EXPECT_TRUE(reader.get());
+    auto retained = cache.get_asset(7);
+    cache.clear_assets();
+    EXPECT_EQ(cache.size(), 0u);
+    ASSERT_TRUE(retained);
+    EXPECT_EQ(retained->pixel_size().width, 1u);
+}
+
+TEST(asset_cache, final_asset_release_can_inspect_the_cleared_cache) {
+    struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
+        void publish(std::shared_ptr<MemoryImage> image) { publish_asset(1, std::move(image)); }
+    } cache;
+    std::size_t size_at_deletion = 99;
+    cache.publish(std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
+        size_at_deletion = cache.size();
+        delete image;
+    }));
+    cache.clear_assets();
+    EXPECT_EQ(size_at_deletion, 0u);
+}
+
+TEST(asset_cache, provider_loads_reject_another_thread_and_teardown_refills) {
+    bool refill_rejected = false;
+    auto provider = std::make_unique<MemoryProvider>();
+    auto* owner = provider.get();
+    provider->on_load_image = [&] {
+        return std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
+            try {
+                CE::Assets::TextureMgr::get().load_assets({"late-refill.png"}, *owner);
+            }
+            catch (const CE::Exceptions::failed_operation&) {
+                refill_rejected = true;
+            }
+            delete image;
+        });
+    };
+    auto& textures = CE::Assets::TextureMgr::get();
+    textures.load_assets({"owner-thread.png"}, *provider);
+    auto another_thread = std::async(std::launch::async, [&] {
+        try {
+            textures.load_assets({"wrong-thread.png"}, *provider);
+        }
+        catch (const CE::Exceptions::failed_operation&) {
+            return true;
+        }
+        return false;
+    });
+    EXPECT_TRUE(another_thread.get());
+    EXPECT_EQ(textures.size(), 1u);
+    provider.reset();
+    EXPECT_TRUE(refill_rejected);
+    EXPECT_EQ(textures.size(), 0u);
 }
