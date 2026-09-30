@@ -3,6 +3,8 @@
 #include <core/controls/polling-backlog.h>
 #include <core/engine/simulation-dispatcher.h>
 
+#include "simulation-scheduler.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <exception>
@@ -32,6 +34,7 @@ namespace CE::GFramework {
         AbstractGame& game_;
         RunMode mode_;
         Input::PollingOptions polling_;
+        SimulationTimingOptions timing_;
         std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
         struct Scheduler {
@@ -46,7 +49,8 @@ namespace CE::GFramework {
             Engine::EngineContext& engine,
             AbstractGame& game,
             RunMode mode = RunMode::Sequential,
-            Input::PollingOptions polling = Input::PollingOptions{}
+            Input::PollingOptions polling = Input::PollingOptions{},
+            SimulationTimingOptions timing = SimulationTimingOptions{}
         );
 
         void run();

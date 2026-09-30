@@ -10,6 +10,7 @@
 #include <internals/exceptions.h>
 
 #include <array>
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <exception>
@@ -21,10 +22,17 @@
 #include <vector>
 
 namespace CE::GFramework {
-    GameRuntime::GameRuntime(Engine::EngineContext& engine, AbstractGame& game, const RunMode mode, const Input::PollingOptions polling)
-    : engine_(engine), game_(game), mode_(mode), polling_(polling) {
+    GameRuntime::GameRuntime(
+        Engine::EngineContext& engine,
+        AbstractGame& game,
+        const RunMode mode,
+        const Input::PollingOptions polling,
+        const SimulationTimingOptions timing
+    )
+    : engine_(engine), game_(game), mode_(mode), polling_(polling), timing_(timing) {
         // Reject an invalid policy before starting any platform or game resources.
         (void)Input::PollingBacklog(polling_);
+        (void)SimulationScheduler(timing_);
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)
             throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
     }
@@ -85,8 +93,11 @@ namespace CE::GFramework {
                 throw Exceptions::failed_operation(CE_HERE, "Input adapter did not supply an initial snapshot");
             auto viewport = window.framebuffer_size();
             renderer.set_viewport(viewport);
-            Input::InputAccumulator accumulator(previous_poll, std::chrono::steady_clock::now());
+            const auto started_at = SimulationClock::now();
+            Input::InputAccumulator accumulator(previous_poll, started_at);
             Input::PollingBacklog backlog(polling_);
+            SimulationScheduler timing(timing_, started_at);
+            bool published = false;
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
                 engine_.platform_dispatcher().drain(engine_);
@@ -105,24 +116,42 @@ namespace CE::GFramework {
                     renderer.set_viewport(size);
                     viewport = size;
                 }
-                // Detached mailbox work precedes transfer of the complete polling
-                // backlog. Posts from that work wait until the next boundary.
-                simulation_dispatcher_.drain();
-                if (stop_requested_.load(std::memory_order_acquire))
-                    break;
-                auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
-                game_.update(TickContext{state.elapsed().count(), state, size});
+                const auto batch = timing.advance(SimulationClock::now());
+                bool updated = false;
+                for (std::size_t i = 0; i < batch.steps.size(); ++i) {
+                    // Every actual update gets its own detached mailbox and whole
+                    // input transfer. A cycle with no update leaves the backlog intact.
+                    simulation_dispatcher_.drain();
+                    if (stop_requested_.load(std::memory_order_acquire))
+                        break;
+                    auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
+                    const auto& step = batch.steps[i];
+                    const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                    game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
+                    updated = true;
+                    if (stop_requested_.load(std::memory_order_acquire))
+                        break;
+                }
                 if (!stop_requested_.load(std::memory_order_acquire))
                     engine_.platform_dispatcher().drain(engine_);
 
-                // One slot is enough because the graphics thread consumes and
-                // recycles it before the next simulation update.
-                RenderAPIs::RenderFrameWriter writer(frame);
-                game_.prepare_render_frame(writer);
-                renderer.clear();
-                renderer.render(frame);
-                engine_.surface().present();
-                frame.recycle();
+                // Publish only the final useful state from the bounded batch.
+                // Retain that complete frame for cycles without a simulation update.
+                if (updated) {
+                    frame.recycle();
+                    RenderAPIs::RenderFrameWriter writer(frame);
+                    game_.prepare_render_frame(writer);
+                    published = true;
+                }
+                if (published) {
+                    renderer.clear();
+                    renderer.render(frame);
+                    engine_.surface().present();
+                }
+                std::unique_lock lock(scheduler_->mutex);
+                scheduler_->wake.wait_until(lock, std::min(timing.next_update_at(), backlog.next_poll_at()), [&] {
+                    return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending();
+                });
             }
         } catch (...) {
             failure = std::current_exception();
@@ -178,7 +207,6 @@ namespace CE::GFramework {
         auto& input = engine_.input();
         std::array<Slot, 3> slots;
         Handoff handoff{Input::PollingBacklog(polling_)};
-        constexpr auto cadence = std::chrono::microseconds{16667};
         std::thread worker;
         bool renderer_started = false;
         bool input_started = false;
@@ -217,41 +245,50 @@ namespace CE::GFramework {
             worker = std::thread([&, previous_poll = std::move(previous_poll)]() mutable {
                 try {
                     simulation_dispatcher_.bind_owner();
-                    Input::InputAccumulator accumulator(previous_poll, std::chrono::steady_clock::now());
+                    const auto started_at = SimulationClock::now();
+                    Input::InputAccumulator accumulator(previous_poll, started_at);
+                    SimulationScheduler timing(timing_, started_at);
                     std::vector<std::shared_ptr<const Input::PollSnapshot>> polls;
-                    auto next_tick = std::chrono::steady_clock::now() + cadence;
                     while (!stop_requested_.load(std::memory_order_acquire)) {
-                        FramebufferSize size;
-                        Input::InputClock::time_point consumed_at;
                         {
                             std::unique_lock lock(scheduler_->mutex);
-                            scheduler_->wake.wait_until(lock, next_tick, [&] { return stop_requested_.load(std::memory_order_acquire); });
+                            scheduler_->wake.wait_until(lock, timing.next_update_at(), [&] {
+                                return stop_requested_.load(std::memory_order_acquire);
+                            });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
                         }
-                        // Run application callbacks without the scheduler lock.
-                        // A callback may post platform work or request stop().
-                        simulation_dispatcher_.drain();
-                        if (stop_requested_.load(std::memory_order_acquire))
-                            break;
-                        {
-                            std::lock_guard lock(scheduler_->mutex);
-                            polls = handoff.backlog.consume();
-                            size = handoff.framebuffer_size;
-                            consumed_at = Input::InputClock::now();
+                        const auto batch = timing.advance(SimulationClock::now());
+                        bool updated = false;
+                        for (std::size_t i = 0; i < batch.steps.size(); ++i) {
+                            // Callbacks run outside the scheduler lock. Each recovery
+                            // update consumes fresh polls or persistent State, never
+                            // a replay of the previous update's edges/Events/Text.
+                            simulation_dispatcher_.drain();
+                            if (stop_requested_.load(std::memory_order_acquire))
+                                break;
+                            FramebufferSize size;
+                            Input::InputClock::time_point consumed_at;
+                            {
+                                std::lock_guard lock(scheduler_->mutex);
+                                polls = handoff.backlog.consume();
+                                size = handoff.framebuffer_size;
+                                consumed_at = Input::InputClock::now();
+                            }
+                            scheduler_->wake.notify_all();
+                            auto state = accumulator.consume_polls(consumed_at, std::move(polls));
+                            const auto& step = batch.steps[i];
+                            const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                            game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
+                            polls = {};
+                            updated = true;
+                            if (stop_requested_.load(std::memory_order_acquire))
+                                break;
                         }
-                        // Capacity becomes available as soon as the entire batch
-                        // transfers, even while this worker processes its update.
-                        scheduler_->wake.notify_all();
-                        // A slow tick never triggers a burst of catch-up updates.
-                        // If rendering blocks polling, held input persists without replaying edges.
-                        next_tick = std::chrono::steady_clock::now() + cadence;
-
-                        auto state = accumulator.consume_polls(consumed_at, std::move(polls));
-                        game_.update(TickContext{state.elapsed().count(), state, size});
-                        polls = {}; // Every poll in this batch has been consumed together.
                         if (stop_requested_.load(std::memory_order_acquire))
                             break;
+                        if (!updated)
+                            continue;
 
                         // Never wait for the renderer to release a slot. Simulation
                         // keeps updating; only a visual snapshot is skipped.
@@ -300,6 +337,7 @@ namespace CE::GFramework {
                 scheduler_->wake.notify_all();
             });
 
+            std::optional<std::size_t> current_frame;
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
@@ -357,14 +395,17 @@ namespace CE::GFramework {
                         slots[*ready].state = SlotState::Rendering;
                 }
                 if (ready) {
-                    renderer.clear();
-                    renderer.render(slots[*ready].frame);
-                    engine_.surface().present();
-                    slots[*ready].frame.recycle();
-                    {
+                    if (current_frame) {
+                        slots[*current_frame].frame.recycle();
                         std::lock_guard lock(scheduler_->mutex);
-                        slots[*ready].state = SlotState::Free;
+                        slots[*current_frame].state = SlotState::Free;
                     }
+                    current_frame = ready;
+                }
+                if (current_frame) {
+                    renderer.clear();
+                    renderer.render(slots[*current_frame].frame);
+                    engine_.surface().present();
                 }
 
                 std::unique_lock lock(scheduler_->mutex);

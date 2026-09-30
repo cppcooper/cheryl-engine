@@ -252,11 +252,12 @@ int main(const int argc, char** argv) {
     bool load_all_assets = false;
     auto mode = CE::GFramework::RunMode::Sequential;
     CE::Input::PollingOptions polling;
+    CE::GFramework::SimulationTimingOptions timing;
     const auto number = [](const std::string_view text) {
         unsigned int value = 0;
         const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
         if (error != std::errc{} || end != text.data() + text.size())
-            throw CE::Exceptions::invalid_args(CE_HERE, "Input polling options require a nonnegative integer");
+            throw CE::Exceptions::invalid_args(CE_HERE, "Timing and polling options require a nonnegative integer");
         return value;
     };
     for (int i = 1; i < argc; ++i) {
@@ -267,6 +268,21 @@ int main(const int argc, char** argv) {
             mode = CE::GFramework::RunMode::Concurrent;
         else if (argument == "--input-unlimited")
             polling.policy = CE::Input::PollingPolicy::Unlimited;
+        else if (argument == "--fixed")
+            timing.mode = CE::GFramework::SimulationMode::Fixed;
+        else if (argument == "--variable-catch-up")
+            timing.recovery = CE::GFramework::LagRecovery::VariableCatchUp;
+        else if (argument.starts_with("--fixed-step-ms=")) {
+            timing.mode = CE::GFramework::SimulationMode::Fixed;
+            timing.fixed_step = std::chrono::milliseconds(number(argument.substr(std::string_view("--fixed-step-ms=").size())));
+        } else if (argument.starts_with("--variable-interval-ms="))
+            timing.variable_interval = std::chrono::milliseconds(number(argument.substr(std::string_view("--variable-interval-ms=").size())));
+        else if (argument.starts_with("--max-fixed-updates="))
+            timing.max_fixed_updates = number(argument.substr(std::string_view("--max-fixed-updates=").size()));
+        else if (argument.starts_with("--recovery-prefix="))
+            timing.fixed_updates_before_recovery = number(argument.substr(std::string_view("--recovery-prefix=").size()));
+        else if (argument.starts_with("--recovery-cap-ms="))
+            timing.recovery_cap = std::chrono::milliseconds(number(argument.substr(std::string_view("--recovery-cap-ms=").size())));
         else if (argument.starts_with("--input-capacity=")) {
             polling.policy = CE::Input::PollingPolicy::Finite;
             polling.capacity = number(argument.substr(std::string_view("--input-capacity=").size()));
@@ -277,6 +293,6 @@ int main(const int argc, char** argv) {
     }
     auto engine = CE::Engine::make_glfw_opengl_context();
     Game game(*engine, asset_root, load_all_assets);
-    GameRuntime game_runtime(*engine, game, mode, polling);
+    GameRuntime game_runtime(*engine, game, mode, polling, timing);
     game_runtime.run();
 }

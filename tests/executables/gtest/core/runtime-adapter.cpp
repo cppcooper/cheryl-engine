@@ -203,6 +203,10 @@ namespace {
         std::thread::id update_thread;
         CE::FramebufferSize size{};
         std::vector<CE::Input::InputRecord> received_records;
+        std::vector<double> simulation_deltas;
+        std::vector<double> observed_intervals;
+        std::vector<double> dropped_intervals;
+        std::vector<CE::GFramework::UpdateKind> update_kinds;
 
         explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false)
         : input_(input), capture_(capture) {}
@@ -236,6 +240,10 @@ namespace {
 
         void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
+            simulation_deltas.push_back(tick.delta_seconds);
+            observed_intervals.push_back(tick.observed_seconds());
+            dropped_intervals.push_back(tick.dropped_seconds);
+            update_kinds.push_back(tick.update_kind);
             update_thread = std::this_thread::get_id();
             size = tick.framebuffer_size;
             received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
@@ -1258,4 +1266,76 @@ TEST(execution_shutdown, quiesce_failure_does_not_replace_initialization_failure
         EXPECT_EQ(std::string_view(error.what()), "original initialization failure");
     }
     EXPECT_EQ(game.shutdowns, 1);
+}
+
+TEST(simulation_timing, both_runtime_modes_use_the_configured_fixed_delta) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::SimulationTimingOptions timing;
+        timing.mode = CE::GFramework::SimulationMode::Fixed;
+        timing.fixed_step = std::chrono::milliseconds{20};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        game.on_tick = [&] {
+            if (game.updates == 2)
+                runtime.stop();
+        };
+        runtime.run();
+        ASSERT_EQ(game.simulation_deltas.size(), 2u);
+        for (std::size_t i = 0; i < game.simulation_deltas.size(); ++i) {
+            EXPECT_DOUBLE_EQ(game.simulation_deltas[i], 0.020);
+            EXPECT_EQ(game.update_kinds[i], CE::GFramework::UpdateKind::Fixed);
+            EXPECT_GE(game.observed_intervals[i], 0.0);
+        }
+    }
+}
+
+TEST(simulation_timing, a_slow_update_triggers_capped_hybrid_recovery_in_both_modes) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::SimulationTimingOptions timing;
+        timing.mode = CE::GFramework::SimulationMode::Fixed;
+        timing.fixed_step = std::chrono::milliseconds{20};
+        timing.recovery = CE::GFramework::LagRecovery::VariableCatchUp;
+        timing.fixed_updates_before_recovery = 1;
+        timing.recovery_cap = std::chrono::milliseconds{25};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        game.on_tick = [&] {
+            if (game.updates == 1)
+                std::this_thread::sleep_for(std::chrono::milliseconds{80});
+            if (game.update_kinds.back() == CE::GFramework::UpdateKind::VariableCatchUp)
+                runtime.stop();
+        };
+        runtime.run();
+        ASSERT_GE(game.update_kinds.size(), 2u);
+        EXPECT_EQ(game.update_kinds.back(), CE::GFramework::UpdateKind::VariableCatchUp);
+        EXPECT_DOUBLE_EQ(game.simulation_deltas.back(), 0.025);
+        EXPECT_GT(game.dropped_intervals.back(), 0.0);
+        EXPECT_EQ(game.update_kinds[game.update_kinds.size() - 2], CE::GFramework::UpdateKind::Fixed);
+        EXPECT_DOUBLE_EQ(game.dropped_intervals[game.dropped_intervals.size() - 2], 0.0);
+        EXPECT_LT(game.draws, game.updates);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
+}
+
+TEST(simulation_timing, invalid_timing_is_rejected_before_any_adapter_initializes) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::SimulationTimingOptions timing;
+    timing.fixed_step = std::chrono::milliseconds{0};
+    EXPECT_THROW((void)CE::GFramework::GameRuntime(*engine, game, CE::GFramework::RunMode::Sequential,
+        CE::Input::PollingOptions{}, timing), CE::Exceptions::invalid_args);
+    EXPECT_EQ(renderer->initializations, 0);
+    EXPECT_EQ(game.initializations, 0);
+    EXPECT_EQ(input.attached_window(), nullptr);
 }

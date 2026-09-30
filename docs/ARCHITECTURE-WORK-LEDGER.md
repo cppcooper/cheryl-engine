@@ -48,6 +48,11 @@ Compilation, test execution, and remote writes have not been requested.
   dropped time, and observed interval separately. Demo movement explicitly maps
   observed down-time proportion to simulation time; raw input durations are unchanged.
   Short-tap, zero-interval held State, and between-update input scenarios are prepared.
+- Task 5 runtime integration prepared: both modes use SimulationScheduler; every
+  actual recovery update drains its mailbox then consumes a fresh whole backlog.
+  Cycles with no update retain input. One frame is prepared after a bounded batch,
+  and the platform retains the latest complete frame through no-update cycles.
+  Demo switches expose pacing, fixed steps, recovery prefix/cap, and update bounds.
 - Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
