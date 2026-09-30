@@ -10,13 +10,16 @@
 #include <core/rendering/draw-info.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
+#include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <internals/exceptions.h>
 
+#include <array>
 #include <atomic>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -31,6 +34,37 @@
 #endif
 
 namespace {
+    struct TemporaryAssets {
+        std::filesystem::path root;
+        inline static std::atomic<unsigned int> next{0};
+        TemporaryAssets()
+            : root(std::filesystem::temp_directory_path() /
+                   ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                    std::to_string(next.fetch_add(1)))) {
+            std::filesystem::create_directories(root);
+        }
+        ~TemporaryAssets() {
+            std::error_code error;
+            std::filesystem::remove_all(root, error);
+        }
+        void write_png(const std::string& name = "pixel.png") const {
+            constexpr std::array<unsigned char, 70> bytes{137, 80,  78, 71, 13, 10,  26,  10, 0,   0,   0,   13,  73,  72,  68,  82, 0, 0,
+                                                          0,   1,   0,  0,  0,  1,   8,   6,  0,   0,   0,   31,  21,  196, 137, 0,  0, 0,
+                                                          13,  73,  68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31,  0,   5,   0,  1, 255,
+                                                          137, 153, 61, 29, 0,  0,   0,   0,  73,  69,  78,  68,  174, 66,  96,  130};
+            const auto file = root / name;
+            std::filesystem::create_directories(file.parent_path());
+            std::ofstream output(file, std::ios::binary);
+            output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        }
+        void write_manifest(const std::string& name_space = "probe") const {
+            std::string document =
+                R"JSON({"$schema":"./schemas/asset-manifest-1.0.schema.json","version":"1.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
+            document.replace(document.find("probe"), 5, name_space);
+            std::ofstream(root / "probe.json") << document;
+        }
+    };
+
     constexpr CE::Input::DeviceButtonId test_button = 65;
 
     /** Holds mutable window state for a runtime test without a native window. */
@@ -247,13 +281,16 @@ namespace {
             ++atlas_uploads;
             return std::make_shared<MemoryImage>(size);
         }
-        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D>
-        upload_geometry(std::shared_ptr<CE::Vertex2D> vertices, std::uint32_t count, CE::Assets::PrimitiveTopology topology) override {
-            uploaded_vertices = vertices ? count : 0;
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& image) override {
+            ++created_images;
+            return std::make_shared<MemoryImage>(image.size);
+        }
+        using ResourceProvider::upload_geometry;
+        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(std::span<const CE::Vertex2D> vertices,
+                                                                              CE::Assets::PrimitiveTopology topology) override {
+            uploaded_vertices = vertices.size();
             uploaded_topology = topology;
-            uploaded_geometry.clear();
-            if (vertices)
-                uploaded_geometry.assign(vertices.get(), vertices.get() + count);
+            uploaded_geometry.assign(vertices.begin(), vertices.end());
             return geometry;
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
@@ -265,6 +302,7 @@ namespace {
         std::thread::id resource_thread;
         int atlas_uploads = 0;
         int linked_programs = 0;
+        int created_images = 0;
         std::function<std::shared_ptr<CE::Assets::Image>()> on_load_image;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::vector<CE::Vertex2D> uploaded_geometry;
@@ -813,4 +851,66 @@ TEST(asset_cache, provider_loads_reject_another_thread_and_teardown_refills) {
     provider.reset();
     EXPECT_TRUE(refill_rejected);
     EXPECT_EQ(textures.size(), 0u);
+}
+
+TEST(asset_preparation, worker_decoding_owns_pixels_that_upload_without_reopening_files) {
+    TemporaryAssets files;
+    files.write_png();
+    files.write_manifest();
+    CE::Assets::Loader loader(files.root);
+    auto worker = std::async(std::launch::async, [&] { return loader.prepare(); });
+    auto prepared = worker.get();
+    ASSERT_EQ(prepared.images.size(), 1u);
+    EXPECT_EQ(prepared.images[0].pixels.rgba, (std::vector<unsigned char>{255, 0, 0, 255}));
+    EXPECT_TRUE(loader.manifests()->empty());
+    std::filesystem::remove(files.root / "pixel.png");
+    MemoryProvider provider;
+    loader.upload(std::move(prepared), provider);
+    EXPECT_EQ(provider.created_images, 1);
+    EXPECT_EQ(provider.linked_programs, 0);
+    auto sprite = CE::Assets::SpriteMgr::get().get_asset("probe:pixel");
+    ASSERT_TRUE(sprite);
+    EXPECT_EQ(sprite->texture->pixel_size().width, 1u);
+    EXPECT_EQ(loader.manifests()->size(), 1u);
+}
+
+TEST(asset_preparation, roots_and_metadata_snapshots_remain_independent_across_fresh_scans) {
+    TemporaryAssets first;
+    TemporaryAssets second;
+    first.write_png();
+    first.write_manifest("first");
+    second.write_png();
+    second.write_manifest("second");
+    CE::Assets::Loader loader(first.root);
+    CE::Assets::Loader other(second.root);
+    EXPECT_EQ(loader.prepare().images.size(), 1u);
+    first.write_png("new.png");
+    EXPECT_EQ(loader.prepare().images.size(), 2u);
+    EXPECT_EQ(other.prepare().images.size(), 1u);
+    MemoryProvider provider;
+    loader.load_assets(provider);
+    const auto retained = loader.manifests();
+    ASSERT_EQ(retained->size(), 1u);
+    first.write_manifest("revised");
+    loader.load_assets(provider);
+    const auto current = loader.manifests();
+    EXPECT_NE(current, retained);
+    EXPECT_EQ(retained->front().name_space, "first");
+    EXPECT_EQ(current->front().name_space, "revised");
+    std::ofstream(first.root / "pixel.png", std::ios::binary) << "corrupt image";
+    EXPECT_THROW(loader.load_assets(provider), CE::Exceptions::runtime_exception);
+    EXPECT_EQ(loader.manifests(), current);
+}
+
+TEST(resource_upload, a_legacy_vertex_owner_is_released_after_the_transient_copy) {
+    MemoryProvider provider;
+    auto quad = std::make_shared<CE::Quad>();
+    quad->vertices[0].x = 7.0f;
+    std::weak_ptr<CE::Quad> owner = quad;
+    (void)provider.upload_geometry(std::shared_ptr<CE::Vertex2D>{quad, quad->vertices.data()}, quad->vertices.size(),
+                                   CE::Assets::PrimitiveTopology::Triangles);
+    quad.reset();
+    EXPECT_TRUE(owner.expired());
+    ASSERT_EQ(provider.uploaded_geometry.size(), 6u);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry.front().x, 7.0f);
 }

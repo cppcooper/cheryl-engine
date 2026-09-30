@@ -50,15 +50,15 @@ public:
         const auto shader2d = asset_root_ / "shaders" / "shader2d";
         auto& resources = engine_.resources();
         if (load_all_assets_) {
-            CE::Assets::Loader::get(asset_root_).load_assets(resources);
+            CE::Assets::Loader loader(asset_root_);
+            loader.load_assets(resources);
         }
-        else {
-            const auto font_path = CE::Resources::select_default_system_font(CE::Resources::find_system_fonts());
-            if (!font_path)
-                throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
-            CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
-            CE::Assets::ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"}, resources);
-        }
+        // Environment/bootstrap choices belong to the application, independently of asset manifests.
+        const auto font_path = CE::Resources::select_default_system_font(CE::Resources::find_system_fonts());
+        if (!font_path)
+            throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
+        CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
+        CE::Assets::ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"}, resources);
         font_ = std::dynamic_pointer_cast<CE::Assets::STBFont>(CE::Assets::FontMgr::get().default_font());
         font_shader_ = CE::Assets::ShaderMgr::get().get_asset(shader2d);
         if (!font_)

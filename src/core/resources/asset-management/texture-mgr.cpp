@@ -4,6 +4,13 @@
 #include <internals/exceptions.h>
 
 namespace CE::Assets {
+    void TextureMgr::load_asset(const std::filesystem::path& file, const DecodedImage& image, ResourceProvider& provider) {
+        bind_provider(provider);
+        const auto key = file.lexically_normal();
+        if (!contains(key))
+            publish_asset(key, provider.create_image(image));
+    }
+
     TextureMgr::spointer TextureMgr::get_asset(const std::filesystem::path& file) const {
         // Prefer the resolved path used at load time; a bare filename is a convenience
         // lookup only when it uniquely identifies one cached texture.

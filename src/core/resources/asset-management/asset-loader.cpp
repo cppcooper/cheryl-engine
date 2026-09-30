@@ -1,10 +1,10 @@
-#include <core/resources/asset-management/asset-loader.h>
-
-#include <core/resources/asset-management.h>
 #include <assets/resources/resource-provider.h>
-#include <core/resources/fileio/fonts-system.h>
+#include <core/resources/asset-management/asset-loader.h>
+#include <core/resources/asset-management/manifest-loader.h>
+#include <core/resources/asset-management/sprite-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
-#include <stb_image.h>
 
 #include <algorithm>
 #include <cctype>
@@ -12,147 +12,104 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-#include <vector>
 
 namespace CE::Assets {
     namespace {
         namespace fs = std::filesystem;
-
         std::string lowercase(std::string value) {
-            std::ranges::transform(value, value.begin(), [](const unsigned char character) {
-                return static_cast<char>(std::tolower(character));
-            });
+            std::ranges::transform(value, value.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return value;
         }
-
-        void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id,
-                         const fs::path& source) {
-            if (const auto existing = ids.find(id); existing != ids.end()) {
+        void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id, const fs::path& source) {
+            if (const auto previous = ids.find(id); previous != ids.end())
                 throw Exceptions::runtime_exception(CE_HERE,
-                                                    "Duplicate asset ID '" + id + "' in manifests '" +
-                                                        existing->second.string() + "' and '" + source.string() + "'");
-            }
+                                                    "Duplicate asset ID '" + id + "' in manifests '" + previous->second.string() +
+                                                        "' and '" + source.string() + "'");
             ids.emplace(id, source);
         }
-
-        std::pair<int, int> inspect_texture(const fs::path& texture) {
-            if (!fs::is_regular_file(texture)) {
-                throw Exceptions::runtime_exception(
-                    CE_HERE, "Manifest texture does not exist or is not a file: '" + texture.string() + "'");
-            }
-            int width{};
-            int height{};
-            int channels{};
-            if (stbi_info(texture.string().c_str(), &width, &height, &channels) == 0 || width <= 0 || height <= 0) {
-                throw Exceptions::runtime_exception(
-                    CE_HERE, "Unable to read manifest texture metadata from '" + texture.string() + "'");
-            }
-            return {width, height};
-        }
-
-        void validate_grid_bounds(const GridDefinition& grid, const fs::path& texture,
-                                  const std::pair<int, int> dimensions, const std::string& asset_id) {
-            if (grid.occupied_right() > static_cast<std::uint64_t>(dimensions.first) ||
-                grid.occupied_bottom() > static_cast<std::uint64_t>(dimensions.second)) {
-                throw Exceptions::runtime_exception(
-                    CE_HERE,
-                    "Asset '" + asset_id + "' grid exceeds texture '" + texture.string() + "' bounds (" +
-                        std::to_string(dimensions.first) + 'x' + std::to_string(dimensions.second) + ')');
-            }
+        void validate_grid_bounds(const GridDefinition& grid, const fs::path& texture, const PixelSize dimensions, const std::string& id) {
+            if (grid.occupied_right() > dimensions.width || grid.occupied_bottom() > dimensions.height)
+                throw Exceptions::runtime_exception(CE_HERE, "Asset '" + id + "' grid exceeds texture '" + texture.string() + "' bounds");
         }
     }
 
-    void Loader::load_assets(ResourceProvider& provider) {
-        // Reject a different backend before parsing anything that could mutate the bound caches.
+    Loader& Loader::get(const std::filesystem::path& root_path) {
+        auto& loader = Singleton_CTS<Loader>::get(root_path);
+        if (loader.root_path_ != root_path.lexically_normal())
+            throw Exceptions::failed_operation(CE_HERE, "The singleton loader already has another root; construct an owned Loader");
+        return loader;
+    }
+    Loader& Loader::get() {
+        auto* loader = Singleton_CTS<Loader>::get_existing();
+        if (!loader)
+            throw Exceptions::failed_operation(CE_HERE, "Initialize the singleton loader with an asset root first");
+        return *loader;
+    }
+
+    PreparedAssets Loader::prepare() const {
+        try {
+            if (!fs::is_directory(root_path_))
+                throw Exceptions::runtime_exception(CE_HERE, "Asset root is not a directory: " + root_path_.string());
+            PreparedAssets result;
+            std::vector<fs::path> documents;
+            // A fresh scan sees added files; schema files below the root are not manifests.
+            for (const auto& entry : fs::directory_iterator(root_path_))
+                if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".json")
+                    documents.push_back(entry.path().lexically_normal());
+            std::ranges::sort(documents);
+            for (const auto& document : documents)
+                result.manifests.push_back(ManifestLoader::load(document));
+
+            std::unordered_map<std::string, fs::path> ids;
+            std::unordered_set<fs::path> images;
+            for (const auto& manifest : result.manifests) {
+                for (const auto& sprite : manifest.sprites) {
+                    register_id(ids, sprite.id(), manifest.source);
+                    images.insert(sprite.texture);
+                }
+                for (const auto& tileset : manifest.tilesets) {
+                    register_id(ids, tileset.id(), manifest.source);
+                    images.insert(tileset.texture);
+                }
+            }
+            for (const auto& entry : fs::recursive_directory_iterator(root_path_))
+                if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".png")
+                    images.insert(entry.path().lexically_normal());
+            std::vector<fs::path> ordered(images.begin(), images.end());
+            std::ranges::sort(ordered);
+            std::unordered_map<fs::path, PixelSize> dimensions;
+            for (const auto& image : ordered) {
+                auto pixels = decode_image(image);
+                dimensions.emplace(image, pixels.size);
+                result.images.push_back({image, std::move(pixels)});
+            }
+            // Validate against the exact owned pixels that upload will receive.
+            for (const auto& manifest : result.manifests) {
+                for (const auto& sprite : manifest.sprites)
+                    validate_grid_bounds(sprite.grid, sprite.texture, dimensions.at(sprite.texture), sprite.id());
+                for (const auto& tileset : manifest.tilesets)
+                    validate_grid_bounds(tileset.grid, tileset.texture, dimensions.at(tileset.texture), tileset.id());
+            }
+            return result;
+        }
+        catch (const fs::filesystem_error& error) {
+            throw Exceptions::runtime_exception(CE_HERE, error.what());
+        }
+    }
+
+    void Loader::upload(PreparedAssets prepared, ResourceProvider& provider) {
         ProviderBoundCache::verify_provider(provider);
-        if (!fs::is_directory(root_path_)) {
-            throw Exceptions::runtime_exception(
-                CE_HERE, "Asset root does not exist or is not a directory: '" + root_path_.string() + "'");
+        for (const auto& image : prepared.images)
+            TextureMgr::get().load_asset(image.key, image.pixels, provider);
+        for (const auto& manifest : prepared.manifests) {
+            SpriteMgr::get().load_assets(manifest.sprites, provider);
+            TilesetMgr::get().load_assets(manifest.tilesets, provider);
         }
-
-        // Scan only the root for manifests, then sort for reproducible parse/error ordering.
-        std::vector<fs::path> manifest_files;
-        for (const auto& entry : fs::directory_iterator(root_path_)) {
-            if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".json") {
-                manifest_files.push_back(entry.path().lexically_normal());
-            }
-        }
-        std::ranges::sort(manifest_files);
-
-        // TODO: Manifest parsing/semantic validation can become worker-pool work because each document is
-        // independent. Preserve deterministic registration/error ordering, then marshal provider/GPU creation
-        // through its declared owner thread instead of parallelizing the whole load_assets() call blindly.
-        std::vector<AssetManifest> parsed_manifests;
-        parsed_manifests.reserve(manifest_files.size());
-        for (const auto& file : manifest_files) {
-            parsed_manifests.push_back(ManifestLoader::load(file));
-        }
-
-        // Collect typed assets and their unique referenced images across all documents. IDs are
-        // global within the load, so duplicate names must be rejected before any manager inserts.
-        std::vector<SpriteDefinition> sprites;
-        std::vector<TilesetDefinition> tilesets;
-        std::vector<fs::path> referenced_textures;
-        std::unordered_set<fs::path> seen_textures;
-        std::unordered_map<std::string, fs::path> asset_ids;
-        for (const auto& manifest : parsed_manifests) {
-            for (const auto& sprite : manifest.sprites) {
-                register_id(asset_ids, sprite.id(), manifest.source);
-                sprites.push_back(sprite);
-                if (seen_textures.emplace(sprite.texture).second) {
-                    referenced_textures.push_back(sprite.texture);
-                }
-            }
-            for (const auto& tileset : manifest.tilesets) {
-                register_id(asset_ids, tileset.id(), manifest.source);
-                tilesets.push_back(tileset);
-                if (seen_textures.emplace(tileset.texture).second) {
-                    referenced_textures.push_back(tileset.texture);
-                }
-            }
-        }
-        std::ranges::sort(referenced_textures);
-
-        // Read image headers and verify every grid against the actual image dimensions before
-        // the first provider upload. This avoids partial registration for these validation errors.
-        std::unordered_map<fs::path, std::pair<int, int>> texture_dimensions;
-        for (const auto& texture : referenced_textures) {
-            texture_dimensions.emplace(texture, inspect_texture(texture));
-        }
-        for (const auto& sprite : sprites) {
-            validate_grid_bounds(sprite.grid, sprite.texture, texture_dimensions.at(sprite.texture), sprite.id());
-        }
-        for (const auto& tileset : tilesets) {
-            validate_grid_bounds(tileset.grid, tileset.texture, texture_dimensions.at(tileset.texture), tileset.id());
-        }
-
-        // Load referenced images plus standalone PNGs first; construction of sprites and tilesets
-        // then retrieves those textures and uploads their precomputed grid geometry.
-        std::vector<fs::path> textures = referenced_textures;
-        for (const auto& file : get_files_of_type(".png")) {
-            const auto normalized = file.lexically_normal();
-            if (seen_textures.emplace(normalized).second) {
-                textures.push_back(normalized);
-            }
-        }
-        std::ranges::sort(textures);
-        TextureMgr::get().load_assets(textures, provider);
-        SpriteMgr::get().load_assets(sprites, provider);
-        TilesetMgr::get().load_assets(tilesets, provider);
-
-        // TODO: Separate environment/bootstrap resources from asset-root loading. Selecting a
-        // host system font here makes a nominal load of one asset tree depend on machine state.
-        const auto default_font = Resources::select_default_system_font(Resources::find_system_fonts());
-        if (default_font) {
-            FontMgr::get().load_assets({*default_font}, provider);
-        }
-
-        // TODO: Describe shader-program recipes outside this generic loader.
-        const auto shader2d = root_path_ / "shaders" / "shader2d";
-        ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"},
-                                      provider);
-
-        // Publish the resolved documents only after all typed managers have completed this load.
-        manifests_ = std::move(parsed_manifests);
+        // Upload failure can leave completed cache entries, but never publishes partial metadata.
+        manifests_.store(std::make_shared<const std::vector<AssetManifest>>(std::move(prepared.manifests)), std::memory_order_release);
+    }
+    void Loader::load_assets(ResourceProvider& provider) {
+        ProviderBoundCache::verify_provider(provider);
+        upload(prepare(), provider);
     }
 }
