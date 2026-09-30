@@ -28,7 +28,10 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 2.5–2.6 complete: copied payloads, per-listener enqueue serialization,
   deferred targets, cancellation tickets, and mandatory observable error sinks.
   Platform/simulation composition adapters cover the corresponding part of 4.2.
-- Task 2.7 awaits WorkerGroup: ordered parallel-worker delivery. Task 3 next.
+- Task 2.7 awaits the ordered worker-stream adapter.
+- Task 3.1–3.2 and 3.7 complete: owned threads/groups, futures, group caps,
+  explicit close/drain/join, startup rollback, and self-wait rejection.
+- Task 3.3–3.6 active: weighted selection and effective native CPU policy.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
