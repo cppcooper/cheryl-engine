@@ -25,7 +25,7 @@ TEST(opengl_lifetime, the_owner_thread_also_needs_the_correct_current_context) {
     EXPECT_NO_THROW(lifetime.require_owner());
     EXPECT_EQ(queries, 0);
     EXPECT_THROW(lifetime.require_current(), failed_operation);
-    EXPECT_THROW(lifetime.track(GLResourceKind::Texture, 1), failed_operation);
+    EXPECT_THROW(static_cast<void>(lifetime.track(GLResourceKind::Texture, 1)), failed_operation);
     current = true;
     EXPECT_NO_THROW(lifetime.require_current());
     // No handles were registered, so this source test needs no actual OpenGL calls.
@@ -56,7 +56,7 @@ TEST(opengl_lifetime, foreign_threads_and_closed_lifetimes_never_query_a_borrowe
     context_alive = false;
     const auto closed_queries = queries.load();
     EXPECT_THROW(lifetime->require_current(), failed_operation);
-    EXPECT_THROW(lifetime->track(GLResourceKind::Buffer, 1), failed_operation);
+    EXPECT_THROW(static_cast<void>(lifetime->track(GLResourceKind::Buffer, 1)), failed_operation);
     EXPECT_EQ(queries.load(), closed_queries);
 }
 

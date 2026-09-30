@@ -610,7 +610,8 @@ TEST(platform_requests, simulation_transfers_owned_pixels_to_the_platform) {
         EXPECT_EQ(provider.resource_thread, std::this_thread::get_id());
         if (mode == CE::GFramework::RunMode::Concurrent)
             EXPECT_NE(game.update_thread, provider.resource_thread);
-        EXPECT_THROW(engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 1; }), CE::Exceptions::failed_operation);
+        EXPECT_THROW(static_cast<void>(engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 1; })),
+            CE::Exceptions::failed_operation);
     }
 }
 
@@ -650,7 +651,7 @@ TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
     auto engine = make_test_context(input, renderer, surface);
-    EXPECT_THROW(engine->platform_tasks().submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(engine->platform_tasks().submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
     OneTickGame game(input);
     CE::GFramework::GameRuntime runtime(*engine, game);
     std::future<int> pending;
