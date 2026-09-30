@@ -117,7 +117,7 @@ public:
             if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
                 button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
                 const auto key = asset_root_ / "shaders" / "shader2d";
-                pending_shader_ = engine_.platform_tasks().submit([key](CE::Engine::EngineContext& platform) {
+                pending_shader_ = engine_.platform_dispatcher().submit([key](CE::Engine::EngineContext& platform) {
                     auto& shaders = CE::Assets::ShaderMgr::get();
                     shaders.reload_program(key, {key.string() + ".vert", key.string() + ".frag"}, platform.resources());
                     return shaders.get_asset(key);

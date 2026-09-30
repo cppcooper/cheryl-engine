@@ -1,8 +1,8 @@
-#include <core/engine/platform-queue.h>
+#include <core/engine/platform-dispatcher.h>
 #include <internals/exceptions.h>
 
 namespace CE::Engine {
-    void PlatformTaskQueue::enqueue(Task request) {
+    void PlatformDispatcher::enqueue(Task request) {
         std::function<void()> wake;
         {
             std::lock_guard lock(mutex_);
@@ -18,24 +18,24 @@ namespace CE::Engine {
             wake();
     }
 
-    bool PlatformTaskQueue::has_pending() const {
+    bool PlatformDispatcher::has_pending() const {
         std::lock_guard lock(mutex_);
         return !pending_.empty();
     }
 
-    void PlatformTaskQueue::open(std::function<void()> wake) {
+    void PlatformDispatcher::open(std::function<void()> wake) {
         std::lock_guard lock(mutex_);
         wake_ = std::move(wake);
         owner_ = std::this_thread::get_id();
         accepting_ = true;
     }
 
-    void PlatformTaskQueue::require_owner() const {
+    void PlatformDispatcher::require_owner() const {
         if (owner_ != std::this_thread::get_id())
             throw Exceptions::failed_operation(CE_HERE, "Platform requests must execute on their owner thread");
     }
 
-    void PlatformTaskQueue::drain(EngineContext& engine) {
+    void PlatformDispatcher::drain(EngineContext& engine) {
         std::vector<Task> batch;
         {
             std::lock_guard lock(mutex_);
@@ -50,7 +50,7 @@ namespace CE::Engine {
             request(engine);
     }
 
-    void PlatformTaskQueue::close() {
+    void PlatformDispatcher::close() {
         std::vector<Task> cancelled;
         std::function<void()> wake;
         {

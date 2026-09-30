@@ -62,7 +62,7 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
-            engine_.platform_tasks().open([scheduler = scheduler_] {
+            engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
             });
@@ -71,7 +71,7 @@ namespace CE::GFramework {
             game_started = true;
             game_.init();
             if (!stop_requested_.load(std::memory_order_acquire))
-                engine_.platform_tasks().drain(engine_);
+                engine_.platform_dispatcher().drain(engine_);
 
             // Game initialization may register bindings and upload assets. Start
             // timing and sample the baseline only after it has completed.
@@ -84,7 +84,7 @@ namespace CE::GFramework {
             Input::PollingBacklog backlog(polling_);
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
-                engine_.platform_tasks().drain(engine_);
+                engine_.platform_dispatcher().drain(engine_);
                 // Sequential execution cannot poll during update(), but spacing
                 // still applies. A delayed poll never delays simulation or rendering.
                 if (backlog.poll_due(Input::InputClock::now())) {
@@ -103,7 +103,7 @@ namespace CE::GFramework {
                 auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                 game_.update(TickContext{state.elapsed().count(), state, size});
                 if (!stop_requested_.load(std::memory_order_acquire))
-                    engine_.platform_tasks().drain(engine_);
+                    engine_.platform_dispatcher().drain(engine_);
 
                 // One slot is enough because the graphics thread consumes and
                 // recycles it before the next simulation update.
@@ -121,7 +121,7 @@ namespace CE::GFramework {
         // Recycle even after a failed prepare/render so frame-held GPU resources
         // are released before the game and its graphics context shut down.
         frame.recycle();
-        engine_.platform_tasks().close();
+        engine_.platform_dispatcher().close();
         const auto finish = [&failure](auto&& operation) {
             try {
                 operation();
@@ -173,7 +173,7 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
-            engine_.platform_tasks().open([scheduler = scheduler_] {
+            engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
             });
@@ -182,7 +182,7 @@ namespace CE::GFramework {
             game_started = true;
             game_.init();
             if (!stop_requested_.load(std::memory_order_acquire))
-                engine_.platform_tasks().drain(engine_);
+                engine_.platform_dispatcher().drain(engine_);
 
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
@@ -264,7 +264,7 @@ namespace CE::GFramework {
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
-                engine_.platform_tasks().drain(engine_);
+                engine_.platform_dispatcher().drain(engine_);
                 bool poll_due = false;
                 {
                     std::lock_guard lock(scheduler_->mutex);
@@ -332,7 +332,7 @@ namespace CE::GFramework {
                 const auto deadline = handoff.backlog.next_poll_at();
                 scheduler_->wake.wait_until(lock, deadline, [&] {
                     if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready ||
-                        engine_.platform_tasks().has_pending())
+                        engine_.platform_dispatcher().has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.
                     // Recompute the deadline instead of waiting on the old full batch.
@@ -349,7 +349,7 @@ namespace CE::GFramework {
         }
 
         stop();
-        engine_.platform_tasks().close();
+        engine_.platform_dispatcher().close();
         if (worker.joinable())
             worker.join();
         // The worker cannot be writing now. Even incomplete frames must release

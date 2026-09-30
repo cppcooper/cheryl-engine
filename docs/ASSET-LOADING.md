@@ -32,7 +32,7 @@ auto loader = std::make_shared<CE::Assets::Loader>("assets");
 auto preparing = std::async(std::launch::async, [loader] { return loader->prepare(); });
 // Once preparing is ready, transfer its owned result rather than live game state.
 auto prepared = preparing.get();
-auto uploading = engine.platform_tasks().submit(
+auto uploading = engine.platform_dispatcher().submit(
     [loader, prepared = std::move(prepared)](CE::Engine::EngineContext& platform) mutable {
         loader->upload(std::move(prepared), platform.resources());
         return loader->manifests();

@@ -527,7 +527,7 @@ TEST(platform_requests, simulation_transfers_owned_pixels_to_the_platform) {
         game.on_tick = [&] {
             if (!pending.valid()) {
                 auto pixels = std::make_unique<std::vector<unsigned char>>(4, 255);
-                pending = engine->platform_tasks().submit([pixels = std::move(pixels)](CE::Engine::EngineContext& platform) {
+                pending = engine->platform_dispatcher().submit([pixels = std::move(pixels)](CE::Engine::EngineContext& platform) {
                     return platform.resources().create_font_atlas(*pixels, {2, 2});
                 });
             } else if (pending.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
@@ -543,7 +543,7 @@ TEST(platform_requests, simulation_transfers_owned_pixels_to_the_platform) {
         EXPECT_EQ(provider.resource_thread, std::this_thread::get_id());
         if (mode == CE::GFramework::RunMode::Concurrent)
             EXPECT_NE(game.update_thread, provider.resource_thread);
-        EXPECT_THROW(static_cast<void>(engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 1; })),
+        EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) { return 1; })),
             CE::Exceptions::failed_operation);
     }
 }
@@ -558,7 +558,7 @@ TEST(platform_requests, one_failed_callback_does_not_abort_another_request) {
     std::future<int> failure;
     std::future<int> success;
     game.on_init = [&] {
-        failure = engine->platform_tasks().submit([](
+        failure = engine->platform_dispatcher().submit([](
             CE::Engine::EngineContext&
 
 
@@ -567,7 +567,7 @@ TEST(platform_requests, one_failed_callback_does_not_abort_another_request) {
             int {
                 throw std::runtime_error("request failed");
             });
-        success = engine->platform_tasks().submit([](CE::Engine::EngineContext&) { return 17; });
+        success = engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) { return 17; });
     };
     game.on_tick = [&] {
         EXPECT_THROW(failure.get(), std::runtime_error);
@@ -592,7 +592,7 @@ TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
     auto engine = make_test_context(input, renderer, surface);
-    EXPECT_THROW(static_cast<void>(engine->platform_tasks().submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
     OneTickGame game(input);
     CE::GFramework::GameRuntime runtime(*engine, game);
     std::future<int> pending;
@@ -600,7 +600,7 @@ TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
     std::thread::id destruction_thread;
     game.on_init = [&] {
         auto data = std::make_unique<CapturedData>(destroyed, destruction_thread);
-        pending = engine->platform_tasks().submit([data = std::move(data)](CE::Engine::EngineContext&) { return 1; });
+        pending = engine->platform_dispatcher().submit([data = std::move(data)](CE::Engine::EngineContext&) { return 1; });
         runtime.stop();
     };
     game.on_deinit = [&] { EXPECT_TRUE(destroyed); };

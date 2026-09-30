@@ -21,7 +21,7 @@ namespace CE::Engine {
      * Callback failures reach their own futures. Shutdown cancels unexecuted requests
      * on the platform while resources still exist; their futures report broken_promise.
      */
-    class PlatformTaskQueue final {
+    class PlatformDispatcher final {
     public:
         template <typename Work>
         [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {

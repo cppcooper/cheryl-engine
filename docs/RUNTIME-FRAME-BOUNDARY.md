@@ -41,7 +41,7 @@ input reference borrows it through context destruction. Owned input detaches
 before the window is destroyed. A runtime and its context each permit one session.
 Game cleanup is paired with attempted initialization, including partial failure;
 cleanup preserves the first failure while still shutting down both adapters.
-`engine.platform_tasks().submit(work)` transfers owned request data to the platform
+`engine.platform_dispatcher().submit(work)` transfers owned request data to the platform
 thread, where graphics is current. The result is a future: inspect readiness from
 `update()`, then publish the resulting handle through the next render frame. Do not
 block simulation on it or capture live simulation objects in platform callbacks.

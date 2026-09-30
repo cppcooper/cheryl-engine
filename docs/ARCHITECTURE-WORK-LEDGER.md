@@ -12,7 +12,9 @@ Compilation, test execution, and remote writes have not been requested.
 
 - Task 0 complete: source matches the planning snapshot; no applicable AGENTS.md
   was found; repository identity and original base are recorded.
-- Task 1 active: platform rename, safe submission handles, simulation delivery.
+- Task 1.1 complete: PlatformDispatcher, platform_dispatcher(), source filenames,
+  demo, regression sources, and active documentation use the same name.
+- Task 1.2–1.5 active: safe submission handles and simulation delivery.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
