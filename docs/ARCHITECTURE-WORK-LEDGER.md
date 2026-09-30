@@ -41,10 +41,22 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 4 complete in source: WorkerGroup preparation example, quiesce hook,
   dependency-aware platform pumping through simulation/CPU shutdown, cancellation
   of remaining requests, injected ownership isolation, and original-error retention.
-- Tasks 5–8 pending. Task 9 acceptance remains unexecuted.
+- Task 5 scheduler foundation prepared: explicit clock inputs, independent variable
+  pacing/fixed steps, bounded fixed batches, direct/hybrid VariableCatchUp, cap/drop
+  accounting, and deterministic regression sources. Runtime integration is next.
+- Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
+
+- D0: the user applied/pushed checkpoints 01–15. Remote `ef4ec51402ebadd2f1319dfd03bb0ed3a0b6007d`
+  has an identical source tree to local `b2686ce`, with reapplied commit IDs. Continue
+  from the remote HEAD; retain the original base and earlier local checkpoint branch.
+  New incremental patches start at the pushed HEAD. A continuation-only mailbox is
+  provided for that base, alongside the preserved original-base cumulative artifact.
+- D5: sample the clock once to select a bounded recovery batch. Time spent executing
+  its updates enters the next scheduler cycle, preventing an ever-extending recovery
+  loop. Deadline arithmetic saturates; invalid/unrepresentable intervals are rejected.
 
 - D1: a saved delivery adapter must not borrow a dispatcher object. Add shared
   submission state under 1.5; closing invalidates acceptance before releasing
