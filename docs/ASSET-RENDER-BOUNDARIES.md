@@ -15,6 +15,15 @@ context, and GLFW composition. Its headers are opt-in through
 Concrete resources may use OpenGL types, while shared asset and renderer
 interfaces must not expose them.
 
-`Geometry2D::bind(Image)`, shader uniform binding, and texture-unit selection
-still need their own design passes. GPU handle destruction is coordinated by
-the OpenGL renderer while its context is current.
+`Geometry2D::bind(Image)` pairs neutral geometry and image handles. Standard
+shader parameters use `ShaderPass` and `ShaderDraw`; the OpenGL material maps
+semantic roles to its uniform names, including the selected texture unit. Custom
+uniform APIs remain available for application parameters. Common drawing code
+does not select GLSL names.
+
+CPU preparation owns RGBA pixels and temporary vertex data. Backend creation
+accepts decoded images and transient vertex spans; it copies upload data before
+returning. GPU handle destruction is coordinated by the OpenGL renderer while
+its own context is current. Actual-context checks also apply to uploads and draw
+operations. Architecture and API migration are described in
+[API-ABSTRACTION-PLAN.md](API-ABSTRACTION-PLAN.md).

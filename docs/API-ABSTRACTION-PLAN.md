@@ -1,21 +1,47 @@
-# API boundary refactor
+# Runtime and backend boundaries
 
-The goal is to let the runtime and asset loader use a selected backend without naming OpenGL objects. GLFW can remain the window implementation for more than one graphics API; replacing the graphics API and replacing the window/input implementation are separate capabilities. Keep the existing OpenGL path working after each step.
+The selected backend is composed through `EngineContext`; `GameRuntime` uses its
+display, window, input, presentation, renderer, and resource contracts. The current
+GLFW/OpenGL implementation and the in-memory integration probe follow those same
+contracts. Source implementation is prepared. Compilation, automated execution,
+and real-platform acceptance remain open; see
+[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).
 
-1. **CPU asset data:** Move vertex definitions out of the VAO header and make grid construction accept image dimensions instead of a GPU texture. Keep manifest parsing and geometry generation usable without a graphics context.
-2. **Display:** Make `Monitor` an API-neutral description, then define the window operations the engine needs (`framebuffer_size`, window mode, close state, cursor, resize) behind a display/window contract. Keep native GLFW handles and monitor lookup inside the GLFW implementation. Change `iRenderer::display` and window-resize events to use only the neutral contract and data.
-3. **Input:** Keep GLFW event translation and Gainput polling in an adapter. Expose backend-independent input bindings or actions to games; preserve the current button/axis callback behavior. Make the engine attach and poll the selected input adapter.
-4. **Draw contract:** Separate `DrawInfo` and `iDraw` from `GLSLProgram`. Move shader parameters and draw submission to a backend-neutral material/draw contract, with OpenGL calls owned by an OpenGL implementation. Adapt sprites, tiles, and fonts together with their draw calls, since they share this contract.
-5. **GPU asset creation:** Move `Texture`, `VAO`, and `GLSLProgram` construction behind backend-owned resource creation. Have texture, sprite, tileset, font, and shader managers use the selected provider rather than an OpenGL singleton; make `Loader` dispatch typed manifest data into that provider. Keep CPU decoding and grid data separate from uploads.
-6. **Engine composition:** Make backend selection compose renderer, display, input, and asset provider. Forward camera state and clear/depth settings through the selected renderer; move OpenGL calls out of the common engine path. Update the demo to use those contracts.
-7. **Proof:** Add a small second adapter or test implementation that exercises the same runtime, loading, input, resize, and draw contracts without including OpenGL or GLFW in client code. A new renderer class alone is not sufficient proof. Build once at the end of the larger task; do not run tests as requested.
+| Boundary | Prepared implementation |
+| --- | --- |
+| CPU asset data | Vertex layouts, typed manifests, grid generation, and owned RGBA decoding have no graphics-context dependency. `Loader::prepare()` runs independently of a provider. |
+| Display and presentation | `iDisplaySystem` owns a selected window implementation. `iWindow` and monitor snapshots carry neutral data; `iPresentationSurface` presents. GLFW handles remain inside the platform/backend implementation. The renderer does not own the display. |
+| Input | `iInputSystem` supplies State plus independently requested ordered Events/Text. GLFW/Gainput translation stays in its adapter; games consume tick values and routed views. The default factory owns input; an explicit-reference overload borrows it. |
+| Draw and material | Simulation writes complete ordered `RenderFrame` passes. Sprite, tile, graphic, and text commands retain immutable asset handles and copied transforms. `ShaderPass` and `ShaderDraw` express standard parameters; `GLSLMaterialBindings` maps them to OpenGL names. |
+| Resource creation and caches | `ResourceProvider` uploads decoded pixels and transient vertex spans, creates font atlases, and links programs. Cache readers retain handles under shared locks; construction and retired-handle destruction stay outside locks. One provider/loading thread binds the singleton caches until teardown. |
+| Composition and scheduling | One runtime session owns platform polling and presentation. Concurrent mode adds one simulation worker and three reusable frame slots. `platform_tasks().submit()` transfers owned resource requests with future results; shutdown cancels pending requests before game cleanup. |
+| OpenGL lifetime | Active resource use requires the owner thread and its actual current context. Handles retire without OpenGL calls from their destructors. Renderer shutdown restores its context, deletes tracked handles, closes their lifetime, and releases the context. Failed destructor cleanup invalidates retained handles. |
+| Adapter proof source | The memory display/window, input, presentation, renderer, and resource provider exercise both runtime modes without OpenGL/GLFW headers. Regression source covers lifecycle, dispatch, cache publication, materials, preparation, and input routing. These cases have not been executed in this pass. |
 
-Each commit should change at least one targeted class (plus the callers needed to keep it usable). Avoid replacing working implementation classes with empty interfaces; finish one usable boundary before moving its consumers.
+## API migration
 
-Progress: steps 1 through 6 have implementations. `iRenderer::display` now uses `iDisplaySystem`, which returns `iWindow` and monitor snapshots without GLFW handles. The GLFW-backed `DisplaySystem` and `Window` implement these contracts; a different display can implement them without native API headers. The `window-resized` event now carries `WindowResized` instead of a tuple with a GLFW window pointer. Engines expose their chosen `iInputSystem`, and GLFW event polling lives in `InputSystem`. Gainput IDs remain the common device/button vocabulary for input bindings; another input adapter can translate its own events into them.
+Use `engine.display()`, `engine.window()`, and `engine.surface()` for the selected
+platform and presentation contracts; the old renderer-owned display API is gone.
+Use `engine.resources()` for backend asset creation after renderer initialization.
+Construct an owned `Loader(root)` for each root. Its retained `manifests()` snapshot
+replaces the old borrowed vector reference; singleton compatibility rejects a
+different root instead of silently reusing the first one.
 
-The draw boundary makes `DrawInfo` and `iDraw` independent of OpenGL headers. `DrawInfo` holds a backend-neutral `Shader`, implemented by `GLSLProgram`. Sprites, tiles and fonts hold `Geometry2D` and `Image` resources; OpenGL binding and draw calls live in `VAO`. CPU grid and font vertices are passed to the GPU upload and released afterward. `ResourceProvider` now creates images, geometry and shaders for the managers; `Loader` takes the provider exposed by its engine, and the OpenGL implementation owns its API calls.
+Shader-cache loading only links and publishes. Bind cameras through frame-pass
+matrices or explicit `DrawInfo::camera`; shader-manager camera broadcasts and
+setters are removed. Standard draw parameters go through semantic bindings.
+Application-specific raw uniform methods remain available. `reload_program()`
+publishes a successfully linked replacement while existing frames retain their
+old handle; failed linking preserves the previous cache entry.
 
-Asset managers reject a different resource provider while one is bound; provider destruction clears their cached handles and releases that binding. OpenGL resources retire their GPU handles into a renderer-owned release queue. Renderer shutdown deletes remaining GPU handles while its context is current. The renderer now consumes ordered frame passes and stateless text commands. Runtime shutdown must stop its worker and drop game-owned frames before tearing down those adapters.
+Backend providers implement `create_image(DecodedImage)` and
+`upload_geometry(span<const Vertex2D>, topology)`. The shared-pointer/count
+geometry overload remains a synchronous compatibility wrapper. An OpenGL context
+adapter also implements `is_current()`; thread identity alone cannot establish
+that its context is selected.
 
-The adapter integration probe supplies an in-memory renderer, display, window, input adapter, presentation surface, and resource provider. It drives `GameRuntime` in both sequential and concurrent modes, checks input handoff and frame presentation, and includes no OpenGL or GLFW headers. The demo uses the GLFW/OpenGL factory, frame writer, and the same runtime contract.
+Generic asset loading does not choose a host font or infer shader recipes. Those
+are application bootstrap choices. Sprite/tileset definitions and image upload
+remain generic. CPU preparation and upload are described in
+[ASSET-LOADING.md](ASSET-LOADING.md); runtime ownership and frame handoff are in
+[RUNTIME-FRAME-BOUNDARY.md](RUNTIME-FRAME-BOUNDARY.md).

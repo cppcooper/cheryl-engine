@@ -52,6 +52,8 @@ platform before joining the worker and cleaning up the game; their futures repor
 `broken_promise`. A shared scheduler wake remains valid through concurrent submit
 and close without retaining the runtime itself. F5 in the demo queues a shader
 reload and adopts the resulting handle during a later update.
+Callbacks must preserve the session's current graphics context. Backend resource
+guards reject another context even when it is selected on the correct thread.
 `stop()` sets an atomic request and wakes the concurrent scheduler's waits.
 
 `AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
@@ -104,7 +106,8 @@ throws.
 
 The demo uses the same `EngineContext` and frame commands. It starts in
 sequential mode; `--concurrent` selects the worker and latest-frame handoff.
-`--full-assets` loads the asset tree instead of only the font and 2D shader.
+`--full-assets` additionally loads the asset tree. Font selection and the 2D shader
+recipe remain explicit application bootstrap in either path.
 
 The demo accepts `--input-capacity=N` (finite polling), `--input-unlimited`, and
 `--input-spacing-ms=N` in either runtime mode. These alter polling eligibility,
@@ -137,3 +140,20 @@ thread and rejects another provider until teardown finishes. Teardown marks the
 binding as releasing before clearing caches, so reentrant deleters cannot refill
 them. Retained external handles survive cache clearing; their backend lifetime
 still governs use and final release. CPU preparation does not bind these caches.
+
+Owned `Loader` instances prepare manifests and decoded RGBA pixels without the
+provider, rescanning their immutable roots each time. Upload consumes those owned
+pixels on the loading/platform thread and publishes a retained metadata snapshot
+after success. Geometry upload accepts a transient vertex span and copies it
+before returning. Preparation workers are application-owned; coordinate their
+lifetime before submitting completed data through the platform queue. See
+[ASSET-LOADING.md](ASSET-LOADING.md).
+
+OpenGL resource operations require a live owner thread and the selected current
+context. Renderer shutdown first restores that context, deletes tracked handles,
+and closes their lifetime before releasing it. Retained handles reject use after
+closure without querying the borrowed context. If destructor cleanup cannot
+recover the context, it invalidates handles without OpenGL calls; platform context
+destruction releases remaining native resources. The context outlives its renderer.
+Full preparation status and the outstanding execution gate are recorded in
+[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).

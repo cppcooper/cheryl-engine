@@ -6,6 +6,10 @@ Source implementation is prepared; build, automated-test, and real-platform
 acceptance remain open. Compilation and test execution were excluded from this
 patch-preparation pass by request.
 
+The broader runtime/resource/render continuation is tracked in
+[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md). Its additional
+source work does not close the input execution gate below.
+
 | Work item | Prepared implementation | Validation state |
 | --- | --- | --- |
 | 1. State and simulation timing | Independent simulation scheduling; whole-batch consumption; press/release counts, observed down-time, active and completed hold durations; absolute and relative axes. | Source reviewed; test cases authored, not executed. |
