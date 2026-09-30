@@ -44,6 +44,10 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 5 scheduler foundation prepared: explicit clock inputs, independent variable
   pacing/fixed steps, bounded fixed batches, direct/hybrid VariableCatchUp, cap/drop
   accounting, and deterministic regression sources. Runtime integration is next.
+- Task 5.2/5.5 source prepared: TickContext exposes update kind, simulation delta,
+  dropped time, and observed interval separately. Demo movement explicitly maps
+  observed down-time proportion to simulation time; raw input durations are unchanged.
+  Short-tap, zero-interval held State, and between-update input scenarios are prepared.
 - Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
 - Documentation and prepared regression sources (task 9) accompany each change.
 

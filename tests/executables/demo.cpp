@@ -174,14 +174,14 @@ public:
             }
         }
 
-        const glm::vec2 movement{static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
-                                     actions.button(DemoActions::Left).down_duration.count()),
-                                 static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
-                                     actions.button(DemoActions::Down).down_duration.count())
+        const glm::vec2 movement{static_cast<float>(tick.button_simulation_seconds(DemoActions::Right) -
+                                     tick.button_simulation_seconds(DemoActions::Left)),
+                                 static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) -
+                                     tick.button_simulation_seconds(DemoActions::Down))
         };
         if (glm::length(movement) > 0.0f) {
-            // Movement uses observed down-time; a completed tap still moves even
-            // though the current button state is released at this update.
+            // Scale the observed down-time fraction by this update's simulation
+            // delta. A completed observed tap still contributes after release.
             pan_ += movement * 240.0f;
             camera_.set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-pan_, 0.0f)));
         }
