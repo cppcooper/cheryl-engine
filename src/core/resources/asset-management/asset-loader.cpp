@@ -101,7 +101,7 @@ namespace CE::Assets {
     }
 
     void Loader::upload(PreparedAssets prepared, ResourceProvider& provider) {
-        ProviderBoundCache::verify_provider(provider);
+        AssetCacheContext::verify_provider(provider);
         for (const auto& image : prepared.images)
             TextureMgr::get().load_asset(image.key, image.pixels, provider);
         for (const auto& manifest : prepared.manifests) {
@@ -113,7 +113,7 @@ namespace CE::Assets {
     }
 
     void Loader::load_assets(ResourceProvider& provider) {
-        ProviderBoundCache::verify_provider(provider);
+        AssetCacheContext::verify_provider(provider);
         upload(prepare(), provider);
     }
 }

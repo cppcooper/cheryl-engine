@@ -19,9 +19,18 @@
 namespace CE::Assets {
     struct ResourceProvider;
 
-    // Singleton caches bind to one provider and loading thread at a time.
-    // Readers can keep published handles while that owner loads or clears assets.
-    class ProviderBoundCache {
+    /** Guards the single active provider/loading-owner domain shared by all caches.
+     * This is publication/teardown context, not an eviction or residency manager.
+     * Cache maps retain strong handles until explicit clear/replacement or provider
+     * teardown; readers retain independent handles across either operation.
+     */
+    class AssetCacheContext {
+        friend struct ResourceProvider;
+        inline static std::mutex provider_mutex_;
+        inline static const ResourceProvider* bound_provider_ = nullptr;
+        inline static std::thread::id owner_;
+        inline static bool releasing_ = false;
+
     public:
         static void verify_provider(const ResourceProvider& provider) {
             std::lock_guard lock(provider_mutex_);
@@ -43,7 +52,6 @@ namespace CE::Assets {
         }
 
     private:
-        friend struct ResourceProvider;
         static bool begin_provider_release(const ResourceProvider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             if (bound_provider_ != &provider)
@@ -65,10 +73,6 @@ namespace CE::Assets {
             if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
                 throw Exceptions::failed_operation(CE_HERE, "Asset loading requires the active provider's owner thread");
         }
-        inline static std::mutex provider_mutex_;
-        inline static const ResourceProvider* bound_provider_ = nullptr;
-        inline static std::thread::id owner_;
-        inline static bool releasing_ = false;
     };
 
     /**
@@ -79,9 +83,15 @@ namespace CE::Assets {
      * under a shared lock. Construction and final release happen outside the lock.
      */
     template <typename AssetType, typename Key = std::filesystem::path>
-    struct AssetMgr : ProviderBoundCache {
+    struct AssetMgr : AssetCacheContext {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
+
+    protected:
+        mutable std::shared_mutex assets_mutex_;
+        std::unordered_map<Key, spointer> loaded_assets{};
+
+    public:
         AssetMgr() = default;
         virtual ~AssetMgr() { clear_assets(); }
         [[nodiscard]] virtual spointer get_asset(const Key& key) const {
@@ -157,7 +167,5 @@ namespace CE::Assets {
                 context->release_owned(p, 1);
             });
         }
-        mutable std::shared_mutex assets_mutex_;
-        std::unordered_map<Key, spointer> loaded_assets{};
     };
 }

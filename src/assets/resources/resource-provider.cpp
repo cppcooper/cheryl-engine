@@ -21,7 +21,7 @@ namespace CE::Assets {
     }
 
     ResourceProvider::~ResourceProvider() {
-        if (!ProviderBoundCache::begin_provider_release(*this))
+        if (!AssetCacheContext::begin_provider_release(*this))
             return;
 
         // Drop assets which retain images and geometry before their image cache.
@@ -37,6 +37,6 @@ namespace CE::Assets {
             manager->clear_assets();
         if (auto* manager = TextureMgr::get_existing())
             manager->clear_assets();
-        ProviderBoundCache::release_provider(*this);
+        AssetCacheContext::release_provider(*this);
     }
 }

@@ -51,9 +51,16 @@ Compilation, test execution, and remote writes have not been requested.
   complete frame. Regression scenarios and timing/suspension/optimization documentation
   are prepared; compilation, regression execution, and real acceptance remain open.
 - Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
+- Task 6.1 complete in source: AssetCacheContext names the global provider/loading
+  guard explicitly, without changing strong cache ownership or teardown exclusion.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
+
+- D0: timing checkpoints 16–20 are now pushed as `14d5a818386582a0c22332cbfdb5161135e92093`.
+  Its tree matches saved local `ba18b50`. Continue from the remote; preserve the
+  earlier timing commits on their checkpoint branch. New incremental delivery starts
+  at this pushed base, while the original task base remains unchanged.
 
 - D0: the user applied/pushed checkpoints 01–15. Remote `ef4ec51402ebadd2f1319dfd03bb0ed3a0b6007d`
   has an identical source tree to local `b2686ce`, with reapplied commit IDs. Continue

@@ -144,7 +144,7 @@ These are the proposed concrete choices within the agreed architecture:
 
 **Start in:** `templates/asset-mgr.h`, ResourceProvider, OpenGLResourceLifetime, renderer, and runtime platform loops.
 
-- [ ] **6.1** Rename ProviderBoundCache to AssetCacheContext and explain its provider/loading-owner guard. Preserve one active global provider domain, synchronized publication, teardown exclusion, and retained reader handles.
+- [x] **6.1** Rename ProviderBoundCache to AssetCacheContext and explain its provider/loading-owner guard. Preserve one active global provider domain, synchronized publication, teardown exclusion, and retained reader handles.
 - [ ] **6.2** Trace ownership for image/texture, geometry, VAO/VBO, linked program, font atlas, material/pipeline, sprite/tileset, and frame packets. Cache release must not destroy externally retained logical resources; last-owner release must retire each native handle exactly once.
 - [ ] **6.3** Keep residency policy explicit: cache retention, explicit clear/replacement/provider teardown, external retention, final retirement. Add no weak-cache conversion, LRU, or automatic unused-asset eviction.
 - [ ] **6.4** Add a backend-neutral retirement-maintenance operation and call it on the platform loop after frame recycling/other work, before waiting. Avoid duplicate expensive collections in clear/render; idle rendering must still collect.
