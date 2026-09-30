@@ -372,6 +372,12 @@ namespace {
         }
 
         void deinitialize() override { ++shutdowns; }
+        void maintain_resources() override {
+            ++maintenance_calls;
+            maintenance_thread = std::this_thread::get_id();
+            if (on_maintenance)
+                on_maintenance();
+        }
         void clear() override { ++clears; }
 
         void render(const CE::RenderAPIs::RenderFrame& frame) override {
@@ -393,6 +399,9 @@ namespace {
         }
 
         std::function<void()> on_render;
+        std::function<void()> on_maintenance;
+        int maintenance_calls = 0;
+        std::thread::id maintenance_thread;
         std::function<void()> on_initialize;
         CE::FramebufferSize viewport{};
         bool depth_enabled = false;
@@ -1338,4 +1347,58 @@ TEST(simulation_timing, invalid_timing_is_rejected_before_any_adapter_initialize
     EXPECT_EQ(renderer->initializations, 0);
     EXPECT_EQ(game.initializations, 0);
     EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(resource_maintenance, both_modes_service_retirement_before_the_first_frame_with_a_full_input_backlog) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        int polls = 0;
+        input.on_poll = [&] { ++polls; };
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::SimulationTimingOptions timing;
+        timing.variable_interval = std::chrono::hours{1};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        renderer->on_maintenance = [&] {
+            if (renderer->maintenance_calls == 2) {
+                // Lockstep capacity is full, and no simulation deadline/frame is
+                // available to wake the platform. The bounded maintenance wait must.
+                EXPECT_EQ(polls, 1);
+                EXPECT_EQ(renderer->renders, 0);
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        EXPECT_GE(renderer->maintenance_calls, 2);
+        EXPECT_EQ(renderer->maintenance_thread, std::this_thread::get_id());
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_EQ(game.draws, 0);
+        EXPECT_EQ(surface->presents, 0);
+    }
+}
+
+TEST(resource_maintenance, a_maintenance_failure_preserves_its_error_through_cleanup_in_both_modes) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::SimulationTimingOptions timing;
+        timing.variable_interval = std::chrono::hours{1};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        renderer->on_maintenance = [] { throw std::runtime_error("retirement maintenance failed"); };
+        game.on_deinit = [] { throw std::runtime_error("later game cleanup failed"); };
+        try {
+            runtime.run();
+            FAIL() << "Maintenance must fail";
+        } catch (const std::runtime_error& error) {
+            EXPECT_STREQ(error.what(), "retirement maintenance failed");
+        }
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+    }
 }

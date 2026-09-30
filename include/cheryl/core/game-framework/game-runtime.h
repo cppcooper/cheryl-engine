@@ -6,6 +6,7 @@
 #include "simulation-scheduler.h"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <exception>
 #include <memory>
@@ -32,11 +33,13 @@ namespace CE::GFramework {
      * and renders the newest complete frame available at each handoff.
      */
     class GameRuntime final {
+        static constexpr std::chrono::milliseconds resource_maintenance_interval{10};
         Engine::EngineContext& engine_;
         AbstractGame& game_;
         RunMode mode_;
         Input::PollingOptions polling_;
         SimulationTimingOptions timing_;
+        bool renderer_ready_ = false; // Platform-owned; partial initialization is not maintenance-ready.
         std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
         struct Scheduler {

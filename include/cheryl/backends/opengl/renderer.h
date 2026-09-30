@@ -14,12 +14,20 @@ namespace CE::RenderAPIs {
      * A stopped renderer cannot be restarted with its old cached assets.
      */
     class OpenGLRenderer final : public iRenderer {
+        iOpenGLContext& context_;
+        std::shared_ptr<OpenGLResourceLifetime> resources_;
+        glm::mat4 projection_{1.0f};
+        glm::mat4 view_{1.0f};
+        bool initialized_ = false;
+        bool stopped_ = false;
+
     public:
         explicit OpenGLRenderer(iOpenGLContext& context);
         ~OpenGLRenderer() override;
 
         void initialize() override;
         void deinitialize() override;
+        void maintain_resources() override;
         void render(const RenderFrame& frame) override;
         void clear() override;
         void set_viewport(FramebufferSize size) override;
@@ -31,11 +39,5 @@ namespace CE::RenderAPIs {
     private:
         void bind_style(const DrawStyle& style, Assets::Shader*& active_material) const;
 
-        iOpenGLContext& context_;
-        std::shared_ptr<OpenGLResourceLifetime> resources_;
-        glm::mat4 projection_{1.0f};
-        glm::mat4 view_{1.0f};
-        bool initialized_ = false;
-        bool stopped_ = false;
     };
 }

@@ -16,6 +16,9 @@ namespace CE::RenderAPIs {
 
         virtual void initialize() = 0;
         virtual void deinitialize() = 0;
+        // Platform/context-owner maintenance, even without a new frame. Deferred
+        // resource backends collect final-owner retirements here; others may do nothing.
+        virtual void maintain_resources() = 0;
         virtual void render(const RenderFrame& frame) = 0;
         virtual void clear() = 0;
         virtual void set_viewport(FramebufferSize size) = 0;

@@ -107,7 +107,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::render(const RenderFrame& frame) {
-        resources()->collect();
+        (void)resources();
         for (const auto& pass : frame.passes()) {
             set_depth_test(pass.depth_test);
             set_camera_matrices(pass.projection, pass.view);
@@ -153,9 +153,11 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::clear() {
-        resources()->collect();
+        (void)resources();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
+
+    void OpenGLRenderer::maintain_resources() { resources()->collect(); }
 
     void OpenGLRenderer::set_viewport(const FramebufferSize size) {
         (void)resources();

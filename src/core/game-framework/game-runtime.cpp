@@ -70,6 +70,7 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
+            renderer_ready_ = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -148,8 +149,11 @@ namespace CE::GFramework {
                     renderer.render(frame);
                     engine_.surface().present();
                 }
+                renderer.maintain_resources();
                 std::unique_lock lock(scheduler_->mutex);
-                scheduler_->wake.wait_until(lock, std::min(timing.next_update_at(), backlog.next_poll_at()), [&] {
+                const auto deadline = std::min({timing.next_update_at(), backlog.next_poll_at(),
+                    SimulationClock::now() + resource_maintenance_interval});
+                scheduler_->wake.wait_until(lock, deadline, [&] {
                     return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending();
                 });
             }
@@ -176,11 +180,14 @@ namespace CE::GFramework {
         finish([&frame] { frame.recycle(); });
         if (game_started)
             finish([this] { game_.deinit(); });
+        if (renderer_ready_)
+            finish([&renderer] { renderer.maintain_resources(); });
         // Adapters must also clean up if initialize() only completed partway.
         if (input_started)
             finish([&input] { input.deinitialize(); });
         if (renderer_started)
             finish([&renderer] { renderer.deinitialize(); });
+        renderer_ready_ = false;
         if (failure)
             std::rethrow_exception(failure);
     }
@@ -216,6 +223,7 @@ namespace CE::GFramework {
         try {
             renderer_started = true;
             renderer.initialize();
+            renderer_ready_ = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
                 std::lock_guard lock(scheduler->mutex);
                 scheduler->wake.notify_all();
@@ -407,16 +415,20 @@ namespace CE::GFramework {
                     renderer.render(slots[*current_frame].frame);
                     engine_.surface().present();
                 }
+                // Retirement must progress even before the first frame, while
+                // input capacity is full, or while a slow update produces no frame.
+                renderer.maintain_resources();
 
                 std::unique_lock lock(scheduler_->mutex);
-                const auto deadline = handoff.backlog.next_poll_at();
+                const auto poll_deadline = handoff.backlog.next_poll_at();
+                const auto deadline = std::min(poll_deadline, SimulationClock::now() + resource_maintenance_interval);
                 scheduler_->wake.wait_until(lock, deadline, [&] {
                     if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready ||
                         engine_.platform_dispatcher().has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.
                     // Recompute the deadline instead of waiting on the old full batch.
-                    if (handoff.backlog.next_poll_at() != deadline)
+                    if (handoff.backlog.next_poll_at() != poll_deadline)
                         return true;
                     for (const auto& slot : slots)
                         if (slot.state == SlotState::Retired)
@@ -470,10 +482,13 @@ namespace CE::GFramework {
             finish([&slot] { slot.frame.recycle(); });
         if (game_started)
             finish([this] { game_.deinit(); });
+        if (renderer_ready_)
+            finish([&renderer] { renderer.maintain_resources(); });
         if (input_started)
             finish([&input] { input.deinitialize(); });
         if (renderer_started)
             finish([&renderer] { renderer.deinitialize(); });
+        renderer_ready_ = false;
         if (failure)
             std::rethrow_exception(failure);
     }
@@ -499,6 +514,16 @@ namespace CE::GFramework {
                 engine_.platform_dispatcher().close();
             }
             catch (...) {
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        }
+        // Maintenance failure is separate from dispatcher failure: keep servicing
+        // accepted CPU-to-platform completions while retaining the original error.
+        if (renderer_ready_) {
+            try {
+                engine_.renderer().maintain_resources();
+            } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }

@@ -53,6 +53,11 @@ Compilation, test execution, and remote writes have not been requested.
 - Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
 - Task 6.1 complete in source: AssetCacheContext names the global provider/loading
   guard explicitly, without changing strong cache ownership or teardown exclusion.
+- Task 6.4–6.5 complete in source: renderer maintenance runs after platform/frame
+  work and during accepted-work shutdown, independently of clear/render. Both idle
+  waits are bounded to 10 ms, including full backlogs and no first publication.
+  Prepared regressions record maintenance on the platform without any update/frame
+  and preserve maintenance failures through cleanup. Native collection is still unrun.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
