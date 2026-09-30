@@ -14,7 +14,9 @@ Compilation, test execution, and remote writes have not been requested.
   was found; repository identity and original base are recorded.
 - Task 1.1 complete: PlatformDispatcher, platform_dispatcher(), source filenames,
   demo, regression sources, and active documentation use the same name.
-- Task 1.2–1.5 active: safe submission handles and simulation delivery.
+- Task 1.2 complete; 1.5 platform portion complete: safe saved endpoints,
+  owner checks, FIFO detached drains, cancellation, and nested-drain exclusion.
+- Task 1.3–1.5 simulation portion active.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions

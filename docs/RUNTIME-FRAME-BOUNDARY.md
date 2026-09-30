@@ -157,3 +157,19 @@ recover the context, it invalidates handles without OpenGL calls; platform conte
 destruction releases remaining native resources. The context outlives its renderer.
 Full preparation status and the outstanding execution gate are recorded in
 [RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).
+
+### Saved platform submission endpoints
+
+`engine.platform_dispatcher().submission()` returns a copyable endpoint which
+owns submission state, not a borrowed dispatcher or EngineContext pointer.
+It can be captured by a delivery adapter. After shutdown or dispatcher destruction
+it throws `failed_operation` on submission; it cannot access destroyed resources.
+Accepted requests retain FIFO enqueue order and execute only on the owner thread.
+Posting on that thread still defers work. Requests posted during a detached drain
+belong to a later drain, and nested drains cannot bypass that boundary.
+
+A future reports callback failures. Unexecuted requests are destroyed outside
+queue locks on the platform before game/resource cleanup, making their futures
+report `broken_promise`. Do not wait on a platform future from the platform thread,
+or block a simulation update on platform work. Wake callbacks retain scheduler
+state because a producer can notify immediately after the queue closes.

@@ -957,3 +957,45 @@ TEST(resource_upload, a_legacy_vertex_owner_is_released_after_the_transient_copy
     ASSERT_EQ(provider.uploaded_geometry.size(), 6u);
     EXPECT_FLOAT_EQ(provider.uploaded_geometry.front().x, 7.0f);
 }
+
+TEST(platform_requests, a_saved_submission_endpoint_rejects_after_context_destruction) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    auto endpoint = engine->platform_dispatcher().submission();
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    runtime.run();
+    engine.reset();
+    EXPECT_THROW(static_cast<void>(endpoint.submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
+}
+
+TEST(platform_requests, posting_during_a_drain_defers_work_to_the_next_drain) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    std::future<void> outer;
+    std::future<void> inner;
+    std::vector<int> order;
+    game.on_init = [&] {
+        auto endpoint = engine->platform_dispatcher().submission();
+        outer = endpoint.submit([&, endpoint](CE::Engine::EngineContext&) {
+            order.push_back(1);
+            inner = endpoint.submit([&](CE::Engine::EngineContext&) { order.push_back(3); });
+            // Queueing on the owner must still defer the new callback.
+            EXPECT_EQ(order, std::vector<int>{1});
+            EXPECT_EQ(inner.wait_for(std::chrono::seconds{0}), std::future_status::timeout);
+            order.push_back(2);
+        });
+    };
+    game.on_tick = [&] { runtime.stop(); };
+    runtime.run();
+    outer.get();
+    inner.get();
+    EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
+}

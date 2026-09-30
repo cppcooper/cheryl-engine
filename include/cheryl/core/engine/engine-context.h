@@ -35,6 +35,15 @@ namespace CE::Engine {
      * One context supports one runtime session; stopped adapters are not restarted.
      */
     class EngineContext final {
+        std::unique_ptr<iDisplaySystem> display_;
+        std::unique_ptr<RenderAPIs::iPresentationSurface> surface_;
+        std::unique_ptr<RenderAPIs::iRenderer> renderer_;
+        std::unique_ptr<Assets::ResourceProvider> resources_;
+        std::unique_ptr<Input::iInputSystem> owned_input_;
+        Input::iInputSystem* input_;
+        std::atomic<bool> session_started_{false};
+        PlatformDispatcher platform_dispatcher_;
+
     public:
         EngineContext(std::unique_ptr<iDisplaySystem> display,
                       std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
@@ -64,13 +73,5 @@ namespace CE::Engine {
         void validate() const;
         void begin_session();
 
-        std::unique_ptr<iDisplaySystem> display_;
-        std::unique_ptr<RenderAPIs::iPresentationSurface> surface_;
-        std::unique_ptr<RenderAPIs::iRenderer> renderer_;
-        std::unique_ptr<Assets::ResourceProvider> resources_;
-        std::unique_ptr<Input::iInputSystem> owned_input_;
-        Input::iInputSystem* input_;
-        std::atomic<bool> session_started_{false};
-        PlatformDispatcher platform_dispatcher_;
     };
 }
