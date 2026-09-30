@@ -1,3 +1,7 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <gtest/gtest.h>
 
 #include <core/engine/worker-pool.h>
@@ -8,6 +12,10 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+
+#if defined(__linux__)
+#include <sched.h>
+#endif
 
 TEST(worker_pool, owned_jobs_return_values_and_failures_without_stopping_other_work) {
     CE::Engine::WorkerPool pool(2);
@@ -78,3 +86,44 @@ TEST(worker_pool, dropping_a_group_handle_does_not_cancel_accepted_work) {
     pool.shutdown();
     EXPECT_EQ(result.get(), 13);
 }
+
+TEST(worker_pool, required_unavailable_topology_rejects_instead_of_silently_falling_back) {
+    CE::Engine::WorkerPool pool;
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.shared_cache_domain = 1;
+    EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::failed_operation);
+}
+
+TEST(worker_pool, effective_policy_reports_requested_shares_caps_and_available_cpu_constraints) {
+    CE::Engine::WorkerPool pool(2);
+    CE::Engine::WorkerGroupOptions options;
+    options.max_concurrency = 1;
+    options.weight = 3;
+    options.priority = 2;
+    const auto group = pool.make_group(options);
+    EXPECT_EQ(group.policy().requested.max_concurrency, 1u);
+    EXPECT_EQ(group.policy().requested.weight, 3u);
+    EXPECT_EQ(group.policy().requested.priority, 2u);
+    EXPECT_EQ(group.policy().effective_cpus, pool.capabilities().available_cpus);
+    options.weight = 0;
+    EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::invalid_args);
+}
+
+#if defined(__linux__)
+TEST(worker_pool, a_required_cpu_group_runs_on_its_eligible_cpu) {
+    CE::Engine::WorkerPool pool;
+    const auto capabilities = pool.capabilities();
+    if (!capabilities.cpu_affinity)
+        GTEST_SKIP() << "Inherited CPU affinity cannot be queried";
+    ASSERT_FALSE(capabilities.available_cpus.empty());
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.cpus = {capabilities.available_cpus.front()};
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto pinned = pool.make_group(options);
+    auto selected_cpu = pinned.submit([] { return sched_getcpu(); });
+    EXPECT_EQ(selected_cpu.get(), static_cast<int>(options.cpu.cpus.front()));
+    pinned.close();
+    pinned.drain();
+}
+#endif

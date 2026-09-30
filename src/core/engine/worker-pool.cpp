@@ -1,13 +1,19 @@
 #include <core/engine/worker-pool.h>
 #include <internals/exceptions.h>
+#include "worker-affinity.h"
 
+#include <algorithm>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <iterator>
 
 namespace CE::Engine::WorkerDetail {
     struct GroupState {
         WorkerGroupOptions options;
+        WorkerGroupPolicy policy;
+        long double credit = 0;
+        std::optional<std::size_t> last_worker;
         std::deque<Job> pending;
         WorkerGroupStatus status;
     };
@@ -17,7 +23,7 @@ namespace CE::Engine::WorkerDetail {
         std::condition_variable wake;
         std::vector<std::shared_ptr<GroupState>> groups;
         std::size_t capacity = 0;
-        std::size_t next_group = 0;
+        WorkerCapabilities capabilities;
         bool accepting = true;
     };
 
@@ -42,7 +48,8 @@ namespace CE::Engine::WorkerDetail {
         return false;
     }
 
-    void run_worker(const std::shared_ptr<PoolState>& pool) {
+    void run_worker(const std::shared_ptr<PoolState>& pool, const std::size_t worker_index, std::vector<unsigned int> current_mask) {
+        bool mask_known = true;
         current_pool = pool.get();
         while (true) {
             std::shared_ptr<GroupState> selected;
@@ -52,21 +59,65 @@ namespace CE::Engine::WorkerDetail {
                 pool->wake.wait(lock, [&] { return has_eligible(*pool) || (!pool->accepting && !has_pending(*pool)); });
                 if (!has_pending(*pool) && !pool->accepting)
                     break;
-                // Fair round-robin group selection, FIFO within each eligible group.
-                for (std::size_t offset = 0; offset < pool->groups.size(); ++offset) {
-                    const auto index = (pool->next_group + offset) % pool->groups.size();
-                    if (eligible(*pool->groups[index], *pool)) {
-                        selected = pool->groups[index];
-                        pool->next_group = (index + 1) % pool->groups.size();
-                        break;
+                // Smooth weighted selection accounts only for currently eligible
+                // groups. Idle/capped groups do not accumulate a future burst.
+                long double total_weight = 0;
+                for (const auto& group : pool->groups) {
+                    if (!eligible(*group, *pool)) {
+                        group->credit = 0;
+                        continue;
                     }
+                    const auto share = group->options.weight * (group->options.priority + 1);
+                    total_weight += share;
+                    group->credit += share;
+                    const bool local = group->options.cpu.prefer_same_worker && group->last_worker == worker_index;
+                    const bool selected_local = selected && selected->options.cpu.prefer_same_worker && selected->last_worker == worker_index;
+                    if (!selected || group->credit > selected->credit || (group->credit == selected->credit && local && !selected_local))
+                        selected = group;
                 }
+                selected->credit -= total_weight;
+                selected->last_worker = worker_index;
                 job = std::move(selected->pending.front());
                 selected->pending.pop_front();
                 --selected->status.pending;
                 ++selected->status.running;
             }
-            job.run(); // The owned wrapper captures callback exceptions in its future.
+            std::exception_ptr policy_error;
+            if (pool->capabilities.cpu_affinity) {
+                try {
+                    const auto& desired = selected->policy.effective_cpus;
+                    if (!mask_known || current_mask != desired) {
+                        apply_affinity(desired);
+                        current_mask = desired;
+                        mask_known = true;
+                    }
+                    else if (selected->options.cpu.strength == WorkerPolicyStrength::Required && current_affinity() != desired) {
+                        // Restrictions may change while the pool is alive.
+                        apply_affinity(desired);
+                    }
+                }
+                catch (...) {
+                    policy_error = std::current_exception();
+                    mask_known = false;
+                    if (selected->options.cpu.strength == WorkerPolicyStrength::Preferred) {
+                        try {
+                            apply_affinity(pool->capabilities.available_cpus);
+                            current_mask = pool->capabilities.available_cpus;
+                            mask_known = true;
+                            policy_error = {};
+                        }
+                        catch (...) {
+                            policy_error = std::current_exception();
+                        }
+                    }
+                    std::lock_guard lock(pool->mutex);
+                    ++selected->status.policy_failures;
+                }
+            }
+            if (policy_error)
+                job.fail(policy_error); // Never run a job under an unverified mask.
+            else
+                job.run(); // Callback exceptions reach their future.
             // Release captures before declaring completion. Their destructors may
             // post to another group, so no scheduler lock may be held here.
             job = {};
@@ -136,10 +187,13 @@ namespace CE::Engine {
         if (worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
         state_->capacity = worker_count;
+        state_->capabilities = WorkerDetail::discover_capabilities();
         try {
             workers_.reserve(worker_count);
             for (std::size_t i = 0; i < worker_count; ++i)
-                workers_.emplace_back([state = state_] { WorkerDetail::run_worker(state); });
+                workers_.emplace_back([state = state_, i, mask = state_->capabilities.available_cpus]() mutable {
+                    WorkerDetail::run_worker(state, i, std::move(mask));
+                });
         }
         catch (...) {
             // Already-created threads must wake and join before construction fails.
@@ -154,9 +208,46 @@ namespace CE::Engine {
         shutdown();
     }
 
+    WorkerGroupPolicy WorkerGroup::policy() const {
+        return group_->policy; // Policy is immutable after group publication.
+    }
+
+    WorkerCapabilities WorkerPool::capabilities() const {
+        return state_->capabilities; // Inherited capability snapshot; restrictions may later change.
+    }
+
     WorkerGroup WorkerPool::make_group(const WorkerGroupOptions options) {
+        if (options.weight == 0 || options.weight > 1024 || options.priority > 7)
+            throw Exceptions::invalid_args(CE_HERE, "Worker weight must be 1..1024 and priority 0..7");
+        if (options.cpu.strength != WorkerPolicyStrength::Preferred && options.cpu.strength != WorkerPolicyStrength::Required)
+            throw Exceptions::invalid_args(CE_HERE, "Unknown worker CPU policy strength");
+        const auto& capabilities = state_->capabilities;
+        const bool hard = options.cpu.strength == WorkerPolicyStrength::Required;
+        if (hard && (options.cpu.shared_cache_domain || options.cpu.numa_node))
+            throw Exceptions::failed_operation(CE_HERE, "Cache-domain and NUMA requirements need an unavailable topology adapter");
+        if (hard && !options.cpu.cpus.empty() && !capabilities.cpu_affinity)
+            throw Exceptions::failed_operation(CE_HERE, "Required CPU affinity is unsupported");
         auto group = std::make_shared<WorkerDetail::GroupState>();
         group->options = options;
+        group->policy.requested = options;
+        group->policy.affinity_supported = capabilities.cpu_affinity;
+        group->policy.limitations = capabilities.limitations;
+        group->policy.effective_cpus = capabilities.available_cpus;
+        if (!options.cpu.cpus.empty() && capabilities.cpu_affinity) {
+            auto requested = options.cpu.cpus;
+            std::sort(requested.begin(), requested.end());
+            if (std::adjacent_find(requested.begin(), requested.end()) != requested.end())
+                throw Exceptions::invalid_args(CE_HERE, "Worker CPU eligibility contains duplicates");
+            std::vector<unsigned int> allowed;
+            std::set_intersection(requested.begin(), requested.end(), capabilities.available_cpus.begin(),
+                capabilities.available_cpus.end(), std::back_inserter(allowed));
+            if (hard && allowed != requested)
+                throw Exceptions::invalid_args(CE_HERE, "Required worker CPUs are not in the pool's eligible CPU set");
+            if (!allowed.empty())
+                group->policy.effective_cpus = std::move(allowed);
+            if (group->policy.effective_cpus != requested)
+                group->policy.limitations += "; preferred CPU set fell back to available eligibility";
+        }
         group->status.accepting = true;
         {
             std::lock_guard lock(state_->mutex);
@@ -180,6 +271,7 @@ namespace CE::Engine {
     void WorkerPool::shutdown() {
         if (WorkerDetail::current_pool == state_.get())
             throw Exceptions::failed_operation(CE_HERE, "A worker cannot join its own pool");
+        std::lock_guard shutdown_lock(shutdown_mutex_);
         close();
         for (auto& worker : workers_)
             if (worker.joinable())

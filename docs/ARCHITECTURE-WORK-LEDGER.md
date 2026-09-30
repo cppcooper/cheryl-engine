@@ -31,7 +31,10 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 2.7 awaits the ordered worker-stream adapter.
 - Task 3.1–3.2 and 3.7 complete: owned threads/groups, futures, group caps,
   explicit close/drain/join, startup rollback, and self-wait rejection.
-- Task 3.3–3.6 active: weighted selection and effective native CPU policy.
+- Task 3 complete in source: weighted priority, caps, previous-worker preference,
+  Linux affinity with readback, effective policy, unsupported hard topology paths,
+  and native failure futures. Native acceptance remains unexecuted.
+- Task 2.7 next: ordered worker-stream adapter. Tasks 4–8 remain pending.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
@@ -55,6 +58,11 @@ Compilation, test execution, and remote writes have not been requested.
   when its target future is discarded. Owned delivery tickets report cancellation
   outside enqueue locks; explicit invalidation suppresses intentional discards.
   Error sinks have an independent owned-lifetime requirement. Added under 2.6.
+
+- D3: Linux may silently restrict a successful affinity request. The native
+  adapter reads back eligibility before invoking work; hard requirements reject
+  unavailable CPUs/topology, and policy failure cannot silently execute a job.
+  Fixed CPU_SETSIZE limits and unsupported targets are explicit capabilities.
 
 ## Patch protocol
 

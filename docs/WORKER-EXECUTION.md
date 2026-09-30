@@ -9,8 +9,10 @@ Jobs own their callables and return futures. Callback exceptions reach those
 futures, without stopping another job. FIFO selection within a group does not
 promise completion order when its concurrency is greater than one. A group's
 `max_concurrency` enforces its running-job limit; zero uses the pool's capacity.
-Eligible groups currently receive fair round-robin selection; weighted priority
-and native CPU policy are the next checkpoint.
+Eligible groups receive smooth weighted fair selection. Weight (1..1024) times
+priority+1 (priority 0..7) determines job-selection share, not OS thread priority.
+A concurrency cap or empty queue removes a group from that selection round.
+Preferred previous-worker reuse breaks otherwise equal choices.
 
 `group.close()` stops acceptance without cancelling ordinary accepted work.
 `group.drain()` requires closure, waits for pending/running work and capture
@@ -24,3 +26,38 @@ scheduling/work stealing is separate work. No worker is forcibly terminated.
 Thread-start failure wakes and joins every thread already created. Scheduler
 locks protect queue/accounting changes; user work and its captured destructors
 run outside them. Submitted jobs retain their group even if its handle is dropped.
+
+
+## CPU policy and capabilities
+
+WorkerGroup owns its CPU/locality policy. The neutral root scheduler enforces the
+policy before each job, so groups are more than labels on a shared queue. Explicit
+CPU IDs must fit the inherited eligible CPU set; required unavailable CPUs reject.
+Preferred eligibility may fall back, and `policy()` describes the requested and
+effective set. `capabilities()` exposes unsupported affinity/topology facilities.
+Hard cache-domain/NUMA requests reject until a native topology adapter exists;
+manual CPU sets can already express a game's known locality domains. CPU affinity
+does not promise that data remains in L1/L2, and NUMA memory placement is separate.
+
+The Linux adapter queries inherited pthread eligibility, sets and verifies the
+actual mask, and reports errors through job futures. The native mask is limited
+to CPU_SETSIZE; query failure disables affinity capability explicitly. Other
+platforms expose unsupported affinity rather than pretending to honor a hard
+request. Native OS/real-time priority is separate from scheduler priority.
+
+Workers retain an unchanged verified mask between compatible jobs. Before another
+group's work they apply its eligibility, restoring inherited eligibility for an
+unconstrained group. A required job checks that cached eligibility remains valid.
+Failed policy application never runs a job under an unverified mask; preferred
+policy attempts an inherited-mask fallback and records `policy_failures`. Live OS
+restrictions can still reject even a previously valid group.
+
+For two groups restricted to overlapping CPUs, both use the same physical workers;
+the scheduler chooses an eligible uncapped group by fair share, then verifies its
+mask on that worker before execution. This is CPU eligibility, not reserved core
+ownership. Different masks can require migration; stable reuse is a preference.
+
+Native references: [pthread affinity](https://man7.org/linux/man-pages/man3/pthread_setaffinity_np.3.html)
+and [Linux cpuset constraints](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpuset).
+The kernel can restrict an otherwise successful set operation, which is why the
+adapter reads back the effective mask.
