@@ -6,6 +6,7 @@
 #include <core/display/display-system-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
+#include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/rendering/draw-info.h>
@@ -1145,4 +1146,29 @@ TEST(simulation_requests, a_saved_endpoint_rejects_after_runtime_destruction) {
     runtime->run();
     runtime.reset();
     EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+}
+
+TEST(event_delivery, platform_and_simulation_targets_execute_on_their_runtime_owners) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        CE::SubSystems::EventBus bus;
+        std::thread::id platform_thread;
+        std::thread::id simulation_thread;
+        const auto report = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected event delivery failure"; };
+        bus.register_listener("tick", [&](std::any) { platform_thread = std::this_thread::get_id(); },
+            CE::Engine::platform_event_delivery(engine->platform_dispatcher().submission()), report);
+        bus.register_listener("tick", [&](std::any) { simulation_thread = std::this_thread::get_id(); },
+            CE::Engine::simulation_event_delivery(runtime.simulation_dispatcher().submission()), report);
+        game.on_init = [&] { bus.dispatch("tick", 0); };
+        game.on_tick = [&] { runtime.stop(); };
+        runtime.run();
+        EXPECT_EQ(platform_thread, std::this_thread::get_id());
+        EXPECT_EQ(simulation_thread, game.update_thread);
+        bus.close();
+    }
 }

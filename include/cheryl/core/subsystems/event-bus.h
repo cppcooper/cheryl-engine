@@ -1,10 +1,12 @@
 #pragma once
 
 #include <any>
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -20,15 +22,33 @@ namespace CE::SubSystems {
     class EventBus final {
     public:
         using Callback = std::function<void(std::any)>;
+        using Work = std::move_only_function<void()>;
+        // Return true only after owning the deferred task. Reject by returning
+        // false or throwing without retaining it. Never execute inline or wait.
+        // Targets must preserve FIFO execution within a listener's stream.
+        using Delivery = std::function<bool(Work)>;
+        using ErrorHandler = std::function<void(std::exception_ptr)>;
 
     private:
         struct Listener {
             std::string event;
             Callback callback;
+            Delivery delivery;
+            ErrorHandler errors;
+            std::exception_ptr cancellation;
+            std::mutex posting;
             std::mutex mutex;
             std::condition_variable idle;
             std::size_t running = 0;
             bool active = true;
+        };
+        struct DeliveryTicket {
+            std::shared_ptr<Listener> listener;
+            std::exception_ptr failure;
+            std::atomic<bool> entered{false};
+
+            explicit DeliveryTicket(std::shared_ptr<Listener> value);
+            ~DeliveryTicket();
         };
         struct State {
             std::mutex mutex;
@@ -62,7 +82,12 @@ namespace CE::SubSystems {
         EventBus& operator=(const EventBus&) = delete;
 
         // A registration is intentionally persistent even when its ID is ignored.
-        Registration register_listener(const std::string& event, Callback callback);
+        Registration register_listener(
+            const std::string& event,
+            Callback callback,
+            Delivery delivery = {},
+            ErrorHandler errors = {}
+        );
         void dispatch(const std::string& event, const std::any& payload);
         // Invalidation prevents new invocation entry; already-running work finishes.
         bool unregister_listener(const Registration& registration);
@@ -74,5 +99,7 @@ namespace CE::SubSystems {
     private:
         static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
         static void invalidate(const std::shared_ptr<Listener>& listener);
+        static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);
+        static void report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept;
     };
 }

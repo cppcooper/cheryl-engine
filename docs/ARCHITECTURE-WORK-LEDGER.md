@@ -25,7 +25,10 @@ Compilation, test execution, and remote writes have not been requested.
   registration IDs, and immediate producer-thread delivery.
 - Task 2.3–2.4 complete: entry/invalidation handshake, nonblocking removal,
   in-flight completion barrier, nested self-wait rejection, and bus close.
-- Task 2.5–2.6 active: ordered queued delivery and observable failures.
+- Task 2.5–2.6 complete: copied payloads, per-listener enqueue serialization,
+  deferred targets, cancellation tickets, and mandatory observable error sinks.
+  Platform/simulation composition adapters cover the corresponding part of 4.2.
+- Task 2.7 awaits WorkerGroup: ordered parallel-worker delivery. Task 3 next.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
@@ -44,6 +47,11 @@ Compilation, test execution, and remote writes have not been requested.
 - D2: duplicate concurrent unregister calls can observe removal before the first
   remover invalidates. Every matching remover must perform invalidation before
   returning, even when it reports no new removal. Recorded under 2.3.
+
+- D2: cancellation of an accepted target task must settle event delivery even
+  when its target future is discarded. Owned delivery tickets report cancellation
+  outside enqueue locks; explicit invalidation suppresses intentional discards.
+  Error sinks have an independent owned-lifetime requirement. Added under 2.6.
 
 ## Patch protocol
 

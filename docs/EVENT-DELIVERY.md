@@ -35,5 +35,34 @@ deadlocking. Callback exceptions still release in-flight accounting.
 dispatch. Bus destruction closes without blocking; callers must settle any
 in-flight callbacks that borrow a bus or other target before destroying it.
 Registry snapshots and invocation guards retain callback ownership as needed,
-without permitting a fresh invocation after invalidation. Queued delivery follows
-as a separate subtask.
+without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.
+
+
+## Optional queued delivery
+
+Pass a delivery callable and error sink to `register_listener`. The bus accepts
+only the small `bool(Work)` delivery contract, with move-owned `Work`; its header
+has no dependency on dispatchers, runtime, or worker pools. A target owns deferred
+work when it returns true. False or an exception rejects it without retaining it.
+It must not invoke work inline or wait for it, and must provide FIFO execution for
+each listener stream. Concurrent producers serialize enqueue for a given listener.
+There is no global completion order between listeners or independent targets.
+
+Queued tasks copy their payload and retain registration state. At actual execution
+they enter the same invalidation handshake as immediate callbacks. Callback
+exceptions, rejected posts, and accepted tasks later dropped by the target reach
+the required error sink. Target cancellation reports `future_error/broken_promise`;
+explicit unregister/close discards pending callbacks intentionally. Error sinks
+must not throw and must remain valid through pending-task destruction; a throwing
+sink terminates rather than disappearing in a discarded target future.
+
+The completion barrier protects the listener callback's borrowed target. An error
+sink is independent: prefer an owned logging/reporting handle, not the same raw
+`this`. Unregister can race a delivery already being offered; that task can still
+be accepted but will not enter the invalidated listener.
+
+`platform_event_delivery(engine.platform_dispatcher().submission())` and
+`simulation_event_delivery(runtime.simulation_dispatcher().submission())` are
+optional composition adapters in `core/engine/event-delivery.h`. Their saved
+endpoints reject safely after service closure. A general parallel worker pool
+needs the ordered stream adapter in task 2.7; FIFO dequeue alone is insufficient.

@@ -7,7 +7,12 @@ namespace CE::SubSystems {
         bus_.dispatch(event, payload);
     }
 
-    EventSystem::Registration EventSystem::register_listener(const std::string& event, Callback callback) {
-        return bus_.register_listener(event, std::move(callback));
+    EventSystem::Registration EventSystem::register_listener(
+        const std::string& event,
+        Callback callback,
+        Delivery delivery,
+        ErrorHandler errors
+    ) {
+        return bus_.register_listener(event, std::move(callback), std::move(delivery), std::move(errors));
     }
 }

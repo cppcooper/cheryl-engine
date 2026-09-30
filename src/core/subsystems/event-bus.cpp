@@ -3,6 +3,7 @@
 
 #include <limits>
 #include <algorithm>
+#include <future>
 #include <utility>
 
 namespace {
@@ -20,12 +21,23 @@ namespace CE::SubSystems {
         close();
     }
 
-    EventBus::Registration EventBus::register_listener(const std::string& event, Callback callback) {
+    EventBus::Registration EventBus::register_listener(
+        const std::string& event,
+        Callback callback,
+        Delivery delivery,
+        ErrorHandler errors
+    ) {
         if (!callback)
             throw Exceptions::invalid_args(CE_HERE, "An event listener requires a callback");
+        if (delivery && !errors)
+            throw Exceptions::invalid_args(CE_HERE, "Queued event delivery requires an error handler");
         auto listener = std::make_shared<Listener>();
         listener->event = event;
         listener->callback = std::move(callback);
+        listener->delivery = std::move(delivery);
+        listener->errors = std::move(errors);
+        if (listener->delivery)
+            listener->cancellation = std::make_exception_ptr(std::future_error(std::future_errc::broken_promise));
         std::lock_guard lock(state_->mutex);
         if (state_->closed)
             throw Exceptions::failed_operation(CE_HERE, "EventBus is closed");
@@ -51,7 +63,63 @@ namespace CE::SubSystems {
         // Registry edits cannot invalidate this dispatch; no registry lock is
         // held while arbitrary callbacks register more listeners or dispatch.
         for (const auto& listener : snapshot)
+            deliver(listener, payload);
+    }
+
+    EventBus::DeliveryTicket::DeliveryTicket(std::shared_ptr<Listener> value)
+    : listener(std::move(value)), failure(listener->cancellation) {}
+
+    EventBus::DeliveryTicket::~DeliveryTicket() {
+        if (entered.load(std::memory_order_acquire))
+            return;
+        bool active;
+        {
+            std::lock_guard lock(listener->mutex);
+            active = listener->active;
+        }
+        // Dropped target work must not silently lose an event. Explicit
+        // unregister/close intentionally discard delivery without reporting.
+        if (active)
+            report_error(listener, failure);
+    }
+
+    void EventBus::report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept {
+        // Error sinks must not throw. Termination makes a broken sink visible
+        // instead of hiding it in a discarded dispatch-target future.
+        listener->errors(std::move(failure));
+    }
+
+    void EventBus::deliver(const std::shared_ptr<Listener>& listener, const std::any& payload) {
+        if (!listener->delivery) {
             invoke(listener, payload);
+            return;
+        }
+        {
+            std::lock_guard lock(listener->mutex);
+            if (!listener->active)
+                return;
+        }
+        auto ticket = std::make_shared<DeliveryTicket>(listener);
+        Work work([ticket, owned_payload = std::any(payload)] {
+            ticket->entered.store(true, std::memory_order_release);
+            try {
+                invoke(ticket->listener, owned_payload);
+            }
+            catch (...) {
+                report_error(ticket->listener, std::current_exception());
+            }
+        });
+        try {
+            // Concurrent producers linearize target enqueue for this listener.
+            // The target defers execution; no callback is invoked under this lock.
+            std::lock_guard lock(listener->posting);
+            (void)listener->delivery(std::move(work));
+        }
+        catch (...) {
+            ticket->failure = std::current_exception();
+        }
+        // This local ticket keeps rejection/destruction reporting outside the
+        // posting lock, allowing an error sink to dispatch or unregister safely.
     }
 
     void EventBus::invoke(const std::shared_ptr<Listener>& listener, const std::any& payload) {

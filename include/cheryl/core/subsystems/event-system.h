@@ -15,10 +15,17 @@ namespace CE::SubSystems {
     public:
         using Callback = EventBus::Callback;
         using Registration = EventBus::Registration;
+        using Delivery = EventBus::Delivery;
+        using ErrorHandler = EventBus::ErrorHandler;
 
         EventSystem() = default;
         [[nodiscard]] EventBus& bus() { return bus_; }
-        Registration register_listener(const std::string& event, Callback callback);
+        Registration register_listener(
+            const std::string& event,
+            Callback callback,
+            Delivery delivery = {},
+            ErrorHandler errors = {}
+        );
         void dispatch(const std::string& event, const std::any& payload);
         bool unregister_listener(const Registration& registration) { return bus_.unregister_listener(registration); }
         void wait_for_listener(const Registration& registration) const { bus_.wait_for_listener(registration); }

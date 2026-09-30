@@ -133,3 +133,93 @@ TEST(event_bus, close_invalidates_registrations_and_rejects_new_work) {
     EXPECT_THROW(bus.register_listener("tick", [](std::any) {}), CE::Exceptions::failed_operation);
     EXPECT_THROW(bus.dispatch("tick", 0), CE::Exceptions::failed_operation);
 }
+
+namespace {
+    struct QueuedDelivery {
+        std::vector<CE::SubSystems::EventBus::Work> pending;
+
+        CE::SubSystems::EventBus::Delivery target() {
+            return [this](CE::SubSystems::EventBus::Work work) {
+                pending.push_back(std::move(work));
+                return true;
+            };
+        }
+
+        void drain() {
+            std::vector<CE::SubSystems::EventBus::Work> batch;
+            batch.swap(pending);
+            for (auto& work : batch)
+                work();
+        }
+    };
+}
+
+TEST(event_bus, queued_delivery_owns_payloads_and_preserves_their_order) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    std::vector<int> received;
+    std::vector<std::exception_ptr> errors;
+    bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); },
+        target.target(), [&](std::exception_ptr error) { errors.push_back(error); });
+    std::any payload = 1;
+    bus.dispatch("tick", payload);
+    payload = 2;
+    bus.dispatch("tick", payload);
+    payload = 99;
+    EXPECT_TRUE(received.empty());
+    target.drain();
+    EXPECT_EQ(received, (std::vector<int>{1, 2}));
+    EXPECT_TRUE(errors.empty());
+}
+
+TEST(event_bus, unregister_discards_queued_callbacks_without_touching_the_old_target) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    int calls = 0;
+    int errors = 0;
+    const auto id = bus.register_listener("tick", [&](std::any) { ++calls; }, target.target(),
+        [&](std::exception_ptr) { ++errors; });
+    bus.dispatch("tick", 0);
+    EXPECT_TRUE(bus.unregister_and_wait(id));
+    target.drain();
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(errors, 0);
+}
+
+TEST(event_bus, dropped_accepted_work_reports_cancellation_and_callback_errors_remain_observable) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    std::vector<std::exception_ptr> errors;
+    bus.register_listener("tick", [](std::any) { throw std::runtime_error("callback failed"); }, target.target(),
+        [&](std::exception_ptr error) { errors.push_back(error); });
+    bus.dispatch("tick", 0);
+    target.pending.clear();
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_THROW(std::rethrow_exception(errors[0]), std::future_error);
+    bus.dispatch("tick", 0);
+    target.drain();
+    ASSERT_EQ(errors.size(), 2u);
+    EXPECT_THROW(std::rethrow_exception(errors[1]), std::runtime_error);
+}
+
+TEST(event_bus, delivery_rejection_reports_outside_the_enqueue_lock) {
+    CE::SubSystems::EventBus bus;
+    CE::SubSystems::EventBus::Registration id;
+    int failures = 0;
+    id = bus.register_listener("tick", [](std::any) {},
+        [](CE::SubSystems::EventBus::Work) { return false; },
+        [&](std::exception_ptr error) {
+            ++failures;
+            EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+            // Reporting may safely remove the listener which failed delivery.
+            EXPECT_TRUE(bus.unregister_listener(id));
+        });
+    bus.dispatch("tick", 0);
+    EXPECT_EQ(failures, 1);
+}
+
+TEST(event_bus, queued_delivery_requires_an_observable_error_sink) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    EXPECT_THROW(bus.register_listener("tick", [](std::any) {}, target.target()), CE::Exceptions::invalid_args);
+}
