@@ -145,11 +145,11 @@ These are the proposed concrete choices within the agreed architecture:
 **Start in:** `templates/asset-mgr.h`, ResourceProvider, OpenGLResourceLifetime, renderer, and runtime platform loops.
 
 - [x] **6.1** Rename ProviderBoundCache to AssetCacheContext and explain its provider/loading-owner guard. Preserve one active global provider domain, synchronized publication, teardown exclusion, and retained reader handles.
-- [ ] **6.2** Trace ownership for image/texture, geometry, VAO/VBO, linked program, font atlas, material/pipeline, sprite/tileset, and frame packets. Cache release must not destroy externally retained logical resources; last-owner release must retire each native handle exactly once.
-- [ ] **6.3** Keep residency policy explicit: cache retention, explicit clear/replacement/provider teardown, external retention, final retirement. Add no weak-cache conversion, LRU, or automatic unused-asset eviction.
+- [x] **6.2** Trace ownership for image/texture, geometry, VAO/VBO, linked program, font atlas, material/pipeline, sprite/tileset, and frame packets. Cache release must not destroy externally retained logical resources; last-owner release must retire each native handle exactly once.
+- [x] **6.3** Keep residency policy explicit: cache retention, explicit clear/replacement/provider teardown, external retention, final retirement. Add no weak-cache conversion, LRU, or automatic unused-asset eviction.
 - [x] **6.4** Add a backend-neutral retirement-maintenance operation and call it on the platform loop after frame recycling/other work, before waiting. Avoid duplicate expensive collections in clear/render; idle rendering must still collect.
 - [x] **6.5** Ensure pending retirement can wake maintenance, or use a documented bounded maintenance wait. A loop waiting indefinitely on a full polling batch must not leave retired resources uncollected forever.
-- [ ] **6.6** Audit deletion and failure guards, provider release/rebind, retained resources after renderer closure, and mixed resource domains. Native deletion must require the owner and its actual current context; published-handle destruction may originate elsewhere.
+- [x] **6.6** Audit deletion and failure guards, provider release/rebind, retained resources after renderer closure, and mixed resource domains. Native deletion must require the owner and its actual current context; published-handle destruction may originate elsewhere.
 
 **Boundary D6 — lifetime gaps:** inspect idle retirement, context loss, reentrant cache deleters, and new material-held resources. Add a notifier, domain identity, or cleanup-order subtask only where the audit demonstrates a gap. Budgeted streaming remains separate.
 

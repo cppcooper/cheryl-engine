@@ -50,14 +50,15 @@ Compilation, test execution, and remote writes have not been requested.
   time. Frame preparation occurs once per useful batch; rendering retains the latest
   complete frame. Regression scenarios and timing/suspension/optimization documentation
   are prepared; compilation, regression execution, and real acceptance remain open.
-- Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
-- Task 6.1 complete in source: AssetCacheContext names the global provider/loading
-  guard explicitly, without changing strong cache ownership or teardown exclusion.
-- Task 6.4–6.5 complete in source: renderer maintenance runs after platform/frame
-  work and during accepted-work shutdown, independently of clear/render. Both idle
-  waits are bounded to 10 ms, including full backlogs and no first publication.
-  Prepared regressions record maintenance on the platform without any update/frame
-  and preserve maintenance failures through cleanup. Native collection is still unrun.
+- Tasks 7–8 pending. Task 9 acceptance remains unexecuted.
+- Task 6 complete in source: AssetCacheContext preserves the global loading domain
+  and strong residency. Resource ownership is traced through caches/composites/frames
+  to move-only native registrations. Both modes service maintenance independently
+  of drawing with a 10 ms idle-wait bound, including full backlogs/no first frame
+  and accepted-work shutdown. Program adoption/fallback deletion now preserve a
+  single owner and actual-context checks. Recording-native, maintenance/failure,
+  strong-retention, provider-rebind, and existing reentrant-cache scenarios are
+  prepared; compilation and native acceptance remain unexecuted.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions

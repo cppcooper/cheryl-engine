@@ -2,7 +2,7 @@
 
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
-`refactor-runtime-render-resource-architecture`. Tasks 1–5 of the second-pass
+`refactor-runtime-render-resource-architecture`. Tasks 1–6 of the second-pass
 work order are implemented in source. **This continuation has not been compiled
 or tested.** Historical normal/sandbox build results below predate these changes
 and do not validate the current HEAD. Individual local commits remain intact.
@@ -141,6 +141,12 @@ fixed/drop recovery and direct/hybrid VariableCatchUp, separate observation inpu
 durations, dropped-time reporting, and retained latest frames. Scheduler/input/runtime
 regressions are prepared, not compiled or executed. See [SIMULATION-TIMING.md](SIMULATION-TIMING.md).
 
-Continue with task 6 (residency and idle retirement), task 7 (pipeline/material
-contracts), and task 8 (resolved render packets). The numbered work order and discoveries are retained in
+Residency source is prepared: AssetCacheContext preserves strong caches and the
+active provider domain. Both runtime modes perform renderer maintenance while idle,
+with a 10 ms wait bound; native failure cleanup and linked-program adoption have
+owner/current-context and single-ownership guards. Recording regression sources
+remain uncompiled/unexecuted. See [RESOURCE-RESIDENCY.md](RESOURCE-RESIDENCY.md).
+
+Continue with task 7 (pipeline/material contracts), then task 8 (resolved render
+packets). The numbered work order and discoveries are retained in
 [ARCHITECTURE-WORK-LEDGER.md](ARCHITECTURE-WORK-LEDGER.md).

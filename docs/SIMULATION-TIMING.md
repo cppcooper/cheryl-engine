@@ -64,6 +64,8 @@ Frame preparation occurs at most once after a bounded update sequence, from its
 final useful state. Sequential mode retains one complete frame; concurrent mode
 retains the platform's current slot while publishing through the remaining slots.
 Rendering can reuse that complete frame on a cycle without a new publication.
+Platform resource maintenance may wake every 10 ms while idle; these wakeups do
+not change the simulation deadline or consume input without an actual update.
 Superseded frames recycle on the graphics owner. Simulation never waits for a free
 render slot; publication may be skipped while updates continue.
 

@@ -1402,3 +1402,38 @@ TEST(resource_maintenance, a_maintenance_failure_preserves_its_error_through_cle
         EXPECT_EQ(input.attached_window(), nullptr);
     }
 }
+
+TEST(asset_cache, strong_residency_survives_unused_handles_and_explicit_clear_preserves_external_owners) {
+    auto& textures = CE::Assets::TextureMgr::get();
+    auto first = std::make_unique<MemoryProvider>();
+    MemoryProvider second;
+    std::weak_ptr<CE::Assets::Image> observed;
+    bool destroyed = false;
+    first->on_load_image = [&] {
+        auto image = std::shared_ptr<MemoryImage>(new MemoryImage({8, 16}), [&](MemoryImage* value) {
+            destroyed = true;
+            delete value;
+        });
+        observed = image;
+        return image;
+    };
+    textures.load_assets({"resident.png"}, *first);
+    EXPECT_FALSE(observed.expired()); // The cache alone retains an unused asset.
+    EXPECT_FALSE(destroyed);
+    EXPECT_THROW(textures.load_assets({"other-domain.png"}, second), CE::Exceptions::failed_operation);
+    auto retained = textures.get_asset("resident.png");
+    textures.clear_assets();
+    EXPECT_EQ(textures.size(), 0u);
+    EXPECT_FALSE(destroyed);
+    ASSERT_TRUE(retained);
+    EXPECT_EQ(retained->pixel_size().height, 16u);
+
+    first.reset(); // Releases the old global domain, not this independent logical owner.
+    EXPECT_FALSE(destroyed);
+    textures.load_assets({"new-domain.png"}, second);
+    EXPECT_TRUE(CE::Assets::AssetCacheContext::is_bound_to(second));
+    EXPECT_EQ(retained->pixel_size().width, 8u);
+    retained.reset();
+    EXPECT_TRUE(destroyed);
+    EXPECT_TRUE(observed.expired());
+}

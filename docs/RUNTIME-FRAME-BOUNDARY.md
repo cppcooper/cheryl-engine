@@ -98,7 +98,9 @@ after a loop failure. Concurrent runtime uses configurable lockstep (default), f
 unlimited polling, with a minimum completion-to-next-poll spacing. Full batches
 pause polling while rendering continues. Every completed poll counts, including
 unchanged samples; the worker takes the entire batch at a cycle boundary and
-wakes polling into an empty backlog. Each selected update consumes fresh input;
+wakes polling into an empty backlog. Renderer retirement maintenance runs after platform work
+and before waiting, even without a new frame; idle waits are bounded to 10 ms.
+[Resource residency](RESOURCE-RESIDENCY.md) describes the bound and ownership trace. Each selected update consumes fresh input;
 held State persists and transient input is not repeated. Both runtime modes use
 the same timing configuration, including fixed steps and capped VariableCatchUp. The worker publishes a prepared slot without copying
 it. If it supersedes a waiting frame, the platform thread recycles the older

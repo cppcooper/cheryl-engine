@@ -54,7 +54,6 @@ namespace CE::RenderAPIs {
         static void delete_handle(GLResourceKind kind, GLuint id) noexcept;
         void require_owner_locked() const;
         void require_current_locked() const;
-
     };
 
     // Move-only registration. Its destructor never calls OpenGL.

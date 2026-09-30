@@ -21,13 +21,20 @@ fails before querying the borrowed context. If destructor cleanup cannot recover
 the context, it invalidates registrations without OpenGL calls, leaving remaining
 native cleanup to platform context destruction.
 
+`AssetCacheContext` guards strong cache residency and the active loading domain.
 Asset caches clear and release their provider binding when the provider is
 destroyed. Shared-lock lookups retain complete handles; unique-lock publication
 and clearing release retired handles outside cache locks. Provider teardown marks
 the binding as releasing first so reentrant deleters cannot refill the caches.
-`GameRuntime` cancels queued requests on the platform, joins simulation, recycles
-frames, and cleans up the game before stopping input and graphics. Owned input is
+`GameRuntime` stops simulation/worker acceptance while pumping accepted platform
+dependencies, then cancels remaining platform work, recycles frames, and cleans up
+the game before stopping input and graphics. Renderer maintenance runs independently
+of new frames, before bounded idle waits and while accepted work settles. Owned input is
 destroyed before the provider, renderer, surface, and display. The platform
 context must outlive its renderer. See
 [RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md) for the open
 execution-validation gate.
+
+The resource-by-resource ownership trace, explicit residency policy, 10 ms idle
+wait bound, native failure guards, and open acceptance checks are in
+[RESOURCE-RESIDENCY.md](RESOURCE-RESIDENCY.md).
