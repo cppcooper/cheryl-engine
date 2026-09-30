@@ -5,9 +5,27 @@
 #include <utility>
 
 namespace CE::RenderAPIs {
-    void OpenGLResourceLifetime::require_current_locked() const {
+    OpenGLResourceLifetime::OpenGLResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
+        : owner_(owner), is_current_(std::move(is_current)) {
+        if (owner == std::thread::id{} || !is_current_)
+            throw Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
+    }
+
+    void OpenGLResourceLifetime::require_owner_locked() const {
         if (!active_ || std::this_thread::get_id() != owner_)
             throw Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its live context thread");
+    }
+
+    void OpenGLResourceLifetime::require_current_locked() const {
+        // Never query a borrowed context after shutdown or from a foreign thread.
+        require_owner_locked();
+        if (!is_current_())
+            throw Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its own current context");
+    }
+
+    void OpenGLResourceLifetime::require_owner() const {
+        const std::lock_guard lock(mutex_);
+        require_owner_locked();
     }
 
     void OpenGLResourceLifetime::require_current() const {
@@ -16,12 +34,21 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLResourceLifetime::delete_handle(const GLResourceKind kind, const GLuint id) noexcept {
-        if (!id) return;
+        if (!id)
+            return;
         switch (kind) {
-        case GLResourceKind::Texture: glDeleteTextures(1, &id); break;
-        case GLResourceKind::Buffer: glDeleteBuffers(1, &id); break;
-        case GLResourceKind::VertexArray: glDeleteVertexArrays(1, &id); break;
-        case GLResourceKind::Program: glDeleteProgram(id); break;
+            case GLResourceKind::Texture:
+                glDeleteTextures(1, &id);
+                break;
+            case GLResourceKind::Buffer:
+                glDeleteBuffers(1, &id);
+                break;
+            case GLResourceKind::VertexArray:
+                glDeleteVertexArrays(1, &id);
+                break;
+            case GLResourceKind::Program:
+                glDeleteProgram(id);
+                break;
         }
     }
 
@@ -48,7 +75,8 @@ namespace CE::RenderAPIs {
             entries_[slot].pending = true;
             entries_[slot].next = pending_;
             pending_ = slot;
-        } catch (...) {
+        }
+        catch (...) {
             // The shutdown sweep still owns this handle if a mutex operation fails.
         }
     }
@@ -80,16 +108,28 @@ namespace CE::RenderAPIs {
         pending_ = free_ = none;
     }
 
-    OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime,
-                               const GLResourceKind kind, const GLuint id) : lifetime_(std::move(lifetime)), id_(id) {
+    void OpenGLResourceLifetime::abandon() noexcept {
+        try {
+            const std::lock_guard lock(mutex_);
+            active_ = false;
+            entries_.clear();
+            pending_ = free_ = none;
+        }
+        catch (...) {
+            // No OpenGL call is permitted from this failure fallback.
+        }
+    }
+
+    OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, const GLResourceKind kind, const GLuint id)
+        : lifetime_(std::move(lifetime)), id_(id) {
         if (!lifetime_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
         slot_ = lifetime_->track(kind, id);
     }
 
-    OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept :
-        lifetime_(std::move(other.lifetime_)), slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
-        id_(std::exchange(other.id_, 0)) {}
+    OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept
+        : lifetime_(std::move(other.lifetime_)), slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
+          id_(std::exchange(other.id_, 0)) {}
 
     OpenGLHandle& OpenGLHandle::operator=(OpenGLHandle&& other) noexcept {
         if (this != &other) {
@@ -102,7 +142,8 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLHandle::reset() noexcept {
-        if (lifetime_) lifetime_->retire(slot_);
+        if (lifetime_)
+            lifetime_->retire(slot_);
         lifetime_.reset();
         id_ = 0;
     }

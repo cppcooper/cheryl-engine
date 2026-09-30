@@ -1,14 +1,16 @@
 #pragma once
 
-#include "context.h"
-#include "resource-lifetime.h"
 #include <core/rendering/renderer.h>
 #include <memory>
+#include "context.h"
+#include "resource-lifetime.h"
 
 namespace CE::RenderAPIs {
     /** Implements rendering commands using a separately owned OpenGL context.
      * initialize() makes that context current before loading GL entry points;
      * deinitialize() deletes all tracked GPU resources before releasing it.
+     * The supplied context must outlive this renderer. Destruction attempts owner-thread
+     * cleanup; failed context recovery invalidates retained handles without OpenGL calls.
      * A stopped renderer cannot be restarted with its old cached assets.
      */
     class OpenGLRenderer final : public iRenderer {

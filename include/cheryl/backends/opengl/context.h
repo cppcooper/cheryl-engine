@@ -12,6 +12,7 @@ namespace CE::RenderAPIs {
 
         virtual void make_current() = 0;
         virtual void release_current() = 0;
+        [[nodiscard]] virtual bool is_current() const = 0;
         [[nodiscard]] virtual ProcAddress proc_address(const char* name) const = 0;
     };
 }

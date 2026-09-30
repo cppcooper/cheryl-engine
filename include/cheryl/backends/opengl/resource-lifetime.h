@@ -3,6 +3,7 @@
 #include <backends/opengl/gl.h>
 
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -16,12 +17,18 @@ namespace CE::RenderAPIs {
     // thread, so they only mark their handles for deletion here.
     class OpenGLResourceLifetime final {
     public:
-        explicit OpenGLResourceLifetime(std::thread::id owner) : owner_(owner) {}
+        // The predicate borrows a context that must outlive this active lifetime.
+        // It is queried only on the owner thread, and must not reenter the lifetime.
+        OpenGLResourceLifetime(std::thread::id owner, std::function<bool()> is_current);
 
         [[nodiscard]] std::size_t track(GLResourceKind kind, GLuint id);
         void retire(std::size_t slot) noexcept;
         void collect();
         void shutdown();
+        // Failure fallback: invalidate handles without issuing calls to an unavailable context.
+        // The platform's context destruction releases any remaining native resources.
+        void abandon() noexcept;
+        void require_owner() const;
         void require_current() const;
 
     private:
@@ -34,6 +41,7 @@ namespace CE::RenderAPIs {
         };
 
         static void delete_handle(GLResourceKind kind, GLuint id) noexcept;
+        void require_owner_locked() const;
         void require_current_locked() const;
 
         mutable std::mutex mutex_;
@@ -41,6 +49,7 @@ namespace CE::RenderAPIs {
         std::size_t pending_ = none;
         std::size_t free_ = none;
         std::thread::id owner_;
+        std::function<bool()> is_current_;
         bool active_ = true;
     };
 

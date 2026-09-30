@@ -28,13 +28,17 @@ namespace CE::RenderAPIs {
             try {
                 deinitialize();
             }
-            catch (...) { /* The context must be shut down on its owner thread. */
+            catch (...) {
+                // Retained assets must never query a context after its owner is destroyed.
+                resources_->abandon();
             }
         }
     }
 
     void OpenGLRenderer::initialize() {
         if (initialized_) {
+            resources_->require_owner();
+            context_.make_current();
             resources_->require_current();
             return;
         }
@@ -42,6 +46,8 @@ namespace CE::RenderAPIs {
             throw Exceptions::failed_operation(CE_HERE, "Create a new renderer after OpenGL shutdown");
         context_.make_current();
         try {
+            if (!context_.is_current())
+                throw Exceptions::failed_operation(CE_HERE, "OpenGL initialization requires its current context");
             // The renderer receives procedure addresses through the context interface,
             // without depending on the display's native window type.
             const auto version = gladLoadGLUserPtr(
@@ -50,13 +56,19 @@ namespace CE::RenderAPIs {
             if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3)) {
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
             }
-            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id());
+            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(),
+                                                                  [&context = context_] { return context.is_current(); });
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         }
         catch (...) {
-            context_.release_current();
+            // Preserve the initialization failure even if releasing the context also fails.
+            try {
+                context_.release_current();
+            }
+            catch (...) {
+            }
             throw;
         }
         initialized_ = true;
@@ -65,10 +77,12 @@ namespace CE::RenderAPIs {
     void OpenGLRenderer::deinitialize() {
         if (!initialized_)
             return;
+        resources_->require_owner();
+        context_.make_current();
         resources_->shutdown();
-        context_.release_current();
         initialized_ = false;
         stopped_ = true;
+        context_.release_current();
     }
     std::shared_ptr<OpenGLResourceLifetime> OpenGLRenderer::resources() const {
         if (!initialized_)

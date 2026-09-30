@@ -16,6 +16,7 @@ namespace CE::RenderAPIs {
 
         void make_current() override;
         void release_current() override;
+        [[nodiscard]] bool is_current() const override;
         [[nodiscard]] ProcAddress proc_address(const char* name) const override;
         void present() override;
 
