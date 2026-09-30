@@ -6,7 +6,10 @@
 #include <utility>
 
 namespace CE::GFramework {
-    SimulationScheduler::SimulationScheduler(const SimulationTimingOptions options, const SimulationClock::time_point start)
+    SimulationScheduler::SimulationScheduler(
+        const SimulationTimingOptions options,
+        const SimulationClock::time_point start
+    )
     : options_(options), observed_at_(start) {
         if (options_.mode != SimulationMode::Variable && options_.mode != SimulationMode::Fixed)
             throw Exceptions::invalid_args(CE_HERE, "Unknown simulation timing mode");

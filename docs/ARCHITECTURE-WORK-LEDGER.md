@@ -127,24 +127,36 @@ or executed. Current C++ files undergo syntax-tree inspection; type/link/native
 behavior remains unverified. Mailbox replay checks source tree and author/message
 ordering without compiling or running regression programs.
 
+The timing continuation statically parsed all eleven changed C++ headers/sources
+without syntax-tree errors and passed `git diff --check`. Combined and incremental
+mailbox replay checks reproduce the source tree and author/date/message ordering.
+These preparation checks do not establish C++ type/link correctness or runtime behavior.
+
 
 ## Stopping checkpoint and continuation
 
-Completed source tasks: 0–4, including discovery addition 4.7 (factory forwarding).
+Completed source tasks: 0–5, including discovery addition 4.7 (factory forwarding).
 Task 9 documentation/regression preparation accompanies those changes; executed
-acceptance remains open. Continue at task 5. Do not silently defer VariableCatchUp,
-consume/replay transient input incorrectly during recovery, or change strong cache
-residency when implementing later tasks.
+acceptance remains open. Continue at task 6 (cache context/residency and idle GPU
+retirement), then tasks 7–8. Keep the established timing/input consumption contracts
+when adding platform maintenance and preserve strong cache residency.
 
-This checkpoint reserves numbered patches 01–15. The next unused incremental
-filename is **cheryl-engine-16.patch**. The cumulative **cheryl-engine.patch**
-contains all fifteen local commits from the fixed original base. Its final mail
-header identifies the ending local commit; the continuing checkout's HEAD and
-repository-local patch checkpoint record identify the same incremental base.
-Apply the cumulative patch at the original base, or use the numbered sequence
-in order. The cumulative file contains the earlier checkpoints again.
+This continuation reserves numbered patches **16–20**; the next unused filename
+is **cheryl-engine-21.patch**. The user has already applied/pushed checkpoints
+01–15. Apply **cheryl-engine-continuation.patch** to that pushed base,
+`ef4ec51402ebadd2f1319dfd03bb0ed3a0b6007d`, or apply 16–20 individually in order.
+The separately retained **cheryl-engine.patch** is cumulative from the fixed
+original base and includes the fifteen earlier commits again. Use that file only
+for a fresh checkout at the original base. Do not combine these application routes.
+Earlier local commits remain preserved on the checkpoint branch; current commits
+continue from the identical user-pushed tree, with their individual authors/messages.
 
-No commits/branches were pushed. No compilation, CMake configuration, regression
+Task 6's initial review confirms strong cache ownership and collection only from
+OpenGL clear/render. Its remaining idle-maintenance work needs a neutral operation
+plus a wake or bounded wait, including loops with no published frame or a full
+polling backlog. No residency or material implementation changed in this batch.
+
+No commits/branches were pushed by the assistant. No compilation, CMake configuration, regression
 execution, or real GLFW/OpenGL acceptance was performed in this continuation.
 Unsupported native affinity/topology capabilities are explicit; the Linux adapter
 and scheduling policies still need executed acceptance when authorized.
