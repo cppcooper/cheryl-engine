@@ -72,3 +72,8 @@ root; unrelated groups on an injected pool remain open. A saved context group
 rejects after context shutdown, while separately owned physical pools remain
 independent. Do not destroy a context from one of its jobs. Runtime shutdown pumps platform dispatch while accepted work finishes,
 then joins an owned root before game/resource cleanup.
+
+The normal GLFW/OpenGL factory forwards `GlfwOpenGLConfig::execution` to the
+context. Set `config.execution.worker_count` or `config.execution.shared_pool`
+there before creating the backend graph; owned and borrowed input use the same
+execution configuration.

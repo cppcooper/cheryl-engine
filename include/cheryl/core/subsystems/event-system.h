@@ -23,8 +23,8 @@ namespace CE::SubSystems {
         Registration register_listener(
             const std::string& event,
             Callback callback,
-            Delivery delivery = {},
-            ErrorHandler errors = {}
+            Delivery delivery = Delivery{},
+            ErrorHandler errors = ErrorHandler{}
         );
         void dispatch(const std::string& event, const std::any& payload);
         bool unregister_listener(const Registration& registration) { return bus_.unregister_listener(registration); }

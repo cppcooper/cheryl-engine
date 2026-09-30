@@ -39,7 +39,7 @@ namespace CE::Engine {
         auto renderer = std::make_unique<RenderAPIs::OpenGLRenderer>(*surface);
         auto resources = std::make_unique<Assets::OpenGLResourceProvider>(*renderer);
         return std::make_unique<EngineContext>(std::move(display), std::move(surface), std::move(renderer), std::move(resources),
-            std::forward<InputAdapter>(input));
+            std::forward<InputAdapter>(input), config.execution);
     }
 
     std::unique_ptr<EngineContext> make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config) {

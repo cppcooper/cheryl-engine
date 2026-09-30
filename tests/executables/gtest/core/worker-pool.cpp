@@ -7,6 +7,7 @@
 #include <core/engine/worker-pool.h>
 #include <internals/exceptions.h>
 
+#include <algorithm>
 #include <atomic>
 #include <future>
 #include <memory>
@@ -127,3 +128,31 @@ TEST(worker_pool, a_required_cpu_group_runs_on_its_eligible_cpu) {
     pinned.drain();
 }
 #endif
+
+TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_other_group) {
+    CE::Engine::WorkerPool pool;
+    auto gate = pool.make_group();
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    auto blocked = gate.submit([&] { entered.set_value(); released.wait(); });
+    entered.get_future().wait();
+    CE::Engine::WorkerGroupOptions options;
+    options.weight = 3;
+    auto frequent = pool.make_group(options);
+    auto regular = pool.make_group();
+    std::vector<char> order;
+    std::vector<std::future<void>> jobs;
+    for (int i = 0; i < 12; ++i)
+        jobs.push_back(frequent.submit([&] { order.push_back('F'); }));
+    for (int i = 0; i < 4; ++i)
+        jobs.push_back(regular.submit([&] { order.push_back('R'); }));
+    release.set_value();
+    pool.shutdown();
+    blocked.get();
+    for (auto& job : jobs)
+        job.get();
+    ASSERT_EQ(order.size(), 16u);
+    EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'F'), 6);
+    EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'R'), 2);
+}

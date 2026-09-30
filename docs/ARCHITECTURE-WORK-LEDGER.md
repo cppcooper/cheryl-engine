@@ -42,7 +42,7 @@ Compilation, test execution, and remote writes have not been requested.
   dependency-aware platform pumping through simulation/CPU shutdown, cancellation
   of remaining requests, injected ownership isolation, and original-error retention.
 - Tasks 5–8 pending. Task 9 acceptance remains unexecuted.
-- Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
+- Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
 
@@ -77,6 +77,10 @@ Compilation, test execution, and remote writes have not been requested.
 - D4: persistent global subscriptions cannot be blindly removed by one context.
   Add AbstractGame::quiesce() to stop application producers and explicitly invalidate
   borrowed registrations while targets remain alive. Final teardown stays in deinit().
+
+- D0/4.7: the GLFW factory also needs to forward execution configuration; constructor
+  injection alone leaves the normal application bootstrap unable to select capacity.
+  Added GlfwOpenGLConfig::execution and forwarded it for owned/borrowed input. Complete.
 
 ## Patch protocol
 

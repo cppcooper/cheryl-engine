@@ -46,7 +46,7 @@ namespace CE::GFramework {
             Engine::EngineContext& engine,
             AbstractGame& game,
             RunMode mode = RunMode::Sequential,
-            Input::PollingOptions polling = {}
+            Input::PollingOptions polling = Input::PollingOptions{}
         );
 
         void run();

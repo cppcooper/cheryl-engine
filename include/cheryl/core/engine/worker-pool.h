@@ -131,7 +131,7 @@ namespace CE::Engine {
         WorkerPool(const WorkerPool&) = delete;
         WorkerPool& operator=(const WorkerPool&) = delete;
 
-        [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = {});
+        [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         [[nodiscard]] WorkerCapabilities capabilities() const;
         void close();

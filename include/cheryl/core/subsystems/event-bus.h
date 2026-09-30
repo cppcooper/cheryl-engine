@@ -85,8 +85,8 @@ namespace CE::SubSystems {
         Registration register_listener(
             const std::string& event,
             Callback callback,
-            Delivery delivery = {},
-            ErrorHandler errors = {}
+            Delivery delivery = Delivery{},
+            ErrorHandler errors = ErrorHandler{}
         );
         void dispatch(const std::string& event, const std::any& payload);
         // Invalidation prevents new invocation entry; already-running work finishes.

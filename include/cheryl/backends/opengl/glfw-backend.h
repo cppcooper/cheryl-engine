@@ -17,6 +17,7 @@ namespace CE::Engine {
         Enum::window_mode mode = Enum::window_mode::NORMAL;
         std::string title; // Empty uses the original randomized window titles.
         int swap_interval = 1;
+        ExecutionOptions execution;
     };
 
     /** Assemble the GLFW display/window, its OpenGL presentation context,
