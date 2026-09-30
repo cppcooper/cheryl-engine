@@ -10,12 +10,13 @@
 #include <utility>
 
 namespace CE::Engine {
-    EngineContext::EngineContext(std::unique_ptr<iDisplaySystem> display,
-                                 std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-                                 std::unique_ptr<RenderAPIs::iRenderer> renderer,
-                                 std::unique_ptr<Assets::ResourceProvider> resources,
-                                 Input::iInputSystem& input
-        )
+    EngineContext::EngineContext(
+        std::unique_ptr<iDisplaySystem> display,
+        std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
+        std::unique_ptr<RenderAPIs::iRenderer> renderer,
+        std::unique_ptr<Assets::ResourceProvider> resources,
+        Input::iInputSystem& input
+    )
     : display_(std::move(display)),
       surface_(std::move(surface)),
       renderer_(std::move(renderer)),
@@ -24,12 +25,13 @@ namespace CE::Engine {
         validate();
     }
 
-    EngineContext::EngineContext(std::unique_ptr<iDisplaySystem> display,
-                                 std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-                                 std::unique_ptr<RenderAPIs::iRenderer> renderer,
-                                 std::unique_ptr<Assets::ResourceProvider> resources,
-                                 std::unique_ptr<Input::iInputSystem> input
-        )
+    EngineContext::EngineContext(
+        std::unique_ptr<iDisplaySystem> display,
+        std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
+        std::unique_ptr<RenderAPIs::iRenderer> renderer,
+        std::unique_ptr<Assets::ResourceProvider> resources,
+        std::unique_ptr<Input::iInputSystem> input
+    )
     : display_(std::move(display)),
       surface_(std::move(surface)),
       renderer_(std::move(renderer)),

@@ -49,11 +49,12 @@ namespace {
         [[nodiscard]] CE::iWindow* active_window() const override { return active_; }
         [[nodiscard]] std::pair<float, float> content_scale(const CE::Monitor&) const override { return {1, 1}; }
 
-        CE::iWindow* create_window(const CE::Monitor& monitor,
-                                   CE::Enum::window_mode mode,
-                                   int width,
-                                   int height
-            ) override {
+        CE::iWindow* create_window(
+            const CE::Monitor& monitor,
+            CE::Enum::window_mode mode,
+            int width,
+            int height
+        ) override {
             if (monitor.id() != primary_monitor().id())
                 throw std::invalid_argument("Unknown monitor");
             window_ = std::make_unique<MemoryWindow>(width, height);

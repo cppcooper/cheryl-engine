@@ -247,7 +247,7 @@ public:
     ~Test_iManage() {
         BlockManagement<ManageProbeItem> bm;
         std::scoped_lock lock(std::get<0>(bm.registry), std::get<0>(bm.sections),
-                              std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release));
+            std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release));
         std::get<1>(bm.registry).clear();
         std::get<1>(bm.sections).clear();
         std::get<1>(bm.pool).clear();
@@ -269,7 +269,7 @@ TEST(templates_block, recycling_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
         auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
-                                                       [](ManageProbeItem* p) { delete[] p; });
+            [](ManageProbeItem* p) { delete[] p; });
         return Block<ManageProbeItem>{memory, memory, CE::ptr::calculate_alignment(memory.get()), 128};
     };
     auto first = make_owner();

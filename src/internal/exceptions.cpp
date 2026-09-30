@@ -47,19 +47,20 @@ CE::Exceptions::exception_base(
 CE::Exceptions::invalid_args::invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept
 :
 CE::Exceptions::exception_base(FormatException("{}\nexception: invalid args at line {} inside {}\n{}\n",
-                                               insert_st(), line_, location_, info_)) {}
+    insert_st(), line_, location_, info_)) {}
 
 CE::Exceptions::runtime_exception::runtime_exception(const char* location_, uint32_t line_, const char* info_) noexcept
 : CE::Exceptions::exception_base(FormatException("{}\nexception: {} at line {} inside {}\n{}\n",
-                                                 insert_st(), "runtime exception", line_, location_, info_)) {}
+    insert_st(), "runtime exception", line_, location_, info_)) {}
 
-CE::Exceptions::runtime_exception::runtime_exception(const char* sub_type,
-                                                     const char* location_,
-                                                     uint32_t line_,
-                                                     const char* info_
-    ) noexcept
+CE::Exceptions::runtime_exception::runtime_exception(
+    const char* sub_type,
+    const char* location_,
+    uint32_t line_,
+    const char* info_
+) noexcept
 : CE::Exceptions::exception_base(FormatException("{}\nexception: {}: {} at line {} inside {}\n{}\n",
-                                                 insert_st(), "runtime exception", sub_type, line_, location_, info_)) {}
+    insert_st(), "runtime exception", sub_type, line_, location_, info_)) {}
 
 CE::Exceptions::bad_alloc::bad_alloc(const char* location_, uint32_t line_) noexcept
 : CE::Exceptions::runtime_exception("bad_alloc", location_, line_, "heap allocation failed") {}

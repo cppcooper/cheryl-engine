@@ -68,7 +68,8 @@ namespace CE::Input {
                             std::move(data),
                             keyboard ? focus_.target : 0,
                             keyboard ? focus_.epoch : 0,
-                            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough});
+                            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough
+        });
     }
 
     std::vector<InputRecord> InputCapture::complete() { return std::exchange(pending_, {}); }

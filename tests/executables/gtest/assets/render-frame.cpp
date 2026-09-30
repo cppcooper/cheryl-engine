@@ -17,15 +17,18 @@ namespace {
         definition.grid.columns = 4;
         definition.animations.push_back({.name = "walk",
                                          .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}, {3, 100ms}},
-                                         .loop = true});
+                                         .loop = true
+        });
         definition.animations.push_back({.name = "fall",
                                          .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}},
-                                         .loop = false});
+                                         .loop = false
+        });
         // Playback and frame publication only inspect metadata; no GPU resources are needed.
         return std::make_shared<CE::Assets::Sprite>(CE::Assets::SpriteData{
             .geometry = nullptr,
             .texture = nullptr,
-            .definition = std::move(definition)});
+            .definition = std::move(definition)
+        });
     }
 }
 

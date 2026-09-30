@@ -79,30 +79,33 @@ namespace CE {
         return {x, y};
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor,
-                                         const Enum::window_mode mode,
-                                         const int width,
-                                         const int height
-        ) {
+    Window* DisplaySystem::create_window(
+        const Monitor& monitor,
+        const Enum::window_mode mode,
+        const int width,
+        const int height
+    ) {
         return create_window(monitor, mode, width, height, "");
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor,
-                                         const Enum::window_mode mode,
-                                         const int width,
-                                         const int height,
-                                         const std::string& title
-        ) {
+    Window* DisplaySystem::create_window(
+        const Monitor& monitor,
+        const Enum::window_mode mode,
+        const int width,
+        const int height,
+        const std::string& title
+    ) {
         auto window = std::unique_ptr<Window>(new Window(monitor, native_monitor(monitor), mode, width, height, title));
         auto* result = window.get();
         windows_.push_back(std::move(window));
         return result;
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor,
-                                         const Enum::window_mode mode,
-                                         const Resolution resolution
-        ) {
+    Window* DisplaySystem::create_window(
+        const Monitor& monitor,
+        const Enum::window_mode mode,
+        const Resolution resolution
+    ) {
         return create_window(monitor, mode, resolution.width, resolution.height);
     }
 

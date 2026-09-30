@@ -18,10 +18,10 @@ namespace CE::Assets {
         // The whole image supplies the quad's dimensions and [0, 1] texture coordinates.
         // Upload copies its six vertices before this local owner is released.
         auto quad = std::make_shared<Quad>(math::Anchor::MakeQuad(pivot, size.width, size.height,
-                                                                  size.width, size.height));
+            size.width, size.height));
         std::shared_ptr<Vertex2D> vertices(quad, quad->vertices.data());
         auto geometry = provider.upload_geometry(std::move(vertices), VAONumbers::vertices_per_quad,
-                                                 PrimitiveTopology::Triangles);
+            PrimitiveTopology::Triangles);
         return {std::move(geometry), std::move(image)};
     }
 

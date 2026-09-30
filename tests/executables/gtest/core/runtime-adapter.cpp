@@ -40,8 +40,8 @@ namespace {
 
         TemporaryAssets()
         : root(std::filesystem::temp_directory_path() /
-        ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
-            std::to_string(next.fetch_add(1)))) {
+            ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                std::to_string(next.fetch_add(1)))) {
             std::filesystem::create_directories(root);
         }
 
@@ -120,7 +120,8 @@ namespace {
                                                           174,
                                                           66,
                                                           96,
-                                                          130};
+                                                          130
+            };
             const auto file = root / name;
             std::filesystem::create_directories(file.parent_path());
             std::ofstream output(file, std::ios::binary);
@@ -365,9 +366,10 @@ namespace {
             return std::make_shared<MemoryImage>(CE::Assets::PixelSize{32, 32});
         }
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>,
-                                                                           CE::Assets::PixelSize size
-            ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(
+            std::span<const unsigned char>,
+            CE::Assets::PixelSize size
+        ) override {
             resource_thread = std::this_thread::get_id();
             ++atlas_uploads;
             return std::make_shared<MemoryImage>(size);
@@ -380,9 +382,10 @@ namespace {
 
         using ResourceProvider::upload_geometry;
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(std::span<const CE::Vertex2D> vertices,
-                                                                              CE::Assets::PrimitiveTopology topology
-            ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(
+            std::span<const CE::Vertex2D> vertices,
+            CE::Assets::PrimitiveTopology topology
+        ) override {
             uploaded_vertices = vertices.size();
             uploaded_topology = topology;
             uploaded_geometry.assign(vertices.begin(), vertices.end());
@@ -468,7 +471,7 @@ namespace {
         auto rendering = std::make_unique<MemoryRenderer>();
         renderer = rendering.get();
         return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation), std::move(rendering),
-                                                           std::make_unique<MemoryProvider>(), input);
+            std::make_unique<MemoryProvider>(), input);
     }
 } // namespace
 
@@ -569,8 +572,8 @@ TEST(runtime_adapter, owned_input_is_destroyed_while_its_window_is_alive) {
         EXPECT_TRUE(display_alive);
     };
     auto engine = std::make_unique<CE::Engine::EngineContext>(std::move(display), std::make_unique<MemorySurface>(),
-                                                              std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(),
-                                                              std::move(input));
+        std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(),
+        std::move(input));
     engine.reset();
     EXPECT_TRUE(input_destroyed);
     EXPECT_FALSE(display_alive);
@@ -1009,7 +1012,7 @@ TEST(resource_upload, a_legacy_vertex_owner_is_released_after_the_transient_copy
     quad->vertices[0].x = 7.0f;
     std::weak_ptr<CE::Quad> owner = quad;
     (void)provider.upload_geometry(std::shared_ptr<CE::Vertex2D>{quad, quad->vertices.data()}, quad->vertices.size(),
-                                   CE::Assets::PrimitiveTopology::Triangles);
+        CE::Assets::PrimitiveTopology::Triangles);
     quad.reset();
     EXPECT_TRUE(owner.expired());
     ASSERT_EQ(provider.uploaded_geometry.size(), 6u);

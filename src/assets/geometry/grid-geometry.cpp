@@ -36,13 +36,13 @@ namespace CE::Assets {
             if (rect.x > std::numeric_limits<std::uint32_t>::max() ||
                 rect.y > std::numeric_limits<std::uint32_t>::max()) {
                 throw Exceptions::runtime_exception("overflow", CE_HERE,
-                                                    "Asset grid pixel coordinate exceeds uint32_t");
+                    "Asset grid pixel coordinate exceeds uint32_t");
             }
             const auto strip = math::Anchor::MakeQuadStrip(pivot, texture_size.width, texture_size.height, rect.width,
-                                                           rect.height, static_cast<std::uint32_t>(rect.x),
-                                                           static_cast<std::uint32_t>(rect.y));
+                rect.height, static_cast<std::uint32_t>(rect.x),
+                static_cast<std::uint32_t>(rect.y));
             std::copy(strip.vertices().begin(), strip.vertices().end(),
-                      vertices.get() + cell * VAONumbers::vertices_per_strip_quad);
+                vertices.get() + cell * VAONumbers::vertices_per_strip_quad);
         }
         return {std::move(vertices), vertex_count};
     }

@@ -6,11 +6,12 @@ namespace CE::Input {
 
     InputMapper::~InputMapper() { manager_.RemoveListener(id_); }
 
-    bool InputMapper::OnDeviceButtonFloat(const gainput::DeviceId device,
-                                          const gainput::DeviceButtonId input,
-                                          const float,
-                                          const float new_value
-        ) {
+    bool InputMapper::OnDeviceButtonFloat(
+        const gainput::DeviceId device,
+        const gainput::DeviceButtonId input,
+        const float,
+        const float new_value
+    ) {
         if (!externally_driven_.contains(device))
             on_axis({device, input}, new_value);
         return true;

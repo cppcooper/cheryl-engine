@@ -80,7 +80,7 @@ public:
         (void)bindings.bind_axis({mouse, gainput::MouseAxisY}, DemoActions::MouseY);
         (void)bindings.bind_button({mouse, gainput::MouseButtonLeft}, DemoActions::Click);
         (void)bindings.bind_axis({mouse, CE::Input::MouseControl::ScrollY}, DemoActions::WheelY,
-                                 {1.0f, 0.0f, CE::Input::AxisKind::Relative});
+            {1.0f, 0.0f, CE::Input::AxisKind::Relative});
         (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
         events_ = input.capture(CE::Input::InputMode::Events);
     }
@@ -179,7 +179,8 @@ public:
         const glm::vec2 movement{static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
                                      actions.button(DemoActions::Left).down_duration.count()),
                                  static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
-                                     actions.button(DemoActions::Down).down_duration.count())};
+                                     actions.button(DemoActions::Down).down_duration.count())
+        };
         if (glm::length(movement) > 0.0f) {
             // Movement uses observed down-time; a completed tap still moves even
             // though the current button state is released at this update.
@@ -203,11 +204,12 @@ public:
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
         pass.add(CE::RenderAPIs::TextDraw{font_,
                                           std::format("Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
-                                                      "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                                                      "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}",
-                                                      mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
-                                                      focus_.owns_focus() ? "focused" : "unfocused", text_preview()),
-                                          text});
+                                              "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
+                                              "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}",
+                                              mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
+                                              focus_.owns_focus() ? "focused" : "unfocused", text_preview()),
+                                          text
+        });
     }
 
 private:

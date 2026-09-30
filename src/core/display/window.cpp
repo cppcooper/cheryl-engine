@@ -16,13 +16,14 @@ namespace {
 }
 
 namespace CE {
-    Window::Window(const Monitor& monitor,
-                   GLFWmonitor* native_monitor,
-                   const Enum::window_mode mode,
-                   const int width,
-                   const int height,
-                   const std::string& title
-        )
+    Window::Window(
+        const Monitor& monitor,
+        GLFWmonitor* native_monitor,
+        const Enum::window_mode mode,
+        const int width,
+        const int height,
+        const std::string& title
+    )
     :
     logical_size_(width, height),
     window_mode_(mode),
@@ -124,7 +125,7 @@ namespace CE {
                 break;
             case Enum::window_mode::FULLSCREEN:
                 glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height,
-                                     vidmode->refreshRate);
+                    vidmode->refreshRate);
                 break;
         }
         // Mode switches can change framebuffer size independently of logical window size.
@@ -145,12 +146,13 @@ namespace CE {
 }
 
 namespace {
-    GLFWwindow* create_native_window(GLFWmonitor* monitor,
-                                     const CE::Enum::window_mode mode,
-                                     const int width,
-                                     const int height,
-                                     const std::string& title
-        ) {
+    GLFWwindow* create_native_window(
+        GLFWmonitor* monitor,
+        const CE::Enum::window_mode mode,
+        const int width,
+        const int height,
+        const std::string& title
+    ) {
         if (width <= 0 || height <= 0)
             throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         if (mode != CE::Enum::window_mode::NORMAL && mode != CE::Enum::window_mode::BORDERLESS &&
@@ -161,7 +163,7 @@ namespace {
         glfwWindowHint(GLFW_DECORATED, mode == CE::Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
         auto* fullscreen_monitor = mode == CE::Enum::window_mode::FULLSCREEN ? monitor : nullptr;
         auto* native = glfwCreateWindow(width, height, title.empty() ? generate_title() : title.c_str(),
-                                        fullscreen_monitor, nullptr);
+            fullscreen_monitor, nullptr);
         if (!native)
             throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
         return native;

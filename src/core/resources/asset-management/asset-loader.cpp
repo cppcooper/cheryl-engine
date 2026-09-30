@@ -25,8 +25,8 @@ namespace CE::Assets {
         void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id, const fs::path& source) {
             if (const auto previous = ids.find(id); previous != ids.end())
                 throw Exceptions::runtime_exception(CE_HERE,
-                                                    "Duplicate asset ID '" + id + "' in manifests '" + previous->second.string() +
-                                                    "' and '" + source.string() + "'");
+                    "Duplicate asset ID '" + id + "' in manifests '" + previous->second.string() +
+                    "' and '" + source.string() + "'");
             ids.emplace(id, source);
         }
 

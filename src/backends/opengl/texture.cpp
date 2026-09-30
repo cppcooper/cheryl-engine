@@ -27,7 +27,6 @@ namespace CE::Assets {
 
     template <typename T>
     void upload(const T* bits, int width, int height, GLuint slot, bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
-
         // Apply anisotropic filtering only for supported color textures; the red-only
         // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
@@ -61,13 +60,14 @@ namespace CE::Assets {
         }
     }
 
-    Texture::Texture(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-                     const char* file,
-                     int slot,
-                     bool use_mipmaps,
-                     bool pixelate,
-                     int wrap_opt
-        )
+    Texture::Texture(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        const char* file,
+        int slot,
+        bool use_mipmaps,
+        bool pixelate,
+        int wrap_opt
+    )
     : unit(slot) {
         if (!file)
             throw Exceptions::invalid_args(CE_HERE, "Image filename must not be null");
@@ -80,18 +80,18 @@ namespace CE::Assets {
         unbind();
     }
 
-    Texture::Texture(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-                     const unsigned char* bitmap_data,
-                     int width,
-                     int height,
-                     GLuint slot,
-                     bool use_mipmaps,
-                     bool pixelate,
-                     GLint wrap_opt,
-                     GLenum fmt
-        )
+    Texture::Texture(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        const unsigned char* bitmap_data,
+        int width,
+        int height,
+        GLuint slot,
+        bool use_mipmaps,
+        bool pixelate,
+        GLint wrap_opt,
+        GLenum fmt
+    )
     : width(width), height(height), unit(slot) {
-
         if (!bitmap_data || width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Texture pixels and dimensions must be nonempty");
         // The font path supplies an already baked alpha atlas; upload() applies

@@ -30,7 +30,8 @@ namespace CE::Assets {
         return {origin.x + column * (static_cast<std::uint64_t>(frame.width) + spacing.x),
                 origin.y + row * (static_cast<std::uint64_t>(frame.height) + spacing.y),
                 frame.width,
-                frame.height};
+                frame.height
+        };
     }
 
     std::uint64_t GridDefinition::occupied_right() const {

@@ -36,7 +36,6 @@ namespace CE::Assets {
     }
 
     void GLSLProgram::print_active_uniforms() const {
-
         GLint nUniforms, size, maxLen;
         GLsizei written;
         GLenum type;
@@ -60,7 +59,6 @@ namespace CE::Assets {
     }
 
     void GLSLProgram::print_active_attribs() const {
-
         GLint written, size, maxLength, nAttribs;
         GLenum type;
 

@@ -97,7 +97,7 @@ namespace CE::Input {
 
     bool InputBindings::button_active(const ActionId action) const {
         return std::ranges::any_of(button_bindings_,
-                                   [this, action](const auto& binding) { return binding.action == action && chord_active(binding.chord); });
+            [this, action](const auto& binding) { return binding.action == action && chord_active(binding.chord); });
     }
 
     std::unordered_map<ActionId, bool> InputBindings::evaluate_buttons() const {

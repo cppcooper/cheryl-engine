@@ -23,7 +23,9 @@ TEST(geometry_primitives, quad_faces) {
                       {2, 3, 0, 1, 1},
                       {0, 0, 0, 0, 0},
                       {2, 3, 0, 1, 1},
-                      {0, 3, 0, 0, 1}}};
+                      {0, 3, 0, 0, 1}
+        }
+    };
     CE::Triangle first{};
     first.vertices = {quad.vertices[0], quad.vertices[1], quad.vertices[2]};
     CE::Triangle second{};

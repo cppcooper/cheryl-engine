@@ -100,7 +100,7 @@ namespace CE::Assets {
             bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
             const int result =
                 stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), bitmap.data(), atlas_size, atlas_size,
-                                     first_font_character, static_cast<int>(font_character_count), baked_characters.data());
+                    first_font_character, static_cast<int>(font_character_count), baked_characters.data());
             if (result > 0)
                 break;
             if (atlas_size == 4096) {

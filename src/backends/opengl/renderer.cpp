@@ -58,7 +58,7 @@ namespace CE::RenderAPIs {
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
             }
             resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(),
-                                                                  [&context = context_] { return context.is_current(); });
+                [&context = context_] { return context.is_current(); });
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

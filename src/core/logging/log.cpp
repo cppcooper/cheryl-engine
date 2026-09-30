@@ -49,5 +49,4 @@ namespace CE {
         ss << '\0'; //null terminate our string, required for repeat executions
         return buffer.data();
     }
-
 }

@@ -78,17 +78,19 @@ namespace CE {
         }
     }
 
-    VAO::VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-             std::shared_ptr<Vertex2D> vertices,
-             const uint32_t num_vertices,
-             const Assets::PrimitiveTopology topology
-        )
+    VAO::VAO(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        std::shared_ptr<Vertex2D> vertices,
+        const uint32_t num_vertices,
+        const Assets::PrimitiveTopology topology
+    )
     : VAO(std::move(lifetime), vertex_view(vertices, num_vertices), topology) {}
 
-    VAO::VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-             const std::span<const Vertex2D> vertices,
-             const Assets::PrimitiveTopology topology
-        )
+    VAO::VAO(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        const std::span<const Vertex2D> vertices,
+        const Assets::PrimitiveTopology topology
+    )
     : type(flat), topology_(topology), vertex_count_(vertices.size()) {
         if (vertices.empty() || !vertices.data() || vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()) ||
             vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) / sizeof(Vertex2D))
@@ -109,12 +111,13 @@ namespace CE {
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 3>());
     }
 
-    VAO::VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-             std::shared_ptr<Vertex3D> vertices,
-             uint32_t num_vertices,
-             std::shared_ptr<uint32_t> indices,
-             uint32_t num_indices
-        )
+    VAO::VAO(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        std::shared_ptr<Vertex3D> vertices,
+        uint32_t num_vertices,
+        std::shared_ptr<uint32_t> indices,
+        uint32_t num_indices
+    )
     : type(mesh), vertex_count_(num_vertices) {
         // Copy mesh indices and interleaved 3D vertices; the VAO retains the
         // element buffer binding along with position, normal, and UV layout.

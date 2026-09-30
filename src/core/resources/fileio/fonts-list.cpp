@@ -12,14 +12,15 @@ namespace CE::Resources {
 
         std::string lowercase(std::string value) {
             std::ranges::transform(value, value.begin(),
-                                   [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return value;
         }
 
-        void append_environment_path(std::vector<fs::path>& directories,
-                                     const char* variable,
-                                     const fs::path& suffix = {}
-            ) {
+        void append_environment_path(
+            std::vector<fs::path>& directories,
+            const char* variable,
+            const fs::path& suffix = {}
+        ) {
             if (const char* value = std::getenv(variable); value && *value) {
                 directories.push_back(fs::path(value) / suffix);
             }
@@ -35,7 +36,8 @@ namespace CE::Resources {
         std::vector<fs::path> directories{"/usr/share/fonts",
                                           "/usr/local/share/fonts",
                                           "/Library/Fonts",
-                                          "/System/Library/Fonts"};
+                                          "/System/Library/Fonts"
+        };
         append_environment_path(directories, "HOME", ".fonts");
         append_environment_path(directories, "HOME", ".local/share/fonts");
         append_environment_path(directories, "HOME", "Library/Fonts");
@@ -89,7 +91,8 @@ namespace CE::Resources {
                                                      "roboto-regular.ttf",
                                                      "calibri.ttf",
                                                      "consola.ttf",
-                                                     "proggyvector regular.ttf"};
+                                                     "proggyvector regular.ttf"
+        };
         // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
         for (const auto preferred : preferred_names) {
             const auto match = std::ranges::find_if(

@@ -51,7 +51,7 @@ TEST(math_binary, compact_storage) {
     EXPECT_EQ(
         sizeof(CE::math::BitArray<native_bits + 1>),
         sizeof(native_word) * 2
-        );
+    );
 }
 
 TEST(math_binary, individual_bits) {
@@ -248,15 +248,15 @@ TEST(math_anchor, invalid_pivots) {
             vertices.data(), 64, 32, 16, 8
         ),
         CE::Exceptions::invalid_args
-        );
+    );
     EXPECT_THROW(
         Anchor::MakePivot({-0.01f, 0.5f}, vertices.data(), 64, 32, 16, 8),
         CE::Exceptions::invalid_args
-        );
+    );
     EXPECT_THROW(
         Anchor::MakePivot({0.5f, 1.01f}, vertices.data(), 64, 32, 16, 8),
         CE::Exceptions::invalid_args
-        );
+    );
 }
 
 TEST(math_anchor, zero_image_dimensions) {
@@ -267,11 +267,11 @@ TEST(math_anchor, zero_image_dimensions) {
     EXPECT_THROW(
         Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 0, 32, 16, 8),
         CE::Exceptions::invalid_args
-        );
+    );
     EXPECT_THROW(
         Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 64, 0, 16, 8),
         CE::Exceptions::invalid_args
-        );
+    );
 }
 
 TEST(math_pointers, range_endpoints) {
@@ -293,7 +293,7 @@ TEST(math_pointers, byte_offsets) {
     EXPECT_EQ(
         CE::ptr::offset_address(begin, 17),
         reinterpret_cast<std::uintptr_t>(begin + 17)
-        );
+    );
     EXPECT_EQ(CE::ptr::add_offset<std::byte>(begin, 17), begin + 17);
 }
 
@@ -306,15 +306,15 @@ TEST(math_pointers, alignment_offsets) {
     EXPECT_EQ(
         CE::ptr::get_alignment_offset(begin, std::align_val_t{64}),
         std::size_t{0}
-        );
+    );
     EXPECT_EQ(
         CE::ptr::get_alignment_offset(begin + 3, std::align_val_t{16}),
         std::size_t{13}
-        );
+    );
     EXPECT_EQ(
         CE::ptr::align_offset(begin, 3, std::align_val_t{16}),
         std::size_t{16}
-        );
+    );
 }
 
 TEST(math_pointers, address_alignment) {
@@ -325,7 +325,7 @@ TEST(math_pointers, address_alignment) {
     EXPECT_EQ(
         CE::ptr::calculate_alignment(std::uintptr_t{0x120}),
         std::size_t{32}
-        );
+    );
 
     const auto actual_alignment =
         static_cast<std::size_t>(CE::ptr::calculate_alignment(begin));
@@ -353,7 +353,7 @@ TEST(math_pointers, pointer_hashes) {
     EXPECT_THROW(
         static_cast<void>(CE::ptr::pointer_to_hash(pointer, 3)),
         CE::Exceptions::invalid_args
-        );
+    );
 }
 
 TEST(math_fit, growth_policies) {

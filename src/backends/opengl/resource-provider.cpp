@@ -61,7 +61,7 @@ namespace CE::Assets {
             image.rgba.size() != width * height * 4)
             throw Exceptions::invalid_args(CE_HERE, "RGBA pixels do not match the requested dimensions");
         return std::make_shared<Texture>(renderer_.resources(), image.rgba.data(), static_cast<int>(width), static_cast<int>(height),
-                                         GL_TEXTURE0, true, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+            GL_TEXTURE0, true, false, GL_CLAMP_TO_EDGE, GL_RGBA);
     }
 
     std::shared_ptr<Image> OpenGLResourceProvider::create_font_atlas(const std::span<const unsigned char> alpha, const PixelSize size) {
@@ -71,12 +71,13 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "Font atlas pixels do not match the requested dimensions");
         }
         return std::make_shared<Texture>(renderer_.resources(), alpha.data(), static_cast<int>(size.width), static_cast<int>(size.height),
-                                         GL_TEXTURE0, false, false, GL_CLAMP_TO_EDGE, GL_RED);
+            GL_TEXTURE0, false, false, GL_CLAMP_TO_EDGE, GL_RED);
     }
 
-    std::shared_ptr<Geometry2D> OpenGLResourceProvider::upload_geometry(const std::span<const Vertex2D> vertices,
-                                                                        const PrimitiveTopology topology
-        ) {
+    std::shared_ptr<Geometry2D> OpenGLResourceProvider::upload_geometry(
+        const std::span<const Vertex2D> vertices,
+        const PrimitiveTopology topology
+    ) {
         return std::make_shared<VAO>(renderer_.resources(), vertices, topology);
     }
 
@@ -124,7 +125,7 @@ namespace CE::Assets {
             glGetShaderiv(shader.id, GL_COMPILE_STATUS, &compiled);
             if (compiled != GL_TRUE)
                 throw Exceptions::runtime_exception(CE_HERE,
-                                                    "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id));
+                    "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id));
             glAttachShader(program.id, shader.id);
             // The program retains the stage after glDeleteShader until linking/deletion.
         }

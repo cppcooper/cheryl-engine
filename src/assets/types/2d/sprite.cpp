@@ -107,9 +107,10 @@ namespace CE::Assets {
         }) == 1;
     }
 
-    SpriteAnimation Sprite::animation(const std::string& animation_name,
-                                      const std::optional<std::string> facing
-        ) const {
+    SpriteAnimation Sprite::animation(
+        const std::string& animation_name,
+        const std::optional<std::string> facing
+    ) const {
         const auto exact = animation_indices_.find(animation_key(animation_name, facing));
         if (exact != animation_indices_.end()) {
             return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(

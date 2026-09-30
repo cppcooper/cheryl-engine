@@ -12,10 +12,11 @@ namespace CE::Assets {
         geometry->draw(VAONumbers::calculate_num_strip_vertices(offset_), VAONumbers::vertices_per_strip_quad);
     }
 
-    TileAnimation::TileAnimation(TileAnimationDefinition definition,
-                                 const shptr<Geometry2D>& geometry,
-                                 const shptr<Image>& texture
-        )
+    TileAnimation::TileAnimation(
+        TileAnimationDefinition definition,
+        const shptr<Geometry2D>& geometry,
+        const shptr<Image>& texture
+    )
     :
     Draw2D(geometry, texture),
     Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
