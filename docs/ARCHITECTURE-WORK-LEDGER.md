@@ -16,7 +16,9 @@ Compilation, test execution, and remote writes have not been requested.
   demo, regression sources, and active documentation use the same name.
 - Task 1.2 complete; 1.5 platform portion complete: safe saved endpoints,
   owner checks, FIFO detached drains, cancellation, and nested-drain exclusion.
-- Task 1.3–1.5 simulation portion active.
+- Task 1.3 dispatcher implementation complete: owned no-argument work,
+  initialization-time acceptance, explicit owner binding, futures, and cancellation.
+- Task 1.4 runtime integration active; 1.5 endpoint mechanics complete for both dispatchers.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions
