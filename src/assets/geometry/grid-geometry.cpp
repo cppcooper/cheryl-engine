@@ -39,8 +39,8 @@ namespace CE::Assets {
                                                     "Asset grid pixel coordinate exceeds uint32_t");
             }
             const auto strip = math::Anchor::MakeQuadStrip(pivot, texture_size.width, texture_size.height, rect.width,
-                                                          rect.height, static_cast<std::uint32_t>(rect.x),
-                                                          static_cast<std::uint32_t>(rect.y));
+                                                           rect.height, static_cast<std::uint32_t>(rect.x),
+                                                           static_cast<std::uint32_t>(rect.y));
             std::copy(strip.vertices().begin(), strip.vertices().end(),
                       vertices.get() + cell * VAONumbers::vertices_per_strip_quad);
         }

@@ -6,8 +6,9 @@
 #include <utility>
 
 namespace CE::Assets {
-    SpriteAnimation::SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition> definition) :
-        definition_(std::move(definition)) {
+    SpriteAnimation::SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition> definition)
+    :
+    definition_(std::move(definition)) {
         if (!definition_ || definition_->frames.empty()) {
             throw Exceptions::bad_request(CE_HERE, "A sprite animation needs at least one frame");
         }
@@ -61,9 +62,10 @@ namespace CE::Assets {
 
     std::chrono::milliseconds SpriteAnimation::frame_duration() const { return definition_->frames[index_].duration; }
 
-    Sprite::Sprite(SpriteData data) :
-        Asset2D(std::move(data.geometry), std::move(data.texture)),
-        definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
+    Sprite::Sprite(SpriteData data)
+    :
+    Asset2D(std::move(data.geometry), std::move(data.texture)),
+    definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
         const auto cell_count = definition_->grid.cell_count();
         if (cell_count == 0) {
             throw Exceptions::bad_request(CE_HERE, "A sprite needs at least one grid cell");
@@ -106,7 +108,8 @@ namespace CE::Assets {
     }
 
     SpriteAnimation Sprite::animation(const std::string& animation_name,
-                                      const std::optional<std::string> facing) const {
+                                      const std::optional<std::string> facing
+        ) const {
         const auto exact = animation_indices_.find(animation_key(animation_name, facing));
         if (exact != animation_indices_.end()) {
             return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(

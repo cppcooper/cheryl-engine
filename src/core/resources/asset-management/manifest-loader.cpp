@@ -19,16 +19,22 @@ namespace CE::Assets {
         namespace fs = std::filesystem;
 
         constexpr std::array directions{
-            std::pair{"north", Direction::North}, std::pair{"north_east", Direction::NorthEast},
-            std::pair{"east", Direction::East},   std::pair{"south_east", Direction::SouthEast},
-            std::pair{"south", Direction::South}, std::pair{"south_west", Direction::SouthWest},
-            std::pair{"west", Direction::West},   std::pair{"north_west", Direction::NorthWest}};
+            std::pair{"north", Direction::North},
+            std::pair{"north_east", Direction::NorthEast},
+            std::pair{"east", Direction::East},
+            std::pair{"south_east", Direction::SouthEast},
+            std::pair{"south", Direction::South},
+            std::pair{"south_west", Direction::SouthWest},
+            std::pair{"west", Direction::West},
+            std::pair{"north_west", Direction::NorthWest}};
 
-        [[noreturn]] void fail(const fs::path& source, const std::string_view location,
-                               const std::string_view message) {
+        [[noreturn]] void fail(const fs::path& source,
+                               const std::string_view location,
+                               const std::string_view message
+            ) {
             throw Exceptions::runtime_exception(CE_HERE,
                                                 "Asset manifest '" + source.string() + "' at " + std::string(location) +
-                                                    ": " + std::string(message));
+                                                ": " + std::string(message));
         }
 
         void require_object(const json& value, const fs::path& source, const std::string_view location) {
@@ -43,8 +49,11 @@ namespace CE::Assets {
             }
         }
 
-        void allow_only(const json& object, const fs::path& source, const std::string_view location,
-                        const std::initializer_list<std::string_view> allowed) {
+        void allow_only(const json& object,
+                        const fs::path& source,
+                        const std::string_view location,
+                        const std::initializer_list<std::string_view> allowed
+            ) {
             require_object(object, source, location);
             for (const auto& [key, value] : object.items()) {
                 static_cast<void>(value);
@@ -54,8 +63,11 @@ namespace CE::Assets {
             }
         }
 
-        const json& required(const json& object, const std::string_view key, const fs::path& source,
-                             const std::string_view location) {
+        const json& required(const json& object,
+                             const std::string_view key,
+                             const fs::path& source,
+                             const std::string_view location
+            ) {
             require_object(object, source, location);
             const auto iter = object.find(key);
             if (iter == object.end()) {
@@ -64,8 +76,11 @@ namespace CE::Assets {
             return *iter;
         }
 
-        std::string read_string(const json& value, const fs::path& source, const std::string_view location,
-                                const bool allow_empty = false) {
+        std::string read_string(const json& value,
+                                const fs::path& source,
+                                const std::string_view location,
+                                const bool allow_empty = false
+            ) {
             if (!value.is_string()) {
                 fail(source, location, "expected a string");
             }
@@ -83,9 +98,12 @@ namespace CE::Assets {
             return read_string(object.at("description"), source, std::string(location) + ".description");
         }
 
-        std::uint64_t read_unsigned(const json& value, const fs::path& source, const std::string_view location,
+        std::uint64_t read_unsigned(const json& value,
+                                    const fs::path& source,
+                                    const std::string_view location,
                                     const std::uint64_t minimum = 0,
-                                    const std::uint64_t maximum = std::numeric_limits<std::uint64_t>::max()) {
+                                    const std::uint64_t maximum = std::numeric_limits<std::uint64_t>::max()
+            ) {
             if (!value.is_number_integer() && !value.is_number_unsigned()) {
                 fail(source, location, "expected an integer");
             }
@@ -99,14 +117,20 @@ namespace CE::Assets {
             return result;
         }
 
-        std::size_t read_size(const json& value, const fs::path& source, const std::string_view location,
-                              const std::size_t minimum = 0) {
+        std::size_t read_size(const json& value,
+                              const fs::path& source,
+                              const std::string_view location,
+                              const std::size_t minimum = 0
+            ) {
             return static_cast<std::size_t>(
                 read_unsigned(value, source, location, minimum, std::numeric_limits<std::size_t>::max()));
         }
 
-        std::uint32_t read_u32(const json& value, const fs::path& source, const std::string_view location,
-                               const std::uint32_t minimum = 0) {
+        std::uint32_t read_u32(const json& value,
+                               const fs::path& source,
+                               const std::string_view location,
+                               const std::uint32_t minimum = 0
+            ) {
             return static_cast<std::uint32_t>(
                 read_unsigned(value, source, location, minimum, std::numeric_limits<std::uint32_t>::max()));
         }
@@ -122,8 +146,10 @@ namespace CE::Assets {
             return result;
         }
 
-        std::chrono::milliseconds read_duration(const json& value, const fs::path& source,
-                                                const std::string_view location) {
+        std::chrono::milliseconds read_duration(const json& value,
+                                                const fs::path& source,
+                                                const std::string_view location
+            ) {
             const auto count = read_unsigned(value, source, location, 1, std::numeric_limits<std::int64_t>::max());
             return std::chrono::milliseconds(static_cast<std::int64_t>(count));
         }
@@ -139,8 +165,11 @@ namespace CE::Assets {
             });
         }
 
-        std::string read_identifier(const json& value, const fs::path& source, const std::string_view location,
-                                    const bool allow_dot = false) {
+        std::string read_identifier(const json& value,
+                                    const fs::path& source,
+                                    const std::string_view location,
+                                    const bool allow_dot = false
+            ) {
             auto result = read_string(value, source, location);
             if (!is_identifier(result, allow_dot)) {
                 fail(source, location, "value is not a valid lowercase identifier");
@@ -230,8 +259,11 @@ namespace CE::Assets {
             return result;
         }
 
-        CellIndex parse_cell(const json& value, const GridDefinition& grid, const fs::path& source,
-                             const std::string_view location) {
+        CellIndex parse_cell(const json& value,
+                             const GridDefinition& grid,
+                             const fs::path& source,
+                             const std::string_view location
+            ) {
             require_object(value, source, location);
             // The two JSON forms converge on one row-major index; validate against the
             // grid before storing it in a view, animation, or autotile definition.
@@ -254,9 +286,11 @@ namespace CE::Assets {
             return grid.cell_index(row, column);
         }
 
-        std::unordered_map<std::string, ViewDefinition> parse_views(const json& value, const GridDefinition& grid,
+        std::unordered_map<std::string, ViewDefinition> parse_views(const json& value,
+                                                                    const GridDefinition& grid,
                                                                     const fs::path& source,
-                                                                    const std::string_view location) {
+                                                                    const std::string_view location
+            ) {
             require_object(value, source, location);
             if (value.empty()) {
                 fail(source, location, "view map cannot be empty");
@@ -270,9 +304,9 @@ namespace CE::Assets {
                     .description = description(view, source, view_location),
                     .row = read_size(required(view, "row", source, view_location), source, view_location + ".row"),
                     .column =
-                        read_size(required(view, "column", source, view_location), source, view_location + ".column"),
+                    read_size(required(view, "column", source, view_location), source, view_location + ".column"),
                     .rows =
-                        read_size(required(view, "rows", source, view_location), source, view_location + ".rows", 1),
+                    read_size(required(view, "rows", source, view_location), source, view_location + ".rows", 1),
                     .columns = read_size(required(view, "columns", source, view_location), source,
                                          view_location + ".columns", 1)};
                 // Check the starting cell before subtracting it from the grid dimensions;
@@ -287,9 +321,11 @@ namespace CE::Assets {
             return result;
         }
 
-        std::unordered_map<std::string, CellIndex> parse_orientations(const json& value, const GridDefinition& grid,
+        std::unordered_map<std::string, CellIndex> parse_orientations(const json& value,
+                                                                      const GridDefinition& grid,
                                                                       const fs::path& source,
-                                                                      const std::string_view location) {
+                                                                      const std::string_view location
+            ) {
             require_object(value, source, location);
             if (value.empty()) {
                 fail(source, location, "orientation map cannot be empty");
@@ -302,8 +338,11 @@ namespace CE::Assets {
             return result;
         }
 
-        std::vector<TimedFrameDefinition> parse_frames(const json& value, const GridDefinition& grid,
-                                                       const fs::path& source, const std::string_view location) {
+        std::vector<TimedFrameDefinition> parse_frames(const json& value,
+                                                       const GridDefinition& grid,
+                                                       const fs::path& source,
+                                                       const std::string_view location
+            ) {
             require_array(value, source, location);
             if (value.empty()) {
                 fail(source, location, "animation must contain at least one frame");
@@ -393,8 +432,11 @@ namespace CE::Assets {
             return result;
         }
 
-        void append_profile_animations(SpriteDefinition& sprite, const AnimationProfileDefinition& profile,
-                                       const fs::path& source, const std::string_view location) {
+        void append_profile_animations(SpriteDefinition& sprite,
+                                       const AnimationProfileDefinition& profile,
+                                       const fs::path& source,
+                                       const std::string_view location
+            ) {
             // Expand each clip/facing combination into a concrete sequence of cells so runtime
             // sprite lookup does not need to interpret the profile's row offsets again.
             for (const auto& [clip_name, clip] : profile.clips) {
@@ -425,8 +467,11 @@ namespace CE::Assets {
             }
         }
 
-        void append_explicit_animations(SpriteDefinition& sprite, const json& value, const fs::path& source,
-                                        const std::string_view location) {
+        void append_explicit_animations(SpriteDefinition& sprite,
+                                        const json& value,
+                                        const fs::path& source,
+                                        const std::string_view location
+            ) {
             // Local clips carry their own cell sequence and have no facing; they share
             // the sprite grid validation used by profile-derived frame sequences.
             require_object(value, source, location);
@@ -472,8 +517,12 @@ namespace CE::Assets {
             });
         }
 
-        WangAutotileDefinition parse_wang_autotile(const json& value, const GridDefinition& grid, const WangType type,
-                                                   const fs::path& source, const std::string_view location) {
+        WangAutotileDefinition parse_wang_autotile(const json& value,
+                                                   const GridDefinition& grid,
+                                                   const WangType type,
+                                                   const fs::path& source,
+                                                   const std::string_view location
+            ) {
             allow_only(value, source, location, {"description", "type", "slot_order", "terrains", "tiles"});
             WangAutotileDefinition result{.description = description(value, source, location),
                                           .type = type,
@@ -581,12 +630,18 @@ namespace CE::Assets {
             return result;
         }
 
-        BitmaskAutotileDefinition parse_bitmask_autotile(const json& value, const GridDefinition& grid,
-                                                         const BitmaskType type, const fs::path& source,
-                                                         const std::string_view location) {
+        BitmaskAutotileDefinition parse_bitmask_autotile(const json& value,
+                                                         const GridDefinition& grid,
+                                                         const BitmaskType type,
+                                                         const fs::path& source,
+                                                         const std::string_view location
+            ) {
             allow_only(value, source, location, {"description", "type", "bit_order", "cases"});
             BitmaskAutotileDefinition result{
-                .description = description(value, source, location), .type = type, .bit_order = {}, .cases = {}};
+                .description = description(value, source, location),
+                .type = type,
+                .bit_order = {},
+                .cases = {}};
             const auto& order = required(value, "bit_order", source, location);
             require_array(order, source, std::string(location) + ".bit_order");
             if (order.empty() || order.size() > 8) {
@@ -629,7 +684,8 @@ namespace CE::Assets {
         std::unordered_map<std::string, AutotileDefinition> parse_autotiles(const json& value,
                                                                             const GridDefinition& grid,
                                                                             const fs::path& source,
-                                                                            const std::string_view location) {
+                                                                            const std::string_view location
+            ) {
             require_object(value, source, location);
             if (value.empty()) {
                 fail(source, location, "autotile map cannot be empty");
@@ -667,13 +723,20 @@ namespace CE::Assets {
 
         class Parser {
         public:
-            explicit Parser(fs::path source) : source_(std::move(source)) {}
+            explicit Parser(fs::path source)
+            : source_(std::move(source)) {}
 
             AssetManifest parse(const json& root) const {
                 // Establish document identity and defaults first; individual assets inherit these
                 // values unless their entry provides a more specific texture or pivot.
                 allow_only(root, source_, "$",
-                           {"$schema", "version", "namespace", "texture", "defaults", "animation_profiles", "sprites",
+                           {"$schema",
+                            "version",
+                            "namespace",
+                            "texture",
+                            "defaults",
+                            "animation_profiles",
+                            "sprites",
                             "tilesets"});
                 AssetManifest manifest;
                 manifest.source = source_;
@@ -727,8 +790,10 @@ namespace CE::Assets {
         private:
             fs::path source_;
 
-            fs::path entry_texture(const json& entry, const AssetManifest& manifest,
-                                   const std::string_view location) const {
+            fs::path entry_texture(const json& entry,
+                                   const AssetManifest& manifest,
+                                   const std::string_view location
+                ) const {
                 if (entry.contains("texture")) {
                     return parse_texture_path(entry.at("texture"), source_, std::string(location) + ".texture");
                 }
@@ -748,7 +813,13 @@ namespace CE::Assets {
                     validate_map_key(name, source_, "$.sprites");
                     const auto location = "$.sprites." + name;
                     allow_only(sprite, source_, location,
-                               {"description", "texture", "grid", "pivot", "views", "orientations", "animation_profile",
+                               {"description",
+                                "texture",
+                                "grid",
+                                "pivot",
+                                "views",
+                                "orientations",
+                                "animation_profile",
                                 "animations"});
                     // Bind an entry to its effective texture and pivot before resolving
                     // anything that addresses cells within its grid.
@@ -759,8 +830,8 @@ namespace CE::Assets {
                         .texture = entry_texture(sprite, manifest, location),
                         .grid = parse_grid(required(sprite, "grid", source_, location), source_, location + ".grid"),
                         .pivot = sprite.contains("pivot")
-                            ? parse_pivot(sprite.at("pivot"), source_, location + ".pivot")
-                            : manifest.default_sprite_pivot,
+                        ? parse_pivot(sprite.at("pivot"), source_, location + ".pivot")
+                        : manifest.default_sprite_pivot,
                         .views = {},
                         .orientations = {},
                         .animation_profile = std::nullopt,
@@ -807,7 +878,13 @@ namespace CE::Assets {
                     validate_map_key(name, source_, "$.tilesets");
                     const auto location = "$.tilesets." + name;
                     allow_only(tileset, source_, location,
-                               {"description", "texture", "grid", "pivot", "views", "orientations", "animations",
+                               {"description",
+                                "texture",
+                                "grid",
+                                "pivot",
+                                "views",
+                                "orientations",
+                                "animations",
                                 "autotiles"});
                     // Materialize the shared entry properties first; later tile rules
                     // can then resolve all targets and variants into this grid's indices.
@@ -818,8 +895,8 @@ namespace CE::Assets {
                         .texture = entry_texture(tileset, manifest, location),
                         .grid = parse_grid(required(tileset, "grid", source_, location), source_, location + ".grid"),
                         .pivot = tileset.contains("pivot")
-                            ? parse_pivot(tileset.at("pivot"), source_, location + ".pivot")
-                            : manifest.default_tileset_pivot,
+                        ? parse_pivot(tileset.at("pivot"), source_, location + ".pivot")
+                        : manifest.default_tileset_pivot,
                         .views = {},
                         .orientations = {},
                         .animations = {},

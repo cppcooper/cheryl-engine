@@ -8,7 +8,8 @@
 
 namespace CE::Assets {
     Graphic Graphic::from_image(std::shared_ptr<Image> image, ResourceProvider& provider, const math::Pivot pivot) {
-        if (!image) throw Exceptions::invalid_args(CE_HERE, "A graphic requires an image");
+        if (!image)
+            throw Exceptions::invalid_args(CE_HERE, "A graphic requires an image");
         const auto size = image->pixel_size();
         if (size.width == 0 || size.height == 0) {
             throw Exceptions::invalid_args(CE_HERE, "A graphic requires non-zero image dimensions");

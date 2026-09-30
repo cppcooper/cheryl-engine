@@ -5,7 +5,8 @@
 namespace CE::Assets {
     void ShaderMgr::load_program(const std::filesystem::path& key,
                                  const std::vector<std::filesystem::path>& stages,
-                                 ResourceProvider& provider) {
+                                 ResourceProvider& provider
+        ) {
         bind_provider(provider);
         if (contains(key))
             return;
@@ -14,7 +15,8 @@ namespace CE::Assets {
 
     void ShaderMgr::reload_program(const std::filesystem::path& key,
                                    const std::vector<std::filesystem::path>& stages,
-                                   ResourceProvider& provider) {
+                                   ResourceProvider& provider
+        ) {
         bind_provider(provider);
         auto program = provider.link_program(stages);
         if (!program)

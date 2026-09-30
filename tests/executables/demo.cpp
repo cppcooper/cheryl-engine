@@ -42,7 +42,7 @@ namespace DemoActions {
 class Game : public CE::GFramework::AbstractGame {
 public:
     Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets)
-        : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
+    : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
 
     void init() override {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
@@ -177,9 +177,9 @@ public:
         }
 
         const glm::vec2 movement{static_cast<float>(actions.button(DemoActions::Right).down_duration.count() -
-                                                    actions.button(DemoActions::Left).down_duration.count()),
+                                     actions.button(DemoActions::Left).down_duration.count()),
                                  static_cast<float>(actions.button(DemoActions::Up).down_duration.count() -
-                                                    actions.button(DemoActions::Down).down_duration.count())};
+                                     actions.button(DemoActions::Down).down_duration.count())};
         if (glm::length(movement) > 0.0f) {
             // Movement uses observed down-time; a completed tap still moves even
             // though the current button state is released at this update.

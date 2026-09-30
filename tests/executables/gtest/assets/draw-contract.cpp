@@ -19,15 +19,18 @@ namespace {
 
         CE::Assets::ShaderPass camera;
         int raw_uniform_writes = 0;
+
         void bind_pass(const CE::Assets::ShaderPass& pass) override {
             ++uses;
             camera = pass;
         }
+
         void bind_draw(const CE::Assets::ShaderDraw& draw) override {
             alpha = draw.alpha;
             scale = draw.scale;
             model = draw.model;
         }
+
         void use() override { ++uses; }
         void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
         void set_uniform_value(const char*, int) override { ++raw_uniform_writes; }

@@ -50,7 +50,9 @@ TEST(templates_block, range_splits) {
 TEST(templates_block, typed_splits) {
     // Establish four typed elements and their byte boundaries. A split at
     // zero must leave the original range unchanged.
-    struct Value { std::uint64_t data; };
+    struct Value {
+        std::uint64_t data;
+    };
     auto backing = std::shared_ptr<Value>(new Value[4], [](Value* p) { delete[] p; });
     Block<Value> block{backing, backing, CE::ptr::calculate_alignment(backing.get()), 4};
 
@@ -83,7 +85,9 @@ TEST(templates_block, typed_splits) {
     EXPECT_EQ(aligned->length, 1);
 }
 
-struct CullProbeItem { char value; };
+struct CullProbeItem {
+    char value;
+};
 
 struct CullProbe : AbstractManager<CullProbeItem> {
     using AbstractManager<CullProbeItem>::record_new;
@@ -168,7 +172,9 @@ TEST(templates_block, neighbors_across_gaps) {
     EXPECT_FALSE(manager.search_right(same_owner_second, owner_sections).has_value());
 }
 
-struct MergeProbeItem { char value; };
+struct MergeProbeItem {
+    char value;
+};
 
 struct MergeProbe : AbstractManager<MergeProbeItem> {
     using AbstractManager<MergeProbeItem>::merge_into_pool;
@@ -225,7 +231,9 @@ TEST(templates_block, rejoining_an_owner) {
     stale.clear();
 }
 
-struct ManageProbeItem { unsigned char value; };
+struct ManageProbeItem {
+    unsigned char value;
+};
 
 /**
  * Exposes iManage's protected virtual operations to tests. Uses a dedicated
@@ -234,6 +242,7 @@ struct ManageProbeItem { unsigned char value; };
 class Test_iManage {
     AbstractManager<ManageProbeItem> implementation_;
     iManage<ManageProbeItem>* mgr_ = &implementation_;
+
 public:
     ~Test_iManage() {
         BlockManagement<ManageProbeItem> bm;
@@ -245,10 +254,12 @@ public:
         std::get<1>(bm.stale).clear();
         std::get<1>(bm.release).clear();
     }
+
     void record(Block<ManageProbeItem> block) { mgr_->record_new(block); }
     OBlock<ManageProbeItem> owner(ManageProbeItem* ptr) { return mgr_->find_owner(ptr); }
     OBlock<ManageProbeItem> section(ManageProbeItem* ptr) { return mgr_->find_section(ptr); }
     OBlock<ManageProbeItem> merge(Block<ManageProbeItem> block) { return mgr_->merge_into_pool(block); }
+
     OBlock<ManageProbeItem> fill(std::size_t count, std::align_val_t alignment = std::align_val_t{0}) {
         return mgr_->fill_request(count, alignment);
     }
@@ -258,7 +269,7 @@ TEST(templates_block, recycling_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
         auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
-                                                        [](ManageProbeItem* p) { delete[] p; });
+                                                       [](ManageProbeItem* p) { delete[] p; });
         return Block<ManageProbeItem>{memory, memory, CE::ptr::calculate_alignment(memory.get()), 128};
     };
     auto first = make_owner();
@@ -331,15 +342,15 @@ TEST(templates_block, bookkeeping_checks) {
     lrelease.unlock();
 
     auto bm = BMv();
-    auto &reg = std::get<1>(bm.registry);
-    auto &sec = std::get<1>(bm.sections);
-    auto &pool = std::get<1>(bm.pool);
-    auto &release = std::get<1>(bm.release);
-    auto &stale = std::get<1>(bm.stale);
+    auto& reg = std::get<1>(bm.registry);
+    auto& sec = std::get<1>(bm.sections);
+    auto& pool = std::get<1>(bm.pool);
+    auto& release = std::get<1>(bm.release);
+    auto& stale = std::get<1>(bm.stale);
 
     constexpr std::size_t len = 2048;
     char* p_raw = new char[len];
-    std::shared_ptr<char> ptr(p_raw, [](const char* p){ delete[] p; });
+    std::shared_ptr<char> ptr(p_raw, [](const char* p) { delete[] p; });
     auto align_val = CE::ptr::calculate_alignment(p_raw);
     constexpr std::size_t i1 = 64;
     constexpr std::size_t i2 = 128;
@@ -348,7 +359,7 @@ TEST(templates_block, bookkeeping_checks) {
 
     // Keep b0 as the full owner and divide a copy into five sections. Later
     // checks deliberately move those pieces among the bookkeeping sets.
-    const Block<char> b0 {ptr, ptr, align_val, len};
+    const Block<char> b0{ptr, ptr, align_val, len};
     auto b1 = b0;
     auto b2 = *b1.split_exactly(i1);
     auto b3 = *b2.split_exactly(i2);

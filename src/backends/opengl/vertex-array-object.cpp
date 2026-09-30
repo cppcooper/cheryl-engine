@@ -14,6 +14,7 @@ template <typename T, uint64_t offset>
 constexpr void* glBufferOffset() {
     return (void*)get_length<T, offset>();
 }
+
 namespace CE {
     using namespace VAONumbers;
 
@@ -80,13 +81,15 @@ namespace CE {
     VAO::VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
              std::shared_ptr<Vertex2D> vertices,
              const uint32_t num_vertices,
-             const Assets::PrimitiveTopology topology)
-        : VAO(std::move(lifetime), vertex_view(vertices, num_vertices), topology) {}
+             const Assets::PrimitiveTopology topology
+        )
+    : VAO(std::move(lifetime), vertex_view(vertices, num_vertices), topology) {}
 
     VAO::VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
              const std::span<const Vertex2D> vertices,
-             const Assets::PrimitiveTopology topology)
-        : type(flat), topology_(topology), vertex_count_(vertices.size()) {
+             const Assets::PrimitiveTopology topology
+        )
+    : type(flat), topology_(topology), vertex_count_(vertices.size()) {
         if (vertices.empty() || !vertices.data() || vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()) ||
             vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) / sizeof(Vertex2D))
             throw Exceptions::invalid_args(CE_HERE, "2D geometry exceeds supported buffer/draw sizes");
@@ -110,8 +113,9 @@ namespace CE {
              std::shared_ptr<Vertex3D> vertices,
              uint32_t num_vertices,
              std::shared_ptr<uint32_t> indices,
-             uint32_t num_indices)
-        : type(mesh), vertex_count_(num_vertices) {
+             uint32_t num_indices
+        )
+    : type(mesh), vertex_count_(num_vertices) {
         // Copy mesh indices and interleaved 3D vertices; the VAO retains the
         // element buffer binding along with position, normal, and UV layout.
         if (!vertices || !indices || num_vertices == 0 || num_indices == 0 ||

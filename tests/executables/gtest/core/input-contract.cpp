@@ -32,16 +32,20 @@ namespace {
 
     public:
         bool advertises_events = false;
+
         [[nodiscard]] bool supports(CE::Input::InputMode mode) const override {
             return mode == CE::Input::InputMode::State || (advertises_events && mode == CE::Input::InputMode::Events);
         }
+
         void initialize(CE::iWindow& window) override { window_ = &window; }
+
         void poll() override {
             if (!window_)
                 throw std::logic_error("Input is not attached");
             bindings_.on_button({keyboard_id(), test_button}, true);
             (void)bindings_.publish_actions();
         }
+
         void deinitialize() override { window_ = nullptr; }
 
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }

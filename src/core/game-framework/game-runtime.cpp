@@ -22,7 +22,7 @@
 
 namespace CE::GFramework {
     GameRuntime::GameRuntime(Engine::EngineContext& engine, AbstractGame& game, const RunMode mode, const Input::PollingOptions polling)
-        : engine_(engine), game_(game), mode_(mode), polling_(polling) {
+    : engine_(engine), game_(game), mode_(mode), polling_(polling) {
         // Reject an invalid policy before starting any platform or game resources.
         (void)Input::PollingBacklog(polling_);
         if (mode_ != RunMode::Sequential && mode_ != RunMode::Concurrent)

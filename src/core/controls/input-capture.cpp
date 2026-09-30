@@ -6,7 +6,7 @@
 
 namespace CE::Input {
     CaptureLease::CaptureLease(std::shared_ptr<Detail::CaptureCounts> counts, const InputMode mode)
-        : counts_(std::move(counts)), mode_(mode) {
+    : counts_(std::move(counts)), mode_(mode) {
         if (mode == InputMode::Events)
             counts_->events.fetch_add(1);
         else if (mode == InputMode::Text)
@@ -14,7 +14,10 @@ namespace CE::Input {
     }
 
     CaptureLease::~CaptureLease() { reset(); }
-    CaptureLease::CaptureLease(CaptureLease&& other) noexcept : counts_(std::move(other.counts_)), mode_(other.mode_) {}
+
+    CaptureLease::CaptureLease(CaptureLease&& other) noexcept
+    : counts_(std::move(other.counts_)), mode_(other.mode_) {}
+
     CaptureLease& CaptureLease::operator=(CaptureLease&& other) noexcept {
         if (this != &other) {
             reset();
@@ -23,6 +26,7 @@ namespace CE::Input {
         }
         return *this;
     }
+
     void CaptureLease::reset() noexcept {
         if (!counts_)
             return;
@@ -57,12 +61,18 @@ namespace CE::Input {
         if (text && (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF)))
             throw Exceptions::invalid_args(CE_HERE, "Text input requires a Unicode scalar value");
         const bool keyboard = kind == DeviceKind::Keyboard || text;
-        pending_.push_back({next_sequence_++, observed_at, device, kind, std::move(data), keyboard ? focus_.target : 0,
+        pending_.push_back({next_sequence_++,
+                            observed_at,
+                            device,
+                            kind,
+                            std::move(data),
+                            keyboard ? focus_.target : 0,
                             keyboard ? focus_.epoch : 0,
                             !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough});
     }
 
     std::vector<InputRecord> InputCapture::complete() { return std::exchange(pending_, {}); }
+
     void InputCapture::discard_pending() {
         pending_.clear();
         events_enabled_ = false;

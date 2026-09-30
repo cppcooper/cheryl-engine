@@ -111,11 +111,11 @@ TEST(asset_grid, image_too_small) {
     EXPECT_THROW(
         static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})),
         CE::Exceptions::runtime_exception
-    );
+        );
     EXPECT_THROW(
         static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16})),
         CE::Exceptions::runtime_exception
-    );
+        );
 }
 
 TEST(asset_manifest, checked_in_manifests) {

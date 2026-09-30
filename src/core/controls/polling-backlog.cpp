@@ -5,7 +5,8 @@
 #include <utility>
 
 namespace CE::Input {
-    PollingBacklog::PollingBacklog(const PollingOptions options) : options_(options) {
+    PollingBacklog::PollingBacklog(const PollingOptions options)
+    : options_(options) {
         if (options.spacing < InputClock::duration::zero())
             throw Exceptions::invalid_args(CE_HERE, "Polling spacing cannot be negative");
         switch (options.policy) {

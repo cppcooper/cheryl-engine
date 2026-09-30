@@ -56,7 +56,7 @@ TEST(math_binary, compact_storage) {
 
 TEST(math_binary, individual_bits) {
     CE::math::BitArray<8> bits;
-    const auto &readable = bits;
+    const auto& readable = bits;
 
     // Light two flags, then clear only the first. Read each change through
     // the const interface that consumers use to inspect the flags.
@@ -99,7 +99,7 @@ TEST(math_binary, word_access) {
 
     // Writing the word changes the individual bits.
     words[0] = std::uint8_t{3};
-    const auto &readable = bits;
+    const auto& readable = bits;
     EXPECT_TRUE(readable[0]);
     EXPECT_TRUE(readable[1]);
     EXPECT_FALSE(readable[2]);
@@ -121,7 +121,7 @@ TEST(math_binary, word_boundary) {
     EXPECT_EQ(words[1], word_type{1});
 
     words[1] = word_type{2};
-    const auto &readable = bits;
+    const auto& readable = bits;
     EXPECT_EQ(readable.words()[0], word_type{1} << (boundary - 1));
     EXPECT_EQ(readable.words()[1], word_type{2});
     EXPECT_TRUE(readable[boundary - 1]);
@@ -136,7 +136,7 @@ TEST(math_binary, last_bit) {
 
     // The final represented flag lies two positions into the second word.
     bits[boundary + 2] = true;
-    const auto &readable = bits;
+    const auto& readable = bits;
     EXPECT_TRUE(readable[boundary + 2]);
     EXPECT_FALSE(readable[boundary + 1]);
     EXPECT_EQ(readable.words()[1], Array::word_type{4});
@@ -160,7 +160,7 @@ TEST(math_anchor, named_anchors) {
     using namespace CE::math;
 
     struct AnchorCase {
-        const char *name;
+        const char* name;
         AnchorType type;
         Pivot pivot;
     };
@@ -180,7 +180,7 @@ TEST(math_anchor, named_anchors) {
 
     // Names and aliases must resolve to the same normalized pivots used by the
     // geometry-building helpers.
-    for (const auto &test : cases) {
+    for (const auto& test : cases) {
         SCOPED_TRACE(test.name);
         EXPECT_EQ(get_anchor(test.name), test.type);
         EXPECT_EQ(get_pivot(test.type), test.pivot);
@@ -276,8 +276,8 @@ TEST(math_anchor, zero_image_dimensions) {
 
 TEST(math_pointers, range_endpoints) {
     std::array<std::byte, 128> memory{};
-    auto *begin = memory.data();
-    auto *end = begin + memory.size();
+    auto* begin = memory.data();
+    auto* end = begin + memory.size();
 
     // Ranges are inclusive at the beginning and exclusive at the end.
     EXPECT_TRUE(CE::ptr::is_in_range(begin, end, begin));
@@ -287,7 +287,7 @@ TEST(math_pointers, range_endpoints) {
 
 TEST(math_pointers, byte_offsets) {
     std::array<std::byte, 128> memory{};
-    auto *begin = memory.data();
+    auto* begin = memory.data();
 
     // The two helpers agree on where a byte offset lands in this allocation.
     EXPECT_EQ(
@@ -299,7 +299,7 @@ TEST(math_pointers, byte_offsets) {
 
 TEST(math_pointers, alignment_offsets) {
     alignas(64) std::array<std::byte, 128> memory{};
-    auto *begin = memory.data();
+    auto* begin = memory.data();
 
     // A deliberately aligned base needs no correction. Moving three bytes from
     // it requires thirteen more bytes to reach the next 16-byte boundary.
@@ -319,7 +319,7 @@ TEST(math_pointers, alignment_offsets) {
 
 TEST(math_pointers, address_alignment) {
     alignas(64) std::array<std::byte, 128> memory{};
-    auto *begin = memory.data();
+    auto* begin = memory.data();
 
     // calculate_alignment reports the largest power of two dividing an address.
     EXPECT_EQ(
@@ -335,7 +335,7 @@ TEST(math_pointers, address_alignment) {
 
 TEST(math_pointers, pointer_hashes) {
     int value = 0;
-    void *pointer = &value;
+    void* pointer = &value;
 
     // The requested byte width controls the variant alternative while hashing
     // the same address remains deterministic.

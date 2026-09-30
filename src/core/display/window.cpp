@@ -16,11 +16,21 @@ namespace {
 }
 
 namespace CE {
-    Window::Window(const Monitor& monitor, GLFWmonitor* native_monitor, const Enum::window_mode mode, const int width,
-                   const int height, const std::string& title) :
-        logical_size_(width, height), window_mode_(mode), monitor_(monitor), glfw_monitor_(native_monitor),
-        glfw_window_(create_native_window(native_monitor, mode, width, height, title)), windowed_width_(width),
-        windowed_height_(height) {
+    Window::Window(const Monitor& monitor,
+                   GLFWmonitor* native_monitor,
+                   const Enum::window_mode mode,
+                   const int width,
+                   const int height,
+                   const std::string& title
+        )
+    :
+    logical_size_(width, height),
+    window_mode_(mode),
+    monitor_(monitor),
+    glfw_monitor_(native_monitor),
+    glfw_window_(create_native_window(native_monitor, mode, width, height, title)),
+    windowed_width_(width),
+    windowed_height_(height) {
         glfwGetMonitorPos(glfw_monitor_, &windowed_x_, &windowed_y_);
         if (mode == Enum::window_mode::NORMAL) {
             glfwSetWindowPos(glfw_window_, windowed_x_, windowed_y_);
@@ -104,18 +114,18 @@ namespace CE {
         // Windowed and borderless use a detached monitor; fullscreen attaches
         // the selected monitor at its video mode and refresh rate.
         switch (mode) {
-        case Enum::window_mode::NORMAL:
-            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
-            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
-            break;
-        case Enum::window_mode::BORDERLESS:
-            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
-            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
-            break;
-        case Enum::window_mode::FULLSCREEN:
-            glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height,
-                                 vidmode->refreshRate);
-            break;
+            case Enum::window_mode::NORMAL:
+                glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+                glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
+                break;
+            case Enum::window_mode::BORDERLESS:
+                glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+                glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
+                break;
+            case Enum::window_mode::FULLSCREEN:
+                glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height,
+                                     vidmode->refreshRate);
+                break;
         }
         // Mode switches can change framebuffer size independently of logical window size.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
@@ -135,8 +145,12 @@ namespace CE {
 }
 
 namespace {
-    GLFWwindow* create_native_window(GLFWmonitor* monitor, const CE::Enum::window_mode mode, const int width,
-                                     const int height, const std::string& title) {
+    GLFWwindow* create_native_window(GLFWmonitor* monitor,
+                                     const CE::Enum::window_mode mode,
+                                     const int width,
+                                     const int height,
+                                     const std::string& title
+        ) {
         if (width <= 0 || height <= 0)
             throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         if (mode != CE::Enum::window_mode::NORMAL && mode != CE::Enum::window_mode::BORDERLESS &&
@@ -157,48 +171,48 @@ namespace {
         std::random_device rng;
         std::uniform_int_distribution<> uid(1, 20);
         switch (uid(rng)) {
-        case 1:
-            return "One is the loneliest number.";
-        case 2:
-            return "Two's company, three's a crowd.";
-        case 3:
-            return "Three's a charm!";
-        case 4:
-            return "Four-leaf clover, lucky number!";
-        case 5:
-            return "High five!";
-        case 6:
-            return "Six feet under.";
-        case 7:
-            return "Lucky number seven!";
-        case 8:
-            return "Eight ball, corner pocket.";
-        case 9:
-            return "Nine lives, like a cat!";
-        case 10:
-            return "Perfect ten!";
-        case 11:
-            return "Eleven pipers piping!";
-        case 12:
-            return "Twelve days of Christmas!";
-        case 13:
-            return "Unlucky thirteen!";
-        case 14:
-            return "Fourteen karat gold.";
-        case 15:
-            return "Fifteen minutes of fame!";
-        case 16:
-            return "Sweet sixteen!";
-        case 17:
-            return "Seventeen candles on the cake.";
-        case 18:
-            return "Eighteen holes on the golf course.";
-        case 19:
-            return "Nineteen is prime!";
-        case 20:
-            return "Twenty questions!";
-        default:
-            return "Out of range!";
+            case 1:
+                return "One is the loneliest number.";
+            case 2:
+                return "Two's company, three's a crowd.";
+            case 3:
+                return "Three's a charm!";
+            case 4:
+                return "Four-leaf clover, lucky number!";
+            case 5:
+                return "High five!";
+            case 6:
+                return "Six feet under.";
+            case 7:
+                return "Lucky number seven!";
+            case 8:
+                return "Eight ball, corner pocket.";
+            case 9:
+                return "Nine lives, like a cat!";
+            case 10:
+                return "Perfect ten!";
+            case 11:
+                return "Eleven pipers piping!";
+            case 12:
+                return "Twelve days of Christmas!";
+            case 13:
+                return "Unlucky thirteen!";
+            case 14:
+                return "Fourteen karat gold.";
+            case 15:
+                return "Fifteen minutes of fame!";
+            case 16:
+                return "Sweet sixteen!";
+            case 17:
+                return "Seventeen candles on the cake.";
+            case 18:
+                return "Eighteen holes on the golf course.";
+            case 19:
+                return "Nineteen is prime!";
+            case 20:
+                return "Twenty questions!";
+            default:
+                return "Out of range!";
         }
     }
 }

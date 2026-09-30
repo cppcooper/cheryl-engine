@@ -14,9 +14,13 @@ namespace CE::Engine {
                                  std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
                                  std::unique_ptr<RenderAPIs::iRenderer> renderer,
                                  std::unique_ptr<Assets::ResourceProvider> resources,
-                                 Input::iInputSystem& input)
-        : display_(std::move(display)), surface_(std::move(surface)), renderer_(std::move(renderer)), resources_(std::move(resources)),
-          input_(&input) {
+                                 Input::iInputSystem& input
+        )
+    : display_(std::move(display)),
+      surface_(std::move(surface)),
+      renderer_(std::move(renderer)),
+      resources_(std::move(resources)),
+      input_(&input) {
         validate();
     }
 
@@ -24,9 +28,14 @@ namespace CE::Engine {
                                  std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
                                  std::unique_ptr<RenderAPIs::iRenderer> renderer,
                                  std::unique_ptr<Assets::ResourceProvider> resources,
-                                 std::unique_ptr<Input::iInputSystem> input)
-        : display_(std::move(display)), surface_(std::move(surface)), renderer_(std::move(renderer)), resources_(std::move(resources)),
-          owned_input_(std::move(input)), input_(owned_input_.get()) {
+                                 std::unique_ptr<Input::iInputSystem> input
+        )
+    : display_(std::move(display)),
+      surface_(std::move(surface)),
+      renderer_(std::move(renderer)),
+      resources_(std::move(resources)),
+      owned_input_(std::move(input)),
+      input_(owned_input_.get()) {
         validate();
     }
 

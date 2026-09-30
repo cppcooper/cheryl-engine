@@ -6,7 +6,7 @@
 
 namespace CE::RenderAPIs {
     OpenGLResourceLifetime::OpenGLResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
-        : owner_(owner), is_current_(std::move(is_current)) {
+    : owner_(owner), is_current_(std::move(is_current)) {
         if (owner == std::thread::id{} || !is_current_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
     }
@@ -121,15 +121,16 @@ namespace CE::RenderAPIs {
     }
 
     OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, const GLResourceKind kind, const GLuint id)
-        : lifetime_(std::move(lifetime)), id_(id) {
+    : lifetime_(std::move(lifetime)), id_(id) {
         if (!lifetime_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
         slot_ = lifetime_->track(kind, id);
     }
 
     OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept
-        : lifetime_(std::move(other.lifetime_)), slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
-          id_(std::exchange(other.id_, 0)) {}
+    : lifetime_(std::move(other.lifetime_)),
+      slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
+      id_(std::exchange(other.id_, 0)) {}
 
     OpenGLHandle& OpenGLHandle::operator=(OpenGLHandle&& other) noexcept {
         if (this != &other) {

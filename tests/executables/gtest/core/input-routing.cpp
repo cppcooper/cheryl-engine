@@ -13,24 +13,29 @@ namespace {
     public:
         std::function<void()> collect;
         void initialize(CE::iWindow&) override {}
+
         void deinitialize() override {
             bindings_.clear();
             discard_captured_input();
         }
+
         void poll() override {
             begin_input_poll();
             if (collect)
                 collect();
             (void)publish_input();
         }
+
         void key(CE::Input::ButtonPhase phase) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{65, phase});
             if (phase != CE::Input::ButtonPhase::Repeat)
                 bindings_.on_button({keyboard_id(), 65}, phase == CE::Input::ButtonPhase::Press);
         }
+
         void text(char32_t codepoint) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{codepoint});
         }
+
         void pad(bool held) { bindings_.on_button({gamepad_id(), 65}, held); }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }

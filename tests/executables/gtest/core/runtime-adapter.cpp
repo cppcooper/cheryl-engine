@@ -37,26 +37,96 @@ namespace {
     struct TemporaryAssets {
         std::filesystem::path root;
         inline static std::atomic<unsigned int> next{0};
+
         TemporaryAssets()
-            : root(std::filesystem::temp_directory_path() /
-                   ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
-                    std::to_string(next.fetch_add(1)))) {
+        : root(std::filesystem::temp_directory_path() /
+        ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+            std::to_string(next.fetch_add(1)))) {
             std::filesystem::create_directories(root);
         }
+
         ~TemporaryAssets() {
             std::error_code error;
             std::filesystem::remove_all(root, error);
         }
+
         void write_png(const std::string& name = "pixel.png") const {
-            constexpr std::array<unsigned char, 70> bytes{137, 80,  78, 71, 13, 10,  26,  10, 0,   0,   0,   13,  73,  72,  68,  82, 0, 0,
-                                                          0,   1,   0,  0,  0,  1,   8,   6,  0,   0,   0,   31,  21,  196, 137, 0,  0, 0,
-                                                          13,  73,  68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31,  0,   5,   0,  1, 255,
-                                                          137, 153, 61, 29, 0,  0,   0,   0,  73,  69,  78,  68,  174, 66,  96,  130};
+            constexpr std::array<unsigned char, 70> bytes{137,
+                                                          80,
+                                                          78,
+                                                          71,
+                                                          13,
+                                                          10,
+                                                          26,
+                                                          10,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          13,
+                                                          73,
+                                                          72,
+                                                          68,
+                                                          82,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          1,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          1,
+                                                          8,
+                                                          6,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          31,
+                                                          21,
+                                                          196,
+                                                          137,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          13,
+                                                          73,
+                                                          68,
+                                                          65,
+                                                          84,
+                                                          120,
+                                                          156,
+                                                          99,
+                                                          248,
+                                                          207,
+                                                          192,
+                                                          240,
+                                                          31,
+                                                          0,
+                                                          5,
+                                                          0,
+                                                          1,
+                                                          255,
+                                                          137,
+                                                          153,
+                                                          61,
+                                                          29,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          0,
+                                                          73,
+                                                          69,
+                                                          78,
+                                                          68,
+                                                          174,
+                                                          66,
+                                                          96,
+                                                          130};
             const auto file = root / name;
             std::filesystem::create_directories(file.parent_path());
             std::ofstream output(file, std::ios::binary);
             output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
         }
+
         void write_manifest(const std::string& name_space = "probe") const {
             std::string document =
                 R"JSON({"$schema":"./schemas/asset-manifest-1.0.schema.json","version":"1.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
@@ -91,21 +161,25 @@ namespace {
     class MemoryDisplay final : public CE::iDisplaySystem {
     public:
         std::function<void()> on_destroy;
+
         ~MemoryDisplay() override {
             if (on_destroy)
                 on_destroy();
         }
+
         [[nodiscard]] const std::vector<CE::Monitor>& monitors() const override { return monitors_; }
         [[nodiscard]] int monitor_count() const override { return static_cast<int>(monitors_.size()); }
         [[nodiscard]] const CE::Monitor& primary_monitor() const override { return monitors_.front(); }
         [[nodiscard]] CE::iWindow* active_window() const override { return active_; }
         [[nodiscard]] std::pair<float, float> content_scale(const CE::Monitor&) const override { return {1, 1}; }
+
         CE::iWindow* create_window(const CE::Monitor&, CE::Enum::window_mode mode, int width, int height) override {
             window_ = std::make_unique<MemoryWindow>();
             window_->resize(width, height);
             window_->set_mode(mode);
             return window_.get();
         }
+
         void activate_window(CE::iWindow& window) override { active_ = &window; }
 
         [[nodiscard]] MemoryWindow& window() { return *window_; }
@@ -124,12 +198,15 @@ namespace {
     public:
         std::function<void()> on_poll;
         std::function<void()> on_destroy;
+
         ~MemoryInput() override {
             if (on_destroy)
                 on_destroy();
         }
+
         bool default_press = true;
         void initialize(CE::iWindow& window) override { window_ = &window; }
+
         void poll() override {
             begin_input_poll();
             if (on_poll)
@@ -138,19 +215,23 @@ namespace {
                 bindings_.on_button({keyboard_id(), test_button}, true);
             (void)publish_input();
         }
+
         void deinitialize() override {
             window_ = nullptr;
             discard_captured_input();
             bindings_.clear();
         }
+
         void key(CE::Input::ButtonPhase phase) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{test_button, phase});
             if (phase != CE::Input::ButtonPhase::Repeat)
                 bindings_.on_button({keyboard_id(), test_button}, phase == CE::Input::ButtonPhase::Press);
         }
+
         void text(char32_t codepoint) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{codepoint});
         }
+
         [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
         [[nodiscard]] bool supports_focus() const override { return true; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
@@ -182,7 +263,8 @@ namespace {
         CE::FramebufferSize size{};
         std::vector<CE::Input::InputRecord> received_records;
 
-        explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false) : input_(input), capture_(capture) {}
+        explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false)
+        : input_(input), capture_(capture) {}
 
         void init() override {
             ++initializations;
@@ -195,6 +277,7 @@ namespace {
             if (on_init)
                 on_init();
         }
+
         void deinit() override {
             ++shutdowns;
             focus_.reset();
@@ -204,6 +287,7 @@ namespace {
             if (on_deinit)
                 on_deinit();
         }
+
         void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
             update_thread = std::this_thread::get_id();
@@ -214,6 +298,7 @@ namespace {
             if (pressed.load() && on_tick)
                 on_tick();
         }
+
         void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
             ++draws;
             glm::mat4 view{1.0f};
@@ -224,7 +309,9 @@ namespace {
 
     class MemoryImage final : public CE::Assets::Image {
     public:
-        explicit MemoryImage(CE::Assets::PixelSize size) : size_(size) {}
+        explicit MemoryImage(CE::Assets::PixelSize size)
+        : size_(size) {}
+
         [[nodiscard]] CE::Assets::PixelSize pixel_size() const override { return size_; }
 
     private:
@@ -235,6 +322,7 @@ namespace {
     class MemoryGeometry final : public CE::Assets::Geometry2D {
     public:
         void bind(const CE::Assets::Image& image) const override { bound_size = image.pixel_size(); }
+
         void draw(std::size_t first, std::size_t count) const override {
             first_vertex = first;
             drawn_vertices = count;
@@ -253,6 +341,7 @@ namespace {
             projection = pass.projection;
             view = pass.view;
         }
+
         void bind_draw(const CE::Assets::ShaderDraw& draw) override { last_draw = draw; }
         void use() override { ++uses; }
         void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
@@ -275,24 +364,31 @@ namespace {
                 return on_load_image();
             return std::make_shared<MemoryImage>(CE::Assets::PixelSize{32, 32});
         }
+
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>,
-                                                                           CE::Assets::PixelSize size) override {
+                                                                           CE::Assets::PixelSize size
+            ) override {
             resource_thread = std::this_thread::get_id();
             ++atlas_uploads;
             return std::make_shared<MemoryImage>(size);
         }
+
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& image) override {
             ++created_images;
             return std::make_shared<MemoryImage>(image.size);
         }
+
         using ResourceProvider::upload_geometry;
+
         [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(std::span<const CE::Vertex2D> vertices,
-                                                                              CE::Assets::PrimitiveTopology topology) override {
+                                                                              CE::Assets::PrimitiveTopology topology
+            ) override {
             uploaded_vertices = vertices.size();
             uploaded_topology = topology;
             uploaded_geometry.assign(vertices.begin(), vertices.end());
             return geometry;
         }
+
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
             ++linked_programs;
             return shader;
@@ -318,8 +414,10 @@ namespace {
             if (on_initialize)
                 on_initialize();
         }
+
         void deinitialize() override { ++shutdowns; }
         void clear() override { ++clears; }
+
         void render(const CE::RenderAPIs::RenderFrame& frame) override {
             ++renders;
             last_pass_count = frame.passes().size();
@@ -328,9 +426,11 @@ namespace {
             if (on_render)
                 on_render();
         }
+
         void set_viewport(CE::FramebufferSize size) override { viewport = size; }
         void set_depth_test(bool enabled) override { depth_enabled = enabled; }
         void set_clear_colour(float r, float g, float b, float a) override { clear_colour = {r, g, b, a}; }
+
         void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override {
             camera_projection = projection;
             camera_view = view;
@@ -536,6 +636,7 @@ TEST(platform_requests, shutdown_cancels_pending_captures_before_game_cleanup) {
     struct CapturedData {
         bool& destroyed;
         std::thread::id& thread;
+
         ~CapturedData() {
             destroyed = true;
             thread = std::this_thread::get_id();

@@ -41,12 +41,12 @@ namespace {
     constexpr char alternate_default_name[] = "logging-alternate-default";
     constexpr char wrapper_name[] = "logging-wrapper";
 
-    void remove_current_log_file(const char *name) {
+    void remove_current_log_file(const char* name) {
         std::error_code error;
         fs::remove(fs::path{"logs"} / std::format("{}.log", name), error);
     }
 
-    std::string read_file(const fs::path &path) {
+    std::string read_file(const fs::path& path) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             ADD_FAILURE() << "Failed to open log file: " << path;
@@ -59,12 +59,12 @@ namespace {
         };
     }
 
-    void expect_contains(const std::string &text, const std::string &fragment) {
+    void expect_contains(const std::string& text, const std::string& fragment) {
         EXPECT_NE(text.find(fragment), std::string::npos)
             << "Expected log output to contain: " << fragment;
     }
 
-    template <const char * name>
+    template <const char* name>
     class TestLog final : public Log<name> {
     public:
         explicit TestLog(spdlog::file_event_handlers event_handlers = {})
@@ -117,7 +117,7 @@ TEST(logging, close_completes_file) {
 
     std::atomic<int> close_events = 0;
     spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t &) {
+    handlers.after_close = [&close_events](const spdlog::filename_t&) {
         ++close_events;
     };
 
@@ -160,7 +160,7 @@ TEST(logging, destructor_closes_file) {
 
     std::atomic<int> close_events = 0;
     spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t &) {
+    handlers.after_close = [&close_events](const spdlog::filename_t&) {
         ++close_events;
     };
 
@@ -309,7 +309,7 @@ TEST(logging, timed_close) {
     // lifecycle. Writers continue across the atomic handoff from the real logger to the fallback.
     EXPECT_THROW(log.close(5ms), Exceptions::failed_operation);
     stop_writing.store(true, std::memory_order_release);
-    for (auto &writer : writers) {
+    for (auto& writer : writers) {
         writer.join();
     }
     EXPECT_FALSE(writer_failed.load(std::memory_order_acquire));
@@ -337,7 +337,7 @@ TEST(logging, opening_state) {
     const auto release_open = release_open_promise.get_future().share();
 
     spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t &) {
+    handlers.before_open = [&](const spdlog::filename_t&) {
         if (!block_open.load(std::memory_order_acquire)) {
             return;
         }
@@ -373,7 +373,7 @@ TEST(logging, failed_reopen) {
 
     std::atomic<bool> fail_next_open = false;
     spdlog::file_event_handlers handlers;
-    handlers.before_open = [&](const spdlog::filename_t &) {
+    handlers.before_open = [&](const spdlog::filename_t&) {
         if (fail_next_open.exchange(false, std::memory_order_acq_rel)) {
             throw std::runtime_error("injected logging open failure");
         }

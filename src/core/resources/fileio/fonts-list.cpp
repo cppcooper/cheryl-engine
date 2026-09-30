@@ -16,8 +16,10 @@ namespace CE::Resources {
             return value;
         }
 
-        void append_environment_path(std::vector<fs::path>& directories, const char* variable,
-                                     const fs::path& suffix = {}) {
+        void append_environment_path(std::vector<fs::path>& directories,
+                                     const char* variable,
+                                     const fs::path& suffix = {}
+            ) {
             if (const char* value = std::getenv(variable); value && *value) {
                 directories.push_back(fs::path(value) / suffix);
             }
@@ -30,7 +32,9 @@ namespace CE::Resources {
     }
 
     std::vector<fs::path> system_font_directories() {
-        std::vector<fs::path> directories{"/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts",
+        std::vector<fs::path> directories{"/usr/share/fonts",
+                                          "/usr/local/share/fonts",
+                                          "/Library/Fonts",
                                           "/System/Library/Fonts"};
         append_environment_path(directories, "HOME", ".fonts");
         append_environment_path(directories, "HOME", ".local/share/fonts");

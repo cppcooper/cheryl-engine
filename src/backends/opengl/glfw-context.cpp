@@ -9,7 +9,8 @@
 #include <GLFW/glfw3.h>
 
 namespace CE::RenderAPIs {
-    GlfwOpenGLContext::GlfwOpenGLContext(Window& window, const int swap_interval) : window_(window), swap_interval_(swap_interval) {
+    GlfwOpenGLContext::GlfwOpenGLContext(Window& window, const int swap_interval)
+    : window_(window), swap_interval_(swap_interval) {
         if (swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
     }

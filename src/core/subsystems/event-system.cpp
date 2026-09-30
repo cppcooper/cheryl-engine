@@ -1,7 +1,7 @@
 #include <core/subsystems/event-system.h>
 
 namespace CE::SubSystems {
-    void EventSystem::dispatch(const std::string &event, const std::any &payload) {
+    void EventSystem::dispatch(const std::string& event, const std::any& payload) {
         // Snapshot the listener collection while protected so registration cannot
         // invalidate it, then release the lock before invoking arbitrary callback code.
         std::shared_lock rl(mtx);
@@ -14,12 +14,12 @@ namespace CE::SubSystems {
         auto callbacks_snapshot{iter->second};
         rl.unlock();
 
-        for(auto& cb : callbacks_snapshot) {
+        for (auto& cb : callbacks_snapshot) {
             cb(payload);
         }
     }
 
-    void EventSystem::register_listener(const std::string &event, Callback callback) {
+    void EventSystem::register_listener(const std::string& event, Callback callback) {
         std::unique_lock wl(mtx);
         event_listeners[event].push_back(std::move(callback));
     }

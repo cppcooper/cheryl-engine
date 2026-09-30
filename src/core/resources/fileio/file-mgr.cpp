@@ -26,10 +26,12 @@ void FileMgr::search_directory(const fs::path& directory) {
                     std::ranges::transform(std::as_const(extension), extension.begin(),
                                            [](unsigned char c) { return std::tolower(c); });
                     mapped_files[extension].push_back(entry.path());
-                } else {
+                }
+                else {
                     mapped_files["file_no_ext"].push_back(entry.path());
                 }
-            } else if (entry.is_directory()) {
+            }
+            else if (entry.is_directory()) {
                 directories.emplace(entry.path());
             }
         }

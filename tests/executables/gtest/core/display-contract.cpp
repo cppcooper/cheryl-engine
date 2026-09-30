@@ -13,16 +13,19 @@ namespace {
     /** Keeps resize, mode, cursor, and close state behind the window interface. */
     class MemoryWindow final : public CE::iWindow {
     public:
-        MemoryWindow(int width, int height) : logical_size_(width, height), framebuffer_size_{width, height} {}
+        MemoryWindow(int width, int height)
+        : logical_size_(width, height), framebuffer_size_{width, height} {}
 
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return logical_size_; }
         [[nodiscard]] CE::FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
         [[nodiscard]] CE::Enum::window_mode mode() const override { return mode_; }
         [[nodiscard]] bool should_close() const override { return closed_; }
+
         void resize(int width, int height) override {
             logical_size_ = {width, height};
             framebuffer_size_ = {width, height};
         }
+
         void set_mode(CE::Enum::window_mode mode) override { mode_ = mode; }
         void hide_cursor(bool hide) const override { hidden_ = hide; }
 
@@ -46,14 +49,18 @@ namespace {
         [[nodiscard]] CE::iWindow* active_window() const override { return active_; }
         [[nodiscard]] std::pair<float, float> content_scale(const CE::Monitor&) const override { return {1, 1}; }
 
-        CE::iWindow* create_window(const CE::Monitor& monitor, CE::Enum::window_mode mode, int width,
-                                   int height) override {
+        CE::iWindow* create_window(const CE::Monitor& monitor,
+                                   CE::Enum::window_mode mode,
+                                   int width,
+                                   int height
+            ) override {
             if (monitor.id() != primary_monitor().id())
                 throw std::invalid_argument("Unknown monitor");
             window_ = std::make_unique<MemoryWindow>(width, height);
             window_->set_mode(mode);
             return window_.get();
         }
+
         void activate_window(CE::iWindow& window) override {
             if (&window != window_.get())
                 throw std::invalid_argument("Unknown window");

@@ -37,8 +37,11 @@ TEST(versioned_variable, a_waiter_reads_one_coherent_change) {
 
 namespace {
     enum class Movement { Grounded, Airborne };
+
     enum class MoveTrigger { Jump, Land };
+
     enum class Posture { Standing, Crouched };
+
     enum class PostureTrigger { Crouch, Stand };
 } // namespace
 

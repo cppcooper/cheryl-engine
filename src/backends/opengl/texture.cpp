@@ -66,8 +66,9 @@ namespace CE::Assets {
                      int slot,
                      bool use_mipmaps,
                      bool pixelate,
-                     int wrap_opt)
-        : unit(slot) {
+                     int wrap_opt
+        )
+    : unit(slot) {
         if (!file)
             throw Exceptions::invalid_args(CE_HERE, "Image filename must not be null");
         const auto pixels = decode_image(file);
@@ -87,8 +88,9 @@ namespace CE::Assets {
                      bool use_mipmaps,
                      bool pixelate,
                      GLint wrap_opt,
-                     GLenum fmt)
-        : width(width), height(height), unit(slot) {
+                     GLenum fmt
+        )
+    : width(width), height(height), unit(slot) {
 
         if (!bitmap_data || width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Texture pixels and dimensions must be nonempty");
@@ -106,5 +108,7 @@ namespace CE::Assets {
         glBindTexture(GL_TEXTURE_2D, id);
     }
 
-    void Texture::unbind() { glBindTexture(GL_TEXTURE_2D, 0); }
+    void Texture::unbind() {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }

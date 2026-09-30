@@ -18,10 +18,12 @@ namespace {
             path = fs::temp_directory_path() / ("cheryl-font-test-" + std::to_string(suffix));
             fs::create_directories(path);
         }
+
         ~TemporaryDirectory() {
             std::error_code error;
             fs::remove_all(path, error);
         }
+
         fs::path path;
     };
 

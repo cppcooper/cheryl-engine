@@ -319,11 +319,15 @@ namespace {
     struct TrackedAsset final : TrackedAssetBase {
         static inline int live = 0;
         static inline int destroyed = 0;
-        explicit TrackedAsset(int value) : value_(value) { ++live; }
+
+        explicit TrackedAsset(int value)
+        : value_(value) { ++live; }
+
         ~TrackedAsset() override {
             --live;
             ++destroyed;
         }
+
         [[nodiscard]] int value() const override { return value_; }
 
     private:

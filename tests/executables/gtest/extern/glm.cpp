@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <glm.hpp>
 
-TEST(externlibs, glm_compare){
+TEST(externlibs, glm_compare) {
     glm::mat4 original{0.0f};
 
     for (int column = 0; column < original.length(); ++column) {

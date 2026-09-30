@@ -75,7 +75,8 @@ namespace CE::Assets {
     }
 
     std::shared_ptr<Geometry2D> OpenGLResourceProvider::upload_geometry(const std::span<const Vertex2D> vertices,
-                                                                        const PrimitiveTopology topology) {
+                                                                        const PrimitiveTopology topology
+        ) {
         return std::make_shared<VAO>(renderer_.resources(), vertices, topology);
     }
 
@@ -86,6 +87,7 @@ namespace CE::Assets {
 
         struct ProgramGuard {
             GLuint id;
+
             ~ProgramGuard() {
                 if (id)
                     glDeleteProgram(id);
@@ -93,6 +95,7 @@ namespace CE::Assets {
         } program{glCreateProgram()};
         struct ShaderGuard {
             GLuint id;
+
             ~ShaderGuard() {
                 if (id)
                     glDeleteShader(id);

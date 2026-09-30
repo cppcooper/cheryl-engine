@@ -21,7 +21,8 @@ namespace CE::RenderAPIs {
         }
     }
 
-    OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context) : context_(context) {}
+    OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
+    : context_(context) {}
 
     OpenGLRenderer::~OpenGLRenderer() {
         if (initialized_) {
@@ -67,8 +68,7 @@ namespace CE::RenderAPIs {
             try {
                 context_.release_current();
             }
-            catch (...) {
-            }
+            catch (...) {}
             throw;
         }
         initialized_ = true;
@@ -84,6 +84,7 @@ namespace CE::RenderAPIs {
         stopped_ = true;
         context_.release_current();
     }
+
     std::shared_ptr<OpenGLResourceLifetime> OpenGLRenderer::resources() const {
         if (!initialized_)
             throw Exceptions::failed_operation(CE_HERE, "OpenGL renderer must be initialized before uploading resources");

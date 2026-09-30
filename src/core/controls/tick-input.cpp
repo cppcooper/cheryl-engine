@@ -7,18 +7,19 @@
 
 namespace CE::Input {
     TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls)
-        : TickInput(previous,
-                    polls,
-                    previous ? previous->observed_at() : InputClock::time_point{},
-                    !polls.empty() && polls.back() ? polls.back()->observed_at()
-                        : previous                 ? previous->observed_at()
-                                                   : InputClock::time_point{}) {}
+    : TickInput(previous,
+                polls,
+                previous ? previous->observed_at() : InputClock::time_point{},
+                !polls.empty() && polls.back() ? polls.back()->observed_at()
+                : previous ? previous->observed_at()
+                : InputClock::time_point{}) {}
 
     TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous,
                          std::vector<std::shared_ptr<const ActionSnapshot>> polls,
                          const InputClock::time_point since,
-                         const InputClock::time_point until)
-        : previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
+                         const InputClock::time_point until
+        )
+    : previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
         if (!previous_ || since < previous_->observed_at() || until < since)
             throw Exceptions::invalid_args(CE_HERE, "TickInput requires a baseline and a monotonic consumption interval");
         auto last_poll = previous_->poll();

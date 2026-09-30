@@ -55,9 +55,14 @@ namespace CE::Input {
 
     public:
         GlfwInputDevice(
-            gainput::InputManager& manager, const gainput::DeviceId id, const unsigned index, const DeviceVariant, const bool mouse)
-            : InputDevice(manager, id, index == AutoIndex ? manager.GetDeviceCountByType(mouse ? DT_MOUSE : DT_KEYBOARD) : index),
-              mouse_(mouse) {
+            gainput::InputManager& manager,
+            const gainput::DeviceId id,
+            const unsigned index,
+            const DeviceVariant,
+            const bool mouse
+            )
+        : InputDevice(manager, id, index == AutoIndex ? manager.GetDeviceCountByType(mouse ? DT_MOUSE : DT_KEYBOARD) : index),
+          mouse_(mouse) {
             // Keep current and previous Gainput state for delta generation;
             // GLFW callbacks enqueue changes instead of mutating either here.
             const unsigned count = mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_);
@@ -74,12 +79,15 @@ namespace CE::Input {
         // Avoid Gainput's native-event casts; GLFW delivers the events to this device instead.
         [[nodiscard]] DeviceVariant GetVariant() const override { return DV_NULL; }
         [[nodiscard]] const char* GetTypeName() const override { return mouse_ ? "mouse" : "keyboard"; }
+
         [[nodiscard]] bool IsValidButtonId(const gainput::DeviceButtonId button) const override {
             return button < (mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_));
         }
+
         [[nodiscard]] gainput::ButtonType GetButtonType(const gainput::DeviceButtonId button) const override {
             return mouse_ && button >= gainput::MouseAxisX ? gainput::BT_FLOAT : gainput::BT_BOOL;
         }
+
         [[nodiscard]] size_t GetAnyButtonDown(gainput::DeviceButtonSpec* buttons, size_t max_count) const override {
             const unsigned end = mouse_ ? static_cast<unsigned>(gainput::MouseAxisX) : static_cast<unsigned>(gainput::KeyCount_);
             return CheckAllButtonsDown(buttons, max_count, 0, end);
@@ -147,16 +155,17 @@ namespace CE::Input {
     class GlfwKeyboardDevice final : public GlfwInputDevice {
     public:
         GlfwKeyboardDevice(gainput::InputManager& manager, gainput::DeviceId id, unsigned index, DeviceVariant variant)
-            : GlfwInputDevice(manager, id, index, variant, false) {}
+        : GlfwInputDevice(manager, id, index, variant, false) {}
     };
 
     class GlfwMouseDevice final : public GlfwInputDevice {
     public:
         GlfwMouseDevice(gainput::InputManager& manager, gainput::DeviceId id, unsigned index, DeviceVariant variant)
-            : GlfwInputDevice(manager, id, index, variant, true) {}
+        : GlfwInputDevice(manager, id, index, variant, true) {}
     };
 
-    InputSystem::InputSystem() : bindings_(manager_) {}
+    InputSystem::InputSystem()
+    : bindings_(manager_) {}
 
     InputSystem::~InputSystem() {
         // Explicit runtime teardown reports failures. Destruction must still
@@ -164,8 +173,7 @@ namespace CE::Input {
         try {
             deinitialize();
         }
-        catch (...) {
-        }
+        catch (...) {}
     }
 
     void InputSystem::initialize(iWindow& window) {
@@ -312,8 +320,8 @@ namespace CE::Input {
         if (auto* input = attached(handle))
             input->receive([&] {
                 const auto phase = action == GLFW_REPEAT ? ButtonPhase::Repeat
-                    : action == GLFW_PRESS               ? ButtonPhase::Press
-                                                         : ButtonPhase::Release;
+                    : action == GLFW_PRESS ? ButtonPhase::Press
+                    : ButtonPhase::Release;
                 const auto button = gainput_key(key);
                 // Preserve delivered callbacks before State ignores repeats or condenses transitions.
                 input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard,
@@ -330,8 +338,10 @@ namespace CE::Input {
             input->receive([&] {
                 const auto control = gainput_mouse_button(button);
                 input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse,
-                                               ButtonEvent{control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release,
-                                                           input_modifiers(modifiers), button});
+                                               ButtonEvent{control,
+                                                           action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release,
+                                                           input_modifiers(modifiers),
+                                                           button});
                 input->mouse_->queue_button(control, action == GLFW_PRESS);
                 input->bindings_.on_button({input->mouse_id_, control}, action == GLFW_PRESS);
             });

@@ -12,11 +12,14 @@ namespace CE::Assets {
         geometry->draw(VAONumbers::calculate_num_strip_vertices(offset_), VAONumbers::vertices_per_strip_quad);
     }
 
-    TileAnimation::TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,
-                                 const shptr<Image>& texture) :
-        Draw2D(geometry, texture),
-        Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
-        definition_(std::move(definition)) {}
+    TileAnimation::TileAnimation(TileAnimationDefinition definition,
+                                 const shptr<Geometry2D>& geometry,
+                                 const shptr<Image>& texture
+        )
+    :
+    Draw2D(geometry, texture),
+    Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
+    definition_(std::move(definition)) {}
 
     void TileAnimation::draw(const DrawInfo& info) {
         Tile(definition_.frames[index_].cell, geometry, texture).draw(info);
@@ -26,9 +29,10 @@ namespace CE::Assets {
         return definition_.frames.at(index_).duration;
     }
 
-    Tileset::Tileset(TilesetData data) :
-        Asset2D(std::move(data.geometry), std::move(data.texture)),
-        definition_(std::move(data.definition)) {
+    Tileset::Tileset(TilesetData data)
+    :
+    Asset2D(std::move(data.geometry), std::move(data.texture)),
+    definition_(std::move(data.definition)) {
         // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {

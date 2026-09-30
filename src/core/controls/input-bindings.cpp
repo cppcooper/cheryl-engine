@@ -50,8 +50,8 @@ namespace CE::Input {
         if (std::ranges::any_of(button_bindings_, [action](const auto& binding) { return binding.action == action; }))
             throw Exceptions::invalid_args(CE_HERE, "An action cannot be bound as both a button and an axis");
         if (std::ranges::any_of(axis_bindings_, [action, options](const auto& binding) {
-                return binding.action == action && binding.options.kind != options.kind;
-            }))
+            return binding.action == action && binding.options.kind != options.kind;
+        }))
             throw Exceptions::invalid_args(CE_HERE, "An axis action cannot combine absolute and relative bindings");
         const BindingId id = next_binding_++;
         axis_bindings_.push_back({id, std::move(modifiers), axis, action, options});

@@ -6,9 +6,13 @@
 
 namespace CE::Input {
     FocusLease::FocusLease(std::shared_ptr<Detail::RoutingState> state, std::shared_ptr<const KeyboardFocus> focus)
-        : state_(std::move(state)), focus_(std::move(focus)) {}
+    : state_(std::move(state)), focus_(std::move(focus)) {}
+
     FocusLease::~FocusLease() { reset(); }
-    FocusLease::FocusLease(FocusLease&& other) noexcept : state_(std::move(other.state_)), focus_(std::move(other.focus_)) {}
+
+    FocusLease::FocusLease(FocusLease&& other) noexcept
+    : state_(std::move(other.state_)), focus_(std::move(other.focus_)) {}
+
     FocusLease& FocusLease::operator=(FocusLease&& other) noexcept {
         if (this != &other) {
             reset();
@@ -17,6 +21,7 @@ namespace CE::Input {
         }
         return *this;
     }
+
     void FocusLease::reset() noexcept {
         if (state_ && focus_) {
             auto expected = focus_;
@@ -27,6 +32,7 @@ namespace CE::Input {
         focus_.reset();
         state_.reset();
     }
+
     bool FocusLease::owns_focus() const { return state_ && focus_ && state_->current.load() == focus_; }
 
     FocusLease InputRouting::focus(const FocusId target, const KeyboardRouting routing) {

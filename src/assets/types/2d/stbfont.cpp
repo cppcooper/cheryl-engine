@@ -54,7 +54,8 @@ namespace CE::Assets {
         }
     }
 
-    STBFont::STBFont(STBFontData data) : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
+    STBFont::STBFont(STBFontData data)
+    : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }

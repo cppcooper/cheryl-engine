@@ -12,7 +12,8 @@ namespace CE::Assets {
 
     std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(std::shared_ptr<Vertex2D> vertices,
                                                                   const std::uint32_t vertex_count,
-                                                                  const PrimitiveTopology topology) {
+                                                                  const PrimitiveTopology topology
+        ) {
         if (!vertices || vertex_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "Cannot upload empty 2D geometry");
         return upload_geometry(std::span<const Vertex2D>{vertices.get(), vertex_count}, topology);

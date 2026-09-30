@@ -23,7 +23,9 @@ namespace {
                                          .loop = false});
         // Playback and frame publication only inspect metadata; no GPU resources are needed.
         return std::make_shared<CE::Assets::Sprite>(CE::Assets::SpriteData{
-            .geometry = nullptr, .texture = nullptr, .definition = std::move(definition)});
+            .geometry = nullptr,
+            .texture = nullptr,
+            .definition = std::move(definition)});
     }
 }
 
