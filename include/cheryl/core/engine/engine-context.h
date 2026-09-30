@@ -1,9 +1,12 @@
 #pragma once
 
 #include "platform-dispatcher.h"
+#include "worker-pool.h"
 
 #include <atomic>
 #include <memory>
+#include <mutex>
+#include <vector>
 
 namespace CE::GFramework {
     class GameRuntime;
@@ -28,6 +31,10 @@ namespace CE::RenderAPIs {
 }
 
 namespace CE::Engine {
+    struct ExecutionOptions {
+        std::size_t worker_count = 1; // Owned root is created lazily.
+        std::shared_ptr<WorkerPool> shared_pool; // Injected root is never closed by this context.
+    };
     /** Owns a compatible set of platform, presentation, rendering, and resource adapters.
      * Input can be owned or explicitly borrowed. Owned input is destroyed before
      * resources, renderer, surface, and display, so callbacks detach from a live window.
@@ -43,18 +50,25 @@ namespace CE::Engine {
         Input::iInputSystem* input_;
         std::atomic<bool> session_started_{false};
         PlatformDispatcher platform_dispatcher_;
+        ExecutionOptions execution_;
+        mutable std::mutex execution_mutex_;
+        std::unique_ptr<WorkerPool> owned_workers_;
+        std::vector<WorkerGroup> worker_groups_;
+        bool worker_submissions_closed_ = false;
 
     public:
         EngineContext(std::unique_ptr<iDisplaySystem> display,
                       std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
                       std::unique_ptr<RenderAPIs::iRenderer> renderer,
                       std::unique_ptr<Assets::ResourceProvider> resources,
-                      Input::iInputSystem& input);
+                      Input::iInputSystem& input,
+                      ExecutionOptions execution = ExecutionOptions{});
         EngineContext(std::unique_ptr<iDisplaySystem> display,
                       std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
                       std::unique_ptr<RenderAPIs::iRenderer> renderer,
                       std::unique_ptr<Assets::ResourceProvider> resources,
-                      std::unique_ptr<Input::iInputSystem> input);
+                      std::unique_ptr<Input::iInputSystem> input,
+                      ExecutionOptions execution = ExecutionOptions{});
         ~EngineContext();
 
         EngineContext(const EngineContext&) = delete;
@@ -67,11 +81,16 @@ namespace CE::Engine {
         [[nodiscard]] Assets::ResourceProvider& resources() const;
         [[nodiscard]] Input::iInputSystem& input() const;
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
+        // Groups created here are part of this context's shutdown domain, even
+        // when their physical capacity comes from an application-supplied pool.
+        [[nodiscard]] WorkerGroup make_worker_group(WorkerGroupOptions options = WorkerGroupOptions{});
 
     private:
         friend class GFramework::GameRuntime;
         void validate() const;
         void begin_session();
-
+        void close_worker_submissions();
+        [[nodiscard]] bool workers_idle() const;
+        void finish_workers();
     };
 }

@@ -113,7 +113,7 @@ These are the proposed concrete choices within the agreed architecture:
 
 **Depends on:** tasks 1–3.
 
-- [ ] **4.1** Add central execution configuration and EngineContext-owned/injected pool support. Engine shutdown drains its groups; it does not close an unrelated application-owned shared pool. Avoid eagerly reserving a large machine-wide pool by default.
+- [x] **4.1** Add central execution configuration and EngineContext-owned/injected pool support. Engine shutdown drains its groups; it does not close an unrelated application-owned shared pool. Avoid eagerly reserving a large machine-wide pool by default.
 - [x] **4.2** Install event adapters through composition. EventBus/EventSystem headers must not include WorkerPool, PlatformDispatcher, or GameRuntime. Adapter callbacks retain safe submission state, not borrowed queue pointers.
 - [ ] **4.3** Replace the generic asset-preparation example with WorkerGroup preparation followed by PlatformDispatcher upload. Own Loader and PreparedAssets through the handoff. Simulation checks completion without waiting on GPU work.
 - [ ] **4.4** Define stopping as a staged protocol: quiesce producers/subscriptions; stop new group submissions; resolve or cancel simulation requests; keep resources and platform dispatch alive while accepted work finishes; join owned workers/simulation; finish/cancel remaining platform requests; recycle frames; then clean up game, input, and graphics.

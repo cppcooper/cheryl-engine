@@ -36,7 +36,9 @@ Compilation, test execution, and remote writes have not been requested.
   Linux affinity with readback, effective policy, unsupported hard topology paths,
   and native failure futures. Native acceptance remains unexecuted.
 - Task 4.2 complete: all three execution targets are optional composition
-  adapters without EventBus header dependencies. Other task 4 work and 5–8 pending.
+  adapters without EventBus header dependencies. Task 4.1 complete: lazy configured owned root or injected shared capacity,
+  context-scoped groups, and no shutdown of unrelated injected groups.
+- Task 4.3–4.6 active; tasks 5–8 pending.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions

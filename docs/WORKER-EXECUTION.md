@@ -61,3 +61,14 @@ Native references: [pthread affinity](https://man7.org/linux/man-pages/man3/pthr
 and [Linux cpuset constraints](https://docs.kernel.org/admin-guide/cgroup-v2.html#cpuset).
 The kernel can restrict an otherwise successful set operation, which is why the
 adapter reads back the effective mask.
+
+## Context ownership
+
+EngineContext accepts ExecutionOptions: owned worker_count (default one) or an
+application-supplied shared_pool. Its owned root is created only when
+make_worker_group() is first called. Groups obtained there belong to that
+context's shutdown domain. Shutdown closes/drains those groups and joins an owned
+root; unrelated groups on an injected pool remain open. A saved context group
+rejects after context shutdown, while separately owned physical pools remain
+independent. Do not destroy a context from one of its jobs. Runtime shutdown
+integration follows in the next checkpoint so platform dependencies keep moving.
