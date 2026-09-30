@@ -87,20 +87,16 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "A shader program needs at least one stage");
 
         struct ProgramGuard {
+            std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime;
             GLuint id;
 
-            ~ProgramGuard() {
-                if (id)
-                    glDeleteProgram(id);
-            }
-        } program{glCreateProgram()};
+            ~ProgramGuard() { lifetime->discard_untracked(RenderAPIs::GLResourceKind::Program, id); }
+        } program{lifetime, glCreateProgram()};
         struct ShaderGuard {
+            std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime;
             GLuint id;
 
-            ~ShaderGuard() {
-                if (id)
-                    glDeleteShader(id);
-            }
+            ~ShaderGuard() { lifetime->discard_untracked(RenderAPIs::GLResourceKind::ShaderStage, id); }
         };
         if (!program.id)
             throw Exceptions::failed_operation(CE_HERE, "Could not create an OpenGL program");
@@ -114,7 +110,7 @@ namespace CE::Assets {
             if (input.bad() || source.size() > static_cast<std::size_t>(std::numeric_limits<GLint>::max()))
                 throw Exceptions::runtime_exception(CE_HERE, "Could not read shader stage: " + file.string());
 
-            ShaderGuard shader{glCreateShader(kind)};
+            ShaderGuard shader{lifetime, glCreateShader(kind)};
             if (!shader.id)
                 throw Exceptions::failed_operation(CE_HERE, "Could not create shader stage: " + file.string());
             const GLchar* bytes = source.c_str();
@@ -136,8 +132,10 @@ namespace CE::Assets {
         if (linked != GL_TRUE)
             throw Exceptions::runtime_exception(CE_HERE, "Shader program failed to link: " + program_log(program.id));
 
-        auto linked_program = std::make_shared<GLSLProgram>(std::move(lifetime), program.id);
+        // Adopt once before any later logical-program allocations can fail.
+        // From here on, only the tracked handle owns retirement of this ID.
+        RenderAPIs::OpenGLHandle tracked(lifetime, RenderAPIs::GLResourceKind::Program, program.id);
         program.id = 0;
-        return linked_program;
+        return std::make_shared<GLSLProgram>(std::move(tracked));
     }
 }

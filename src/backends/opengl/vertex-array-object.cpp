@@ -28,8 +28,7 @@ namespace CE {
             try {
                 return {lifetime, RenderAPIs::GLResourceKind::VertexArray, id};
             } catch (...) {
-                if (id)
-                    glDeleteVertexArrays(1, &id);
+                lifetime->discard_untracked(RenderAPIs::GLResourceKind::VertexArray, id);
                 throw;
             }
         }
@@ -43,8 +42,7 @@ namespace CE {
             try {
                 return {lifetime, RenderAPIs::GLResourceKind::Buffer, id};
             } catch (...) {
-                if (id)
-                    glDeleteBuffers(1, &id);
+                lifetime->discard_untracked(RenderAPIs::GLResourceKind::Buffer, id);
                 throw;
             }
         }

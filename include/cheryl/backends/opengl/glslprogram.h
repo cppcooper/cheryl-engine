@@ -25,7 +25,14 @@ namespace CE::Assets {
     };
 
     struct GLSLProgram final : Shader {
-        GLSLProgram(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime, GLuint program_id);
+    private:
+        RenderAPIs::OpenGLHandle program_;
+        GLSLMaterialBindings material_bindings_;
+        std::map<std::string, int> uniforms_;
+        std::map<std::string, int> attributes_;
+
+    public:
+        explicit GLSLProgram(RenderAPIs::OpenGLHandle program);
         void use() override;
         void bind_pass(const ShaderPass& pass) override;
         void bind_draw(const ShaderDraw& draw) override;
@@ -51,11 +58,6 @@ namespace CE::Assets {
         int get_uniform_location(const char* name);
         int get_attribute_location(const char* name);
 
-    private:
-        RenderAPIs::OpenGLHandle program_;
-        GLSLMaterialBindings material_bindings_;
-        std::map<std::string, int> uniforms_;
-        std::map<std::string, int> attributes_;
     };
 
     template <glm::length_t dim>

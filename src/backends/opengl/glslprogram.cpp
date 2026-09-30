@@ -4,8 +4,10 @@
 #include <utility>
 
 namespace CE::Assets {
-    GLSLProgram::GLSLProgram(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime, const GLuint program_id)
-    : program_(std::move(lifetime), RenderAPIs::GLResourceKind::Program, program_id) {}
+    GLSLProgram::GLSLProgram(RenderAPIs::OpenGLHandle program)
+    : program_(std::move(program)) {
+        (void)program_.id();
+    }
 
     void GLSLProgram::use() {
         glUseProgram(program_.id());

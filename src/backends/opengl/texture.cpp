@@ -15,10 +15,9 @@ namespace CE::Assets {
             GLuint id = 0;
             glGenTextures(1, &id);
             try {
-                return {std::move(lifetime), RenderAPIs::GLResourceKind::Texture, id};
+                return {lifetime, RenderAPIs::GLResourceKind::Texture, id};
             } catch (...) {
-                if (id)
-                    glDeleteTextures(1, &id);
+                lifetime->discard_untracked(RenderAPIs::GLResourceKind::Texture, id);
                 throw;
             }
         }

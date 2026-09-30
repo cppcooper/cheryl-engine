@@ -62,6 +62,12 @@ Compilation, test execution, and remote writes have not been requested.
 
 ## Discovery additions
 
+- D6: the shader-link guard retained a native ID after lifetime registration.
+  Later logical-program allocation failure could cause both immediate deletion
+  and deferred retirement. Transfer native ownership to an OpenGLHandle before
+  constructing GLSLProgram. Texture/VAO/program/stage fallback deletion also needs
+  owner/current-context verification; unavailable contexts leave cleanup to destruction.
+
 - D0: timing checkpoints 16–20 are now pushed as `14d5a818386582a0c22332cbfdb5161135e92093`.
   Its tree matches saved local `ba18b50`. Continue from the remote; preserve the
   earlier timing commits on their checkpoint branch. New incremental delivery starts
