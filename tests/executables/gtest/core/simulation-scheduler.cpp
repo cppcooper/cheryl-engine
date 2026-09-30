@@ -156,3 +156,25 @@ TEST(simulation_scheduler, deadlines_saturate_and_unrepresentable_clock_spans_ar
     SimulationScheduler wide_span(fixed_timing(), Clock::time_point::min());
     EXPECT_THROW((void)wide_span.advance(Clock::time_point::max()), CE::Exceptions::invalid_args);
 }
+
+TEST(simulation_scheduler, zero_variable_pacing_does_not_use_the_fixed_interval) {
+    SimulationTimingOptions options;
+    options.variable_interval = 0ms;
+    options.fixed_step = 100ms;
+    SimulationScheduler scheduler(options, Clock::time_point{});
+    EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{});
+    const auto batch = scheduler.advance(Clock::time_point{} + 3ms);
+    ASSERT_EQ(batch.steps.size(), 1u);
+    EXPECT_EQ(batch.steps[0].delta, 3ms);
+    EXPECT_EQ(batch.steps[0].kind, UpdateKind::Variable);
+}
+
+TEST(simulation_scheduler, fixed_pacing_does_not_use_the_variable_interval) {
+    auto options = fixed_timing();
+    options.variable_interval = 500ms;
+    SimulationScheduler scheduler(options, Clock::time_point{});
+    EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{} + 20ms);
+    const auto batch = scheduler.advance(Clock::time_point{} + 20ms);
+    ASSERT_EQ(batch.steps.size(), 1u);
+    EXPECT_EQ(batch.steps[0].delta, 20ms);
+}

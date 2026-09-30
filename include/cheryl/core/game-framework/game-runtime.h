@@ -21,8 +21,10 @@ namespace CE::GFramework {
     enum class RunMode { Sequential, Concurrent };
 
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
-     * Each independently scheduled update receives accumulated State activity
-     * and elapsed simulation time. Rendering consumes published render state, never the game's
+     * Each scheduled update receives accumulated State activity and the selected
+     * simulation delta, with observation time available separately. Both modes
+     * use the same variable/fixed timing and bounded recovery policy.
+     * Rendering consumes published render state, never the game's
      * live mutable simulation state. These boundaries
      * apply in either mode. The calling thread owns platform polling and graphics operations;
      * concurrent mode gives update and frame preparation to one simulation worker.

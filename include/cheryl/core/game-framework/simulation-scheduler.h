@@ -12,6 +12,8 @@ namespace CE::GFramework {
     enum class UpdateKind { Variable, Fixed, VariableCatchUp };
 
     struct SimulationTimingOptions {
+        // TODO: an optimization configurer may suggest limits after profiling;
+        // it must preserve explicitly selected timing/input contracts.
         SimulationMode mode = SimulationMode::Variable;
         SimulationClock::duration variable_interval = std::chrono::duration_cast<SimulationClock::duration>(
             std::chrono::nanoseconds{16666667}); // Zero permits an unpaced variable loop.

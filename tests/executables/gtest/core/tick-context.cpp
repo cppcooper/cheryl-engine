@@ -82,3 +82,50 @@ TEST(tick_context, manually_supplied_invalid_simulation_deltas_are_rejected) {
     EXPECT_THROW((void)negative.button_simulation_seconds(CE::Input::ActionId{1}), CE::Exceptions::invalid_args);
     EXPECT_THROW((void)infinite.button_simulation_seconds(CE::Input::ActionId{1}), CE::Exceptions::invalid_args);
 }
+
+TEST(tick_context, a_recovery_batch_consumes_events_text_and_relative_motion_once) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::DeviceBind key{1, 32};
+    const CE::Input::DeviceBind wheel{2, 1};
+    const CE::Input::ActionId move{1};
+    const CE::Input::ActionId scroll{2};
+    (void)bindings.bind_button(key, move);
+    CE::Input::AxisOptions relative;
+    relative.kind = CE::Input::AxisKind::Relative;
+    (void)bindings.bind_axis(wheel, scroll, relative);
+    const auto start = bindings.action_snapshot()->observed_at();
+    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    bindings.on_button(key, true);
+    bindings.on_delta(wheel, 3.0f);
+    auto poll = std::make_shared<CE::Input::PollSnapshot>();
+    poll->state = bindings.publish_actions(start + 100ms);
+    poll->records.push_back({1, start + 100ms, 1, CE::Input::DeviceKind::Keyboard,
+        CE::Input::ButtonEvent{32, CE::Input::ButtonPhase::Press}});
+    poll->records.push_back({2, start + 100ms, 1, CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{U'a'}});
+
+    CE::GFramework::SimulationTimingOptions options;
+    options.mode = CE::GFramework::SimulationMode::Fixed;
+    options.fixed_step = 20ms;
+    options.max_fixed_updates = 2;
+    options.recovery = CE::GFramework::LagRecovery::VariableCatchUp;
+    options.fixed_updates_before_recovery = 2;
+    CE::GFramework::SimulationScheduler scheduler(options, start);
+    const auto batch = scheduler.advance(start + 500ms);
+    ASSERT_EQ(batch.steps.size(), 3u);
+
+    const auto first = accumulator.consume_polls(start + 500ms, {poll});
+    EXPECT_TRUE(first.button(move).pressed());
+    EXPECT_FLOAT_EQ(first.axis(scroll).delta(), 3.0f);
+    ASSERT_EQ(first.records().size(), 2u);
+    EXPECT_TRUE(first.records()[1].is_text());
+    // The next fixed step and larger recovery receive held State, not the first
+    // call's records or relative motion, even at the same observation timestamp.
+    for (std::size_t i = 1; i < batch.steps.size(); ++i) {
+        const auto next = accumulator.consume_polls(start + 500ms, {});
+        EXPECT_TRUE(next.button(move).held());
+        EXPECT_FALSE(next.button(move).pressed());
+        EXPECT_EQ(next.button(move).press_count, 0u);
+        EXPECT_FLOAT_EQ(next.axis(scroll).delta(), 0.0f);
+        EXPECT_TRUE(next.records().empty());
+    }
+}

@@ -41,18 +41,15 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 4 complete in source: WorkerGroup preparation example, quiesce hook,
   dependency-aware platform pumping through simulation/CPU shutdown, cancellation
   of remaining requests, injected ownership isolation, and original-error retention.
-- Task 5 scheduler foundation prepared: explicit clock inputs, independent variable
+- Task 5 complete in source: explicit scheduler clock inputs, independent variable
   pacing/fixed steps, bounded fixed batches, direct/hybrid VariableCatchUp, cap/drop
-  accounting, and deterministic regression sources. Runtime integration is next.
-- Task 5.2/5.5 source prepared: TickContext exposes update kind, simulation delta,
-  dropped time, and observed interval separately. Demo movement explicitly maps
-  observed down-time proportion to simulation time; raw input durations are unchanged.
-  Short-tap, zero-interval held State, and between-update input scenarios are prepared.
-- Task 5 runtime integration prepared: both modes use SimulationScheduler; every
-  actual recovery update drains its mailbox then consumes a fresh whole backlog.
-  Cycles with no update retain input. One frame is prepared after a bounded batch,
-  and the platform retains the latest complete frame through no-update cycles.
-  Demo switches expose pacing, fixed steps, recovery prefix/cap, and update bounds.
+  accounting, and matching runtime policies. Each actual update drains its mailbox
+  then consumes the whole current input backlog; no-update cycles retain it.
+  TickContext separates simulation delta from observed input durations and reports
+  discarded time. Demo movement explicitly maps down-time proportion to simulation
+  time. Frame preparation occurs once per useful batch; rendering retains the latest
+  complete frame. Regression scenarios and timing/suspension/optimization documentation
+  are prepared; compilation, regression execution, and real acceptance remain open.
 - Tasks 6–8 pending. Task 9 acceptance remains unexecuted.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
@@ -66,6 +63,13 @@ Compilation, test execution, and remote writes have not been requested.
 - D5: sample the clock once to select a bounded recovery batch. Time spent executing
   its updates enters the next scheduler cycle, preventing an ever-extending recovery
   loop. Deadline arithmetic saturates; invalid/unrepresentable intervals are rejected.
+- D5: later steps in one recovery batch can have a zero observation interval.
+  Derived simulation movement uses held State in that case; it does not replay a
+  released tap. Raw durations, one-shot records, and relative motion retain their
+  existing consumption contract. Prepared synthetic recovery coverage verifies this.
+- D5: retaining a latest frame occupies one concurrent slot until replacement.
+  Slot ownership stays platform-only for recycling; the remaining slots can carry
+  preparation/latest publication, and simulation skips publication rather than waiting.
 
 - D1: a saved delivery adapter must not borrow a dispatcher object. Add shared
   submission state under 1.5; closing invalidates acceptance before releasing

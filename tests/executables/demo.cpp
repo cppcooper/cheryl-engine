@@ -270,9 +270,10 @@ int main(const int argc, char** argv) {
             polling.policy = CE::Input::PollingPolicy::Unlimited;
         else if (argument == "--fixed")
             timing.mode = CE::GFramework::SimulationMode::Fixed;
-        else if (argument == "--variable-catch-up")
+        else if (argument == "--variable-catch-up") {
+            timing.mode = CE::GFramework::SimulationMode::Fixed;
             timing.recovery = CE::GFramework::LagRecovery::VariableCatchUp;
-        else if (argument.starts_with("--fixed-step-ms=")) {
+        } else if (argument.starts_with("--fixed-step-ms=")) {
             timing.mode = CE::GFramework::SimulationMode::Fixed;
             timing.fixed_step = std::chrono::milliseconds(number(argument.substr(std::string_view("--fixed-step-ms=").size())));
         } else if (argument.starts_with("--variable-interval-ms="))
