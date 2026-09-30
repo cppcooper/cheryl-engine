@@ -21,7 +21,9 @@ Compilation, test execution, and remote writes have not been requested.
 - Task 1 complete: both modes drain simulation work before whole-backlog transfer.
   Pending simulation captures cancel on their owner; initialization failure closes
   unbound queues before game cleanup. Five simulation regression scenarios prepared.
-- Task 2 active: persistent EventBus registrations and invocation lifetime.
+- Task 2.1–2.2 complete: isolated owned buses behind the singleton, persistent
+  registration IDs, and immediate producer-thread delivery.
+- Task 2.3–2.6 active: invocation lifetime, completion barriers, queued delivery.
 - Tasks 2–8 pending. Documentation and regression sources (task 9) accompany each change.
 
 ## Discovery additions

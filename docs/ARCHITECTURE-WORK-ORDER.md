@@ -81,8 +81,8 @@ These are the proposed concrete choices within the agreed architecture:
 
 **Depends on:** task 1 for thread adapters; the registry itself can be developed independently.
 
-- [ ] **2.1** Put registry/subscription state into EventBus; keep the singleton EventSystem as the default access layer. Document an isolated bus and explicitly explain that a bus does not select a thread.
-- [ ] **2.2** Return a bus-qualified registration identifier. The bus strongly owns callback entries until unregister or bus destruction. Keep immediate delivery on the dispatcher's thread as the default; one-shot registration is optional, explicit behavior.
+- [x] **2.1** Put registry/subscription state into EventBus; keep the singleton EventSystem as the default access layer. Document an isolated bus and explicitly explain that a bus does not select a thread.
+- [x] **2.2** Return a bus-qualified registration identifier. The bus strongly owns callback entries until unregister or bus destruction. Keep immediate delivery on the dispatcher's thread as the default; one-shot registration is optional, explicit behavior.
 - [ ] **2.3** Add unregister/invalidation and an invocation-entry handshake. A queued callback must check active state atomically with entering execution; checking a boolean and then calling is insufficient.
 - [ ] **2.4** Distinguish removal from waiting for an already-running callback. Proposed API: nonblocking `unregister()` prevents new invocations; an explicit completion barrier permits safe destruction of borrowed callback targets. Handle self-unregister without deadlock and reject waiting on one's own callback. Queued cancellation alone does not protect a raw `this` already in use.
 - [ ] **2.5** Preserve owned payloads and ordered delivery. Serialize enqueue order for concurrent producers within a delivery stream. Immediate callbacks retain registration order within one dispatch; document nested dispatch and overlapping producer calls rather than promising impossible global completion order.
