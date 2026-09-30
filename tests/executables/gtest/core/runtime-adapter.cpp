@@ -214,18 +214,20 @@ namespace {
     /** Records shader uses and camera matrices passed during drawing. */
     class MemoryShader final : public CE::Assets::Shader {
     public:
-        void use() override { ++uses; }
-        void set_uniform_value(const char*, float) override {}
-        void set_uniform_value(const char*, int) override {}
-        void set_uniform_value(const char*, unsigned int) override {}
-        void set_uniform_value(const char*, bool) override {}
-        void set_uniform_matrix(const char* name, const glm::mat4& value) override {
-            if (std::string_view(name) == "projectionMatrix")
-                projection = value;
-            if (std::string_view(name) == "viewMatrix")
-                view = value;
+        void bind_pass(const CE::Assets::ShaderPass& pass) override {
+            use();
+            projection = pass.projection;
+            view = pass.view;
         }
-
+        void bind_draw(const CE::Assets::ShaderDraw& draw) override { last_draw = draw; }
+        void use() override { ++uses; }
+        void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, unsigned int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, bool) override { ++raw_uniform_writes; }
+        void set_uniform_matrix(const char*, const glm::mat4&) override { ++raw_uniform_writes; }
+        CE::Assets::ShaderDraw last_draw;
+        int raw_uniform_writes = 0;
         int uses = 0;
         glm::mat4 projection{0.0f};
         glm::mat4 view{0.0f};
@@ -253,12 +255,14 @@ namespace {
             return geometry;
         }
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
+            ++linked_programs;
             return shader;
         }
 
         std::uint32_t uploaded_vertices = 0;
         std::thread::id resource_thread;
         int atlas_uploads = 0;
+        int linked_programs = 0;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::vector<CE::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
@@ -707,4 +711,27 @@ TEST(graphic, whole_image) {
     EXPECT_EQ(provider.geometry->first_vertex, 0u);
     EXPECT_EQ(provider.geometry->drawn_vertices, 6u);
     EXPECT_EQ(provider.shader->uses, 1);
+}
+
+TEST(material_cache, linking_does_not_bind_draw_state_and_reload_preserves_old_handles) {
+    MemoryProvider provider;
+    auto& shaders = CE::Assets::ShaderMgr::get();
+    const std::filesystem::path key{"material-probe"};
+    shaders.load_program(key, {"vertex", "fragment"}, provider);
+    auto original = shaders.get_asset(key);
+    EXPECT_EQ(provider.linked_programs, 1);
+    EXPECT_EQ(provider.shader->uses, 0);
+    EXPECT_EQ(provider.shader->raw_uniform_writes, 0);
+    shaders.load_program(key, {"vertex", "fragment"}, provider);
+    EXPECT_EQ(provider.linked_programs, 1);
+    provider.shader = std::make_shared<MemoryShader>();
+    shaders.reload_program(key, {"vertex", "fragment"}, provider);
+    EXPECT_EQ(provider.linked_programs, 2);
+    EXPECT_NE(original, shaders.get_asset(key));
+    EXPECT_TRUE(original);
+    EXPECT_EQ(provider.shader->uses, 0);
+    auto replacement = shaders.get_asset(key);
+    provider.shader.reset();
+    EXPECT_THROW(shaders.reload_program(key, {"vertex", "fragment"}, provider), CE::Exceptions::failed_operation);
+    EXPECT_EQ(shaders.get_asset(key), replacement);
 }

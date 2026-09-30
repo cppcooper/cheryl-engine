@@ -120,3 +120,12 @@ never invoked by a platform callback. Enter/Escape releases focus.
 
 The input implementation's remaining validation gate is recorded in
 [INPUT-IMPLEMENTATION-STATUS.md](INPUT-IMPLEMENTATION-STATUS.md).
+
+Common draw calls bind `ShaderPass` (projection/view) and `ShaderDraw`
+(model/alpha/scale/texture unit). `GLSLMaterialBindings` maps those roles to the
+OpenGL shader's names; empty names omit unused roles. Custom uniform methods
+remain available for application-specific parameters. The shader cache links and
+publishes programs without binding or broadcasting camera state. Use pass matrices
+or `DrawInfo::camera` instead of the removed shader-cache camera setters.
+`reload_program` publishes a successfully linked replacement while older frames
+retain the old handle; a failed reload leaves the previous entry intact.

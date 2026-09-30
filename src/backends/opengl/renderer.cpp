@@ -1,5 +1,5 @@
-#include <backends/opengl/renderer.h>
 #include <backends/opengl/gl.h>
+#include <backends/opengl/renderer.h>
 
 #include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
@@ -11,15 +11,13 @@
 
 namespace CE::RenderAPIs {
     namespace {
-        void draw_grid_cell(const Assets::Asset2D& asset, const Assets::GridDefinition& grid,
-                            const Assets::CellIndex cell) {
+        void draw_grid_cell(const Assets::Asset2D& asset, const Assets::GridDefinition& grid, const Assets::CellIndex cell) {
             if (cell >= grid.cell_count())
                 throw Exceptions::invalid_args(CE_HERE, "Render command selects a cell outside its grid");
             if (!asset.geometry || !asset.texture)
                 throw Exceptions::invalid_args(CE_HERE, "Render command has incomplete grid resources");
             asset.geometry->bind(*asset.texture);
-            asset.geometry->draw(cell * VAONumbers::vertices_per_strip_quad,
-                                 VAONumbers::vertices_per_strip_quad);
+            asset.geometry->draw(cell * VAONumbers::vertices_per_strip_quad, VAONumbers::vertices_per_strip_quad);
         }
     }
 
@@ -27,7 +25,11 @@ namespace CE::RenderAPIs {
 
     OpenGLRenderer::~OpenGLRenderer() {
         if (initialized_) {
-            try { deinitialize(); } catch (...) { /* The context must be shut down on its owner thread. */ }
+            try {
+                deinitialize();
+            }
+            catch (...) { /* The context must be shut down on its owner thread. */
+            }
         }
     }
 
@@ -43,12 +45,9 @@ namespace CE::RenderAPIs {
             // The renderer receives procedure addresses through the context interface,
             // without depending on the display's native window type.
             const auto version = gladLoadGLUserPtr(
-                [](void* user, const char* name) -> GLADapiproc {
-                    return static_cast<iOpenGLContext*>(user)->proc_address(name);
-                },
+                [](void* user, const char* name) -> GLADapiproc { return static_cast<iOpenGLContext*>(user)->proc_address(name); },
                 &context_);
-            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 ||
-                (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3)) {
+            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3)) {
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
             }
             resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id());
@@ -83,15 +82,10 @@ namespace CE::RenderAPIs {
             throw Exceptions::invalid_args(CE_HERE, "Render command needs a material");
         auto* material = style.material.get();
         if (material != active_material) {
-            material->use();
-            material->set_uniform_matrix("projectionMatrix", projection_);
-            material->set_uniform_matrix("viewMatrix", view_);
-            material->set_uniform_value("mytexture", 0);
-            material->set_uniform_value("in_Scale", 1.0f);
+            material->bind_pass({projection_, view_});
             active_material = material;
         }
-        material->set_uniform_value("in_Alpha", style.alpha);
-        material->set_uniform_matrix("modelMatrix", style.model_matrix);
+        material->bind_draw({style.model_matrix, style.alpha, 1.0f, 0});
     }
 
     void OpenGLRenderer::render(const RenderFrame& frame) {
@@ -101,39 +95,44 @@ namespace CE::RenderAPIs {
             set_camera_matrices(pass.projection, pass.view);
             Assets::Shader* active_material = nullptr;
             for (const auto& command : pass.draws) {
-                std::visit([&](const auto& draw) {
-                    using Draw = std::decay_t<decltype(draw)>;
-                    if constexpr (std::is_same_v<Draw, SpriteDraw>) {
-                        if (!draw.sprite)
-                            throw Exceptions::invalid_args(CE_HERE, "Sprite draw has no sprite");
-                        bind_style(draw.style, active_material);
-                        draw_grid_cell(*draw.sprite, draw.sprite->definition().grid, draw.cell);
-                    } else if constexpr (std::is_same_v<Draw, TileDraw>) {
-                        if (!draw.tileset)
-                            throw Exceptions::invalid_args(CE_HERE, "Tile draw has no tileset");
-                        bind_style(draw.style, active_material);
-                        draw_grid_cell(*draw.tileset, draw.tileset->definition().grid, draw.cell);
-                    } else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
-                        if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
-                            throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
-                        bind_style(draw.style, active_material);
-                        draw.graphic->geometry->bind(*draw.graphic->texture);
-                        draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
-                    } else if constexpr (std::is_same_v<Draw, TextDraw>) {
-                        if (!draw.font)
-                            throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
-                        bind_style(draw.style, active_material);
-                        const auto& geometry = draw.font->glyph_geometry();
-                        geometry.bind(draw.font->glyph_atlas());
-                        // The font and message are read-only. Only the model uniform
-                        // changes as the pen advances through pre-uploaded glyphs.
-                        draw.font->for_each_glyph(draw.text, [&](const std::size_t index, const float x, const float y) {
-                            const auto model = glm::translate(draw.style.model_matrix, glm::vec3(x, y, 0.0f));
-                            active_material->set_uniform_matrix("modelMatrix", model);
-                            geometry.draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
-                        });
-                    }
-                }, command);
+                std::visit(
+                    [&](const auto& draw) {
+                        using Draw = std::decay_t<decltype(draw)>;
+                        if constexpr (std::is_same_v<Draw, SpriteDraw>) {
+                            if (!draw.sprite)
+                                throw Exceptions::invalid_args(CE_HERE, "Sprite draw has no sprite");
+                            bind_style(draw.style, active_material);
+                            draw_grid_cell(*draw.sprite, draw.sprite->definition().grid, draw.cell);
+                        }
+                        else if constexpr (std::is_same_v<Draw, TileDraw>) {
+                            if (!draw.tileset)
+                                throw Exceptions::invalid_args(CE_HERE, "Tile draw has no tileset");
+                            bind_style(draw.style, active_material);
+                            draw_grid_cell(*draw.tileset, draw.tileset->definition().grid, draw.cell);
+                        }
+                        else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
+                            if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
+                                throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
+                            bind_style(draw.style, active_material);
+                            draw.graphic->geometry->bind(*draw.graphic->texture);
+                            draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
+                        }
+                        else if constexpr (std::is_same_v<Draw, TextDraw>) {
+                            if (!draw.font)
+                                throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
+                            bind_style(draw.style, active_material);
+                            const auto& geometry = draw.font->glyph_geometry();
+                            geometry.bind(draw.font->glyph_atlas());
+                            // The font and message are read-only. Only the model uniform
+                            // changes as the pen advances through pre-uploaded glyphs.
+                            draw.font->for_each_glyph(draw.text, [&](const std::size_t index, const float x, const float y) {
+                                const auto model = glm::translate(draw.style.model_matrix, glm::vec3(x, y, 0.0f));
+                                active_material->bind_draw({model, draw.style.alpha, 1.0f, 0});
+                                geometry.draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
+                            });
+                        }
+                    },
+                    command);
             }
         }
     }
@@ -152,8 +151,10 @@ namespace CE::RenderAPIs {
 
     void OpenGLRenderer::set_depth_test(const bool enabled) {
         (void)resources();
-        if (enabled) glEnable(GL_DEPTH_TEST);
-        else glDisable(GL_DEPTH_TEST);
+        if (enabled)
+            glEnable(GL_DEPTH_TEST);
+        else
+            glDisable(GL_DEPTH_TEST);
     }
 
     void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {

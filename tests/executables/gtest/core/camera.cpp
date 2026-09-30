@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <core/rendering/camera.h>
 #include <core/display/viewport.h>
-#include <internals/exceptions.h>
+#include <core/rendering/camera.h>
 #include <ext/matrix_transform.hpp>
+#include <internals/exceptions.h>
 
 #include <cmath>
 
@@ -19,7 +19,6 @@ TEST(camera_2d, framebuffer_corners) {
     EXPECT_NEAR(lower_left.y, -1.0f, 1e-5f);
     EXPECT_NEAR(upper_right.x, 1.0f, 1e-5f);
     EXPECT_NEAR(upper_right.y, 1.0f, 1e-5f);
-
 }
 
 TEST(camera_2d, view_revision) {
@@ -41,8 +40,6 @@ TEST(camera_3d, perspective_settings) {
     // Check the default vertical field of view in degrees and the horizontal
     // scaling implied by a framebuffer twice as wide as it is high.
     CE::Camera3D camera;
-    const CE::CameraBase& base = camera;
-    EXPECT_EQ(base.mode(), CE::Enum::gfx_mode::R3D);
     camera.set_framebuffer_size({1600, 800});
     const auto wide = camera.projection_matrix();
     EXPECT_NEAR(wide[1][1], 1.0f / std::tan(glm::radians(22.5f)), 1e-5f);
@@ -66,7 +63,6 @@ TEST(camera, minimized_window) {
     EXPECT_EQ(two_d.framebuffer_size(), (CE::FramebufferSize{0, 0}));
     EXPECT_TRUE(std::isfinite(two_d.projection_matrix()[0][0]));
     EXPECT_TRUE(std::isfinite(three_d.projection_matrix()[0][0]));
-
 }
 
 TEST(camera, invalid_camera_settings) {
@@ -87,4 +83,20 @@ TEST(viewport, independent_copies) {
     original.height = 768;
     EXPECT_EQ(copy.width, 800);
     EXPECT_EQ(copy.height, 600);
+}
+
+TEST(camera_2d, every_view_matrix_scalar_advances_the_revision) {
+    for (glm::length_t column = 0; column < 4; ++column) {
+        for (glm::length_t row = 0; row < 4; ++row) {
+            CE::Camera2D camera;
+            auto view = camera.view_matrix();
+            view[column][row] += 1.0f;
+            const auto before = camera.revision();
+            camera.set_view_matrix(view);
+            EXPECT_EQ(camera.revision(), before + 1);
+            EXPECT_FLOAT_EQ(camera.view_matrix()[column][row], view[column][row]);
+            camera.set_view_matrix(view);
+            EXPECT_EQ(camera.revision(), before + 1);
+        }
+    }
 }

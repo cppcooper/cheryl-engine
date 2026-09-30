@@ -1,5 +1,5 @@
-#include <assets/types/2d/stbfont.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/types/2d/stbfont.h>
 #include <assets/types/primitives/vertex.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -54,9 +54,7 @@ namespace CE::Assets {
         }
     }
 
-    STBFont::STBFont(STBFontData data) :
-        Font({data.geometry, data.texture}), advances_(data.advances),
-        line_height_(data.line_height) {
+    STBFont::STBFont(STBFontData data) : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }
@@ -67,10 +65,7 @@ namespace CE::Assets {
         if (!format->material)
             throw Exceptions::invalid_args(CE_HERE, "A font draw requires a shader program");
         auto& material = *format->material;
-        material.use();
-        material.set_uniform_value("in_Alpha", format->alpha);
-        material.set_uniform_value("in_Scale", 1.0f);
-        material.set_uniform_value("mytexture", 0);
+        material.bind_pass(format->camera);
         geometry->bind(*texture);
 
         // The legacy immediate path now shares the same read-only layout as a
@@ -79,21 +74,19 @@ namespace CE::Assets {
         model = glm::rotate(model, format->angle, glm::vec3(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, glm::vec3(format->scale, format->scale, 1.0f));
         for_each_glyph(text, [&](const std::size_t index, const float x, const float y) {
-            material.set_uniform_matrix("modelMatrix", glm::translate(model, glm::vec3(x, y, 0.0f)));
+            material.bind_draw({glm::translate(model, glm::vec3(x, y, 0.0f)), format->alpha, 1.0f, 0});
             geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
         });
     }
 
-    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size,
-                                  ResourceProvider& provider) {
+    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size, ResourceProvider& provider) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);
         const int font_offset = stbtt_GetFontOffsetForIndex(font_bytes.data(), 0);
         stbtt_fontinfo font_info{};
         if (font_offset < 0 || !stbtt_InitFont(&font_info, font_bytes.data(), font_offset)) {
-            throw Exceptions::runtime_exception(CE_HERE,
-                                                "Unsupported or corrupt font file '" + font_path.string() + "'");
+            throw Exceptions::runtime_exception(CE_HERE, "Unsupported or corrupt font file '" + font_path.string() + "'");
         }
 
         // Bake the fixed printable range into a growing alpha atlas until every glyph fits.
@@ -104,14 +97,13 @@ namespace CE::Assets {
             // Retry the whole printable range at double resolution; a
             // partial bake cannot supply stable glyph indices for drawing.
             bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
-            const int result = stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size),
-                                                    bitmap.data(), atlas_size, atlas_size, first_font_character,
-                                                    static_cast<int>(font_character_count), baked_characters.data());
+            const int result =
+                stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), bitmap.data(), atlas_size, atlas_size,
+                                     first_font_character, static_cast<int>(font_character_count), baked_characters.data());
             if (result > 0)
                 break;
             if (atlas_size == 4096) {
-                throw Exceptions::runtime_exception(CE_HERE,
-                                                    "Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
+                throw Exceptions::runtime_exception(CE_HERE, "Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
             }
             atlas_size *= 2;
         }
@@ -127,8 +119,7 @@ namespace CE::Assets {
             float x = 0.0f;
             float y = 0.0f;
             stbtt_aligned_quad quad{};
-            stbtt_GetBakedQuad(baked_characters.data(), atlas_size, atlas_size, static_cast<int>(index), &x, &y, &quad,
-                               1);
+            stbtt_GetBakedQuad(baked_characters.data(), atlas_size, atlas_size, static_cast<int>(index), &x, &y, &quad, 1);
             set_glyph_vertices(vertices.get() + index * VAONumbers::vertices_per_quad, quad);
             advances[index] = x;
         }
@@ -143,8 +134,8 @@ namespace CE::Assets {
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.
         auto geometry = provider.upload_geometry(std::move(vertices), vertex_count, PrimitiveTopology::Triangles);
-        auto atlas = provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size),
-                                                                  static_cast<std::uint32_t>(atlas_size)});
+        auto atlas =
+            provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)});
         return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 }

@@ -6,11 +6,11 @@
 #include <assets/types/2d/tileset.h>
 
 #include <glm.hpp>
+#include <internals/exceptions.h>
 
 #include <cstddef>
 #include <memory>
 #include <span>
-#include <stdexcept>
 #include <string>
 #include <utility>
 #include <variant>
@@ -82,7 +82,8 @@ namespace CE::RenderAPIs {
         // After rendering or supersession, release command handles on the graphics
         // thread while its context is current, then return the slot to simulation.
         void recycle() {
-            for (std::size_t i = 0; i < active_passes_; ++i) passes_[i].draws.clear();
+            for (std::size_t i = 0; i < active_passes_; ++i)
+                passes_[i].draws.clear();
             active_passes_ = 0;
         }
 
@@ -121,15 +122,15 @@ namespace CE::RenderAPIs {
     public:
         explicit RenderFrameWriter(RenderFrame& frame) : frame_(frame) {
             if (frame_.active_passes_ != 0)
-                throw std::logic_error("Render frame must be recycled before writing again");
+                throw Exceptions::failed_operation(CE_HERE, "Render frame must be recycled before writing again");
         }
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
 
-        [[nodiscard]] RenderPassWriter begin_pass(const glm::mat4& projection, const glm::mat4& view,
-                                                  bool depth_test = false) {
+        [[nodiscard]] RenderPassWriter begin_pass(const glm::mat4& projection, const glm::mat4& view, bool depth_test = false) {
             const auto index = frame_.active_passes_;
-            if (index == frame_.passes_.size()) frame_.passes_.emplace_back();
+            if (index == frame_.passes_.size())
+                frame_.passes_.emplace_back();
             auto& pass = frame_.passes_[index];
             pass.projection = projection;
             pass.view = view;

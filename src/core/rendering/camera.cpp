@@ -1,7 +1,7 @@
 #include <core/rendering/camera.h>
 
-#include <internals/exceptions.h>
 #include <ext/matrix_clip_space.hpp>
+#include <internals/exceptions.h>
 
 #include <algorithm>
 #include <cmath>
@@ -21,15 +21,17 @@ namespace CE {
     }
 
     void CameraBase::set_view_matrix(const glm::mat4& view) {
-        if (view_matrix_ == view)
+        bool unchanged = true;
+        for (glm::length_t column = 0; column < 4; ++column)
+            for (glm::length_t row = 0; row < 4; ++row)
+                unchanged = unchanged && view_matrix_[column][row] == view[column][row];
+        if (unchanged)
             return;
         view_matrix_ = view;
         ++revision_;
     }
 
-    Camera2D::Camera2D() {
-        recalculate_projection();
-    }
+    Camera2D::Camera2D() { recalculate_projection(); }
 
     void Camera2D::recalculate_projection() {
         // A minimized window can have a zero-sized framebuffer; keep the projection defined.
@@ -38,9 +40,7 @@ namespace CE {
         projection_matrix_ = glm::ortho(0.0f, width, 0.0f, height, 0.0f, 1.0f);
     }
 
-    Camera3D::Camera3D() {
-        recalculate_projection();
-    }
+    Camera3D::Camera3D() { recalculate_projection(); }
 
     void Camera3D::set_perspective(const float fov_degrees, const float near_plane, const float far_plane) {
         if (!std::isfinite(fov_degrees) || fov_degrees <= 0.0f || fov_degrees >= 180.0f || !std::isfinite(near_plane) ||

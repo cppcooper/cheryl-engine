@@ -1,11 +1,11 @@
-#include <core/resources/asset-management/texture-mgr.h>
-#include <assets/types/2d/ffont.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/types/2d/ffont.h>
 #include <assets/types/primitives/vertex.h>
-#include <internals/exceptions.h>
-#include <math/anchor.h>
+#include <core/resources/asset-management/texture-mgr.h>
 #include <ext/matrix_transform.hpp>
 #include <fstream>
+#include <internals/exceptions.h>
+#include <math/anchor.h>
 
 namespace CE::Assets {
     using namespace VAONumbers;
@@ -32,17 +32,18 @@ namespace CE::Assets {
         model_matrix = glm::rotate(model_matrix, info.scale, glm::vec3(0.f, 0.f, 1.f));
 
         for (auto letter : print_msg) {
-            info.material->set_uniform_matrix("modelMatrix", model_matrix);
-            int index = print_fancy ? letter-32+128 : letter-32;
+            info.material->bind_draw({model_matrix, info.alpha, info.scale, 0});
+            int index = print_fancy ? letter - 32 + 128 : letter - 32;
 
             if (letter == '\n') {
                 // Start a new line from the updated print origin; ordinary
                 // glyphs instead advance the existing model matrix by width.
                 cursor_pos.y -= scale;
-                //cursor_pos.y -= (info.scale / 2);
+                // cursor_pos.y -= (info.scale / 2);
                 model_matrix = glm::translate(glm::mat4(1.f), cursor_pos);
                 model_matrix = glm::rotate(model_matrix, print_angle, glm::vec3(0.f, 0.f, 1.f));
-            } else {
+            }
+            else {
                 geometry->draw(index * vertices_per_quad, vertices_per_quad);
                 model_matrix = glm::translate(model_matrix, glm::vec3(widths[index] * scale, 0.f, 0.f));
             }
@@ -53,8 +54,7 @@ namespace CE::Assets {
         for (int idx = 0; idx < num_chars_ffont; ++idx) {
             uint16_t x0 = idx % 16;
             uint16_t y0 = idx / 16;
-            math::Anchor::Center(vertices + (idx * vertices_per_quad),
-                                 16, 16, 1, 1, x0, y0);
+            math::Anchor::Center(vertices + (idx * vertices_per_quad), 16, 16, 1, 1, x0, y0);
         }
     }
 

@@ -119,7 +119,7 @@ public:
                 const auto key = asset_root_ / "shaders" / "shader2d";
                 pending_shader_ = engine_.platform_tasks().submit([key](CE::Engine::EngineContext& platform) {
                     auto& shaders = CE::Assets::ShaderMgr::get();
-                    shaders.load_program(key, {key.string() + ".vert", key.string() + ".frag"}, platform.resources());
+                    shaders.reload_program(key, {key.string() + ".vert", key.string() + ".frag"}, platform.resources());
                     return shaders.get_asset(key);
                 });
             }

@@ -17,20 +17,23 @@ namespace {
         float scale = 0.0f;
         glm::mat4 model{0.0f};
 
+        CE::Assets::ShaderPass camera;
+        int raw_uniform_writes = 0;
+        void bind_pass(const CE::Assets::ShaderPass& pass) override {
+            ++uses;
+            camera = pass;
+        }
+        void bind_draw(const CE::Assets::ShaderDraw& draw) override {
+            alpha = draw.alpha;
+            scale = draw.scale;
+            model = draw.model;
+        }
         void use() override { ++uses; }
-        void set_uniform_value(const char* name, float value) override {
-            if (std::string_view(name) == "in_Alpha")
-                alpha = value;
-            if (std::string_view(name) == "in_Scale")
-                scale = value;
-        }
-        void set_uniform_value(const char*, int) override {}
-        void set_uniform_value(const char*, unsigned int) override {}
-        void set_uniform_value(const char*, bool) override {}
-        void set_uniform_matrix(const char* name, const glm::mat4& value) override {
-            if (std::string_view(name) == "modelMatrix")
-                model = value;
-        }
+        void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, unsigned int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, bool) override { ++raw_uniform_writes; }
+        void set_uniform_matrix(const char*, const glm::mat4&) override { ++raw_uniform_writes; }
     };
 
     struct RecordingDrawable final : CE::Assets::iDraw {
@@ -46,11 +49,14 @@ TEST(draw_contract, material_without_glsl) {
     info.alpha = 0.4f;
     info.scale = 2.0f;
     info.model_matrix[3][0] = 42.0f;
+    info.camera.view[3][1] = 19.0f;
 
     // The drawable delegates to DrawInfo; inspect what it sent to the shader.
     RecordingDrawable drawable;
     drawable.draw(info);
     EXPECT_EQ(material->uses, 1);
+    EXPECT_EQ(material->raw_uniform_writes, 0);
+    EXPECT_FLOAT_EQ(material->camera.view[3][1], 19.0f);
     EXPECT_FLOAT_EQ(material->alpha, 0.4f);
     EXPECT_FLOAT_EQ(material->scale, 2.0f);
     EXPECT_FLOAT_EQ(material->model[3][0], 42.0f);
