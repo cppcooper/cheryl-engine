@@ -108,3 +108,8 @@ listeners on another thread and check per-listener cancellation and recovery.
 The aggregate target alone receives the private source include path. These fixtures
 model loss without running an OS policy adapter; they are uncompiled/unexecuted and
 do not force every old producer interleaving or prove actual affinity failure.
+
+Checkpoint 57 also prepares throwing submission with original-error retention and
+same-listener recovery. No controlled fixture invokes a pump inline while offered;
+explicit test playback happens after publication. Closure guards invalidate borrowed
+recording sinks before pending captures unwind on an assertion's early return.

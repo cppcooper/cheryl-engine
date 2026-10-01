@@ -544,3 +544,36 @@ TEST(event_bus, a_pump_lost_after_publication_reports_each_listener_on_the_cance
     EXPECT_EQ(received, (std::vector<int>{3}));
     EXPECT_EQ(errors, 2);
 }
+
+TEST(event_bus, a_throwing_pump_submission_preserves_the_original_error_and_reentrant_recovery) {
+    CE::Engine::WorkerPool pool;
+    auto group = pool.make_group();
+    CE::SubSystems::EventBus bus;
+    std::vector<CE::SubSystems::EventBus::Work> pumps;
+    bool reject = true;
+    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group,
+        [&](CE::SubSystems::EventBus::Work pump) {
+            if (reject)
+                throw CE::Exceptions::failed_operation(CE_HERE, "Controlled pump submission rejection");
+            pumps.push_back(std::move(pump));
+        });
+    int errors = 0;
+    std::vector<int> received;
+    CloseBusOnExit cleanup{bus};
+    bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); }, delivery,
+        [&](std::exception_ptr error) {
+            EXPECT_THROW(std::rethrow_exception(error), CE::Exceptions::failed_operation);
+            ++errors;
+            reject = false;
+            if (errors == 1)
+                bus.dispatch("tick", 2);
+        });
+    bus.dispatch("tick", 1);
+    EXPECT_EQ(errors, 1);
+    EXPECT_TRUE(received.empty());
+    ASSERT_EQ(pumps.size(), 1u);
+    pumps.front()();
+    pumps.clear();
+    EXPECT_EQ(received, (std::vector<int>{2}));
+    EXPECT_EQ(errors, 1);
+}

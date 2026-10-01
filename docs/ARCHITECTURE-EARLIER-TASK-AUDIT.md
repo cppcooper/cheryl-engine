@@ -112,6 +112,30 @@ check their owners/domains. Prepared native recording sources cover unrelated
 active-unit state and rejection on foreign/missing/closed contexts or invalid units.
 No real OpenGL execution has occurred.
 
+### A10: an accepted pump's early policy rejection could clean up on its producer
+
+Checkpoint 46 serialized pool submission but still retained a local shared pump
+owner. If native policy rejected the accepted job before callback entry, that
+local owner could become the last owner after the stream lock was released. A
+second listener could join in that window; the producer's pump destructor could
+then destroy its cancellation ticket under the first listener's posting lock.
+A sink reentering that first listener could deadlock.
+
+Checkpoint 55 moves cancellation to a move-only guard owned by the submitted
+callable. A preparing/accepted/cancelled atomic handshake distinguishes loss before
+publication from loss afterward. Before publication, destruction only records
+cancellation; the producer withdraws its sole request while excluding other
+producers, then releases it outside the stream lock. After publication, the
+unentered callable owns stream abandonment; the producer's shared owner has no
+cleanup destructor. Synchronous submit exceptions retain their original error.
+
+Checkpoints 56–57 prepare a private submission seam and scenarios for loss before
+publication, loss after two listeners join, and synchronous throwing submission,
+including cancellation-thread reporting and same-listener reentry/recovery. They
+are uncompiled/unexecuted, model callable loss without an OS adapter, and do not
+force every old intermediate producer interleaving. The finding rests on source
+ownership/interleaving review; native policy and startup failure acceptance stay open.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,
@@ -119,7 +143,9 @@ which matches the previous local 39–45 tree. Source review spans both runtime 
 dispatcher queue/capture ownership, event lifecycle and lock order, worker scheduling
 and native policy, scheduler/input arithmetic, cache publication, native construction
 and binding, material resolution, CPU submission, and frame retention/recycling.
-A7–A9 are source fixes found by this review. No additional handoff defect was found
+A7–A9 are source fixes found by that review; A10 extends the event-pump failure
+review in the current 55–57 continuation from pushed checkpoint 54,
+`b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`. No additional handoff defect was found
 in the inspected frame state transitions; that is a limited review result.
 
 Checkpoint 49 adds coordinated frame/reload/failure cleanup sources in both modes.

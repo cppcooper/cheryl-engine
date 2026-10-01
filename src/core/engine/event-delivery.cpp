@@ -48,7 +48,10 @@ namespace {
         std::shared_ptr<WorkerPump> pump;
         bool entered = false;
 
-        explicit WorkerPumpJob(std::shared_ptr<WorkerPump> value) : pump(std::move(value)) {}
+        explicit WorkerPumpJob(
+            std::shared_ptr<WorkerPump> value
+        )
+        : pump(std::move(value)) {}
         WorkerPumpJob(WorkerPumpJob&&) noexcept = default;
         WorkerPumpJob(const WorkerPumpJob&) = delete;
         ~WorkerPumpJob() {

@@ -186,6 +186,15 @@ see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
   inherited active unit. Use guarded instance unbind(unit). Fixed in 48 with
   recording sources; no real-context acceptance is claimed.
 
+- D0: checkpoints 46–54 are pushed as `b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`.
+  The tree matches local `ec0c7a21b96f711d8aa3824f2e93cbd2970a1011`; that local
+  history remains on a checkpoint branch. New numbered delivery starts at 55.
+- D2 / audit A10: an accepted event pump rejected by native policy before entry
+  could cancel joined listeners on its producer under a posting lock. Move cleanup
+  to the submitted callable and atomically handshake publication/cancellation.
+  Fixed in 55; 56–57 prepare controlled loss/throw/reentry fixtures. Actual native
+  rejection/startup failure execution remains open.
+
 ## Patch protocol
 
 Generate a new numbered mailbox patch at every coherent checkpoint, using the
@@ -214,41 +223,35 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-This recovery continuation uses a 20-minute work window and up to 10 minutes to
-finish a clean checkpoint. The workspace had reverted to local checkpoint 30;
-the saved cumulative patch recovered all 51 commits from the fixed original base
-to the exact recorded checkpoint-51 tree. The remote is still at checkpoint 45,
-`7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`. Saved original increments 46–51
-were reapplied there without changing their author/date/message order. Older local
-and full recovery histories remain on checkpoint branches.
+This continuation starts at user-pushed checkpoint 54,
+`b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`, after matching its exact tree with
+saved local work. The original task base remains fixed. A 20-minute work window
+is followed by up to 10 minutes to finish verification and delivery.
 
-- Recovered 46–48: worker pump publication, cache candidate ownership, and guarded
-  explicit-unit texture unbinding fixes (A7–A9).
-- Recovered 49–51: both-mode frame/reload/failure coverage, required-mask revalidation,
-  convergence documentation, and the PR description draft.
-- 52 prepares capture-deleter reentry and overlapping weighted CPU-mask scenarios;
-  held-worker fixture cleanup joins before captured recording state can unwind.
-- 53 prepares failed-shutdown context recovery and abandonment with late worker
-  release across native resource kinds.
-- 54 records recovery evidence, additional coverage, and the current delivery base.
+- 55 fixes cancellation ownership for accepted event pumps rejected before entry,
+  with an atomic publication handshake (audit A10).
+- 56 prepares controlled pre-publication and published multi-listener cancellation,
+  reporting thread, reentry, and recovery fixtures through a private submission seam.
+- 57 prepares synchronous throwing submission/original-error recovery and records
+  current source-review evidence, remaining acceptance, and the delivery checkpoint.
 
-Numbered patches **46–54** continue from the pushed base above. The next unused
-filename is **cheryl-engine-55.patch**. `cheryl-engine-continuation.patch` includes
-recovered 46–51 and new 52–54. If 46–51 are already applied locally, use
-`cheryl-engine-followup.patch` for just 52–54. The cumulative `cheryl-engine.patch`
-starts at the fixed original base and repeats earlier work. Use one application
-route; commits remain ordered with their original authors and messages.
+Numbered patches **55–57** continue from the pushed base above; the next unused
+filename is **cheryl-engine-58.patch**. Apply `cheryl-engine-continuation.patch`
+there, or apply the three numbered increments in order. `cheryl-engine.patch`
+starts at the fixed original base and repeats earlier commits. Use one route;
+commit authorship and ordering remain intact.
 
-Tasks 1–8 and task-9 source preparation are implemented. Compilation, aggregate
-regressions, real sequential/concurrent rendering/affinity/reload/retirement, and
-shutdown/failure acceptance remain open under 9.5. PR metadata publication remains
-separately requested under 9.7; a concrete local draft is ready. The partial audit
-and controlled failure gaps stay explicit in
-[ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md).
+Tasks 1–8 and task-9 source preparation remain implemented. The partial audit stays
+open: controlled native affinity/thread-start failure, allocation/rehash failure,
+real context loss, and cross-task producer/failure execution still need evidence.
+The new fixtures model cancellation without proving an OS adapter failure or every
+old producer interleaving. Builds, aggregate regressions, and real sequential/
+concurrent/native acceptance remain open under 9.5; PR metadata publication remains
+separately requested under 9.7. No configuration, builds, tests, or remote writes
+occur in this continuation.
 
-Changed C++ syntax trees and whitespace are checked with include/API/ownership
-review; formatting follows the repository style manually. Combined continuation,
-ordered increments, original-base cumulative, and the new-only followup mailbox
-must reproduce the exact tree and author/date/message ordering before delivery.
-No configuration, compilation, regression execution, real native acceptance, or
-assistant remote write occurs in this recovery continuation.
+Changed C++ syntax trees and whitespace are checked alongside include/API,
+move ownership, and lock/interleaving review. The private source include path is
+limited to the existing aggregate test target; public worker/event APIs are unchanged.
+Combined, numbered, and original-base mailboxes must replay to the exact tree and
+ordered author/date/messages before final delivery.
