@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -82,14 +83,15 @@ namespace CE::Assets {
      * Publish complete assets under a unique lock; readers copy retained handles
      * under a shared lock. Construction and final release happen outside the lock.
      */
-    template <typename AssetType, typename Key = std::filesystem::path>
+    template <typename AssetType, typename Key = std::filesystem::path,
+        typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
     struct AssetMgr : AssetCacheContext {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
 
     protected:
         mutable std::shared_mutex assets_mutex_;
-        std::unordered_map<Key, spointer> loaded_assets{};
+        std::unordered_map<Key, spointer, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
 
     public:
         AssetMgr() = default;
@@ -110,7 +112,13 @@ namespace CE::Assets {
             return loaded_assets.size();
         }
         virtual void clear_assets() noexcept {
-            decltype(loaded_assets) retired;
+            // Preserve allocator identity: swapping maps with unequal, nonpropagating
+            // allocators is invalid. Default production caches still use std::allocator.
+            const auto allocator = [this] {
+                std::shared_lock lock(assets_mutex_);
+                return loaded_assets.get_allocator();
+            }();
+            decltype(loaded_assets) retired(allocator);
             {
                 std::unique_lock lock(assets_mutex_);
                 retired.swap(loaded_assets);
@@ -119,14 +127,36 @@ namespace CE::Assets {
         }
 
     protected:
-        spointer publish_asset(const Key& key, spointer asset) {
+        explicit AssetMgr(
+            const Allocator& allocator
+        )
+        : loaded_assets(allocator) {}
+
+        spointer publish_asset(
+            const Key& key,
+            spointer asset
+        ) {
+            return publish_asset(key, std::move(asset), []() noexcept {});
+        }
+
+        // A derived cache can commit prepared metadata in the publication lock.
+        // The callback must not throw or reenter this cache.
+        template <typename Published>
+        spointer publish_asset(
+            const Key& key,
+            spointer asset,
+            Published&& published
+        ) {
+            static_assert(std::is_nothrow_invocable_v<Published>);
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
             std::unique_lock lock(assets_mutex_);
             // Keep this local owner until the lock has unwound. Node/rehash
             // failure may destroy an insertion candidate while still inside
             // try_emplace; that must not run its final deleter under this lock.
-            return loaded_assets.try_emplace(key, asset).first->second;
+            const auto entry = loaded_assets.try_emplace(key, asset).first;
+            std::forward<Published>(published)();
+            return entry->second;
         }
         spointer replace_asset(const Key& key, spointer asset) {
             if (!asset)
