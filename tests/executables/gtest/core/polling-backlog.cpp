@@ -81,3 +81,34 @@ TEST(polling_backlog, invalid_capacity_delay_and_duplicate_observations_are_reje
     (void)backlog.consume();
     EXPECT_THROW(backlog.complete(poll, now), CE::Exceptions::invalid_args);
 }
+
+TEST(polling_backlog, an_unrepresentable_poll_deadline_saturates_without_losing_its_observation) {
+    using Clock = CE::Input::InputClock;
+    CE::Input::InputBindings bindings;
+    CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 5ms});
+    const auto completed_at = Clock::time_point::max() - 1ms;
+    const auto poll = bindings.publish_actions(completed_at);
+    backlog.complete(poll, completed_at);
+    EXPECT_EQ(backlog.next_poll_at(), Clock::time_point::max());
+    EXPECT_FALSE(backlog.poll_due(completed_at));
+    const auto observations = backlog.consume();
+    ASSERT_EQ(observations.size(), 1u);
+    EXPECT_EQ(observations.front()->state, poll);
+    EXPECT_EQ(backlog.next_poll_at(), Clock::time_point::max());
+}
+
+TEST(polling_backlog, maximum_spacing_saturates_and_zero_spacing_accepts_the_clock_limit) {
+    using Clock = CE::Input::InputClock;
+    CE::Input::InputBindings bindings;
+    CE::Input::PollingBacklog delayed({CE::Input::PollingPolicy::Unlimited, 0, Clock::duration::max()});
+    const auto completed_at = Clock::time_point::max() - 1ms;
+    delayed.complete(bindings.publish_actions(completed_at), completed_at);
+    EXPECT_EQ(delayed.next_poll_at(), Clock::time_point::max());
+
+    CE::Input::PollingBacklog unpaced({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
+    const auto limit = Clock::time_point::max();
+    unpaced.complete(bindings.publish_actions(limit), limit);
+    EXPECT_EQ(unpaced.next_poll_at(), limit);
+    EXPECT_TRUE(unpaced.poll_due(limit));
+    EXPECT_EQ(unpaced.consume().size(), 1u);
+}

@@ -39,8 +39,10 @@ namespace CE::Input {
         polls_.push_back(std::move(poll));
         // Handoff resets capacity, not this delay: two polls on either side of
         // consumption still respect the completion-to-next-poll spacing.
-        const auto remaining = InputClock::time_point::max() - completed_at;
-        next_poll_ = options_.spacing < remaining ? completed_at + options_.spacing : InputClock::time_point::max();
+        // Subtract the nonnegative spacing from max, never a possibly negative
+        // clock timestamp from max: that span may exceed duration's signed range.
+        next_poll_ = completed_at > InputClock::time_point::max() - options_.spacing
+            ? InputClock::time_point::max() : completed_at + options_.spacing;
     }
 
     void PollingBacklog::complete(std::shared_ptr<const ActionSnapshot> state, const InputClock::time_point completed_at) {
