@@ -223,7 +223,41 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Completed source audit: checkpoints 87–90
+### Task-9 build and aggregate execution: checkpoints 91–92
+
+The remote now contains all audit patches through 90 at
+`a785c0e35e97a904df67b19af0d65a17d5ee1170`; its tree and ordered patch metadata
+match saved local 90. This continuation adopts that remote history while retaining
+saved local checkpoint branches and the original `e8c9788` task base.
+
+- 91 fixes two startup-regression cancellation expectations found by the first
+  sandbox aggregate run (328 passed, two failed). Accepted requests cancelled
+  during cleanup report the documented `future_errc::broken_promise`; new requests
+  after closure still reject with `failed_operation`. Validity/readiness and exact
+  error code are checked without changing production code or cleanup assertions.
+- Both normal/sandbox Release configurations compile and link all default targets,
+  including the normal demo. Rebuilt full suites pass 332 normal and 330 sandbox
+  cases without failures, errors, disabled tests or skips. Real Linux affinity mask
+  cases execute; OpenGL and runtime fault adapters remain controlled evidence.
+- 92 records environment, commands, initial failure and corrected results in
+  [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md), updates current status/
+  work-order/PR draft references and separates 9.5a/b completion from native gates.
+
+Task 9.5 remains open for real demos/timing/input, GL driver/reload/context/idle/
+shutdown, font parsing/rasterization/allocation/rotated FFont and remaining OS
+restriction/failure acceptance. Next establish a real GLFW/OpenGL execution surface
+and finite sequential/concurrent demo scenarios. No demo, push or PR write occurred.
+Task 9.7 remains open with an updated local draft.
+
+New numbered patches are **91–92**; next unused number is **93**. Both new-only
+`cheryl-engine-followup.patch` and the all-pending `cheryl-engine-continuation.patch`
+start at remote 90 and contain 91–92. The original-base cumulative
+`cheryl-engine.patch` preserves the full history. Choose one matching application
+base. Delivery replay must preserve exact trees and ordered author/date/messages.
+The validation archive preserves build/configuration logs, effective CMake caches,
+initial failing XML/output and corrected complete-suite XML/output.
+
+### Completed source audit: checkpoints 87–90 (historical)
 
 This pass starts at saved local 86,
 `b3621ac05c9403dedbdca9fd9aba5e1a33f2ca8a`. Confirmed remote 57 remains

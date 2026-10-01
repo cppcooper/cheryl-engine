@@ -9,6 +9,13 @@ exhaustive correctness or executed acceptance. Task-9 source work is unblocked.
 [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) records all requirement
 rows; findings A1–A20 and remaining 9.5/9.7 gates are explicit.
 
+Task-9 execution now builds both Release configurations and passes all 332 normal
+and 330 sandbox aggregate tests, with no skips. Checkpoint 91 corrects two startup
+fixture cancellation expectations without changing production behavior.
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) records current evidence and
+remaining native gates. Confirmed remote 90 is `a785c0e35e97a904df67b19af0d65a17d5ee1170`.
+Preparation-only descriptions below are retained as audit history.
+
 ## Cross-task paths
 
 | Path | Source review and prepared evidence | Remaining acceptance |

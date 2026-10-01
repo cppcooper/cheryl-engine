@@ -15,14 +15,17 @@ reload preserves old generations held by published frames. Strong cache residenc
 owner/current-context guards, deferred native retirement, and idle maintenance
 govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 
-Validation prepared: aggregate regression sources cover dispatch/event lifetime,
+Aggregate regression sources cover dispatch/event lifetime,
 worker policies, timing/input recovery, cache/native ownership, material parameters,
 frame/text retention, reload, and failure cleanup. Changed-source syntax inspection,
 whitespace/API/ownership review, and mailbox replay are preparation checks only.
-Current changes have not been compiled or executed. Normal/sandbox builds, aggregate
-regressions, real sequential/concurrent demos, affinity failures, native reload and
-retirement, and shutdown/failure acceptance remain open. Earlier build reports are
-historical. The completed-task source audit closes at checkpoint 90, including clang-format
+Current normal/sandbox Release builds pass, including the normal demo. Complete
+aggregate runs pass 332 normal and 330 sandbox tests with no skips after two
+startup-fixture cancellation expectation corrections; production behavior is unchanged.
+Real Linux affinity mask cases execute. Real sequential/concurrent demos, OS policy
+rejection, driver reload/retirement/context recovery and font rendering remain open.
+Earlier build reports are historical. The completed-task source audit closes at checkpoint 90, including clang-format
 23.1.2, declaration inventory and controlled native/startup/retained-owner failure
-sources. No executed native/OS/runtime acceptance is claimed. The evidence and
-remaining gates are recorded in docs/ARCHITECTURE-CONVERGENCE-REVIEW.md.
+sources. Controlled runtime and Linux affinity scenarios have executed; real GPU/demo/font
+acceptance remains open. Current evidence and remaining gates are recorded in
+docs/ARCHITECTURE-VALIDATION.md.

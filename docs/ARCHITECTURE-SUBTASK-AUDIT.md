@@ -35,6 +35,11 @@ acceptance. There are no remaining partial source-review rows. â€œFix preparedâ€
 corrected source with unexecuted regression coverage. No CMake configuration,
 compilation, tests, native demo or assistant remote write occurred.
 
+Task-9 execution after this source-audit checkpoint is recorded in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). Normal/sandbox Release builds
+and aggregate regressions now pass after two fixture expectation fixes. Unexecuted
+statements in the audit rows describe the source-audit checkpoint.
+
 ## Batch-ending completion claims
 
 | Checkpoint | Claim being reviewed | Review focus |

@@ -3,19 +3,22 @@
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
 `refactor-runtime-render-resource-architecture`. Tasks 1–8 of the second-pass
-work order are implemented in source. **This continuation has not been compiled
-or tested.** Historical normal/sandbox build results below predate these changes
-and do not validate the current HEAD. Individual local commits remain intact.
+work order are implemented in source. **Current normal/sandbox Release builds pass;
+full aggregate runs pass 332 normal and 330 sandbox tests with no skips after two
+startup-fixture expectation corrections.** [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md)
+records the validated source revision, commands and remaining native acceptance.
+Individual local commits remain intact.
 
 The completed-task source audit closes at checkpoint 90 after reviewing every
 listed completed task 0–8, batch-ending claims and identified dependent paths.
-Confirmed findings A1–A20 are fixed in the pending patch series. Formatting,
+Confirmed findings A1–A20 are fixed in the integrated audit patch series. Formatting,
 declaration inventory and native startup/retained-owner review are recorded in
 [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md), with finding history in
 [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md). Closure is
 bounded source review, not exhaustive correctness or type/link/runtime acceptance.
-Task-9 source work is unblocked; builds, tests, native acceptance and PR metadata
-remain open as specified by the work order.
+Task-9 build/aggregate execution passes; native acceptance and PR metadata remain
+open as specified by the work order. The table below records the pre-execution
+source-audit snapshot; current results are in the linked validation record.
 
 Earlier input/runtime work began at
 `d690266c389f08e74efe0481c5fc6b744870ea29`. Its compilation follow-up is retained
@@ -37,8 +40,8 @@ open. Source preparation checks are separate from executed acceptance.
 
 Source formatting, C++ syntax parsing, whitespace checks, and local mailbox replay
 are preparation checks. They do not establish C++ type/link correctness, thread
-correctness, GPU behavior, or platform acceptance. Any executed validation should
-record its configurations, commands, and observed results here.
+correctness, GPU behavior, or platform acceptance. Current execution is recorded in ARCHITECTURE-VALIDATION.md; earlier
+unexecuted descriptions below are retained as preparation history.
 
 ## Frame-generation convergence sources
 
