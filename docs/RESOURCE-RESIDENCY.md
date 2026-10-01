@@ -90,3 +90,11 @@ checking its texture's owner/current/live context and unit limit. The former sta
 unbind bypassed those guards and cleared whichever unit another operation left
 active. Native recording sources cover explicit unit selection and foreign,
 missing, invalid-unit, and closed-context rejection before binding.
+
+Checkpoint 53 prepares two recording-only shutdown/context-loss scenarios. Failed
+shutdown with a missing current context must preserve pending and live entries so
+owner recovery can collect and sweep each ID once. If recovery fails, abandon must
+invalidate pending and retained entries of every resource kind without a native
+delete or later query of a destroyed context, including late worker-thread release.
+These sources use synthetic IDs and have not been compiled or executed; real
+context-loss and driver cleanup remain separate acceptance checks.

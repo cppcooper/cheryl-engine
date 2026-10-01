@@ -207,6 +207,70 @@ TEST(opengl_lifetime, maintenance_with_a_different_current_context_does_not_dele
     lifetime->shutdown();
 }
 
+TEST(opengl_lifetime, a_failed_shutdown_preserves_pending_and_retained_resources_for_context_recovery) {
+    DeletionRecorder native;
+    bool current = true;
+    int queries = 0;
+    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [&] {
+        ++queries;
+        return current;
+    });
+    { OpenGLHandle pending(lifetime, GLResourceKind::Texture, 51); }
+    auto retained = std::make_unique<OpenGLHandle>(lifetime, GLResourceKind::Buffer, 52);
+    current = false;
+    EXPECT_THROW(lifetime->shutdown(), failed_operation);
+    EXPECT_TRUE(native.deletions.empty());
+
+    current = true; // Recovery may collect pending work without losing live handles.
+    EXPECT_EQ(retained->id(), 52u);
+    lifetime->collect();
+    ASSERT_EQ(native.deletions.size(), 1u);
+    EXPECT_EQ(native.deletions[0], (std::pair{GLResourceKind::Texture, GLuint{51}}));
+    lifetime->shutdown();
+    ASSERT_EQ(native.deletions.size(), 2u);
+    EXPECT_EQ(native.deletions[1], (std::pair{GLResourceKind::Buffer, GLuint{52}}));
+    EXPECT_EQ(native.deletion_thread, std::this_thread::get_id());
+    const auto closed_queries = queries;
+    current = false;
+    auto worker = std::async(std::launch::async, [retained = std::move(retained)]() mutable { retained.reset(); });
+    worker.get();
+    EXPECT_EQ(queries, closed_queries);
+    EXPECT_EQ(native.deletions.size(), 2u);
+}
+
+TEST(opengl_lifetime, abandonment_after_failed_shutdown_invalidates_all_kinds_before_late_worker_release) {
+    DeletionRecorder native;
+    bool current = true;
+    bool context_alive = true;
+    int queries = 0;
+    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [&] {
+        ++queries;
+        if (!context_alive)
+            throw std::logic_error("queried a destroyed context");
+        return current;
+    });
+    const std::vector<GLResourceKind> kinds{GLResourceKind::Texture, GLResourceKind::Buffer,
+        GLResourceKind::VertexArray, GLResourceKind::Program, GLResourceKind::ShaderStage};
+    std::vector<std::unique_ptr<OpenGLHandle>> handles;
+    GLuint id = 60;
+    for (const auto kind : kinds)
+        handles.push_back(std::make_unique<OpenGLHandle>(lifetime, kind, id++));
+    handles.front().reset(); // One pending retirement and four still-retained handles.
+    current = false;
+    EXPECT_THROW(lifetime->shutdown(), failed_operation);
+    lifetime->abandon(); // Context destruction owns native cleanup when recovery fails.
+    context_alive = false;
+    const auto closed_queries = queries;
+    for (const auto& handle : handles)
+        if (handle)
+            EXPECT_THROW((void)handle->id(), failed_operation);
+    EXPECT_THROW(lifetime->collect(), failed_operation);
+    auto worker = std::async(std::launch::async, [handles = std::move(handles)]() mutable { handles.clear(); });
+    worker.get();
+    EXPECT_EQ(queries, closed_queries);
+    EXPECT_TRUE(native.deletions.empty());
+}
+
 TEST(opengl_lifetime, logical_program_adoption_rejects_a_texture_without_losing_its_retirement_owner) {
     DeletionRecorder native;
     auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
