@@ -223,7 +223,41 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Native allocation and texture query audit: checkpoints 70–72
+### Font/native allocation and shutdown audit: checkpoints 73–76
+
+This pass starts at saved local 72,
+`15f50c0a481a347da5df336069cd852c8547c48b`. Remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–72 are preserved.
+
+- 73 extracts the unchanged baked-font upload boundary and prepares geometry
+  rejection, atlas throw/null cleanup and successful copied metrics/resources.
+- 74 prepares actual registry growth rejection at textures and all flat/legacy
+  VAO/buffer adoption positions, prior-owner unwinding and one-time native release.
+- 75 fixes A16: worker finishing borrows retained groups after the submission-close
+  barrier instead of allocating a second owner vector. Two combined runtime failure
+  scenarios prepare pending uploads/cancellation, CPU-owner release and first-error
+  preservation through game/renderer cleanup in both modes.
+- 76 prepares invalid font size/missing/empty file rejection before provider calls
+  and records this bounded review. Nine new fixture functions remain unexecuted.
+
+Remaining source work: font bake failure evidence, combined context/asset/native
+startup/policy and partial-adapter failures, and full formatting/declaration review.
+Real context loss, type/link correctness, test execution and runtime/native acceptance
+remain separate open gates. Task 9 remains paused. No configuration, build, test,
+native demo or assistant remote write occurred.
+
+Numbered delivery is **73–76**; next unused number is **77**. The new-only
+`cheryl-engine-followup.patch` starts after saved 72. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–76**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds unapplied patches until audit completion; delivery routes overlap.
+
+Syntax-tree, whitespace, local documentation-link and requirement-row checks
+accompany this checkpoint. New-only, numbered, combined and original-base mailboxes
+must reproduce the exact tree and ordered author/date/messages. Preparation checks
+do not establish C++ type/link correctness, driver/heap behavior or race freedom.
+
+### Native allocation and texture query audit: checkpoints 70–72 (historical)
 
 This pass starts at saved local 69,
 `3799c053931a4a2051fa789e3fe0e956e24dce17`. Remote 57 remains

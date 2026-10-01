@@ -157,6 +157,18 @@ TEST(system_fonts, fallback_font) {
     EXPECT_FALSE(CE::Resources::select_default_system_font({}).has_value());
 }
 
+TEST(font_upload, invalid_size_and_missing_or_empty_files_never_start_resource_uploads) {
+    const TemporaryDirectory directory;
+    const auto empty = directory.path / "empty.ttf";
+    std::ofstream(empty, std::ios::binary).close();
+    FontUploadProvider provider;
+    EXPECT_THROW((void)STBFont::load_font(empty, 0, provider), CE::Exceptions::invalid_args);
+    EXPECT_THROW((void)STBFont::load_font(directory.path / "missing.ttf", 16, provider), CE::Exceptions::runtime_exception);
+    EXPECT_THROW((void)STBFont::load_font(empty, 16, provider), CE::Exceptions::runtime_exception);
+    EXPECT_EQ(provider.geometry_calls, 0);
+    EXPECT_EQ(provider.atlas_calls, 0);
+}
+
 TEST(font_upload, rejected_geometry_releases_cpu_storage_without_starting_the_atlas) {
     FontUploadProvider provider;
     provider.reject_geometry = true;

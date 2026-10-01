@@ -277,6 +277,41 @@ remains fixed new/delete for entries and make_shared for logical programs. These
 sources do not close font bake/atlas, every native wrapper's allocation boundary,
 combined runtime failure or actual heap-exhaustion acceptance.
 
+### A16: worker shutdown allocated another group-owner vector
+
+EngineContext::finish_workers copied worker_groups_ under its mutex before waiting.
+That copy could allocate while the runtime was cleaning up a construction/allocation
+failure. The runtime could retain its original error and continue adapter cleanup
+after this new failure, leaving the context destructor to attempt the same fallible
+copy again. Group ownership already lives in the context; a second vector was
+unnecessary once submissions were closed.
+
+Checkpoint 75 requires the existing submission-close barrier before finishing,
+then borrows a span of the retained member groups while draining outside the mutex.
+make_worker_group checks the same closed flag under that mutex before changing
+the vector or owned pool. Both runtime cleanup paths and context destruction close
+submissions first. Owned-pool shutdown still closes/joins its threads; an injected
+root's unrelated groups remain available. This removes the deliberate vector
+allocation, without claiming recovery from every mutex/native or heap failure.
+
+Two prepared runtime fixtures combine resource allocation failure with an accepted
+worker upload, pending simulation cancellation and later producer cleanup failure,
+or a failed worker upload observed during game cleanup followed by renderer cleanup
+failure. Both sequential and concurrent modes are covered in source. The application
+observes the worker future; runtime shutdown does not silently consume its exception.
+These fixtures are uncompiled/unexecuted and do not inject OS startup/affinity errors.
+
+Checkpoint 73 separately extracts STBFont's unchanged baked upload sequence into
+a private helper. Three prepared scenarios cover rejected geometry/CPU ownership,
+atlas throw/null with completed glyph cleanup, and successful copied pixels,
+vertices, metrics and retained resources. Checkpoint 76 prepares size/missing/empty
+file rejection before provider calls; parsing/baking valid font data is not exercised.
+Checkpoint 74 adds actual registration storage rejection at texture, flat VAO/buffer
+and every legacy mesh slot, including earlier adopted owners and repeat collection.
+Padding fills spare capacity only; no vector growth factor or global new override
+is assumed. Full format/declaration and broader combined startup/policy/native
+failure review remain open, alongside executed acceptance.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,
