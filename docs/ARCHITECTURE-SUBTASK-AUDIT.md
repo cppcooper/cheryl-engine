@@ -17,6 +17,8 @@ using their outputs. Font-atlas and combined runtime failure evidence remain ope
 Checkpoints 73–76 prepare baked-font upload/cleanup, every texture/flat/mesh
 registration position and two combined runtime failure scenarios in both modes.
 A16 removes an allocating worker-group snapshot from shutdown recovery.
+Checkpoints 77–80 prepare font retry/limit/allocation failure and runtime policy/
+partial-adapter combinations. A17 corrects missing-window and pre-start stop exits.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -107,7 +109,7 @@ Inspected paths: EngineContext, GLFW factory, both GameRuntime shutdown paths, A
 | 4.3 | Checked source | Loader/PreparedAssets ownership through WorkerGroup to platform example inspected; nested futures are read only when ready. |
 | 4.4 | Checked source | Both cleanup sequences inspected through simulation owner close, accepted CPU completion, platform closure and frame/game/input/renderer cleanup. |
 | 4.5 | Checked source | Platform pumping while waiting for simulation/CPU dependencies inspected; dispatch failure cancels, maintenance failure preserves pumping. |
-| 4.6 | Partial | first failure, partial init and retained endpoints inspected; A16 removes a shutdown group-copy allocation. 75 prepares asset-init failure with accepted upload/cancelled simulation plus worker upload failure observed in game cleanup. Combined policy/startup and partial-adapter failure review remains. |
+| 4.6 | Partial | first failure, partial init and retained endpoints inspected; A16/A17 fix allocation/startup exits. 75/78/79 prepare allocation/upload, missing-window, pre-start stop, partial renderer/input and context policy rejection combinations. Controlled startup-fault composition and broader native/context-loss evidence remain. |
 | 4.7 (ledger discovery) | Checked source | GlfwOpenGLConfig.execution forwarding checked in the shared factory assembly used by owned and borrowed input overloads. |
 
 ### Task 5
@@ -132,11 +134,11 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 6.1 | Checked source | Single provider/loading owner, releasing gate, teardown and rebind inspected; no eviction policy introduced. |
-| 6.2 | Partial | cache/composite/frame/native owners inspected; 73 prepares glyph upload rejection, atlas throw/null and copied metrics/resource retention; 76 prepares file/size rejection before upload. 74 adds texture/flat/mesh registry growth failures to 70 program allocation coverage. Bake failure and broader combined native failure evidence remain. |
+| 6.2 | Checked source | cache/composite/frame/native and CPU owners traced through construction/release; 70/74 cover registry/program allocation, 73/76 font upload/file rejection and 77 retry/limit/bitmap allocation. The identified category ownership gap is reviewed in source; parsing/rasterization, broader 6.6 native combinations and executed acceptance stay open. |
 | 6.3 | Fix prepared | A14 routes FontMgr through retained publication and commits a prepared default path atomically. 67 adds actual per-map node/bucket request rejection, replacement retention, reentry and allocator-preserving clear; unexecuted. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | native ownership/context guards inspected; A12/A13/A15/A16 correct publication/query/shutdown recovery. 65/67/68/70 prepare program/cache/provider/allocator faults; 73/74 add atlas/texture/all VAO registration positions; 75 adds allocation/upload/runtime cleanup combinations. Bake, combined policy/startup and real context loss remain open. |
+| 6.6 | Partial | native ownership/context guards inspected; A12–A17 correct publication/query/shutdown/startup exits. 65/67/68/70/73/74 prepare native/cache/category faults; 75/77/78/79 add bake/allocation/runtime/policy/partial-adapter combinations. Controlled startup composition, broader native/context-loss evidence and execution remain open. |
 | 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors; A15 checks texture limit/alignment/anisotropy queries before output use. 60/71 prepare synthetic retirement/alignment/query failures, without real driver execution. |
 
 ### Task 7
@@ -243,6 +245,30 @@ game cleanup with a later renderer cleanup error. Both modes retain adapters unt
 accepted work settles and preserve the first observed failure. These are synthetic
 provider failures, not native OS startup/affinity or driver acceptance.
 
+Checkpoint 77 extracts the existing 256-to-4096 atlas retry policy into a private
+template used by STBFont::load_font. Production keeps std::allocator and the same
+stb call/character range. Three fixtures prepare zero/negative partial-status retry
+with cleared pixels, rejection at the maximum dimension with storage release,
+and an actual scoped bitmap allocation rejection before entering the baker. They
+do not parse or rasterize a real font or inject stb's internal C allocations.
+
+Checkpoint 78 moves active-window resolution into each mode's guarded startup and
+finishes the context groups/mailboxes when stop was requested before startup (A17).
+Two fixtures prepare missing-window failure and pre-start stop with retained groups,
+accepted CPU work/capture release and closed saved targets; adapters never initialize.
+Checkpoint 79 adds partial renderer/input initialization with later cleanup errors
+and required-policy rejection of a context's asset preparation on an injected pool.
+The failed preparation never reaches upload; unrelated application groups remain
+usable. All cases inspect both modes; every fixture remains unexecuted.
+
+Owned-pool startup rollback is traced from EngineContext::make_worker_group into
+WorkerPool's private/common constructor. A failed make_unique does not publish the
+owned pointer; the constructor closes/joins already started threads before rethrow.
+A concurrent runtime thread-construction failure leaves worker.joinable false,
+then closes the unbound simulation mailbox and pumps accepted context work before
+game/input/renderer cleanup. Checkpoint 62 controls pool startup in isolation;
+fault composition at these runtime startup boundaries remains distinct evidence.
+
 The CPU managed-buffer helper's preexisting manager-lifetime synchronization TODO
 remains explicit; this pass does not claim concurrent manager destruction is safe.
 
@@ -250,11 +276,12 @@ remains explicit; this pass does not claim concurrent manager destruction is saf
 
 1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
    drift is corrected; full formatting has not been verified.
-2. Complete resource category construction/failure evidence (6.2/6.6/7.2):
-   font bake failures and combined native/context loss remain distinct cases.
-   A12–A16 and 67/70/73–76 prepare cache/registry/program allocation, category/atlas,
-   query and combined allocation/upload/runtime failures. Every new fixture remains
-   unexecuted; 73's baked-data entry does not exercise font parsing/baking.
+2. Complete broader combined construction/failure evidence (6.6/7.2): native/context
+   loss and controlled runtime startup-fault composition remain distinct cases.
+   The identified category ownership/bake-retry gap under 6.2 is now source-reviewed;
+   77 controls retry/status/CPU allocation, with real parsing/rasterization and stb
+   internal allocation behavior outside those synthetic fixtures. Every fixture
+   remains unexecuted; source review is not correctness sign-off.
 3. Finish combined producer/failure fixture review (4.6), including context/asset
    settlement after policy or startup failure and partial shutdown dependencies.
    FFont compatibility is recorded; rotated rendering remains acceptance work.
@@ -274,4 +301,4 @@ these are not an executed native fault test.
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
 for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A16](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+finished. See [A1–A17](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.

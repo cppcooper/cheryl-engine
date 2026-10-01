@@ -312,6 +312,38 @@ Padding fills spare capacity only; no vector growth factor or global new overrid
 is assumed. Full format/declaration and broader combined startup/policy/native
 failure review remain open, alongside executed acceptance.
 
+### A17: early runtime startup exits bypassed execution cleanup
+
+Both runtime modes resolved EngineContext::window outside their guarded startup.
+A missing active window threw before the staged cleanup could close context groups
+or settle accepted work. Both modes also returned immediately when stop had been
+requested before run, although begin_session had already reserved the single-use
+context. Retained groups could keep accepting jobs after that runtime ended.
+
+Checkpoint 78 resolves the window inside the guarded block and adds a shared
+unstarted-session cleanup path. A pre-start stop closes group submissions and both
+mailboxes, then finishes workers without starting adapters. Neither mailbox has
+opened, so no accepted platform continuation needs pumping in that branch. The
+missing-window branch uses the ordinary cleanup and preserves its original error.
+Two fixtures prepare both exits with retained groups/work/captures and closed targets.
+
+Checkpoint 79 adds context-owned policy failure on an injected pool and partial
+renderer/input initialization followed by later cleanup failures. Both modes are
+covered; policy-failed asset preparation never reaches upload and unrelated pool
+groups remain available. Checkpoint 80 ends the fixture's runtime lifetime before
+destroying its borrowed context and clears callbacks that borrow that context.
+No OS startup/affinity, native driver or real-context failure has been executed.
+
+Checkpoint 77 prepares the font bake retry gap through a private template shared
+with production. Production retains its default allocator, dimensions and stb call;
+fixtures provide zero/negative status, the maximum-size failure and an actual scoped
+CPU bitmap allocation rejection. Storage releases before those failures escape.
+These three fixtures do not parse/rasterize fonts or inject stb's internal allocations.
+The identified category ownership gap under 6.2 is reviewed in source. Broader
+runtime startup/native-context composition and full formatting remain open, as do
+type/link, test and native acceptance gates. Seven new fixture functions remain
+uncompiled and unexecuted; batch duration is not completion evidence.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

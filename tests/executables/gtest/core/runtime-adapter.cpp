@@ -1698,7 +1698,7 @@ TEST(execution_shutdown, policy_failed_preparation_settles_without_upload_or_inj
         std::atomic<int> callbacks = 0;
         std::future<std::shared_ptr<CE::Assets::Image>> result;
         OneTickGame game(input);
-        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto runtime = std::make_unique<CE::GFramework::GameRuntime>(*engine, game, mode);
         game.on_init = [&] {
             result = group.submit([platform, pixels = std::move(pixels), &callbacks] {
                 ++callbacks;
@@ -1707,20 +1707,23 @@ TEST(execution_shutdown, policy_failed_preparation_settles_without_upload_or_inj
                 });
                 return upload.get();
             });
-            runtime.stop();
+            runtime->stop();
         };
         game.on_deinit = [&] {
             ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
             EXPECT_THROW((void)result.get(), CE::Exceptions::failed_operation);
             EXPECT_TRUE(capture.expired());
         };
-        EXPECT_NO_THROW(runtime.run());
+        EXPECT_NO_THROW(runtime->run());
         EXPECT_EQ(callbacks.load(), 0);
         EXPECT_EQ(provider.created_images, 0);
         EXPECT_EQ(group.status().policy_failures, 1u);
         EXPECT_FALSE(group.status().accepting);
         EXPECT_TRUE(unrelated.status().accepting);
         EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+        runtime.reset();
+        game.on_init = {};
+        game.on_deinit = {};
         engine.reset();
         EXPECT_TRUE(unrelated.status().accepting);
     }

@@ -223,7 +223,42 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Font/native allocation and shutdown audit: checkpoints 73–76
+### Font baking and startup audit: checkpoints 77–80
+
+This pass starts at saved local 76,
+`f443ccbc9b8b0b0df306438b1f208479c7ca503a`. Remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–76 are preserved.
+
+- 77 extracts the unchanged font atlas retry policy into a private production
+  template and prepares partial status/retry, maximum-size cleanup and actual CPU
+  storage allocation rejection through a scoped allocator. Default allocation stays.
+- 78 fixes A17: missing-window and pre-start stop paths now close/finish execution
+  without starting adapters. Two fixtures inspect retained work/groups/targets.
+- 79 prepares partial renderer/input startup and context-owned asset-preparation
+  policy rejection on an injected root, preserving errors and unrelated groups.
+- 80 corrects fixture runtime/context destruction order and records the bounded
+  review, startup rollback trace and remaining gaps. Seven new fixtures are prepared.
+
+The identified category ownership/bake-retry gap under 6.2 is source-reviewed.
+Remaining source/evidence work: full formatting/declaration review, controlled
+runtime startup-fault composition and broader combined native/context-loss paths.
+Real font parsing/rasterization and stb internal allocation behavior are not covered
+by the synthetic baker. Type/link, aggregate regression and runtime/native acceptance
+remain open. Task 9 stays paused; no configuration, compilation, test, demo or
+assistant remote write occurred.
+
+Numbered delivery is **77–80**; next unused number is **81**. The new-only
+`cheryl-engine-followup.patch` starts after saved 76. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–80**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds unapplied patches until audit completion; delivery routes overlap.
+
+Changed syntax trees, whitespace, local documentation links and requirement rows
+receive static inspection. New-only, numbered, combined and original-base mailboxes
+must reproduce the exact tree and ordered author/date/messages. These preparation
+checks do not establish type/link correctness, driver/heap behavior or race freedom.
+
+### Font/native allocation and shutdown audit: checkpoints 73–76 (historical)
 
 This pass starts at saved local 72,
 `15f50c0a481a347da5df336069cd852c8547c48b`. Remote 57 remains
