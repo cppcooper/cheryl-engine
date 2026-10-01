@@ -29,8 +29,10 @@ namespace {
     class NativeProgramRecorder final {
         inline static NativeProgramRecorder* active_ = nullptr;
         std::vector<std::function<void()>> restore_;
+        bool current_ = true;
+        int current_queries_ = 0;
         std::shared_ptr<OpenGLResourceLifetime> lifetime_ =
-            std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+            std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [this] { ++current_queries_; return current_; });
         std::vector<std::shared_ptr<OpenGLResourceLifetime>> other_domains_;
         GLuint next_id_ = 10;
         std::uint32_t active_unit_ = 0;
@@ -71,6 +73,7 @@ namespace {
         int attributes_enabled = 0;
         GLint unpack_alignment = 4;
         std::optional<GLResourceKind> fail_generation;
+        bool lose_context_on_error = false;
 
     private:
         template <typename T>
@@ -202,7 +205,12 @@ namespace {
         static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Texture, count, ids); }
         static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
         static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
-        static GLenum GLAD_API_PTR error_query() { return std::exchange(active_->error_, GL_NO_ERROR); }
+        static GLenum GLAD_API_PTR error_query() {
+            const auto error = std::exchange(active_->error_, GL_NO_ERROR);
+            if (error != GL_NO_ERROR && active_->lose_context_on_error)
+                active_->current_ = false;
+            return error;
+        }
         static void GLAD_API_PTR activate_image(GLenum unit) { active_->active_unit_ = unit - GL_TEXTURE0; }
         static void GLAD_API_PTR bind_image(GLenum, GLuint image) { active_->image_binds.emplace_back(active_->active_unit_, image); }
         static void GLAD_API_PTR integer_query(GLenum parameter, GLint* value) {
@@ -324,12 +332,16 @@ namespace {
             const int candidate
         ) {
             entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
-            lifetime_ = ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [] { return true; }, entry_memory_);
+            lifetime_ = ResourceDetail::LifetimeAccess::create(
+                std::this_thread::get_id(), [this] { ++current_queries_; return current_; }, entry_memory_
+            );
             reject_registration_at_ = candidate;
         }
         void release_registration_padding() { registration_padding_.clear(); }
         [[nodiscard]] std::size_t rejected_allocations() const { return entry_memory_->rejected.load(); }
         void collect() { lifetime_->collect(); }
+        void set_current(const bool current) { current_ = current; }
+        [[nodiscard]] int current_queries() const { return current_queries_; }
         std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
 
         std::shared_ptr<GLSLProgram> program() {
@@ -360,6 +372,82 @@ namespace {
         definition.program_sources = {"effect.vert", "effect.frag"};
         definition.parameters = {{"time", ParameterType::Float, required}};
         return definition;
+    }
+}
+
+TEST(opengl_lifetime, generation_failure_with_missing_context_recovers_only_adopted_resources) {
+    NativeProgramRecorder native;
+    auto retained = native.image();
+    native.fail_generation = GLResourceKind::Buffer;
+    native.lose_context_on_error = true;
+    auto vertices = std::shared_ptr<CE::Vertex2D>(new CE::Vertex2D[6]{}, std::default_delete<CE::Vertex2D[]>{});
+    std::weak_ptr<CE::Vertex2D> cpu_owner = vertices;
+    try {
+        static_cast<void>(std::make_shared<CE::VAO>(
+            native.lifetime(), std::move(vertices), 6, PrimitiveTopology::Triangles
+        ));
+        FAIL() << "Buffer generation must fail";
+    } catch (const CE::Exceptions::failed_operation& error) {
+        EXPECT_NE(std::string(error.what()).find("buffer creation failed"), std::string::npos);
+    }
+    EXPECT_TRUE(cpu_owner.expired());
+    ASSERT_EQ(native.generated.size(), 3u);
+    const auto unadopted = native.generated.back();
+    EXPECT_EQ(unadopted.first, GLResourceKind::Buffer);
+    std::thread release([owner = std::move(retained)]() mutable { owner.reset(); });
+    release.join();
+    EXPECT_TRUE(native.deleted.empty());
+    EXPECT_THROW(native.collect(), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(native.deleted.empty());
+    native.set_current(true);
+    native.lose_context_on_error = false;
+    native.fail_generation.reset();
+    native.collect();
+    auto expected = native.generated;
+    expected.pop_back(); // The lost unadopted ID belongs to native context destruction.
+    auto deleted = native.deleted;
+    std::sort(expected.begin(), expected.end());
+    std::sort(deleted.begin(), deleted.end());
+    EXPECT_EQ(deleted, expected);
+    EXPECT_EQ(std::count(native.deleted.begin(), native.deleted.end(), unadopted), 0);
+    auto late = native.image();
+    native.lifetime()->shutdown();
+    const auto after_shutdown = native.deleted.size();
+    EXPECT_THROW(late->bind(0), CE::Exceptions::failed_operation);
+    late.reset();
+    EXPECT_EQ(native.deleted.size(), after_shutdown);
+}
+
+TEST(opengl_lifetime, upload_failure_with_missing_context_abandons_retained_and_partial_resources) {
+    for (const bool geometry : {false, true}) {
+        SCOPED_TRACE(geometry ? "geometry" : "image");
+        NativeProgramRecorder native;
+        auto retained_image = native.image();
+        auto retained_geometry = native.geometry();
+        native.lose_context_on_error = true;
+        if (geometry)
+            native.fail_buffer_upload = native.buffer_uploads + 1;
+        else
+            native.fail_image_upload = true;
+        if (geometry)
+            EXPECT_THROW((void)native.geometry(), CE::Exceptions::failed_operation);
+        else
+            EXPECT_THROW((void)native.image(), CE::Exceptions::failed_operation);
+        EXPECT_TRUE(native.deleted.empty());
+        EXPECT_THROW(native.collect(), CE::Exceptions::failed_operation);
+        EXPECT_THROW(retained_image->bind(0), CE::Exceptions::failed_operation);
+        EXPECT_THROW(retained_geometry->bind(), CE::Exceptions::failed_operation);
+        auto lifetime = native.lifetime();
+        lifetime->abandon();
+        const auto before_late_release = native.current_queries();
+        std::thread release([image = std::move(retained_image), vao = std::move(retained_geometry)]() mutable {
+            image.reset();
+            vao.reset();
+        });
+        release.join();
+        EXPECT_THROW(lifetime->collect(), CE::Exceptions::failed_operation);
+        EXPECT_EQ(native.current_queries(), before_late_release);
+        EXPECT_TRUE(native.deleted.empty()); // Context destruction owns every adopted native ID.
     }
 }
 
