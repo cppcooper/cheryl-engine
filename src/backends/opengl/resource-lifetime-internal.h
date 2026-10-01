@@ -19,6 +19,9 @@ namespace CE::RenderAPIs::ResourceDetail {
         static std::size_t capacity(
             const OpenGLResourceLifetime& lifetime
         );
+        static std::size_t size(
+            const OpenGLResourceLifetime& lifetime
+        );
     };
 
     // allocate_shared retains a rebound allocator in its control block. Own the

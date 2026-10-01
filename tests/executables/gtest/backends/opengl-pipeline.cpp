@@ -1,6 +1,8 @@
 #include <backends/opengl/pipeline.h>
 #include <backends/opengl/texture.h>
 #include <backends/opengl/vertex-array-object.h>
+#include <backends/opengl/resource-lifetime-internal.h>
+#include <testing/failing-memory-resource.h>
 
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
@@ -33,6 +35,10 @@ namespace {
         GLuint next_id_ = 10;
         std::uint32_t active_unit_ = 0;
         GLenum error_ = GL_NO_ERROR;
+        std::shared_ptr<CE::Testing::FailingMemoryResource> entry_memory_;
+        std::vector<OpenGLHandle> registration_padding_;
+        int reject_registration_at_ = 0;
+        int registration_candidates_ = 0;
 
     public:
         bool linked = true;
@@ -79,6 +85,19 @@ namespace {
                 (*item)();
             restore_.clear();
             active_ = nullptr;
+        }
+
+        void prepare_registration_failure() {
+            if (++registration_candidates_ != reject_registration_at_)
+                return;
+            // Fill only spare capacity so the next native adoption must request
+            // registry storage, independent of the vector's growth strategy.
+            while (ResourceDetail::LifetimeAccess::size(*lifetime_) < ResourceDetail::LifetimeAccess::capacity(*lifetime_)) {
+                const auto id = ++next_id_;
+                generated.emplace_back(GLResourceKind::Buffer, id);
+                registration_padding_.emplace_back(lifetime_, GLResourceKind::Buffer, id);
+            }
+            entry_memory_->reject_next();
         }
 
         static GLint maximum_name_length(const std::vector<GLSLVariable>& variables) {
@@ -167,6 +186,7 @@ namespace {
                 active_->generated.emplace_back(kind, images[i] = ++active_->next_id_);
             if (active_->fail_generation == kind)
                 active_->error_ = GL_OUT_OF_MEMORY;
+            active_->prepare_registration_failure();
         }
         static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) { generate(GLResourceKind::Texture, count, images); }
         static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) { generate(GLResourceKind::Buffer, count, images); }
@@ -300,6 +320,15 @@ namespace {
 
         void pending_error(GLenum error) { error_ = error; }
         void enable_anisotropy() { replace(GLAD_GL_EXT_texture_filter_anisotropic, 1); }
+        void reject_registration(
+            const int candidate
+        ) {
+            entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
+            lifetime_ = ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [] { return true; }, entry_memory_);
+            reject_registration_at_ = candidate;
+        }
+        void release_registration_padding() { registration_padding_.clear(); }
+        [[nodiscard]] std::size_t rejected_allocations() const { return entry_memory_->rejected.load(); }
         void collect() { lifetime_->collect(); }
         std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
 
@@ -510,6 +539,62 @@ TEST(opengl_upload, a_rejected_2d_buffer_retires_both_handles_before_attribute_s
     EXPECT_EQ(deleted, generated);
     native.collect();
     EXPECT_EQ(native.deleted.size(), 2u);
+}
+
+TEST(opengl_upload, texture_registry_failure_discards_the_untracked_id_without_uploading) {
+    NativeProgramRecorder native;
+    native.reject_registration(1);
+    EXPECT_THROW((void)native.image(), std::bad_alloc);
+    EXPECT_EQ(native.rejected_allocations(), 1u);
+    EXPECT_EQ(native.image_uploads, 0);
+    ASSERT_EQ(native.generated.size(), 1u);
+    EXPECT_EQ(native.deleted, native.generated);
+    native.collect();
+    EXPECT_EQ(native.deleted.size(), 1u);
+}
+
+TEST(opengl_upload, either_flat_geometry_registration_failure_releases_each_generated_id_once) {
+    for (const int registration : {1, 2}) {
+        SCOPED_TRACE(registration);
+        NativeProgramRecorder native;
+        native.reject_registration(registration);
+        EXPECT_THROW((void)native.geometry(), std::bad_alloc);
+        EXPECT_EQ(native.rejected_allocations(), 1u);
+        EXPECT_EQ(native.buffer_uploads, 0);
+        ASSERT_EQ(native.deleted.size(), 1u); // The current ID was never adopted.
+        native.release_registration_padding();
+        native.collect();
+        auto expected = native.generated;
+        auto actual = native.deleted;
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+        EXPECT_EQ(actual, expected); // Earlier adopted IDs retire with the failed object.
+        native.collect();
+        EXPECT_EQ(native.deleted.size(), expected.size());
+    }
+}
+
+TEST(opengl_upload, every_legacy_mesh_registration_failure_preserves_one_owner_per_id) {
+    for (const int registration : {1, 2, 3}) {
+        SCOPED_TRACE(registration);
+        NativeProgramRecorder native;
+        native.reject_registration(registration);
+        auto vertices = std::shared_ptr<CE::Vertex3D>(new CE::Vertex3D[3]{}, std::default_delete<CE::Vertex3D[]>{});
+        auto indices = std::shared_ptr<std::uint32_t>(new std::uint32_t[3]{}, std::default_delete<std::uint32_t[]>{});
+        EXPECT_THROW((void)CE::VAO(native.lifetime(), vertices, 3, indices, 3), std::bad_alloc);
+        EXPECT_EQ(native.rejected_allocations(), 1u);
+        EXPECT_EQ(native.buffer_uploads, 0);
+        ASSERT_EQ(native.deleted.size(), 1u);
+        native.release_registration_padding();
+        native.collect();
+        auto expected = native.generated;
+        auto actual = native.deleted;
+        std::sort(expected.begin(), expected.end());
+        std::sort(actual.begin(), actual.end());
+        EXPECT_EQ(actual, expected);
+        native.collect();
+        EXPECT_EQ(native.deleted.size(), expected.size());
+    }
 }
 
 TEST(opengl_upload, failed_anisotropy_query_stops_before_parameter_use_or_image_upload) {

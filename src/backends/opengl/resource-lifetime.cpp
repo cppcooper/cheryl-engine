@@ -38,6 +38,13 @@ namespace CE::RenderAPIs {
         return lifetime.entries_.capacity();
     }
 
+    std::size_t ResourceDetail::LifetimeAccess::size(
+        const OpenGLResourceLifetime& lifetime
+    ) {
+        const std::lock_guard lock(lifetime.mutex_);
+        return lifetime.entries_.size();
+    }
+
     void OpenGLResourceLifetime::require_owner_locked() const {
         if (!active_ || std::this_thread::get_id() != owner_)
             throw Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its live context thread");
