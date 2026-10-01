@@ -344,6 +344,34 @@ runtime startup/native-context composition and full formatting remain open, as d
 type/link, test and native acceptance gates. Seven new fixture functions remain
 uncompiled and unexecuted; batch duration is not completion evidence.
 
+### A18: initial OpenGL context acquisition bypassed startup cleanup
+
+OpenGLRenderer::initialize called make_current before entering its initialization
+try/catch. A compatible adapter could become current and then throw; runtime cleanup
+called deinitialize, which returned because initialization had not published. The
+renderer never attempted release for that partial acquisition.
+
+Checkpoint 84 moves initial acquisition into the guarded block. Release is attempted
+without replacing the original failure, including when acquisition never made the
+context current or release itself rejects. One prepared fixture covers those cases,
+requires zero procedure lookups/no published resource domain, and confirms later
+renderer cleanup/destruction does not repeat initialization cleanup. No real context
+or GL loader is exercised in this fixture; all new fixtures remain unexecuted.
+
+Checkpoints 81–82 prepare the earlier controlled runtime startup composition gap:
+owned-root partial startup rollback in both modes and dedicated simulation-thread
+construction failure with accepted worker upload, unbound simulation cancellation,
+and later cleanup errors. Private per-instance factories leave direct production
+construction in place by default. Two older fixtures correct borrowed context lifetime.
+Checkpoint 83 composes native generation/upload failure with missing current context,
+recovery, abandonment, retained owners and foreign/late release. Unadopted IDs with
+no current context remain native-context destruction's responsibility. Checkpoint 85
+corrects declaration order in seven types, preserving member sequence and visibility.
+Five new fixture functions are uncompiled/unexecuted. Bounded 4.6 startup/failure
+source review is recorded; full 0.3 formatting and broader 6.6 native compositions,
+including GL-state startup publication and program/material/frame/runtime dependents,
+remain open before task 9. Static checks are not type/link or runtime sign-off.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

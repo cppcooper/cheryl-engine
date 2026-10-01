@@ -4,6 +4,7 @@
 #include "worker-pool.h"
 
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>

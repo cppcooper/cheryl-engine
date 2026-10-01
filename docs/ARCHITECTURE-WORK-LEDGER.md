@@ -223,7 +223,46 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Font baking and startup audit: checkpoints 77–80
+### Startup, context loss and declaration audit: checkpoints 81–86
+
+This pass starts at saved local 80,
+`cced43ee711d4f77d0118058c0ddf5cf79489ab0`. Confirmed remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–80 are preserved.
+
+- 81 prepares owned-root partial startup rollback inside both runtime modes,
+  queued callback/capture cancellation and later cleanup error preservation.
+  Two older fixtures end the borrowing runtime before destroying its context.
+- 82 prepares dedicated simulation thread construction failure after game init,
+  with accepted CPU upload settlement, unbound simulation cancellation and later
+  quiesce/renderer errors. Factories are private and per context/runtime.
+- 83 combines native generation/upload rejection with missing current context,
+  recovery/abandonment and retained/foreign/late release. Unadopted IDs have the
+  explicit context-destruction fallback; these are synthetic recording domains.
+- 84 fixes A18: initial context acquisition now enters renderer startup cleanup;
+  a fixture preserves that error across partial acquisition/release failure.
+- 85 corrects declaration order in seven tile/demo/runtime adapter types without
+  changing member sequence or access. The full formatter pass remains unavailable.
+- 86 records the evidence and remaining review. Five fixture functions are prepared.
+
+Subtask 4.6 now records bounded startup/failure source review. Subtasks 0.3 and 6.6
+remain partial: full formatting/declarations and broader native context-loss
+compositions, including renderer GL-state startup publication and program/material/
+frame/runtime dependents. Task 9 stays paused. Real fonts/stb allocation, actual
+OS/driver/context faults, type/link and executed acceptance remain open. No
+configuration, compilation, test, demo, push or PR metadata write occurred.
+
+Numbered delivery is **81–86**; next unused number is **87**. New-only
+`cheryl-engine-followup.patch` starts after saved 80. The combined
+`cheryl-engine-continuation.patch` contains every pending **58–86**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds pending patches until the audit is finished; routes overlap.
+
+Changed syntax trees, whitespace, local links and requirement rows receive static
+checks. New-only, numbered, combined and original-base mailbox replay must reproduce
+exact source trees and ordered author/date/messages. These are preparation checks,
+not C++ type/link or runtime validation. All five new fixtures remain unexecuted.
+
+### Font baking and startup audit: checkpoints 77–80 (historical)
 
 This pass starts at saved local 76,
 `f443ccbc9b8b0b0df306438b1f208479c7ca503a`. Remote 57 remains

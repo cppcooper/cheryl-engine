@@ -19,6 +19,9 @@ registration position and two combined runtime failure scenarios in both modes.
 A16 removes an allocating worker-group snapshot from shutdown recovery.
 Checkpoints 77–80 prepare font retry/limit/allocation failure and runtime policy/
 partial-adapter combinations. A17 corrects missing-window and pre-start stop exits.
+Checkpoints 81–86 compose owned-pool/simulation-thread startup faults, adopted and
+unadopted native handles with context loss, and partial context acquisition. A18
+guards that initial acquisition; seven types receive declaration-order corrections.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -53,7 +56,7 @@ Inspected paths: Repository metadata, ledger, commit/patch history and declarati
 | --- | --- | --- |
 | 0.1 | Checked source | Active branch/instruction search and saved tree checked; no applicable AGENTS.md found. |
 | 0.2 | Checked source | Original e8c9788 base retained; remote 57 tree matched saved local 57; unapplied 58–59 preserved and carried onto that history. |
-| 0.3 | Partial | Identity verified; RenderFrame/writer and STBFont field order corrected in 61 and CODE-STYLE reconciled with the 140-column root config. Full formatting/declaration review remains; clang-format 23+ is unavailable. |
+| 0.3 | Partial | Identity verified; 61 corrects frame/writer/STBFont fields, 85 corrects TileAnimation/Tileset/demo and four runtime adapter types while preserving field order/access. Full formatting/declaration review remains; clang-format 23+ is unavailable. |
 | 0.4 | Checked source | Original/incremental bases, unique numbers and saved checkpoints checked; patch replay is a separate static check. |
 
 ### Task 1
@@ -109,7 +112,7 @@ Inspected paths: EngineContext, GLFW factory, both GameRuntime shutdown paths, A
 | 4.3 | Checked source | Loader/PreparedAssets ownership through WorkerGroup to platform example inspected; nested futures are read only when ready. |
 | 4.4 | Checked source | Both cleanup sequences inspected through simulation owner close, accepted CPU completion, platform closure and frame/game/input/renderer cleanup. |
 | 4.5 | Checked source | Platform pumping while waiting for simulation/CPU dependencies inspected; dispatch failure cancels, maintenance failure preserves pumping. |
-| 4.6 | Partial | first failure, partial init and retained endpoints inspected; A16/A17 fix allocation/startup exits. 75/78/79 prepare allocation/upload, missing-window, pre-start stop, partial renderer/input and context policy rejection combinations. Controlled startup-fault composition and broader native/context-loss evidence remain. |
+| 4.6 | Checked source | first failure, partial init, closed/retained endpoints and accepted-worker settlement inspected. A16/A17 fix allocation/startup exits; 75/78/79 cover upload/allocation/policy/partial adapters, 81 composes owned-root rollback in both modes, and 82 composes dedicated simulation startup failure with worker upload/cancellation/later errors. All fixtures remain unexecuted; broader native combinations stay under 6.6. |
 | 4.7 (ledger discovery) | Checked source | GlfwOpenGLConfig.execution forwarding checked in the shared factory assembly used by owned and borrowed input overloads. |
 
 ### Task 5
@@ -138,7 +141,7 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | 6.3 | Fix prepared | A14 routes FontMgr through retained publication and commits a prepared default path atomically. 67 adds actual per-map node/bucket request rejection, replacement retention, reentry and allocator-preserving clear; unexecuted. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | native ownership/context guards inspected; A12–A17 correct publication/query/shutdown/startup exits. 65/67/68/70/73/74 prepare native/cache/category faults; 75/77/78/79 add bake/allocation/runtime/policy/partial-adapter combinations. Controlled startup composition, broader native/context-loss evidence and execution remain open. |
+| 6.6 | Partial | native ownership/context guards inspected; A12–A18 correct publication/query/shutdown/startup exits. 83 covers generation/upload failure with current-context loss, recovery, abandonment and foreign/late release; 84 guards initial make_current failure and preserves its error. Renderer GL-state publication and program/material/frame/runtime native-loss compositions still need review; execution remains open. |
 | 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors; A15 checks texture limit/alignment/anisotropy queries before output use. 60/71 prepare synthetic retirement/alignment/query failures, without real driver execution. |
 
 ### Task 7
@@ -267,24 +270,47 @@ owned pointer; the constructor closes/joins already started threads before rethr
 A concurrent runtime thread-construction failure leaves worker.joinable false,
 then closes the unbound simulation mailbox and pumps accepted context work before
 game/input/renderer cleanup. Checkpoint 62 controls pool startup in isolation;
-fault composition at these runtime startup boundaries remains distinct evidence.
+fault composition was still missing at checkpoint 80.
+
+Checkpoint 81 adds a private per-context lazy-root factory and drives actual pool
+rollback from game initialization in both modes. The first worker enters, the second
+start fails, and the first exits/joins before cleanup. Queued platform/simulation
+captures cancel before game cleanup; a later renderer error preserves the startup
+error. Two older fixtures now end the borrowing runtime before destroying context.
+Checkpoint 82 adds a private per-runtime simulation-thread factory. Its controlled
+throw occurs after game initialization while an accepted CPU job is gated; shutdown
+pumps that job's later upload, cancels the unbound simulation request and retains the
+startup error across quiesce/renderer failures. Production keeps direct std::thread
+and WorkerPool construction when the private factories are empty.
+
+Checkpoint 83 couples native generation/upload errors with missing current context.
+A failed unadopted buffer is left to context destruction; previously adopted owners
+retire after partial-constructor unwind and foreign-thread release, then collect on
+recovery. Upload failures also prepare abandonment with retained image/geometry
+owners and late release without native deletion or borrowed context queries. These
+are recording-domain scenarios, not actual driver/context-loss execution.
+Checkpoint 84 fixes A18: initial make_current is inside renderer startup cleanup.
+The prepared context fixture rejects before/after becoming current, with another
+release failure, preserving the acquisition error and preventing logical publication.
+Checkpoint 85 moves fields above methods in seven types without changing field
+sequence or visibility. The full formatter pass is not available. Five new fixture
+functions in 81–84 remain uncompiled and unexecuted.
 
 The CPU managed-buffer helper's preexisting manager-lifetime synchronization TODO
 remains explicit; this pass does not claim concurrent manager destruction is safe.
 
 ## Remaining audit work before moving on
 
-1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
-   drift is corrected; full formatting has not been verified.
-2. Complete broader combined construction/failure evidence (6.6/7.2): native/context
-   loss and controlled runtime startup-fault composition remain distinct cases.
-   The identified category ownership/bake-retry gap under 6.2 is now source-reviewed;
-   77 controls retry/status/CPU allocation, with real parsing/rasterization and stb
-   internal allocation behavior outside those synthetic fixtures. Every fixture
-   remains unexecuted; source review is not correctness sign-off.
-3. Finish combined producer/failure fixture review (4.6), including context/asset
-   settlement after policy or startup failure and partial shutdown dependencies.
-   FFont compatibility is recorded; rotated rendering remains acceptance work.
+1. Finish format/declaration-order review (0.3). Confirmed field drift is corrected
+   in 61/85; full formatting and remaining declarations have not been verified.
+2. Complete broader combined native failure evidence (6.6/7.2): inspect renderer
+   GL-state initialization/publication and program/material/frame/runtime dependents
+   under native context loss. Checkpoint 83 covers adopted/unadopted generation and
+   upload cleanup, recovery and abandonment in a synthetic recording domain.
+   Category ownership/bake retries (6.2) and controlled runtime startup composition
+   (4.6) now have bounded source records; every fixture remains unexecuted.
+   Real font parsing/rasterization, stb internal allocations and rotated FFont
+   rendering remain acceptance work. Source review is not correctness sign-off.
 
 The bounded source review of the identified event ordering/invalidation and worker
 native-boundary branches is now recorded. Eleven scenarios prepared in 62–63 add
@@ -301,4 +327,4 @@ these are not an executed native fault test.
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
 for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A17](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+finished. See [A1–A18](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
