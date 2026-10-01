@@ -54,9 +54,11 @@ There is no global completion order between listeners or independent targets.
 
 Queued tasks copy their payload and retain registration state. At actual execution
 they enter the same invalidation handshake as immediate callbacks. Callback
-exceptions, rejected posts, and accepted tasks later dropped by the target reach
+exceptions, payload/task preparation failures, rejected posts, and accepted tasks later dropped by the target reach
 the required error sink. Target cancellation reports `future_error/broken_promise`;
 explicit unregister/close discards pending callbacks intentionally. Error sinks
+receive the original preparation/target exception; such queued failures do not
+also escape from dispatch. Immediate failures still propagate to the caller. Sinks
 must not throw and must remain valid through pending-task destruction; a throwing
 sink terminates rather than disappearing in a discarded target future.
 

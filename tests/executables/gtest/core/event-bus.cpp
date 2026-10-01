@@ -137,6 +137,11 @@ TEST(event_bus, close_invalidates_registrations_and_rejects_new_work) {
 }
 
 namespace {
+    struct CopyFailure {
+        CopyFailure() = default;
+        CopyFailure(const CopyFailure&) { throw std::runtime_error("payload copy failed"); }
+    };
+
     struct QueuedDelivery {
         std::vector<CE::SubSystems::EventBus::Work> pending;
 
@@ -276,6 +281,57 @@ TEST(event_bus, queued_delivery_requires_an_observable_error_sink) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     EXPECT_THROW(bus.register_listener("tick", [](std::any) {}, target.target()), CE::Exceptions::invalid_args);
+}
+
+TEST(event_bus, queued_payload_copy_failure_reports_the_original_error_once_and_allows_sink_reentry) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    CE::SubSystems::EventBus::Registration id;
+    int failures = 0;
+    int recovered = 0;
+    bus.register_listener("recovery", [&](std::any) { ++recovered; });
+    id = bus.register_listener("tick", [](std::any) { ADD_FAILURE() << "Uncopyable payload entered callback"; },
+        target.target(), [&](std::exception_ptr error) {
+            ++failures;
+            try {
+                std::rethrow_exception(error);
+            } catch (const std::runtime_error& failure) {
+                EXPECT_EQ(std::string(failure.what()), "payload copy failed");
+            } catch (...) {
+                ADD_FAILURE() << "Preparation reported a different failure";
+            }
+            EXPECT_TRUE(bus.unregister_listener(id));
+            bus.dispatch("recovery", 1);
+        });
+    const std::any payload(std::in_place_type<CopyFailure>);
+    EXPECT_NO_THROW(bus.dispatch("tick", payload));
+    EXPECT_EQ(failures, 1);
+    EXPECT_EQ(recovered, 1);
+    EXPECT_TRUE(target.pending.empty());
+}
+
+TEST(event_bus, a_throwing_delivery_target_reports_its_original_error_and_can_be_used_again) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    bool reject = true;
+    int failures = 0;
+    int calls = 0;
+    bus.register_listener("tick", [&](std::any) { ++calls; },
+        [&](CE::SubSystems::EventBus::Work work) {
+            if (reject)
+                throw std::runtime_error("target unavailable");
+            return target.target()(std::move(work));
+        }, [&](std::exception_ptr error) {
+            ++failures;
+            EXPECT_THROW(std::rethrow_exception(error), std::runtime_error);
+        });
+    bus.dispatch("tick", 0);
+    EXPECT_EQ(failures, 1);
+    reject = false;
+    bus.dispatch("tick", 0);
+    target.drain();
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(failures, 1);
 }
 
 TEST(event_bus, a_worker_delivery_stream_preserves_callback_completion_order_on_a_parallel_pool) {

@@ -99,24 +99,40 @@ namespace CE::SubSystems {
             if (!listener->active)
                 return;
         }
-        auto ticket = std::make_shared<DeliveryTicket>(listener);
-        Work work([ticket, owned_payload = std::any(payload)] {
-            ticket->entered.store(true, std::memory_order_release);
-            try {
-                invoke(ticket->listener, owned_payload);
-            }
-            catch (...) {
-                report_error(ticket->listener, std::current_exception());
-            }
-        });
+        std::shared_ptr<DeliveryTicket> ticket;
         try {
+            // Preparation belongs to queued delivery's error contract as well.
+            // Keep the ticket local so partial capture construction cannot report
+            // cancellation before the original failure has been recorded.
+            ticket = std::make_shared<DeliveryTicket>(listener);
+            Work work([ticket, owned_payload = std::any(payload)] {
+                ticket->entered.store(true, std::memory_order_release);
+                try {
+                    invoke(ticket->listener, owned_payload);
+                }
+                catch (...) {
+                    report_error(ticket->listener, std::current_exception());
+                }
+            });
             // Concurrent producers linearize target enqueue for this listener.
             // The target defers execution; no callback is invoked under this lock.
             std::lock_guard lock(listener->posting);
             (void)listener->delivery(std::move(work));
         }
         catch (...) {
-            ticket->failure = std::current_exception();
+            if (ticket)
+                ticket->failure = std::current_exception();
+            else {
+                // Ticket allocation itself failed. No accepted work exists to
+                // report later, and no registry/entry/posting lock is held here.
+                bool active;
+                {
+                    std::lock_guard lock(listener->mutex);
+                    active = listener->active;
+                }
+                if (active)
+                    report_error(listener, std::current_exception());
+            }
         }
         // This local ticket keeps rejection/destruction reporting outside the
         // posting lock, allowing an error sink to dispatch or unregister safely.
