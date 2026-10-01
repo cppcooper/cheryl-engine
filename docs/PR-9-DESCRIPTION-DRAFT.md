@@ -22,5 +22,7 @@ whitespace/API/ownership review, and mailbox replay are preparation checks only.
 Current changes have not been compiled or executed. Normal/sandbox builds, aggregate
 regressions, real sequential/concurrent demos, affinity failures, native reload and
 retirement, and shutdown/failure acceptance remain open. Earlier build reports are
-historical. The partial source audit and native failure-injection gaps are recorded
-in docs/ARCHITECTURE-CONVERGENCE-REVIEW.md.
+historical. The completed-task source audit closes at checkpoint 90, including clang-format
+23.1.2, declaration inventory and controlled native/startup/retained-owner failure
+sources. No executed native/OS/runtime acceptance is claimed. The evidence and
+remaining gates are recorded in docs/ARCHITECTURE-CONVERGENCE-REVIEW.md.

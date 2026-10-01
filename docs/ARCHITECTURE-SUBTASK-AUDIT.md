@@ -22,12 +22,16 @@ partial-adapter combinations. A17 corrects missing-window and pre-start stop exi
 Checkpoints 81–86 compose owned-pool/simulation-thread startup faults, adopted and
 unadopted native handles with context loss, and partial context acquisition. A18
 guards that initial acquisition; seven types receive declaration-order corrections.
+Checkpoints 87–90 finish native state publication/retained dependency review,
+checked legacy diagnostics/location caching, full formatting and declaration order.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
-**The audit is still open.** Each row records bounded source inspection in this
-pass. “Checked source” is not exhaustive correctness sign-off or executed
-acceptance. “Partial” names unfinished review/evidence; “Fix prepared” names
+**The source audit of completed tasks 0–8 is finished at checkpoint 90.**
+Each row records bounded source inspection, including batch-ending claims and
+dependent startup/update/shutdown paths. This does not establish executed acceptance.
+“Checked source” is not exhaustive correctness sign-off or executed
+acceptance. There are no remaining partial source-review rows. “Fix prepared” names
 corrected source with unexecuted regression coverage. No CMake configuration,
 compilation, tests, native demo or assistant remote write occurred.
 
@@ -56,7 +60,7 @@ Inspected paths: Repository metadata, ledger, commit/patch history and declarati
 | --- | --- | --- |
 | 0.1 | Checked source | Active branch/instruction search and saved tree checked; no applicable AGENTS.md found. |
 | 0.2 | Checked source | Original e8c9788 base retained; remote 57 tree matched saved local 57; unapplied 58–59 preserved and carried onto that history. |
-| 0.3 | Partial | Identity verified; 61 corrects frame/writer/STBFont fields, 85 corrects TileAnimation/Tileset/demo and four runtime adapter types while preserving field order/access. Full formatting/declaration review remains; clang-format 23+ is unavailable. |
+| 0.3 | Checked source | Identity verified; 61/85/88 correct field order. clang-format 23.1.2 formatted and checked all 104 surviving task-touched C++ files against the root config; formatting preserved syntax token sequences. Inventory covers 153 classes/structs with no late data declarations. Direct standard-library dependencies were added to 15 headers. |
 | 0.4 | Checked source | Original/incremental bases, unique numbers and saved checkpoints checked; patch replay is a separate static check. |
 
 ### Task 1
@@ -141,7 +145,7 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | 6.3 | Fix prepared | A14 routes FontMgr through retained publication and commits a prepared default path atomically. 67 adds actual per-map node/bucket request rejection, replacement retention, reentry and allocator-preserving clear; unexecuted. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | native ownership/context guards inspected; A12–A18 correct publication/query/shutdown/startup exits. 83 covers generation/upload failure with current-context loss, recovery, abandonment and foreign/late release; 84 guards initial make_current failure and preserves its error. Renderer GL-state publication and program/material/frame/runtime native-loss compositions still need review; execution remains open. |
+| 6.6 | Checked source | Deletion/failure/provider/frame/domain guards and both runtime cleanup sequences reviewed. A12–A20 correct confirmed gaps; 83 covers partial native creation/loss, 87 covers state publication, failed material reload, provider/cache release, frame-retained program/image/geometry, recovery/abandonment and foreign/late release. Source audit finished; fixtures and OS/driver/runtime acceptance remain unexecuted. |
 | 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors; A15 checks texture limit/alignment/anisotropy queries before output use. 60/71 prepare synthetic retirement/alignment/query failures, without real driver execution. |
 
 ### Task 7
@@ -151,7 +155,7 @@ Inspected paths: Pipeline/Material definitions and implementation, parameters, n
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 7.1 | Checked source | Immutable definition snapshots and enum/schema/layout/topology validation inspected. |
-| 7.2 | Fix prepared | A13 checks construction/status/reflection before executable publication. 65 prepares native/logical/file failures and retained-program reflection recovery; 70 rejects actual registry/control-block allocation and retains allocator ownership through weak release. Native execution and broader 6.6 evidence remain open. |
+| 7.2 | Fix prepared | A13 guards construction/status/reflection; 65/70 cover native/logical/registry/control-block failure and retained ownership. A19 guards renderer startup publication; A20 routes diagnostics through checked reflection and rejects/null-checks location queries before cache insertion. 87/89 prepare retained native dependencies/legacy failures; all fixtures remain unexecuted. |
 | 7.3 | Checked source | Copied values, defaults < pass < material < draw, hidden-invalid layer validation, engine ownership and missing/type rules inspected. |
 | 7.4 | Checked source | Image-free geometry, explicit per-binding units and guarded texture bind/unbind inspected. |
 | 7.5 | Checked source | Range/domain/pass preflight precedes state changes; complete supported blend/depth/cull state and A6 clear mask inspected. |
@@ -299,32 +303,48 @@ functions in 81–84 remain uncompiled and unexecuted.
 The CPU managed-buffer helper's preexisting manager-lifetime synchronization TODO
 remains explicit; this pass does not claim concurrent manager destruction is safe.
 
-## Remaining audit work before moving on
+## Source-audit closure and remaining acceptance
 
-1. Finish format/declaration-order review (0.3). Confirmed field drift is corrected
-   in 61/85; full formatting and remaining declarations have not been verified.
-2. Complete broader combined native failure evidence (6.6/7.2): inspect renderer
-   GL-state initialization/publication and program/material/frame/runtime dependents
-   under native context loss. Checkpoint 83 covers adopted/unadopted generation and
-   upload cleanup, recovery and abandonment in a synthetic recording domain.
-   Category ownership/bake retries (6.2) and controlled runtime startup composition
-   (4.6) now have bounded source records; every fixture remains unexecuted.
-   Real font parsing/rasterization, stb internal allocations and rotated FFont
-   rendering remain acceptance work. Source review is not correctness sign-off.
+Checkpoint 87 fixes A19: renderer GL state errors and pending errors reject before
+resource-domain publication. A private per-renderer loader lets recording fixtures
+use the complete renderer initialize/deinitialize/destructor paths; production
+still loads and checks GLAD 3.3. Prepared cases cover loader/default-state failure
+and later release errors, plus actual provider/material-cache/frame ownership across
+context loss, failed reload, provider teardown, recovery, abandonment and late
+worker release. Program, image and VAO/buffer owners remain retained by the frame
+and external material until those owners release; shutdown invalidates native IDs
+once, while failed recovery abandons without GL deletion/context queries.
 
-The bounded source review of the identified event ordering/invalidation and worker
-native-boundary branches is now recorded. Eleven scenarios prepared in 62–63 add
-controlled combinations and policy/startup faults; none has run. They do not prove
-all producer interleavings, actual OS rejection, race freedom, or complete runtime
-integration. Those limits stay open under acceptance and the remaining combined
-failure review rather than being hidden behind a completed source row.
+The same paths were traced through both GameRuntime modes. A native initialization
+failure leaves renderer_ready false, so maintenance is skipped; closed mailbox
+requests still settle before adapter cleanup. A later render/maintenance/context
+failure preserves the first failure while quiescing, pumping accepted CPU-to-platform
+work, joining workers and closing targets. Frames recycle before game/input/renderer
+cleanup. Failed renderer recovery remains retryable while its borrowed context lives;
+renderer destruction abandons before EngineContext destroys that context. A release
+error after a successful native sweep leaves the domain closed and late owners safe.
+The real context/driver and full runtime composition still require execution.
 
-Old FFont file-read/validation TODOs predate its layout migration; the work order
-explicitly excludes new FFont loading/features. They are not silently counted as
-fixed. The private adapter now prepares controlled rollback and policy-failure sources;
-these are not an executed native fault test.
+Checkpoint 88 completes the format/declaration review using clang-format 23.1.2 and
+the unchanged root config on 104 surviving task-touched C++ files. Formatting preserves
+syntax token sequences; the resulting files pass a formatter dry run. All 153 class/
+struct declarations were inventoried. The last two field-order violations were moved
+without changing field sequence/access; 15 headers add their direct standard-library
+dependencies. No vendor, generated or previously untouched C++ file was formatted.
 
-Build/type/link checks, aggregate regressions, real runtime/native acceptance and
-PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
-for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A18](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+Checkpoint 89 fixes A20 in retained low-level shader diagnostics: printing uses the
+checked reflection path instead of uninitialized query outputs/raw malloc, and
+uniform/attribute location failures reject before cache publication. Null names reject.
+Two new fixtures prepare diagnostic count/length/entry/location failure and successful
+location retry/caching without prematurely releasing the linked program. Four new
+fixture functions in 87/89 remain uncompiled and unexecuted.
+
+There are no remaining partial source-review rows for the listed completed tasks
+0–8 or their identified dependencies. Task-9 source preparation can proceed; this
+closure is not exhaustive correctness, C++ type/link, race-freedom or runtime sign-off.
+Builds, aggregate regressions, real sequential/concurrent demos, OS affinity/startup,
+driver/context loss, fonts/stb internal allocations and rotated FFont rendering remain
+under 9.5. Old FFont loading TODOs and CPU managed-buffer manager-lifetime synchronization
+remain explicit preexisting/out-of-scope limitations. PR metadata publication remains
+9.7 and separately requested. No build, test, demo, push or metadata write occurred.
+See [A1–A20](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for the finding history.

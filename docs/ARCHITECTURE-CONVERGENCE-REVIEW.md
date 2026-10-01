@@ -1,24 +1,23 @@
 # Architecture convergence review
 
-1 October 2026. Source preparation for tasks 1–8 is implemented. This checkpoint
-reviews their shared startup, update, reload, and shutdown paths; it does not close
-the partial audit or establish executed acceptance. The current continuation starts from
-user-pushed checkpoint 54, `b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`, whose tree
-matches the previously delivered local checkpoint. The fixed original task base is unchanged.
-
-Further task-9 completion work is on hold for the explicit audit request.
-[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) accounts for completed
-requirements, batch-ending claims and remaining source-review gaps.
+1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
+completed-task source audit closes at checkpoint 90, including batch-ending claims
+and identified startup/update/reload/shutdown dependencies. The latest confirmed
+remote remains checkpoint 57, `5e4adfdc94cec7590916282c876762ada4d0e123`; pending
+58–90 preserve the fixed original base and ordered history. Source closure is not
+exhaustive correctness or executed acceptance. Task-9 source work is unblocked.
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) records all requirement
+rows; findings A1–A20 and remaining 9.5/9.7 gates are explicit.
 
 ## Cross-task paths
 
 | Path | Source review and prepared evidence | Remaining acceptance |
 | --- | --- | --- |
-| Startup and execution ownership | Context lazy/shared pool ownership, factory forwarding, dispatcher owner binding, initialization rollback, and worker construction cleanup reviewed. Aggregate `core/runtime-adapter.cpp` and `core/worker-pool.cpp` contain lifecycle scenarios. | Compile both configurations; execute partial startup failures. Controlled partial thread-start failure is not covered by a success-path fixture. |
+| Startup and execution ownership | Context lazy/shared pool ownership, factory forwarding, dispatcher owner binding, initialization rollback, and worker construction cleanup reviewed. Aggregate `core/runtime-adapter.cpp` and `core/worker-pool.cpp` contain lifecycle scenarios. | Compile both configurations and execute partial startup failures. 62/81/82 now prepare isolated and composed controlled startup rejection. |
 | Update, input, and frame handoff | Scheduler bounds, observation/simulation clocks, mailbox-before-backlog ordering, bounded batches, frame slot transitions, stop/join, and platform-only recycling reviewed. Scheduler/input/frame regression sources use explicit clocks or coordinated handoffs. | Execute both runtime modes and timing policies, including expensive callbacks and presentation pacing. |
-| Event closure and delivery | Registry/invocation/posting lock order, ticket failure ownership, dispatcher cancellation, worker stream acceptance, and independent streams reviewed. A7 fixes initial submission serialization; A10 fixes early accepted-pump cancellation ownership. Checkpoints 56–57 prepare controlled before/after-publication loss and throwing-submit scenarios. | Execute concurrent lifecycle and rejection scenarios. Existing fixtures do not force the old fallible pump-publication window. |
-| Worker scheduling and CPU policy | Share selection, caps, capture release before completion, close/drain/join, required-mask readback, preferred fallback, and unsupported topology reviewed. Checkpoint 50 adds a mask changed by a previous job; 52 adds capture-deleter reentry and overlapping weighted CPU masks. | Execute affinity success/failure on supported hosts, live restriction changes, and overlapping affinity workloads. Native failure injection remains open. |
-| Cache publication and reload | Candidate construction outside locks, strong generations, replacement/clear, and provider domain reviewed. A8 retains a candidate owner through fallible insertion; generic-cache fixtures cover duplicate reentry and hash rejection. | Execute cache/material tests and controlled allocation/rehash failure. Hash rejection does not reproduce every allocation failure. |
+| Event closure and delivery | Registry/invocation/posting lock order, ticket failure ownership, dispatcher cancellation, worker stream acceptance, and independent streams reviewed. A7 fixes initial submission serialization; A10 fixes early accepted-pump cancellation ownership. Checkpoints 56–57 prepare controlled before/after-publication loss and throwing-submit scenarios. | Execute concurrent lifecycle and rejection scenarios. 56–58/62–63 prepare controlled publication/rejection and concurrent payload scenarios; every source remains unexecuted. |
+| Worker scheduling and CPU policy | Share selection, caps, capture release before completion, close/drain/join, required-mask readback, preferred fallback, and unsupported topology reviewed. Checkpoint 50 adds a mask changed by a previous job; 52 adds capture-deleter reentry and overlapping weighted CPU masks. | Execute affinity success/failure on supported hosts, live restriction changes, and overlapping affinity workloads. 62/79/81 prepare controlled native-boundary failures; actual OS acceptance remains open. |
+| Cache publication and reload | Candidate construction outside locks, strong generations, replacement/clear, and provider domain reviewed. A8 retains a candidate owner through fallible insertion; generic-cache fixtures cover duplicate reentry and hash rejection. | Execute cache/material tests and controlled allocation/rehash failure. 67/70/74/77 prepare scoped real allocation rejection, with allocator ownership and partial-constructor unwinding; every fixture remains unexecuted. |
 | Native construction and binding | Texture/program/stage/geometry ownership, lifetime adoption/retirement, actual-context guards, reflection, parameter/resource preflight, and complete draw state reviewed. A9 guards explicit-unit texture unbinding. Recording GLAD fixtures use synthetic IDs. Checkpoint 53 adds failed-shutdown recovery and abandonment with pending/live handles of all kinds. | Execute real-context construction/reload/draw, context loss, idle collection, and failure cleanup. Recording calls cannot prove driver behavior. |
 | Retained frame generation and cleanup | Checkpoint 49 prepares successful material replacement, preparation failure after packet insertion, and render failure in both modes. Old geometry/material/pipeline/image handles remain in packets until platform-thread recycling, before game cleanup. Original failure must survive a later cleanup failure. | Compile and execute all six scenarios; exercise the corresponding real renderer paths. |
 | Shutdown dependency ordering | Simulation closes on its owner before join; game quiesces while targets exist; platform pumps accepted CPU dependencies; workers finish before platform closure, frame recycling, game cleanup, and renderer teardown. Existing runtime fixtures cover accepted work and cleanup failure. | Execute producer/failure combinations. Quiesce must not block on a dependency requiring platform service. |
@@ -56,7 +55,8 @@ Existing delivered numbers remain unchanged.
 Changed C++ files receive syntax-tree inspection, whitespace, include/API, and
 ownership/lock review. The recording fixture's GLAD calling-convention token is
 normalized only in the parser input. Formatting is checked against the repository
-style manually; clang-format is unavailable. Syntax parsing does not type-check,
+root style using clang-format 23.1.2 over all 104 surviving task-touched C++ files.
+The declaration inventory covers 153 classes/structs with no remaining late fields. Syntax parsing does not type-check,
 link, execute code, or prove race freedom.
 
 Before delivery, combined continuation, ordered numbered patches, and the
@@ -68,5 +68,5 @@ assistant remote write occurs in this continuation.
 Task 9.5 remains open for explicitly requested execution and recorded results.
 Task 9.7 remains open for separately requested PR metadata publication; a concrete
 [PR description draft](PR-9-DESCRIPTION-DRAFT.md) is prepared locally. Review
-findings A1–A10 and their evidentiary limits remain in the
+findings A1–A20 and their evidentiary limits remain in the
 [earlier-task audit](ARCHITECTURE-EARLIER-TASK-AUDIT.md).

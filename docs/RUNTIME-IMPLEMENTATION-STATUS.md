@@ -7,11 +7,15 @@ work order are implemented in source. **This continuation has not been compiled
 or tested.** Historical normal/sandbox build results below predate these changes
 and do not validate the current HEAD. Individual local commits remain intact.
 
-Source scope is not audit sign-off. A partial review found and fixed concurrent
-event invalidation publication and polling deadline arithmetic issues, and added
-worker cap/mask coverage. See
-[ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for the
-reviewed paths and remaining work; the broader audit is still open.
+The completed-task source audit closes at checkpoint 90 after reviewing every
+listed completed task 0–8, batch-ending claims and identified dependent paths.
+Confirmed findings A1–A20 are fixed in the pending patch series. Formatting,
+declaration inventory and native startup/retained-owner review are recorded in
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md), with finding history in
+[ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md). Closure is
+bounded source review, not exhaustive correctness or type/link/runtime acceptance.
+Task-9 source work is unblocked; builds, tests, native acceptance and PR metadata
+remain open as specified by the work order.
 
 Earlier input/runtime work began at
 `d690266c389f08e74efe0481c5fc6b744870ea29`. Its compilation follow-up is retained

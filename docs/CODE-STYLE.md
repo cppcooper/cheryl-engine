@@ -7,7 +7,7 @@ The root `.clang-format` is the formatting authority for C and C++ code. It bega
 - Use four spaces and never tabs for new or edited code.
 - Use attached pointer and reference declarators: `Texture* texture` and `const GridDefinition& grid`.
 - Keep opening braces on the declaration or control-statement line.
-- Keep enum members on separate lines. Do not add comments to namespace-closing braces.
+- Let the root formatter decide enum wrapping; short enums may fit on one line. Do not add comments to namespace-closing braces.
 - Short inline accessors may remain on one line; keep out-of-line function definitions expanded.
 - Treat 140 columns as the limit, matching the root configuration for clang-format 23+. Let `clang-format` decide whether a declaration or expression fits on one line; do not manually align continuation lines.
 - Preserve meaningful include groups. In a source file, put its matching header first, then other project or third-party headers, then standard-library headers, with blank lines between groups.

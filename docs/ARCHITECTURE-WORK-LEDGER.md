@@ -223,7 +223,44 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Startup, context loss and declaration audit: checkpoints 81–86
+### Completed source audit: checkpoints 87–90
+
+This pass starts at saved local 86,
+`b3621ac05c9403dedbdca9fd9aba5e1a33f2ca8a`. Confirmed remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; all pending 58–86 are preserved.
+
+- 87 fixes A19: pending/default GL state errors cannot publish the renderer domain.
+  Two fixtures prepare startup/release failure and real renderer/provider/cache/
+  frame owner combinations with synthetic GL entries, context recovery/abandonment,
+  failed reload, retained programs/images/geometry and late worker release.
+- 88 uses clang-format 23.1.2 on all 104 surviving task-touched C++ files. Formatting
+  token sequences are preserved. The 153-class/struct inventory has no remaining
+  late fields after two fixes preserving field sequence/access; 15 headers gain
+  direct standard-library includes. The root formatter configuration stays unchanged.
+- 89 fixes A20: retained diagnostic printing uses checked reflection/owned storage;
+  raw location queries reject errors/null names before caching. Two fixtures prepare
+  failure/retry/retained-program cleanup. All four new fixture functions are unexecuted.
+- 90 closes the source audit rows and aligns current status/convergence records.
+
+The source audit of completed tasks 0–8, batch-ending claims and identified
+startup/update/shutdown dependencies is finished. No partial source-review row
+remains. Task-9 source work is unblocked; 9.5 type/link/build/regression/demo and
+real OS/driver/context/font acceptance, plus separately requested 9.7 PR metadata,
+remain open. Closure is not exhaustive correctness or executed acceptance.
+No configuration, compilation, test, demo, push or PR write occurred.
+
+Numbered delivery is **87–90**; next unused number is **91**. New-only
+`cheryl-engine-followup.patch` starts after saved 86. The combined
+`cheryl-engine-continuation.patch` contains all withheld **58–90**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+Routes overlap; choose one matching application base.
+
+Formatter dry run, changed syntax trees, declaration inventory, whitespace, header/API
+checks, documentation links and requirement rows receive static verification.
+Four application routes must replay exact trees and ordered author/date/messages.
+These checks do not compile, link, execute fixtures or prove native behavior/race freedom.
+
+### Startup, context loss and declaration audit: checkpoints 81–86 (historical)
 
 This pass starts at saved local 80,
 `cced43ee711d4f77d0118058c0ddf5cf79489ab0`. Confirmed remote 57 remains

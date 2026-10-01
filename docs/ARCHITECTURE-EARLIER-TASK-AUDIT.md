@@ -1,14 +1,13 @@
 # Earlier-task audit checkpoint
 
-1 October 2026. This is a partial review of tasks 0–6 and their integration with
-tasks 7–8 against the second-pass work order, starting from the user-pushed `8f796148e64d3dde6faf29b9333893133eb9cceb`.
-Earlier completion labels describe implemented source scope. They do not establish
-that the implementation is correct, that every path was reviewed, or that the
-acceptance criteria passed. The broader audit remains open alongside implementation, as subsequently requested.
-
-The subsequent explicit audit request pauses further task-9 completion work.
+1 October 2026. The completed-task source audit closes at checkpoint 90, following
+review of tasks 0–8, batch-ending completion claims and dependent paths. Earlier
+completion labels record source scope; closure does not prove exhaustive correctness
+or executed acceptance. The historical review began at user-pushed
+`8f796148e64d3dde6faf29b9333893133eb9cceb` and subsequent checkpoints carried its findings.
 [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) records every completed
-task/subtask and dependent paths; the finding history below is not full sign-off.
+requirement and the remaining task-9 acceptance gates. Finding sections below preserve
+the chronology, including gaps that were still open at older checkpoints.
 
 ## Findings and prepared changes
 
@@ -371,6 +370,36 @@ Five new fixture functions are uncompiled/unexecuted. Bounded 4.6 startup/failur
 source review is recorded; full 0.3 formatting and broader 6.6 native compositions,
 including GL-state startup publication and program/material/frame/runtime dependents,
 remain open before task 9. Static checks are not type/link or runtime sign-off.
+
+### A19: native renderer startup state errors preceded logical publication
+
+Renderer default blend/clear setup did not inspect native errors, and its domain
+was allocated before default-state success. Checkpoint 87 rejects pending/default-
+state errors, rechecks its current context and publishes only after those operations
+succeed. Loader/default-state/release failures are prepared through a private per-
+renderer loader; the direct GLAD 3.3 loader remains the production default.
+A retained-dependency fixture uses OpenGLRenderer, OpenGLResourceProvider, MaterialMgr
+and RenderFrame with synthetic native entries. It prepares failed reload, cache/
+provider release, context recovery/sweep, failed recovery/abandonment, later release
+failure and foreign/late owner release. Both runtime cleanup sequences were traced
+against those renderer guarantees; no real driver/runtime execution occurred.
+
+### A20: retained shader diagnostic/location queries bypassed failure guards
+
+Legacy printing used unchecked native counts/lengths with uninitialized outputs
+and malloc/free, alongside the checked reflection path introduced for pipelines.
+Raw location lookup also cached a native query result without checking its error,
+and null names could reach string/native lookup. Checkpoint 89 uses checked owned
+reflection results for printing, rejects null names and checks location query errors
+before insertion. Two fixtures prepare diagnostic failure, retained program lifetime,
+and a failed location query followed by successful retry and cache hit.
+
+Checkpoint 88 formats/checks all 104 surviving task-touched C++ files with clang-
+format 23.1.2, preserving formatting token sequences. Declaration inventory covers
+153 classes/structs, corrects two remaining field-order violations without altering
+field sequence/access, and adds direct dependencies to 15 headers. Checkpoint 90
+closes the listed source-review gaps. Four new fixtures in 87/89 remain uncompiled/
+unexecuted; builds, regressions and OS/driver/runtime acceptance remain task 9.5.
 
 ## Coverage at this checkpoint
 

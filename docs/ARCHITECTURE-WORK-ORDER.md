@@ -20,8 +20,9 @@ Each task below has numbered subtasks, a completion condition, and a discovery b
 
 Checked subtasks record implemented/prepared source scope, not audit sign-off or
 executed acceptance. The explicit requirement/dependency audit of tasks 0–8 is in
-[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md); it remains open.
-Further task-9 completion work is on hold while that source audit is unfinished.
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md); its listed source
+review is finished at checkpoint 90. Task-9 source work is unblocked; executed
+acceptance (9.5) and separately requested PR metadata (9.7) remain open.
 Finding history is in [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
 
 ## What the chronological review settled
@@ -241,8 +242,8 @@ FFont loading features or Unicode shaping were added. Ordering remains authored.
 - [ ] **9.7** Keep PR #9's description aligned with completed behavior and pending acceptance. Metadata updates are a separately requested action; the recommended branch/title are already in place.
 
 Source-preparation checks above record implemented documents/fixtures and permitted
-checks of changed source and reviewed paths. They do not close the partial audit or
-executed acceptance. See [ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md)
+checks of changed source and reviewed paths. The completed-task source audit closes
+at checkpoint 90; these checks do not establish executed acceptance. See [ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md)
 for coverage, native failure gaps, and the local PR description draft.
 
 **Boundary D9 — convergence:** inspect the complete startup/update/shutdown path after the execution and rendering migrations meet. Insert any necessary cross-task fixes as named subtasks with their own completion evidence. Distinguish source completion from executed acceptance; existing build reports are historical evidence, not validation of future changes.
