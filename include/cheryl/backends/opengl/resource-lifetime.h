@@ -6,11 +6,16 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <memory_resource>
 #include <mutex>
 #include <thread>
 #include <vector>
 
 namespace CE::RenderAPIs {
+    namespace ResourceDetail {
+        struct LifetimeAccess;
+    }
+
     enum class GLResourceKind { Texture, Buffer, VertexArray, Program, ShaderStage };
 
     // All GL calls happen on the context thread. Asset destructors may run on another
@@ -25,7 +30,9 @@ namespace CE::RenderAPIs {
         };
 
         mutable std::mutex mutex_;
-        std::vector<Entry> entries_;
+        // Retain an injected allocator until the entry vector is destroyed.
+        std::shared_ptr<std::pmr::memory_resource> entry_memory_;
+        std::pmr::vector<Entry> entries_;
         std::size_t pending_ = none;
         std::size_t free_ = none;
         std::thread::id owner_;
@@ -51,6 +58,12 @@ namespace CE::RenderAPIs {
         void require_current() const;
 
     private:
+        friend struct ResourceDetail::LifetimeAccess;
+        OpenGLResourceLifetime(
+            std::thread::id owner,
+            std::function<bool()> is_current,
+            std::shared_ptr<std::pmr::memory_resource> entry_memory
+        );
         static void delete_handle(GLResourceKind kind, GLuint id) noexcept;
         void require_owner_locked() const;
         void require_current_locked() const;

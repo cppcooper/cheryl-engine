@@ -1,5 +1,7 @@
 #include <backends/opengl/program-builder.h>
 #include <backends/opengl/pipeline.h>
+#include <backends/opengl/resource-lifetime-internal.h>
+#include <testing/failing-memory-resource.h>
 
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
@@ -277,6 +279,52 @@ TEST(opengl_program_builder, native_construction_errors_reject_and_release_all_c
         if (operation == "attach")
             EXPECT_EQ(native.link_calls, 0); // A permissive link cannot hide the skipped stage.
     }
+}
+
+TEST(opengl_program_builder, registry_allocation_failure_discards_the_untracked_program_once) {
+    ProgramConstructionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    native.lifetime = ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [&] { return native.current; }, memory);
+    memory->reject_next();
+    EXPECT_THROW((void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages()), CE::Exceptions::bad_alloc);
+    EXPECT_EQ(memory->rejected.load(), 1u);
+    native.expect_all_destroyed_once();
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
+}
+
+TEST(opengl_program_builder, logical_allocation_failure_retires_the_adopted_program_without_duplicate_discard) {
+    ProgramConstructionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    memory->reject_next();
+    EXPECT_THROW(
+        (void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages(), memory),
+        CE::Exceptions::bad_alloc
+    );
+    EXPECT_EQ(memory->rejected.load(), 1u);
+    ASSERT_EQ(native.destroyed.size(), 2u); // Stages detached; adopted program awaits owner collection.
+    for (const auto& [kind, id] : native.destroyed) {
+        (void)id;
+        EXPECT_EQ(kind, GLResourceKind::ShaderStage);
+    }
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
+}
+
+TEST(opengl_program_builder, logical_allocator_survives_strong_release_until_the_last_weak_control_owner) {
+    ProgramConstructionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    std::weak_ptr<CE::Testing::FailingMemoryResource> memory_owner = memory;
+    auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages(), memory);
+    std::weak_ptr<GLSLProgram> weak_program = program;
+    memory.reset();
+    program.reset();
+    EXPECT_TRUE(weak_program.expired());
+    EXPECT_FALSE(memory_owner.expired());
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
+    weak_program.reset();
+    EXPECT_TRUE(memory_owner.expired());
 }
 
 TEST(opengl_program_builder, logical_compile_and_link_failure_release_attached_marked_stages) {

@@ -1,5 +1,7 @@
 #include <backends/opengl/resource-lifetime.h>
 #include <backends/opengl/glslprogram.h>
+#include <backends/opengl/resource-lifetime-internal.h>
+#include <testing/failing-memory-resource.h>
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
 
@@ -81,6 +83,57 @@ TEST(opengl_lifetime, the_owner_thread_also_needs_the_correct_current_context) {
     EXPECT_NO_THROW(lifetime.require_current());
     // No handles were registered, so this source test needs no actual OpenGL calls.
     EXPECT_NO_THROW(lifetime.shutdown());
+}
+
+TEST(opengl_lifetime, failed_entry_growth_preserves_live_and_pending_registrations_and_reuses_free_slots) {
+    DeletionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    auto lifetime = CE::RenderAPIs::ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [] { return true; }, memory);
+    {
+        OpenGLHandle live(lifetime, GLResourceKind::Buffer, 101);
+        { OpenGLHandle pending(lifetime, GLResourceKind::Texture, 102); }
+        const auto capacity = CE::RenderAPIs::ResourceDetail::LifetimeAccess::capacity(*lifetime);
+        std::vector<OpenGLHandle> fill;
+        while (2 + fill.size() < capacity)
+            fill.emplace_back(lifetime, GLResourceKind::Buffer, static_cast<GLuint>(1000 + fill.size()));
+        memory->reject_next();
+        EXPECT_THROW((void)OpenGLHandle(lifetime, GLResourceKind::ShaderStage, 103), CE::Exceptions::bad_alloc);
+        EXPECT_EQ(memory->rejected.load(), 1u);
+        EXPECT_TRUE(native.deletions.empty());
+        EXPECT_EQ(live.id(), 101u);
+        lifetime->discard_untracked(GLResourceKind::ShaderStage, 103);
+        lifetime->collect();
+        ASSERT_EQ(native.deletions.size(), 2u);
+        EXPECT_EQ(native.deletions[0], (std::pair{GLResourceKind::ShaderStage, GLuint{103}}));
+        EXPECT_EQ(native.deletions[1], (std::pair{GLResourceKind::Texture, GLuint{102}}));
+        const auto requests = memory->requests.load();
+        memory->reject_next();
+        OpenGLHandle reused(lifetime, GLResourceKind::ShaderStage, 104);
+        EXPECT_EQ(memory->requests.load(), requests);
+        lifetime->shutdown();
+        EXPECT_EQ(memory->requests.load(), requests); // Retirement/collection/sweep do not allocate entries.
+        EXPECT_THROW((void)live.id(), failed_operation);
+        EXPECT_THROW((void)reused.id(), failed_operation);
+        EXPECT_EQ(native.deletions.size(), capacity + 2);
+    }
+    const auto deleted = native.deletions.size();
+    EXPECT_THROW(lifetime->collect(), failed_operation); // Closed lifetime rejects before native deletion.
+    EXPECT_EQ(native.deletions.size(), deleted);
+}
+
+TEST(opengl_lifetime, entry_allocator_outlives_abandonment_and_the_last_retained_handle) {
+    DeletionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    std::weak_ptr<CE::Testing::FailingMemoryResource> borrowed_memory = memory;
+    auto lifetime = CE::RenderAPIs::ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [] { return true; }, memory);
+    auto retained = std::make_unique<OpenGLHandle>(lifetime, GLResourceKind::Program, 105);
+    memory.reset();
+    lifetime->abandon();
+    lifetime.reset();
+    EXPECT_FALSE(borrowed_memory.expired());
+    retained.reset();
+    EXPECT_TRUE(borrowed_memory.expired());
+    EXPECT_TRUE(native.deletions.empty());
 }
 
 TEST(opengl_lifetime, foreign_threads_and_closed_lifetimes_never_query_a_borrowed_context) {

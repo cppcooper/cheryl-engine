@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <memory_resource>
 #include <vector>
 
 namespace CE::RenderAPIs {
@@ -15,7 +16,8 @@ namespace CE::Assets {
     namespace ProgramDetail {
         std::shared_ptr<GLSLProgram> link_program(
             std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-            const std::vector<std::filesystem::path>& stages
+            const std::vector<std::filesystem::path>& stages,
+            std::shared_ptr<std::pmr::memory_resource> logical_memory = nullptr
         );
     }
 }

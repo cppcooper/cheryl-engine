@@ -1,4 +1,5 @@
 #include <backends/opengl/resource-lifetime.h>
+#include "resource-lifetime-internal.h"
 
 #include <internals/exceptions.h>
 
@@ -6,9 +7,35 @@
 
 namespace CE::RenderAPIs {
     OpenGLResourceLifetime::OpenGLResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
-    : owner_(owner), is_current_(std::move(is_current)) {
+    : OpenGLResourceLifetime(owner, std::move(is_current), {}) {}
+
+    OpenGLResourceLifetime::OpenGLResourceLifetime(
+        const std::thread::id owner,
+        std::function<bool()> is_current,
+        std::shared_ptr<std::pmr::memory_resource> entry_memory
+    )
+    : entry_memory_(std::move(entry_memory)),
+      entries_(entry_memory_ ? entry_memory_.get() : std::pmr::new_delete_resource()),
+      owner_(owner), is_current_(std::move(is_current)) {
         if (owner == std::thread::id{} || !is_current_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
+    }
+
+    std::shared_ptr<OpenGLResourceLifetime> ResourceDetail::LifetimeAccess::create(
+        const std::thread::id owner,
+        std::function<bool()> is_current,
+        std::shared_ptr<std::pmr::memory_resource> entry_memory
+    ) {
+        if (!entry_memory)
+            throw Exceptions::invalid_args(CE_HERE, "Private lifetime construction requires owned entry memory");
+        return std::shared_ptr<OpenGLResourceLifetime>(new OpenGLResourceLifetime(owner, std::move(is_current), std::move(entry_memory)));
+    }
+
+    std::size_t ResourceDetail::LifetimeAccess::capacity(
+        const OpenGLResourceLifetime& lifetime
+    ) {
+        const std::lock_guard lock(lifetime.mutex_);
+        return lifetime.entries_.capacity();
     }
 
     void OpenGLResourceLifetime::require_owner_locked() const {

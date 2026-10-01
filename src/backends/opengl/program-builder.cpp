@@ -1,4 +1,5 @@
 #include "program-builder.h"
+#include "resource-lifetime-internal.h"
 #include "upload-check.h"
 
 #include <backends/opengl/glslprogram.h>
@@ -63,7 +64,8 @@ namespace CE::Assets::ProgramDetail {
 
     std::shared_ptr<GLSLProgram> link_program(
         std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-        const std::vector<std::filesystem::path>& stages
+        const std::vector<std::filesystem::path>& stages,
+        std::shared_ptr<std::pmr::memory_resource> logical_memory
     ) {
         if (stages.empty())
             throw Exceptions::invalid_args(CE_HERE, "A shader program needs at least one stage");
@@ -138,6 +140,11 @@ namespace CE::Assets::ProgramDetail {
         // From here on, only the tracked handle owns retirement of this ID.
         RenderAPIs::OpenGLHandle tracked(lifetime, RenderAPIs::GLResourceKind::Program, program.id);
         program.id = 0;
+        if (logical_memory)
+            return std::allocate_shared<GLSLProgram>(
+                RenderAPIs::ResourceDetail::RetainedMemoryAllocator<GLSLProgram>{std::move(logical_memory)},
+                std::move(tracked)
+            );
         return std::make_shared<GLSLProgram>(std::move(tracked));
     }
 }
