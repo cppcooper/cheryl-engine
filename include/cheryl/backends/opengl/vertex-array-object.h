@@ -11,6 +11,16 @@
 
 namespace CE {
     struct VAO final : Assets::Geometry2D {
+    protected:
+        enum VAOType { flat, mesh } type;
+
+        Assets::PrimitiveTopology topology_ = Assets::PrimitiveTopology::Triangles;
+        std::size_t vertex_count_ = 0;
+
+        RenderAPIs::OpenGLHandle vao_;
+        std::array<RenderAPIs::OpenGLHandle, 2> vbo_;
+
+    public:
         VAO(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
             std::span<const Vertex2D> vertices,
             Assets::PrimitiveTopology topology);
@@ -25,16 +35,7 @@ namespace CE {
             std::shared_ptr<uint32_t> indices,
             uint32_t num_indices);
 
-        void bind(const Assets::Image& image) const override;
+        void bind() const override;
         void draw(std::size_t first_vertex, std::size_t vertex_count) const override;
-
-    protected:
-        enum VAOType { flat, mesh } type;
-
-        Assets::PrimitiveTopology topology_ = Assets::PrimitiveTopology::Triangles;
-        std::size_t vertex_count_ = 0;
-
-        RenderAPIs::OpenGLHandle vao_;
-        std::array<RenderAPIs::OpenGLHandle, 2> vbo_;
     };
 }

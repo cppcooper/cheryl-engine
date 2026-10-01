@@ -15,11 +15,19 @@ context, and GLFW composition. Its headers are opt-in through
 Concrete resources may use OpenGL types, while shared asset and renderer
 interfaces must not expose them.
 
-`Geometry2D::bind(Image)` pairs neutral geometry and image handles. Standard
+`Geometry2D::bind()` selects geometry independently of `Image::bind(unit)`.
+Units are zero-based requests owned by the draw/material; cached images retain
+no mutable binding unit. Existing immediate/frame adapters select unit zero.
+The OpenGL renderer checks an image's backend independently of geometry binding.
+Standard
 shader parameters use `ShaderPass` and `ShaderDraw`; the OpenGL material maps
 semantic roles to its uniform names, including the selected texture unit. Custom
 uniform APIs remain available for application parameters. Common drawing code
 does not select GLSL names.
+
+Typed pipeline definitions, immutable material defaults, and copied custom
+parameter resolution are described in [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md).
+These foundations do not yet replace the legacy frame's Shader handle.
 
 CPU preparation owns RGBA pixels and temporary vertex data. Backend creation
 accepts decoded images and transient vertex spans; it copies upload data before

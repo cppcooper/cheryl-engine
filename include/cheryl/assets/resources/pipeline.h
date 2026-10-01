@@ -13,6 +13,8 @@ namespace CE::Assets {
 
     public:
         virtual ~Pipeline() = default;
+        Pipeline(const Pipeline&) = delete;
+        Pipeline& operator=(const Pipeline&) = delete;
         [[nodiscard]] const PipelineDefinition& definition() const { return definition_; }
     };
 

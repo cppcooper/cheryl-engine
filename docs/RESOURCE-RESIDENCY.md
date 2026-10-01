@@ -55,7 +55,7 @@ do not synthesize early simulation updates or consume input themselves.
 
 Tracking, use, collection, shutdown, and untracked failure cleanup require the
 native owner and its actual current context. A resource from another backend is
-rejected by the existing geometry binding check; a resource from another native
+rejected by the OpenGL renderer's independent image binding check; a resource from another native
 context fails its own lifetime guard. One context being current does not make
 another context's IDs valid. These guards are preserved for task 7's richer
 material/geometry domain validation.

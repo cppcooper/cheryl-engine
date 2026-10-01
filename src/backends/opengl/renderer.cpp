@@ -1,5 +1,6 @@
 #include <backends/opengl/gl.h>
 #include <backends/opengl/renderer.h>
+#include <backends/opengl/texture.h>
 
 #include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
@@ -11,12 +12,20 @@
 
 namespace CE::RenderAPIs {
     namespace {
+        void bind_image(const Assets::Image& image) {
+            const auto* texture = dynamic_cast<const Assets::Texture*>(&image);
+            if (!texture)
+                throw Exceptions::invalid_args(CE_HERE, "An OpenGL draw requires an OpenGL image");
+            texture->bind(0);
+        }
+
         void draw_grid_cell(const Assets::Asset2D& asset, const Assets::GridDefinition& grid, const Assets::CellIndex cell) {
             if (cell >= grid.cell_count())
                 throw Exceptions::invalid_args(CE_HERE, "Render command selects a cell outside its grid");
             if (!asset.geometry || !asset.texture)
                 throw Exceptions::invalid_args(CE_HERE, "Render command has incomplete grid resources");
-            asset.geometry->bind(*asset.texture);
+            asset.geometry->bind();
+            bind_image(*asset.texture);
             asset.geometry->draw(cell * VAONumbers::vertices_per_strip_quad, VAONumbers::vertices_per_strip_quad);
         }
     }
@@ -130,14 +139,16 @@ namespace CE::RenderAPIs {
                             if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
                                 throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
                             bind_style(draw.style, active_material);
-                            draw.graphic->geometry->bind(*draw.graphic->texture);
+                            draw.graphic->geometry->bind();
+                            bind_image(*draw.graphic->texture);
                             draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
                         } else if constexpr (std::is_same_v<Draw, TextDraw>) {
                             if (!draw.font)
                                 throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
                             bind_style(draw.style, active_material);
                             const auto& geometry = draw.font->glyph_geometry();
-                            geometry.bind(draw.font->glyph_atlas());
+                            geometry.bind();
+                            bind_image(draw.font->glyph_atlas());
                             // The font and message are read-only. Only the model uniform
                             // changes as the pen advances through pre-uploaded glyphs.
                             draw.font->for_each_glyph(draw.text, [&](const std::size_t index, const float x, const float y) {

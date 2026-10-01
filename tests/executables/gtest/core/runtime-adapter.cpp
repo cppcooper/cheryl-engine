@@ -262,29 +262,34 @@ namespace {
     };
 
     class MemoryImage final : public CE::Assets::Image {
+        CE::Assets::PixelSize size_;
+
     public:
+        mutable std::vector<std::uint32_t> bound_units;
+
         explicit MemoryImage(CE::Assets::PixelSize size)
         : size_(size) {}
 
         [[nodiscard]] CE::Assets::PixelSize pixel_size() const override { return size_; }
-
-    private:
-        CE::Assets::PixelSize size_;
+        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
     };
 
-    /** Records image binding and draw ranges instead of issuing GPU commands. */
+    /** Records independent geometry binding and draw ranges instead of GPU commands. */
     class MemoryGeometry final : public CE::Assets::Geometry2D {
+        mutable std::size_t binds = 0;
+
     public:
-        void bind(const CE::Assets::Image& image) const override { bound_size = image.pixel_size(); }
+        mutable std::size_t first_vertex = 0;
+        mutable std::size_t drawn_vertices = 0;
+
+        void bind() const override { ++binds; }
 
         void draw(std::size_t first, std::size_t count) const override {
             first_vertex = first;
             drawn_vertices = count;
         }
 
-        mutable CE::Assets::PixelSize bound_size{};
-        mutable std::size_t first_vertex = 0;
-        mutable std::size_t drawn_vertices = 0;
+        [[nodiscard]] std::size_t bind_count() const { return binds; }
     };
 
     /** Records shader uses and camera matrices passed during drawing. */
@@ -821,8 +826,10 @@ TEST(graphic, whole_image) {
     CE::DrawInfo info;
     info.material = provider.shader;
     graphic.draw(info);
-    EXPECT_EQ(provider.geometry->bound_size.width, 32u);
-    EXPECT_EQ(provider.geometry->bound_size.height, 32u);
+    const auto image = std::dynamic_pointer_cast<MemoryImage>(graphic.texture);
+    ASSERT_TRUE(image);
+    EXPECT_EQ(image->bound_units, (std::vector<std::uint32_t>{0}));
+    EXPECT_EQ(provider.geometry->bind_count(), 1u);
     EXPECT_EQ(provider.geometry->first_vertex, 0u);
     EXPECT_EQ(provider.geometry->drawn_vertices, 6u);
     EXPECT_EQ(provider.shader->uses, 1);

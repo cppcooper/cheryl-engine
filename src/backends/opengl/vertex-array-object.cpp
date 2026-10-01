@@ -1,4 +1,3 @@
-#include <backends/opengl/texture.h>
 #include <backends/opengl/vertex-array-object.h>
 
 #include <internals/exceptions.h>
@@ -48,12 +47,8 @@ namespace CE {
         }
     }
 
-    void VAO::bind(const Assets::Image& image) const {
-        const auto* texture = dynamic_cast<const Assets::Texture*>(&image);
-        if (!texture)
-            throw Exceptions::invalid_args(CE_HERE, "An OpenGL vertex array requires an OpenGL texture");
+    void VAO::bind() const {
         glBindVertexArray(vao_.id());
-        texture->bind();
     }
 
     void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {

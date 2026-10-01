@@ -7,7 +7,8 @@
 
 namespace CE::Assets {
     void Tile::draw(const DrawInfo& info) {
-        geometry->bind(*texture);
+        geometry->bind();
+        texture->bind(0);
         info.use_shader();
         geometry->draw(VAONumbers::calculate_num_strip_vertices(offset_), VAONumbers::vertices_per_strip_quad);
     }

@@ -24,7 +24,15 @@ namespace CE::Assets {
     }
 
     template <typename T>
-    void upload(const T* bits, int width, int height, GLuint slot, bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
+    void upload(
+        const T* bits,
+        int width,
+        int height,
+        bool use_mipmaps,
+        bool pixelate,
+        GLint wrap_opt,
+        GLenum fmt
+    ) {
         // Apply anisotropic filtering only for supported color textures; the red-only
         // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
@@ -61,20 +69,18 @@ namespace CE::Assets {
     Texture::Texture(
         std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
         const char* file,
-        int slot,
         bool use_mipmaps,
         bool pixelate,
         int wrap_opt
-    )
-    : unit(slot) {
+    ) {
         if (!file)
             throw Exceptions::invalid_args(CE_HERE, "Image filename must not be null");
         const auto pixels = decode_image(file);
         width = static_cast<int>(pixels.size.width);
         height = static_cast<int>(pixels.size.height);
         handle_ = create_texture_handle(std::move(lifetime));
-        bind();
-        upload(pixels.rgba.data(), width, height, unit, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
+        bind(0);
+        upload(pixels.rgba.data(), width, height, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
         unbind();
     }
 
@@ -83,26 +89,29 @@ namespace CE::Assets {
         const unsigned char* bitmap_data,
         int width,
         int height,
-        GLuint slot,
         bool use_mipmaps,
         bool pixelate,
         GLint wrap_opt,
         GLenum fmt
     )
-    : width(width), height(height), unit(slot) {
+    : width(width), height(height) {
         if (!bitmap_data || width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Texture pixels and dimensions must be nonempty");
         // The font path supplies an already baked alpha atlas; upload() applies
         // its one-channel swizzle without running a file decoder.
         handle_ = create_texture_handle(std::move(lifetime));
-        bind();
-        upload(bitmap_data, width, height, unit, use_mipmaps, pixelate, wrap_opt, fmt);
+        bind(0);
+        upload(bitmap_data, width, height, use_mipmaps, pixelate, wrap_opt, fmt);
         unbind();
     }
 
-    void Texture::bind() const {
+    void Texture::bind(const std::uint32_t unit) const {
         const auto id = handle_.id();
-        glActiveTexture(unit);
+        GLint maximum_units = 0;
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maximum_units);
+        if (maximum_units <= 0 || unit >= static_cast<std::uint32_t>(maximum_units))
+            throw Exceptions::invalid_args(CE_HERE, "Texture binding unit exceeds the current context's limit");
+        glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, id);
     }
 

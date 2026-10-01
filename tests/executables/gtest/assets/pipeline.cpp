@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #ifdef GL_VERSION_3_3
 #error The pipeline and parameter contracts must not include OpenGL.
@@ -21,7 +22,17 @@ namespace {
     };
 
     struct RecordingImage final : Image {
+        mutable std::vector<std::uint32_t> bound_units;
+
         [[nodiscard]] PixelSize pixel_size() const override { return {1, 1}; }
+        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
+    };
+
+    struct RecordingGeometry final : Geometry2D {
+        mutable std::size_t binds = 0;
+
+        void bind() const override { ++binds; }
+        void draw(std::size_t, std::size_t) const override {}
     };
 
     PipelineDefinition effect_definition() {
@@ -108,4 +119,26 @@ TEST(pipeline_generations, caller_mutations_and_replacement_preserve_retained_sn
     definition.state.depth_write = true;
     EXPECT_THROW(current = std::make_shared<RecordingPipeline>(definition), invalid_args);
     EXPECT_FLOAT_EQ(std::get<float>(*current->definition().parameters[4].default_value), 8.0f);
+}
+
+TEST(material_resources, one_image_can_be_selected_on_distinct_units_without_geometry_rebinding) {
+    PipelineDefinition definition;
+    definition.program_sources = {"sprite.vert", "sprite.frag"};
+    definition.parameters = {{"image", ParameterType::Sampler2D}};
+    auto pipeline = std::make_shared<RecordingPipeline>(definition);
+    auto image = std::make_shared<RecordingImage>();
+    Material first({pipeline, {{"image", ImageBinding{image, 1}}}});
+    Material second({pipeline, {{"image", ImageBinding{image, 4}}}});
+    RecordingGeometry geometry;
+    geometry.bind();
+    EXPECT_TRUE(image->bound_units.empty());
+    for (const auto* material : {&first, &second}) {
+        const auto parameters = material->resolve({}, {}, {}, {});
+        const auto& binding = std::get<ImageBinding>(parameters.at("image"));
+        binding.image->bind(binding.unit);
+    }
+    EXPECT_EQ(geometry.binds, 1u);
+    EXPECT_EQ(image->bound_units, (std::vector<std::uint32_t>{1, 4}));
+    EXPECT_EQ(std::get<ImageBinding>(first.definition().defaults.at("image")).unit, 1u);
+    EXPECT_EQ(std::get<ImageBinding>(second.definition().defaults.at("image")).unit, 4u);
 }

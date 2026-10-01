@@ -30,7 +30,8 @@ namespace CE::Assets {
     }
 
     void Graphic::draw(const DrawInfo& info) {
-        geometry->bind(*texture);
+        geometry->bind();
+        texture->bind(0);
         info.use_shader();
         geometry->draw(0, VAONumbers::vertices_per_quad);
     }

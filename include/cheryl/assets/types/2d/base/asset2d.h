@@ -2,6 +2,7 @@
 #ifndef ASSET2D_H
 #define ASSET2D_H
 #include <assets/resources/geometry2d.h>
+#include <assets/resources/image.h>
 
 #include <memory>
 #include <utility>

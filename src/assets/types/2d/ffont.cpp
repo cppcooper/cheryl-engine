@@ -24,7 +24,8 @@ namespace CE::Assets {
         // The legacy atlas stores one six-vertex quad per character, with
         // alternate glyphs offset into its second half for fancy text.
         const float scale = info.scale / 128;
-        geometry->bind(*texture);
+        geometry->bind();
+        texture->bind(0);
         info.use_shader();
 
         glm::vec3 cursor_pos(info.position);

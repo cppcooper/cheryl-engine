@@ -2,6 +2,7 @@
 
 #include "decoded-image.h"
 #include "geometry2d.h"
+#include "image.h"
 #include "shader.h"
 
 #include <assets/types/primitives/vertex.h>

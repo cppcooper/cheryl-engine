@@ -2,6 +2,7 @@
 #ifndef DRAW2D_H
 #define DRAW2D_H
 #include <assets/resources/geometry2d.h>
+#include <assets/resources/image.h>
 #include <core/rendering/idraw.h>
 
 #include <memory>

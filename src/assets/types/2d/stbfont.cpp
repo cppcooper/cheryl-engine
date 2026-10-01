@@ -67,7 +67,8 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "A font draw requires a shader program");
         auto& material = *format->material;
         material.bind_pass(format->camera);
-        geometry->bind(*texture);
+        geometry->bind();
+        texture->bind(0);
 
         // The legacy immediate path now shares the same read-only layout as a
         // published text command. Rotation/scale belong to the caller's model.
