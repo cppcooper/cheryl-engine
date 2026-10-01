@@ -1,6 +1,7 @@
 #include <assets/resources/resource-provider.h>
 #include <assets/types/2d/stbfont.h>
 #include <assets/types/primitives/vertex.h>
+#include "font-upload-internal.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
@@ -51,6 +52,20 @@ namespace CE::Assets {
             glyph.vertices[5] = {left, top, 0.0f, quad.s0, quad.t0};
             std::copy(glyph.vertices.begin(), glyph.vertices.end(), vertices);
         }
+    }
+
+    STBFontData FontDetail::upload_baked_font(
+        ResourceProvider& provider,
+        std::shared_ptr<Vertex2D> vertices,
+        const std::span<const unsigned char> alpha,
+        const PixelSize atlas_size,
+        const std::array<float, font_character_count>& advances,
+        const float line_height
+    ) {
+        constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
+        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count, PrimitiveTopology::Triangles);
+        auto atlas = provider.create_font_atlas(alpha, atlas_size);
+        return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 
     STBFont::STBFont(STBFontData data)
@@ -124,9 +139,7 @@ namespace CE::Assets {
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.
-        auto geometry = provider.upload_geometry(std::move(vertices), vertex_count, PrimitiveTopology::Triangles);
-        auto atlas =
-            provider.create_font_atlas(bitmap, PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)});
-        return {std::move(geometry), std::move(atlas), advances, line_height};
+        return FontDetail::upload_baked_font(provider, std::move(vertices), bitmap,
+            PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)}, advances, line_height);
     }
 }
