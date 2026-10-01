@@ -13,6 +13,7 @@ namespace CE::Assets {
     struct Texture final : Image {
     private:
         RenderAPIs::OpenGLHandle handle_;
+        std::uint32_t binding_unit_limit_ = 0;
 
     public:
         std::int32_t width{};

@@ -21,6 +21,14 @@ namespace CE::Assets {
                 throw;
             }
         }
+
+        std::uint32_t texture_unit_limit() {
+            GLint maximum_units = 0;
+            glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maximum_units);
+            if (maximum_units <= 0)
+                throw Exceptions::failed_operation(CE_HERE, "Current context reports no texture binding units");
+            return static_cast<std::uint32_t>(maximum_units);
+        }
     }
 
     template <typename T>
@@ -79,6 +87,7 @@ namespace CE::Assets {
         width = static_cast<int>(pixels.size.width);
         height = static_cast<int>(pixels.size.height);
         handle_ = create_texture_handle(std::move(lifetime));
+        binding_unit_limit_ = texture_unit_limit();
         bind(0);
         upload(pixels.rgba.data(), width, height, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
         unbind();
@@ -100,6 +109,7 @@ namespace CE::Assets {
         // The font path supplies an already baked alpha atlas; upload() applies
         // its one-channel swizzle without running a file decoder.
         handle_ = create_texture_handle(std::move(lifetime));
+        binding_unit_limit_ = texture_unit_limit();
         bind(0);
         upload(bitmap_data, width, height, use_mipmaps, pixelate, wrap_opt, fmt);
         unbind();
@@ -107,9 +117,7 @@ namespace CE::Assets {
 
     void Texture::bind(const std::uint32_t unit) const {
         const auto id = handle_.id();
-        GLint maximum_units = 0;
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maximum_units);
-        if (maximum_units <= 0 || unit >= static_cast<std::uint32_t>(maximum_units))
+        if (unit >= binding_unit_limit_)
             throw Exceptions::invalid_args(CE_HERE, "Texture binding unit exceeds the current context's limit");
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, id);

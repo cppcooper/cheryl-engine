@@ -49,7 +49,8 @@ previous draw's uniform is not an acceptable implementation.
 
 Geometry selects only its vertex array/buffer. Image binding accepts a zero-based
 unit for each request; OpenGL converts it to GL_TEXTURE0 + unit and checks the
-current context's unit limit. Image upload uses unit zero as temporary setup and
+current context's unit limit, sampled once during upload rather than queried on
+every draw. Image upload uses unit zero as temporary setup and
 stores no unit. Current frame/legacy adapters also select zero explicitly.
 Two material recipes can retain the same image with different unit requests
 without mutating each other's recipe or the cached image. Sampling/filter/wrap
