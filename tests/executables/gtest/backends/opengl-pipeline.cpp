@@ -56,6 +56,10 @@ namespace {
         int buffer_uploads = 0;
         int fail_buffer_upload = 0;
         bool fail_image_upload = false;
+        bool fail_anisotropy_query = false;
+        std::optional<GLenum> fail_integer_query;
+        int anisotropy_writes = 0;
+        int image_uploads = 0;
         bool fail_mipmaps = false;
         int mipmap_calls = 0;
         int attributes_enabled = 0;
@@ -182,8 +186,20 @@ namespace {
         static void GLAD_API_PTR activate_image(GLenum unit) { active_->active_unit_ = unit - GL_TEXTURE0; }
         static void GLAD_API_PTR bind_image(GLenum, GLuint image) { active_->image_binds.emplace_back(active_->active_unit_, image); }
         static void GLAD_API_PTR integer_query(GLenum parameter, GLint* value) {
+            if (active_->fail_integer_query == parameter) {
+                active_->error_ = GL_INVALID_OPERATION;
+                return; // Failed queries deliberately leave the caller's output untouched.
+            }
             *value = parameter == GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ? 8 : active_->unpack_alignment;
         }
+        static void GLAD_API_PTR anisotropy_query(GLenum, GLfloat* value) {
+            if (active_->fail_anisotropy_query) {
+                active_->error_ = GL_INVALID_ENUM;
+                return;
+            }
+            *value = 16;
+        }
+        static void GLAD_API_PTR anisotropy_parameter(GLenum, GLenum, GLfloat) { ++active_->anisotropy_writes; }
         static void GLAD_API_PTR image_parameter(GLenum, GLenum, GLint) {}
         static void GLAD_API_PTR image_parameters(GLenum, GLenum, const GLint*) {}
         static void GLAD_API_PTR pixel_store(GLenum parameter, GLint value) {
@@ -191,6 +207,7 @@ namespace {
                 active_->unpack_alignment = value;
         }
         static void GLAD_API_PTR upload_image(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) {
+            ++active_->image_uploads;
             if (active_->fail_image_upload)
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
@@ -239,8 +256,10 @@ namespace {
                 replace(glad_glActiveTexture, activate_image);
                 replace(glad_glBindTexture, bind_image);
                 replace(glad_glGetIntegerv, integer_query);
+                replace(glad_glGetFloatv, anisotropy_query);
                 replace(glad_glGetError, error_query);
                 replace(glad_glTexParameteri, image_parameter);
+                replace(glad_glTexParameterf, anisotropy_parameter);
                 replace(glad_glTexParameteriv, image_parameters);
                 replace(glad_glPixelStorei, pixel_store);
                 replace(glad_glTexImage2D, upload_image);
@@ -280,6 +299,7 @@ namespace {
         NativeProgramRecorder& operator=(const NativeProgramRecorder&) = delete;
 
         void pending_error(GLenum error) { error_ = error; }
+        void enable_anisotropy() { replace(GLAD_GL_EXT_texture_filter_anisotropic, 1); }
         void collect() { lifetime_->collect(); }
         std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
 
@@ -490,6 +510,48 @@ TEST(opengl_upload, a_rejected_2d_buffer_retires_both_handles_before_attribute_s
     EXPECT_EQ(deleted, generated);
     native.collect();
     EXPECT_EQ(native.deleted.size(), 2u);
+}
+
+TEST(opengl_upload, failed_anisotropy_query_stops_before_parameter_use_or_image_upload) {
+    NativeProgramRecorder native;
+    native.enable_anisotropy();
+    native.fail_anisotropy_query = true;
+    const unsigned char pixels[]{255, 255, 255, 255};
+    EXPECT_THROW(
+        (void)Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA),
+        CE::Exceptions::failed_operation
+    );
+    EXPECT_EQ(native.anisotropy_writes, 0);
+    EXPECT_EQ(native.image_uploads, 0);
+    EXPECT_EQ(native.mipmap_calls, 0);
+    EXPECT_TRUE(native.deleted.empty());
+    native.collect();
+    ASSERT_EQ(native.generated.size(), 1u);
+    EXPECT_EQ(native.deleted, native.generated);
+    native.collect();
+    EXPECT_EQ(native.deleted.size(), 1u);
+}
+
+TEST(opengl_upload, failed_texture_integer_queries_preserve_alignment_and_retire_the_handle) {
+    for (const GLenum parameter : {GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, GL_UNPACK_ALIGNMENT}) {
+        SCOPED_TRACE(parameter);
+        NativeProgramRecorder native;
+        native.fail_integer_query = parameter;
+        native.unpack_alignment = 8;
+        const unsigned char alpha[]{255};
+        EXPECT_THROW(
+            (void)Texture(native.lifetime(), alpha, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RED),
+            CE::Exceptions::failed_operation
+        );
+        EXPECT_EQ(native.image_uploads, 0);
+        EXPECT_EQ(native.unpack_alignment, 8);
+        EXPECT_TRUE(native.deleted.empty());
+        native.collect();
+        ASSERT_EQ(native.generated.size(), 1u);
+        EXPECT_EQ(native.deleted, native.generated);
+        native.collect();
+        EXPECT_EQ(native.deleted.size(), 1u);
+    }
 }
 
 TEST(opengl_upload, either_legacy_mesh_upload_failure_retires_all_three_handles) {

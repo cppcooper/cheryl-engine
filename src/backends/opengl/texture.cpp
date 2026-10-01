@@ -28,6 +28,7 @@ namespace CE::Assets {
         std::uint32_t texture_unit_limit() {
             GLint maximum_units = 0;
             glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maximum_units);
+            RenderAPIs::require_no_gl_error("OpenGL texture binding-limit query failed");
             if (maximum_units <= 0)
                 throw Exceptions::failed_operation(CE_HERE, "Current context reports no texture binding units");
             return static_cast<std::uint32_t>(maximum_units);
@@ -47,8 +48,9 @@ namespace CE::Assets {
         // Apply anisotropic filtering only for supported color textures; the red-only
         // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
-            GLfloat largest_supported_anisotropy;
+            GLfloat largest_supported_anisotropy = 0;
             glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
+            RenderAPIs::require_no_gl_error("OpenGL anisotropy-limit query failed");
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
         }
 
@@ -58,10 +60,12 @@ namespace CE::Assets {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_opt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, use_mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, pixelate ? GL_NEAREST : GL_LINEAR);
+        RenderAPIs::require_no_gl_error("OpenGL texture sampling configuration failed");
 
         const GLint internal_format = fmt == GL_RED ? GL_R8 : GL_RGBA8;
         GLint previous_unpack_alignment = 4;
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
+        RenderAPIs::require_no_gl_error("OpenGL unpack-alignment query failed");
         if (fmt == GL_RED) {
             // One-byte atlas rows can be unaligned; map red to alpha while emitting white RGB.
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
