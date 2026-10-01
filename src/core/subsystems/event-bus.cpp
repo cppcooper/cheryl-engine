@@ -163,6 +163,9 @@ namespace CE::SubSystems {
         bool removed = false;
         {
             std::lock_guard lock(state_->mutex);
+            // Publish invalidation before detaching. A concurrent close must
+            // never miss a removed listener whose invocation gate is still open.
+            invalidate(listener);
             const auto channel = state_->channels.find(listener->event);
             if (channel != state_->channels.end()) {
                 removed = std::erase(channel->second, listener) != 0;
@@ -170,9 +173,7 @@ namespace CE::SubSystems {
                     state_->channels.erase(channel);
             }
         }
-        // Even a duplicate remover invalidates before returning: another
-        // remover may have detached this entry but not yet acquired its mutex.
-        invalidate(listener);
+        // The local owner releases callback captures after the registry unlocks.
         return removed;
     }
 
@@ -202,12 +203,15 @@ namespace CE::SubSystems {
         {
             std::lock_guard lock(state_->mutex);
             state_->closed = true;
+            // Registry -> listener is the lock order. Invocation releases its
+            // entry lock before user code; completion never takes the registry.
+            // Serialize all closers with invalidation, not only with detachment.
+            for (const auto& [event, listeners] : state_->channels)
+                for (const auto& listener : listeners)
+                    invalidate(listener);
             detached.swap(state_->channels);
         }
         // Callback captures are released outside registry and listener locks.
         // In-flight callbacks retain their entry until their guard leaves.
-        for (const auto& [event, listeners] : detached)
-            for (const auto& listener : listeners)
-                invalidate(listener);
     }
 }

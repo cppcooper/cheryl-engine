@@ -188,6 +188,58 @@ TEST(event_bus, unregister_discards_queued_callbacks_without_touching_the_old_ta
     EXPECT_EQ(errors, 0);
 }
 
+TEST(event_bus, concurrent_close_discards_pending_delivery_without_waiting_for_running_callbacks) {
+    CE::SubSystems::EventBus bus;
+    QueuedDelivery target;
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto may_finish = release.get_future().share();
+    int queued_calls = 0;
+    int errors = 0;
+    const auto running = bus.register_listener("running", [&](std::any) {
+        entered.set_value();
+        may_finish.wait();
+    });
+    bus.register_listener("queued", [&](std::any) { ++queued_calls; }, target.target(),
+        [&](std::exception_ptr) { ++errors; });
+    bus.dispatch("queued", 0);
+    std::thread producer([&] { bus.dispatch("running", 0); });
+    entered.get_future().wait();
+    std::promise<void> close_start;
+    auto may_close = close_start.get_future().share();
+    auto first = std::async(std::launch::async, [&] { may_close.wait(); bus.close(); });
+    auto second = std::async(std::launch::async, [&] { may_close.wait(); bus.close(); });
+    close_start.set_value();
+    first.get();
+    second.get();
+    target.drain();
+    release.set_value();
+    producer.join();
+    bus.wait_for_listener(running);
+    EXPECT_EQ(queued_calls, 0);
+    EXPECT_EQ(errors, 0);
+}
+
+TEST(event_bus, removal_releases_callback_captures_outside_registry_and_listener_locks) {
+    for (const bool close_bus : {false, true}) {
+        CE::SubSystems::EventBus bus;
+        bool released = false;
+        auto owned = std::shared_ptr<int>(new int{0}, [&](int* value) {
+            delete value;
+            released = true;
+            // Reentry would deadlock if removal destroyed captures under a lock.
+            bus.close();
+        });
+        const auto id = bus.register_listener("tick", [owned](std::any) {});
+        owned.reset();
+        if (close_bus)
+            bus.close();
+        else
+            EXPECT_TRUE(bus.unregister_listener(id));
+        EXPECT_TRUE(released);
+    }
+}
+
 TEST(event_bus, dropped_accepted_work_reports_cancellation_and_callback_errors_remain_observable) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;

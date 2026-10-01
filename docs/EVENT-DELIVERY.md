@@ -32,7 +32,11 @@ waiting from the same listener, including nested invocation, rejects instead of
 deadlocking. Callback exceptions still release in-flight accounting.
 
 `close()` invalidates all registrations and rejects subsequent registration and
-dispatch. Bus destruction closes without blocking; callers must settle any
+dispatch. Concurrent close/removal calls serialize invalidation with registry
+removal: every returning closer has closed all remaining invocation gates.
+Callback captures are still released outside both locks, so their destructors may
+reenter the bus. Close does not wait for running callbacks. Bus destruction closes
+without blocking; callers must settle any
 in-flight callbacks that borrow a bus or other target before destroying it.
 Registry snapshots and invocation guards retain callback ownership as needed,
 without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.

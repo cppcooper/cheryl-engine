@@ -94,6 +94,8 @@ namespace CE::SubSystems {
         // Only wait after invalidation. Waiting on one's own invocation rejects.
         void wait_for_listener(const Registration& registration) const;
         bool unregister_and_wait(const Registration& registration);
+        // Every concurrent close returns after all invocation gates are closed.
+        // Already-running callbacks retain ownership and are not waited for.
         void close();
 
     private:
