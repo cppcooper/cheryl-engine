@@ -6,6 +6,7 @@
 #include <core/display/display-system-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
+#include <core/engine/worker-pool-internal.h>
 #include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
@@ -141,14 +142,23 @@ namespace {
     public:
         std::function<void()> on_poll;
         std::function<void()> on_destroy;
+        std::function<void()> on_initialize;
+        std::function<void()> on_deinitialize;
+        bool default_press = true;
+        int initializations = 0;
+        int shutdowns = 0;
 
         ~MemoryInput() override {
             if (on_destroy)
                 on_destroy();
         }
 
-        bool default_press = true;
-        void initialize(CE::iWindow& window) override { window_ = &window; }
+        void initialize(CE::iWindow& window) override {
+            window_ = &window;
+            ++initializations;
+            if (on_initialize)
+                on_initialize();
+        }
 
         void poll() override {
             begin_input_poll();
@@ -163,6 +173,9 @@ namespace {
             window_ = nullptr;
             discard_captured_input();
             bindings_.clear();
+            ++shutdowns;
+            if (on_deinitialize)
+                on_deinitialize();
         }
 
         void key(CE::Input::ButtonPhase phase) {
@@ -564,6 +577,54 @@ TEST(runtime_adapter, failed_renderer_initialization_does_not_start_the_game) {
     EXPECT_EQ(renderer->shutdowns, 1);
     EXPECT_EQ(game.initializations, 0);
     EXPECT_EQ(game.shutdowns, 0);
+}
+
+TEST(runtime_adapter, partial_adapter_failure_settles_context_groups_and_preserves_the_startup_error) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        for (const bool fail_input : {false, true}) {
+            SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+            SCOPED_TRACE(fail_input ? "partial input" : "partial renderer");
+            MemoryInput input;
+            MemoryRenderer* renderer = nullptr;
+            MemorySurface* surface = nullptr;
+            auto engine = make_test_context(input, renderer, surface);
+            auto group = engine->make_worker_group();
+            auto owner = std::make_shared<int>(42);
+            std::weak_ptr<int> capture = owner;
+            auto result = group.submit([owner = std::move(owner)] { return *owner; });
+            OneTickGame game(input);
+            CE::GFramework::GameRuntime runtime(*engine, game, mode);
+            const char* original = fail_input ? "Original input startup failure" : "Original renderer startup failure";
+            if (fail_input) {
+                input.on_initialize = [&] {
+                    EXPECT_NE(input.attached_window(), nullptr);
+                    throw std::runtime_error(original);
+                };
+            } else {
+                renderer->on_initialize = [&] { throw std::runtime_error(original); };
+            }
+            input.on_deinitialize = [] { throw std::runtime_error("Later input cleanup failure"); };
+            renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failure"); };
+            try {
+                runtime.run();
+                ADD_FAILURE() << "The selected adapter must reject startup";
+            } catch (const std::runtime_error& error) {
+                EXPECT_STREQ(error.what(), original);
+            }
+            EXPECT_FALSE(group.status().accepting);
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(result.get(), 42);
+            EXPECT_TRUE(capture.expired());
+            EXPECT_EQ(input.initializations, fail_input ? 1 : 0);
+            EXPECT_EQ(input.shutdowns, fail_input ? 1 : 0);
+            EXPECT_EQ(input.attached_window(), nullptr);
+            EXPECT_EQ(renderer->shutdowns, 1);
+            EXPECT_EQ(renderer->maintenance_calls == 0, !fail_input);
+            EXPECT_EQ(game.initializations, 0);
+            EXPECT_EQ(game.shutdowns, 0);
+            EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+        }
+    }
 }
 
 TEST(runtime_adapter, missing_active_window_closes_workers_without_starting_any_adapter) {
@@ -1601,6 +1662,67 @@ TEST(execution_shutdown, failed_worker_upload_settles_before_game_cleanup_and_pr
         EXPECT_EQ(input.attached_window(), nullptr);
         EXPECT_TRUE(cpu_owner.expired());
         EXPECT_FALSE(group.status().accepting);
+    }
+}
+
+TEST(execution_shutdown, policy_failed_preparation_settles_without_upload_or_injected_root_teardown) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        CE::Engine::WorkerDetail::WorkerNativeAdapter native{
+            true,
+            [] { return std::vector<unsigned int>{2, 7}; },
+            [](const std::vector<unsigned int>& mask) {
+                if (mask == std::vector<unsigned int>{2})
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled runtime affinity failure");
+            },
+            [](std::function<void()> work) { return std::thread(std::move(work)); }
+        };
+        std::shared_ptr<CE::Engine::WorkerPool> root{CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, std::move(native))};
+        auto unrelated = root->make_group();
+        CE::Engine::ExecutionOptions execution;
+        execution.shared_pool = root;
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface, execution);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        CE::Engine::WorkerGroupOptions policy;
+        policy.cpu.cpus = {2};
+        policy.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+        auto group = engine->make_worker_group(policy);
+        auto platform = engine->platform_dispatcher().submission();
+        auto pixels = std::make_shared<CE::Assets::DecodedImage>(
+            CE::Assets::DecodedImage{CE::Assets::PixelSize{1, 1}, {255, 255, 255, 255}}
+        );
+        std::weak_ptr<CE::Assets::DecodedImage> capture = pixels;
+        std::atomic<int> callbacks = 0;
+        std::future<std::shared_ptr<CE::Assets::Image>> result;
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        game.on_init = [&] {
+            result = group.submit([platform, pixels = std::move(pixels), &callbacks] {
+                ++callbacks;
+                auto upload = platform.submit([pixels](CE::Engine::EngineContext& context) {
+                    return context.resources().create_image(*pixels);
+                });
+                return upload.get();
+            });
+            runtime.stop();
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_THROW((void)result.get(), CE::Exceptions::failed_operation);
+            EXPECT_TRUE(capture.expired());
+        };
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_EQ(callbacks.load(), 0);
+        EXPECT_EQ(provider.created_images, 0);
+        EXPECT_EQ(group.status().policy_failures, 1u);
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_TRUE(unrelated.status().accepting);
+        EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+        engine.reset();
+        EXPECT_TRUE(unrelated.status().accepting);
     }
 }
 
