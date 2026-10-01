@@ -3,6 +3,7 @@
 #include <core/subsystems/event-bus.h>
 #include <core/engine/event-delivery.h>
 #include <core/engine/event-delivery-internal.h>
+#include <core/engine/worker-pool-internal.h>
 #include <internals/exceptions.h>
 
 #include <any>
@@ -10,8 +11,11 @@
 #include <chrono>
 #include <future>
 #include <functional>
+#include <latch>
 #include <stdexcept>
+#include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -20,6 +24,49 @@ namespace {
     struct CloseBusOnExit {
         CE::SubSystems::EventBus& bus;
         ~CloseBusOnExit() { bus.close(); }
+    };
+
+    class PromiseGate final {
+        std::promise<void>& release_;
+        bool open_ = false;
+
+    public:
+        explicit PromiseGate(
+            std::promise<void>& release
+        )
+        : release_(release) {}
+        ~PromiseGate() { open(); }
+        void open() {
+            if (!open_) {
+                release_.set_value();
+                open_ = true;
+            }
+        }
+    };
+
+    struct HeldPayloadCopy {
+        std::promise<void>& entered;
+        std::shared_future<void> may_copy;
+        std::function<void()>& release;
+        bool copied = false;
+
+        HeldPayloadCopy(
+            std::promise<void>& entry,
+            std::shared_future<void> gate,
+            std::function<void()>& released
+        )
+        : entered(entry), may_copy(std::move(gate)), release(released) {}
+        HeldPayloadCopy(
+            const HeldPayloadCopy& other
+        )
+        : entered(other.entered), may_copy(other.may_copy), release(other.release), copied(true) {
+            entered.set_value();
+            may_copy.wait();
+        }
+        ~HeldPayloadCopy() {
+            if (copied)
+                release();
+        }
     };
 
     struct RedispatchOnCopiedPayloadRelease {
@@ -632,4 +679,154 @@ TEST(event_bus, a_throwing_pump_submission_preserves_the_original_error_and_reen
     pumps.clear();
     EXPECT_EQ(received, (std::vector<int>{2}));
     EXPECT_EQ(errors, 1);
+}
+
+TEST(event_bus, simultaneous_producers_keep_each_producers_order_on_one_shared_worker_stream) {
+    CE::SubSystems::EventBus bus;
+    std::vector<std::pair<int, int>> received;
+    std::atomic<int> errors{0};
+    std::latch ready{2};
+    std::promise<void> release;
+    auto may_dispatch = release.get_future().share();
+    CE::Engine::WorkerPool pool(3);
+    auto group = pool.make_group();
+    bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<std::pair<int, int>>(value)); },
+        CE::Engine::worker_event_delivery(group), [&](std::exception_ptr) { ++errors; });
+    CloseBusOnExit cleanup{bus};
+    auto produce = [&](int producer) {
+        ready.count_down();
+        may_dispatch.wait();
+        for (int sequence = 0; sequence < 32; ++sequence)
+            bus.dispatch("tick", std::pair{producer, sequence});
+    };
+    std::jthread first(produce, 0);
+    PromiseGate start_gate{release};
+    std::jthread second(produce, 1);
+    ready.wait();
+    start_gate.open();
+    first.join();
+    second.join();
+    group.close();
+    group.drain();
+    ASSERT_EQ(received.size(), 64u);
+    int next[2]{};
+    for (const auto& [producer, sequence] : received) {
+        ASSERT_GE(producer, 0);
+        ASSERT_LT(producer, 2);
+        EXPECT_EQ(sequence, next[producer]++);
+    }
+    EXPECT_EQ(next[0], 32);
+    EXPECT_EQ(next[1], 32);
+    EXPECT_EQ(errors.load(), 0);
+    // The interleaving between producers is intentionally unspecified.
+}
+
+TEST(event_bus, invalidation_during_payload_copy_skips_entry_and_releases_the_copy_outside_locks) {
+    CE::SubSystems::EventBus bus;
+    CE::SubSystems::EventBus::Registration id;
+    int calls = 0;
+    int errors = 0;
+    int releases = 0;
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto may_copy = release.get_future().share();
+    std::function<void()> copied_release = [&] {
+        ++releases;
+        // The ticket's payload destructor must not hold listener/registry locks.
+        EXPECT_FALSE(bus.unregister_listener(id));
+    };
+    QueuedDelivery target;
+    id = bus.register_listener("tick", [&](std::any) { ++calls; }, target.target(), [&](std::exception_ptr) { ++errors; });
+    const std::any payload(std::in_place_type<HeldPayloadCopy>, entered, may_copy, copied_release);
+    auto producer = std::async(std::launch::async, [&] { bus.dispatch("tick", payload); });
+    PromiseGate gate{release};
+    CloseBusOnExit cleanup{bus};
+    entered.get_future().wait();
+    EXPECT_TRUE(bus.unregister_and_wait(id));
+    EXPECT_EQ(calls, 0); // Removal does not wait for preparation or queued entry.
+    gate.open();
+    producer.get();
+    target.drain();
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(errors, 0);
+    EXPECT_EQ(releases, 1);
+}
+
+TEST(event_bus, published_pump_policy_failure_cancels_joined_listeners_on_the_worker_and_recovers) {
+    CE::SubSystems::EventBus bus;
+    std::promise<void> policy_entered;
+    std::promise<void> release;
+    auto may_fail = release.get_future().share();
+    std::promise<void> cancelled;
+    int errors = 0;
+    int first_errors = 0;
+    int second_calls = 0;
+    int attempts = 0;
+    std::vector<unsigned int> mask{2, 7};
+    std::vector<int> received;
+    std::thread::id reporting_thread;
+    const auto producer_thread = std::this_thread::get_id();
+    CE::Engine::WorkerDetail::WorkerNativeAdapter adapter;
+    adapter.cpu_affinity = true;
+    adapter.query_affinity = [&] { return mask; };
+    adapter.set_affinity = [&](const std::vector<unsigned int>& requested) {
+        if (++attempts == 1) {
+            policy_entered.set_value();
+            may_fail.wait();
+            throw CE::Exceptions::failed_operation(CE_HERE, "Controlled pump policy rejection");
+        }
+        mask = requested;
+    };
+    adapter.start_thread = [](std::function<void()> work) { return std::thread(std::move(work)); };
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, std::move(adapter));
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.cpus = {2};
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto group = pool->make_group(options);
+    auto delivery = CE::Engine::worker_event_delivery(group);
+    PromiseGate gate{release};
+    CloseBusOnExit cleanup{bus};
+    auto report = [&](std::exception_ptr error) {
+        EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+        reporting_thread = std::this_thread::get_id();
+        if (++errors == 2)
+            cancelled.set_value();
+    };
+    bus.register_listener("first", [&](std::any value) { received.push_back(std::any_cast<int>(value)); }, delivery,
+        [&](std::exception_ptr error) {
+            if (++first_errors == 1)
+                bus.dispatch("first", 3); // Reentry starts a fresh accepted pump.
+            report(error);
+        });
+    bus.register_listener("second", [&](std::any) { ++second_calls; }, delivery, report);
+    struct JoinPolicyOnExit {
+        CE::Engine::WorkerPool& pool;
+        PromiseGate& gate;
+        CE::SubSystems::EventBus& bus;
+
+        ~JoinPolicyOnExit() {
+            // Keep report's borrowed state alive while rejection cleanup can
+            // reenter an open bus; group closure makes any new offer reject.
+            gate.open();
+            pool.shutdown();
+            bus.close();
+        }
+    } finish{*pool, gate, bus};
+    bus.dispatch("first", 1);
+    policy_entered.get_future().wait();
+    // The first offer returned, so its pump is published before another listener joins.
+    bus.dispatch("second", 2);
+    gate.open();
+    cancelled.get_future().wait();
+    group.close();
+    group.drain();
+    EXPECT_EQ(errors, 2);
+    EXPECT_EQ(first_errors, 1);
+    EXPECT_EQ(second_calls, 0);
+    EXPECT_EQ(received, (std::vector<int>{3}));
+    EXPECT_NE(reporting_thread, producer_thread);
+    EXPECT_EQ(attempts, 2);
+    EXPECT_EQ(group.status().policy_failures, 1u);
+    EXPECT_EQ(group.status().accepted, 2u);
+    EXPECT_EQ(group.status().completed, 2u);
 }

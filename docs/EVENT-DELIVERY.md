@@ -119,3 +119,18 @@ Checkpoint 57 also prepares throwing submission with original-error retention an
 same-listener recovery. No controlled fixture invokes a pump inline while offered;
 explicit test playback happens after publication. Closure guards invalidate borrowed
 recording sinks before pending captures unwind on an assertion's early return.
+
+Checkpoint 63 prepares three further combinations. Two simultaneous producers
+dispatch through one serial worker stream and check each producer's own order,
+without specifying their global interleaving. A held payload copy lets invalidation
+finish before preparation returns; the offered work must skip invocation and its
+copied payload's final destructor must safely reenter unregister after unlocking.
+
+The third scenario uses checkpoint 62's private native adapter with the production
+WorkerGroup submission path. It holds policy application until two listeners have
+joined a published pump, then rejects that pump before callback entry. Both tickets
+must report cancellation on the worker, one sink redispatches to start a fresh pump,
+and group completion includes the failed pump's capture release and recovery.
+The native mask/error is synthetic; this is stronger source preparation than
+dropping a stored callable, but neither fixture nor real OS failure has been run.
+It does not force the earlier pre-publication window or every producer interleaving.
