@@ -17,6 +17,20 @@
 
 #if defined(__linux__)
 #include <sched.h>
+
+namespace {
+    std::vector<unsigned int> read_worker_cpu_mask() {
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        if (sched_getaffinity(0, sizeof(mask), &mask) != 0)
+            throw std::runtime_error("Cannot read the executing worker's CPU mask");
+        std::vector<unsigned int> cpus;
+        for (unsigned int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
+            if (CPU_ISSET(cpu, &mask))
+                cpus.push_back(cpu);
+        return cpus;
+    }
+} // namespace
 #endif
 
 TEST(worker_pool, owned_jobs_return_values_and_failures_without_stopping_other_work) {
@@ -179,24 +193,38 @@ TEST(worker_pool, switching_groups_restores_the_effective_cpu_mask_on_the_shared
     auto pinned = pool.make_group(options);
     options.cpu.cpus.clear();
     auto inherited = pool.make_group(options);
-    const auto read_mask = [] {
-        cpu_set_t mask;
-        CPU_ZERO(&mask);
-        if (sched_getaffinity(0, sizeof(mask), &mask) != 0)
-            throw std::runtime_error("Cannot read the executing worker's CPU mask");
-        std::vector<unsigned int> cpus;
-        for (unsigned int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
-            if (CPU_ISSET(cpu, &mask))
-                cpus.push_back(cpu);
-        return cpus;
-    };
     const std::vector<unsigned int> pinned_mask{capabilities.available_cpus.front()};
-    EXPECT_EQ(pinned.submit(read_mask).get(), pinned_mask);
-    EXPECT_EQ(inherited.submit(read_mask).get(), capabilities.available_cpus);
-    EXPECT_EQ(pinned.submit(read_mask).get(), pinned_mask);
+    EXPECT_EQ(pinned.submit(read_worker_cpu_mask).get(), pinned_mask);
+    EXPECT_EQ(inherited.submit(read_worker_cpu_mask).get(), capabilities.available_cpus);
+    EXPECT_EQ(pinned.submit(read_worker_cpu_mask).get(), pinned_mask);
     pinned.close();
     inherited.close();
     pinned.drain();
+    inherited.drain();
+}
+
+TEST(worker_pool, a_required_job_revalidates_a_cached_mask_changed_by_the_previous_job) {
+    CE::Engine::WorkerPool pool;
+    const auto capabilities = pool.capabilities();
+    if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
+        GTEST_SKIP() << "Cached-mask revalidation requires at least two eligible CPUs";
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto inherited = pool.make_group(options);
+    const auto first_cpu = capabilities.available_cpus.front();
+    // The first job changes native state behind the adapter's verified-mask cache.
+    auto narrowed = inherited.submit([first_cpu] {
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        CPU_SET(first_cpu, &mask);
+        if (sched_setaffinity(0, sizeof(mask), &mask) != 0)
+            throw std::runtime_error("Cannot narrow the executing worker's CPU mask");
+        return read_worker_cpu_mask();
+    });
+    EXPECT_EQ(narrowed.get(), (std::vector<unsigned int>{first_cpu}));
+    // The same group must verify native state and restore its full effective set.
+    EXPECT_EQ(inherited.submit(read_worker_cpu_mask).get(), capabilities.available_cpus);
+    inherited.close();
     inherited.drain();
 }
 #endif

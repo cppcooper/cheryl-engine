@@ -77,3 +77,32 @@ The normal GLFW/OpenGL factory forwards `GlfwOpenGLConfig::execution` to the
 context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
+
+## Policy example and prepared coverage
+
+An application can choose a share and cap independently of CPU eligibility:
+
+```cpp
+CE::Engine::WorkerGroupOptions preparation;
+preparation.max_concurrency = 2;
+preparation.weight = 3;
+preparation.cpu.cpus = known_eligible_cpus;
+preparation.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+auto group = context.make_worker_group(preparation);
+auto result = group.submit([] { return prepare_owned_asset_data(); });
+```
+
+The CPU list must come from the pool's advertised eligible set; it does not reserve
+those cores. Quiesce producers before context shutdown. Runtime pumps accepted
+platform dependencies while this work finishes, then closes platform requests and
+recycles retained frames before application/resource cleanup. Outside runtime,
+the owner must service any such dependencies before waiting for group drainage.
+
+The aggregate regression sources prepare held-job cap isolation, weighted share,
+saved-handle rejection, same-pool wait rejection, and pinned/inherited/pinned mask
+restoration. Checkpoint 50 adds a required-mask revalidation scenario: a job narrows
+its own mask behind the adapter's cache, and the next job on that same group must
+restore its effective set. Linux mask scenarios explicitly skip unavailable
+capabilities. None has been executed in this continuation. Native affinity failure
+and partial thread-start rollback still need controlled failure execution; the
+current success-path fixtures do not establish either outcome.
