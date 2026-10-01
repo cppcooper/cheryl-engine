@@ -18,6 +18,10 @@ Planning snapshot: [`e8c9788f63cf4688e144b84feeb8f9aabf62540f`](https://github.c
 
 Each task below has numbered subtasks, a completion condition, and a discovery boundary. The boundaries are places to expand the work order before dependent work proceeds; they are not automatic permission checkpoints.
 
+Checked subtasks record implemented/prepared source scope, not audit sign-off or
+executed acceptance. The partial review of tasks 0–6 and its remaining coverage
+are in [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
+
 ## What the chronological review settled
 
 I read these four files in creation order alongside the supplied discussion, including the replies between files:
@@ -93,6 +97,8 @@ These are the proposed concrete choices within the agreed architecture:
 
 **Complete when:** a persistent listener can be removed safely, queued work cannot start after invalidation, in-flight target destruction has an explicit solution, and ordering/error guarantees are stated precisely.
 
+- [x] **2.3a / 2.4a** Serialize invalidation with registry removal for concurrent close and unregister. Checkpoint 35 closes the detached-entry publication gap while releasing callback captures outside locks. Audit and execution limits are recorded separately.
+
 ## 3. Build WorkerPool and WorkerGroup
 
 **Start in:** a small portable worker module; platform policy code stays behind platform-specific adapters. The Orthanc JobQueue supplies design ancestry, not transplanted implementation.
@@ -108,6 +114,10 @@ These are the proposed concrete choices within the agreed architecture:
 **Boundary D3 — enforceable policy:** before finishing the scheduler, demonstrate on paper how two overlapping affinity groups, different weights, and a concurrency cap use the same physical capacity. Add worker-policy guards, topology discovery, fairness, or capability-reporting subtasks where required. Group policy must affect execution, not merely decorate jobs.
 
 **Complete when:** groups are real workloads sharing a root pool, their supported constraints are enforced, unsupported constraints are visible, and graceful drain has no hidden self-wait path.
+
+Checkpoint 37 prepares parallel cap isolation and shared-worker effective-mask
+restoration scenarios. This broadens task-3 coverage without closing its native
+failure, startup, or executed acceptance gates.
 
 ## 4. Integrate execution services and shutdown
 
@@ -139,6 +149,8 @@ These are the proposed concrete choices within the agreed architecture:
 **Boundary D5 — simulation and observation clocks:** work through a short tap inside a 500 ms stall, an update with no new polls, input arriving between recovery calls, and an update that takes longer than the configured step. Add timing/conversion subtasks before changing demo movement. Never silently redefine the existing held-duration contract.
 
 **Complete when:** fixed and variable modes, direct larger-delta recovery, bounded fixed recovery, and polling all have independent, explicit contracts in both runtime modes.
+
+- [x] **5.1a** Make polling deadline saturation safe across the signed clock range. Checkpoint 36 removes the overflowing span subtraction and prepares limit/spacing coverage; the negative-epoch branch has arithmetic review only.
 
 ## 6. Confirm resource residency and maintenance
 

@@ -10,8 +10,13 @@ Compilation, test execution, and remote writes have not been requested.
 
 ## Progress
 
-- Task 0 complete: source matches the planning snapshot; no applicable AGENTS.md
-  was found; repository identity and original base are recorded.
+The entries below record implemented source scope. Earlier uses of "complete"
+are not audit sign-off or correctness evidence. The review of tasks 0–6 is partial;
+see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
+
+- Task 0 baseline established: no applicable AGENTS.md was found; repository
+  identity and original base are recorded. Later user-pushed checkpoints are
+  reconciled by tree identity before continuing from their current remote head.
 - Task 1.1 complete: PlatformDispatcher, platform_dispatcher(), source filenames,
   demo, regression sources, and active documentation use the same name.
 - Task 1.2 complete; 1.5 platform portion complete: safe saved endpoints,
@@ -68,6 +73,20 @@ Compilation, test execution, and remote writes have not been requested.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
+
+- D0: native checkpoints 31–34 are pushed as
+  `8f796148e64d3dde6faf29b9333893133eb9cceb`. Its tree matches saved local
+  `30c3f5e`; that local series remains on checkpoint branches. Audit delivery
+  begins at 35 from the pushed head without changing the original task base.
+- D2 / audit A1: a concurrent close could return while another closer or remover
+  had detached active listeners. Invalidate under the registry lock before
+  removal, retaining callback owners until after unlocking. Fixed in 35.
+- D5 / audit A2: polling's max-minus-timestamp span could overflow for a negative
+  clock timestamp. Compare against max-minus-spacing instead. Fixed in 36;
+  boundary fixtures are prepared and negative-epoch arithmetic reviewed.
+- D3 / audit A3: parallel cap isolation and CPU-mask restoration lacked direct
+  integration fixtures. Two prepared scenarios were added in 37; native failure
+  and startup paths still need further review and execution.
 
 - D0: pipeline foundations 26–30 are pushed as `92eb058254dc195afd11559be0357a3a265b0646`.
   Its tree matches saved local `0acf9c7`. The prior local foundation series remains
@@ -181,19 +200,21 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-Completed source tasks: 0–6, including discovery addition 4.7 (factory forwarding).
-Task 9 documentation/regression preparation accompanies those changes; executed
-acceptance remains open. Task 7 has native builder/binding foundations; continue with
+Source scope for tasks 0–6 is present, including 4.7 (factory forwarding), but
+the independent audit is still open. Checkpoints 35–38 fix two review findings,
+prepare additional coverage, and record the review limits. Task 9 preparation
+accompanies those changes; executed acceptance remains open. Continue the earlier
+task audit as described in ARCHITECTURE-EARLIER-TASK-AUDIT.md before resuming task 7's
 fixed-state/pass authority, geometry-instance checks, and frame/reload integration, then
 task 8 (resolved packets and immediate-draw migration). Preserve strong residency,
 the established timing/input contracts, owner maintenance, and native-domain checks.
 
-This continuation reserves numbered patches **31–34**; the next unused filename
-is **cheryl-engine-35.patch**. The user-pushed branch includes checkpoints 01–30.
+This continuation reserves numbered patches **35–38**; the next unused filename
+is **cheryl-engine-39.patch**. The user-pushed branch includes checkpoints 01–34.
 Apply **cheryl-engine-continuation.patch** to pushed base
-`92eb058254dc195afd11559be0357a3a265b0646`, or apply 31–34 individually in order.
+`8f796148e64d3dde6faf29b9333893133eb9cceb`, or apply 35–38 individually in order.
 The separately retained **cheryl-engine.patch** is cumulative from the fixed
-original base and includes thirty earlier commits again. Use it for a fresh
+original base and includes thirty-four earlier commits again. Use it for a fresh
 checkout at the original base; do not combine these application routes.
 Earlier local execution/timing/residency/foundation commits remain on checkpoint branches. Current
 commits retain individual authors/messages after reconciling identical pushed trees.

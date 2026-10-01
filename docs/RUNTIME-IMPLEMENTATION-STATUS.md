@@ -7,6 +7,12 @@ work order are implemented in source. **This continuation has not been compiled
 or tested.** Historical normal/sandbox build results below predate these changes
 and do not validate the current HEAD. Individual local commits remain intact.
 
+Source scope is not audit sign-off. A partial review found and fixed concurrent
+event invalidation publication and polling deadline arithmetic issues, and added
+worker cap/mask coverage. See
+[ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for the
+reviewed paths and remaining work; the broader audit is still open.
+
 Earlier input/runtime work began at
 `d690266c389f08e74efe0481c5fc6b744870ea29`. Its compilation follow-up is retained
 below as historical evidence; automated tests and real demo acceptance remain

@@ -41,8 +41,8 @@ input and mailbox producers.
 
 In concurrent mode submission notifies the shared scheduler but does not advance
 the scheduled update deadline. Delivery occurs at the next scheduled simulation
-boundary; posting must not create an early simulation tick. Task 5 will make that
-cadence configurable. In sequential mode the same boundary runs on the calling
+boundary; posting must not create an early simulation tick. SimulationTimingOptions
+configures that cadence independently of polling. In sequential mode the same boundary runs on the calling
 thread. Owner callbacks execute without the scheduler lock, permitting `stop()`
 and further platform/simulation submissions.
 
