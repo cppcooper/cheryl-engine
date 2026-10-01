@@ -75,6 +75,8 @@ namespace CE::RenderAPIs {
 
         [[nodiscard]] GLuint id() const;
         [[nodiscard]] GLResourceKind kind() const noexcept { return kind_; }
+        // Identity only: this does not query a context or authorize native use.
+        [[nodiscard]] const OpenGLResourceLifetime* resource_domain() const noexcept { return lifetime_.get(); }
 
     private:
         void reset() noexcept;

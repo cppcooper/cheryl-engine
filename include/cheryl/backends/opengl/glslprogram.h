@@ -12,8 +12,16 @@
 #include <map>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace CE::Assets {
+    struct GLSLVariable {
+        std::string name;
+        GLenum type = 0;
+        GLint size = 0;
+        GLint location = -1;
+    };
+
     // GLSL naming belongs to this backend. Empty names omit roles a program does not use.
     struct GLSLMaterialBindings {
         std::string projection = "projectionMatrix";
@@ -37,6 +45,10 @@ namespace CE::Assets {
         void bind_pass(const ShaderPass& pass) override;
         void bind_draw(const ShaderDraw& draw) override;
         void set_material_bindings(GLSLMaterialBindings bindings);
+        void require_current() const { (void)program_.id(); }
+        [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
+        [[nodiscard]] std::vector<GLSLVariable> active_uniforms() const;
+        [[nodiscard]] std::vector<GLSLVariable> active_attributes() const;
 
         template <glm::length_t dim>
         void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);

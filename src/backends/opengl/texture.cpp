@@ -115,10 +115,15 @@ namespace CE::Assets {
         unbind();
     }
 
-    void Texture::bind(const std::uint32_t unit) const {
-        const auto id = handle_.id();
+    void Texture::require_binding(const std::uint32_t unit) const {
+        (void)handle_.id();
         if (unit >= binding_unit_limit_)
             throw Exceptions::invalid_args(CE_HERE, "Texture binding unit exceeds the current context's limit");
+    }
+
+    void Texture::bind(const std::uint32_t unit) const {
+        require_binding(unit);
+        const auto id = handle_.id();
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, id);
     }

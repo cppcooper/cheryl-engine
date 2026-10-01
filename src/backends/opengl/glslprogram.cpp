@@ -5,6 +5,39 @@
 #include <utility>
 
 namespace CE::Assets {
+    namespace {
+        std::vector<GLSLVariable> reflect_variables(
+            const GLuint program,
+            const GLenum count_parameter,
+            const GLenum length_parameter,
+            decltype(glad_glGetActiveUniform) query,
+            decltype(glad_glGetUniformLocation) location
+        ) {
+            GLint count = 0;
+            GLint maximum_length = 0;
+            glGetProgramiv(program, count_parameter, &count);
+            glGetProgramiv(program, length_parameter, &maximum_length);
+            if (count < 0 || (count > 0 && maximum_length <= 0))
+                throw Exceptions::failed_operation(CE_HERE, "Invalid linked program reflection limits");
+            if (count == 0)
+                return {};
+            std::vector<GLchar> name(static_cast<std::size_t>(maximum_length));
+            std::vector<GLSLVariable> variables;
+            variables.reserve(static_cast<std::size_t>(count));
+            for (GLint index = 0; index < count; ++index) {
+                GLSLVariable variable;
+                GLsizei written = 0;
+                query(program, static_cast<GLuint>(index), maximum_length, &written, &variable.size, &variable.type, name.data());
+                if (written <= 0 || written >= maximum_length)
+                    throw Exceptions::failed_operation(CE_HERE, "Invalid linked program reflection name");
+                variable.name.assign(name.data(), static_cast<std::size_t>(written));
+                variable.location = location(program, variable.name.c_str());
+                variables.push_back(std::move(variable));
+            }
+            return variables;
+        }
+    }
+
     GLSLProgram::GLSLProgram(RenderAPIs::OpenGLHandle program)
     : program_(std::move(program)) {
         (void)program_.id();
@@ -14,6 +47,16 @@ namespace CE::Assets {
 
     void GLSLProgram::use() {
         glUseProgram(program_.id());
+    }
+
+    std::vector<GLSLVariable> GLSLProgram::active_uniforms() const {
+        return reflect_variables(program_.id(), GL_ACTIVE_UNIFORMS, GL_ACTIVE_UNIFORM_MAX_LENGTH,
+            glGetActiveUniform, glGetUniformLocation);
+    }
+
+    std::vector<GLSLVariable> GLSLProgram::active_attributes() const {
+        return reflect_variables(program_.id(), GL_ACTIVE_ATTRIBUTES, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH,
+            glGetActiveAttrib, glGetAttribLocation);
     }
 
     void GLSLProgram::set_material_bindings(GLSLMaterialBindings bindings) {
