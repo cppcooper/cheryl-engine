@@ -6,6 +6,7 @@
 #include <core/display/display-system-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
+#include <core/engine/engine-context-internal.h>
 #include <core/engine/worker-pool-internal.h>
 #include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
@@ -1302,9 +1303,11 @@ TEST(platform_requests, a_saved_submission_endpoint_rejects_after_context_destru
     auto engine = make_test_context(input, renderer, surface);
     auto endpoint = engine->platform_dispatcher().submission();
     OneTickGame game(input);
-    CE::GFramework::GameRuntime runtime(*engine, game);
-    game.on_tick = [&] { runtime.stop(); };
-    runtime.run();
+    auto runtime = std::make_unique<CE::GFramework::GameRuntime>(*engine, game);
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
+    runtime.reset();
+    game.on_tick = {};
     engine.reset();
     EXPECT_THROW(static_cast<void>(endpoint.submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
 }
@@ -1729,6 +1732,84 @@ TEST(execution_shutdown, policy_failed_preparation_settles_without_upload_or_inj
     }
 }
 
+TEST(execution_shutdown, owned_root_startup_rollback_settles_queued_callbacks_before_adapter_cleanup) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        CE::Engine::ExecutionOptions execution;
+        execution.worker_count = 2;
+        auto engine = make_test_context(input, renderer, surface, execution);
+        std::promise<void> entered;
+        auto started = entered.get_future().share();
+        std::atomic<int> exited{0};
+        int attempts = 0;
+        std::weak_ptr<int> native_capture;
+        CE::Engine::ContextDetail::EngineContextAccess::set_owned_worker_factory(*engine, [&](const std::size_t count) {
+            auto owner = std::make_shared<int>(42);
+            native_capture = owner;
+            CE::Engine::WorkerDetail::WorkerNativeAdapter native;
+            native.start_thread = [owner = std::move(owner), &attempts, &entered, started, &exited](std::function<void()> work) {
+                if (++attempts == 2) {
+                    if (started.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                        throw std::runtime_error("First owned worker did not enter");
+                    throw std::runtime_error("Controlled owned-root startup failure");
+                }
+                return std::thread([work = std::move(work), &entered, &exited] {
+                    entered.set_value();
+                    work();
+                    ++exited;
+                });
+            };
+            return CE::Engine::WorkerDetail::WorkerPoolAccess::create(count, std::move(native));
+        });
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        std::future<void> cancelled_platform;
+        std::future<void> cancelled_simulation;
+        std::weak_ptr<int> platform_capture;
+        std::weak_ptr<int> simulation_capture;
+        int callbacks = 0;
+        game.on_init = [&] {
+            auto first = std::make_shared<int>(1);
+            auto second = std::make_shared<int>(2);
+            platform_capture = first;
+            simulation_capture = second;
+            cancelled_platform = platform.submit([owner = std::move(first), &callbacks](CE::Engine::EngineContext&) { ++callbacks; });
+            cancelled_simulation = simulation.submit([owner = std::move(second), &callbacks] { ++callbacks; });
+            static_cast<void>(engine->make_worker_group());
+        };
+        game.on_deinit = [&] {
+            EXPECT_EQ(cancelled_platform.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(cancelled_simulation.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_TRUE(platform_capture.expired());
+            EXPECT_TRUE(simulation_capture.expired());
+            EXPECT_TRUE(native_capture.expired());
+            EXPECT_EQ(exited.load(), 1);
+        };
+        renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failed"); };
+        try {
+            runtime.run();
+            FAIL() << "Owned pool startup must fail";
+        } catch (const std::runtime_error& error) {
+            EXPECT_EQ(std::string_view(error.what()), "Controlled owned-root startup failure");
+        }
+        EXPECT_EQ(attempts, 2);
+        EXPECT_EQ(callbacks, 0);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_THROW(cancelled_platform.get(), CE::Exceptions::failed_operation);
+        EXPECT_THROW(cancelled_simulation.get(), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
 TEST(execution_shutdown, an_injected_root_keeps_unrelated_application_groups_available) {
     auto root = std::make_shared<CE::Engine::WorkerPool>(2);
     auto unrelated = root->make_group();
@@ -1740,12 +1821,14 @@ TEST(execution_shutdown, an_injected_root_keeps_unrelated_application_groups_ava
     auto engine = make_test_context(input, renderer, surface, execution);
     auto game_group = engine->make_worker_group();
     OneTickGame game(input);
-    CE::GFramework::GameRuntime runtime(*engine, game);
-    game.on_tick = [&] { runtime.stop(); };
-    runtime.run();
+    auto runtime = std::make_unique<CE::GFramework::GameRuntime>(*engine, game);
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
     EXPECT_FALSE(game_group.status().accepting);
     EXPECT_TRUE(unrelated.status().accepting);
     EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+    runtime.reset();
+    game.on_tick = {};
     engine.reset();
     EXPECT_TRUE(unrelated.status().accepting);
 }

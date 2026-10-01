@@ -1,4 +1,5 @@
 #include <core/engine/engine-context.h>
+#include "engine-context-internal.h"
 
 #include <assets/resources/resource-provider.h>
 #include <core/controls/input-interface.h>
@@ -11,6 +12,19 @@
 #include <span>
 
 namespace CE::Engine {
+    void ContextDetail::EngineContextAccess::set_owned_worker_factory(
+        EngineContext& context,
+        std::function<std::unique_ptr<WorkerPool>(std::size_t)> factory
+    ) {
+        std::lock_guard lock(context.execution_mutex_);
+        if (!factory)
+            throw Exceptions::invalid_args(CE_HERE, "Owned worker factory must not be empty");
+        if (context.execution_.shared_pool || context.owned_workers_ || !context.worker_groups_.empty() ||
+            context.worker_submissions_closed_ || context.session_started_.load(std::memory_order_acquire))
+            throw Exceptions::failed_operation(CE_HERE, "Owned worker factory must be configured before context startup");
+        context.owned_worker_factory_ = std::move(factory);
+    }
+
     EngineContext::EngineContext(
         std::unique_ptr<iDisplaySystem> display,
         std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
@@ -69,8 +83,13 @@ namespace CE::Engine {
             throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
         WorkerPool* pool = execution_.shared_pool.get();
         if (!pool) {
-            if (!owned_workers_)
-                owned_workers_ = std::make_unique<WorkerPool>(execution_.worker_count);
+            if (!owned_workers_) {
+                auto workers = owned_worker_factory_ ? owned_worker_factory_(execution_.worker_count)
+                                                     : std::make_unique<WorkerPool>(execution_.worker_count);
+                if (!workers)
+                    throw Exceptions::failed_operation(CE_HERE, "Owned worker factory returned no pool");
+                owned_workers_ = std::move(workers);
+            }
             pool = owned_workers_.get();
         }
         auto group = pool->make_group(std::move(options));

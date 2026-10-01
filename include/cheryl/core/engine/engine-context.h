@@ -4,6 +4,7 @@
 #include "worker-pool.h"
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -31,6 +32,10 @@ namespace CE::RenderAPIs {
 }
 
 namespace CE::Engine {
+    namespace ContextDetail {
+        struct EngineContextAccess;
+    }
+
     struct ExecutionOptions {
         std::size_t worker_count = 1; // Owned root is created lazily.
         std::shared_ptr<WorkerPool> shared_pool; // Injected root is never closed by this context.
@@ -52,6 +57,7 @@ namespace CE::Engine {
         PlatformDispatcher platform_dispatcher_;
         ExecutionOptions execution_;
         mutable std::mutex execution_mutex_;
+        std::function<std::unique_ptr<WorkerPool>(std::size_t)> owned_worker_factory_;
         std::unique_ptr<WorkerPool> owned_workers_;
         std::vector<WorkerGroup> worker_groups_;
         bool worker_submissions_closed_ = false;
@@ -87,6 +93,7 @@ namespace CE::Engine {
 
     private:
         friend class GFramework::GameRuntime;
+        friend struct ContextDetail::EngineContextAccess;
         void validate() const;
         void begin_session();
         void close_worker_submissions();
