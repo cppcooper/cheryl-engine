@@ -216,6 +216,40 @@ stage-lifetime rationale follows [OpenGL 3.3 sections 2.5 and 2.11.2](https://re
 Allocation injection, additional resource categories and combined runtime
 failures remain open; seven fixtures do not close tasks 6–7.
 
+### A14: font publication bypassed the retained cache owner
+
+FontMgr inserted with a moved STBFont owner directly under its cache write lock.
+A node/rehash failure could destroy the moved insertion candidate and its backend
+resource owners before releasing that lock. This bypassed A8's shared publication
+helper. Assigning the default-font path after insertion could also allocate and
+fail after the font was already cached; a later load would skip the existing key
+without repairing the missing default selection.
+
+Checkpoint 67 routes font publication through the common retained-owner helper.
+A potentially allocating default-path copy is prepared before constructing the
+font. A nonthrowing metadata callback then selects that prepared path within the
+same publication lock, only after insertion succeeds. The candidate stays pinned
+until the lock unwinds; neither an allocation failure nor a duplicate insertion
+can run its final deleter there. The callback must not throw or reenter the cache.
+
+AssetMgr gains an optional allocator template argument and a protected allocator
+constructor, retaining std::allocator for every existing production cache. Three
+prepared fixtures use a per-map allocator to reject actual node or multiple-object
+bucket allocation requests. They cover publication metadata remaining uncommitted,
+replacement insertion failure, original-generation retention, destructor reentry,
+recovery and stateful allocator clear. Clear preserves allocator equality and
+checks the allocator under a shared lock before constructing the detached map;
+values still release after the write lock. No global new override or extra test
+target is introduced. These fixtures are uncompiled and unexecuted, and do not
+establish a heap-exhaustion result or every standard-library allocation strategy.
+
+Checkpoint 68 prepares provider-side geometry rejection through the common owned
+CPU-buffer upload wrapper and Graphic construction. It also prepares partial
+sprite/tileset upload, unchanged Loader metadata after failure, retry and retained
+geometry across explicit cache clear. Those two scenarios use synthetic resources;
+they do not inject failures inside native registration, font atlas creation or the
+runtime's startup/shutdown sequence. Such cases remain distinct open audit work.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

@@ -223,7 +223,41 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Program construction audit: checkpoints 65–66
+### Cache allocation and category audit: checkpoints 67–69
+
+This pass starts at saved local 66,
+`7ff1be41ad05d07972cb684acc1476d7223a85b6`. Remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–66 are preserved.
+
+- 67 fixes A14: FontMgr pins publication through the shared helper and commits a
+  prepared default-font path without a fallible post-publication copy. An optional
+  allocator argument keeps existing std::allocator defaults while permitting scoped
+  real map allocation-request faults; clear preserves allocator equality. Three
+  fixtures prepare publication/replacement/rehash reentry, recovery and clear.
+- 68 adds provider geometry rejection through the CPU upload wrapper and Graphic,
+  plus partial sprite/tileset upload, unchanged metadata, retry and retained geometry.
+- 69 records category/reservation/CPU-owner source traces, limits and this checkpoint.
+
+The audit remains open: native registration/later logical allocation and font
+atlas injection, combined context/asset/runtime startup/shutdown failures and full
+format/declaration review remain. Cache allocation requests are now controlled in
+prepared sources; no fixture was compiled or executed. No configuration, build,
+runtime/native acceptance or remote write occurred. Task 9 remains paused.
+
+Numbered delivery is **67–69**; next unused number is **70**. The new-only
+`cheryl-engine-followup.patch` starts after saved 66. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–69**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds unapplied patches until audit completion; routes overlap.
+
+Changed syntax trees, whitespace, local documentation links and requirement-row
+consistency receive static inspection. New-only, numbered, combined and original-base
+mailboxes must replay to the exact tree and ordered author/date/messages. None of
+these checks establishes type/link correctness, heap/driver behavior or race freedom.
+
+See [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md).
+
+### Program construction audit: checkpoints 65–66 (historical)
 
 This pass starts at saved local 64,
 `0ca9a602d52f71ced6d97931d07b8387fce9688c`. Remote 57 remains

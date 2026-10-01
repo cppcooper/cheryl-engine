@@ -9,6 +9,8 @@ continue native upload and text-compatibility review. Checkpoints 62–64 add
 controlled worker faults and concurrent event/invalidation combinations.
 Checkpoints 65–66 continue native program construction/reflection and retained
 owner review, including failure cleanup into runtime/cache dependents.
+Checkpoints 67–69 review cache allocation and resource-category unwinding; A14
+corrects FontMgr publication/default selection and adds scoped failure sources.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -124,11 +126,11 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 6.1 | Checked source | Single provider/loading owner, releasing gate, teardown and rebind inspected; no eviction policy introduced. |
-| 6.2 | Partial | cache/composite/frame and Texture/VAO/program/stage owners inspected; 65 prepares transient-stage, retained-program and foreign-thread last-release scenarios. Other category/allocation evidence remains. |
-| 6.3 | Checked source | Strong map/generation ownership and publish/replace/clear unlock order inspected, including A8 retained insertion candidate. |
+| 6.2 | Partial | cache/composite/frame and native owners inspected; 65 prepares transient/retained program cases, 68 prepares CPU/Graphic and partial sprite/tileset upload/retry/clear. Font atlas and native/logical allocation injection remain. |
+| 6.3 | Fix prepared | A14 routes FontMgr through retained publication and commits a prepared default path atomically. 67 adds actual per-map node/bucket request rejection, replacement retention, reentry and allocator-preserving clear; unexecuted. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; A12/A13 correct upload and program native-error publication. 65 prepares lost-current untracked cleanup/original-error preservation; allocation, other category failures and real context loss remain open. |
+| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; A12/A13 correct upload and program native-error publication. 65 prepares lost-current untracked cleanup/original-error preservation; 67 prepares scoped cache node/rehash rejection and 68 category/provider failures; native registration/logical allocation, atlas failure and real context loss remain open. |
 | 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors before returning a resource; 60 prepares synthetic error/retirement/alignment scenarios, without real driver execution. |
 
 ### Task 7
@@ -138,7 +140,7 @@ Inspected paths: Pipeline/Material definitions and implementation, parameters, n
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 7.1 | Checked source | Immutable definition snapshots and enum/schema/layout/topology validation inspected. |
-| 7.2 | Fix prepared | A13 checks program/stage/source/compile/attach/link/detach/status and reflection errors before executable publication. 65 prepares native/logical failures, later-stage file failure and retained-program reflection recovery. Allocation/native execution and broader 6.6 evidence remain open. |
+| 7.2 | Fix prepared | A13 checks program/stage/source/compile/attach/link/detach/status and reflection errors before executable publication. 65 prepares native/logical failures, later-stage file failure and retained-program reflection recovery. Native registration/later logical allocation injection, native execution and broader 6.6 evidence remain open. |
 | 7.3 | Checked source | Copied values, defaults < pass < material < draw, hidden-invalid layer validation, engine ownership and missing/type rules inspected. |
 | 7.4 | Checked source | Image-free geometry, explicit per-binding units and guarded texture bind/unbind inspected. |
 | 7.5 | Checked source | Range/domain/pass preflight precedes state changes; complete supported blend/depth/cull state and A6 clear mask inspected. |
@@ -191,14 +193,27 @@ This is a bounded source trace, not a combined asset/worker/runtime fault fixtur
 failure releases the local geometry owner, with category-specific failure injection
 still outstanding.
 
+Checkpoints 67–68 inspect TextureMgr, SpriteMgr, TilesetMgr, FontMgr, Loader,
+Graphic and the ObjectReservation/managed CPU-buffer path. Texture, sprite and
+tileset managers already used retained publication; FontMgr did not (A14).
+ObjectReservation completes range/control allocations before construction and
+retains the unclaimed slot on constructor failure. Sprite/Tileset member unwinding
+releases their local geometry/image owners; Loader publishes metadata only after
+all uploads. Partial completed cache entries are permitted and remain usable for
+retry. STBFont geometry survives through atlas creation and releases on its failure;
+font bake/atlas and native adoption/later logical allocation injection remain open.
+The CPU managed-buffer helper's preexisting manager-lifetime synchronization TODO
+remains explicit; this pass does not claim concurrent manager destruction is safe.
+
 ## Remaining audit work before moving on
 
 1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
    drift is corrected; full formatting has not been verified.
 2. Complete resource category construction/failure evidence (6.2/6.6/7.2):
-   allocation/rehash, remaining category failures, current-context loss and retained
-   owners must remain distinct cases. A12/A13 prepare upload/program/reflection
-   failures and retained/lost-current scenarios; no real native failure ran.
+   native registration/later logical allocations, font atlas creation and combined
+   native/context loss remain distinct cases. A12–A14 prepare upload/program/
+   reflection and actual cache node/bucket request rejection; 68 adds CPU/Graphic
+   and partial sprite/tileset failures. Every new fixture remains unexecuted.
 3. Finish combined producer/failure fixture review (4.6), including context/asset
    settlement after policy or startup failure and partial shutdown dependencies.
    FFont compatibility is recorded; rotated rendering remains acceptance work.
@@ -218,4 +233,4 @@ these are not an executed native fault test.
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
 for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A13](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+finished. See [A1–A14](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
