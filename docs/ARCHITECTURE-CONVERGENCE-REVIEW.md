@@ -6,6 +6,10 @@ the partial audit or establish executed acceptance. The current continuation sta
 user-pushed checkpoint 54, `b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`, whose tree
 matches the previously delivered local checkpoint. The fixed original task base is unchanged.
 
+Further task-9 completion work is on hold for the explicit audit request.
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) accounts for completed
+requirements, batch-ending claims and remaining source-review gaps.
+
 ## Cross-task paths
 
 | Path | Source review and prepared evidence | Remaining acceptance |

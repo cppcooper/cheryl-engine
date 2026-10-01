@@ -223,6 +223,32 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
+### Explicit subtask audit: checkpoints 58–59
+
+This audit continues saved local checkpoint 57,
+`68e6c7d9190d8653e17f653dc90e7e0a66bad5e6`. The latest confirmed pushed base
+remains checkpoint 54, `b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`.
+
+- 58 fixes A11: copied event payloads now remain pinned through posting, so a
+  returning-false or throwing target cannot run a reentrant final payload destructor
+  under the posting lock. Controlled sources are uncompiled/unexecuted.
+- 59 records bounded source inspection of all 61 completed work-order entries 0–8,
+  plus ledger discovery 4.7, and explicitly retains unfinished source review.
+
+The audit remains open; further task-9 completion work is on hold. No correctness,
+compilation or runtime sign-off is claimed. The work window ended during record
+preparation; the buffer completes verification and saved patch delivery.
+
+Numbered delivery is **58–59**, from saved 57; next unused number is **60**.
+`cheryl-engine-followup.patch` contains 58–59 only. The combined
+`cheryl-engine-continuation.patch` contains **55–59**, from confirmed pushed 54,
+including the previous delivery. The original-base cumulative `cheryl-engine.patch`
+repeats the full series. Choose one matching application route.
+
+See [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md).
+
+### Previous pump checkpoint: 55–57 (historical)
+
 This continuation starts at user-pushed checkpoint 54,
 `b7ada603e1d7078f2cc1ed89015d07e3541eb4a0`, after matching its exact tree with
 saved local work. The original task base remains fixed. A 20-minute work window
@@ -235,11 +261,8 @@ is followed by up to 10 minutes to finish verification and delivery.
 - 57 prepares synchronous throwing submission/original-error recovery and records
   current source-review evidence, remaining acceptance, and the delivery checkpoint.
 
-Numbered patches **55–57** continue from the pushed base above; the next unused
-filename is **cheryl-engine-58.patch**. Apply `cheryl-engine-continuation.patch`
-there, or apply the three numbered increments in order. `cheryl-engine.patch`
-starts at the fixed original base and repeats earlier commits. Use one route;
-commit authorship and ordering remain intact.
+The previous numbered delivery was 55–57; its next unused number was 58.
+The current delivery and application routes are recorded above.
 
 Tasks 1–8 and task-9 source preparation remain implemented. The partial audit stays
 open: controlled native affinity/thread-start failure, allocation/rehash failure,

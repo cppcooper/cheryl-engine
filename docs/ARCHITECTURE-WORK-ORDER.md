@@ -19,8 +19,10 @@ Planning snapshot: [`e8c9788f63cf4688e144b84feeb8f9aabf62540f`](https://github.c
 Each task below has numbered subtasks, a completion condition, and a discovery boundary. The boundaries are places to expand the work order before dependent work proceeds; they are not automatic permission checkpoints.
 
 Checked subtasks record implemented/prepared source scope, not audit sign-off or
-executed acceptance. The partial review of tasks 0–6 and its remaining coverage
-are in [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
+executed acceptance. The explicit requirement/dependency audit of tasks 0–8 is in
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md); it remains open.
+Further task-9 completion work is on hold while that source audit is unfinished.
+Finding history is in [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
 
 ## What the chronological review settled
 

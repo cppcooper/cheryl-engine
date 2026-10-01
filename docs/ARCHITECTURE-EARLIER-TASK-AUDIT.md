@@ -6,6 +6,10 @@ Earlier completion labels describe implemented source scope. They do not establi
 that the implementation is correct, that every path was reviewed, or that the
 acceptance criteria passed. The broader audit remains open alongside implementation, as subsequently requested.
 
+The subsequent explicit audit request pauses further task-9 completion work.
+[ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md) records every completed
+task/subtask and dependent paths; the finding history below is not full sign-off.
+
 ## Findings and prepared changes
 
 ### A1: event invalidation was published after registry removal
