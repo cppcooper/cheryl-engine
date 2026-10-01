@@ -1,11 +1,15 @@
 #pragma once
 
 #include <core/rendering/renderer.h>
+#include <functional>
 #include <memory>
 #include "context.h"
 #include "resource-lifetime.h"
 
 namespace CE::RenderAPIs {
+    namespace RendererDetail {
+        struct RendererAccess;
+    }
     /** Implements rendering commands using a separately owned OpenGL context.
      * initialize() makes that context current before loading GL entry points;
      * deinitialize() deletes all tracked GPU resources before releasing it.
@@ -15,6 +19,7 @@ namespace CE::RenderAPIs {
      */
     class OpenGLRenderer final : public iRenderer {
         iOpenGLContext& context_;
+        std::function<void(iOpenGLContext&)> native_loader_;
         std::shared_ptr<OpenGLResourceLifetime> resources_;
         glm::mat4 projection_{1.0f};
         glm::mat4 view_{1.0f};
@@ -36,5 +41,7 @@ namespace CE::RenderAPIs {
         void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override;
         [[nodiscard]] std::shared_ptr<OpenGLResourceLifetime> resources() const;
 
+    private:
+        friend struct RendererDetail::RendererAccess;
     };
 }

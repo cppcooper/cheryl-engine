@@ -2,6 +2,10 @@
 #include <backends/opengl/texture.h>
 #include <backends/opengl/vertex-array-object.h>
 #include <backends/opengl/resource-lifetime-internal.h>
+#include <backends/opengl/renderer-internal.h>
+#include <backends/opengl/resource-provider.h>
+#include <core/rendering/render-frame.h>
+#include <core/resources/asset-management/material-mgr.h>
 #include <testing/failing-memory-resource.h>
 
 #include <gtest/gtest.h>
@@ -14,7 +18,9 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -74,6 +80,7 @@ namespace {
         GLint unpack_alignment = 4;
         std::optional<GLResourceKind> fail_generation;
         bool lose_context_on_error = false;
+        std::string fail_startup_operation;
 
     private:
         template <typename T>
@@ -205,6 +212,7 @@ namespace {
         static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Texture, count, ids); }
         static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
         static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
+        static void GLAD_API_PTR delete_program(GLuint id) { delete_ids(GLResourceKind::Program, 1, &id); }
         static GLenum GLAD_API_PTR error_query() {
             const auto error = std::exchange(active_->error_, GL_NO_ERROR);
             if (error != GL_NO_ERROR && active_->lose_context_on_error)
@@ -244,7 +252,22 @@ namespace {
             if (active_->fail_mipmaps)
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
-        static void GLAD_API_PTR enable(GLenum capability) { active_->enabled[capability] = true; ++active_->state_changes; }
+        static void GLAD_API_PTR enable(GLenum capability) {
+            active_->enabled[capability] = true;
+            ++active_->state_changes;
+            if (active_->fail_startup_operation == "enable")
+                active_->error_ = GL_INVALID_OPERATION;
+        }
+        static void GLAD_API_PTR startup_blend(GLenum, GLenum) {
+            ++active_->state_changes;
+            if (active_->fail_startup_operation == "blend")
+                active_->error_ = GL_INVALID_OPERATION;
+        }
+        static void GLAD_API_PTR clear_colour(GLfloat, GLfloat, GLfloat, GLfloat) {
+            ++active_->state_changes;
+            if (active_->fail_startup_operation == "clear")
+                active_->error_ = GL_INVALID_OPERATION;
+        }
         static void GLAD_API_PTR disable(GLenum capability) { active_->enabled[capability] = false; ++active_->state_changes; }
         static void GLAD_API_PTR blend_equation(GLenum rgb, GLenum alpha) {
             active_->blend_equations = {rgb, alpha}; ++active_->state_changes;
@@ -295,8 +318,11 @@ namespace {
                 replace(glad_glDeleteTextures, delete_images);
                 replace(glad_glDeleteBuffers, delete_buffers);
                 replace(glad_glDeleteVertexArrays, delete_arrays);
+                replace(glad_glDeleteProgram, delete_program);
                 replace(GLAD_GL_EXT_texture_filter_anisotropic, 0);
                 replace(glad_glEnable, enable);
+                replace(glad_glBlendFunc, startup_blend);
+                replace(glad_glClearColor, clear_colour);
                 replace(glad_glDisable, disable);
                 replace(glad_glBlendEquationSeparate, blend_equation);
                 replace(glad_glBlendFuncSeparate, blend_function);
@@ -341,6 +367,7 @@ namespace {
         [[nodiscard]] std::size_t rejected_allocations() const { return entry_memory_->rejected.load(); }
         void collect() { lifetime_->collect(); }
         void set_current(const bool current) { current_ = current; }
+        [[nodiscard]] bool is_current() const { return current_; }
         [[nodiscard]] int current_queries() const { return current_queries_; }
         std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
 
@@ -367,11 +394,184 @@ namespace {
         }
     };
 
+    class RecordingContext final : public iOpenGLContext {
+        NativeProgramRecorder& native_;
+
+    public:
+        bool fail_acquisition = false;
+        bool fail_release = false;
+        int acquisitions = 0;
+        int releases = 0;
+        mutable int queries = 0;
+
+        explicit RecordingContext(NativeProgramRecorder& native) : native_(native) {}
+
+        void make_current() override {
+            ++acquisitions;
+            if (fail_acquisition) {
+                native_.set_current(false);
+                throw CE::Exceptions::failed_operation(CE_HERE, "Controlled context recovery failure");
+            }
+            native_.set_current(true);
+        }
+        void release_current() override {
+            ++releases;
+            native_.set_current(false);
+            if (fail_release)
+                throw std::runtime_error("Later context release failure");
+        }
+        [[nodiscard]] bool is_current() const override { ++queries; return native_.is_current(); }
+        [[nodiscard]] ProcAddress proc_address(const char*) const override {
+            throw std::logic_error("Recording entries are already installed");
+        }
+        void present() override {}
+    };
+
     PipelineDefinition time_definition(bool required = true) {
         PipelineDefinition definition;
         definition.program_sources = {"effect.vert", "effect.frag"};
         definition.parameters = {{"time", ParameterType::Float, required}};
         return definition;
+    }
+}
+
+TEST(opengl_renderer, startup_errors_reject_before_domain_publication_and_preserve_the_first_failure) {
+    for (const std::string operation : {"pending", "loader", "enable", "blend", "clear"}) {
+        for (const bool release_failure : {false, true}) {
+            SCOPED_TRACE(operation);
+            SCOPED_TRACE(release_failure);
+            NativeProgramRecorder native;
+            RecordingContext context(native);
+            context.fail_release = release_failure;
+            OpenGLRenderer renderer(context);
+            RendererDetail::RendererAccess::set_native_loader(renderer, [&](iOpenGLContext&) {
+                if (operation == "loader")
+                    throw std::runtime_error("Original loader failure");
+            });
+            native.fail_startup_operation = operation;
+            if (operation == "pending")
+                native.pending_error(GL_INVALID_ENUM);
+            if (operation == "loader") {
+                try {
+                    renderer.initialize();
+                    FAIL() << "Loader must fail";
+                } catch (const std::runtime_error& error) {
+                    EXPECT_EQ(std::string_view(error.what()), "Original loader failure");
+                }
+            } else {
+                try {
+                    renderer.initialize();
+                    FAIL() << "Native startup must fail";
+                } catch (const CE::Exceptions::failed_operation& error) {
+                    const auto expected = operation == "pending" ? "before renderer startup" : "startup configuration failed";
+                    EXPECT_NE(std::string(error.what()).find(expected), std::string::npos);
+                }
+            }
+            EXPECT_EQ(context.releases, 1);
+            EXPECT_FALSE(context.is_current());
+            EXPECT_THROW((void)renderer.resources(), CE::Exceptions::failed_operation);
+            EXPECT_NO_THROW(renderer.deinitialize());
+            EXPECT_EQ(context.releases, 1);
+            EXPECT_TRUE(native.generated.empty());
+            if (operation == "pending" || operation == "loader")
+                EXPECT_EQ(native.state_changes, 0);
+        }
+    }
+}
+
+TEST(opengl_renderer, cache_and_frame_owners_survive_context_loss_and_release_after_recovery_or_abandonment) {
+    for (const bool recover : {false, true}) {
+        for (const bool release_failure : {false, true}) {
+            SCOPED_TRACE(recover ? "recover" : "abandon");
+            SCOPED_TRACE(release_failure);
+            NativeProgramRecorder native;
+            RecordingContext context(native);
+            auto renderer = std::make_unique<OpenGLRenderer>(context);
+            RendererDetail::RendererAccess::set_native_loader(*renderer, [](iOpenGLContext&) {});
+            renderer->initialize();
+            auto domain = renderer->resources();
+            auto provider = std::make_unique<OpenGLResourceProvider>(*renderer);
+            auto& cache = MaterialMgr::get();
+            const std::filesystem::path key{"context-loss-material"};
+            native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 8}};
+            native.generated.emplace_back(GLResourceKind::Program, GLuint{500});
+            auto program = std::make_shared<GLSLProgram>(OpenGLHandle(domain, GLResourceKind::Program, 500));
+            PipelineDefinition definition;
+            definition.program_sources = {"retained.vert", "retained.frag"};
+            definition.parameters = {{"image", ParameterType::Sampler2D, true}};
+            auto pipeline = std::make_shared<GLSLPipeline>(definition, program, GLSLPipelineBindings{{{"image", "uImage"}}});
+            DecodedImage pixels{PixelSize{1, 1}, {255, 255, 255, 255}};
+            auto image = provider->create_image(pixels);
+            const std::array<CE::Vertex2D, 6> vertices{};
+            auto geometry = provider->upload_geometry(vertices, PrimitiveTopology::Triangles);
+            auto material = provider->build_material({pipeline, {{"image", ImageBinding{image, 0}}}});
+            cache.load_material(key, *provider, [&](ResourceProvider&) { return material; });
+            auto retained = cache.get_asset(key);
+            std::weak_ptr<GLSLProgram> program_owner = program;
+            std::weak_ptr<Image> image_owner = image;
+            std::weak_ptr<Geometry2D> geometry_owner = geometry;
+            RenderFrame frame;
+            {
+                RenderFrameWriter writer(frame);
+                auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+                DrawStyle2D style;
+                style.material = material;
+                pass.add(resolve_draw_packet(geometry, 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints()));
+            }
+            program.reset();
+            pipeline.reset();
+            image.reset();
+            geometry.reset();
+            material.reset();
+            native.set_current(false);
+            const auto before_loss = native.state_changes;
+            EXPECT_THROW(renderer->render(frame), CE::Exceptions::failed_operation);
+            EXPECT_EQ(native.state_changes, before_loss);
+            EXPECT_TRUE(native.draws.empty());
+            EXPECT_THROW(cache.reload_material(key, *provider, [&](ResourceProvider& value) {
+                return static_cast<OpenGLResourceProvider&>(value).build_material(retained->definition());
+            }), CE::Exceptions::failed_operation);
+            EXPECT_EQ(cache.get_asset(key), retained);
+            cache.clear_assets();
+            provider.reset();
+            EXPECT_FALSE(program_owner.expired());
+            EXPECT_FALSE(image_owner.expired());
+            EXPECT_FALSE(geometry_owner.expired());
+            EXPECT_TRUE(native.deleted.empty());
+            context.fail_release = release_failure;
+            if (recover) {
+                if (release_failure)
+                    EXPECT_THROW(renderer->deinitialize(), std::runtime_error);
+                else
+                    EXPECT_NO_THROW(renderer->deinitialize());
+                auto expected = native.generated;
+                auto deleted = native.deleted;
+                std::sort(expected.begin(), expected.end());
+                std::sort(deleted.begin(), deleted.end());
+                EXPECT_EQ(deleted, expected);
+            } else {
+                context.fail_acquisition = true;
+                renderer.reset(); // Destructor recovery fails, then abandons the retained domain.
+                EXPECT_TRUE(native.deleted.empty());
+            }
+            const auto after_closure = context.queries;
+            EXPECT_THROW(domain->require_current(), CE::Exceptions::failed_operation);
+            std::thread release([&frame, retained = std::move(retained)]() mutable {
+                frame.recycle();
+                retained.reset();
+            });
+            release.join();
+            EXPECT_TRUE(program_owner.expired());
+            EXPECT_TRUE(image_owner.expired());
+            EXPECT_TRUE(geometry_owner.expired());
+            EXPECT_EQ(context.queries, after_closure);
+            if (recover) {
+                EXPECT_EQ(native.deleted.size(), native.generated.size());
+                EXPECT_THROW((void)renderer->resources(), CE::Exceptions::failed_operation);
+                renderer.reset();
+            } else
+                EXPECT_TRUE(native.deleted.empty());
+        }
     }
 }
 

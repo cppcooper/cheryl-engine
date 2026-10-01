@@ -1,13 +1,40 @@
-#include <backends/opengl/gl.h>
 #include <backends/opengl/renderer.h>
+#include "renderer-internal.h"
+#include "upload-check.h"
+#include <backends/opengl/gl.h>
 #include <backends/opengl/pipeline.h>
 
 #include <internals/exceptions.h>
 
 
 #include <thread>
+#include <utility>
 
 namespace CE::RenderAPIs {
+    namespace {
+        void load_native_functions(iOpenGLContext& context) {
+            const auto version = gladLoadGLUserPtr(
+                [](void* user, const char* name) -> GLADapiproc {
+                    return static_cast<iOpenGLContext*>(user)->proc_address(name);
+                }, &context
+            );
+            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 ||
+                (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3))
+                throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
+        }
+    }
+
+    void RendererDetail::RendererAccess::set_native_loader(
+        OpenGLRenderer& renderer,
+        std::function<void(iOpenGLContext&)> loader
+    ) {
+        if (!loader)
+            throw Exceptions::invalid_args(CE_HERE, "Native loader must not be empty");
+        if (renderer.initialized_ || renderer.stopped_ || renderer.resources_)
+            throw Exceptions::failed_operation(CE_HERE, "Native loader must be configured before renderer startup");
+        renderer.native_loader_ = std::move(loader);
+    }
+
     OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
     : context_(context) {}
 
@@ -37,23 +64,20 @@ namespace CE::RenderAPIs {
                 throw Exceptions::failed_operation(CE_HERE, "OpenGL initialization requires its current context");
             // The renderer receives procedure addresses through the context interface,
             // without depending on the display's native window type.
-            const auto version = gladLoadGLUserPtr(
-                [](
-                void* user,
-                const char* name
-            ) ->
-                GLADapiproc {
-                    return static_cast<iOpenGLContext*>(user)->proc_address(name);
-                },
-                &context_);
-            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3)) {
-                throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
-            }
-            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(),
-                [&context = context_] { return context.is_current(); });
+            if (native_loader_)
+                native_loader_(context_);
+            else
+                load_native_functions(context_);
+            require_no_gl_error("OpenGL error before renderer startup configuration");
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            require_no_gl_error("OpenGL renderer startup configuration failed");
+            if (!context_.is_current())
+                throw Exceptions::failed_operation(CE_HERE, "OpenGL context was lost during renderer startup");
+            // Publish the domain only after loading and default state succeed.
+            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(),
+                [&context = context_] { return context.is_current(); });
         } catch (...) {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
