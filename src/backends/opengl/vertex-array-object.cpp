@@ -51,12 +51,16 @@ namespace CE {
         glBindVertexArray(vao_.id());
     }
 
-    void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
+    void VAO::require_draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
         (void)vao_.id();
         if (first_vertex > vertex_count_ || vertex_count > vertex_count_ - first_vertex)
             throw Exceptions::invalid_args(CE_HERE, "Draw range exceeds uploaded geometry");
         if (type != flat)
             throw Exceptions::invalid_args(CE_HERE, "Indexed meshes cannot be drawn as 2D geometry");
+    }
+
+    void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
+        require_draw(first_vertex, vertex_count);
         const GLenum mode = topology_ == Assets::PrimitiveTopology::TriangleStrip ? GL_TRIANGLE_STRIP : GL_TRIANGLES;
         glDrawArrays(mode, static_cast<GLint>(first_vertex), static_cast<GLsizei>(vertex_count));
     }

@@ -1,10 +1,12 @@
 #include <backends/opengl/pipeline.h>
 #include <backends/opengl/texture.h>
+#include <backends/opengl/vertex-array-object.h>
 
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
@@ -36,6 +38,16 @@ namespace {
         std::map<GLint, ParameterValue> writes;
         std::vector<std::pair<std::uint32_t, GLuint>> image_binds;
         int uses = 0;
+        std::map<GLenum, bool> enabled;
+        std::array<GLenum, 4> blend_factors{};
+        std::pair<GLenum, GLenum> blend_equations{};
+        GLenum depth_function = GL_LESS;
+        GLboolean depth_write = GL_TRUE;
+        GLenum cull_face = GL_BACK;
+        GLenum front_face = GL_CCW;
+        int state_changes = 0;
+        int geometry_binds = 0;
+        std::vector<std::pair<GLint, GLsizei>> draws;
 
     private:
         template <typename T>
@@ -141,6 +153,24 @@ namespace {
         static void GLAD_API_PTR image_parameter(GLenum, GLenum, GLint) {}
         static void GLAD_API_PTR pixel_store(GLenum, GLint) {}
         static void GLAD_API_PTR upload_image(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) {}
+        static void GLAD_API_PTR enable(GLenum capability) { active_->enabled[capability] = true; ++active_->state_changes; }
+        static void GLAD_API_PTR disable(GLenum capability) { active_->enabled[capability] = false; ++active_->state_changes; }
+        static void GLAD_API_PTR blend_equation(GLenum rgb, GLenum alpha) {
+            active_->blend_equations = {rgb, alpha}; ++active_->state_changes;
+        }
+        static void GLAD_API_PTR blend_function(GLenum source, GLenum target, GLenum alpha_source, GLenum alpha_target) {
+            active_->blend_factors = {source, target, alpha_source, alpha_target}; ++active_->state_changes;
+        }
+        static void GLAD_API_PTR set_depth_function(GLenum function) { active_->depth_function = function; ++active_->state_changes; }
+        static void GLAD_API_PTR depth_mask(GLboolean enabled) { active_->depth_write = enabled; ++active_->state_changes; }
+        static void GLAD_API_PTR cull(GLenum face) { active_->cull_face = face; ++active_->state_changes; }
+        static void GLAD_API_PTR winding(GLenum face) { active_->front_face = face; ++active_->state_changes; }
+        static void GLAD_API_PTR bind_geometry(GLuint) { ++active_->geometry_binds; }
+        static void GLAD_API_PTR bind_buffer(GLenum, GLuint) {}
+        static void GLAD_API_PTR upload_buffer(GLenum, GLsizeiptr, const void*, GLenum) {}
+        static void GLAD_API_PTR enable_attribute(GLuint) {}
+        static void GLAD_API_PTR attribute_pointer(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*) {}
+        static void GLAD_API_PTR draw_geometry(GLenum, GLint first, GLsizei count) { active_->draws.emplace_back(first, count); }
 
     public:
         NativeProgramRecorder() {
@@ -164,6 +194,22 @@ namespace {
                 replace(glad_glPixelStorei, pixel_store);
                 replace(glad_glTexImage2D, upload_image);
                 replace(GLAD_GL_EXT_texture_filter_anisotropic, 0);
+                replace(glad_glEnable, enable);
+                replace(glad_glDisable, disable);
+                replace(glad_glBlendEquationSeparate, blend_equation);
+                replace(glad_glBlendFuncSeparate, blend_function);
+                replace(glad_glDepthFunc, set_depth_function);
+                replace(glad_glDepthMask, depth_mask);
+                replace(glad_glCullFace, cull);
+                replace(glad_glFrontFace, winding);
+                replace(glad_glGenVertexArrays, generate_images);
+                replace(glad_glGenBuffers, generate_images);
+                replace(glad_glBindVertexArray, bind_geometry);
+                replace(glad_glBindBuffer, bind_buffer);
+                replace(glad_glBufferData, upload_buffer);
+                replace(glad_glEnableVertexAttribArray, enable_attribute);
+                replace(glad_glVertexAttribPointer, attribute_pointer);
+                replace(glad_glDrawArrays, draw_geometry);
             } catch (...) {
                 restore();
                 throw;
@@ -189,6 +235,15 @@ namespace {
             }
             const unsigned char pixels[]{255, 255, 255, 255};
             return std::make_shared<Texture>(domain, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+        }
+        std::shared_ptr<CE::VAO> geometry(bool another_domain = false) {
+            auto domain = lifetime_;
+            if (another_domain) {
+                domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+                other_domains_.push_back(domain);
+            }
+            const std::array<CE::Vertex2D, 6> vertices{};
+            return std::make_shared<CE::VAO>(domain, std::span<const CE::Vertex2D>{vertices}, PrimitiveTopology::Triangles);
         }
     };
 
@@ -297,4 +352,54 @@ TEST(opengl_pipeline, bad_sampler_domains_and_units_do_not_partially_bind_a_draw
     EXPECT_EQ(native.uses, 0);
     EXPECT_TRUE(native.writes.empty());
     EXPECT_TRUE(native.image_binds.empty());
+}
+
+TEST(opengl_pipeline, adjacent_draws_reapply_blend_depth_and_cull_state) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
+    auto geometry = native.geometry();
+    auto definition = time_definition();
+    definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};
+    GLSLPipeline solid(definition, native.program(), {{{"time", "uTime"}}});
+    PassConstraints2D world;
+    world.depth = DepthMode::LessEqual;
+    solid.draw(*geometry, 0, 6, {{"time", 1.0f}}, world);
+    EXPECT_FALSE(native.enabled.at(GL_BLEND));
+    EXPECT_TRUE(native.enabled.at(GL_DEPTH_TEST));
+    EXPECT_TRUE(native.enabled.at(GL_CULL_FACE));
+    EXPECT_EQ(native.depth_function, GL_LEQUAL);
+    EXPECT_EQ(native.depth_write, GL_TRUE);
+    EXPECT_EQ(native.cull_face, GL_BACK);
+
+    definition.state = {};
+    GLSLPipeline overlay(definition, native.program(), {{{"time", "uTime"}}});
+    overlay.draw(*geometry, 0, 3, {{"time", 2.0f}}, {});
+    EXPECT_TRUE(native.enabled.at(GL_BLEND));
+    EXPECT_FALSE(native.enabled.at(GL_DEPTH_TEST));
+    EXPECT_FALSE(native.enabled.at(GL_CULL_FACE));
+    EXPECT_EQ(native.depth_function, GL_LESS);
+    EXPECT_EQ(native.depth_write, GL_FALSE);
+    EXPECT_EQ(native.front_face, GL_CCW);
+    EXPECT_EQ(native.blend_equations, (std::pair{GLenum{GL_FUNC_ADD}, GLenum{GL_FUNC_ADD}}));
+    EXPECT_EQ(native.blend_factors, (std::array<GLenum, 4>{GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA}));
+    EXPECT_EQ(native.draws, (std::vector<std::pair<GLint, GLsizei>>{{0, 6}, {0, 3}}));
+}
+
+TEST(opengl_pipeline, invalid_geometry_parameters_and_pass_constraints_leave_native_state_untouched) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
+    GLSLPipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
+    auto local = native.geometry();
+    auto foreign = native.geometry(true);
+    native.geometry_binds = 0;
+    EXPECT_THROW(pipeline.draw(*foreign, 0, 6, {{"time", 1.0f}}, {}), invalid_args);
+    EXPECT_THROW(pipeline.draw(*local, 4, 3, {{"time", 1.0f}}, {}), invalid_args);
+    EXPECT_THROW(pipeline.draw(*local, 0, 6, {{"time", 1}}, {}), invalid_args);
+    PassConstraints2D world;
+    world.depth = DepthMode::Less;
+    EXPECT_THROW(pipeline.draw(*local, 0, 6, {{"time", 1.0f}}, world), invalid_args);
+    EXPECT_EQ(native.uses, 0);
+    EXPECT_EQ(native.state_changes, 0);
+    EXPECT_EQ(native.geometry_binds, 0);
+    EXPECT_TRUE(native.draws.empty());
 }

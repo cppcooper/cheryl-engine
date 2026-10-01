@@ -37,5 +37,12 @@ namespace CE {
 
         void bind() const override;
         void draw(std::size_t first_vertex, std::size_t vertex_count) const override;
+        [[nodiscard]] Assets::VertexLayout2D vertex_layout() const noexcept override {
+            return type == flat ? Assets::VertexLayout2D::Position3UV2 : Assets::VertexLayout2D::Unsupported;
+        }
+        [[nodiscard]] Assets::PrimitiveTopology topology() const noexcept override { return topology_; }
+        [[nodiscard]] std::size_t vertex_count() const noexcept override { return vertex_count_; }
+        [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return vao_.resource_domain(); }
+        void require_draw(std::size_t first_vertex, std::size_t vertex_count) const;
     };
 }

@@ -30,7 +30,13 @@ namespace {
 
     struct RecordingGeometry final : Geometry2D {
         mutable std::size_t binds = 0;
+        PrimitiveTopology uploaded_topology = PrimitiveTopology::Triangles;
+        std::size_t uploaded_vertices = 6;
+        VertexLayout2D layout = VertexLayout2D::Position3UV2;
 
+        [[nodiscard]] VertexLayout2D vertex_layout() const noexcept override { return layout; }
+        [[nodiscard]] PrimitiveTopology topology() const noexcept override { return uploaded_topology; }
+        [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
         void bind() const override { ++binds; }
         void draw(std::size_t, std::size_t) const override {}
     };
@@ -141,4 +147,42 @@ TEST(material_resources, one_image_can_be_selected_on_distinct_units_without_geo
     EXPECT_EQ(image->bound_units, (std::vector<std::uint32_t>{1, 4}));
     EXPECT_EQ(std::get<ImageBinding>(first.definition().defaults.at("image")).unit, 1u);
     EXPECT_EQ(std::get<ImageBinding>(second.definition().defaults.at("image")).unit, 4u);
+}
+
+TEST(pipeline_geometry, validation_rejects_layout_topology_and_incomplete_or_outside_ranges_without_binding) {
+    auto definition = effect_definition();
+    RecordingPipeline pipeline(definition);
+    RecordingGeometry geometry;
+    EXPECT_NO_THROW(pipeline.validate_draw(geometry, 0, 6, {}));
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 0, {}), invalid_args);
+    EXPECT_THROW(pipeline.validate_draw(geometry, 4, 3, {}), invalid_args);
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 4, {}), invalid_args);
+    geometry.layout = VertexLayout2D::Unsupported;
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 6, {}), invalid_args);
+    geometry.layout = VertexLayout2D::Position3UV2;
+    geometry.uploaded_topology = PrimitiveTopology::TriangleStrip;
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 4, {}), invalid_args);
+    definition.topology = PrimitiveTopology::TriangleStrip;
+    RecordingPipeline strip(definition);
+    EXPECT_NO_THROW(strip.validate_draw(geometry, 0, 4, {}));
+    EXPECT_THROW(strip.validate_draw(geometry, 0, 2, {}), invalid_args);
+    EXPECT_EQ(geometry.binds, 0u);
+}
+
+TEST(pipeline_state, pass_constraints_reject_conflicts_without_overriding_the_pipeline) {
+    auto definition = effect_definition();
+    definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};
+    RecordingPipeline pipeline(definition);
+    RecordingGeometry geometry;
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 6, {}), invalid_args);
+    PassConstraints2D constraints;
+    constraints.depth = DepthMode::LessEqual;
+    constraints.depth_write = true;
+    constraints.blend = BlendMode::Opaque;
+    constraints.cull = CullMode::Back;
+    EXPECT_NO_THROW(pipeline.validate_draw(geometry, 0, 6, constraints));
+    constraints.blend = BlendMode::StraightAlpha;
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 6, constraints), invalid_args);
+    EXPECT_EQ(pipeline.definition().state.blend, BlendMode::Opaque);
+    EXPECT_EQ(geometry.binds, 0u);
 }

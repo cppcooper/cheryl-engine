@@ -1,6 +1,7 @@
 #include <backends/opengl/pipeline.h>
 
 #include <backends/opengl/texture.h>
+#include <backends/opengl/vertex-array-object.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
@@ -136,7 +137,7 @@ namespace CE::Assets {
         }
     }
 
-    void GLSLPipeline::bind_parameters(const ParameterSet& values) const {
+    ParameterSet GLSLPipeline::prepare_parameters(const ParameterSet& values) const {
         program_->require_current();
         auto effective = values;
         // Fill absent active optional values before validation, so reset samplers
@@ -151,9 +152,73 @@ namespace CE::Assets {
         }
         validate_resolved_parameters(definition().parameters, effective);
         validate_resources(effective);
+        return effective;
+    }
+
+    void GLSLPipeline::apply_parameters(const ParameterSet& values) const {
         // No program/texture state changes occur until the complete request passes.
         program_->use();
         for (const auto& parameter : parameters_)
-            upload_parameter(parameter.location, effective.at(parameter.key));
+            upload_parameter(parameter.location, values.at(parameter.key));
+    }
+
+    void GLSLPipeline::bind_parameters(const ParameterSet& values) const {
+        apply_parameters(prepare_parameters(values));
+    }
+
+    void GLSLPipeline::apply_fixed_state() const {
+        const auto& state = definition().state;
+        if (state.blend == BlendMode::Opaque)
+            glDisable(GL_BLEND);
+        else
+            glEnable(GL_BLEND);
+        glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        switch (state.blend) {
+            case BlendMode::Opaque:
+                glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+                break;
+            case BlendMode::StraightAlpha:
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                break;
+            case BlendMode::PremultipliedAlpha:
+                glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                break;
+            case BlendMode::Additive:
+                glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+                break;
+        }
+        if (state.depth == DepthMode::Disabled)
+            glDisable(GL_DEPTH_TEST);
+        else
+            glEnable(GL_DEPTH_TEST);
+        glDepthFunc(state.depth == DepthMode::LessEqual ? GL_LEQUAL : GL_LESS);
+        glDepthMask(state.depth_write ? GL_TRUE : GL_FALSE);
+        if (state.cull == CullMode::None)
+            glDisable(GL_CULL_FACE);
+        else
+            glEnable(GL_CULL_FACE);
+        glFrontFace(GL_CCW);
+        glCullFace(state.cull == CullMode::Front ? GL_FRONT : GL_BACK);
+    }
+
+    void GLSLPipeline::draw(
+        const Geometry2D& geometry,
+        const std::size_t first_vertex,
+        const std::size_t vertex_count,
+        const ParameterSet& values,
+        const PassConstraints2D& constraints
+    ) const {
+        validate_draw(geometry, first_vertex, vertex_count, constraints);
+        const auto* vao = dynamic_cast<const CE::VAO*>(&geometry);
+        if (!vao || vao->resource_domain() != resource_domain())
+            throw Exceptions::invalid_args(CE_HERE, "Geometry does not belong to the pipeline's native domain");
+        vao->require_draw(first_vertex, vertex_count);
+        const auto effective = prepare_parameters(values);
+        // Reapply every supported setting, including disabled-state parameters.
+        // Adjacent draws and passes cannot inherit blend/depth/cull policy.
+        apply_fixed_state();
+        apply_parameters(effective);
+        vao->bind();
+        vao->draw(first_vertex, vertex_count);
     }
 }

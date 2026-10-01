@@ -16,6 +16,12 @@ namespace CE::Assets {
         Pipeline(const Pipeline&) = delete;
         Pipeline& operator=(const Pipeline&) = delete;
         [[nodiscard]] const PipelineDefinition& definition() const { return definition_; }
+        void validate_draw(
+            const Geometry2D& geometry,
+            std::size_t first_vertex,
+            std::size_t vertex_count,
+            const PassConstraints2D& constraints
+        ) const;
     };
 
     class Material final {

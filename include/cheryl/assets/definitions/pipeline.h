@@ -5,15 +5,11 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace CE::Assets {
     class Pipeline;
-
-    // The initial contract accepts the existing interleaved Vertex2D upload only.
-    enum class VertexLayout2D {
-        Position3UV2
-    };
 
     enum class BlendMode {
         Opaque,
@@ -40,6 +36,15 @@ namespace CE::Assets {
         DepthMode depth = DepthMode::Disabled;
         bool depth_write = false;
         CullMode cull = CullMode::None;
+    };
+
+    // A pass constrains pipeline intent; it never overrides one draw's state.
+    // Default 2D passes require disabled depth. Reset depth to allow either mode.
+    struct PassConstraints2D {
+        std::optional<BlendMode> blend;
+        std::optional<DepthMode> depth = DepthMode::Disabled;
+        std::optional<bool> depth_write;
+        std::optional<CullMode> cull;
     };
 
     struct PipelineDefinition {

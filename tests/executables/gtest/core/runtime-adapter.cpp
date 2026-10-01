@@ -281,7 +281,14 @@ namespace {
     public:
         mutable std::size_t first_vertex = 0;
         mutable std::size_t drawn_vertices = 0;
+        CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
+        std::size_t uploaded_vertices = 0;
 
+        [[nodiscard]] CE::Assets::VertexLayout2D vertex_layout() const noexcept override {
+            return CE::Assets::VertexLayout2D::Position3UV2;
+        }
+        [[nodiscard]] CE::Assets::PrimitiveTopology topology() const noexcept override { return uploaded_topology; }
+        [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
         void bind() const override { ++binds_; }
 
         void draw(std::size_t first, std::size_t count) const override {
@@ -347,6 +354,9 @@ namespace {
             uploaded_vertices = vertices.size();
             uploaded_topology = topology;
             uploaded_geometry.assign(vertices.begin(), vertices.end());
+            geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = vertices.size();
+            geometry->uploaded_topology = topology;
             return geometry;
         }
 

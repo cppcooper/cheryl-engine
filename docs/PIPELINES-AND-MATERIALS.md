@@ -63,11 +63,14 @@ are a separate extension, not claimed by this foundation.
 Task 7 is unfinished. OpenGL pipeline building, explicit mappings/reflection,
 required/optional validation, copied-value uploads, and sampler-domain/unit checks
 are implemented in source. Frame and recipe integration remain pending.
-Pipeline fixed state is currently validated intent; the renderer does not yet
-apply it or enforce pass constraints. Linked attributes must match Vertex2D's
+GLSLPipeline::draw applies complete fixed state after validating pass constraints,
+geometry, and parameters. Current legacy frames have not yet migrated to that path.
+Linked attributes must match Vertex2D's
 position3 at location zero and UV2 at location one; inactive inputs may be omitted.
-Geometry-instance layout/topology/domain compatibility and state reset across
-adjacent draws/passes remain open. Program/image native domains are checked.
+Geometry exposes immutable CPU-readable layout/topology/count metadata. Pipeline
+validation checks complete primitives and bounded ranges before publication;
+native drawing additionally checks VAO/program domain identity and the live current
+context. Program/image native domains are checked as well.
 
 ShaderMgr still publishes retained Shader handles, and DrawStyle still stores one.
 Successful pipeline/material recipe replacement and retained old-frame generations
@@ -110,8 +113,20 @@ Pass those values to GLSLPipeline::bind_parameters() on the platform owner. The
 binder fills omitted active optional uniforms from contract defaults or the mapping's
 missing_value, then validates the complete set, including fallback sampler collisions.
 It checks all image domains/units before changing the program or texture bindings.
-Fixed blend/depth/cull state is intentionally a separate remaining integration task;
-this method applies parameter/resource values only.
+This method applies parameter/resource values only. GLSLPipeline::draw instead
+validates the complete geometry/state/parameter request, reapplies blend equations
+and factors, depth enable/function/write mask, cull enable/face, and CCW front-face
+winding, then binds parameters and geometry and draws. Every draw sets all supported
+state, so adjacent draws/passes cannot inherit another pipeline's policy. Depth
+clears explicitly enable depth writes before clearing; the next draw reapplies its
+own mask.
+
+PassConstraints2D restricts any selected pipeline state without overriding it.
+Default 2D passes require disabled depth; set or reset that constraint explicitly
+for a depth pass or a mixed-policy pass. Opaque blending uses one/zero factors;
+straight alpha uses source-alpha/one-minus-source-alpha RGB with one/one-minus-source-alpha
+alpha; premultiplied alpha uses one/one-minus-source-alpha; additive uses source-alpha/one
+RGB and one/one alpha. All use additive blend equations.
 
 Six prepared recording-GLAD scenarios cover a native two-image effect, optional
 uniform reset after another draw, inactive optional uniforms without sprite roles,

@@ -44,5 +44,18 @@ namespace CE::Assets {
         void validate_resources(const ParameterSet& values) const;
         // Applies copied parameter/resource values only; fixed state/pass integration is separate.
         void bind_parameters(const ParameterSet& values) const;
+        // Validate the complete request before mutating any native draw state.
+        void draw(
+            const Geometry2D& geometry,
+            std::size_t first_vertex,
+            std::size_t vertex_count,
+            const ParameterSet& values,
+            const PassConstraints2D& constraints
+        ) const;
+
+    private:
+        [[nodiscard]] ParameterSet prepare_parameters(const ParameterSet& values) const;
+        void apply_parameters(const ParameterSet& values) const;
+        void apply_fixed_state() const;
     };
 }
