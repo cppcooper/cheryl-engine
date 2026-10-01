@@ -70,6 +70,15 @@ original failure. If the context is unavailable, it leaves native cleanup to
 platform context destruction. Renderer destruction similarly uses `abandon()`
 when context recovery fails, invalidating logical handles without GL calls.
 
+Texture and buffer constructors reject pending native errors before generating IDs
+and check generation, storage upload, mipmap generation and vertex-layout setup
+before publishing a logical resource. Errors include their native code. Failed
+untracked creation uses guarded discard; tracked IDs retire during constructor
+unwinding. An atlas restores unpack alignment before reporting upload failure and
+skips dependent mipmap generation. This detects reported native failures without
+promising recovery from memory exhaustion or context loss. OpenGL leaves native
+state undefined after OUT_OF_MEMORY; real-driver acceptance remains separate.
+
 Prepared recording-native regressions cover worker-thread final release,
 exactly-once collection/shutdown, retained handles after closure, moved/reused
 registrations, wrong-context collection, and guarded untracked cleanup. Recording

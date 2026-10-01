@@ -170,6 +170,8 @@ failure, startup, or executed acceptance gates.
 
 **Complete when:** the ownership invariant holds across all resource categories and retirement makes progress independently of new render frames or input polls.
 
+- [x] **6.6a** Reject native texture/buffer storage and mipmap/layout failures before logical publication. Check pending errors before generation, keep guarded ownership through generation/registration, restore atlas unpack alignment before rejection, and retire tracked handles on unwind. Checkpoint 60 prepares controlled recording coverage; native execution remains open.
+
 ## 7. Establish pipeline and material contracts
 
 **Start in:** Shader/GLSLProgram, ResourceProvider, ShaderMgr, Image/Geometry2D, and render pass/style types.

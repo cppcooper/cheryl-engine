@@ -1,4 +1,5 @@
 #include <backends/opengl/texture.h>
+#include "upload-check.h"
 #include <internals.h>
 
 #include <assets/resources/decoded-image.h>
@@ -12,9 +13,11 @@ namespace CE::Assets {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL texture needs a resource lifetime");
             lifetime->require_current();
+            RenderAPIs::require_no_gl_error("Cannot create a texture with pending OpenGL errors");
             GLuint id = 0;
             glGenTextures(1, &id);
             try {
+                RenderAPIs::require_no_gl_error("OpenGL texture creation failed");
                 return {lifetime, RenderAPIs::GLResourceKind::Texture, id};
             } catch (...) {
                 lifetime->discard_untracked(RenderAPIs::GLResourceKind::Texture, id);
@@ -67,10 +70,12 @@ namespace CE::Assets {
         }
         glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, fmt, GL_UNSIGNED_BYTE, bits);
         glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
+        RenderAPIs::require_no_gl_error("OpenGL texture storage upload failed");
 
         // Mip levels depend on the base image uploaded above.
         if (use_mipmaps) {
             glGenerateMipmap(GL_TEXTURE_2D);
+            RenderAPIs::require_no_gl_error("OpenGL texture mipmap generation failed");
         }
     }
 

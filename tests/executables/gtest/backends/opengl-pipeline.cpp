@@ -11,6 +11,7 @@
 #include <future>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -31,6 +32,7 @@ namespace {
         std::vector<std::shared_ptr<OpenGLResourceLifetime>> other_domains_;
         GLuint next_id_ = 10;
         std::uint32_t active_unit_ = 0;
+        GLenum error_ = GL_NO_ERROR;
 
     public:
         bool linked = true;
@@ -49,6 +51,16 @@ namespace {
         int state_changes = 0;
         int geometry_binds = 0;
         std::vector<std::pair<GLint, GLsizei>> draws;
+        std::vector<std::pair<GLResourceKind, GLuint>> generated;
+        std::vector<std::pair<GLResourceKind, GLuint>> deleted;
+        int buffer_uploads = 0;
+        int fail_buffer_upload = 0;
+        bool fail_image_upload = false;
+        bool fail_mipmaps = false;
+        int mipmap_calls = 0;
+        int attributes_enabled = 0;
+        GLint unpack_alignment = 4;
+        std::optional<GLResourceKind> fail_generation;
 
     private:
         template <typename T>
@@ -142,18 +154,51 @@ namespace {
                     copied[column][row] = values[column * 4 + row];
             active_->writes.insert_or_assign(location, copied);
         }
-        static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) {
+        static void generate(
+            GLResourceKind kind,
+            GLsizei count,
+            GLuint* images
+        ) {
             for (GLsizei i = 0; i < count; ++i)
-                images[i] = ++active_->next_id_;
+                active_->generated.emplace_back(kind, images[i] = ++active_->next_id_);
+            if (active_->fail_generation == kind)
+                active_->error_ = GL_OUT_OF_MEMORY;
         }
+        static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) { generate(GLResourceKind::Texture, count, images); }
+        static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) { generate(GLResourceKind::Buffer, count, images); }
+        static void GLAD_API_PTR generate_arrays(GLsizei count, GLuint* images) { generate(GLResourceKind::VertexArray, count, images); }
+        static void delete_ids(
+            GLResourceKind kind,
+            GLsizei count,
+            const GLuint* ids
+        ) {
+            for (GLsizei i = 0; i < count; ++i)
+                active_->deleted.emplace_back(kind, ids[i]);
+        }
+        static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Texture, count, ids); }
+        static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
+        static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
+        static GLenum GLAD_API_PTR error_query() { return std::exchange(active_->error_, GL_NO_ERROR); }
         static void GLAD_API_PTR activate_image(GLenum unit) { active_->active_unit_ = unit - GL_TEXTURE0; }
         static void GLAD_API_PTR bind_image(GLenum, GLuint image) { active_->image_binds.emplace_back(active_->active_unit_, image); }
         static void GLAD_API_PTR integer_query(GLenum parameter, GLint* value) {
-            *value = parameter == GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ? 8 : 4;
+            *value = parameter == GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ? 8 : active_->unpack_alignment;
         }
         static void GLAD_API_PTR image_parameter(GLenum, GLenum, GLint) {}
-        static void GLAD_API_PTR pixel_store(GLenum, GLint) {}
-        static void GLAD_API_PTR upload_image(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) {}
+        static void GLAD_API_PTR image_parameters(GLenum, GLenum, const GLint*) {}
+        static void GLAD_API_PTR pixel_store(GLenum parameter, GLint value) {
+            if (parameter == GL_UNPACK_ALIGNMENT)
+                active_->unpack_alignment = value;
+        }
+        static void GLAD_API_PTR upload_image(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) {
+            if (active_->fail_image_upload)
+                active_->error_ = GL_OUT_OF_MEMORY;
+        }
+        static void GLAD_API_PTR mipmaps(GLenum) {
+            ++active_->mipmap_calls;
+            if (active_->fail_mipmaps)
+                active_->error_ = GL_OUT_OF_MEMORY;
+        }
         static void GLAD_API_PTR enable(GLenum capability) { active_->enabled[capability] = true; ++active_->state_changes; }
         static void GLAD_API_PTR disable(GLenum capability) { active_->enabled[capability] = false; ++active_->state_changes; }
         static void GLAD_API_PTR blend_equation(GLenum rgb, GLenum alpha) {
@@ -168,8 +213,11 @@ namespace {
         static void GLAD_API_PTR winding(GLenum face) { active_->front_face = face; ++active_->state_changes; }
         static void GLAD_API_PTR bind_geometry(GLuint) { ++active_->geometry_binds; }
         static void GLAD_API_PTR bind_buffer(GLenum, GLuint) {}
-        static void GLAD_API_PTR upload_buffer(GLenum, GLsizeiptr, const void*, GLenum) {}
-        static void GLAD_API_PTR enable_attribute(GLuint) {}
+        static void GLAD_API_PTR upload_buffer(GLenum, GLsizeiptr, const void*, GLenum) {
+            if (++active_->buffer_uploads == active_->fail_buffer_upload)
+                active_->error_ = GL_OUT_OF_MEMORY;
+        }
+        static void GLAD_API_PTR enable_attribute(GLuint) { ++active_->attributes_enabled; }
         static void GLAD_API_PTR attribute_pointer(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*) {}
         static void GLAD_API_PTR draw_geometry(GLenum, GLint first, GLsizei count) { active_->draws.emplace_back(first, count); }
 
@@ -191,9 +239,15 @@ namespace {
                 replace(glad_glActiveTexture, activate_image);
                 replace(glad_glBindTexture, bind_image);
                 replace(glad_glGetIntegerv, integer_query);
+                replace(glad_glGetError, error_query);
                 replace(glad_glTexParameteri, image_parameter);
+                replace(glad_glTexParameteriv, image_parameters);
                 replace(glad_glPixelStorei, pixel_store);
                 replace(glad_glTexImage2D, upload_image);
+                replace(glad_glGenerateMipmap, mipmaps);
+                replace(glad_glDeleteTextures, delete_images);
+                replace(glad_glDeleteBuffers, delete_buffers);
+                replace(glad_glDeleteVertexArrays, delete_arrays);
                 replace(GLAD_GL_EXT_texture_filter_anisotropic, 0);
                 replace(glad_glEnable, enable);
                 replace(glad_glDisable, disable);
@@ -203,8 +257,8 @@ namespace {
                 replace(glad_glDepthMask, depth_mask);
                 replace(glad_glCullFace, cull);
                 replace(glad_glFrontFace, winding);
-                replace(glad_glGenVertexArrays, generate_images);
-                replace(glad_glGenBuffers, generate_images);
+                replace(glad_glGenVertexArrays, generate_arrays);
+                replace(glad_glGenBuffers, generate_buffers);
                 replace(glad_glBindVertexArray, bind_geometry);
                 replace(glad_glBindBuffer, bind_buffer);
                 replace(glad_glBufferData, upload_buffer);
@@ -224,6 +278,10 @@ namespace {
         }
         NativeProgramRecorder(const NativeProgramRecorder&) = delete;
         NativeProgramRecorder& operator=(const NativeProgramRecorder&) = delete;
+
+        void pending_error(GLenum error) { error_ = error; }
+        void collect() { lifetime_->collect(); }
+        std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
 
         std::shared_ptr<GLSLProgram> program() {
             return std::make_shared<GLSLProgram>(OpenGLHandle(lifetime_, GLResourceKind::Program, ++next_id_));
@@ -414,6 +472,109 @@ TEST(opengl_texture, unbinding_selects_an_explicit_unit_instead_of_inheriting_th
     native.image_binds.clear();
     first->unbind(1);
     EXPECT_EQ(native.image_binds, (std::vector<std::pair<std::uint32_t, GLuint>>{{1, 0}}));
+}
+
+TEST(opengl_upload, a_rejected_2d_buffer_retires_both_handles_before_attribute_setup) {
+    NativeProgramRecorder native;
+    native.fail_buffer_upload = 1;
+    EXPECT_THROW(static_cast<void>(native.geometry()), CE::Exceptions::failed_operation);
+    ASSERT_EQ(native.generated.size(), 2u);
+    EXPECT_EQ(native.buffer_uploads, 1);
+    EXPECT_EQ(native.attributes_enabled, 0);
+    EXPECT_TRUE(native.deleted.empty());
+    native.collect();
+    auto generated = native.generated;
+    auto deleted = native.deleted;
+    std::sort(generated.begin(), generated.end());
+    std::sort(deleted.begin(), deleted.end());
+    EXPECT_EQ(deleted, generated);
+    native.collect();
+    EXPECT_EQ(native.deleted.size(), 2u);
+}
+
+TEST(opengl_upload, either_legacy_mesh_upload_failure_retires_all_three_handles) {
+    for (const int failed_upload : {1, 2}) {
+        NativeProgramRecorder native;
+        native.fail_buffer_upload = failed_upload;
+        auto vertices = std::shared_ptr<CE::Vertex3D>(new CE::Vertex3D[3]{}, std::default_delete<CE::Vertex3D[]>{});
+        auto indices = std::shared_ptr<std::uint32_t>(new std::uint32_t[3]{}, std::default_delete<std::uint32_t[]>{});
+        EXPECT_THROW(static_cast<void>(CE::VAO(native.lifetime(), vertices, 3, indices, 3)), CE::Exceptions::failed_operation);
+        ASSERT_EQ(native.generated.size(), 3u);
+        EXPECT_EQ(native.buffer_uploads, failed_upload);
+        EXPECT_EQ(native.attributes_enabled, 0);
+        EXPECT_TRUE(native.deleted.empty());
+        native.collect();
+        auto generated = native.generated;
+        auto deleted = native.deleted;
+        std::sort(generated.begin(), generated.end());
+        std::sort(deleted.begin(), deleted.end());
+        EXPECT_EQ(deleted, generated);
+        native.collect();
+        EXPECT_EQ(native.deleted.size(), 3u);
+    }
+}
+
+TEST(opengl_upload, a_rejected_atlas_upload_restores_alignment_and_skips_mipmaps) {
+    NativeProgramRecorder native;
+    native.fail_image_upload = true;
+    const unsigned char pixels[]{255, 255, 255};
+    EXPECT_THROW(static_cast<void>(Texture(native.lifetime(), pixels, 3, 1, true, false, GL_CLAMP_TO_EDGE, GL_RED)),
+        CE::Exceptions::failed_operation);
+    EXPECT_EQ(native.unpack_alignment, 4);
+    EXPECT_EQ(native.mipmap_calls, 0);
+    ASSERT_EQ(native.generated.size(), 1u);
+    EXPECT_TRUE(native.deleted.empty());
+    native.collect();
+    EXPECT_EQ(native.deleted, native.generated);
+    native.collect();
+    EXPECT_EQ(native.deleted.size(), 1u);
+}
+
+TEST(opengl_upload, a_rejected_mipmap_generation_does_not_publish_the_texture) {
+    NativeProgramRecorder native;
+    native.fail_mipmaps = true;
+    const unsigned char pixels[]{255, 255, 255, 255};
+    EXPECT_THROW(static_cast<void>(Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA)),
+        CE::Exceptions::failed_operation);
+    EXPECT_EQ(native.mipmap_calls, 1);
+    EXPECT_TRUE(native.deleted.empty());
+    native.collect();
+    ASSERT_EQ(native.generated.size(), 1u);
+    EXPECT_EQ(native.deleted, native.generated);
+}
+
+TEST(opengl_upload, pending_errors_reject_creation_before_generating_native_ids) {
+    NativeProgramRecorder native;
+    native.pending_error(GL_INVALID_OPERATION);
+    EXPECT_THROW(static_cast<void>(native.image()), CE::Exceptions::failed_operation);
+    native.pending_error(GL_INVALID_OPERATION);
+    EXPECT_THROW(static_cast<void>(native.geometry()), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(native.generated.empty());
+    EXPECT_TRUE(native.deleted.empty());
+}
+
+TEST(opengl_upload, a_generation_error_discards_only_the_untracked_id_before_collecting_prior_handles) {
+    for (const auto kind : {GLResourceKind::Texture, GLResourceKind::VertexArray, GLResourceKind::Buffer}) {
+        NativeProgramRecorder native;
+        native.fail_generation = kind;
+        if (kind == GLResourceKind::Texture) {
+            EXPECT_THROW(static_cast<void>(native.image()), CE::Exceptions::failed_operation);
+        } else {
+            EXPECT_THROW(static_cast<void>(native.geometry()), CE::Exceptions::failed_operation);
+        }
+        ASSERT_FALSE(native.generated.empty());
+        ASSERT_EQ(native.deleted.size(), 1u);
+        EXPECT_EQ(native.deleted.front(), native.generated.back());
+        EXPECT_EQ(native.buffer_uploads, 0);
+        native.collect();
+        auto generated = native.generated;
+        auto deleted = native.deleted;
+        std::sort(generated.begin(), generated.end());
+        std::sort(deleted.begin(), deleted.end());
+        EXPECT_EQ(deleted, generated);
+        native.collect();
+        EXPECT_EQ(native.deleted.size(), native.generated.size());
+    }
 }
 
 TEST(opengl_texture, unbinding_rejects_foreign_missing_and_closed_contexts_before_any_native_bind) {

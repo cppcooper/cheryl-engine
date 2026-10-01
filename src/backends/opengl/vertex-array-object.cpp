@@ -1,4 +1,5 @@
 #include <backends/opengl/vertex-array-object.h>
+#include "upload-check.h"
 
 #include <internals/exceptions.h>
 #include <limits>
@@ -22,9 +23,11 @@ namespace CE {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL upload needs a resource lifetime");
             lifetime->require_current();
+            RenderAPIs::require_no_gl_error("Cannot create a vertex array with pending OpenGL errors");
             GLuint id = 0;
             glGenVertexArrays(1, &id);
             try {
+                RenderAPIs::require_no_gl_error("OpenGL vertex array creation failed");
                 return {lifetime, RenderAPIs::GLResourceKind::VertexArray, id};
             } catch (...) {
                 lifetime->discard_untracked(RenderAPIs::GLResourceKind::VertexArray, id);
@@ -36,9 +39,11 @@ namespace CE {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL upload needs a resource lifetime");
             lifetime->require_current();
+            RenderAPIs::require_no_gl_error("Cannot create a buffer with pending OpenGL errors");
             GLuint id = 0;
             glGenBuffers(1, &id);
             try {
+                RenderAPIs::require_no_gl_error("OpenGL buffer creation failed");
                 return {lifetime, RenderAPIs::GLResourceKind::Buffer, id};
             } catch (...) {
                 lifetime->discard_untracked(RenderAPIs::GLResourceKind::Buffer, id);
@@ -100,10 +105,12 @@ namespace CE {
         vbo_[1] = create_buffer(lifetime);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_[1].id());
         glBufferData(GL_ARRAY_BUFFER, vertices_bytes, vertices.data(), GL_STATIC_DRAW);
+        RenderAPIs::require_no_gl_error("OpenGL vertex storage upload failed");
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 0>());
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 3>());
+        RenderAPIs::require_no_gl_error("OpenGL vertex array layout failed");
     }
 
     VAO::VAO(
@@ -129,13 +136,16 @@ namespace CE {
         vbo_[1] = create_buffer(lifetime);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_[0].id());
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_vbo_indices, indices.get(), GL_STATIC_DRAW);
+        RenderAPIs::require_no_gl_error("OpenGL index storage upload failed");
         glBindBuffer(GL_ARRAY_BUFFER, vbo_[1].id());
         glBufferData(GL_ARRAY_BUFFER, vertices_bytes, vertices.get(), GL_STATIC_DRAW);
+        RenderAPIs::require_no_gl_error("OpenGL vertex storage upload failed");
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 0>());
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 3>());
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 6>());
+        RenderAPIs::require_no_gl_error("OpenGL vertex array layout failed");
     }
 }

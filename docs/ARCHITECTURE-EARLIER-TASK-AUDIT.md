@@ -157,6 +157,30 @@ from only the copied payload's destructor, then explicitly drains the accepted
 replacement. It checks one original failure, one copy release, and recovery.
 This is a source ownership/reentry finding; the scenario is not compiled or run.
 
+### A12: native texture and buffer upload failures still published logical resources
+
+Texture/VAO construction checked generated IDs and registration, but treated
+glTexImage2D, glGenerateMipmap and glBufferData as unconditional success. A driver
+error could leave a constructor returning a resource without its requested native
+storage. The legacy mesh path had the same gap for either index or vertex storage.
+
+Checkpoint 60 checks native errors before creation and after generation, storage,
+mipmap and attribute-layout setup. A preexisting error rejects before generation
+instead of silently clearing it and attributing it to a new upload. A new error
+throws with its code before logical publication. Generated but untracked IDs use
+the existing guarded discard path; tracked IDs retire on constructor unwinding.
+The atlas upload restores unpack alignment before checking failure and never
+generates mipmaps after a failed base upload.
+
+Prepared recording sources cover both mesh upload positions, 2D storage failure,
+atlas alignment/mipmap suppression, mipmap failure, preexisting errors and
+generation errors with an untracked ID. They compare every generated kind/ID
+against exactly one collected or discarded kind/ID. These are synthetic, uncompiled
+and unexecuted fixtures. They do not prove recovery from driver memory exhaustion:
+[OpenGL 3.3 section 2.5](https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf)
+leaves native state undefined after OUT_OF_MEMORY, so storage queries cannot
+replace error reporting. Context loss and allocation-failure evidence remain open.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,
