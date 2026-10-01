@@ -1,35 +1,13 @@
 #include <backends/opengl/gl.h>
 #include <backends/opengl/renderer.h>
-#include <backends/opengl/texture.h>
+#include <backends/opengl/pipeline.h>
 
-#include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
 
-#include <ext/matrix_transform.hpp>
 
 #include <thread>
-#include <type_traits>
 
 namespace CE::RenderAPIs {
-    namespace {
-        void bind_image(const Assets::Image& image) {
-            const auto* texture = dynamic_cast<const Assets::Texture*>(&image);
-            if (!texture)
-                throw Exceptions::invalid_args(CE_HERE, "An OpenGL draw requires an OpenGL image");
-            texture->bind(0);
-        }
-
-        void draw_grid_cell(const Assets::Asset2D& asset, const Assets::GridDefinition& grid, const Assets::CellIndex cell) {
-            if (cell >= grid.cell_count())
-                throw Exceptions::invalid_args(CE_HERE, "Render command selects a cell outside its grid");
-            if (!asset.geometry || !asset.texture)
-                throw Exceptions::invalid_args(CE_HERE, "Render command has incomplete grid resources");
-            asset.geometry->bind();
-            bind_image(*asset.texture);
-            asset.geometry->draw(cell * VAONumbers::vertices_per_strip_quad, VAONumbers::vertices_per_strip_quad);
-        }
-    }
-
     OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
     : context_(context) {}
 
@@ -104,61 +82,15 @@ namespace CE::RenderAPIs {
         return resources_;
     }
 
-    void OpenGLRenderer::bind_style(const DrawStyle& style, Assets::Shader*& active_material) const {
-        if (!style.material)
-            throw Exceptions::invalid_args(CE_HERE, "Render command needs a material");
-        auto* material = style.material.get();
-        if (material != active_material) {
-            material->bind_pass({projection_, view_});
-            active_material = material;
-        }
-        material->bind_draw({style.model_matrix, style.alpha, 1.0f, 0});
-    }
-
     void OpenGLRenderer::render(const RenderFrame& frame) {
-        (void)resources();
+        const auto domain = resources();
         for (const auto& pass : frame.passes()) {
-            set_depth_test(pass.depth_test);
-            set_camera_matrices(pass.projection, pass.view);
-            Assets::Shader* active_material = nullptr;
-            for (const auto& command : pass.draws) {
-                std::visit(
-                    [&](const auto& draw) {
-                        using Draw = std::decay_t<decltype(draw)>;
-                        if constexpr (std::is_same_v<Draw, SpriteDraw>) {
-                            if (!draw.sprite)
-                                throw Exceptions::invalid_args(CE_HERE, "Sprite draw has no sprite");
-                            bind_style(draw.style, active_material);
-                            draw_grid_cell(*draw.sprite, draw.sprite->definition().grid, draw.cell);
-                        } else if constexpr (std::is_same_v<Draw, TileDraw>) {
-                            if (!draw.tileset)
-                                throw Exceptions::invalid_args(CE_HERE, "Tile draw has no tileset");
-                            bind_style(draw.style, active_material);
-                            draw_grid_cell(*draw.tileset, draw.tileset->definition().grid, draw.cell);
-                        } else if constexpr (std::is_same_v<Draw, GraphicDraw>) {
-                            if (!draw.graphic || !draw.graphic->geometry || !draw.graphic->texture)
-                                throw Exceptions::invalid_args(CE_HERE, "Graphic draw has incomplete resources");
-                            bind_style(draw.style, active_material);
-                            draw.graphic->geometry->bind();
-                            bind_image(*draw.graphic->texture);
-                            draw.graphic->geometry->draw(0, VAONumbers::vertices_per_quad);
-                        } else if constexpr (std::is_same_v<Draw, TextDraw>) {
-                            if (!draw.font)
-                                throw Exceptions::invalid_args(CE_HERE, "Text draw has no font");
-                            bind_style(draw.style, active_material);
-                            const auto& geometry = draw.font->glyph_geometry();
-                            geometry.bind();
-                            bind_image(draw.font->glyph_atlas());
-                            // The font and message are read-only. Only the model uniform
-                            // changes as the pen advances through pre-uploaded glyphs.
-                            draw.font->for_each_glyph(draw.text, [&](const std::size_t index, const float x, const float y) {
-                                const auto model = glm::translate(draw.style.model_matrix, glm::vec3(x, y, 0.0f));
-                                active_material->bind_draw({model, draw.style.alpha, 1.0f, 0});
-                                geometry.draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
-                            });
-                        }
-                    },
-                    command);
+            for (const auto& packet : pass.draws) {
+                validate_draw_packet(packet, pass.constraints);
+                const auto* pipeline = dynamic_cast<const Assets::GLSLPipeline*>(packet.material->definition().pipeline.get());
+                if (!pipeline || pipeline->resource_domain() != domain.get())
+                    throw Exceptions::invalid_args(CE_HERE, "OpenGL frame requires a pipeline from this renderer's resource domain");
+                pipeline->draw(*packet.geometry, packet.first_vertex, packet.vertex_count, packet.parameters, pass.constraints);
             }
         }
     }

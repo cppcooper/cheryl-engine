@@ -9,7 +9,7 @@
 #include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
-#include <core/rendering/draw-info.h>
+#include <assets/submission/draw2d.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <core/resources/asset-management/asset-loader.h>
@@ -302,14 +302,25 @@ namespace {
 
     class MemoryPipeline final : public CE::Assets::Pipeline {
     public:
-        explicit MemoryPipeline(float intensity) : Pipeline(make_definition(intensity)) {}
+        explicit MemoryPipeline(
+            float intensity,
+            CE::Assets::PrimitiveTopology topology = CE::Assets::PrimitiveTopology::Triangles,
+            bool image = false
+        ) : Pipeline(make_definition(intensity, topology, image)) {}
 
     private:
-        static CE::Assets::PipelineDefinition make_definition(float intensity) {
+        static CE::Assets::PipelineDefinition make_definition(
+            float intensity,
+            CE::Assets::PrimitiveTopology topology,
+            bool image
+        ) {
             CE::Assets::PipelineDefinition result;
             result.program_sources = {"memory.vert", "memory.frag"};
+            result.topology = topology;
             result.parameters = {{"intensity", CE::Assets::ParameterType::Float, true,
                 CE::Assets::ParameterSemantic::Custom, intensity}};
+            if (image)
+                result.parameters.push_back({"image", CE::Assets::ParameterType::Sampler2D});
             return result;
         }
     };
@@ -813,22 +824,27 @@ TEST(runtime_adapter, sprite_cells_share_one_uploaded_grid) {
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);
     auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
-    CE::RenderAPIs::DrawStyle style;
-    style.material = shader;
-    pass.add(CE::RenderAPIs::SpriteDraw{sprite, 0, style});
-    pass.add(CE::RenderAPIs::SpriteDraw{sprite, 1, style});
+    CE::RenderAPIs::DrawStyle2D style;
+    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{
+        std::make_shared<MemoryPipeline>(1.0f, CE::Assets::PrimitiveTopology::TriangleStrip, true),
+        {{"image", CE::Assets::ImageBinding{sprite->texture, 3}}}});
+    const CE::Assets::SubmissionContext2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+    pass.add(CE::Assets::resolve_sprite(*sprite, 0, style, context));
+    pass.add(CE::Assets::resolve_sprite(*sprite, 1, style, context));
 
     EXPECT_EQ(provider.uploaded_vertices, 8u);
     EXPECT_EQ(provider.uploaded_topology, CE::Assets::PrimitiveTopology::TriangleStrip);
     ASSERT_EQ(frame.passes().size(), 1u);
     ASSERT_EQ(frame.passes()[0].draws.size(), 2u);
-    const auto* first = std::get_if<CE::RenderAPIs::SpriteDraw>(&frame.passes()[0].draws[0]);
-    const auto* second = std::get_if<CE::RenderAPIs::SpriteDraw>(&frame.passes()[0].draws[1]);
-    ASSERT_NE(first, nullptr);
-    ASSERT_NE(second, nullptr);
-    EXPECT_EQ(first->sprite, second->sprite);
-    EXPECT_EQ(first->cell, 0u);
-    EXPECT_EQ(second->cell, 1u);
+    const auto& first = frame.passes()[0].draws[0];
+    const auto& second = frame.passes()[0].draws[1];
+    EXPECT_EQ(first.geometry, second.geometry);
+    EXPECT_EQ(first.material, second.material);
+    EXPECT_EQ(first.first_vertex, 0u);
+    EXPECT_EQ(second.first_vertex, 4u);
+    EXPECT_EQ(std::get<CE::Assets::ImageBinding>(first.parameters.at("image")).unit, 3u);
+    EXPECT_EQ(provider.geometry->bind_count(), 0u);
+    EXPECT_EQ(std::dynamic_pointer_cast<MemoryImage>(sprite->texture)->bound_units.size(), 0u);
     frame.recycle();
 }
 
@@ -847,17 +863,20 @@ TEST(graphic, whole_image) {
     EXPECT_FLOAT_EQ(provider.uploaded_geometry[2].v, 1.0f);
     EXPECT_FLOAT_EQ(provider.uploaded_geometry[5].x, 0.0f);
 
-    // A single submission draws all six vertices with the loaded image.
-    CE::DrawInfo info;
-    info.material = provider.shader;
-    graphic.draw(info);
+    CE::RenderAPIs::DrawStyle2D style;
+    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{
+        std::make_shared<MemoryPipeline>(1.0f, CE::Assets::PrimitiveTopology::Triangles, true),
+        {{"image", CE::Assets::ImageBinding{graphic.texture, 0}}}});
+    const auto packet = CE::Assets::resolve_graphic(graphic, style, {});
+    EXPECT_EQ(packet.first_vertex, 0u);
+    EXPECT_EQ(packet.vertex_count, 6u);
+    EXPECT_EQ(packet.geometry, graphic.geometry);
+    EXPECT_EQ(std::get<CE::Assets::ImageBinding>(packet.parameters.at("image")).image, graphic.texture);
     const auto image = std::dynamic_pointer_cast<MemoryImage>(graphic.texture);
     ASSERT_TRUE(image);
-    EXPECT_EQ(image->bound_units, (std::vector<std::uint32_t>{0}));
-    EXPECT_EQ(provider.geometry->bind_count(), 1u);
-    EXPECT_EQ(provider.geometry->first_vertex, 0u);
-    EXPECT_EQ(provider.geometry->drawn_vertices, 6u);
-    EXPECT_EQ(provider.shader->uses, 1);
+    EXPECT_TRUE(image->bound_units.empty());
+    EXPECT_EQ(provider.geometry->bind_count(), 0u);
+    EXPECT_EQ(provider.shader->uses, 0);
 }
 
 TEST(material_cache, linking_does_not_bind_draw_state_and_reload_preserves_old_handles) {

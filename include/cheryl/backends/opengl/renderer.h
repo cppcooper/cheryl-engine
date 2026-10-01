@@ -36,8 +36,5 @@ namespace CE::RenderAPIs {
         void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override;
         [[nodiscard]] std::shared_ptr<OpenGLResourceLifetime> resources() const;
 
-    private:
-        void bind_style(const DrawStyle& style, Assets::Shader*& active_material) const;
-
     };
 }

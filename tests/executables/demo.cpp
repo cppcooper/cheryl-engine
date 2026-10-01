@@ -1,4 +1,6 @@
 #include <assets/types/2d/stbfont.h>
+#include <assets/submission/draw2d.h>
+#include <backends/opengl/resource-provider.h>
 #include <backends/opengl/glfw-backend.h>
 #include <core/controls/input-interface.h>
 #include <core/controls/input-system.h>
@@ -9,7 +11,7 @@
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/font-mgr.h>
-#include <core/resources/asset-management/shader-mgr.h>
+#include <core/resources/asset-management/material-mgr.h>
 #include <core/resources/fileio/fonts-system.h>
 #include <internals/exceptions.h>
 
@@ -19,6 +21,7 @@
 #include <charconv>
 #include <cstdint>
 #include <filesystem>
+#include <exception>
 #include <format>
 #include <future>
 #include <memory>
@@ -58,13 +61,11 @@ public:
         if (!font_path)
             throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
         CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
-        CE::Assets::ShaderMgr::get().load_program(shader2d, {shader2d.string() + ".vert", shader2d.string() + ".frag"}, resources);
         font_ = std::dynamic_pointer_cast<CE::Assets::STBFont>(CE::Assets::FontMgr::get().default_font());
-        font_shader_ = CE::Assets::ShaderMgr::get().get_asset(shader2d);
         if (!font_)
             throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
-        if (!font_shader_)
-            throw CE::Exceptions::runtime_exception(CE_HERE, "The shader2d program was not loaded");
+        CE::Assets::MaterialMgr::get().load_material(shader2d, resources, font_recipe(shader2d));
+        font_shader_ = CE::Assets::MaterialMgr::get().get_asset(shader2d);
 
         auto& input = engine_.input();
         auto& bindings = input.bindings();
@@ -96,8 +97,14 @@ public:
     }
 
     void update(const CE::GFramework::TickContext& tick) override {
-        if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
-            font_shader_ = pending_shader_.get();
+        if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+            try {
+                font_shader_ = pending_shader_.get();
+                reload_error_.clear();
+            } catch (const std::exception& error) {
+                reload_error_ = error.what(); // Keep the previous complete material generation.
+            }
+        }
         const auto& actions = tick.input;
         camera_.set_framebuffer_size(tick.framebuffer_size);
         if (actions.button(DemoActions::Reset).pressed()) {
@@ -117,10 +124,11 @@ public:
             if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
                 button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
                 const auto key = asset_root_ / "shaders" / "shader2d";
-                pending_shader_ = engine_.platform_dispatcher().submit([key](CE::Engine::EngineContext& platform) {
-                    auto& shaders = CE::Assets::ShaderMgr::get();
-                    shaders.reload_program(key, {key.string() + ".vert", key.string() + ".frag"}, platform.resources());
-                    return shaders.get_asset(key);
+                const auto builder = font_recipe(key);
+                pending_shader_ = engine_.platform_dispatcher().submit([key, builder](CE::Engine::EngineContext& platform) {
+                    auto& materials = CE::Assets::MaterialMgr::get();
+                    materials.reload_material(key, platform.resources(), builder);
+                    return materials.get_asset(key);
                 });
             }
             if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
@@ -190,27 +198,49 @@ public:
     void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
-        pass.reserve_draws(2);
-        CE::RenderAPIs::DrawStyle text;
+        const CE::Assets::SubmissionContext2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+        CE::RenderAPIs::DrawStyle2D text;
         text.material = font_shader_;
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f));
-        pass.add(CE::RenderAPIs::TextDraw{font_, "Camera target", text});
+        pass.add(CE::Assets::resolve_text(*font_, "Camera target", text, context));
 
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
-        pass.add(CE::RenderAPIs::TextDraw{font_,
+        pass.add(CE::Assets::resolve_text(*font_,
                                           std::format("Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
                                               "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                                              "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}",
+                                              "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}\nReload: {}",
                                               mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
-                                              focus_.owns_focus() ? "focused" : "unfocused", text_preview()),
-                                          text
-        });
+                                              focus_.owns_focus() ? "focused" : "unfocused", text_preview(), reload_error_),
+                                          text, context
+        ));
     }
 
 private:
+    CE::Assets::MaterialMgr::Builder font_recipe(const std::filesystem::path& key) const {
+        const auto atlas = font_->glyph_atlas_handle();
+        return [key, atlas](CE::Assets::ResourceProvider& provider) {
+            using namespace CE::Assets;
+            auto* native = dynamic_cast<OpenGLResourceProvider*>(&provider);
+            if (!native)
+                throw CE::Exceptions::invalid_args(CE_HERE, "The GLFW demo requires an OpenGL material provider");
+            PipelineDefinition definition;
+            definition.program_sources = {key.string() + ".vert", key.string() + ".frag"};
+            definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
+                {"view", ParameterType::Mat4, true, ParameterSemantic::View},
+                {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+                {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
+                {"scale", ParameterType::Float, true, ParameterSemantic::Scale},
+                {"image", ParameterType::Sampler2D}};
+            const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"},
+                {"model", "modelMatrix"}, {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
+            return native->build_material({native->build_pipeline(std::move(definition), bindings),
+                {{"image", ImageBinding{atlas, 0}}}});
+        };
+    }
+
     [[nodiscard]] std::string text_preview() const {
         // The current font atlas contains ASCII. Editing retains Unicode scalars;
         // display one fallback per unsupported scalar instead of pretending to shape text.
@@ -235,8 +265,9 @@ private:
     std::filesystem::path asset_root_;
     bool load_all_assets_;
     std::shared_ptr<CE::Assets::STBFont> font_;
-    std::shared_ptr<CE::Assets::Shader> font_shader_;
-    std::future<std::shared_ptr<CE::Assets::Shader>> pending_shader_;
+    std::shared_ptr<const CE::Assets::Material> font_shader_;
+    std::future<std::shared_ptr<const CE::Assets::Material>> pending_shader_;
+    std::string reload_error_;
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
     float mouse_y_ = 0.0f;

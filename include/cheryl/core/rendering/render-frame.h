@@ -1,9 +1,6 @@
 #pragma once
 
-#include <assets/types/2d/graphic.h>
-#include <assets/types/2d/sprite.h>
-#include <assets/types/2d/stbfont.h>
-#include <assets/types/2d/tileset.h>
+#include <core/rendering/draw-packet.h>
 
 #include <glm.hpp>
 #include <internals/exceptions.h>
@@ -13,53 +10,18 @@
 #include <span>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace CE::RenderAPIs {
-    /** Values resolved by simulation for one draw. Position, rotation, and scale
-     * are already in model_matrix; the renderer does not read an entity transform.
-     * The material is retained until the frame is consumed.
-     */
-    struct DrawStyle {
-        std::shared_ptr<Assets::Shader> material;
-        glm::mat4 model_matrix{1.0f};
-        float alpha = 1.0f;
-    };
-
-    struct SpriteDraw {
-        std::shared_ptr<const Assets::Sprite> sprite;
-        Assets::CellIndex cell{};
-        DrawStyle style;
-    };
-
-    struct TileDraw {
-        std::shared_ptr<const Assets::Tileset> tileset;
-        Assets::CellIndex cell{};
-        DrawStyle style;
-    };
-
-    struct GraphicDraw {
-        std::shared_ptr<const Assets::Graphic> graphic;
-        DrawStyle style;
-    };
-
-    struct TextDraw {
-        std::shared_ptr<const Assets::STBFont> font;
-        std::string text;
-        DrawStyle style;
-    };
-
-    using DrawCommand = std::variant<SpriteDraw, TileDraw, GraphicDraw, TextDraw>;
-
     /** One ordered pass. Matrices are copied from the simulation's camera; the
      * renderer never observes a live CameraBase or animation playback cursor.
      */
     struct RenderPass {
         glm::mat4 projection{1.0f};
         glm::mat4 view{1.0f};
-        bool depth_test = false;
-        std::vector<DrawCommand> draws;
+        Assets::ParameterSet parameters;
+        Assets::PassConstraints2D constraints;
+        std::vector<DrawPacket2D> draws;
     };
 
     class RenderFrameWriter;
@@ -79,11 +41,13 @@ namespace CE::RenderAPIs {
 
         [[nodiscard]] std::span<const RenderPass> passes() const { return {passes_.data(), active_passes_}; }
 
-        // After rendering or supersession, release command handles on the graphics
+        // After rendering or supersession, release packet handles on the graphics
         // thread while its context is current, then return the slot to simulation.
         void recycle() {
-            for (std::size_t i = 0; i < active_passes_; ++i)
+            for (std::size_t i = 0; i < active_passes_; ++i) {
                 passes_[i].draws.clear();
+                passes_[i].parameters.clear();
+            }
             active_passes_ = 0;
         }
 
@@ -102,9 +66,32 @@ namespace CE::RenderAPIs {
     public:
         void reserve_draws(std::size_t count) { frame_.passes_[index_].draws.reserve(count); }
 
-        template <typename Draw>
-        void add(Draw&& draw) {
-            frame_.passes_[index_].draws.emplace_back(std::forward<Draw>(draw));
+        [[nodiscard]] Assets::ShaderPass semantics() const {
+            const auto& pass = frame_.passes_[index_];
+            return {pass.projection, pass.view};
+        }
+        [[nodiscard]] const Assets::ParameterSet& parameters() const { return frame_.passes_[index_].parameters; }
+        [[nodiscard]] const Assets::PassConstraints2D& constraints() const { return frame_.passes_[index_].constraints; }
+
+        void add(DrawPacket2D draw) {
+            auto& pass = frame_.passes_[index_];
+            validate_draw_packet(draw, pass.constraints);
+            draw.authored_order = pass.draws.size();
+            pass.draws.push_back(std::move(draw));
+        }
+
+        // Validate the complete group before inserting any glyph/asset packets.
+        void add(std::vector<DrawPacket2D> draws) {
+            auto& pass = frame_.passes_[index_];
+            for (const auto& draw : draws)
+                validate_draw_packet(draw, pass.constraints);
+            if (draws.size() > pass.draws.max_size() - pass.draws.size())
+                throw Exceptions::invalid_args(CE_HERE, "Render pass exceeds packet storage limits");
+            pass.draws.reserve(pass.draws.size() + draws.size());
+            for (auto& draw : draws) {
+                draw.authored_order = pass.draws.size();
+                pass.draws.push_back(std::move(draw));
+            }
         }
 
     private:
@@ -116,7 +103,7 @@ namespace CE::RenderAPIs {
     };
 
     /** Writes into a free slot after update(). Camera matrices are copied once per
-     * pass; draw commands are constructed in the slot's retained vector storage.
+     * pass; draw packets are constructed in the slot's retained vector storage.
      */
     class RenderFrameWriter final {
     public:
@@ -127,14 +114,20 @@ namespace CE::RenderAPIs {
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
 
-        [[nodiscard]] RenderPassWriter begin_pass(const glm::mat4& projection, const glm::mat4& view, bool depth_test = false) {
+        [[nodiscard]] RenderPassWriter begin_pass(
+            const glm::mat4& projection,
+            const glm::mat4& view,
+            Assets::PassConstraints2D constraints = Assets::PassConstraints2D{},
+            Assets::ParameterSet parameters = Assets::ParameterSet{}
+        ) {
             const auto index = frame_.active_passes_;
             if (index == frame_.passes_.size())
                 frame_.passes_.emplace_back();
             auto& pass = frame_.passes_[index];
             pass.projection = projection;
             pass.view = view;
-            pass.depth_test = depth_test;
+            pass.constraints = std::move(constraints);
+            pass.parameters = std::move(parameters);
             ++frame_.active_passes_;
             return RenderPassWriter(frame_, index);
         }

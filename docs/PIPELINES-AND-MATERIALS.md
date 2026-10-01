@@ -65,7 +65,7 @@ Task 7 is unfinished. OpenGL pipeline building, explicit mappings/reflection,
 required/optional validation, copied-value uploads, and sampler-domain/unit checks
 are implemented in source. Frame and recipe integration remain pending.
 GLSLPipeline::draw applies complete fixed state after validating pass constraints,
-geometry, and parameters. Current legacy frames have not yet migrated to that path.
+geometry, and parameters. RenderFrame packets now use that path.
 Linked attributes must match Vertex2D's
 position3 at location zero and UV2 at location one; inactive inputs may be omitted.
 Geometry exposes immutable CPU-readable layout/topology/count metadata. Pipeline
@@ -73,15 +73,17 @@ validation checks complete primitives and bounded ranges before publication;
 native drawing additionally checks VAO/program domain identity and the live current
 context. Program/image native domains are checked as well.
 
-ShaderMgr still publishes legacy Shader handles, and DrawStyle still stores one.
+ShaderMgr still publishes legacy Shader handles for explicit program access; DrawStyle2D stores an immutable Material handle.
 MaterialMgr::load_material retains an existing key; reload_material builds a full
 candidate outside cache locks, then replaces one recipe after success. Builders
 own their typed definitions/backend mappings and validate all dependent resources.
 A throw or null candidate retains the previous complete recipe; retained readers
 keep the old material/pipeline/image generation. Provider teardown clears recipes
 before other resource caches, with the same loading-owner/domain exclusion.
-Bootstrap and frame usage still need migration. Task 8 must then resolve
-asset/text commands into geometry/material packets outside the renderer.
+The demo bootstrap builds a typed font recipe and reloads it on the platform owner.
+Frame preparation resolves asset/text submissions into owned packets; playback only
+consumes geometry, material, ranges, and copied parameters. A failed demo reload keeps
+the previous generation and reports its error in the overlay.
 
 Start with typed C++ definitions and explicit bootstrap/build APIs. A future
 definition-file parser should produce these types separately from generic manifest
@@ -148,5 +150,8 @@ and laid-out font glyphs before rendering, without binding native resources.
 ImageParameter2D selects a public sampler key and unit explicitly. Text layout is
 const and returns glyph placements; FFont bank selection is typed. Resolved glyph
 packets retain the geometry/atlas even after the Font object is released.
-Frame publication and playback migration are the next checkpoint. Immediate draw
-APIs remain temporarily available until their callers have moved.
+RenderPassWriter validates individual packets or a whole glyph group before publication
+and assigns stable authored order. RenderFrame keeps reusable vector capacity and
+releases packet/pass handles on recycle. The OpenGL renderer checks its native
+pipeline domain, then calls the validated fixed-state draw path in authored order.
+Immediate draw APIs remain temporarily available pending removal.
