@@ -50,7 +50,11 @@ Compilation, test execution, and remote writes have not been requested.
   time. Frame preparation occurs once per useful batch; rendering retains the latest
   complete frame. Regression scenarios and timing/suspension/optimization documentation
   are prepared; compilation, regression execution, and real acceptance remain open.
-- Tasks 7–8 pending. Task 9 acceptance remains unexecuted.
+- Task 7 partially implemented: typed 2D definitions (7.1), immutable snapshots,
+  copied/validated parameter resolution, retained image/unit requests, and independent
+  geometry/image binding. Native builders/reflection, value uploads, full state/domain
+  checks, and reload/frame integration remain pending. Task 8 and task 9 executed
+  acceptance remain open.
 - Task 6 complete in source: AssetCacheContext preserves the global loading domain
   and strong residency. Resource ownership is traced through caches/composites/frames
   to move-only native registrations. Both modes service maintenance independently
@@ -62,6 +66,19 @@ Compilation, test execution, and remote writes have not been requested.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
+
+- D0: residency checkpoints 21–25 are pushed as `87ec70e10d0c3f2498f38fbd00a7194766410547`.
+  Its tree matches saved local `a677444`. The earlier local residency series remains
+  on its checkpoint branch. Continue from the pushed remote base; numbered delivery
+  starts at 26 and the original task base remains unchanged.
+- D7: optional custom values cannot mean "skip a native write" when a uniform is
+  active, because that would retain another draw's data. Add explicit native builder
+  default/reset validation under 7.2a/7.3a before integrating the value resolver.
+  Generic contract resolution intentionally represents missing optional values as absent.
+- D7: the shader2d sprite and alpha-atlas font use the same six roles, while the
+  prepared two-image effect uses time/color/intensity and distinct sampler units.
+  Native mappings must be supplied explicitly; old custom programs must not inherit
+  the sprite schema. Fixed-state/pass constraints and recipe publication remain open.
 
 - D6: the shader-link guard retained a native ID after lifetime registration.
   Later logical-program allocation failure could cause both immediate deletion
@@ -156,29 +173,43 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 Completed source tasks: 0–6, including discovery addition 4.7 (factory forwarding).
 Task 9 documentation/regression preparation accompanies those changes; executed
-acceptance remains open. Continue at task 7 (pipeline/material contracts), then
+acceptance remains open. Task 7 has a partial source checkpoint; continue with
+native pipeline/material builders and integration, then
 task 8 (resolved packets and immediate-draw migration). Preserve strong residency,
 the established timing/input contracts, owner maintenance, and native-domain checks.
 
-This continuation reserves numbered patches **21–25**; the next unused filename
-is **cheryl-engine-26.patch**. The user-pushed branch includes checkpoints 01–20.
+This continuation reserves numbered patches **26–30**; the next unused filename
+is **cheryl-engine-31.patch**. The user-pushed branch includes checkpoints 01–25.
 Apply **cheryl-engine-continuation.patch** to pushed base
-`14d5a818386582a0c22332cbfdb5161135e92093`, or apply 21–25 individually in order.
+`87ec70e10d0c3f2498f38fbd00a7194766410547`, or apply 26–30 individually in order.
 The separately retained **cheryl-engine.patch** is cumulative from the fixed
-original base and includes twenty earlier commits again. Use it for a fresh
+original base and includes twenty-five earlier commits again. Use it for a fresh
 checkout at the original base; do not combine these application routes.
-Earlier local execution/timing commits remain on checkpoint branches. Current
+Earlier local execution/timing/residency commits remain on checkpoint branches. Current
 commits retain individual authors/messages after reconciling identical pushed trees.
 
-Resource residency/maintenance is complete in source. Task 7 must retain logical
-program/material generations and introduce explicit geometry/resource parameter
-binding. Current DrawStyle still retains Shader and Geometry2D still binds Image;
-their architectural migration is pending, rather than silently claimed complete.
+Resource residency/maintenance is complete in source. Task 7 now has typed
+PipelineDefinition/MaterialDefinition, immutable Pipeline/Material snapshots,
+and copied ParameterSet resolution with explicit ownership and precedence.
+Geometry2D no longer includes/binds Image; image units are supplied per binding
+request and OpenGL validates an upload-time retained context limit. Current
+DrawStyle still retains Shader. The new typed generations are not yet consumed
+by native builders/frames. Reflection, copied value uploads, complete state/domain
+validation, and successful recipe reload publication remain pending.
+
+See [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md) for the exact boundary.
+Six new pipeline/material regression scenarios and the adapted graphic source
+cover ownership, overrides, required/optional/type failures, generation preservation,
+and independent image-unit selection. These are prepared sources, not executed results.
 
 The residency continuation statically parses seventeen changed C++ files. The
 GLAD calling-convention declaration macro is normalized for syntax-tree inspection
 on this Linux target; this is not preprocessing/type checking or compilation.
 Whitespace and combined/incremental mailbox checks are preparation evidence.
+
+The pipeline continuation statically parses 23 changed C++ files without syntax
+errors and passes whitespace review. Combined and individual mailbox replay
+must reproduce the source tree and author/date/message ordering before delivery.
 
 No commits/branches were pushed by the assistant. No compilation, CMake configuration, regression
 execution, or real GLFW/OpenGL acceptance was performed in this continuation.

@@ -276,20 +276,20 @@ namespace {
 
     /** Records independent geometry binding and draw ranges instead of GPU commands. */
     class MemoryGeometry final : public CE::Assets::Geometry2D {
-        mutable std::size_t binds = 0;
+        mutable std::size_t binds_ = 0;
 
     public:
         mutable std::size_t first_vertex = 0;
         mutable std::size_t drawn_vertices = 0;
 
-        void bind() const override { ++binds; }
+        void bind() const override { ++binds_; }
 
         void draw(std::size_t first, std::size_t count) const override {
             first_vertex = first;
             drawn_vertices = count;
         }
 
-        [[nodiscard]] std::size_t bind_count() const { return binds; }
+        [[nodiscard]] std::size_t bind_count() const { return binds_; }
     };
 
     /** Records shader uses and camera matrices passed during drawing. */

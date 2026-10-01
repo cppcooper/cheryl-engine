@@ -39,7 +39,7 @@ The reviewed execution code is identical at the planning snapshot to `54a91b6`; 
 - `PlatformTaskQueue` already owns move-only work, returns futures, drains detached batches, and cancels pending work on the platform thread. Preserve those useful contracts during its rename.
 - `GameRuntime` has one variable update per sequential cycle and a hard-coded concurrent cadence of 16,667 microseconds. Its update delta currently comes from the input accumulator's wall-clock interval.
 - `RenderFrame` and `OpenGLRenderer` still understand Sprite, Tileset, Graphic, and STBFont. `DrawStyle::material` is actually a Shader handle.
-- Geometry binds an image; OpenGL textures store a binding unit. Both need attention when one material can use multiple images.
+- Geometry/image binding is now independent, and images retain no binding unit. Typed material-to-native binding still needs integration.
 - Deferred retirement and strong caches already exist. Collection currently occurs in `clear()`/`render()`, leaving an idle-loop maintenance gap.
 - Owned loading, CPU preparation/GPU upload, transient shader stages, and successful-replacement shader reload already exist. Extend and preserve these; do not rebuild them as missing features.
 
@@ -159,7 +159,7 @@ These are the proposed concrete choices within the agreed architecture:
 
 **Start in:** Shader/GLSLProgram, ResourceProvider, ShaderMgr, Image/Geometry2D, and render pass/style types.
 
-- [ ] **7.1** Define PipelineDefinition (program sources, vertex expectations, topology, blend/depth/cull behavior, parameter contract) and MaterialDefinition (pipeline reference, resource bindings, defaults). Keep the 2D scope modest.
+- [x] **7.1** Define PipelineDefinition (program sources, vertex expectations, topology, blend/depth/cull behavior, parameter contract) and MaterialDefinition (pipeline reference, resource bindings, defaults). Keep the 2D scope modest.
 - [ ] **7.2** Build backend-compatible pipelines/materials through explicit bootstrap APIs. Compiled stages stay transient; linked programs remain retained executable resources. Start with typed definitions; document a future separate definition-file parser outside generic manifest discovery.
 - [ ] **7.3** Define copied parameter values and ownership by pass/material/draw. Support engine semantics plus pipeline-specific scalar/vector/matrix/sampler values without common code selecting GLSL names. Specify required/optional values, type validation, and override precedence.
 - [ ] **7.4** Implement independently bound geometry and material resources. Remove Geometry2D's Image dependency. Texture units/sampler bindings belong to draw/material binding; sharing one image between materials must not require changing a cached image's binding-unit state.
@@ -167,6 +167,20 @@ These are the proposed concrete choices within the agreed architecture:
 - [ ] **7.6** Preserve successful-replacement shader reload with immutable logical generations. Existing frames retain their old pipeline/material generation; failed replacement retains the previous one. Do not mutate a published frame's material defaults or parameter definitions.
 
 **Boundary D7 — actual material variety:** trace a normal sprite, alpha font, and a two-texture effect with time/color/intensity parameters. Add parameter-schema, sampler-binding, state-ownership, or recipe-publication subtasks if one cannot fit cleanly. Do not force every program to accept sprite uniforms or introduce a general hot-reload transaction.
+
+Checkpoint 26–30 completes typed definitions (7.1), copied parameter resolution
+and validation (part of 7.3), independent geometry/image binding and image-free
+unit ownership (part of 7.4), and immutable definition/default snapshots (part of
+7.6). The remaining work is explicit:
+
+- [ ] **7.2a / 7.3a** Add OpenGL builder mappings/reflection and value uploads. Optional active uniforms need defaults/reset semantics so absent values cannot retain previous draws' data.
+- [ ] **7.4a / 7.5a** Bind resolved material resources, validate layout/topology/native domains, and apply all fixed state under explicit pass constraints. Current legacy adapters deliberately select unit zero.
+- [ ] **7.6a** Publish successful pipeline/material replacements through bootstrap/reload; retain old frame generations and preserve the previous generation on failure.
+
+The existing shader2d sprite/font sources have the same six engine/sampler roles;
+font alpha comes from the atlas swizzle. The prepared two-image effect schema
+uses its own time/color/intensity keys, with no forced sprite contract. Native
+builder/frame integration and all executed acceptance remain open.
 
 **Complete when:** program processing rules and material resources/defaults are separate, geometry/image binding is independent, and custom materials can supply different parameter sets safely.
 
