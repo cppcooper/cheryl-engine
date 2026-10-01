@@ -55,10 +55,11 @@ namespace CE::GFramework {
     }
 
     void GameRuntime::run_sequential() {
-        if (stop_requested_.load(std::memory_order_acquire))
+        if (stop_requested_.load(std::memory_order_acquire)) {
+            finish_unstarted_session();
             return;
+        }
 
-        auto& window = engine_.window();
         auto& renderer = engine_.renderer();
         auto& input = engine_.input();
         RenderAPIs::RenderFrame frame;
@@ -68,6 +69,7 @@ namespace CE::GFramework {
         std::exception_ptr failure;
 
         try {
+            auto& window = engine_.window();
             renderer_started = true;
             renderer.initialize();
             renderer_ready_ = true;
@@ -193,8 +195,10 @@ namespace CE::GFramework {
     }
 
     void GameRuntime::run_concurrent() {
-        if (stop_requested_.load(std::memory_order_acquire))
+        if (stop_requested_.load(std::memory_order_acquire)) {
+            finish_unstarted_session();
             return;
+        }
 
         enum class SlotState { Free, Writing, Ready, Rendering, Retired, Recycling };
         struct Slot {
@@ -209,7 +213,6 @@ namespace CE::GFramework {
             bool worker_done = false;
         };
 
-        auto& window = engine_.window();
         auto& renderer = engine_.renderer();
         auto& input = engine_.input();
         std::array<Slot, 3> slots;
@@ -221,6 +224,7 @@ namespace CE::GFramework {
         std::exception_ptr failure;
 
         try {
+            auto& window = engine_.window();
             renderer_started = true;
             renderer.initialize();
             renderer_ready_ = true;
@@ -499,6 +503,26 @@ namespace CE::GFramework {
             stop_requested_.store(true, std::memory_order_release);
         }
         scheduler_->wake.notify_all();
+    }
+
+    void GameRuntime::finish_unstarted_session() {
+        std::exception_ptr failure;
+        const auto finish = [&failure](auto&& operation) {
+            try {
+                operation();
+            } catch (...) {
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        };
+        finish([this] { engine_.close_worker_submissions(); });
+        finish([this] { simulation_dispatcher_.close(); });
+        finish([this] { engine_.platform_dispatcher().close(); });
+        // Neither mailbox has opened, so no accepted platform continuation can
+        // require pumping; queued CPU jobs observe closed targets and settle.
+        finish([this] { engine_.finish_workers(); });
+        if (failure)
+            std::rethrow_exception(failure);
     }
 
     void GameRuntime::pump_shutdown_requests(std::exception_ptr& failure) {

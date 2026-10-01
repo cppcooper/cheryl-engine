@@ -566,6 +566,75 @@ TEST(runtime_adapter, failed_renderer_initialization_does_not_start_the_game) {
     EXPECT_EQ(game.shutdowns, 0);
 }
 
+TEST(runtime_adapter, missing_active_window_closes_workers_without_starting_any_adapter) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        auto rendering = std::make_unique<MemoryRenderer>();
+        auto* renderer = rendering.get();
+        auto engine = std::make_unique<CE::Engine::EngineContext>(std::make_unique<MemoryDisplay>(),
+            std::make_unique<MemorySurface>(), std::move(rendering), std::make_unique<MemoryProvider>(), input);
+        auto group = engine->make_worker_group();
+        auto owner = std::make_shared<int>(42);
+        std::weak_ptr<int> capture = owner;
+        auto result = group.submit([owner = std::move(owner)] { return *owner; });
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        try {
+            runtime.run();
+            ADD_FAILURE() << "An absent window must reject startup";
+        } catch (const CE::Exceptions::failed_operation& error) {
+            EXPECT_NE(std::string_view(error.what()).find("no active window"), std::string_view::npos);
+        }
+        EXPECT_FALSE(group.status().accepting);
+        ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_TRUE(capture.expired());
+        EXPECT_EQ(renderer->initializations, 0);
+        EXPECT_EQ(renderer->shutdowns, 0);
+        EXPECT_EQ(game.initializations, 0);
+        EXPECT_EQ(game.shutdowns, 0);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(runtime_adapter, stop_before_start_finishes_groups_and_keeps_mailbox_targets_closed) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        auto owner = std::make_shared<int>(42);
+        std::weak_ptr<int> capture = owner;
+        auto result = group.submit([platform, owner = std::move(owner)] {
+            EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+            return *owner;
+        });
+        runtime.stop();
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_FALSE(group.status().accepting);
+        ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_TRUE(capture.expired());
+        EXPECT_EQ(renderer->initializations, 0);
+        EXPECT_EQ(renderer->shutdowns, 0);
+        EXPECT_EQ(game.initializations, 0);
+        EXPECT_EQ(game.shutdowns, 0);
+        EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+    }
+}
+
 TEST(runtime_adapter, a_stopped_adapter_graph_cannot_be_started_by_another_runtime) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
