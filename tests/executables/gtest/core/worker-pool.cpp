@@ -10,10 +10,36 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <future>
 #include <memory>
 #include <stdexcept>
 #include <vector>
+
+namespace {
+    // Declare after the captured recording state so exceptional test exits join
+    // the held worker before destroying anything its queued jobs may reference.
+    class HeldWorkerCleanup final {
+        CE::Engine::WorkerPool& pool_;
+        std::promise<void>& release_;
+        bool released_ = false;
+
+    public:
+        HeldWorkerCleanup(
+            CE::Engine::WorkerPool& pool,
+            std::promise<void>& release
+        )
+        : pool_(pool), release_(release) {}
+        ~HeldWorkerCleanup() { release_and_join(); }
+        void release_and_join() {
+            if (!released_) {
+                release_.set_value();
+                released_ = true;
+            }
+            pool_.shutdown();
+        }
+    };
+}
 
 #if defined(__linux__)
 #include <sched.h>
@@ -142,6 +168,40 @@ TEST(worker_pool, dropping_a_group_handle_does_not_cancel_accepted_work) {
     EXPECT_EQ(result.get(), 13);
 }
 
+TEST(worker_pool, captured_resource_release_can_post_to_another_group_before_drain_returns) {
+    CE::Engine::WorkerPool pool;
+    auto source = pool.make_group();
+    auto other = pool.make_group();
+    std::future<int> follow_up;
+    std::exception_ptr release_failure;
+    bool released = false;
+    auto resource = std::shared_ptr<int>(new int{42}, [&](int* value) noexcept {
+        // Final capture release still belongs to the running job, but must not
+        // hold the scheduler lock when inspecting or posting to this pool.
+        const auto status = source.status();
+        EXPECT_EQ(status.running, 1u);
+        EXPECT_EQ(status.completed, 0u);
+        try {
+            follow_up = other.submit([] { return 17; });
+        } catch (...) {
+            release_failure = std::current_exception();
+        }
+        released = true;
+        delete value;
+    });
+    auto result = source.submit([resource = std::move(resource)] { return *resource; });
+    source.close();
+    source.drain(); // Includes capture destruction, even after the result is ready.
+    EXPECT_TRUE(released);
+    EXPECT_FALSE(release_failure);
+    EXPECT_EQ(result.get(), 42);
+    EXPECT_EQ(source.status().completed, 1u);
+    other.close();
+    other.drain();
+    ASSERT_TRUE(follow_up.valid());
+    EXPECT_EQ(follow_up.get(), 17);
+}
+
 TEST(worker_pool, required_unavailable_topology_rejects_instead_of_silently_falling_back) {
     CE::Engine::WorkerPool pool;
     CE::Engine::WorkerGroupOptions options;
@@ -227,6 +287,46 @@ TEST(worker_pool, a_required_job_revalidates_a_cached_mask_changed_by_the_previo
     inherited.close();
     inherited.drain();
 }
+
+TEST(worker_pool, overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_one_worker) {
+    CE::Engine::WorkerPool pool;
+    const auto capabilities = pool.capabilities();
+    if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
+        GTEST_SKIP() << "Overlapping CPU groups require at least two eligible CPUs";
+    CE::Engine::WorkerGroupOptions options;
+    options.weight = 3;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.cpus = {capabilities.available_cpus[0]};
+    auto frequent = pool.make_group(options);
+    const auto frequent_mask = frequent.policy().effective_cpus;
+    options.weight = 1;
+    options.cpu.cpus.push_back(capabilities.available_cpus[1]);
+    auto regular = pool.make_group(options);
+    const auto regular_mask = regular.policy().effective_cpus;
+
+    auto gate = pool.make_group();
+    std::promise<void> entered;
+    std::promise<void> release;
+    auto released = release.get_future().share();
+    std::vector<char> order;
+    std::vector<std::future<std::vector<unsigned int>>> jobs;
+    HeldWorkerCleanup cleanup(pool, release);
+    auto blocked = gate.submit([&] { entered.set_value(); released.wait(); });
+    entered.get_future().wait();
+    // Queue both workloads while the sole physical worker is held. Each job
+    // records its actual native mask before the next group's policy is applied.
+    for (int i = 0; i < 12; ++i)
+        jobs.push_back(frequent.submit([&] { order.push_back('F'); return read_worker_cpu_mask(); }));
+    for (int i = 0; i < 4; ++i)
+        jobs.push_back(regular.submit([&] { order.push_back('R'); return read_worker_cpu_mask(); }));
+    cleanup.release_and_join();
+    blocked.get();
+    for (std::size_t i = 0; i < jobs.size(); ++i)
+        EXPECT_EQ(jobs[i].get(), i < 12 ? frequent_mask : regular_mask);
+    ASSERT_EQ(order.size(), 16u);
+    EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'F'), 6);
+    EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'R'), 2);
+}
 #endif
 
 TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_other_group) {
@@ -235,20 +335,20 @@ TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_othe
     std::promise<void> entered;
     std::promise<void> release;
     auto released = release.get_future().share();
+    std::vector<char> order;
+    std::vector<std::future<void>> jobs;
+    HeldWorkerCleanup cleanup(pool, release);
     auto blocked = gate.submit([&] { entered.set_value(); released.wait(); });
     entered.get_future().wait();
     CE::Engine::WorkerGroupOptions options;
     options.weight = 3;
     auto frequent = pool.make_group(options);
     auto regular = pool.make_group();
-    std::vector<char> order;
-    std::vector<std::future<void>> jobs;
     for (int i = 0; i < 12; ++i)
         jobs.push_back(frequent.submit([&] { order.push_back('F'); }));
     for (int i = 0; i < 4; ++i)
         jobs.push_back(regular.submit([&] { order.push_back('R'); }));
-    release.set_value();
-    pool.shutdown();
+    cleanup.release_and_join();
     blocked.get();
     for (auto& job : jobs)
         job.get();

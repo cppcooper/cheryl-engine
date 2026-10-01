@@ -106,3 +106,10 @@ restore its effective set. Linux mask scenarios explicitly skip unavailable
 capabilities. None has been executed in this continuation. Native affinity failure
 and partial thread-start rollback still need controlled failure execution; the
 current success-path fixtures do not establish either outcome.
+
+Checkpoint 52 prepares capture-deleter reentry into another group before source
+drainage completes, and a Linux overlapping-mask scenario on one held worker.
+The latter prequeues 3:1 workloads, checks each job's actual mask, and compares
+the first eight selections. It tests mask switching together with weighted
+scheduling; it does not exercise live OS restriction or native application failure.
+These two additional scenarios are also uncompiled and unexecuted.
