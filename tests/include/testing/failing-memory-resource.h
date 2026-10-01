@@ -1,10 +1,9 @@
 #pragma once
 
-#include <internals/exceptions.h>
-
 #include <atomic>
 #include <cstddef>
 #include <memory_resource>
+#include <new>
 
 namespace CE::Testing {
     // Scoped rejection of a real memory-resource request; no global new override.
@@ -24,7 +23,7 @@ namespace CE::Testing {
             const auto request = ++requests;
             if (request == reject_request.load()) {
                 ++rejected;
-                throw Exceptions::bad_alloc(CE_HERE);
+                throw std::bad_alloc{};
             }
             auto* result = std::pmr::new_delete_resource()->allocate(bytes, alignment);
             ++outstanding;

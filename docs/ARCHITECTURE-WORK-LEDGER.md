@@ -223,7 +223,39 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Cache allocation and category audit: checkpoints 67–69
+### Native allocation and texture query audit: checkpoints 70–72
+
+This pass starts at saved local 69,
+`3799c053931a4a2051fa789e3fe0e956e24dce17`. Remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–69 are preserved.
+
+- 70 adds scoped actual registry growth/program control-block allocation rejection
+  through private production entries. Five fixtures prepare preservation of live
+  and pending entries, free-slot reuse, shutdown/abandonment, single native ownership
+  after logical failure, and allocator retention through final handle/weak release.
+- 71 fixes A15: texture limit/alignment/anisotropy queries reject errors before
+  consuming outputs. Two fixtures prepare untouched failed-query outputs, skipped
+  parameter/image/mipmap use, unchanged alignment and one-time retirement.
+- 72 uses std::bad_alloc for memory-resource rejection and records this bounded
+  source review and its remaining evidence gaps.
+
+The audit remains open: font bake/atlas injection, broader native object allocation
+boundaries, combined context/asset/runtime startup/shutdown failures, and full
+format/declaration review remain. No configuration, compilation, test execution,
+runtime/native acceptance or remote write occurred. Task 9 remains paused.
+
+Numbered delivery is **70–72**; next unused number is **73**. The new-only
+`cheryl-engine-followup.patch` starts after saved 69. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–72**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds unapplied patches until audit completion; routes overlap.
+
+Changed syntax trees, whitespace, local documentation links and requirement rows
+receive static inspection. New-only, numbered, combined and original-base mailboxes
+must replay to the exact tree and ordered author/date/messages. These checks do not
+establish C++ type/link correctness, allocator/driver behavior or race freedom.
+
+### Cache allocation and category audit: checkpoints 67–69 (historical)
 
 This pass starts at saved local 66,
 `7ff1be41ad05d07972cb684acc1476d7223a85b6`. Remote 57 remains

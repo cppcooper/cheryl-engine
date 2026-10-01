@@ -250,6 +250,33 @@ geometry across explicit cache clear. Those two scenarios use synthetic resource
 they do not inject failures inside native registration, font atlas creation or the
 runtime's startup/shutdown sequence. Such cases remain distinct open audit work.
 
+### A15: texture queries consumed output before checking errors
+
+The anisotropy-limit query wrote into an uninitialized float that was immediately
+passed to glTexParameterf. A failed query could leave that output untouched, so
+the later upload error check came after an invalid C++ read. The unpack-alignment
+query similarly allowed a failed query to restore a guessed value; a context using
+alignment eight could be changed to four. Binding-limit queries also lacked an
+immediate native status check.
+
+Checkpoint 71 initializes the float and checks each query before consuming its
+output, and checks sampling configuration before querying alignment/uploading.
+Two recording fixtures prepare unchanged failed-query outputs, no anisotropy
+parameter/image/mipmap use after failure, unchanged unpack alignment and one-time
+texture retirement. They are uncompiled and unexecuted; real driver recovery and
+context loss remain acceptance work.
+
+Checkpoint 70 separately prepares five native registry/program allocation and
+allocator-retention scenarios through private production entries. A scoped owned
+memory resource rejects actual entry-vector growth or logical control-block
+allocation. Live/pending entries survive failed growth; free-slot reuse and shutdown
+need no new entry allocation. A later logical failure retires the adopted program
+without duplicate untracked discard. Retained handles and weak control blocks keep
+their allocator alive through final deallocation. Default production allocation
+remains fixed new/delete for entries and make_shared for logical programs. These
+sources do not close font bake/atlas, every native wrapper's allocation boundary,
+combined runtime failure or actual heap-exhaustion acceptance.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

@@ -286,7 +286,7 @@ TEST(opengl_program_builder, registry_allocation_failure_discards_the_untracked_
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     native.lifetime = ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [&] { return native.current; }, memory);
     memory->reject_next();
-    EXPECT_THROW((void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages()), CE::Exceptions::bad_alloc);
+    EXPECT_THROW((void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages()), std::bad_alloc);
     EXPECT_EQ(memory->rejected.load(), 1u);
     native.expect_all_destroyed_once();
     native.lifetime->collect();
@@ -299,7 +299,7 @@ TEST(opengl_program_builder, logical_allocation_failure_retires_the_adopted_prog
     memory->reject_next();
     EXPECT_THROW(
         (void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages(), memory),
-        CE::Exceptions::bad_alloc
+        std::bad_alloc
     );
     EXPECT_EQ(memory->rejected.load(), 1u);
     ASSERT_EQ(native.destroyed.size(), 2u); // Stages detached; adopted program awaits owner collection.

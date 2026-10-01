@@ -97,7 +97,7 @@ TEST(opengl_lifetime, failed_entry_growth_preserves_live_and_pending_registratio
         while (2 + fill.size() < capacity)
             fill.emplace_back(lifetime, GLResourceKind::Buffer, static_cast<GLuint>(1000 + fill.size()));
         memory->reject_next();
-        EXPECT_THROW((void)OpenGLHandle(lifetime, GLResourceKind::ShaderStage, 103), CE::Exceptions::bad_alloc);
+        EXPECT_THROW((void)OpenGLHandle(lifetime, GLResourceKind::ShaderStage, 103), std::bad_alloc);
         EXPECT_EQ(memory->rejected.load(), 1u);
         EXPECT_TRUE(native.deletions.empty());
         EXPECT_EQ(live.id(), 101u);
