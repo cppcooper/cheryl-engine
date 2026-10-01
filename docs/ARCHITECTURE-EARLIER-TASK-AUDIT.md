@@ -181,6 +181,41 @@ and unexecuted fixtures. They do not prove recovery from driver memory exhaustio
 leaves native state undefined after OUT_OF_MEMORY, so storage queries cannot
 replace error reporting. Context loss and allocation-failure evidence remain open.
 
+### A13: native program construction and reflection errors were not checked
+
+The program builder checked COMPILE_STATUS and LINK_STATUS but missed native
+errors from source upload, compilation, attachment, linking, stage detachment
+and status queries. In particular, a failed attachment could be ignored before a
+later link, and a failed detach could retain delete-marked stages. Reflection
+count/length queries initialized their outputs to zero, so a rejected query could
+be interpreted as an empty interface. Optional parameters could then conceal the
+failure during pipeline construction.
+
+Checkpoint 65 moves the production builder behind a private source entry shared
+by the provider and recording fixtures. It rejects a preexisting native error
+before creation, then checks creation/source/compile/attach/link/detach/status and
+diagnostic boundaries before adopting or publishing the program. Linked-status
+and reflection count/length/entry/location queries also reject native errors.
+Generated but untracked objects remain guarded; a tracked program is adopted
+once, and later logical allocation/reflection failure retires it only when its
+last strong owner releases it.
+
+Seven prepared fixtures cover nine native construction boundaries, logical
+compile/link failure, unreadable later-stage cleanup, rejection before creation,
+transient stage destruction, foreign-thread last release, lost-current failure
+cleanup, and failed-reflection/recovery with a retained program. The recorder
+models stage deletion marking separately from actual detachment/program deletion;
+its kind/ID checks require exactly one deletion request and actual destruction
+for each generated object in the available-context scenarios. The lost-current
+scenario instead requires no cleanup calls and preserves the original failure;
+platform context destruction owns untracked remnants.
+
+These sources are uncompiled and unexecuted. They establish neither real driver
+cleanup nor recovery after memory exhaustion/context loss. The native-error and
+stage-lifetime rationale follows [OpenGL 3.3 sections 2.5 and 2.11.2](https://registry.khronos.org/OpenGL/specs/gl/glspec33.core.pdf).
+Allocation injection, additional resource categories and combined runtime
+failures remain open; seven fixtures do not close tasks 6–7.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

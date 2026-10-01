@@ -223,7 +223,41 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Worker faults and event audit: checkpoints 62–64
+### Program construction audit: checkpoints 65–66
+
+This pass starts at saved local 64,
+`0ca9a602d52f71ced6d97931d07b8387fce9688c`. Remote 57 remains
+`5e4adfdc94cec7590916282c876762ada4d0e123`; pending 58–64 are preserved.
+
+- 65 fixes A13: native stage/program construction, detachment and reflection errors
+  reject before executable publication. A private production builder lets recording
+  sources exercise the same ownership guards without initializing a window.
+  Seven fixtures prepare construction/logical/file failures, transient stages,
+  retained/foreign release, lost-current cleanup and reflection recovery.
+- 66 records bounded review of those paths and their cache/runtime dependents.
+  Failed builds precede cache replacement; both runtime modes preserve the first
+  failure and keep platform completion pumping through accepted worker shutdown.
+
+The audit remains open: allocation/rehash and other category failure evidence,
+combined context/asset/runtime shutdown failures and full formatting/declaration
+review still remain. New recording sources are synthetic, uncompiled and
+unexecuted; no configuration, build, runtime/native test or remote write occurred.
+
+Numbered delivery is **65–66**; next unused number is **67**. The new-only
+`cheryl-engine-followup.patch` starts after saved 64. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–66**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the full ordered history.
+The user withholds unapplied patches until the audit ends; application routes overlap.
+
+Changed syntax trees (GLAD calling-convention macro elided), whitespace and
+requirement/documentation consistency receive static inspection. New-only,
+numbered, combined and original-base mailbox routes must reproduce the exact tree
+and ordered author/date/messages. These do not establish type/link or executed
+acceptance. Further task-9 completion stays paused.
+
+See [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md).
+
+### Worker faults and event audit: checkpoints 62–64 (historical)
 
 Remote 57 remains `5e4adfdc94cec7590916282c876762ada4d0e123`. Pending local
 58–61 were retained unchanged; this pass starts at saved local 61,

@@ -7,6 +7,8 @@ The source at that checkpoint matches user-pushed 57,
 onto that remote history without changing their final tree. Checkpoints 60–61
 continue native upload and text-compatibility review. Checkpoints 62–64 add
 controlled worker faults and concurrent event/invalidation combinations.
+Checkpoints 65–66 continue native program construction/reflection and retained
+owner review, including failure cleanup into runtime/cache dependents.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -122,11 +124,11 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 6.1 | Checked source | Single provider/loading owner, releasing gate, teardown and rebind inspected; no eviction policy introduced. |
-| 6.2 | Partial | cache/composite/frame and Texture/VAO/program/stage owners inspected; exhaustive category construction/failure evidence remains. |
+| 6.2 | Partial | cache/composite/frame and Texture/VAO/program/stage owners inspected; 65 prepares transient-stage, retained-program and foreign-thread last-release scenarios. Other category/allocation evidence remains. |
 | 6.3 | Checked source | Strong map/generation ownership and publish/replace/clear unlock order inspected, including A8 retained insertion candidate. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; A12 corrects texture/buffer native error publication. Allocation, other category failures and real context loss remain open. |
+| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; A12/A13 correct upload and program native-error publication. 65 prepares lost-current untracked cleanup/original-error preservation; allocation, other category failures and real context loss remain open. |
 | 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors before returning a resource; 60 prepares synthetic error/retirement/alignment scenarios, without real driver execution. |
 
 ### Task 7
@@ -136,7 +138,7 @@ Inspected paths: Pipeline/Material definitions and implementation, parameters, n
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 7.1 | Checked source | Immutable definition snapshots and enum/schema/layout/topology validation inspected. |
-| 7.2 | Partial | native bootstrap, reflection, stage detach and adoption inspected; failed native construction evidence remains tied to 6.6. |
+| 7.2 | Fix prepared | A13 checks program/stage/source/compile/attach/link/detach/status and reflection errors before executable publication. 65 prepares native/logical failures, later-stage file failure and retained-program reflection recovery. Allocation/native execution and broader 6.6 evidence remain open. |
 | 7.3 | Checked source | Copied values, defaults < pass < material < draw, hidden-invalid layer validation, engine ownership and missing/type rules inspected. |
 | 7.4 | Checked source | Image-free geometry, explicit per-binding units and guarded texture bind/unbind inspected. |
 | 7.5 | Checked source | Range/domain/pass preflight precedes state changes; complete supported blend/depth/cull state and A6 clear mask inspected. |
@@ -177,14 +179,26 @@ units, CPU asset/text packets, immutable reload generations and platform recycli
 The coordinated frame/reload/preparation/render failure fixture was inspected in
 both modes. This is source inspection, not proof of every producer interleaving.
 
+Checkpoint 65 follows failed program construction into ShaderMgr/MaterialMgr:
+both build before cache replacement, so exceptions preserve the prior generation.
+Both runtime cleanup paths preserve their first failure, finish accepted workers
+while pumping platform requests, recycle frames/deinitialize game resources,
+collect, then attempt renderer teardown. Maintenance failure preserves platform
+pumping. A missing current context leaves tracked retirement pending until recovery
+or abandonment; untracked native remnants require platform context destruction.
+This is a bounded source trace, not a combined asset/worker/runtime fault fixture;
+4.6 remains partial. Font geometry-then-atlas ownership was also read: an atlas
+failure releases the local geometry owner, with category-specific failure injection
+still outstanding.
+
 ## Remaining audit work before moving on
 
 1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
    drift is corrected; full formatting has not been verified.
 2. Complete resource category construction/failure evidence (6.2/6.6/7.2):
-   allocation/rehash, program/category construction failures, current-context loss
-   and retained owners must remain distinct cases. A12 prepares texture/buffer
-   error coverage; real native failure remains unexecuted.
+   allocation/rehash, remaining category failures, current-context loss and retained
+   owners must remain distinct cases. A12/A13 prepare upload/program/reflection
+   failures and retained/lost-current scenarios; no real native failure ran.
 3. Finish combined producer/failure fixture review (4.6), including context/asset
    settlement after policy or startup failure and partial shutdown dependencies.
    FFont compatibility is recorded; rotated rendering remains acceptance work.
@@ -204,4 +218,4 @@ these are not an executed native fault test.
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
 for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A12](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+finished. See [A1–A13](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
