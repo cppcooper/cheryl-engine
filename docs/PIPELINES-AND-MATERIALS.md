@@ -5,7 +5,7 @@ position3/UV2 vertex layout, triangle/strip topology, fixed blend/depth/cull
 intent, and a public parameter contract. `MaterialDefinition` references a
 specific shared pipeline generation and supplies defaults, including retained
 image handles and zero-based texture-unit requests. Neither definition contains
-GLSL uniform names. Backend mappings will be supplied to explicit builders.
+GLSL uniform names. Backend mappings are supplied to explicit OpenGL builders.
 
 `Pipeline` is a backend base with a validated definition snapshot and no value
 copying/slicing. Its backend subclass must retain the linked executable program;
@@ -41,9 +41,10 @@ semantics, and invalid defaults. Each source layer rejects unknown keys, wrong
 types, semantic overrides, and null images, even if a later value would hide the
 problem. After all layers resolve, required missing values and colliding sampler
 units fail. Optional values with no source/default are absent from the result.
-The native builder must decide whether an optional uniform is inactive or require
-a reset/default for an active optional value; skipping a write and inheriting a
-previous draw's uniform is not an acceptable implementation.
+The native builder requires a reset/default for an active optional custom uniform.
+An inactive optional uniform produces no upload. Missing active engine semantics
+reject an incomplete packet. Binding rewrites every active contracted uniform, so
+an absent optional value cannot inherit a previous draw's value.
 
 ## Independent binding
 
@@ -59,12 +60,14 @@ are a separate extension, not claimed by this foundation.
 
 ## Remaining integration
 
-Task 7 is unfinished. OpenGL pipeline building still needs backend parameter
-mapping/reflection, required/optional native validation, and copied-value uploads.
+Task 7 is unfinished. OpenGL pipeline building, explicit mappings/reflection,
+required/optional validation, copied-value uploads, and sampler-domain/unit checks
+are implemented in source. Frame and recipe integration remain pending.
 Pipeline fixed state is currently validated intent; the renderer does not yet
-apply it or enforce pass constraints. Geometry layout/topology, program/image
-domain compatibility, and state reset across adjacent draws/passes remain open.
-Native builders must validate before returning a publishable pipeline.
+apply it or enforce pass constraints. Linked attributes must match Vertex2D's
+position3 at location zero and UV2 at location one; inactive inputs may be omitted.
+Geometry-instance layout/topology/domain compatibility and state reset across
+adjacent draws/passes remain open. Program/image native domains are checked.
 
 ShaderMgr still publishes retained Shader handles, and DrawStyle still stores one.
 Successful pipeline/material recipe replacement and retained old-frame generations
@@ -75,8 +78,43 @@ Start with typed C++ definitions and explicit bootstrap/build APIs. A future
 definition-file parser should produce these types separately from generic manifest
 discovery. Do not add guessed shader-stage scanning to asset manifests.
 
-The current regression sources exercise a two-image effect with time/color/intensity,
+The common regression sources exercise a two-image effect with time/color/intensity,
 copied inputs, type/required/optional validation, immutable generations, failed
 replacement construction, and independent unit selection. Native sprite and alpha
-font traces, native reflection/state/reload tests, compilation, and execution remain
+font traces, native state/reload tests, compilation, and execution remain
 acceptance work. No real GL behavior is established by source preparation.
+
+## Native bootstrap and binding
+
+`OpenGLResourceProvider::build_pipeline(definition, bindings)` links the definition's
+sources and constructs GLSLPipeline after validating reflection. GLSLPipelineBindings
+maps public parameter keys to uniform names; its attribute-name mapping is also
+backend-owned. `build_material(recipe)` checks that its pipeline and default images
+belong to this provider's live native domain. Both builders require the platform
+owner with its rendering context current. Common resource/definition headers remain
+free of GL names and types.
+
+The pipeline owns the linked GLSLProgram and immutable definition. Native stages
+are marked for deletion after attachment and detached after linking, including a
+failed link, so a retained executable does not retain its compilation stages.
+Failure before linking is covered by the program/stage cleanup guards.
+
+Every contract key needs an explicit unique uniform mapping. Required uniforms
+must be active; optional ones may be absent after optimization. Active uniform
+types must match exactly. The initial API rejects uniform arrays and block storage,
+and requires every active uniform to appear in the contract. This prevents an
+undeclared mutable program value from silently affecting another draw.
+
+Material::resolve() produces copied values from engine semantics and custom layers.
+Pass those values to GLSLPipeline::bind_parameters() on the platform owner. The
+binder fills omitted active optional uniforms from contract defaults or the mapping's
+missing_value, then validates the complete set, including fallback sampler collisions.
+It checks all image domains/units before changing the program or texture bindings.
+Fixed blend/depth/cull state is intentionally a separate remaining integration task;
+this method applies parameter/resource values only.
+
+Six prepared recording-GLAD scenarios cover a native two-image effect, optional
+uniform reset after another draw, inactive optional uniforms without sprite roles,
+reflection/type/storage failures, invalid attributes/unlinked programs, and sampler
+domain/unit failures before any bind. These sources use synthetic IDs and restore
+all replaced entry points; they do not replace real-context acceptance.

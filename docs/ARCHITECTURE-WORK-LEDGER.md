@@ -50,9 +50,11 @@ Compilation, test execution, and remote writes have not been requested.
   time. Frame preparation occurs once per useful batch; rendering retains the latest
   complete frame. Regression scenarios and timing/suspension/optimization documentation
   are prepared; compilation, regression execution, and real acceptance remain open.
-- Task 7 partially implemented: typed 2D definitions (7.1), immutable snapshots,
+- Task 7 partially implemented: typed 2D definitions (7.1), explicit native builders
+  (7.2), immutable snapshots,
   copied/validated parameter resolution, retained image/unit requests, and independent
-  geometry/image binding. Native builders/reflection, value uploads, full state/domain
+  geometry/image binding. Native reflection/value uploads and program/image domain
+  validation are implemented in source; fixed-state/pass authority, geometry-instance
   checks, and reload/frame integration remain pending. Task 8 and task 9 executed
   acceptance remain open.
 - Task 6 complete in source: AssetCacheContext preserves the global loading domain
@@ -66,6 +68,14 @@ Compilation, test execution, and remote writes have not been requested.
 - Documentation and prepared regression sources (task 9) accompany each change.
 
 ## Discovery additions
+
+- D0: pipeline foundations 26–30 are pushed as `92eb058254dc195afd11559be0357a3a265b0646`.
+  Its tree matches saved local `0acf9c7`. The prior local foundation series remains
+  on a checkpoint branch. New numbered delivery starts at 31 from the pushed base.
+- D7: shader deletion while attached only marks the stage for deletion. Linking
+  does not detach it. Detach every marked stage after linking so the retained
+  program does not retain compilation resources; program failure cleanup handles
+  stages when an earlier exception prevents reaching the link boundary. Fixed in 7.2.
 
 - D0: residency checkpoints 21–25 are pushed as `87ec70e10d0c3f2498f38fbd00a7194766410547`.
   Its tree matches saved local `a677444`. The earlier local residency series remains
@@ -173,19 +183,19 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 Completed source tasks: 0–6, including discovery addition 4.7 (factory forwarding).
 Task 9 documentation/regression preparation accompanies those changes; executed
-acceptance remains open. Task 7 has a partial source checkpoint; continue with
-native pipeline/material builders and integration, then
+acceptance remains open. Task 7 has native builder/binding foundations; continue with
+fixed-state/pass authority, geometry-instance checks, and frame/reload integration, then
 task 8 (resolved packets and immediate-draw migration). Preserve strong residency,
 the established timing/input contracts, owner maintenance, and native-domain checks.
 
-This continuation reserves numbered patches **26–30**; the next unused filename
-is **cheryl-engine-31.patch**. The user-pushed branch includes checkpoints 01–25.
+This continuation reserves numbered patches **31–34**; the next unused filename
+is **cheryl-engine-35.patch**. The user-pushed branch includes checkpoints 01–30.
 Apply **cheryl-engine-continuation.patch** to pushed base
-`87ec70e10d0c3f2498f38fbd00a7194766410547`, or apply 26–30 individually in order.
+`92eb058254dc195afd11559be0357a3a265b0646`, or apply 31–34 individually in order.
 The separately retained **cheryl-engine.patch** is cumulative from the fixed
-original base and includes twenty-five earlier commits again. Use it for a fresh
+original base and includes thirty earlier commits again. Use it for a fresh
 checkout at the original base; do not combine these application routes.
-Earlier local execution/timing/residency commits remain on checkpoint branches. Current
+Earlier local execution/timing/residency/foundation commits remain on checkpoint branches. Current
 commits retain individual authors/messages after reconciling identical pushed trees.
 
 Resource residency/maintenance is complete in source. Task 7 now has typed
@@ -193,9 +203,10 @@ PipelineDefinition/MaterialDefinition, immutable Pipeline/Material snapshots,
 and copied ParameterSet resolution with explicit ownership and precedence.
 Geometry2D no longer includes/binds Image; image units are supplied per binding
 request and OpenGL validates an upload-time retained context limit. Current
-DrawStyle still retains Shader. The new typed generations are not yet consumed
-by native builders/frames. Reflection, copied value uploads, complete state/domain
-validation, and successful recipe reload publication remain pending.
+DrawStyle still retains Shader. The new generations are consumed by explicit native
+builders, with reflected uniform/attribute validation and complete parameter/resource
+binding checks before mutation. Frame consumers still need migration. Fixed state,
+geometry-instance compatibility, and successful recipe reload publication remain pending.
 
 See [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md) for the exact boundary.
 Six new pipeline/material regression scenarios and the adapted graphic source
@@ -210,6 +221,12 @@ Whitespace and combined/incremental mailbox checks are preparation evidence.
 The pipeline continuation statically parses 23 changed C++ files without syntax
 errors and passes whitespace review. Combined and individual mailbox replay
 must reproduce the source tree and author/date/message ordering before delivery.
+
+The native builder continuation statically parses 13 changed C++ files, normalizing
+the GLAD calling-convention macro in its prepared recording fixture. Whitespace
+and combined/individual/original-base mailbox replay checks are preparation evidence.
+Six more native regression sources cover reflection, optional reset, copied uploads,
+and sampler-domain/unit failures. No compilation or regression execution occurred.
 
 No commits/branches were pushed by the assistant. No compilation, CMake configuration, regression
 execution, or real GLFW/OpenGL acceptance was performed in this continuation.

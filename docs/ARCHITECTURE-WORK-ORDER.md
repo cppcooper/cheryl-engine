@@ -160,7 +160,7 @@ These are the proposed concrete choices within the agreed architecture:
 **Start in:** Shader/GLSLProgram, ResourceProvider, ShaderMgr, Image/Geometry2D, and render pass/style types.
 
 - [x] **7.1** Define PipelineDefinition (program sources, vertex expectations, topology, blend/depth/cull behavior, parameter contract) and MaterialDefinition (pipeline reference, resource bindings, defaults). Keep the 2D scope modest.
-- [ ] **7.2** Build backend-compatible pipelines/materials through explicit bootstrap APIs. Compiled stages stay transient; linked programs remain retained executable resources. Start with typed definitions; document a future separate definition-file parser outside generic manifest discovery.
+- [x] **7.2** Build backend-compatible pipelines/materials through explicit bootstrap APIs. Compiled stages stay transient; linked programs remain retained executable resources. Start with typed definitions; document a future separate definition-file parser outside generic manifest discovery.
 - [ ] **7.3** Define copied parameter values and ownership by pass/material/draw. Support engine semantics plus pipeline-specific scalar/vector/matrix/sampler values without common code selecting GLSL names. Specify required/optional values, type validation, and override precedence.
 - [ ] **7.4** Implement independently bound geometry and material resources. Remove Geometry2D's Image dependency. Texture units/sampler bindings belong to draw/material binding; sharing one image between materials must not require changing a cached image's binding-unit state.
 - [ ] **7.5** Give fixed render state one clear authority and define pass constraints. Validate geometry layout/topology and program/image domain compatibility. Prevent depth/blend/cull state leaking between draws or passes.
@@ -173,7 +173,7 @@ and validation (part of 7.3), independent geometry/image binding and image-free
 unit ownership (part of 7.4), and immutable definition/default snapshots (part of
 7.6). The remaining work is explicit:
 
-- [ ] **7.2a / 7.3a** Add OpenGL builder mappings/reflection and value uploads. Optional active uniforms need defaults/reset semantics so absent values cannot retain previous draws' data.
+- [x] **7.2a / 7.3a** Add OpenGL builder mappings/reflection and value uploads. Optional active uniforms need defaults/reset semantics so absent values cannot retain previous draws' data.
 - [ ] **7.4a / 7.5a** Bind resolved material resources, validate layout/topology/native domains, and apply all fixed state under explicit pass constraints. Current legacy adapters deliberately select unit zero.
 - [ ] **7.6a** Publish successful pipeline/material replacements through bootstrap/reload; retain old frame generations and preserve the previous generation on failure.
 
@@ -181,6 +181,15 @@ The existing shader2d sprite/font sources have the same six engine/sampler roles
 font alpha comes from the atlas swizzle. The prepared two-image effect schema
 uses its own time/color/intensity keys, with no forced sprite contract. Native
 builder/frame integration and all executed acceptance remain open.
+
+Checkpoint 31–34 adds explicit native pipeline/material builders, cached linked
+uniform locations, exact reflection/storage/Vertex2D attribute checks, copied
+value uploads, and image-domain/unit validation before binding. Active optional
+custom uniforms require a default/reset, and uncontracted active uniforms fail.
+Linked compilation stages now detach after linking; retaining a program no longer
+retains its stages. Frame usage, geometry-instance compatibility, fixed-state/pass
+authority, and recipe reload remain pending. Six recording-native scenarios are
+prepared, without compilation or execution.
 
 **Complete when:** program processing rules and material resources/defaults are separate, geometry/image binding is independent, and custom materials can supply different parameter sets safely.
 
