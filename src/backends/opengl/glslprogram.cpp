@@ -1,7 +1,6 @@
 #include <backends/opengl/glslprogram.h>
 #include "upload-check.h"
 #include <internals/exceptions.h>
-#include <cstdlib>
 #include <iostream>
 #include <utility>
 
@@ -107,47 +106,19 @@ namespace CE::Assets {
     }
 
     void GLSLProgram::print_active_uniforms() const {
-        GLint nUniforms, size, maxLen;
-        GLsizei written;
-        GLenum type;
-
-        const auto id_prog = program_.id();
-        glGetProgramiv(id_prog, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
-        glGetProgramiv(id_prog, GL_ACTIVE_UNIFORMS, &nUniforms);
-
-        // todo: replace malloc/free
-        const auto name = static_cast<GLchar*>(malloc(maxLen));
-
+        const auto variables = active_uniforms();
         std::cout << " Location | Name\n";
         std::cout << "------------------------------------------------\n";
-        for (int i = 0; i < nUniforms; ++i) {
-            glGetActiveUniform(id_prog, i, maxLen, &written, &size, &type, name);
-            const GLint location = glGetUniformLocation(id_prog, name);
-            std::cout << location << " | " << name << "\n";
-        }
-
-        free(name);
+        for (const auto& variable : variables)
+            std::cout << variable.location << " | " << variable.name << "\n";
     }
 
     void GLSLProgram::print_active_attribs() const {
-        GLint written, size, maxLength, nAttribs;
-        GLenum type;
-
-        const auto id_prog = program_.id();
-        glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &maxLength);
-        glGetProgramiv(id_prog, GL_ACTIVE_ATTRIBUTES, &nAttribs);
-
-        const auto name = static_cast<GLchar*>(malloc(maxLength));
-
+        const auto variables = active_attributes();
         std::cout << " Index | Name\n";
         std::cout << "------------------------------------------------\n";
-        for (int i = 0; i < nAttribs; i++) {
-            glGetActiveAttrib(id_prog, i, maxLength, &written, &size, &type, name);
-            const GLint location = glGetAttribLocation(id_prog, name);
-            std::cout << location << " | " << name << "\n";
-        }
-
-        free(name);
+        for (const auto& variable : variables)
+            std::cout << variable.location << " | " << variable.name << "\n";
     }
 
     int GLSLProgram::get_uniform_location(
@@ -155,9 +126,13 @@ namespace CE::Assets {
     ) {
         // Query OpenGL once after linking, caching valid locations for repeated draw calls.
         const auto id_prog = program_.id();
+        if (!name)
+            throw Exceptions::invalid_args(CE_HERE, "Program variable name must not be null");
         if (const auto it = uniforms_.find(name); it != uniforms_.end())
             return it->second;
+        RenderAPIs::require_no_gl_error("OpenGL error before uniform location query");
         const int result = glGetUniformLocation(id_prog, name);
+        RenderAPIs::require_no_gl_error("Could not query uniform location");
         uniforms_.emplace(name, result);
         return result;
     }
@@ -166,9 +141,13 @@ namespace CE::Assets {
         const char* name
     ) {
         const auto id_prog = program_.id();
+        if (!name)
+            throw Exceptions::invalid_args(CE_HERE, "Program variable name must not be null");
         if (const auto it = attributes_.find(name); it != attributes_.end())
             return it->second;
+        RenderAPIs::require_no_gl_error("OpenGL error before attribute location query");
         const int result = glGetAttribLocation(id_prog, name);
+        RenderAPIs::require_no_gl_error("Could not query attribute location");
         attributes_.emplace(name, result);
         return result;
     }

@@ -40,6 +40,8 @@ namespace {
         GLenum error = GL_NO_ERROR;
         int link_calls = 0;
         int detach_calls = 0;
+        int uniform_queries = 0;
+        int attribute_queries = 0;
         std::vector<std::pair<GLResourceKind, GLuint>> generated;
         std::vector<std::pair<GLResourceKind, GLuint>> deletion_calls;
         std::vector<std::pair<GLResourceKind, GLuint>> destroyed;
@@ -172,7 +174,8 @@ namespace {
                         *value = 6;
                     break;
                 case GL_ACTIVE_ATTRIBUTES:
-                    *value = 0;
+                    if (!active_->reject("attribute count"))
+                        *value = 0;
                     break;
                 case GL_ACTIVE_ATTRIBUTE_MAX_LENGTH:
                     *value = 1;
@@ -204,7 +207,15 @@ namespace {
             GLuint,
             const GLchar*
         ) {
+            ++active_->uniform_queries;
             return active_->reject("reflection location") ? -1 : 5;
+        }
+        static GLint GLAD_API_PTR attribute_location(
+            GLuint,
+            const GLchar*
+        ) {
+            ++active_->attribute_queries;
+            return active_->reject("attribute location") ? -1 : 3;
         }
         static void GLAD_API_PTR delete_shader(
             GLuint shader
@@ -241,6 +252,7 @@ namespace {
                 replace(glad_glGetProgramiv, &program_query);
                 replace(glad_glGetActiveUniform, &uniform_query);
                 replace(glad_glGetUniformLocation, &uniform_location);
+                replace(glad_glGetAttribLocation, &attribute_location);
                 replace(glad_glDeleteShader, &delete_shader);
                 replace(glad_glDeleteProgram, &delete_program);
                 replace(glad_glGetError, &error_query);
@@ -461,4 +473,51 @@ TEST(
         native.lifetime->collect();
         native.expect_all_destroyed_once();
     }
+}
+
+TEST(
+    opengl_program_builder,
+    diagnostic_printing_uses_checked_reflection_before_emitting_results
+) {
+    for (const std::string operation :
+        {"reflection count", "reflection length", "reflection entry", "reflection location", "attribute count"}) {
+        SCOPED_TRACE(operation);
+        ProgramConstructionRecorder native;
+        auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
+        native.fail_operation = operation;
+        if (operation == "attribute count")
+            EXPECT_THROW(program->print_active_attribs(), failed_operation);
+        else
+            EXPECT_THROW(program->print_active_uniforms(), failed_operation);
+        EXPECT_EQ(native.destroyed.size(), 2u); // Diagnostic rejection retains the linked program.
+        native.fail_operation.clear();
+        program.reset();
+        native.lifetime->collect();
+        native.expect_all_destroyed_once();
+    }
+}
+
+TEST(
+    opengl_program_builder,
+    failed_legacy_location_queries_do_not_publish_cache_entries
+) {
+    ProgramConstructionRecorder native;
+    auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
+    EXPECT_THROW((void)program->get_uniform_location(nullptr), CE::Exceptions::invalid_args);
+    EXPECT_THROW((void)program->get_attribute_location(nullptr), CE::Exceptions::invalid_args);
+    native.fail_operation = "reflection location";
+    EXPECT_THROW((void)program->get_uniform_location("uTime"), failed_operation);
+    native.fail_operation.clear();
+    EXPECT_EQ(program->get_uniform_location("uTime"), 5);
+    EXPECT_EQ(program->get_uniform_location("uTime"), 5);
+    EXPECT_EQ(native.uniform_queries, 2); // Retry queries; the subsequent successful lookup is cached.
+    native.fail_operation = "attribute location";
+    EXPECT_THROW((void)program->get_attribute_location("in_Position"), failed_operation);
+    native.fail_operation.clear();
+    EXPECT_EQ(program->get_attribute_location("in_Position"), 3);
+    EXPECT_EQ(program->get_attribute_location("in_Position"), 3);
+    EXPECT_EQ(native.attribute_queries, 2);
+    program.reset();
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
 }
