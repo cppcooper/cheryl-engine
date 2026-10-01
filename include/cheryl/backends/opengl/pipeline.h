@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <cstddef>
 
 namespace CE::Assets {
     struct GLSLParameterBinding {
@@ -41,9 +42,13 @@ namespace CE::Assets {
         );
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return program_->resource_domain(); }
         // Check images/defaults without binding or changing any native state.
-        void validate_resources(const ParameterSet& values) const;
+        void validate_resources(
+            const ParameterSet& values
+        ) const;
         // Applies copied parameter/resource values only; fixed state/pass integration is separate.
-        void bind_parameters(const ParameterSet& values) const;
+        void bind_parameters(
+            const ParameterSet& values
+        ) const;
         // Validate the complete request before mutating any native draw state.
         void draw(
             const Geometry2D& geometry,
@@ -54,8 +59,12 @@ namespace CE::Assets {
         ) const;
 
     private:
-        [[nodiscard]] ParameterSet prepare_parameters(const ParameterSet& values) const;
-        void apply_parameters(const ParameterSet& values) const;
+        [[nodiscard]] ParameterSet prepare_parameters(
+            const ParameterSet& values
+        ) const;
+        void apply_parameters(
+            const ParameterSet& values
+        ) const;
         void apply_fixed_state() const;
     };
 }

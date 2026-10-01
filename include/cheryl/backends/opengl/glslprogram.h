@@ -40,11 +40,19 @@ namespace CE::Assets {
         std::map<std::string, int> attributes_;
 
     public:
-        explicit GLSLProgram(RenderAPIs::OpenGLHandle program);
+        explicit GLSLProgram(
+            RenderAPIs::OpenGLHandle program
+        );
         void use() override;
-        void bind_pass(const ShaderPass& pass) override;
-        void bind_draw(const ShaderDraw& draw) override;
-        void set_material_bindings(GLSLMaterialBindings bindings);
+        void bind_pass(
+            const ShaderPass& pass
+        ) override;
+        void bind_draw(
+            const ShaderDraw& draw
+        ) override;
+        void set_material_bindings(
+            GLSLMaterialBindings bindings
+        );
         void require_current() const { (void)program_.id(); }
         void require_linked() const;
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
@@ -52,29 +60,69 @@ namespace CE::Assets {
         [[nodiscard]] std::vector<GLSLVariable> active_attributes() const;
 
         template <glm::length_t dim>
-        void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
+        void set_uniform_vec(
+            const char* name,
+            const glm::vec<dim, glm::f32, glm::defaultp>& v
+        );
         template <glm::length_t dim>
-        void set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m);
+        void set_uniform_matrix(
+            const char* name,
+            const glm::mat<dim, dim, glm::f32, glm::defaultp>& m
+        );
         template <typename T>
-        void set_uniform_value(const char* name, const T& v);
+        void set_uniform_value(
+            const char* name,
+            const T& v
+        );
 
-        void set_uniform_value(const char* name, float value) override { set_uniform_value<float>(name, value); }
-        void set_uniform_value(const char* name, int value) override { set_uniform_value<int>(name, value); }
-        void set_uniform_value(const char* name, unsigned int value) override { set_uniform_value<unsigned int>(name, value); }
-        void set_uniform_value(const char* name, bool value) override { set_uniform_value<bool>(name, value); }
-        void set_uniform_matrix(const char* name, const glm::mat4& value) override { set_uniform_matrix<4>(name, value); }
+        void set_uniform_value(
+            const char* name,
+            float value
+        ) override {
+            set_uniform_value<float>(name, value);
+        }
+        void set_uniform_value(
+            const char* name,
+            int value
+        ) override {
+            set_uniform_value<int>(name, value);
+        }
+        void set_uniform_value(
+            const char* name,
+            unsigned int value
+        ) override {
+            set_uniform_value<unsigned int>(name, value);
+        }
+        void set_uniform_value(
+            const char* name,
+            bool value
+        ) override {
+            set_uniform_value<bool>(name, value);
+        }
+        void set_uniform_matrix(
+            const char* name,
+            const glm::mat4& value
+        ) override {
+            set_uniform_matrix<4>(name, value);
+        }
 
         // todo: convert the code from both methods into parsers that register events
         void print_active_uniforms() const;
         void print_active_attribs() const;
 
-        int get_uniform_location(const char* name);
-        int get_attribute_location(const char* name);
-
+        int get_uniform_location(
+            const char* name
+        );
+        int get_attribute_location(
+            const char* name
+        );
     };
 
     template <glm::length_t dim>
-    void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {
+    void GLSLProgram::set_uniform_vec(
+        const char* name,
+        const glm::vec<dim, glm::f32, glm::defaultp>& v
+    ) {
         // Resolve a linked program's uniform once, then choose the matching
         // GL upload at compile time from the vector's dimension.
         static_assert(2 <= dim && dim <= 4, "set_uniform_vec can only take 2-4D vectors");
@@ -83,18 +131,19 @@ namespace CE::Assets {
         if (loc >= 0) {
             if constexpr (dim == 2) {
                 glUniform2f(loc, v.x, v.y);
-            }
-            else if constexpr (dim == 3) {
+            } else if constexpr (dim == 3) {
                 glUniform3f(loc, v.x, v.y, v.z);
-            }
-            else if constexpr (dim == 4) {
+            } else if constexpr (dim == 4) {
                 glUniform4f(loc, v.x, v.y, v.z, v.w);
             }
         }
     }
 
     template <glm::length_t dim>
-    void GLSLProgram::set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m) {
+    void GLSLProgram::set_uniform_matrix(
+        const char* name,
+        const glm::mat<dim, dim, glm::f32, glm::defaultp>& m
+    ) {
         // GLM's contiguous column-major storage is passed from its first
         // element; the dimension selects the appropriate matrix uniform call.
         static_assert(2 <= dim && dim <= 4, "set_uniform_matrix can only take 2-4D matrices");
@@ -103,33 +152,31 @@ namespace CE::Assets {
         if (loc >= 0) {
             if constexpr (dim == 2) {
                 glUniformMatrix2fv(loc, 1, 0, &m[0][0]);
-            }
-            else if constexpr (dim == 3) {
+            } else if constexpr (dim == 3) {
                 glUniformMatrix3fv(loc, 1, 0, &m[0][0]);
-            }
-            else if constexpr (dim == 4) {
+            } else if constexpr (dim == 4) {
                 glUniformMatrix4fv(loc, 1, 0, &m[0][0]);
             }
         }
     }
 
     template <typename T>
-    void GLSLProgram::set_uniform_value(const char* name, const T& v) {
+    void GLSLProgram::set_uniform_value(
+        const char* name,
+        const T& v
+    ) {
         static_assert(std::is_same_v<T, GLfloat> || std::is_same_v<T, GLuint> || std::is_same_v<T, GLint> || std::is_same_v<T, bool>,
-                      "set_uniform_value must take a float, int, or bool");
+            "set_uniform_value must take a float, int, or bool");
         int loc = get_uniform_location(name);
         assert(loc >= 0 && "set_uniform_value failed");
         if (loc >= 0) {
             if constexpr (std::is_same_v<T, GLfloat>) {
                 glUniform1f(loc, v);
-            }
-            else if constexpr (std::is_same_v<T, GLuint>) {
+            } else if constexpr (std::is_same_v<T, GLuint>) {
                 glUniform1ui(loc, v);
-            }
-            else if constexpr (std::is_same_v<T, GLint>) {
+            } else if constexpr (std::is_same_v<T, GLint>) {
                 glUniform1i(loc, v);
-            }
-            else if constexpr (std::is_same_v<T, bool>) {
+            } else if constexpr (std::is_same_v<T, bool>) {
                 glUniform1i(loc, v);
             }
         }

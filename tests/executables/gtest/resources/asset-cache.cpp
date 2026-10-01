@@ -11,14 +11,17 @@ namespace {
     struct CacheKey {
         int number;
         bool reject_hash = false;
-        bool operator==(const CacheKey&) const = default;
+        bool operator==(
+            const CacheKey&
+        ) const = default;
     };
 }
 
 namespace std {
-    template <>
-    struct hash<CacheKey> {
-        std::size_t operator()(const CacheKey& key) const {
+    template <> struct hash<CacheKey> {
+        std::size_t operator()(
+            const CacheKey& key
+        ) const {
             if (key.reject_hash)
                 throw CE::Exceptions::failed_operation(CE_HERE, "Controlled cache key rejection");
             return std::hash<int>{}(key.number);
@@ -45,8 +48,7 @@ namespace {
 
     // A per-map allocator fails actual node or bucket allocation requests without
     // replacing global new or affecting the rest of the aggregate test executable.
-    template <typename T>
-    struct FailingCacheAllocator {
+    template <typename T> struct FailingCacheAllocator {
         using value_type = T;
         std::shared_ptr<AllocationControl> control;
 
@@ -93,8 +95,8 @@ namespace {
         }
     };
 
-    using AllocationCacheBase = CE::Assets::AssetMgr<const int, CacheKey,
-        FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>>;
+    using AllocationCacheBase =
+        CE::Assets::AssetMgr<const int, CacheKey, FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>>;
 
     struct AllocationCache final : AllocationCacheBase {
         explicit AllocationCache(
@@ -133,7 +135,10 @@ namespace {
     };
 }
 
-TEST(asset_cache, a_duplicate_candidate_can_release_and_publish_another_key_after_lookup) {
+TEST(
+    asset_cache,
+    a_duplicate_candidate_can_release_and_publish_another_key_after_lookup
+) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
     bool released = false;
@@ -150,7 +155,10 @@ TEST(asset_cache, a_duplicate_candidate_can_release_and_publish_another_key_afte
     EXPECT_EQ(*cache.get_asset({2}), 30);
 }
 
-TEST(asset_cache, a_rejected_insertion_releases_its_candidate_after_the_write_lock_unwinds) {
+TEST(
+    asset_cache,
+    a_rejected_insertion_releases_its_candidate_after_the_write_lock_unwinds
+) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
     bool released = false;
@@ -166,7 +174,10 @@ TEST(asset_cache, a_rejected_insertion_releases_its_candidate_after_the_write_lo
     EXPECT_EQ(cache.get_asset({1}), original);
 }
 
-TEST(asset_cache, node_and_rehash_failures_release_candidates_after_unlock_and_do_not_commit_metadata) {
+TEST(
+    asset_cache,
+    node_and_rehash_failures_release_candidates_after_unlock_and_do_not_commit_metadata
+) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
         SCOPED_TRACE(static_cast<int>(phase));
@@ -206,7 +217,10 @@ TEST(asset_cache, node_and_rehash_failures_release_candidates_after_unlock_and_d
     }
 }
 
-TEST(asset_cache, failed_replacement_insertion_preserves_existing_generation_and_allows_deleter_reentry) {
+TEST(
+    asset_cache,
+    failed_replacement_insertion_preserves_existing_generation_and_allows_deleter_reentry
+) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
         SCOPED_TRACE(static_cast<int>(phase));
@@ -237,7 +251,10 @@ TEST(asset_cache, failed_replacement_insertion_preserves_existing_generation_and
     }
 }
 
-TEST(asset_cache, stateful_allocator_clear_releases_values_outside_the_lock_and_keeps_allocator_identity) {
+TEST(
+    asset_cache,
+    stateful_allocator_clear_releases_values_outside_the_lock_and_keeps_allocator_identity
+) {
     auto control = std::make_shared<AllocationControl>();
     {
         AllocationCache cache(control);

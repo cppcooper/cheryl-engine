@@ -31,6 +31,23 @@ namespace {
         std::set<GLuint> marked_stages_;
         GLuint next_id_ = 10;
 
+    public:
+        bool current = true;
+        bool compiled = true;
+        bool linked = true;
+        bool lose_current_on_failure = false;
+        std::string fail_operation;
+        GLenum error = GL_NO_ERROR;
+        int link_calls = 0;
+        int detach_calls = 0;
+        std::vector<std::pair<GLResourceKind, GLuint>> generated;
+        std::vector<std::pair<GLResourceKind, GLuint>> deletion_calls;
+        std::vector<std::pair<GLResourceKind, GLuint>> destroyed;
+        std::shared_ptr<OpenGLResourceLifetime> lifetime =
+            std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [this] { return current; });
+
+
+    private:
         template <typename T>
         void replace(
             T& entry,
@@ -71,9 +88,8 @@ namespace {
         void release_stage(
             const GLuint stage
         ) {
-            const bool attached = std::any_of(attachments_.begin(), attachments_.end(), [stage](const auto& entry) {
-                return entry.second.contains(stage);
-            });
+            const bool attached =
+                std::any_of(attachments_.begin(), attachments_.end(), [stage](const auto& entry) { return entry.second.contains(stage); });
             if (marked_stages_.contains(stage) && !attached) {
                 marked_stages_.erase(stage);
                 destroyed.emplace_back(GLResourceKind::ShaderStage, stage);
@@ -100,7 +116,9 @@ namespace {
         }
         static void GLAD_API_PTR compile(
             GLuint
-        ) { (void)active_->reject("compile"); }
+        ) {
+            (void)active_->reject("compile");
+        }
         static void GLAD_API_PTR shader_query(
             GLuint,
             GLenum parameter,
@@ -109,8 +127,7 @@ namespace {
             if (parameter == GL_COMPILE_STATUS) {
                 if (!active_->reject("compile status"))
                     *value = active_->compiled ? GL_TRUE : GL_FALSE;
-            }
-            else
+            } else
                 *value = 0; // Empty diagnostics for a logical compilation failure.
         }
         static void GLAD_API_PTR attach(
@@ -154,9 +171,15 @@ namespace {
                     if (!active_->reject("reflection length"))
                         *value = 6;
                     break;
-                case GL_ACTIVE_ATTRIBUTES: *value = 0; break;
-                case GL_ACTIVE_ATTRIBUTE_MAX_LENGTH: *value = 1; break;
-                default: *value = 0; break;
+                case GL_ACTIVE_ATTRIBUTES:
+                    *value = 0;
+                    break;
+                case GL_ACTIVE_ATTRIBUTE_MAX_LENGTH:
+                    *value = 1;
+                    break;
+                default:
+                    *value = 0;
+                    break;
             }
         }
         static void GLAD_API_PTR uniform_query(
@@ -203,19 +226,6 @@ namespace {
         static GLenum GLAD_API_PTR error_query() { return std::exchange(active_->error, GL_NO_ERROR); }
 
     public:
-        bool current = true;
-        bool compiled = true;
-        bool linked = true;
-        bool lose_current_on_failure = false;
-        std::string fail_operation;
-        GLenum error = GL_NO_ERROR;
-        int link_calls = 0;
-        int detach_calls = 0;
-        std::vector<std::pair<GLResourceKind, GLuint>> generated;
-        std::vector<std::pair<GLResourceKind, GLuint>> deletion_calls;
-        std::vector<std::pair<GLResourceKind, GLuint>> destroyed;
-        std::shared_ptr<OpenGLResourceLifetime> lifetime =
-            std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [this] { return current; });
 
         ProgramConstructionRecorder() {
             active_ = this;
@@ -234,8 +244,7 @@ namespace {
                 replace(glad_glDeleteShader, &delete_shader);
                 replace(glad_glDeleteProgram, &delete_program);
                 replace(glad_glGetError, &error_query);
-            }
-            catch (...) {
+            } catch (...) {
                 restore();
                 throw;
             }
@@ -266,10 +275,13 @@ namespace {
     };
 }
 
-TEST(opengl_program_builder, native_construction_errors_reject_and_release_all_created_objects) {
+TEST(
+    opengl_program_builder,
+    native_construction_errors_reject_and_release_all_created_objects
+) {
     const auto stages = ProgramConstructionRecorder::stages();
-    for (const std::string operation : {"create program", "create shader", "source", "compile", "compile status",
-             "attach", "link", "detach", "link status"}) {
+    for (const std::string operation :
+        {"create program", "create shader", "source", "compile", "compile status", "attach", "link", "detach", "link status"}) {
         SCOPED_TRACE(operation);
         ProgramConstructionRecorder native;
         native.fail_operation = operation;
@@ -281,7 +293,10 @@ TEST(opengl_program_builder, native_construction_errors_reject_and_release_all_c
     }
 }
 
-TEST(opengl_program_builder, registry_allocation_failure_discards_the_untracked_program_once) {
+TEST(
+    opengl_program_builder,
+    registry_allocation_failure_discards_the_untracked_program_once
+) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     native.lifetime = ResourceDetail::LifetimeAccess::create(std::this_thread::get_id(), [&] { return native.current; }, memory);
@@ -293,14 +308,14 @@ TEST(opengl_program_builder, registry_allocation_failure_discards_the_untracked_
     native.expect_all_destroyed_once();
 }
 
-TEST(opengl_program_builder, logical_allocation_failure_retires_the_adopted_program_without_duplicate_discard) {
+TEST(
+    opengl_program_builder,
+    logical_allocation_failure_retires_the_adopted_program_without_duplicate_discard
+) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     memory->reject_next();
-    EXPECT_THROW(
-        (void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages(), memory),
-        std::bad_alloc
-    );
+    EXPECT_THROW((void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages(), memory), std::bad_alloc);
     EXPECT_EQ(memory->rejected.load(), 1u);
     ASSERT_EQ(native.destroyed.size(), 2u); // Stages detached; adopted program awaits owner collection.
     for (const auto& [kind, id] : native.destroyed) {
@@ -311,7 +326,10 @@ TEST(opengl_program_builder, logical_allocation_failure_retires_the_adopted_prog
     native.expect_all_destroyed_once();
 }
 
-TEST(opengl_program_builder, logical_allocator_survives_strong_release_until_the_last_weak_control_owner) {
+TEST(
+    opengl_program_builder,
+    logical_allocator_survives_strong_release_until_the_last_weak_control_owner
+) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     std::weak_ptr<CE::Testing::FailingMemoryResource> memory_owner = memory;
@@ -327,7 +345,10 @@ TEST(opengl_program_builder, logical_allocator_survives_strong_release_until_the
     EXPECT_TRUE(memory_owner.expired());
 }
 
-TEST(opengl_program_builder, logical_compile_and_link_failure_release_attached_marked_stages) {
+TEST(
+    opengl_program_builder,
+    logical_compile_and_link_failure_release_attached_marked_stages
+) {
     const auto stages = ProgramConstructionRecorder::stages();
     for (const bool fail_compile : {true, false}) {
         SCOPED_TRACE(fail_compile);
@@ -340,7 +361,10 @@ TEST(opengl_program_builder, logical_compile_and_link_failure_release_attached_m
     }
 }
 
-TEST(opengl_program_builder, unreadable_later_stage_releases_the_already_attached_stage) {
+TEST(
+    opengl_program_builder,
+    unreadable_later_stage_releases_the_already_attached_stage
+) {
     ProgramConstructionRecorder native;
     auto stages = ProgramConstructionRecorder::stages();
     stages[1] = stages[0] / "missing.frag"; // A regular file cannot contain this child.
@@ -349,7 +373,10 @@ TEST(opengl_program_builder, unreadable_later_stage_releases_the_already_attache
     native.expect_all_destroyed_once();
 }
 
-TEST(opengl_program_builder, existing_error_or_missing_current_context_reject_before_creation) {
+TEST(
+    opengl_program_builder,
+    existing_error_or_missing_current_context_reject_before_creation
+) {
     ProgramConstructionRecorder native;
     const auto stages = ProgramConstructionRecorder::stages();
     native.error = GL_INVALID_OPERATION;
@@ -360,7 +387,10 @@ TEST(opengl_program_builder, existing_error_or_missing_current_context_reject_be
     EXPECT_TRUE(native.generated.empty());
 }
 
-TEST(opengl_program_builder, successful_program_drops_stages_but_retained_owner_delays_program_retirement) {
+TEST(
+    opengl_program_builder,
+    successful_program_drops_stages_but_retained_owner_delays_program_retirement
+) {
     ProgramConstructionRecorder native;
     auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
     auto retained = program;
@@ -380,15 +410,17 @@ TEST(opengl_program_builder, successful_program_drops_stages_but_retained_owner_
     native.expect_all_destroyed_once();
 }
 
-TEST(opengl_program_builder, lost_current_context_preserves_construction_failure_and_skips_native_cleanup) {
+TEST(
+    opengl_program_builder,
+    lost_current_context_preserves_construction_failure_and_skips_native_cleanup
+) {
     ProgramConstructionRecorder native;
     native.fail_operation = "compile";
     native.lose_current_on_failure = true;
     try {
         (void)ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
         FAIL() << "Expected native compilation failure";
-    }
-    catch (const failed_operation& failure) {
+    } catch (const failed_operation& failure) {
         EXPECT_NE(std::string{failure.what()}.find("Could not compile shader stage"), std::string::npos);
     }
     EXPECT_FALSE(native.current);
@@ -401,9 +433,12 @@ TEST(opengl_program_builder, lost_current_context_preserves_construction_failure
     // This recorder cannot establish actual driver cleanup after context loss.
 }
 
-TEST(opengl_program_builder, failed_reflection_rejects_pipeline_and_preserves_retained_program) {
-    for (const std::string operation : {"link status", "reflection count", "reflection length", "reflection entry",
-             "reflection location"}) {
+TEST(
+    opengl_program_builder,
+    failed_reflection_rejects_pipeline_and_preserves_retained_program
+) {
+    for (const std::string operation :
+        {"link status", "reflection count", "reflection length", "reflection entry", "reflection location"}) {
         SCOPED_TRACE(operation);
         ProgramConstructionRecorder native;
         const auto stages = ProgramConstructionRecorder::stages();

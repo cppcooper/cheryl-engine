@@ -15,13 +15,12 @@ namespace CE::GFramework {
         // TODO: an optimization configurer may suggest limits after profiling;
         // it must preserve explicitly selected timing/input contracts.
         SimulationMode mode = SimulationMode::Variable;
-        SimulationClock::duration variable_interval = std::chrono::duration_cast<SimulationClock::duration>(
-            std::chrono::nanoseconds{16666667}); // Zero permits an unpaced variable loop.
-        SimulationClock::duration fixed_step = std::chrono::duration_cast<SimulationClock::duration>(
-            std::chrono::nanoseconds{16666667});
+        SimulationClock::duration variable_interval = std::chrono::duration_cast<SimulationClock::duration>(std::chrono::nanoseconds{
+            16666667}); // Zero permits an unpaced variable loop.
+        SimulationClock::duration fixed_step = std::chrono::duration_cast<SimulationClock::duration>(std::chrono::nanoseconds{16666667});
         std::size_t max_fixed_updates = 1;
         LagRecovery recovery = LagRecovery::DropExcessLag;
-        std::size_t fixed_updates_before_recovery = 0; // Bounded prefix for an overloaded VariableCatchUp cycle.
+        std::size_t fixed_updates_before_recovery = 0;                           // Bounded prefix for an overloaded VariableCatchUp cycle.
         SimulationClock::duration recovery_cap = std::chrono::milliseconds{100}; // Zero disables the recovery cap.
     };
 
@@ -52,7 +51,9 @@ namespace CE::GFramework {
         );
 
         [[nodiscard]] const SimulationTimingOptions& options() const { return options_; }
-        [[nodiscard]] SimulationBatch advance(SimulationClock::time_point now);
+        [[nodiscard]] SimulationBatch advance(
+            SimulationClock::time_point now
+        );
         [[nodiscard]] SimulationClock::time_point next_update_at() const;
     };
 }

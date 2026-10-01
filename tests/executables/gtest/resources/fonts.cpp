@@ -52,7 +52,10 @@ namespace {
         [[nodiscard]] PrimitiveTopology topology() const noexcept override { return PrimitiveTopology::Triangles; }
         [[nodiscard]] std::size_t vertex_count() const noexcept override { return vertices.size(); }
         void bind() const override {}
-        void draw(std::size_t, std::size_t) const override {}
+        void draw(
+            std::size_t,
+            std::size_t
+        ) const override {}
     };
 
     struct UploadedAtlas final : Image {
@@ -66,7 +69,9 @@ namespace {
         : size(size), pixels(pixels.begin(), pixels.end()) {}
 
         [[nodiscard]] PixelSize pixel_size() const override { return size; }
-        void bind(std::uint32_t) const override {}
+        void bind(
+            std::uint32_t
+        ) const override {}
     };
 
     struct FontUploadProvider final : ResourceProvider {
@@ -79,8 +84,16 @@ namespace {
         std::weak_ptr<Geometry2D> uploaded_geometry;
         std::weak_ptr<Image> uploaded_atlas;
 
-        std::shared_ptr<Image> create_image(const DecodedImage&) override { return {}; }
-        std::shared_ptr<Shader> link_program(const std::vector<fs::path>&) override { return {}; }
+        std::shared_ptr<Image> create_image(
+            const DecodedImage&
+        ) override {
+            return {};
+        }
+        std::shared_ptr<Shader> link_program(
+            const std::vector<fs::path>&
+        ) override {
+            return {};
+        }
 
         std::shared_ptr<Geometry2D> upload_geometry(
             const std::span<const CE::Vertex2D> vertices,
@@ -124,13 +137,18 @@ namespace {
         return vertices;
     }
 
-    void create_empty_file(const fs::path& path) {
+    void create_empty_file(
+        const fs::path& path
+    ) {
         fs::create_directories(path.parent_path());
         std::ofstream(path).put('\0');
     }
 }
 
-TEST(system_fonts, font_discovery) {
+TEST(
+    system_fonts,
+    font_discovery
+) {
     // Populate a nested directory with mixed-case font extensions and a non-font file.
     const TemporaryDirectory directory;
     create_empty_file(directory.path / "regular.ttf");
@@ -146,14 +164,20 @@ TEST(system_fonts, font_discovery) {
     EXPECT_EQ(fonts[2], directory.path / "regular.ttf");
 }
 
-TEST(system_fonts, preferred_font) {
+TEST(
+    system_fonts,
+    preferred_font
+) {
     // A preferred face wins even when its filename uses uppercase letters.
     const std::vector<fs::path> fonts{"/fonts/Zeta.ttf", "/fonts/DejaVuSans.ttf", "/fonts/ARIAL.TTF"};
     ASSERT_TRUE(CE::Resources::select_default_system_font(fonts).has_value());
     EXPECT_EQ(*CE::Resources::select_default_system_font(fonts), fs::path("/fonts/ARIAL.TTF"));
 }
 
-TEST(system_fonts, fallback_font) {
+TEST(
+    system_fonts,
+    fallback_font
+) {
     // Without a preferred face, select the first sorted path; an empty list has no selection.
     const std::vector<fs::path> fallback{"/fonts/ZetaCustom.otf", "/fonts/AlphaCustom.otf"};
     ASSERT_TRUE(CE::Resources::select_default_system_font(fallback).has_value());
@@ -161,20 +185,27 @@ TEST(system_fonts, fallback_font) {
     EXPECT_FALSE(CE::Resources::select_default_system_font({}).has_value());
 }
 
-TEST(font_bake, incomplete_bakes_retry_a_cleared_larger_atlas_and_keep_the_successful_pixels) {
+TEST(
+    font_bake,
+    incomplete_bakes_retry_a_cleared_larger_atlas_and_keep_the_successful_pixels
+) {
     for (const int incomplete : {0, -3}) {
         SCOPED_TRACE(incomplete);
         auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
         std::vector<int> sizes;
         {
-            const auto atlas = FontDetail::bake_font_atlas("fixture.ttf", [&](std::span<unsigned char> pixels, const int size) {
-                sizes.push_back(size);
-                EXPECT_EQ(pixels.size(), static_cast<std::size_t>(size) * size);
-                EXPECT_TRUE(std::all_of(pixels.begin(), pixels.end(), [](const auto value) { return value == 0; }));
-                pixels.front() = 7;
-                pixels.back() = 9;
-                return sizes.size() == 1 ? incomplete : 1;
-            }, std::pmr::polymorphic_allocator<unsigned char>{memory.get()});
+            const auto atlas = FontDetail::bake_font_atlas(
+                "fixture.ttf",
+                [&](std::span<unsigned char> pixels, const int size) {
+                    sizes.push_back(size);
+                    EXPECT_EQ(pixels.size(), static_cast<std::size_t>(size) * size);
+                    EXPECT_TRUE(std::all_of(pixels.begin(), pixels.end(), [](const auto value) { return value == 0; }));
+                    pixels.front() = 7;
+                    pixels.back() = 9;
+                    return sizes.size() == 1 ? incomplete : 1;
+                },
+                std::pmr::polymorphic_allocator<unsigned char>{memory.get()}
+            );
             EXPECT_EQ(sizes, (std::vector<int>{256, 512}));
             EXPECT_EQ(atlas.size, 512);
             EXPECT_EQ(atlas.pixels.front(), 7);
@@ -185,7 +216,10 @@ TEST(font_bake, incomplete_bakes_retry_a_cleared_larger_atlas_and_keep_the_succe
     }
 }
 
-TEST(font_bake, reaching_the_atlas_limit_rejects_partial_data_and_releases_storage) {
+TEST(
+    font_bake,
+    reaching_the_atlas_limit_rejects_partial_data_and_releases_storage
+) {
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     std::vector<int> sizes;
     const auto bake = [&](std::span<unsigned char> pixels, const int size) {
@@ -193,29 +227,34 @@ TEST(font_bake, reaching_the_atlas_limit_rejects_partial_data_and_releases_stora
         pixels.front() = 7;
         return -3;
     };
-    EXPECT_THROW(
-        (void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
-        CE::Exceptions::runtime_exception
-    );
+    EXPECT_THROW((void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
+        CE::Exceptions::runtime_exception);
     EXPECT_EQ(sizes, (std::vector<int>{256, 512, 1024, 2048, 4096}));
     EXPECT_EQ(memory->outstanding.load(), 0u);
 }
 
-TEST(font_bake, rejected_cpu_allocation_precedes_the_baker_and_releases_no_unowned_storage) {
+TEST(
+    font_bake,
+    rejected_cpu_allocation_precedes_the_baker_and_releases_no_unowned_storage
+) {
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     memory->reject_next();
     int calls = 0;
-    const auto bake = [&](std::span<unsigned char>, int) { ++calls; return 1; };
-    EXPECT_THROW(
-        (void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
-        std::bad_alloc
-    );
+    const auto bake = [&](std::span<unsigned char>, int) {
+        ++calls;
+        return 1;
+    };
+    EXPECT_THROW((void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
+        std::bad_alloc);
     EXPECT_EQ(calls, 0);
     EXPECT_EQ(memory->rejected.load(), 1u);
     EXPECT_EQ(memory->outstanding.load(), 0u);
 }
 
-TEST(font_upload, invalid_size_and_missing_or_empty_files_never_start_resource_uploads) {
+TEST(
+    font_upload,
+    invalid_size_and_missing_or_empty_files_never_start_resource_uploads
+) {
     const TemporaryDirectory directory;
     const auto empty = directory.path / "empty.ttf";
     std::ofstream(empty, std::ios::binary).close();
@@ -227,23 +266,27 @@ TEST(font_upload, invalid_size_and_missing_or_empty_files_never_start_resource_u
     EXPECT_EQ(provider.atlas_calls, 0);
 }
 
-TEST(font_upload, rejected_geometry_releases_cpu_storage_without_starting_the_atlas) {
+TEST(
+    font_upload,
+    rejected_geometry_releases_cpu_storage_without_starting_the_atlas
+) {
     FontUploadProvider provider;
     provider.reject_geometry = true;
     auto vertices = glyph_vertices(provider);
     const std::array<unsigned char, 3> alpha{1, 2, 3};
     const std::array<float, font_character_count> advances{};
-    EXPECT_THROW(
-        (void)FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12),
-        CE::Exceptions::failed_operation
-    );
+    EXPECT_THROW((void)FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12),
+        CE::Exceptions::failed_operation);
     EXPECT_TRUE(provider.cpu_vertices.expired());
     EXPECT_TRUE(provider.uploaded_geometry.expired());
     EXPECT_EQ(provider.geometry_calls, 1);
     EXPECT_EQ(provider.atlas_calls, 0);
 }
 
-TEST(font_upload, atlas_throw_or_null_releases_the_completed_glyph_geometry) {
+TEST(
+    font_upload,
+    atlas_throw_or_null_releases_the_completed_glyph_geometry
+) {
     for (const auto outcome : {FontUploadProvider::AtlasResult::Throw, FontUploadProvider::AtlasResult::Null}) {
         SCOPED_TRACE(outcome == FontUploadProvider::AtlasResult::Throw ? "atlas throws" : "atlas returns null");
         FontUploadProvider provider;
@@ -252,15 +295,11 @@ TEST(font_upload, atlas_throw_or_null_releases_the_completed_glyph_geometry) {
         const std::array<unsigned char, 3> alpha{1, 2, 3};
         const std::array<float, font_character_count> advances{};
         if (outcome == FontUploadProvider::AtlasResult::Throw) {
-            EXPECT_THROW(
-                (void)FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12),
-                CE::Exceptions::failed_operation
-            );
+            EXPECT_THROW((void)FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12),
+                CE::Exceptions::failed_operation);
         } else {
-            EXPECT_THROW(
-                (void)STBFont(FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12)),
-                CE::Exceptions::invalid_args
-            );
+            EXPECT_THROW((void)STBFont(FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12)),
+                CE::Exceptions::invalid_args);
         }
         EXPECT_TRUE(provider.cpu_vertices.expired());
         EXPECT_TRUE(provider.uploaded_geometry.expired());
@@ -270,16 +309,18 @@ TEST(font_upload, atlas_throw_or_null_releases_the_completed_glyph_geometry) {
     }
 }
 
-TEST(font_upload, success_retains_backend_copies_and_metrics_after_cpu_release) {
+TEST(
+    font_upload,
+    success_retains_backend_copies_and_metrics_after_cpu_release
+) {
     FontUploadProvider provider;
     auto vertices = glyph_vertices(provider);
     std::array<unsigned char, 3> alpha{1, 2, 3};
     std::array<float, font_character_count> advances{};
     advances.fill(2);
     advances['A' - first_font_character] = 5;
-    auto font = std::make_shared<STBFont>(
-        FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12)
-    );
+    auto font =
+        std::make_shared<STBFont>(FontDetail::upload_baked_font(provider, std::move(vertices), alpha, PixelSize{3, 1}, advances, 12));
     alpha.fill(0);
     advances.fill(0);
     EXPECT_TRUE(provider.cpu_vertices.expired());

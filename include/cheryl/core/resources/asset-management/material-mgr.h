@@ -5,6 +5,8 @@
 #include <templates/singleton.h>
 
 #include <functional>
+#include <filesystem>
+#include <memory>
 
 namespace CE::Assets {
     struct ResourceProvider;
@@ -13,7 +15,8 @@ namespace CE::Assets {
      * A builder owns the explicit backend mappings and bootstrap choices. Build
      * the complete candidate before publishing; failed reload leaves the old recipe.
      */
-    struct MaterialMgr final : AssetMgr<const Material>, Singleton_CTS<MaterialMgr> {
+    struct MaterialMgr final : AssetMgr<const Material>,
+                               Singleton_CTS<MaterialMgr> {
         using Builder = std::function<std::shared_ptr<const Material>(ResourceProvider&)>;
 
         MaterialMgr() = default;

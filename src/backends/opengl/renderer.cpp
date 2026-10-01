@@ -6,20 +6,18 @@
 
 #include <internals/exceptions.h>
 
-
 #include <thread>
 #include <utility>
 
 namespace CE::RenderAPIs {
     namespace {
-        void load_native_functions(iOpenGLContext& context) {
+        void load_native_functions(
+            iOpenGLContext& context
+        ) {
             const auto version = gladLoadGLUserPtr(
-                [](void* user, const char* name) -> GLADapiproc {
-                    return static_cast<iOpenGLContext*>(user)->proc_address(name);
-                }, &context
+                [](void* user, const char* name) -> GLADapiproc { return static_cast<iOpenGLContext*>(user)->proc_address(name); }, &context
             );
-            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 ||
-                (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3))
+            if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3))
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
         }
     }
@@ -35,7 +33,9 @@ namespace CE::RenderAPIs {
         renderer.native_loader_ = std::move(loader);
     }
 
-    OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
+    OpenGLRenderer::OpenGLRenderer(
+        iOpenGLContext& context
+    )
     : context_(context) {}
 
     OpenGLRenderer::~OpenGLRenderer() {
@@ -106,7 +106,9 @@ namespace CE::RenderAPIs {
         return resources_;
     }
 
-    void OpenGLRenderer::render(const RenderFrame& frame) {
+    void OpenGLRenderer::render(
+        const RenderFrame& frame
+    ) {
         const auto domain = resources();
         for (const auto& pass : frame.passes()) {
             for (const auto& packet : pass.draws) {
@@ -126,16 +128,22 @@ namespace CE::RenderAPIs {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-    void OpenGLRenderer::maintain_resources() { resources()->collect(); }
+    void OpenGLRenderer::maintain_resources() {
+        resources()->collect();
+    }
 
-    void OpenGLRenderer::set_viewport(const FramebufferSize size) {
+    void OpenGLRenderer::set_viewport(
+        const FramebufferSize size
+    ) {
         (void)resources();
         if (size.width < 0 || size.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
         glViewport(0, 0, size.width, size.height);
     }
 
-    void OpenGLRenderer::set_depth_test(const bool enabled) {
+    void OpenGLRenderer::set_depth_test(
+        const bool enabled
+    ) {
         (void)resources();
         if (enabled)
             glEnable(GL_DEPTH_TEST);
@@ -143,12 +151,20 @@ namespace CE::RenderAPIs {
             glDisable(GL_DEPTH_TEST);
     }
 
-    void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
+    void OpenGLRenderer::set_clear_colour(
+        const float r,
+        const float g,
+        const float b,
+        const float a
+    ) {
         (void)resources();
         glClearColor(r, g, b, a);
     }
 
-    void OpenGLRenderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
+    void OpenGLRenderer::set_camera_matrices(
+        const glm::mat4& projection,
+        const glm::mat4& view
+    ) {
         (void)resources();
         projection_ = projection;
         view_ = view;

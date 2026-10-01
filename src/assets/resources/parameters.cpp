@@ -25,32 +25,54 @@ namespace CE::Assets {
             const ShaderDraw& draw
         ) {
             switch (semantic) {
-                case ParameterSemantic::Projection: return pass.projection;
-                case ParameterSemantic::View: return pass.view;
-                case ParameterSemantic::Model: return draw.model;
-                case ParameterSemantic::Alpha: return draw.alpha;
-                case ParameterSemantic::Scale: return draw.scale;
-                default: throw Exceptions::invalid_args(CE_HERE, "Unknown engine parameter semantic");
+                case ParameterSemantic::Projection:
+                    return pass.projection;
+                case ParameterSemantic::View:
+                    return pass.view;
+                case ParameterSemantic::Model:
+                    return draw.model;
+                case ParameterSemantic::Alpha:
+                    return draw.alpha;
+                case ParameterSemantic::Scale:
+                    return draw.scale;
+                default:
+                    throw Exceptions::invalid_args(CE_HERE, "Unknown engine parameter semantic");
             }
         }
     }
 
-    ParameterType parameter_type(const ParameterValue& value) {
-        return std::visit([](const auto& item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, float>) return ParameterType::Float;
-            else if constexpr (std::is_same_v<T, int>) return ParameterType::Int;
-            else if constexpr (std::is_same_v<T, unsigned int>) return ParameterType::UInt;
-            else if constexpr (std::is_same_v<T, bool>) return ParameterType::Bool;
-            else if constexpr (std::is_same_v<T, glm::vec2>) return ParameterType::Vec2;
-            else if constexpr (std::is_same_v<T, glm::vec3>) return ParameterType::Vec3;
-            else if constexpr (std::is_same_v<T, glm::vec4>) return ParameterType::Vec4;
-            else if constexpr (std::is_same_v<T, glm::mat4>) return ParameterType::Mat4;
-            else return ParameterType::Sampler2D;
-        }, value);
+    ParameterType parameter_type(
+        const ParameterValue& value
+    ) {
+        return std::visit(
+            [](const auto& item) {
+                using T = std::decay_t<decltype(item)>;
+                if constexpr (std::is_same_v<T, float>)
+                    return ParameterType::Float;
+                else if constexpr (std::is_same_v<T, int>)
+                    return ParameterType::Int;
+                else if constexpr (std::is_same_v<T, unsigned int>)
+                    return ParameterType::UInt;
+                else if constexpr (std::is_same_v<T, bool>)
+                    return ParameterType::Bool;
+                else if constexpr (std::is_same_v<T, glm::vec2>)
+                    return ParameterType::Vec2;
+                else if constexpr (std::is_same_v<T, glm::vec3>)
+                    return ParameterType::Vec3;
+                else if constexpr (std::is_same_v<T, glm::vec4>)
+                    return ParameterType::Vec4;
+                else if constexpr (std::is_same_v<T, glm::mat4>)
+                    return ParameterType::Mat4;
+                else
+                    return ParameterType::Sampler2D;
+            },
+            value
+        );
     }
 
-    void validate_parameter_contract(const ParameterContract& contract) {
+    void validate_parameter_contract(
+        const ParameterContract& contract
+    ) {
         std::set<std::string> keys;
         std::set<ParameterSemantic> semantics;
         for (const auto& definition : contract) {

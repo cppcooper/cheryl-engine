@@ -21,7 +21,10 @@ namespace {
     }
 }
 
-TEST(simulation_scheduler, variable_pacing_preserves_elapsed_time_across_cycles_with_no_update) {
+TEST(
+    simulation_scheduler,
+    variable_pacing_preserves_elapsed_time_across_cycles_with_no_update
+) {
     SimulationTimingOptions options;
     options.variable_interval = 20ms;
     SimulationScheduler scheduler(options, Clock::time_point{});
@@ -37,7 +40,10 @@ TEST(simulation_scheduler, variable_pacing_preserves_elapsed_time_across_cycles_
     EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{} + 43ms);
 }
 
-TEST(simulation_scheduler, a_half_second_stall_does_not_demand_thirty_fixed_updates) {
+TEST(
+    simulation_scheduler,
+    a_half_second_stall_does_not_demand_thirty_fixed_updates
+) {
     SimulationScheduler scheduler(fixed_timing(), Clock::time_point{});
     const auto batch = scheduler.advance(Clock::time_point{} + 500ms);
     ASSERT_EQ(batch.steps.size(), 1u);
@@ -47,7 +53,10 @@ TEST(simulation_scheduler, a_half_second_stall_does_not_demand_thirty_fixed_upda
     EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{} + 520ms);
 }
 
-TEST(simulation_scheduler, dropping_whole_steps_keeps_the_fraction_for_the_next_cycle) {
+TEST(
+    simulation_scheduler,
+    dropping_whole_steps_keeps_the_fraction_for_the_next_cycle
+) {
     auto options = fixed_timing();
     options.fixed_step = 30ms;
     options.max_fixed_updates = 2;
@@ -66,7 +75,10 @@ TEST(simulation_scheduler, dropping_whole_steps_keeps_the_fraction_for_the_next_
     EXPECT_EQ(next.dropped, 0ms);
 }
 
-TEST(simulation_scheduler, direct_variable_recovery_caps_the_delta_and_discards_the_rest) {
+TEST(
+    simulation_scheduler,
+    direct_variable_recovery_caps_the_delta_and_discards_the_rest
+) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
     SimulationScheduler scheduler(options, Clock::time_point{});
@@ -78,7 +90,10 @@ TEST(simulation_scheduler, direct_variable_recovery_caps_the_delta_and_discards_
     EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{} + 520ms);
 }
 
-TEST(simulation_scheduler, hybrid_recovery_runs_only_the_configured_fixed_prefix) {
+TEST(
+    simulation_scheduler,
+    hybrid_recovery_runs_only_the_configured_fixed_prefix
+) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
     options.max_fixed_updates = 3;
@@ -93,7 +108,10 @@ TEST(simulation_scheduler, hybrid_recovery_runs_only_the_configured_fixed_prefix
     EXPECT_EQ(batch.dropped, 360ms);
 }
 
-TEST(simulation_scheduler, uncapped_recovery_uses_the_remaining_observed_time) {
+TEST(
+    simulation_scheduler,
+    uncapped_recovery_uses_the_remaining_observed_time
+) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
     options.recovery_cap = 0ms;
@@ -106,7 +124,10 @@ TEST(simulation_scheduler, uncapped_recovery_uses_the_remaining_observed_time) {
     EXPECT_EQ(batch.dropped, 0ms);
 }
 
-TEST(simulation_scheduler, normal_fixed_cycles_do_not_use_variable_recovery) {
+TEST(
+    simulation_scheduler,
+    normal_fixed_cycles_do_not_use_variable_recovery
+) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
     options.max_fixed_updates = 2;
@@ -118,7 +139,10 @@ TEST(simulation_scheduler, normal_fixed_cycles_do_not_use_variable_recovery) {
     EXPECT_EQ(batch.dropped, 0ms);
 }
 
-TEST(simulation_scheduler, expensive_update_time_enters_the_next_bounded_batch) {
+TEST(
+    simulation_scheduler,
+    expensive_update_time_enters_the_next_bounded_batch
+) {
     SimulationScheduler scheduler(fixed_timing(), Clock::time_point{});
     const auto first = scheduler.advance(Clock::time_point{} + 20ms);
     ASSERT_EQ(first.steps.size(), 1u);
@@ -130,7 +154,10 @@ TEST(simulation_scheduler, expensive_update_time_enters_the_next_bounded_batch) 
     EXPECT_EQ(scheduler.next_update_at(), Clock::time_point{} + 100ms);
 }
 
-TEST(simulation_scheduler, invalid_options_and_backward_clock_inputs_are_rejected) {
+TEST(
+    simulation_scheduler,
+    invalid_options_and_backward_clock_inputs_are_rejected
+) {
     auto options = fixed_timing();
     options.fixed_step = 0ms;
     EXPECT_THROW((void)SimulationScheduler(options), CE::Exceptions::invalid_args);
@@ -150,14 +177,20 @@ TEST(simulation_scheduler, invalid_options_and_backward_clock_inputs_are_rejecte
     EXPECT_THROW((void)scheduler.advance(Clock::time_point{} - 1ms), CE::Exceptions::invalid_args);
 }
 
-TEST(simulation_scheduler, deadlines_saturate_and_unrepresentable_clock_spans_are_rejected) {
+TEST(
+    simulation_scheduler,
+    deadlines_saturate_and_unrepresentable_clock_spans_are_rejected
+) {
     SimulationScheduler near_end(fixed_timing(), Clock::time_point::max() - 1ms);
     EXPECT_EQ(near_end.next_update_at(), Clock::time_point::max());
     SimulationScheduler wide_span(fixed_timing(), Clock::time_point::min());
     EXPECT_THROW((void)wide_span.advance(Clock::time_point::max()), CE::Exceptions::invalid_args);
 }
 
-TEST(simulation_scheduler, zero_variable_pacing_does_not_use_the_fixed_interval) {
+TEST(
+    simulation_scheduler,
+    zero_variable_pacing_does_not_use_the_fixed_interval
+) {
     SimulationTimingOptions options;
     options.variable_interval = 0ms;
     options.fixed_step = 100ms;
@@ -169,7 +202,10 @@ TEST(simulation_scheduler, zero_variable_pacing_does_not_use_the_fixed_interval)
     EXPECT_EQ(batch.steps[0].kind, UpdateKind::Variable);
 }
 
-TEST(simulation_scheduler, fixed_pacing_does_not_use_the_variable_interval) {
+TEST(
+    simulation_scheduler,
+    fixed_pacing_does_not_use_the_variable_interval
+) {
     auto options = fixed_timing();
     options.variable_interval = 500ms;
     SimulationScheduler scheduler(options, Clock::time_point{});

@@ -7,6 +7,8 @@
 #include <tuple>
 #include <string_view>
 #include <vector>
+#include <cstddef>
+#include <memory>
 
 namespace CE::Assets {
     using FontResources = std::tuple<std::shared_ptr<Geometry2D>, std::shared_ptr<Image>>;
@@ -19,7 +21,10 @@ namespace CE::Assets {
         bool alternate_bank = false; // Legacy FFont's typed fancy-bank selection.
     };
     struct Font : protected Asset2D {
-        explicit Font(const FontResources& data) : Asset2D(std::get<0>(data), std::get<1>(data)) {}
+        explicit Font(
+            const FontResources& data
+        )
+        : Asset2D(std::get<0>(data), std::get<1>(data)) {}
         virtual ~Font() = default;
         [[nodiscard]] virtual std::vector<GlyphPlacement2D> layout(
             std::string_view text,

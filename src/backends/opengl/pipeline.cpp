@@ -12,17 +12,28 @@
 
 namespace CE::Assets {
     namespace {
-        GLenum uniform_type(const ParameterType type) {
+        GLenum uniform_type(
+            const ParameterType type
+        ) {
             switch (type) {
-                case ParameterType::Float: return GL_FLOAT;
-                case ParameterType::Int: return GL_INT;
-                case ParameterType::UInt: return GL_UNSIGNED_INT;
-                case ParameterType::Bool: return GL_BOOL;
-                case ParameterType::Vec2: return GL_FLOAT_VEC2;
-                case ParameterType::Vec3: return GL_FLOAT_VEC3;
-                case ParameterType::Vec4: return GL_FLOAT_VEC4;
-                case ParameterType::Mat4: return GL_FLOAT_MAT4;
-                case ParameterType::Sampler2D: return GL_SAMPLER_2D;
+                case ParameterType::Float:
+                    return GL_FLOAT;
+                case ParameterType::Int:
+                    return GL_INT;
+                case ParameterType::UInt:
+                    return GL_UNSIGNED_INT;
+                case ParameterType::Bool:
+                    return GL_BOOL;
+                case ParameterType::Vec2:
+                    return GL_FLOAT_VEC2;
+                case ParameterType::Vec3:
+                    return GL_FLOAT_VEC3;
+                case ParameterType::Vec4:
+                    return GL_FLOAT_VEC4;
+                case ParameterType::Mat4:
+                    return GL_FLOAT_MAT4;
+                case ParameterType::Sampler2D:
+                    return GL_SAMPLER_2D;
             }
             throw Exceptions::invalid_args(CE_HERE, "Unsupported GLSL parameter type");
         }
@@ -41,21 +52,32 @@ namespace CE::Assets {
             const GLint location,
             const ParameterValue& value
         ) {
-            std::visit([location](const auto& item) {
-                using T = std::decay_t<decltype(item)>;
-                if constexpr (std::is_same_v<T, float>) glUniform1f(location, item);
-                else if constexpr (std::is_same_v<T, int>) glUniform1i(location, item);
-                else if constexpr (std::is_same_v<T, unsigned int>) glUniform1ui(location, item);
-                else if constexpr (std::is_same_v<T, bool>) glUniform1i(location, item ? 1 : 0);
-                else if constexpr (std::is_same_v<T, glm::vec2>) glUniform2f(location, item.x, item.y);
-                else if constexpr (std::is_same_v<T, glm::vec3>) glUniform3f(location, item.x, item.y, item.z);
-                else if constexpr (std::is_same_v<T, glm::vec4>) glUniform4f(location, item.x, item.y, item.z, item.w);
-                else if constexpr (std::is_same_v<T, glm::mat4>) glUniformMatrix4fv(location, 1, GL_FALSE, &item[0][0]);
-                else {
-                    item.image->bind(item.unit);
-                    glUniform1i(location, static_cast<GLint>(item.unit));
-                }
-            }, value);
+            std::visit(
+                [location](const auto& item) {
+                    using T = std::decay_t<decltype(item)>;
+                    if constexpr (std::is_same_v<T, float>)
+                        glUniform1f(location, item);
+                    else if constexpr (std::is_same_v<T, int>)
+                        glUniform1i(location, item);
+                    else if constexpr (std::is_same_v<T, unsigned int>)
+                        glUniform1ui(location, item);
+                    else if constexpr (std::is_same_v<T, bool>)
+                        glUniform1i(location, item ? 1 : 0);
+                    else if constexpr (std::is_same_v<T, glm::vec2>)
+                        glUniform2f(location, item.x, item.y);
+                    else if constexpr (std::is_same_v<T, glm::vec3>)
+                        glUniform3f(location, item.x, item.y, item.z);
+                    else if constexpr (std::is_same_v<T, glm::vec4>)
+                        glUniform4f(location, item.x, item.y, item.z, item.w);
+                    else if constexpr (std::is_same_v<T, glm::mat4>)
+                        glUniformMatrix4fv(location, 1, GL_FALSE, &item[0][0]);
+                    else {
+                        item.image->bind(item.unit);
+                        glUniform1i(location, static_cast<GLint>(item.unit));
+                    }
+                },
+                value
+            );
         }
     }
 
@@ -81,7 +103,8 @@ namespace CE::Assets {
         const auto uniforms = program_->active_uniforms();
         const auto attributes = program_->active_attributes();
         for (const auto& attribute : attributes) {
-            const bool position = attribute.name == bindings.position_attribute && attribute.location == 0 && attribute.type == GL_FLOAT_VEC3;
+            const bool position =
+                attribute.name == bindings.position_attribute && attribute.location == 0 && attribute.type == GL_FLOAT_VEC3;
             const bool uv = attribute.name == bindings.uv_attribute && attribute.location == 1 && attribute.type == GL_FLOAT_VEC2;
             if ((!position && !uv) || attribute.size != 1 || attribute.name.find('[') != std::string::npos)
                 throw Exceptions::invalid_args(CE_HERE, "Program attribute does not match Vertex2D: " + attribute.name);
@@ -95,7 +118,8 @@ namespace CE::Assets {
             const auto& binding = *mapping->second;
             if (binding.missing_value)
                 validate_reset_value(definition, *binding.missing_value);
-            const auto uniform = std::find_if(uniforms.begin(), uniforms.end(), [&](const auto& item) { return item.name == binding.uniform; });
+            const auto uniform =
+                std::find_if(uniforms.begin(), uniforms.end(), [&](const auto& item) { return item.name == binding.uniform; });
             if (uniform == uniforms.end()) {
                 if (definition.required)
                     throw Exceptions::invalid_args(CE_HERE, "Required GLSL uniform is inactive/missing: " + binding.uniform);
@@ -124,7 +148,9 @@ namespace CE::Assets {
         }
     }
 
-    void GLSLPipeline::validate_resources(const ParameterSet& values) const {
+    void GLSLPipeline::validate_resources(
+        const ParameterSet& values
+    ) const {
         program_->require_current();
         for (const auto& [key, value] : values) {
             const auto* binding = std::get_if<ImageBinding>(&value);
@@ -137,7 +163,9 @@ namespace CE::Assets {
         }
     }
 
-    ParameterSet GLSLPipeline::prepare_parameters(const ParameterSet& values) const {
+    ParameterSet GLSLPipeline::prepare_parameters(
+        const ParameterSet& values
+    ) const {
         program_->require_current();
         auto effective = values;
         // Fill absent active optional values before validation, so reset samplers
@@ -155,14 +183,18 @@ namespace CE::Assets {
         return effective;
     }
 
-    void GLSLPipeline::apply_parameters(const ParameterSet& values) const {
+    void GLSLPipeline::apply_parameters(
+        const ParameterSet& values
+    ) const {
         // No program/texture state changes occur until the complete request passes.
         program_->use();
         for (const auto& parameter : parameters_)
             upload_parameter(parameter.location, values.at(parameter.key));
     }
 
-    void GLSLPipeline::bind_parameters(const ParameterSet& values) const {
+    void GLSLPipeline::bind_parameters(
+        const ParameterSet& values
+    ) const {
         apply_parameters(prepare_parameters(values));
     }
 

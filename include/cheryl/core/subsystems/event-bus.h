@@ -48,7 +48,9 @@ namespace CE::SubSystems {
             std::exception_ptr failure;
             std::atomic<bool> entered{false};
 
-            explicit DeliveryTicket(std::shared_ptr<Listener> value);
+            explicit DeliveryTicket(
+                std::shared_ptr<Listener> value
+            );
             ~DeliveryTicket();
         };
         struct State {
@@ -69,7 +71,11 @@ namespace CE::SubSystems {
             std::weak_ptr<Listener> listener_;
             std::uint64_t id_ = 0;
 
-            Registration(const std::shared_ptr<State>& bus, const std::shared_ptr<Listener>& listener, std::uint64_t id)
+            Registration(
+                const std::shared_ptr<State>& bus,
+                const std::shared_ptr<Listener>& listener,
+                std::uint64_t id
+            )
             : bus_(bus), listener_(listener), id_(id) {}
 
         public:
@@ -79,8 +85,12 @@ namespace CE::SubSystems {
 
         EventBus() = default;
         ~EventBus();
-        EventBus(const EventBus&) = delete;
-        EventBus& operator=(const EventBus&) = delete;
+        EventBus(
+            const EventBus&
+        ) = delete;
+        EventBus& operator=(
+            const EventBus&
+        ) = delete;
 
         // A registration is intentionally persistent even when its ID is ignored.
         Registration register_listener(
@@ -89,20 +99,40 @@ namespace CE::SubSystems {
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         );
-        void dispatch(const std::string& event, const std::any& payload);
+        void dispatch(
+            const std::string& event,
+            const std::any& payload
+        );
         // Invalidation prevents new invocation entry; already-running work finishes.
-        bool unregister_listener(const Registration& registration);
+        bool unregister_listener(
+            const Registration& registration
+        );
         // Only wait after invalidation. Waiting on one's own invocation rejects.
-        void wait_for_listener(const Registration& registration) const;
-        bool unregister_and_wait(const Registration& registration);
+        void wait_for_listener(
+            const Registration& registration
+        ) const;
+        bool unregister_and_wait(
+            const Registration& registration
+        );
         // Every concurrent close returns after all invocation gates are closed.
         // Already-running callbacks retain ownership and are not waited for.
         void close();
 
     private:
-        static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
-        static void invalidate(const std::shared_ptr<Listener>& listener);
-        static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);
-        static void report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept;
+        static void invoke(
+            const std::shared_ptr<Listener>& listener,
+            const std::any& payload
+        );
+        static void invalidate(
+            const std::shared_ptr<Listener>& listener
+        );
+        static void deliver(
+            const std::shared_ptr<Listener>& listener,
+            const std::any& payload
+        );
+        static void report_error(
+            const std::shared_ptr<Listener>& listener,
+            std::exception_ptr failure
+        ) noexcept;
     };
 }

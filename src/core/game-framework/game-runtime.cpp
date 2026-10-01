@@ -165,11 +165,10 @@ namespace CE::GFramework {
                 }
                 renderer.maintain_resources();
                 std::unique_lock lock(scheduler_->mutex);
-                const auto deadline = std::min({timing.next_update_at(), backlog.next_poll_at(),
-                    SimulationClock::now() + resource_maintenance_interval});
-                scheduler_->wake.wait_until(lock, deadline, [&] {
-                    return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending();
-                });
+                const auto deadline =
+                    std::min({timing.next_update_at(), backlog.next_poll_at(), SimulationClock::now() + resource_maintenance_interval});
+                scheduler_->wake.wait_until(lock, deadline,
+                    [&] { return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending(); });
             }
         } catch (...) {
             failure = std::current_exception();
@@ -276,9 +275,8 @@ namespace CE::GFramework {
                     while (!stop_requested_.load(std::memory_order_acquire)) {
                         {
                             std::unique_lock lock(scheduler_->mutex);
-                            scheduler_->wake.wait_until(lock, timing.next_update_at(), [&] {
-                                return stop_requested_.load(std::memory_order_acquire);
-                            });
+                            scheduler_->wake.wait_until(lock, timing.next_update_at(),
+                                [&] { return stop_requested_.load(std::memory_order_acquire); });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
                         }
@@ -360,8 +358,7 @@ namespace CE::GFramework {
                 }
                 scheduler_->wake.notify_all();
             };
-            worker = simulation_thread_factory_ ? simulation_thread_factory_(std::move(simulate))
-                                                : std::thread(std::move(simulate));
+            worker = simulation_thread_factory_ ? simulation_thread_factory_(std::move(simulate)) : std::thread(std::move(simulate));
             if (!worker.joinable())
                 throw Exceptions::failed_operation(CE_HERE, "Simulation thread factory returned no thread");
 
@@ -481,9 +478,8 @@ namespace CE::GFramework {
                 }
                 pump_shutdown_requests(failure);
                 std::unique_lock lock(scheduler_->mutex);
-                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [&] {
-                    return handoff.worker_done || engine_.platform_dispatcher().has_pending();
-                });
+                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1},
+                    [&] { return handoff.worker_done || engine_.platform_dispatcher().has_pending(); });
             }
             worker.join();
         }
@@ -541,19 +537,19 @@ namespace CE::GFramework {
             std::rethrow_exception(failure);
     }
 
-    void GameRuntime::pump_shutdown_requests(std::exception_ptr& failure) {
+    void GameRuntime::pump_shutdown_requests(
+        std::exception_ptr& failure
+    ) {
         try {
             engine_.platform_dispatcher().drain(engine_);
-        }
-        catch (...) {
+        } catch (...) {
             if (!failure)
                 failure = std::current_exception();
             // If dispatch itself fails, cancel rather than strand futures which
             // a worker is waiting for. Preserve the first failure during cleanup.
             try {
                 engine_.platform_dispatcher().close();
-            }
-            catch (...) {
+            } catch (...) {
                 if (!failure)
                     failure = std::current_exception();
             }
@@ -570,20 +566,19 @@ namespace CE::GFramework {
         }
     }
 
-    void GameRuntime::finish_worker_shutdown(std::exception_ptr& failure) {
+    void GameRuntime::finish_worker_shutdown(
+        std::exception_ptr& failure
+    ) {
         while (!engine_.workers_idle()) {
             pump_shutdown_requests(failure);
             std::unique_lock lock(scheduler_->mutex);
             // Worker accounting has no borrowed runtime wake callback. A bounded
             // wait observes completion while platform posts wake immediately.
-            scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [this] {
-                return engine_.platform_dispatcher().has_pending();
-            });
+            scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [this] { return engine_.platform_dispatcher().has_pending(); });
         }
         try {
             engine_.finish_workers();
-        }
-        catch (...) {
+        } catch (...) {
             if (!failure)
                 failure = std::current_exception();
         }

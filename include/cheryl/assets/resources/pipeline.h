@@ -2,6 +2,8 @@
 
 #include <assets/definitions/pipeline.h>
 
+#include <cstddef>
+
 namespace CE::Assets {
     // A backend subclass retains its executable resource. Construction takes a
     // definition snapshot; publishing another instance creates another generation.
@@ -9,12 +11,18 @@ namespace CE::Assets {
         const PipelineDefinition definition_;
 
     protected:
-        explicit Pipeline(PipelineDefinition definition);
+        explicit Pipeline(
+            PipelineDefinition definition
+        );
 
     public:
         virtual ~Pipeline() = default;
-        Pipeline(const Pipeline&) = delete;
-        Pipeline& operator=(const Pipeline&) = delete;
+        Pipeline(
+            const Pipeline&
+        ) = delete;
+        Pipeline& operator=(
+            const Pipeline&
+        ) = delete;
         [[nodiscard]] const PipelineDefinition& definition() const { return definition_; }
         void validate_draw(
             const Geometry2D& geometry,
@@ -28,7 +36,9 @@ namespace CE::Assets {
         const MaterialDefinition definition_;
 
     public:
-        explicit Material(MaterialDefinition definition);
+        explicit Material(
+            MaterialDefinition definition
+        );
         [[nodiscard]] const MaterialDefinition& definition() const { return definition_; }
         [[nodiscard]] ParameterSet resolve(
             const ShaderPass& pass_semantics,

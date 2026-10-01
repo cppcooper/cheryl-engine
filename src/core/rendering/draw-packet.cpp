@@ -5,7 +5,10 @@
 #include <utility>
 
 namespace CE::RenderAPIs {
-    void validate_draw_packet(const DrawPacket2D& packet, const Assets::PassConstraints2D& constraints) {
+    void validate_draw_packet(
+        const DrawPacket2D& packet,
+        const Assets::PassConstraints2D& constraints
+    ) {
         if (!packet.geometry || !packet.material)
             throw Exceptions::invalid_args(CE_HERE, "A draw packet needs geometry and a material generation");
         const auto& pipeline = *packet.material->definition().pipeline;

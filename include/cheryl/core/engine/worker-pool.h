@@ -49,7 +49,7 @@ namespace CE::Engine {
     struct WorkerGroupOptions {
         // Zero uses the root pool's capacity. Groups share, rather than own, threads.
         std::size_t max_concurrency = 0;
-        unsigned int weight = 1; // 1..1024, weighted fair job selection.
+        unsigned int weight = 1;   // 1..1024, weighted fair job selection.
         unsigned int priority = 0; // 0..7, multiplies scheduling share by priority+1.
         WorkerCpuPolicy cpu;
     };
@@ -79,12 +79,19 @@ namespace CE::Engine {
         std::weak_ptr<WorkerDetail::PoolState> pool_;
         std::shared_ptr<WorkerDetail::GroupState> group_;
 
-        WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group);
-        void enqueue(WorkerDetail::Job job) const;
+        WorkerGroup(
+            std::shared_ptr<WorkerDetail::PoolState> pool,
+            std::shared_ptr<WorkerDetail::GroupState> group
+        );
+        void enqueue(
+            WorkerDetail::Job job
+        ) const;
 
     public:
         template <typename Work>
-        [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
+        [[nodiscard]] auto submit(
+            Work&& work
+        ) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
             using Result = std::invoke_result_t<std::decay_t<Work>&>;
             auto completion = std::make_shared<std::promise<Result>>();
             auto result = completion->get_future();
@@ -94,12 +101,10 @@ namespace CE::Engine {
                     if constexpr (std::is_void_v<Result>) {
                         std::invoke(work);
                         completion->set_value();
-                    }
-                    else {
+                    } else {
                         completion->set_value(std::invoke(work));
                     }
-                }
-                catch (...) {
+                } catch (...) {
                     completion->set_exception(std::current_exception());
                 }
             };
@@ -134,12 +139,20 @@ namespace CE::Engine {
         );
 
     public:
-        explicit WorkerPool(std::size_t worker_count = 1);
+        explicit WorkerPool(
+            std::size_t worker_count = 1
+        );
         ~WorkerPool();
-        WorkerPool(const WorkerPool&) = delete;
-        WorkerPool& operator=(const WorkerPool&) = delete;
+        WorkerPool(
+            const WorkerPool&
+        ) = delete;
+        WorkerPool& operator=(
+            const WorkerPool&
+        ) = delete;
 
-        [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
+        [[nodiscard]] WorkerGroup make_group(
+            WorkerGroupOptions options = WorkerGroupOptions{}
+        );
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         [[nodiscard]] WorkerCapabilities capabilities() const;
         void close();

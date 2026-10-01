@@ -2,6 +2,9 @@
 
 #include <core/game-framework/game-runtime.h>
 
+#include <functional>
+#include <thread>
+
 namespace CE::GFramework::RuntimeDetail {
     struct GameRuntimeAccess {
         // Configure before run. Return an owned joinable thread, or throw

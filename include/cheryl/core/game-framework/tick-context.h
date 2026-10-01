@@ -22,6 +22,8 @@ namespace CE::GFramework {
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.
         // With no observation interval, use held State. This does not recover tap history.
-        [[nodiscard]] double button_simulation_seconds(Input::ActionId action) const;
+        [[nodiscard]] double button_simulation_seconds(
+            Input::ActionId action
+        ) const;
     };
 }

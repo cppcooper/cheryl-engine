@@ -9,8 +9,7 @@
 #include <vector>
 
 namespace CE::Assets::FontDetail {
-    template <typename Allocator = std::allocator<unsigned char>>
-    struct BakedAlphaAtlas {
+    template <typename Allocator = std::allocator<unsigned char>> struct BakedAlphaAtlas {
         std::vector<unsigned char, Allocator> pixels;
         int size;
     };

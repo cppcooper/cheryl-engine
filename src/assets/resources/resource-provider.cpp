@@ -9,7 +9,11 @@
 #include <internals/exceptions.h>
 
 namespace CE::Assets {
-    std::shared_ptr<Image> ResourceProvider::load_image(const std::filesystem::path& file) { return create_image(decode_image(file)); }
+    std::shared_ptr<Image> ResourceProvider::load_image(
+        const std::filesystem::path& file
+    ) {
+        return create_image(decode_image(file));
+    }
 
     std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(
         std::shared_ptr<Vertex2D> vertices,

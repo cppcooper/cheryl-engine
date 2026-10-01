@@ -15,11 +15,17 @@ namespace {
         CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::TriangleStrip; }
         std::size_t vertex_count() const noexcept override { return 16; }
         void bind() const override { FAIL() << "Frame preparation must not bind geometry"; }
-        void draw(std::size_t, std::size_t) const override { FAIL() << "Frame preparation must not draw geometry"; }
+        void draw(
+            std::size_t,
+            std::size_t
+        ) const override {
+            FAIL() << "Frame preparation must not draw geometry";
+        }
     };
     class FramePipeline final : public CE::Assets::Pipeline {
     public:
-        FramePipeline() : Pipeline(make_definition()) {}
+        FramePipeline()
+        : Pipeline(make_definition()) {}
 
     private:
         static CE::Assets::PipelineDefinition make_definition() {
@@ -39,8 +45,7 @@ namespace {
         const CE::Assets::ShaderPass& pass = CE::Assets::ShaderPass{}
     ) {
         CE::RenderAPIs::DrawStyle2D style;
-        style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{
-            std::make_shared<FramePipeline>(), {}});
+        style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<FramePipeline>(), {}});
         style.model_matrix = model;
         CE::Assets::SubmissionContext2D context;
         context.pass = pass;
@@ -53,24 +58,18 @@ namespace {
         definition.grid.frame = {16, 16};
         definition.grid.rows = 1;
         definition.grid.columns = 4;
-        definition.animations.push_back({.name = "walk",
-                                         .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}, {3, 100ms}},
-                                         .loop = true
-        });
-        definition.animations.push_back({.name = "fall",
-                                         .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}},
-                                         .loop = false
-        });
+        definition.animations.push_back({.name = "walk", .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}, {3, 100ms}}, .loop = true});
+        definition.animations.push_back({.name = "fall", .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}}, .loop = false});
         // CPU metadata is sufficient for resolution; these resources cannot issue GPU work.
         return std::make_shared<CE::Assets::Sprite>(CE::Assets::SpriteData{
-            .geometry = std::make_shared<FrameGeometry>(),
-            .texture = nullptr,
-            .definition = std::move(definition)
-        });
+            .geometry = std::make_shared<FrameGeometry>(), .texture = nullptr, .definition = std::move(definition)});
     }
 }
 
-TEST(sprite_playback, two_entities_share_frames_but_keep_separate_clocks) {
+TEST(
+    sprite_playback,
+    two_entities_share_frames_but_keep_separate_clocks
+) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto first = sprite->animation("walk");
@@ -89,7 +88,10 @@ TEST(sprite_playback, two_entities_share_frames_but_keep_separate_clocks) {
     EXPECT_EQ(first.definition().frames.size(), 4u);
 }
 
-TEST(sprite_playback, nonlooping_clip_stays_on_its_last_frame) {
+TEST(
+    sprite_playback,
+    nonlooping_clip_stays_on_its_last_frame
+) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto fall = sprite->animation("fall");
@@ -102,7 +104,10 @@ TEST(sprite_playback, nonlooping_clip_stays_on_its_last_frame) {
     EXPECT_EQ(fall.cell(), 0u);
 }
 
-TEST(render_frame, published_values_do_not_follow_simulation_changes) {
+TEST(
+    render_frame,
+    published_values_do_not_follow_simulation_changes
+) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto playback = sprite->animation("walk");
@@ -130,7 +135,10 @@ TEST(render_frame, published_values_do_not_follow_simulation_changes) {
     EXPECT_FLOAT_EQ(std::get<glm::mat4>(draw.parameters.at("model"))[3][0], 5.0f);
 }
 
-TEST(render_frame, recycled_slot_keeps_storage_and_releases_old_assets) {
+TEST(
+    render_frame,
+    recycled_slot_keeps_storage_and_releases_old_assets
+) {
     auto sprite = make_sprite();
     std::weak_ptr<const CE::Assets::Geometry2D> retained = sprite->geometry;
     CE::RenderAPIs::RenderFrame frame;
@@ -175,7 +183,10 @@ TEST(render_frame, recycled_slot_keeps_storage_and_releases_old_assets) {
     EXPECT_FLOAT_EQ(frame.passes()[0].view[3][0], -6.0f);
 }
 
-TEST(render_frame, invalid_group_does_not_publish_a_partial_sequence) {
+TEST(
+    render_frame,
+    invalid_group_does_not_publish_a_partial_sequence
+) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);
@@ -190,7 +201,10 @@ TEST(render_frame, invalid_group_does_not_publish_a_partial_sequence) {
     EXPECT_EQ(frame.passes()[0].draws.size(), 1u);
 }
 
-TEST(render_frame, pass_constraints_reject_conflicting_pipeline_state) {
+TEST(
+    render_frame,
+    pass_constraints_reject_conflicting_pipeline_state
+) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);

@@ -3,6 +3,10 @@
 #include <core/engine/worker-pool.h>
 
 #include <functional>
+#include <cstddef>
+#include <memory>
+#include <thread>
+#include <vector>
 
 namespace CE::Engine::WorkerDetail {
     // Per-pool native operations, never a global test override. Production uses

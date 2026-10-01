@@ -12,7 +12,10 @@ namespace CE::Assets {
 
     /** A whole-texture image with a local pixel-sized quad, suitable for a UI graphic. */
     struct Graphic final : Asset2D {
-        Graphic(std::shared_ptr<Geometry2D> geometry, std::shared_ptr<Image> image)
+        Graphic(
+            std::shared_ptr<Geometry2D> geometry,
+            std::shared_ptr<Image> image
+        )
         : Asset2D(std::move(geometry), std::move(image)) {}
 
         [[nodiscard]] static Graphic from_image(

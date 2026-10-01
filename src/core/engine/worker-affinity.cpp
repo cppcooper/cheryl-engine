@@ -46,8 +46,7 @@ namespace CE::Engine::WorkerDetail {
                     throw Exceptions::failed_operation(CE_HERE, "Worker has no eligible CPU");
                 capabilities.cpu_affinity = true;
                 capabilities.limitations = "Fixed CPU_SETSIZE mask; no automatic cache-domain or NUMA memory-placement discovery";
-            }
-            catch (...) {
+            } catch (...) {
                 capabilities.limitations = "Cannot query the inherited eligible CPU mask; hard affinity is unavailable";
             }
         } else {

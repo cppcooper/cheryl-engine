@@ -15,6 +15,9 @@ namespace CE::Assets {
         [[nodiscard]] virtual std::size_t vertex_count() const noexcept = 0;
         virtual void bind() const = 0;
         // Each call draws one range using the topology chosen when the buffer was uploaded.
-        virtual void draw(std::size_t first_vertex, std::size_t vertex_count) const = 0;
+        virtual void draw(
+            std::size_t first_vertex,
+            std::size_t vertex_count
+        ) const = 0;
     };
 }

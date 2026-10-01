@@ -3,7 +3,10 @@
 #include <utility>
 
 namespace CE::SubSystems {
-    void EventSystem::dispatch(const std::string& event, const std::any& payload) {
+    void EventSystem::dispatch(
+        const std::string& event,
+        const std::any& payload
+    ) {
         bus_.dispatch(event, payload);
     }
 

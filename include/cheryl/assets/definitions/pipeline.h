@@ -11,25 +11,12 @@
 namespace CE::Assets {
     class Pipeline;
 
-    enum class BlendMode {
-        Opaque,
-        StraightAlpha,
-        PremultipliedAlpha,
-        Additive
-    };
+    enum class BlendMode { Opaque, StraightAlpha, PremultipliedAlpha, Additive };
 
-    enum class DepthMode {
-        Disabled,
-        Less,
-        LessEqual
-    };
+    enum class DepthMode { Disabled, Less, LessEqual };
 
     // Front-facing triangles use counterclockwise winding.
-    enum class CullMode {
-        None,
-        Front,
-        Back
-    };
+    enum class CullMode { None, Front, Back };
 
     struct PipelineState2D {
         BlendMode blend = BlendMode::StraightAlpha;
@@ -61,5 +48,7 @@ namespace CE::Assets {
         ParameterSet defaults;
     };
 
-    void validate_pipeline_definition(const PipelineDefinition& definition);
+    void validate_pipeline_definition(
+        const PipelineDefinition& definition
+    );
 }

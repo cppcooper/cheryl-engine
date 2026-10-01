@@ -65,7 +65,11 @@ class Game : public CE::GFramework::AbstractGame {
     std::uint64_t gamepad_presses_ = 0;
 
 public:
-    Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets)
+    Game(
+        CE::Engine::EngineContext& engine,
+        std::filesystem::path asset_root,
+        bool load_all_assets
+    )
     : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
 
     void init() override {
@@ -117,7 +121,9 @@ public:
         font_shader_.reset();
     }
 
-    void update(const CE::GFramework::TickContext& tick) override {
+    void update(
+        const CE::GFramework::TickContext& tick
+    ) override {
         if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
             try {
                 font_shader_ = pending_shader_.get();
@@ -203,11 +209,9 @@ public:
             }
         }
 
-        const glm::vec2 movement{static_cast<float>(tick.button_simulation_seconds(DemoActions::Right) -
-                                     tick.button_simulation_seconds(DemoActions::Left)),
-                                 static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) -
-                                     tick.button_simulation_seconds(DemoActions::Down))
-        };
+        const glm::vec2 movement{
+            static_cast<float>(tick.button_simulation_seconds(DemoActions::Right) - tick.button_simulation_seconds(DemoActions::Left)),
+            static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) - tick.button_simulation_seconds(DemoActions::Down))};
         if (glm::length(movement) > 0.0f) {
             // Scale the observed down-time fraction by this update's simulation
             // delta. A completed observed tap still contributes after release.
@@ -216,31 +220,34 @@ public:
         }
     }
 
-    void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+    void prepare_render_frame(
+        CE::RenderAPIs::RenderFrameWriter& frame
+    ) const override {
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
         const CE::Assets::SubmissionContext2D context{pass.semantics(), pass.parameters(), pass.constraints()};
         CE::RenderAPIs::DrawStyle2D text;
         text.material = font_shader_;
-        text.model_matrix = glm::translate(
-            glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f));
+        text.model_matrix = glm::translate(glm::mat4(1.0f),
+            glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f));
         pass.add(CE::Assets::resolve_text(*font_, "Camera target", text, context));
 
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
         pass.add(CE::Assets::resolve_text(*font_,
-                                          std::format("Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
-                                              "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                                              "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}\nReload: {}",
-                                              mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_,
-                                              focus_.owns_focus() ? "focused" : "unfocused", text_preview(), reload_error_),
-                                          text, context
-        ));
+            std::format("Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
+                        "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
+                        "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}\nReload: {}",
+                mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, focus_.owns_focus() ? "focused" : "unfocused", text_preview(),
+                reload_error_),
+            text, context));
     }
 
 private:
-    CE::Assets::MaterialMgr::Builder font_recipe(const std::filesystem::path& key) const {
+    CE::Assets::MaterialMgr::Builder font_recipe(
+        const std::filesystem::path& key
+    ) const {
         const auto atlas = font_->glyph_atlas_handle();
         return [key, atlas](CE::Assets::ResourceProvider& provider) {
             using namespace CE::Assets;
@@ -253,12 +260,10 @@ private:
                 {"view", ParameterType::Mat4, true, ParameterSemantic::View},
                 {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
                 {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-                {"scale", ParameterType::Float, true, ParameterSemantic::Scale},
-                {"image", ParameterType::Sampler2D}};
-            const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"},
-                {"model", "modelMatrix"}, {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
-            return native->build_material({native->build_pipeline(std::move(definition), bindings),
-                {{"image", ImageBinding{atlas, 0}}}});
+                {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}};
+            const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
+                {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
+            return native->build_material({native->build_pipeline(std::move(definition), bindings), {{"image", ImageBinding{atlas, 0}}}});
         };
     }
 
@@ -278,7 +283,10 @@ private:
 
 using CE::GFramework::GameRuntime;
 
-int main(const int argc, char** argv) {
+int main(
+    const int argc,
+    char** argv
+) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
     auto mode = CE::GFramework::RunMode::Sequential;
@@ -308,8 +316,8 @@ int main(const int argc, char** argv) {
             timing.mode = CE::GFramework::SimulationMode::Fixed;
             timing.fixed_step = std::chrono::milliseconds(number(argument.substr(std::string_view("--fixed-step-ms=").size())));
         } else if (argument.starts_with("--variable-interval-ms="))
-            timing.variable_interval = std::chrono::milliseconds(
-                number(argument.substr(std::string_view("--variable-interval-ms=").size())));
+            timing.variable_interval =
+                std::chrono::milliseconds(number(argument.substr(std::string_view("--variable-interval-ms=").size())));
         else if (argument.starts_with("--max-fixed-updates="))
             timing.max_fixed_updates = number(argument.substr(std::string_view("--max-fixed-updates=").size()));
         else if (argument.starts_with("--recovery-prefix="))

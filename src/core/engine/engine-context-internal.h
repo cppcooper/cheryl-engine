@@ -2,6 +2,10 @@
 
 #include <core/engine/engine-context.h>
 
+#include <cstddef>
+#include <functional>
+#include <memory>
+
 namespace CE::Engine::ContextDetail {
     // Per-context fault boundary for its lazy owned root. The normal path keeps
     // an empty factory and constructs WorkerPool directly; no global override.

@@ -45,53 +45,70 @@ namespace CE::Engine {
             friend class PlatformDispatcher;
             std::shared_ptr<State> state_;
 
-            explicit Submission(std::shared_ptr<State> state) : state_(std::move(state)) {}
+            explicit Submission(
+                std::shared_ptr<State> state
+            )
+            : state_(std::move(state)) {}
 
         public:
             template <typename Work>
-            [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
+            [[nodiscard]] auto submit(
+                Work&& work
+            ) const -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
                 using Result = std::invoke_result_t<std::decay_t<Work>&, EngineContext&>;
                 std::promise<Result> completion;
                 auto result = completion.get_future();
                 // Keep callable ownership separate from the future's shared state.
                 // Cancellation releases captures even when the future is retained.
-                PlatformDispatcher::enqueue(state_, Task(
-                    [work = std::forward<Work>(work), completion = std::move(completion)](EngineContext& engine) mutable {
+                PlatformDispatcher::enqueue(state_,
+                    Task([work = std::forward<Work>(work), completion = std::move(completion)](EngineContext& engine) mutable {
                         try {
                             if constexpr (std::is_void_v<Result>) {
                                 std::invoke(work, engine);
                                 completion.set_value();
-                            }
-                            else {
+                            } else {
                                 completion.set_value(std::invoke(work, engine));
                             }
-                        }
-                        catch (...) {
+                        } catch (...) {
                             completion.set_exception(std::current_exception());
                         }
-                    }
-                ));
+                    }));
                 return result;
             }
         };
 
         PlatformDispatcher() = default;
         ~PlatformDispatcher();
-        PlatformDispatcher(const PlatformDispatcher&) = delete;
-        PlatformDispatcher& operator=(const PlatformDispatcher&) = delete;
+        PlatformDispatcher(
+            const PlatformDispatcher&
+        ) = delete;
+        PlatformDispatcher& operator=(
+            const PlatformDispatcher&
+        ) = delete;
 
         [[nodiscard]] Submission submission() const { return Submission(state_); }
         template <typename Work>
-        [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
+        [[nodiscard]] auto submit(
+            Work&& work
+        ) -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
             return submission().submit(std::forward<Work>(work));
         }
         [[nodiscard]] bool has_pending() const;
 
     private:
-        static void enqueue(const std::shared_ptr<State>& state, Task request);
-        static void require_owner(const State& state);
-        void open(std::function<void()> wake);
-        void drain(EngineContext& engine);
+        static void enqueue(
+            const std::shared_ptr<State>& state,
+            Task request
+        );
+        static void require_owner(
+            const State& state
+        );
+        void open(
+            std::function<void()> wake
+        );
+        void drain(
+            EngineContext& engine
+        );
         void close();
         void invalidate();
     };

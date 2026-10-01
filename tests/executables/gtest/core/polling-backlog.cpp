@@ -6,7 +6,10 @@
 
 using namespace std::chrono_literals;
 
-TEST(polling_backlog, lockstep_allows_one_completed_poll_until_consumption) {
+TEST(
+    polling_backlog,
+    lockstep_allows_one_completed_poll_until_consumption
+) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog;
     const auto now = bindings.action_snapshot()->observed_at();
@@ -25,7 +28,10 @@ TEST(polling_backlog, lockstep_allows_one_completed_poll_until_consumption) {
     EXPECT_TRUE(backlog.poll_due(now + 1ms));
 }
 
-TEST(polling_backlog, finite_capacity_counts_unchanged_polls_and_hands_off_the_whole_batch) {
+TEST(
+    polling_backlog,
+    finite_capacity_counts_unchanged_polls_and_hands_off_the_whole_batch
+) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 3, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -44,7 +50,10 @@ TEST(polling_backlog, finite_capacity_counts_unchanged_polls_and_hands_off_the_w
     EXPECT_TRUE(backlog.consume().empty());
 }
 
-TEST(polling_backlog, spacing_survives_consumption_and_is_measured_after_poll_completion) {
+TEST(
+    polling_backlog,
+    spacing_survives_consumption_and_is_measured_after_poll_completion
+) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 2, 5ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -57,7 +66,10 @@ TEST(polling_backlog, spacing_survives_consumption_and_is_measured_after_poll_co
     backlog.complete(bindings.publish_actions(now + 8ms), now + 8ms);
 }
 
-TEST(polling_backlog, unlimited_keeps_each_completed_poll_without_a_capacity_limit) {
+TEST(
+    polling_backlog,
+    unlimited_keeps_each_completed_poll_without_a_capacity_limit
+) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -68,7 +80,10 @@ TEST(polling_backlog, unlimited_keeps_each_completed_poll_without_a_capacity_lim
     EXPECT_EQ(backlog.consume().size(), 100u);
 }
 
-TEST(polling_backlog, invalid_capacity_delay_and_duplicate_observations_are_rejected) {
+TEST(
+    polling_backlog,
+    invalid_capacity_delay_and_duplicate_observations_are_rejected
+) {
     const CE::Input::PollingOptions empty{CE::Input::PollingPolicy::Finite, 0, 0ms};
     const CE::Input::PollingOptions negative{CE::Input::PollingPolicy::Finite, 1, -1ms};
     EXPECT_THROW((void)CE::Input::PollingBacklog{empty}, CE::Exceptions::invalid_args);
@@ -82,7 +97,10 @@ TEST(polling_backlog, invalid_capacity_delay_and_duplicate_observations_are_reje
     EXPECT_THROW(backlog.complete(poll, now), CE::Exceptions::invalid_args);
 }
 
-TEST(polling_backlog, an_unrepresentable_poll_deadline_saturates_without_losing_its_observation) {
+TEST(
+    polling_backlog,
+    an_unrepresentable_poll_deadline_saturates_without_losing_its_observation
+) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 5ms});
@@ -97,7 +115,10 @@ TEST(polling_backlog, an_unrepresentable_poll_deadline_saturates_without_losing_
     EXPECT_EQ(backlog.next_poll_at(), Clock::time_point::max());
 }
 
-TEST(polling_backlog, maximum_spacing_saturates_and_zero_spacing_accepts_the_clock_limit) {
+TEST(
+    polling_backlog,
+    maximum_spacing_saturates_and_zero_spacing_accepts_the_clock_limit
+) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog delayed({CE::Input::PollingPolicy::Unlimited, 0, Clock::duration::max()});

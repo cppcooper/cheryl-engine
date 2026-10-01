@@ -41,10 +41,18 @@ namespace CE::RenderAPIs {
 
     public:
         RenderFrame() = default;
-        RenderFrame(const RenderFrame&) = delete;
-        RenderFrame& operator=(const RenderFrame&) = delete;
-        RenderFrame(RenderFrame&&) = delete;
-        RenderFrame& operator=(RenderFrame&&) = delete;
+        RenderFrame(
+            const RenderFrame&
+        ) = delete;
+        RenderFrame& operator=(
+            const RenderFrame&
+        ) = delete;
+        RenderFrame(
+            RenderFrame&&
+        ) = delete;
+        RenderFrame& operator=(
+            RenderFrame&&
+        ) = delete;
 
         [[nodiscard]] std::span<const RenderPass> passes() const { return {passes_.data(), active_passes_}; }
 
@@ -69,7 +77,11 @@ namespace CE::RenderAPIs {
         std::size_t index_;
 
     public:
-        void reserve_draws(std::size_t count) { frame_.passes_[index_].draws.reserve(count); }
+        void reserve_draws(
+            std::size_t count
+        ) {
+            frame_.passes_[index_].draws.reserve(count);
+        }
 
         [[nodiscard]] Assets::ShaderPass semantics() const {
             const auto& pass = frame_.passes_[index_];
@@ -78,7 +90,9 @@ namespace CE::RenderAPIs {
         [[nodiscard]] const Assets::ParameterSet& parameters() const { return frame_.passes_[index_].parameters; }
         [[nodiscard]] const Assets::PassConstraints2D& constraints() const { return frame_.passes_[index_].constraints; }
 
-        void add(DrawPacket2D draw) {
+        void add(
+            DrawPacket2D draw
+        ) {
             auto& pass = frame_.passes_[index_];
             validate_draw_packet(draw, pass.constraints);
             draw.authored_order = pass.draws.size();
@@ -86,7 +100,9 @@ namespace CE::RenderAPIs {
         }
 
         // Validate the complete group before inserting any glyph/asset packets.
-        void add(std::vector<DrawPacket2D> draws) {
+        void add(
+            std::vector<DrawPacket2D> draws
+        ) {
             auto& pass = frame_.passes_[index_];
             for (const auto& draw : draws)
                 validate_draw_packet(draw, pass.constraints);
@@ -123,7 +139,11 @@ namespace CE::RenderAPIs {
                 throw Exceptions::failed_operation(CE_HERE, "Render frame must be recycled before writing again");
         }
 
-        void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
+        void reserve_passes(
+            std::size_t count
+        ) {
+            frame_.passes_.reserve(count);
+        }
 
         [[nodiscard]] RenderPassWriter begin_pass(
             const glm::mat4& projection,

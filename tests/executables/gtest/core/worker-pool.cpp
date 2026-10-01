@@ -30,18 +30,21 @@ namespace {
         bool ignore_sets = false;
 
         CE::Engine::WorkerDetail::WorkerNativeAdapter adapter() {
-            return {true, [this] {
-                if (++queries == failed_query)
-                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity query failure");
-                return mask;
-            }, [this](const std::vector<unsigned int>& requested) {
-                sets.push_back(requested);
-                const auto attempt = static_cast<int>(sets.size());
-                if (std::find(failed_sets.begin(), failed_sets.end(), attempt) != failed_sets.end())
-                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity set failure " + std::to_string(attempt));
-                if (!ignore_sets)
-                    mask = requested;
-            }, [](std::function<void()> work) { return std::thread(std::move(work)); }};
+            return {true,
+                [this] {
+                    if (++queries == failed_query)
+                        throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity query failure");
+                    return mask;
+                },
+                [this](const std::vector<unsigned int>& requested) {
+                    sets.push_back(requested);
+                    const auto attempt = static_cast<int>(sets.size());
+                    if (std::find(failed_sets.begin(), failed_sets.end(), attempt) != failed_sets.end())
+                        throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity set failure " + std::to_string(attempt));
+                    if (!ignore_sets)
+                        mask = requested;
+                },
+                [](std::function<void()> work) { return std::thread(std::move(work)); }};
         }
     };
 
@@ -96,7 +99,10 @@ namespace {
 } // namespace
 #endif
 
-TEST(worker_pool, owned_jobs_return_values_and_failures_without_stopping_other_work) {
+TEST(
+    worker_pool,
+    owned_jobs_return_values_and_failures_without_stopping_other_work
+) {
     CE::Engine::WorkerPool pool(2);
     auto group = pool.make_group();
     auto value = group.submit([number = std::make_unique<int>(42)] { return *number; });
@@ -110,7 +116,10 @@ TEST(worker_pool, owned_jobs_return_values_and_failures_without_stopping_other_w
     EXPECT_EQ(group.status().completed, 3u);
 }
 
-TEST(worker_pool, group_concurrency_one_preserves_fifo_while_groups_share_the_pool) {
+TEST(
+    worker_pool,
+    group_concurrency_one_preserves_fifo_while_groups_share_the_pool
+) {
     CE::Engine::WorkerPool pool(3);
     auto serial = pool.make_group({1});
     auto other = pool.make_group();
@@ -128,7 +137,10 @@ TEST(worker_pool, group_concurrency_one_preserves_fifo_while_groups_share_the_po
     EXPECT_TRUE(other.status().accepting);
 }
 
-TEST(worker_pool, a_parallel_group_cap_leaves_shared_capacity_for_another_group) {
+TEST(
+    worker_pool,
+    a_parallel_group_cap_leaves_shared_capacity_for_another_group
+) {
     CE::Engine::WorkerPool pool(3);
     auto capped = pool.make_group({2});
     auto other = pool.make_group();
@@ -167,7 +179,10 @@ TEST(worker_pool, a_parallel_group_cap_leaves_shared_capacity_for_another_group)
     EXPECT_EQ(peak.load(), 2);
 }
 
-TEST(worker_pool, close_drains_accepted_jobs_and_saved_groups_reject_after_destruction) {
+TEST(
+    worker_pool,
+    close_drains_accepted_jobs_and_saved_groups_reject_after_destruction
+) {
     auto pool = std::make_unique<CE::Engine::WorkerPool>();
     auto group = pool->make_group();
     std::atomic<int> calls{0};
@@ -182,7 +197,10 @@ TEST(worker_pool, close_drains_accepted_jobs_and_saved_groups_reject_after_destr
     EXPECT_THROW(static_cast<void>(group.submit([] {})), CE::Exceptions::failed_operation);
 }
 
-TEST(worker_pool, a_worker_cannot_wait_for_its_own_group_or_join_its_pool) {
+TEST(
+    worker_pool,
+    a_worker_cannot_wait_for_its_own_group_or_join_its_pool
+) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
     auto result = group.submit([&] {
@@ -194,7 +212,10 @@ TEST(worker_pool, a_worker_cannot_wait_for_its_own_group_or_join_its_pool) {
     group.drain();
 }
 
-TEST(worker_pool, dropping_a_group_handle_does_not_cancel_accepted_work) {
+TEST(
+    worker_pool,
+    dropping_a_group_handle_does_not_cancel_accepted_work
+) {
     CE::Engine::WorkerPool pool;
     std::future<int> result;
     {
@@ -205,7 +226,10 @@ TEST(worker_pool, dropping_a_group_handle_does_not_cancel_accepted_work) {
     EXPECT_EQ(result.get(), 13);
 }
 
-TEST(worker_pool, captured_resource_release_can_post_to_another_group_before_drain_returns) {
+TEST(
+    worker_pool,
+    captured_resource_release_can_post_to_another_group_before_drain_returns
+) {
     CE::Engine::WorkerPool pool;
     auto source = pool.make_group();
     auto other = pool.make_group();
@@ -239,7 +263,10 @@ TEST(worker_pool, captured_resource_release_can_post_to_another_group_before_dra
     EXPECT_EQ(follow_up.get(), 17);
 }
 
-TEST(worker_pool, required_unavailable_topology_rejects_instead_of_silently_falling_back) {
+TEST(
+    worker_pool,
+    required_unavailable_topology_rejects_instead_of_silently_falling_back
+) {
     CE::Engine::WorkerPool pool;
     CE::Engine::WorkerGroupOptions options;
     options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
@@ -247,7 +274,10 @@ TEST(worker_pool, required_unavailable_topology_rejects_instead_of_silently_fall
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::failed_operation);
 }
 
-TEST(worker_pool, effective_policy_reports_requested_shares_caps_and_available_cpu_constraints) {
+TEST(
+    worker_pool,
+    effective_policy_reports_requested_shares_caps_and_available_cpu_constraints
+) {
     CE::Engine::WorkerPool pool(2);
     CE::Engine::WorkerGroupOptions options;
     options.max_concurrency = 1;
@@ -263,7 +293,10 @@ TEST(worker_pool, effective_policy_reports_requested_shares_caps_and_available_c
 }
 
 #if defined(__linux__)
-TEST(worker_pool, a_required_cpu_group_runs_on_its_eligible_cpu) {
+TEST(
+    worker_pool,
+    a_required_cpu_group_runs_on_its_eligible_cpu
+) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity)
@@ -279,7 +312,10 @@ TEST(worker_pool, a_required_cpu_group_runs_on_its_eligible_cpu) {
     pinned.drain();
 }
 
-TEST(worker_pool, switching_groups_restores_the_effective_cpu_mask_on_the_shared_worker) {
+TEST(
+    worker_pool,
+    switching_groups_restores_the_effective_cpu_mask_on_the_shared_worker
+) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -300,7 +336,10 @@ TEST(worker_pool, switching_groups_restores_the_effective_cpu_mask_on_the_shared
     inherited.drain();
 }
 
-TEST(worker_pool, a_required_job_revalidates_a_cached_mask_changed_by_the_previous_job) {
+TEST(
+    worker_pool,
+    a_required_job_revalidates_a_cached_mask_changed_by_the_previous_job
+) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -325,7 +364,10 @@ TEST(worker_pool, a_required_job_revalidates_a_cached_mask_changed_by_the_previo
     inherited.drain();
 }
 
-TEST(worker_pool, overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_one_worker) {
+TEST(
+    worker_pool,
+    overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_one_worker
+) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -348,14 +390,23 @@ TEST(worker_pool, overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_
     std::vector<char> order;
     std::vector<std::future<std::vector<unsigned int>>> jobs;
     HeldWorkerCleanup cleanup(pool, release);
-    auto blocked = gate.submit([&] { entered.set_value(); released.wait(); });
+    auto blocked = gate.submit([&] {
+        entered.set_value();
+        released.wait();
+    });
     entered.get_future().wait();
     // Queue both workloads while the sole physical worker is held. Each job
     // records its actual native mask before the next group's policy is applied.
     for (int i = 0; i < 12; ++i)
-        jobs.push_back(frequent.submit([&] { order.push_back('F'); return read_worker_cpu_mask(); }));
+        jobs.push_back(frequent.submit([&] {
+            order.push_back('F');
+            return read_worker_cpu_mask();
+        }));
     for (int i = 0; i < 4; ++i)
-        jobs.push_back(regular.submit([&] { order.push_back('R'); return read_worker_cpu_mask(); }));
+        jobs.push_back(regular.submit([&] {
+            order.push_back('R');
+            return read_worker_cpu_mask();
+        }));
     cleanup.release_and_join();
     blocked.get();
     for (std::size_t i = 0; i < jobs.size(); ++i)
@@ -366,7 +417,10 @@ TEST(worker_pool, overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_
 }
 #endif
 
-TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_other_group) {
+TEST(
+    worker_pool,
+    weighted_groups_receive_more_service_without_starving_the_other_group
+) {
     CE::Engine::WorkerPool pool;
     auto gate = pool.make_group();
     std::promise<void> entered;
@@ -375,7 +429,10 @@ TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_othe
     std::vector<char> order;
     std::vector<std::future<void>> jobs;
     HeldWorkerCleanup cleanup(pool, release);
-    auto blocked = gate.submit([&] { entered.set_value(); released.wait(); });
+    auto blocked = gate.submit([&] {
+        entered.set_value();
+        released.wait();
+    });
     entered.get_future().wait();
     CE::Engine::WorkerGroupOptions options;
     options.weight = 3;
@@ -394,7 +451,10 @@ TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_othe
     EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'R'), 2);
 }
 
-TEST(worker_pool_faults, discovery_query_failure_disables_hard_affinity_but_settles_unconstrained_work) {
+TEST(
+    worker_pool_faults,
+    discovery_query_failure_disables_hard_affinity_but_settles_unconstrained_work
+) {
     RecordingWorkerNative native;
     native.failed_query = 1;
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -411,7 +471,10 @@ TEST(worker_pool_faults, discovery_query_failure_disables_hard_affinity_but_sett
     EXPECT_EQ(ordinary.status().completed, 1u);
 }
 
-TEST(worker_pool_faults, effective_readback_mismatch_rejects_required_work_before_callback_entry) {
+TEST(
+    worker_pool_faults,
+    effective_readback_mismatch_rejects_required_work_before_callback_entry
+) {
     RecordingWorkerNative native;
     native.ignore_sets = true;
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -427,7 +490,10 @@ TEST(worker_pool_faults, effective_readback_mismatch_rejects_required_work_befor
     EXPECT_EQ(group.status().completed, 1u);
 }
 
-TEST(worker_pool_faults, required_set_failure_releases_captures_outside_locks_before_drain_completes) {
+TEST(
+    worker_pool_faults,
+    required_set_failure_releases_captures_outside_locks_before_drain_completes
+) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -448,7 +514,10 @@ TEST(worker_pool_faults, required_set_failure_releases_captures_outside_locks_be
         released = true;
         delete value;
     });
-    auto result = required.submit([capture = std::move(capture), &calls] { ++calls; return *capture; });
+    auto result = required.submit([capture = std::move(capture), &calls] {
+        ++calls;
+        return *capture;
+    });
     required.close();
     required.drain();
     EXPECT_THROW(result.get(), CE::Exceptions::failed_operation);
@@ -463,7 +532,10 @@ TEST(worker_pool_faults, required_set_failure_releases_captures_outside_locks_be
     EXPECT_EQ(follow_up.get(), 17);
 }
 
-TEST(worker_pool_faults, preferred_set_failure_runs_only_after_verified_inherited_fallback) {
+TEST(
+    worker_pool_faults,
+    preferred_set_failure_runs_only_after_verified_inherited_fallback
+) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -477,7 +549,10 @@ TEST(worker_pool_faults, preferred_set_failure_runs_only_after_verified_inherite
     EXPECT_EQ(group.status().completed, 1u);
 }
 
-TEST(worker_pool_faults, failed_preferred_fallback_settles_failure_and_the_next_group_reverifies) {
+TEST(
+    worker_pool_faults,
+    failed_preferred_fallback_settles_failure_and_the_next_group_reverifies
+) {
     for (const bool query_failure : {false, true}) {
         RecordingWorkerNative native;
         native.failed_sets = query_failure ? std::vector<int>{1} : std::vector<int>{1, 2};
@@ -506,7 +581,10 @@ TEST(worker_pool_faults, failed_preferred_fallback_settles_failure_and_the_next_
     }
 }
 
-TEST(worker_pool_faults, post_set_query_failure_rejects_work_and_restores_the_next_groups_mask) {
+TEST(
+    worker_pool_faults,
+    post_set_query_failure_rejects_work_and_restores_the_next_groups_mask
+) {
     RecordingWorkerNative native;
     native.failed_query = 2; // The set succeeds, but its readback cannot verify it.
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -526,7 +604,10 @@ TEST(worker_pool_faults, post_set_query_failure_rejects_work_and_restores_the_ne
     EXPECT_EQ(required.status().policy_failures, 1u);
 }
 
-TEST(worker_pool_faults, cached_required_query_failure_skips_work_and_forces_next_job_verification) {
+TEST(
+    worker_pool_faults,
+    cached_required_query_failure_skips_work_and_forces_next_job_verification
+) {
     RecordingWorkerNative native;
     native.failed_query = 2; // Discovery succeeds; the cached required mask read fails.
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -546,7 +627,10 @@ TEST(worker_pool_faults, cached_required_query_failure_skips_work_and_forces_nex
     EXPECT_EQ(group.status().completed, 2u);
 }
 
-TEST(worker_pool_faults, partial_thread_start_failure_joins_started_work_and_preserves_the_original_error) {
+TEST(
+    worker_pool_faults,
+    partial_thread_start_failure_joins_started_work_and_preserves_the_original_error
+) {
     std::promise<void> entered;
     auto started = entered.get_future().share();
     std::atomic<int> exited{0};

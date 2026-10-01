@@ -9,7 +9,10 @@
 
 using namespace std::chrono_literals;
 
-TEST(tick_context, a_short_tap_in_a_half_second_stall_keeps_observation_and_simulation_time_separate) {
+TEST(
+    tick_context,
+    a_short_tap_in_a_half_second_stall_keeps_observation_and_simulation_time_separate
+) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -37,7 +40,10 @@ TEST(tick_context, a_short_tap_in_a_half_second_stall_keeps_observation_and_simu
     EXPECT_DOUBLE_EQ(later.button_simulation_seconds(move), 0.0);
 }
 
-TEST(tick_context, a_zero_observation_interval_uses_current_held_state) {
+TEST(
+    tick_context,
+    a_zero_observation_interval_uses_current_held_state
+) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -54,7 +60,10 @@ TEST(tick_context, a_zero_observation_interval_uses_current_held_state) {
     EXPECT_DOUBLE_EQ(tick.button_simulation_seconds(move), 0.020);
 }
 
-TEST(tick_context, input_arriving_between_recovery_calls_is_consumed_only_by_the_later_update) {
+TEST(
+    tick_context,
+    input_arriving_between_recovery_calls_is_consumed_only_by_the_later_update
+) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -74,7 +83,10 @@ TEST(tick_context, input_arriving_between_recovery_calls_is_consumed_only_by_the
     EXPECT_TRUE(persistent.button(move).held());
 }
 
-TEST(tick_context, manually_supplied_invalid_simulation_deltas_are_rejected) {
+TEST(
+    tick_context,
+    manually_supplied_invalid_simulation_deltas_are_rejected
+) {
     CE::Input::InputBindings bindings;
     const CE::Input::TickInput input(bindings.action_snapshot(), {});
     const CE::GFramework::TickContext negative{-1.0, input, {}};
@@ -83,7 +95,10 @@ TEST(tick_context, manually_supplied_invalid_simulation_deltas_are_rejected) {
     EXPECT_THROW((void)infinite.button_simulation_seconds(CE::Input::ActionId{1}), CE::Exceptions::invalid_args);
 }
 
-TEST(tick_context, a_recovery_batch_consumes_events_text_and_relative_motion_once) {
+TEST(
+    tick_context,
+    a_recovery_batch_consumes_events_text_and_relative_motion_once
+) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::DeviceBind wheel{2, 1};

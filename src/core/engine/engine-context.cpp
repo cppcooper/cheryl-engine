@@ -77,7 +77,9 @@ namespace CE::Engine {
         finish_workers();
     }
 
-    WorkerGroup EngineContext::make_worker_group(WorkerGroupOptions options) {
+    WorkerGroup EngineContext::make_worker_group(
+        WorkerGroupOptions options
+    ) {
         std::lock_guard lock(execution_mutex_);
         if (worker_submissions_closed_)
             throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
@@ -135,7 +137,9 @@ namespace CE::Engine {
             owned->shutdown();
     }
 
-    iDisplaySystem& EngineContext::display() const { return *display_; }
+    iDisplaySystem& EngineContext::display() const {
+        return *display_;
+    }
 
     iWindow& EngineContext::window() const {
         auto* active = display_->active_window();
@@ -144,8 +148,16 @@ namespace CE::Engine {
         return *active;
     }
 
-    RenderAPIs::iPresentationSurface& EngineContext::surface() const { return *surface_; }
-    RenderAPIs::iRenderer& EngineContext::renderer() const { return *renderer_; }
-    Assets::ResourceProvider& EngineContext::resources() const { return *resources_; }
-    Input::iInputSystem& EngineContext::input() const { return *input_; }
+    RenderAPIs::iPresentationSurface& EngineContext::surface() const {
+        return *surface_;
+    }
+    RenderAPIs::iRenderer& EngineContext::renderer() const {
+        return *renderer_;
+    }
+    Assets::ResourceProvider& EngineContext::resources() const {
+        return *resources_;
+    }
+    Input::iInputSystem& EngineContext::input() const {
+        return *input_;
+    }
 }

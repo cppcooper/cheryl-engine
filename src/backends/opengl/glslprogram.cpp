@@ -44,7 +44,9 @@ namespace CE::Assets {
         }
     }
 
-    GLSLProgram::GLSLProgram(RenderAPIs::OpenGLHandle program)
+    GLSLProgram::GLSLProgram(
+        RenderAPIs::OpenGLHandle program
+    )
     : program_(std::move(program)) {
         (void)program_.id();
         if (program_.kind() != RenderAPIs::GLResourceKind::Program)
@@ -66,21 +68,24 @@ namespace CE::Assets {
     }
 
     std::vector<GLSLVariable> GLSLProgram::active_uniforms() const {
-        return reflect_variables(program_.id(), GL_ACTIVE_UNIFORMS, GL_ACTIVE_UNIFORM_MAX_LENGTH,
-            glGetActiveUniform, glGetUniformLocation);
+        return reflect_variables(program_.id(), GL_ACTIVE_UNIFORMS, GL_ACTIVE_UNIFORM_MAX_LENGTH, glGetActiveUniform, glGetUniformLocation);
     }
 
     std::vector<GLSLVariable> GLSLProgram::active_attributes() const {
-        return reflect_variables(program_.id(), GL_ACTIVE_ATTRIBUTES, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH,
-            glGetActiveAttrib, glGetAttribLocation);
+        return reflect_variables(program_.id(), GL_ACTIVE_ATTRIBUTES, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, glGetActiveAttrib,
+            glGetAttribLocation);
     }
 
-    void GLSLProgram::set_material_bindings(GLSLMaterialBindings bindings) {
+    void GLSLProgram::set_material_bindings(
+        GLSLMaterialBindings bindings
+    ) {
         (void)program_.id();
         material_bindings_ = std::move(bindings);
     }
 
-    void GLSLProgram::bind_pass(const ShaderPass& pass) {
+    void GLSLProgram::bind_pass(
+        const ShaderPass& pass
+    ) {
         use();
         if (!material_bindings_.projection.empty())
             set_uniform_matrix(material_bindings_.projection.c_str(), pass.projection);
@@ -88,7 +93,9 @@ namespace CE::Assets {
             set_uniform_matrix(material_bindings_.view.c_str(), pass.view);
     }
 
-    void GLSLProgram::bind_draw(const ShaderDraw& draw) {
+    void GLSLProgram::bind_draw(
+        const ShaderDraw& draw
+    ) {
         if (!material_bindings_.model.empty())
             set_uniform_matrix(material_bindings_.model.c_str(), draw.model);
         if (!material_bindings_.alpha.empty())
@@ -143,7 +150,9 @@ namespace CE::Assets {
         free(name);
     }
 
-    int GLSLProgram::get_uniform_location(const char* name) {
+    int GLSLProgram::get_uniform_location(
+        const char* name
+    ) {
         // Query OpenGL once after linking, caching valid locations for repeated draw calls.
         const auto id_prog = program_.id();
         if (const auto it = uniforms_.find(name); it != uniforms_.end())
@@ -153,7 +162,9 @@ namespace CE::Assets {
         return result;
     }
 
-    int GLSLProgram::get_attribute_location(const char* name) {
+    int GLSLProgram::get_attribute_location(
+        const char* name
+    ) {
         const auto id_prog = program_.id();
         if (const auto it = attributes_.find(name); it != attributes_.end())
             return it->second;

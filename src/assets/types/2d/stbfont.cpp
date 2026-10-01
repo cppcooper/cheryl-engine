@@ -21,7 +21,9 @@
 
 namespace CE::Assets {
     namespace {
-        std::vector<unsigned char> read_font_file(const std::filesystem::path& path) {
+        std::vector<unsigned char> read_font_file(
+            const std::filesystem::path& path
+        ) {
             std::ifstream input(path, std::ios::binary | std::ios::ate);
             if (!input)
                 throw Exceptions::runtime_exception(CE_HERE, "Unable to open font file '" + path.string() + "'");
@@ -37,7 +39,10 @@ namespace CE::Assets {
             return bytes;
         }
 
-        void set_glyph_vertices(Vertex2D* vertices, const stbtt_aligned_quad& quad) {
+        void set_glyph_vertices(
+            Vertex2D* vertices,
+            const stbtt_aligned_quad& quad
+        ) {
             // Flip stb's downward-positive glyph Y into the engine's upward-positive local space;
             // each glyph keeps the standalone quad's two independent triangles.
             const float left = quad.x0;
@@ -69,24 +74,31 @@ namespace CE::Assets {
         return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 
-    STBFont::STBFont(STBFontData data)
+    STBFont::STBFont(
+        STBFontData data
+    )
     : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }
 
-    std::vector<GlyphPlacement2D> STBFont::layout(const std::string_view text, const FontLayoutOptions options) const {
+    std::vector<GlyphPlacement2D> STBFont::layout(
+        const std::string_view text,
+        const FontLayoutOptions options
+    ) const {
         if (options.alternate_bank)
             throw Exceptions::invalid_args(CE_HERE, "STB fonts do not contain an alternate glyph bank");
         std::vector<GlyphPlacement2D> result;
         result.reserve(text.size());
-        for_each_glyph(text, [&](const std::size_t index, const float x, const float y) {
-            result.push_back({index, x, y});
-        });
+        for_each_glyph(text, [&](const std::size_t index, const float x, const float y) { result.push_back({index, x, y}); });
         return result;
     }
 
-    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size, ResourceProvider& provider) {
+    STBFontData STBFont::load_font(
+        const std::filesystem::path& font_path,
+        const int font_size,
+        ResourceProvider& provider
+    ) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);

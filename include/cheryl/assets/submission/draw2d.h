@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
 
 namespace CE::Assets {
     struct ImageParameter2D {
@@ -24,19 +25,31 @@ namespace CE::Assets {
     };
 
     [[nodiscard]] RenderAPIs::DrawPacket2D resolve_sprite(
-        const Sprite& sprite, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context
+        const Sprite& sprite,
+        CellIndex cell,
+        const RenderAPIs::DrawStyle2D& style,
+        const SubmissionContext2D& context
     );
     [[nodiscard]] RenderAPIs::DrawPacket2D resolve_tile(
-        const Tileset& tileset, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context
+        const Tileset& tileset,
+        CellIndex cell,
+        const RenderAPIs::DrawStyle2D& style,
+        const SubmissionContext2D& context
     );
     [[nodiscard]] RenderAPIs::DrawPacket2D resolve_tile(
-        const Tile& tile, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context
+        const Tile& tile,
+        const RenderAPIs::DrawStyle2D& style,
+        const SubmissionContext2D& context
     );
     [[nodiscard]] RenderAPIs::DrawPacket2D resolve_tile(
-        const TileAnimation& animation, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context
+        const TileAnimation& animation,
+        const RenderAPIs::DrawStyle2D& style,
+        const SubmissionContext2D& context
     );
     [[nodiscard]] RenderAPIs::DrawPacket2D resolve_graphic(
-        const Graphic& graphic, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context
+        const Graphic& graphic,
+        const RenderAPIs::DrawStyle2D& style,
+        const SubmissionContext2D& context
     );
     [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D> resolve_text(
         const Font& font,

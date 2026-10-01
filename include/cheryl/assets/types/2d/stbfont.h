@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace CE::Assets {
     struct ResourceProvider;
@@ -34,7 +35,9 @@ namespace CE::Assets {
         float line_height_{};
 
     public:
-        explicit STBFont(STBFontData data);
+        explicit STBFont(
+            STBFontData data
+        );
         ~STBFont() override = default;
         [[nodiscard]] std::vector<GlyphPlacement2D> layout(
             std::string_view text,
@@ -52,7 +55,10 @@ namespace CE::Assets {
         // Emit a baked glyph index and its local pen offset without storing the
         // message or changing the font. The caller supplies its own draw policy.
         template <typename SubmitGlyph>
-        void for_each_glyph(std::string_view text, SubmitGlyph&& submit) const {
+        void for_each_glyph(
+            std::string_view text,
+            SubmitGlyph&& submit
+        ) const {
             float cursor_x = 0.0f;
             float cursor_y = 0.0f;
             constexpr auto fallback = static_cast<unsigned char>('?');
@@ -63,15 +69,16 @@ namespace CE::Assets {
                     cursor_y -= line_height_;
                     continue;
                 }
-                if (requested == '\r') continue;
+                if (requested == '\r')
+                    continue;
                 if (requested == '\t') {
                     cursor_x += advances_[space_index] * 4.0f;
                     continue;
                 }
-                const auto letter = requested < first_font_character || requested > last_font_character
-                    ? fallback : requested;
+                const auto letter = requested < first_font_character || requested > last_font_character ? fallback : requested;
                 const auto index = static_cast<std::size_t>(letter - first_font_character);
-                if (letter != ' ') submit(index, cursor_x, cursor_y);
+                if (letter != ' ')
+                    submit(index, cursor_x, cursor_y);
                 cursor_x += advances_[index];
             }
         }

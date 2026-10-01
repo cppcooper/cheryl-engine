@@ -8,7 +8,10 @@ namespace CE::Engine {
         invalidate();
     }
 
-    void PlatformDispatcher::enqueue(const std::shared_ptr<State>& state, Task request) {
+    void PlatformDispatcher::enqueue(
+        const std::shared_ptr<State>& state,
+        Task request
+    ) {
         std::function<void()> wake;
         {
             std::lock_guard lock(state->mutex);
@@ -29,7 +32,9 @@ namespace CE::Engine {
         return !state_->pending.empty();
     }
 
-    void PlatformDispatcher::open(std::function<void()> wake) {
+    void PlatformDispatcher::open(
+        std::function<void()> wake
+    ) {
         std::lock_guard lock(state_->mutex);
         if (state_->opened)
             throw Exceptions::failed_operation(CE_HERE, "PlatformDispatcher supports only one session");
@@ -39,12 +44,16 @@ namespace CE::Engine {
         state_->accepting = true;
     }
 
-    void PlatformDispatcher::require_owner(const State& state) {
+    void PlatformDispatcher::require_owner(
+        const State& state
+    ) {
         if (state.owner != std::this_thread::get_id())
             throw Exceptions::failed_operation(CE_HERE, "Platform requests must execute on their owner thread");
     }
 
-    void PlatformDispatcher::drain(EngineContext& engine) {
+    void PlatformDispatcher::drain(
+        EngineContext& engine
+    ) {
         std::vector<Task> batch;
         {
             std::lock_guard lock(state_->mutex);

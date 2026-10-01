@@ -17,7 +17,10 @@
 
 namespace CE::Engine {
     template <typename InputAdapter>
-    static std::unique_ptr<EngineContext> assemble_context(InputAdapter&& input, const GlfwOpenGLConfig& config) {
+    static std::unique_ptr<EngineContext> assemble_context(
+        InputAdapter&& input,
+        const GlfwOpenGLConfig& config
+    ) {
         if (config.width <= 0 || config.height <= 0 || config.swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions and swap interval must be valid");
 
@@ -42,12 +45,17 @@ namespace CE::Engine {
             std::forward<InputAdapter>(input), config.execution);
     }
 
-    std::unique_ptr<EngineContext> make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config) {
+    std::unique_ptr<EngineContext> make_glfw_opengl_context(
+        Input::iInputSystem& input,
+        const GlfwOpenGLConfig& config
+    ) {
         return assemble_context(input, config);
     }
 
 #ifndef CHERYL_SANDBOX_BUILD
-    std::unique_ptr<EngineContext> make_glfw_opengl_context(const GlfwOpenGLConfig& config) {
+    std::unique_ptr<EngineContext> make_glfw_opengl_context(
+        const GlfwOpenGLConfig& config
+    ) {
         return assemble_context(std::make_unique<Input::InputSystem>(), config);
     }
 #endif

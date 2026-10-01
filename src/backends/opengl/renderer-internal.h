@@ -2,6 +2,8 @@
 
 #include <backends/opengl/renderer.h>
 
+#include <functional>
+
 namespace CE::RenderAPIs::RendererDetail {
     struct RendererAccess {
         // Configure before initial startup. Recording fixtures already install

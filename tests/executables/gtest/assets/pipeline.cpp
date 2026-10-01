@@ -17,7 +17,9 @@ namespace {
 
     class RecordingPipeline final : public Pipeline {
     public:
-        explicit RecordingPipeline(PipelineDefinition definition)
+        explicit RecordingPipeline(
+            PipelineDefinition definition
+        )
         : Pipeline(std::move(definition)) {}
     };
 
@@ -25,7 +27,11 @@ namespace {
         mutable std::vector<std::uint32_t> bound_units;
 
         [[nodiscard]] PixelSize pixel_size() const override { return {1, 1}; }
-        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
+        void bind(
+            std::uint32_t unit
+        ) const override {
+            bound_units.push_back(unit);
+        }
     };
 
     struct RecordingGeometry final : Geometry2D {
@@ -38,27 +44,28 @@ namespace {
         [[nodiscard]] PrimitiveTopology topology() const noexcept override { return uploaded_topology; }
         [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
         void bind() const override { ++binds; }
-        void draw(std::size_t, std::size_t) const override {}
+        void draw(
+            std::size_t,
+            std::size_t
+        ) const override {}
     };
 
     PipelineDefinition effect_definition() {
         PipelineDefinition definition;
         definition.program_sources = {"effect.vert", "effect.frag"};
-        definition.parameters = {
-            {"camera", ParameterType::Mat4, true, ParameterSemantic::Projection},
-            {"transform", ParameterType::Mat4, true, ParameterSemantic::Model},
-            {"time", ParameterType::Float},
+        definition.parameters = {{"camera", ParameterType::Mat4, true, ParameterSemantic::Projection},
+            {"transform", ParameterType::Mat4, true, ParameterSemantic::Model}, {"time", ParameterType::Float},
             {"color", ParameterType::Vec4, true, ParameterSemantic::Custom, glm::vec4{1.0f}},
-            {"intensity", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f},
-            {"base", ParameterType::Sampler2D},
-            {"mask", ParameterType::Sampler2D},
-            {"optional", ParameterType::Int, false}
-        };
+            {"intensity", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f}, {"base", ParameterType::Sampler2D},
+            {"mask", ParameterType::Sampler2D}, {"optional", ParameterType::Int, false}};
         return definition;
     }
 }
 
-TEST(pipeline_parameters, two_image_effect_copies_values_and_retains_images) {
+TEST(
+    pipeline_parameters,
+    two_image_effect_copies_values_and_retains_images
+) {
     auto definition = effect_definition();
     auto pipeline = std::make_shared<RecordingPipeline>(definition);
     auto image = std::make_shared<RecordingImage>();
@@ -86,18 +93,22 @@ TEST(pipeline_parameters, two_image_effect_copies_values_and_retains_images) {
     EXPECT_FLOAT_EQ(std::get<float>(material.resolve({}, {}, {{"time", 0.0f}}, {}).at("intensity")), 0.5f);
 }
 
-TEST(pipeline_parameters, invalid_hidden_values_and_engine_overrides_are_rejected) {
-    const ParameterContract contract{
-        {"weight", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f},
-        {"model", ParameterType::Mat4, true, ParameterSemantic::Model}
-    };
+TEST(
+    pipeline_parameters,
+    invalid_hidden_values_and_engine_overrides_are_rejected
+) {
+    const ParameterContract contract{{"weight", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f},
+        {"model", ParameterType::Mat4, true, ParameterSemantic::Model}};
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {{"weight", 1}}, {}, {{"weight", 2.0f}})), invalid_args);
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, {{"model", glm::mat4{1.0f}}}, {})), invalid_args);
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, {}, {{"typo", 2.0f}})), invalid_args);
     EXPECT_FLOAT_EQ(std::get<float>(resolve_parameters(contract, {}, {}, {}, {}, {}).at("weight")), 1.0f);
 }
 
-TEST(pipeline_parameters, required_missing_null_and_colliding_samplers_are_rejected) {
+TEST(
+    pipeline_parameters,
+    required_missing_null_and_colliding_samplers_are_rejected
+) {
     const ParameterContract contract{{"first", ParameterType::Sampler2D}, {"second", ParameterType::Sampler2D}};
     auto image = std::make_shared<RecordingImage>();
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, {}, {})), invalid_args);
@@ -106,14 +117,20 @@ TEST(pipeline_parameters, required_missing_null_and_colliding_samplers_are_rejec
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, bindings, {})), invalid_args);
 }
 
-TEST(pipeline_parameters, invalid_schema_is_rejected_before_material_publication) {
+TEST(
+    pipeline_parameters,
+    invalid_schema_is_rejected_before_material_publication
+) {
     EXPECT_THROW(validate_parameter_contract({{"same", ParameterType::Float}, {"same", ParameterType::Float}}), invalid_args);
     EXPECT_THROW(validate_parameter_contract({{"model", ParameterType::Float, true, ParameterSemantic::Model}}), invalid_args);
     EXPECT_THROW(validate_parameter_contract({{"value", ParameterType::Float, true, ParameterSemantic::Custom, 1}}), invalid_args);
     EXPECT_THROW(static_cast<void>(Material(MaterialDefinition{})), invalid_args);
 }
 
-TEST(pipeline_generations, caller_mutations_and_replacement_preserve_retained_snapshots) {
+TEST(
+    pipeline_generations,
+    caller_mutations_and_replacement_preserve_retained_snapshots
+) {
     auto definition = effect_definition();
     auto current = std::make_shared<RecordingPipeline>(definition);
     const auto old = current;
@@ -127,7 +144,10 @@ TEST(pipeline_generations, caller_mutations_and_replacement_preserve_retained_sn
     EXPECT_FLOAT_EQ(std::get<float>(*current->definition().parameters[4].default_value), 8.0f);
 }
 
-TEST(material_resources, one_image_can_be_selected_on_distinct_units_without_geometry_rebinding) {
+TEST(
+    material_resources,
+    one_image_can_be_selected_on_distinct_units_without_geometry_rebinding
+) {
     PipelineDefinition definition;
     definition.program_sources = {"sprite.vert", "sprite.frag"};
     definition.parameters = {{"image", ParameterType::Sampler2D}};
@@ -149,7 +169,10 @@ TEST(material_resources, one_image_can_be_selected_on_distinct_units_without_geo
     EXPECT_EQ(std::get<ImageBinding>(second.definition().defaults.at("image")).unit, 4u);
 }
 
-TEST(pipeline_geometry, validation_rejects_layout_topology_and_incomplete_or_outside_ranges_without_binding) {
+TEST(
+    pipeline_geometry,
+    validation_rejects_layout_topology_and_incomplete_or_outside_ranges_without_binding
+) {
     auto definition = effect_definition();
     RecordingPipeline pipeline(definition);
     RecordingGeometry geometry;
@@ -169,7 +192,10 @@ TEST(pipeline_geometry, validation_rejects_layout_topology_and_incomplete_or_out
     EXPECT_EQ(geometry.binds, 0u);
 }
 
-TEST(pipeline_state, pass_constraints_reject_conflicts_without_overriding_the_pipeline) {
+TEST(
+    pipeline_state,
+    pass_constraints_reject_conflicts_without_overriding_the_pipeline
+) {
     auto definition = effect_definition();
     definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};
     RecordingPipeline pipeline(definition);

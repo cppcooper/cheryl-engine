@@ -142,8 +142,7 @@ namespace CE::Assets::ProgramDetail {
         program.id = 0;
         if (logical_memory)
             return std::allocate_shared<GLSLProgram>(
-                RenderAPIs::ResourceDetail::RetainedMemoryAllocator<GLSLProgram>{std::move(logical_memory)},
-                std::move(tracked)
+                RenderAPIs::ResourceDetail::RetainedMemoryAllocator<GLSLProgram>{std::move(logical_memory)}, std::move(tracked)
             );
         return std::make_shared<GLSLProgram>(std::move(tracked));
     }

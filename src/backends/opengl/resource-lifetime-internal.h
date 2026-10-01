@@ -26,8 +26,7 @@ namespace CE::RenderAPIs::ResourceDetail {
 
     // allocate_shared retains a rebound allocator in its control block. Own the
     // memory resource there so even the last weak owner can safely deallocate it.
-    template <typename T>
-    struct RetainedMemoryAllocator {
+    template <typename T> struct RetainedMemoryAllocator {
         using value_type = T;
         std::shared_ptr<std::pmr::memory_resource> memory;
 

@@ -49,7 +49,10 @@ namespace CE::SubSystems {
         return Registration(state_, listener, id);
     }
 
-    void EventBus::dispatch(const std::string& event, const std::any& payload) {
+    void EventBus::dispatch(
+        const std::string& event,
+        const std::any& payload
+    ) {
         std::vector<std::shared_ptr<Listener>> snapshot;
         {
             std::lock_guard lock(state_->mutex);
@@ -66,7 +69,9 @@ namespace CE::SubSystems {
             deliver(listener, payload);
     }
 
-    EventBus::DeliveryTicket::DeliveryTicket(std::shared_ptr<Listener> value)
+    EventBus::DeliveryTicket::DeliveryTicket(
+        std::shared_ptr<Listener> value
+    )
     : listener(std::move(value)), failure(listener->cancellation) {}
 
     EventBus::DeliveryTicket::~DeliveryTicket() {
@@ -83,13 +88,19 @@ namespace CE::SubSystems {
             report_error(listener, failure);
     }
 
-    void EventBus::report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept {
+    void EventBus::report_error(
+        const std::shared_ptr<Listener>& listener,
+        std::exception_ptr failure
+    ) noexcept {
         // Error sinks must not throw. Termination makes a broken sink visible
         // instead of hiding it in a discarded dispatch-target future.
         listener->errors(std::move(failure));
     }
 
-    void EventBus::deliver(const std::shared_ptr<Listener>& listener, const std::any& payload) {
+    void EventBus::deliver(
+        const std::shared_ptr<Listener>& listener,
+        const std::any& payload
+    ) {
         if (!listener->delivery) {
             invoke(listener, payload);
             return;
@@ -111,8 +122,7 @@ namespace CE::SubSystems {
                 ticket->entered.store(true, std::memory_order_release);
                 try {
                     invoke(ticket->listener, ticket->payload);
-                }
-                catch (...) {
+                } catch (...) {
                     report_error(ticket->listener, std::current_exception());
                 }
             });
@@ -120,8 +130,7 @@ namespace CE::SubSystems {
             // The target defers execution; no callback is invoked under this lock.
             std::lock_guard lock(listener->posting);
             (void)listener->delivery(std::move(work));
-        }
-        catch (...) {
+        } catch (...) {
             if (ticket)
                 ticket->failure = std::current_exception();
             else {
@@ -140,7 +149,10 @@ namespace CE::SubSystems {
         // outside posting, including payload destructors which dispatch again.
     }
 
-    void EventBus::invoke(const std::shared_ptr<Listener>& listener, const std::any& payload) {
+    void EventBus::invoke(
+        const std::shared_ptr<Listener>& listener,
+        const std::any& payload
+    ) {
         {
             std::lock_guard lock(listener->mutex);
             // Check and enter are one transaction with unregister. A snapshot
@@ -153,7 +165,9 @@ namespace CE::SubSystems {
             std::shared_ptr<Listener> listener;
             Invocation invocation;
 
-            explicit InvocationGuard(const std::shared_ptr<Listener>& value)
+            explicit InvocationGuard(
+                const std::shared_ptr<Listener>& value
+            )
             : listener(value), invocation{value.get(), current_invocation} {
                 current_invocation = &invocation;
             }
@@ -167,12 +181,16 @@ namespace CE::SubSystems {
         listener->callback(payload);
     }
 
-    void EventBus::invalidate(const std::shared_ptr<Listener>& listener) {
+    void EventBus::invalidate(
+        const std::shared_ptr<Listener>& listener
+    ) {
         std::lock_guard lock(listener->mutex);
         listener->active = false;
     }
 
-    bool EventBus::unregister_listener(const Registration& registration) {
+    bool EventBus::unregister_listener(
+        const Registration& registration
+    ) {
         if (registration.bus_.lock() != state_)
             return false;
         auto listener = registration.listener_.lock();
@@ -195,7 +213,9 @@ namespace CE::SubSystems {
         return removed;
     }
 
-    void EventBus::wait_for_listener(const Registration& registration) const {
+    void EventBus::wait_for_listener(
+        const Registration& registration
+    ) const {
         if (registration.bus_.lock() != state_)
             throw Exceptions::invalid_args(CE_HERE, "Registration belongs to another event bus");
         auto listener = registration.listener_.lock();
@@ -210,7 +230,9 @@ namespace CE::SubSystems {
         listener->idle.wait(lock, [&] { return listener->running == 0; });
     }
 
-    bool EventBus::unregister_and_wait(const Registration& registration) {
+    bool EventBus::unregister_and_wait(
+        const Registration& registration
+    ) {
         const bool removed = unregister_listener(registration);
         wait_for_listener(registration);
         return removed;

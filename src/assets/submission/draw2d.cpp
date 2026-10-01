@@ -22,7 +22,10 @@ namespace CE::Assets {
             return result;
         }
 
-        std::size_t range_start(const std::size_t index, const std::size_t vertices) {
+        std::size_t range_start(
+            const std::size_t index,
+            const std::size_t vertices
+        ) {
             if (index > std::numeric_limits<std::size_t>::max() / vertices)
                 throw Exceptions::invalid_args(CE_HERE, "Asset draw range exceeds addressable geometry");
             return index * vertices;
@@ -35,8 +38,8 @@ namespace CE::Assets {
             const RenderAPIs::DrawStyle2D& style,
             const SubmissionContext2D& context
         ) {
-            return RenderAPIs::resolve_draw_packet(asset.geometry, first, count, image_style(style, asset.texture, context),
-                context.pass, context.parameters, context.constraints);
+            return RenderAPIs::resolve_draw_packet(asset.geometry, first, count, image_style(style, asset.texture, context), context.pass,
+                context.parameters, context.constraints);
         }
     }
 
@@ -48,8 +51,8 @@ namespace CE::Assets {
     ) {
         if (cell >= sprite.definition().grid.cell_count())
             throw Exceptions::invalid_args(CE_HERE, "Sprite submission selects a cell outside its grid");
-        return resolve_range(sprite, range_start(cell, VAONumbers::vertices_per_strip_quad),
-            VAONumbers::vertices_per_strip_quad, style, context);
+        return resolve_range(sprite, range_start(cell, VAONumbers::vertices_per_strip_quad), VAONumbers::vertices_per_strip_quad, style,
+            context);
     }
 
     RenderAPIs::DrawPacket2D resolve_tile(
@@ -60,8 +63,8 @@ namespace CE::Assets {
     ) {
         if (cell >= tileset.definition().grid.cell_count())
             throw Exceptions::invalid_args(CE_HERE, "Tile submission selects a cell outside its grid");
-        return resolve_range(tileset, range_start(cell, VAONumbers::vertices_per_strip_quad),
-            VAONumbers::vertices_per_strip_quad, style, context);
+        return resolve_range(tileset, range_start(cell, VAONumbers::vertices_per_strip_quad), VAONumbers::vertices_per_strip_quad, style,
+            context);
     }
 
     RenderAPIs::DrawPacket2D resolve_tile(
@@ -70,8 +73,8 @@ namespace CE::Assets {
         const SubmissionContext2D& context
     ) {
         const Asset2D asset(tile.geometry, tile.texture);
-        return resolve_range(asset, range_start(tile.cell(), VAONumbers::vertices_per_strip_quad),
-            VAONumbers::vertices_per_strip_quad, style, context);
+        return resolve_range(asset, range_start(tile.cell(), VAONumbers::vertices_per_strip_quad), VAONumbers::vertices_per_strip_quad,
+            style, context);
     }
 
     RenderAPIs::DrawPacket2D resolve_tile(
@@ -79,8 +82,8 @@ namespace CE::Assets {
         const RenderAPIs::DrawStyle2D& style,
         const SubmissionContext2D& context
     ) {
-        return resolve_tile(Tile(animation.definition().frames.at(animation.index()).cell, animation.geometry, animation.texture),
-            style, context);
+        return resolve_tile(Tile(animation.definition().frames.at(animation.index()).cell, animation.geometry, animation.texture), style,
+            context);
     }
 
     RenderAPIs::DrawPacket2D resolve_graphic(
@@ -106,8 +109,8 @@ namespace CE::Assets {
             auto placed = base;
             placed.model_matrix = glm::translate(style.model_matrix, glm::vec3(glyph.x * style.scale, glyph.y * style.scale, 0.0f));
             result.push_back(RenderAPIs::resolve_draw_packet(font.glyph_geometry_handle(),
-                range_start(glyph.index, VAONumbers::vertices_per_quad), VAONumbers::vertices_per_quad,
-                placed, context.pass, context.parameters, context.constraints));
+                range_start(glyph.index, VAONumbers::vertices_per_quad), VAONumbers::vertices_per_quad, placed, context.pass,
+                context.parameters, context.constraints));
         }
         return result;
     }

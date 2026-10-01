@@ -2,6 +2,8 @@
 
 #include "worker-pool-internal.h"
 
+#include <vector>
+
 namespace CE::Engine::WorkerDetail {
     WorkerNativeAdapter native_worker_adapter();
     WorkerCapabilities discover_capabilities(

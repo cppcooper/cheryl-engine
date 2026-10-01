@@ -74,7 +74,11 @@ namespace CE::GFramework {
         void run_sequential();
         void run_concurrent();
         void finish_unstarted_session();
-        void pump_shutdown_requests(std::exception_ptr& failure);
-        void finish_worker_shutdown(std::exception_ptr& failure);
+        void pump_shutdown_requests(
+            std::exception_ptr& failure
+        );
+        void finish_worker_shutdown(
+            std::exception_ptr& failure
+        );
     };
 }

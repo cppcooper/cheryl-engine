@@ -24,26 +24,9 @@ namespace CE::Assets {
     using ParameterValue = std::variant<float, int, unsigned int, bool, glm::vec2, glm::vec3, glm::vec4, glm::mat4, ImageBinding>;
     using ParameterSet = std::map<std::string, ParameterValue, std::less<>>;
 
-    enum class ParameterType {
-        Float,
-        Int,
-        UInt,
-        Bool,
-        Vec2,
-        Vec3,
-        Vec4,
-        Mat4,
-        Sampler2D
-    };
+    enum class ParameterType { Float, Int, UInt, Bool, Vec2, Vec3, Vec4, Mat4, Sampler2D };
 
-    enum class ParameterSemantic {
-        Custom,
-        Projection,
-        View,
-        Model,
-        Alpha,
-        Scale
-    };
+    enum class ParameterSemantic { Custom, Projection, View, Model, Alpha, Scale };
 
     // Keys belong to the pipeline's public contract. Backend uniform names are separate.
     struct ParameterDefinition {
@@ -56,8 +39,12 @@ namespace CE::Assets {
 
     using ParameterContract = std::vector<ParameterDefinition>;
 
-    [[nodiscard]] ParameterType parameter_type(const ParameterValue& value);
-    void validate_parameter_contract(const ParameterContract& contract);
+    [[nodiscard]] ParameterType parameter_type(
+        const ParameterValue& value
+    );
+    void validate_parameter_contract(
+        const ParameterContract& contract
+    );
     void validate_parameter_values(
         const ParameterContract& contract,
         const ParameterSet& values
