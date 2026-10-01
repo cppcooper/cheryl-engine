@@ -223,7 +223,43 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Native construction and text audit: checkpoints 60–61
+### Worker faults and event audit: checkpoints 62–64
+
+Remote 57 remains `5e4adfdc94cec7590916282c876762ada4d0e123`. Pending local
+58–61 were retained unchanged; this pass starts at saved local 61,
+`a93307cd1dd4b35ba02f9cc164d94a892c830cb5`, and does not write the remote.
+
+- 62 adds a private per-pool native adapter with production pthread/std::thread
+  defaults, preserving the public worker construction API. Eight source scenarios
+  cover discovery/set/readback/fallback/cached-mask failures, recovery/capture
+  release and failure after one thread enters the startup wrapper.
+- 63 adds simultaneous event producers, invalidation during a held payload copy,
+  and published-pump policy rejection through actual WorkerGroup submission. It
+  checks cancellation thread, joined listeners, reentrant recovery and accounting.
+- 64 records these bounded source reviews and remaining audit work. No new
+  implementation defect was established in this pass; controlled coverage had
+  been missing. Type/link and executed results remain unverified.
+
+The audit is still open: resource-category construction/allocation/context-loss
+review, combined context/asset/runtime shutdown failures and full formatting
+remain. No configuration, compilation, test/native execution or remote write
+occurred. All eleven new scenarios remain prepared sources.
+
+Numbered delivery is **62–64**; next unused number is **65**. The new-only
+`cheryl-engine-followup.patch` starts after saved 61. The combined
+`cheryl-engine-continuation.patch` contains all pending **58–64**, from remote 57.
+The original-base cumulative `cheryl-engine.patch` retains the complete ordered
+history. The user continues withholding unapplied patches until the audit is done;
+application routes overlap and must not be applied together.
+
+Changed syntax trees, whitespace and documentation/requirement consistency receive
+static inspection. New-only, numbered, combined and original-base mailbox routes
+must reproduce the exact final tree and ordered author/date/messages. These
+preparation checks do not establish compilation or runtime acceptance.
+
+See [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md).
+
+### Native construction and text audit: checkpoints 60–61 (historical)
 
 The remote now includes 55–57, ending at
 `5e4adfdc94cec7590916282c876762ada4d0e123`. Its source tree matches saved

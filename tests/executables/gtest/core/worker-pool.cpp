@@ -573,5 +573,8 @@ TEST(worker_pool_faults, partial_thread_start_failure_joins_started_work_and_pre
     }
     EXPECT_EQ(attempts, 2);
     EXPECT_EQ(exited.load(), 1); // Joined before the failing constructor returns.
+    // A moved-from std::function may retain source ownership; only failed-pool
+    // and started-thread ownership must be gone at this boundary.
+    adapter = {};
     EXPECT_TRUE(retained.expired());
 }

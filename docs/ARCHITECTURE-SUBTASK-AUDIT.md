@@ -5,7 +5,8 @@
 The source at that checkpoint matches user-pushed 57,
 `5e4adfdc94cec7590916282c876762ada4d0e123`; unapplied 58–59 were carried forward
 onto that remote history without changing their final tree. Checkpoints 60–61
-continue native upload and text-compatibility review.
+continue native upload and text-compatibility review. Checkpoints 62–64 add
+controlled worker faults and concurrent event/invalidation combinations.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -65,7 +66,7 @@ Inspected paths: EventBus/EventSystem, event-delivery.*, private pump seam and e
 | 2.2 | Checked source | Strong listener registry and bus-qualified weak identifier inspected; ignored identifiers remain persistent. |
 | 2.3 | Checked source | Atomic entry/running handshake and registry-before-listener invalidation inspected; A1 remains incorporated. |
 | 2.4 | Checked source | Invocation completion on exception, nested self-wait rejection and invalidation-before-wait inspected. |
-| 2.5 | Partial | owned copies and enqueue serialization inspected; complete concurrent producer/invalidation/destructor combinations still need review. |
+| 2.5 | Checked source | Per-listener posting, owned copies, active-entry handshake, invalidation during preparation and ticket/capture release scopes inspected. 63 prepares simultaneous producers, held-copy invalidation and native-policy pump cancellation/reentry. Global producer interleaving and error-sink lifetime stay explicitly separate; fixtures are unexecuted. |
 | 2.6 | Fix prepared | A11 pins the copied payload inside the ticket; false/throw target and destructor-redispatch sources added in 58. |
 | 2.7 | Checked source | Serial pump, shared copied streams, independent streams, closure and A10 cancellation ownership rechecked against pool capture release. |
 | 2.3a / 2.4a | Checked source | A1 rechecked: invalidation precedes detachment under registry ownership; user captures release after unlocking. |
@@ -81,8 +82,8 @@ Inspected paths: WorkerPool/WorkerGroup, worker-affinity.* and worker-pool regre
 | 3.2 | Checked source | Run/fail promise split, predicate sleeping, rejection and job capture release before accounting completion inspected. |
 | 3.3 | Checked source | Caps, bounded weights/priority, requested/effective policy and explicit unsupported hard topology inspected. |
 | 3.4 | Checked source | Eligible-group weighted selection, FIFO removal and cap/accounting under one scheduler mutex inspected. |
-| 3.5 | Partial | apply/readback and required cached-mask revalidation inspected; controlled get/set/fallback failure fixtures remain absent. |
-| 3.6 | Partial | restricted/empty/duplicate policy and startup rollback inspected; controlled partial thread-start/native failure evidence remains absent. |
+| 3.5 | Checked source | Set/readback and required cached-mask revalidation inspected through the private per-pool adapter. 62 prepares query/set/mismatch, preferred fallback failure/success and recovery paths; real native execution is open. |
+| 3.6 | Checked source | Restricted/empty/duplicate policy and constructor ownership/rollback inspected. 62 prepares discovery failure and rejection after a thread enters; join, original error and capture release are expected. 63 traces policy failure into published event-pump settlement. Synthetic source preparation only; actual OS rejection and context/asset/runtime acceptance remain open. |
 | 3.7 | Checked source | Close-before-drain, pending/running completion, serialized join and current_pool self-wait rejection inspected. |
 
 ### Task 4
@@ -180,20 +181,25 @@ both modes. This is source inspection, not proof of every producer interleaving.
 
 1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
    drift is corrected; full formatting has not been verified.
-2. Finish concurrent producer/invalidation/payload-destructor combinations and
-   prepared coverage review (2.5/2.6). A11's false/throw cases are unexecuted.
-3. Finish controlled native affinity query/apply/fallback and partial thread-start
-   failure evidence (3.5/3.6), including dependent event/asset settlement.
-4. Complete resource category construction/failure evidence (6.2/6.6/7.2):
+2. Complete resource category construction/failure evidence (6.2/6.6/7.2):
    allocation/rehash, program/category construction failures, current-context loss
-   and retained owners must remain distinct cases. A12 now prepares texture/buffer
-   upload/generation/mipmap error coverage; real native failure remains unexecuted.
-5. Finish combined producer/failure fixture review (4.6). FFont entry compatibility
-   is now recorded; actual rotated multiline rendering remains acceptance work.
+   and retained owners must remain distinct cases. A12 prepares texture/buffer
+   error coverage; real native failure remains unexecuted.
+3. Finish combined producer/failure fixture review (4.6), including context/asset
+   settlement after policy or startup failure and partial shutdown dependencies.
+   FFont compatibility is recorded; rotated rendering remains acceptance work.
+
+The bounded source review of the identified event ordering/invalidation and worker
+native-boundary branches is now recorded. Eleven scenarios prepared in 62–63 add
+controlled combinations and policy/startup faults; none has run. They do not prove
+all producer interleavings, actual OS rejection, race freedom, or complete runtime
+integration. Those limits stay open under acceptance and the remaining combined
+failure review rather than being hidden behind a completed source row.
 
 Old FFont file-read/validation TODOs predate its layout migration; the work order
 explicitly excludes new FFont loading/features. They are not silently counted as
-fixed. Likewise source rollback inspection is not a controlled native fault test.
+fixed. The private adapter now prepares controlled rollback and policy-failure sources;
+these are not an executed native fault test.
 
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes

@@ -213,3 +213,11 @@ cross-task producer/failure combinations remain acceptance or coverage gaps.
 Recovery checkpoints 52–53 prepare overlapping weighted affinity, capture-deleter
 reentry, failed-shutdown recovery, and abandonment/late-release coverage. Those
 sources also remain unexecuted. Do not infer exhaustive review or correctness from batch duration.
+
+Checkpoint 62 prepares the previously missing controlled query/set/readback,
+preferred fallback and partial thread-start failure sources through a private
+per-pool native adapter. Checkpoint 63 links an accepted pump's policy rejection
+to worker-side listener cancellation and reentrant recovery using production
+WorkerGroup submission, and adds simultaneous producers/held-copy invalidation.
+These sources narrow the identified coverage gaps without executed OS/runtime
+acceptance, exhaustive producer interleavings or closure of the broader audit.
