@@ -46,6 +46,7 @@ namespace CE::Assets {
         void bind_draw(const ShaderDraw& draw) override;
         void set_material_bindings(GLSLMaterialBindings bindings);
         void require_current() const { (void)program_.id(); }
+        void require_linked() const;
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
         [[nodiscard]] std::vector<GLSLVariable> active_uniforms() const;
         [[nodiscard]] std::vector<GLSLVariable> active_attributes() const;

@@ -49,6 +49,13 @@ namespace CE::Assets {
         glUseProgram(program_.id());
     }
 
+    void GLSLProgram::require_linked() const {
+        GLint linked = GL_FALSE;
+        glGetProgramiv(program_.id(), GL_LINK_STATUS, &linked);
+        if (linked != GL_TRUE)
+            throw Exceptions::failed_operation(CE_HERE, "GLSL pipeline requires a successfully linked program");
+    }
+
     std::vector<GLSLVariable> GLSLProgram::active_uniforms() const {
         return reflect_variables(program_.id(), GL_ACTIVE_UNIFORMS, GL_ACTIVE_UNIFORM_MAX_LENGTH,
             glGetActiveUniform, glGetUniformLocation);

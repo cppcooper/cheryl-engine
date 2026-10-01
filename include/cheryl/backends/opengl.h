@@ -8,3 +8,4 @@
 #include "opengl/texture.h"
 #include "opengl/vertex-array-object.h"
 #include "opengl/glslprogram.h"
+#include "opengl/pipeline.h"

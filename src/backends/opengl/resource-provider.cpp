@@ -101,6 +101,8 @@ namespace CE::Assets {
         if (!program.id)
             throw Exceptions::failed_operation(CE_HERE, "Could not create an OpenGL program");
 
+        std::vector<GLuint> attached_stages;
+        attached_stages.reserve(stages.size());
         for (const auto& file : stages) {
             const auto kind = stage_type(file);
             std::ifstream input(file, std::ios::binary);
@@ -123,10 +125,13 @@ namespace CE::Assets {
                 throw Exceptions::runtime_exception(CE_HERE,
                     "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id));
             glAttachShader(program.id, shader.id);
-            // The program retains the stage after glDeleteShader until linking/deletion.
+            attached_stages.push_back(shader.id);
+            // Deletion is deferred while attached; detach after linking below.
         }
 
         glLinkProgram(program.id);
+        for (const auto shader : attached_stages)
+            glDetachShader(program.id, shader);
         GLint linked = GL_FALSE;
         glGetProgramiv(program.id, GL_LINK_STATUS, &linked);
         if (linked != GL_TRUE)
@@ -137,5 +142,23 @@ namespace CE::Assets {
         RenderAPIs::OpenGLHandle tracked(lifetime, RenderAPIs::GLResourceKind::Program, program.id);
         program.id = 0;
         return std::make_shared<GLSLProgram>(std::move(tracked));
+    }
+
+    std::shared_ptr<const GLSLPipeline> OpenGLResourceProvider::build_pipeline(
+        PipelineDefinition definition,
+        const GLSLPipelineBindings& bindings
+    ) {
+        validate_pipeline_definition(definition);
+        auto program = std::dynamic_pointer_cast<GLSLProgram>(link_program(definition.program_sources));
+        return std::make_shared<GLSLPipeline>(std::move(definition), std::move(program), bindings);
+    }
+
+    std::shared_ptr<const Material> OpenGLResourceProvider::build_material(MaterialDefinition definition) {
+        const auto* pipeline = dynamic_cast<const GLSLPipeline*>(definition.pipeline.get());
+        if (!pipeline || pipeline->resource_domain() != renderer_.resources().get())
+            throw Exceptions::invalid_args(CE_HERE, "Material requires a pipeline from this OpenGL provider's domain");
+        auto material = std::make_shared<Material>(std::move(definition));
+        pipeline->validate_resources(material->definition().defaults);
+        return material;
     }
 }

@@ -83,6 +83,26 @@ namespace CE::Assets {
         }
     }
 
+    void validate_resolved_parameters(
+        const ParameterContract& contract,
+        const ParameterSet& values
+    ) {
+        validate_parameter_contract(contract);
+        std::set<std::uint32_t> units;
+        for (const auto& [key, value] : values) {
+            const auto definition = std::find_if(contract.begin(), contract.end(), [&](const auto& item) { return item.key == key; });
+            if (definition == contract.end())
+                throw Exceptions::invalid_args(CE_HERE, "Unknown resolved parameter: " + key);
+            validate_value(*definition, value);
+            if (const auto* binding = std::get_if<ImageBinding>(&value); binding && !units.insert(binding->unit).second)
+                throw Exceptions::invalid_args(CE_HERE, "Sampler units must be distinct: " + key);
+        }
+        for (const auto& definition : contract) {
+            if (definition.required && !values.contains(definition.key))
+                throw Exceptions::invalid_args(CE_HERE, "Required parameter is missing: " + definition.key);
+        }
+    }
+
     ParameterSet resolve_parameters(
         const ParameterContract& contract,
         const ShaderPass& pass_semantics,
@@ -107,17 +127,7 @@ namespace CE::Assets {
             for (const auto& [key, value] : *layer)
                 resolved.insert_or_assign(key, value);
         }
-        std::set<std::uint32_t> units;
-        for (const auto& definition : contract) {
-            const auto value = resolved.find(definition.key);
-            if (value == resolved.end()) {
-                if (definition.required)
-                    throw Exceptions::invalid_args(CE_HERE, "Required parameter is missing: " + definition.key);
-                continue;
-            }
-            if (const auto* binding = std::get_if<ImageBinding>(&value->second); binding && !units.insert(binding->unit).second)
-                throw Exceptions::invalid_args(CE_HERE, "Sampler units must be distinct: " + definition.key);
-        }
+        validate_resolved_parameters(contract, resolved);
         return resolved;
     }
 }
