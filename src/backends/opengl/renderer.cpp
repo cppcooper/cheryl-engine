@@ -31,8 +31,8 @@ namespace CE::RenderAPIs {
         }
         if (stopped_)
             throw Exceptions::failed_operation(CE_HERE, "Create a new renderer after OpenGL shutdown");
-        context_.make_current();
         try {
+            context_.make_current();
             if (!context_.is_current())
                 throw Exceptions::failed_operation(CE_HERE, "OpenGL initialization requires its current context");
             // The renderer receives procedure addresses through the context interface,

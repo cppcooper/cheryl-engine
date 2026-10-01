@@ -1,4 +1,5 @@
 #include <backends/opengl/resource-lifetime.h>
+#include <backends/opengl/renderer.h>
 #include <backends/opengl/glslprogram.h>
 #include <backends/opengl/resource-lifetime-internal.h>
 #include <testing/failing-memory-resource.h>
@@ -9,6 +10,7 @@
 #include <future>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -18,6 +20,38 @@ namespace {
     using CE::RenderAPIs::GLResourceKind;
     using CE::RenderAPIs::OpenGLHandle;
     using CE::RenderAPIs::OpenGLResourceLifetime;
+
+    class FailingStartupContext final : public CE::RenderAPIs::iOpenGLContext {
+    public:
+        bool become_current = true;
+        bool fail_release = false;
+        bool current = false;
+        int acquisitions = 0;
+        int releases = 0;
+        mutable int lookups = 0;
+
+        void make_current() override {
+            ++acquisitions;
+            current = become_current;
+            throw std::runtime_error("Original context acquisition failure");
+        }
+
+        void release_current() override {
+            ++releases;
+            if (!current)
+                throw std::runtime_error("Context was never current");
+            current = false;
+            if (fail_release)
+                throw std::runtime_error("Later context release failure");
+        }
+
+        [[nodiscard]] bool is_current() const override { return current; }
+        [[nodiscard]] ProcAddress proc_address(const char*) const override {
+            ++lookups;
+            return nullptr;
+        }
+        void present() override {}
+    };
 
     /** Records native deletion calls without constructing a real GL context.
      * Restores GLAD's process-wide entry points before another scenario runs.
@@ -66,6 +100,35 @@ namespace {
         DeletionRecorder(const DeletionRecorder&) = delete;
         DeletionRecorder& operator=(const DeletionRecorder&) = delete;
     };
+}
+
+TEST(opengl_renderer, initial_context_acquisition_failure_attempts_release_and_preserves_its_error) {
+    for (const bool become_current : {false, true}) {
+        for (const bool fail_release : {false, true}) {
+            SCOPED_TRACE(become_current ? "partially current" : "never current");
+            SCOPED_TRACE(fail_release ? "release throws" : "release succeeds when current");
+            FailingStartupContext context;
+            context.become_current = become_current;
+            context.fail_release = fail_release;
+            {
+                CE::RenderAPIs::OpenGLRenderer renderer(context);
+                try {
+                    renderer.initialize();
+                    FAIL() << "Context acquisition must fail";
+                } catch (const std::runtime_error& error) {
+                    EXPECT_EQ(std::string_view(error.what()), "Original context acquisition failure");
+                }
+                EXPECT_EQ(context.acquisitions, 1);
+                EXPECT_EQ(context.releases, 1);
+                EXPECT_FALSE(context.current);
+                EXPECT_EQ(context.lookups, 0);
+                EXPECT_THROW((void)renderer.resources(), failed_operation);
+                EXPECT_NO_THROW(renderer.deinitialize());
+                EXPECT_EQ(context.releases, 1);
+            }
+            EXPECT_EQ(context.releases, 1);
+        }
+    }
 }
 
 TEST(opengl_lifetime, the_owner_thread_also_needs_the_correct_current_context) {
