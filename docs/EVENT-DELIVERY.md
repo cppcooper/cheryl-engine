@@ -90,3 +90,13 @@ then pool; worker accounting releases the pool lock before touching a stream or
 releasing callback captures. Prepared closure/reentry and independent-stream
 scenarios exercise these lifecycle contracts; the old submission window was found
 by interleaving review, without a deterministic executed reproduction.
+
+Checkpoint 55 extends the handoff for accepted pumps rejected by native policy
+before entry. Cancellation belongs to the submitted callable, not a producer's
+local shared owner. An atomic preparing/accepted/cancelled handshake records early
+loss without taking the already-held stream lock; the producer then withdraws
+only its initiating request. After publication, unentered callable destruction
+abandons the stream outside producer posting locks. This closes a second window
+in which another listener's cancellation sink could run under the first listener's
+posting lock. The finding comes from ownership/interleaving review; executed
+native-policy acceptance remains open.

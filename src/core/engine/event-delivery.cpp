@@ -27,15 +27,32 @@ namespace {
         // Release them outside the stream lock so error sinks may reenter.
     }
 
+    enum class PumpPhase { Preparing, Accepted, Cancelled };
+
     struct WorkerPump {
         std::shared_ptr<WorkerStream> stream;
-        std::atomic<bool> entered{false};
-        bool published = false;
+        std::atomic<PumpPhase> phase{PumpPhase::Preparing};
 
         explicit WorkerPump(std::shared_ptr<WorkerStream> value) : stream(std::move(value)) {}
-        ~WorkerPump() {
-            if (published && !entered.load(std::memory_order_acquire))
-                abandon_stream(stream);
+    };
+
+    // Only the submitted callable owns cancellation cleanup. A producer's local
+    // shared pump owner must never cancel another listener under its posting lock.
+    struct WorkerPumpJob {
+        std::shared_ptr<WorkerPump> pump;
+        bool entered = false;
+
+        explicit WorkerPumpJob(std::shared_ptr<WorkerPump> value) : pump(std::move(value)) {}
+        WorkerPumpJob(WorkerPumpJob&&) noexcept = default;
+        WorkerPumpJob(const WorkerPumpJob&) = delete;
+        ~WorkerPumpJob() {
+            if (!pump || entered)
+                return;
+            // Before acceptance, record loss without taking the stream mutex:
+            // synchronous submit failure may already hold it. The producer
+            // withdraws its sole request before another producer can join.
+            if (pump->phase.exchange(PumpPhase::Cancelled, std::memory_order_acq_rel) == PumpPhase::Accepted)
+                abandon_stream(pump->stream);
         }
     };
 
@@ -95,14 +112,22 @@ namespace CE::Engine {
                 stream->pending.push_back(std::move(work));
                 if (pump) {
                     stream->scheduled = true;
-                    pump->published = true;
                     try {
                         // Submit while holding the stream lock. Other producers
                         // may join only after this pump is actually accepted.
-                        (void)stream->group.submit([pump] {
-                            pump->entered.store(true, std::memory_order_release);
-                            drain_stream(pump->stream);
+                        (void)stream->group.submit([job = WorkerPumpJob(pump)]() mutable {
+                            job.entered = true;
+                            drain_stream(job.pump->stream);
                         });
+                        auto expected = PumpPhase::Preparing;
+                        if (!pump->phase.compare_exchange_strong(expected, PumpPhase::Accepted, std::memory_order_acq_rel)) {
+                            // Policy rejection already destroyed the unentered
+                            // job. No other request can have joined this pump.
+                            rejected = std::move(stream->pending.front());
+                            stream->pending.pop_front();
+                            stream->scheduled = false;
+                            return false;
+                        }
                     } catch (...) {
                         // Only this request was published under the stream lock.
                         // Do not cancel another listener while its caller still
@@ -111,7 +136,6 @@ namespace CE::Engine {
                         rejected = std::move(stream->pending.front());
                         stream->pending.pop_front();
                         stream->scheduled = false;
-                        pump->published = false;
                         throw;
                     }
                 }
