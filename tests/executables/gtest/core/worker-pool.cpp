@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <core/engine/worker-pool.h>
+#include <core/engine/worker-pool-internal.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
@@ -15,8 +16,44 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <utility>
 
 namespace {
+    // One physical worker exercises the production policy loop. Mask values and
+    // failures are synthetic; the fixture never changes the host's CPU policy.
+    struct RecordingWorkerNative {
+        std::vector<unsigned int> mask{2, 7};
+        std::vector<std::vector<unsigned int>> sets;
+        std::vector<int> failed_sets;
+        int queries = 0;
+        int failed_query = 0;
+        bool ignore_sets = false;
+
+        CE::Engine::WorkerDetail::WorkerNativeAdapter adapter() {
+            return {true, [this] {
+                if (++queries == failed_query)
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity query failure");
+                return mask;
+            }, [this](const std::vector<unsigned int>& requested) {
+                sets.push_back(requested);
+                const auto attempt = static_cast<int>(sets.size());
+                if (std::find(failed_sets.begin(), failed_sets.end(), attempt) != failed_sets.end())
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled affinity set failure " + std::to_string(attempt));
+                if (!ignore_sets)
+                    mask = requested;
+            }, [](std::function<void()> work) { return std::thread(std::move(work)); }};
+        }
+    };
+
+    CE::Engine::WorkerGroupOptions recording_cpu_policy(
+        CE::Engine::WorkerPolicyStrength strength
+    ) {
+        CE::Engine::WorkerGroupOptions options;
+        options.cpu.cpus = {2};
+        options.cpu.strength = strength;
+        return options;
+    }
+
     // Declare after the captured recording state so exceptional test exits join
     // the held worker before destroying anything its queued jobs may reference.
     class HeldWorkerCleanup final {
@@ -355,4 +392,186 @@ TEST(worker_pool, weighted_groups_receive_more_service_without_starving_the_othe
     ASSERT_EQ(order.size(), 16u);
     EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'F'), 6);
     EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'R'), 2);
+}
+
+TEST(worker_pool_faults, discovery_query_failure_disables_hard_affinity_but_settles_unconstrained_work) {
+    RecordingWorkerNative native;
+    native.failed_query = 1;
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    EXPECT_FALSE(pool->capabilities().cpu_affinity);
+    EXPECT_TRUE(pool->capabilities().available_cpus.empty());
+    EXPECT_THROW(static_cast<void>(pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required))),
+        CE::Exceptions::failed_operation);
+    auto ordinary = pool->make_group();
+    auto result = ordinary.submit([] { return 13; });
+    ordinary.close();
+    ordinary.drain();
+    EXPECT_EQ(result.get(), 13);
+    EXPECT_TRUE(native.sets.empty());
+    EXPECT_EQ(ordinary.status().completed, 1u);
+}
+
+TEST(worker_pool_faults, effective_readback_mismatch_rejects_required_work_before_callback_entry) {
+    RecordingWorkerNative native;
+    native.ignore_sets = true;
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    auto group = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    int calls = 0;
+    auto result = group.submit([&] { ++calls; });
+    group.close();
+    group.drain();
+    EXPECT_THROW(result.get(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(native.sets, (std::vector<std::vector<unsigned int>>{{2}}));
+    EXPECT_EQ(group.status().policy_failures, 1u);
+    EXPECT_EQ(group.status().completed, 1u);
+}
+
+TEST(worker_pool_faults, required_set_failure_releases_captures_outside_locks_before_drain_completes) {
+    RecordingWorkerNative native;
+    native.failed_sets = {1};
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    auto required = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    auto ordinary = pool->make_group();
+    int calls = 0;
+    bool released = false;
+    std::future<int> follow_up;
+    std::exception_ptr release_failure;
+    auto capture = std::shared_ptr<int>(new int{42}, [&](int* value) noexcept {
+        EXPECT_EQ(required.status().running, 1u);
+        EXPECT_EQ(required.status().completed, 0u);
+        try {
+            follow_up = ordinary.submit([] { return 17; });
+        } catch (...) {
+            release_failure = std::current_exception();
+        }
+        released = true;
+        delete value;
+    });
+    auto result = required.submit([capture = std::move(capture), &calls] { ++calls; return *capture; });
+    required.close();
+    required.drain();
+    EXPECT_THROW(result.get(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(calls, 0);
+    EXPECT_TRUE(released);
+    EXPECT_FALSE(release_failure);
+    EXPECT_EQ(required.status().policy_failures, 1u);
+    EXPECT_EQ(required.status().completed, 1u);
+    ordinary.close();
+    ordinary.drain();
+    ASSERT_TRUE(follow_up.valid());
+    EXPECT_EQ(follow_up.get(), 17);
+}
+
+TEST(worker_pool_faults, preferred_set_failure_runs_only_after_verified_inherited_fallback) {
+    RecordingWorkerNative native;
+    native.failed_sets = {1};
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    auto group = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Preferred));
+    auto result = group.submit([&] { return native.mask; });
+    group.close();
+    group.drain();
+    EXPECT_EQ(result.get(), (std::vector<unsigned int>{2, 7}));
+    EXPECT_EQ(native.sets, (std::vector<std::vector<unsigned int>>{{2}, {2, 7}}));
+    EXPECT_EQ(group.status().policy_failures, 1u);
+    EXPECT_EQ(group.status().completed, 1u);
+}
+
+TEST(worker_pool_faults, failed_preferred_fallback_settles_failure_and_the_next_group_reverifies) {
+    for (const bool query_failure : {false, true}) {
+        RecordingWorkerNative native;
+        native.failed_sets = query_failure ? std::vector<int>{1} : std::vector<int>{1, 2};
+        native.failed_query = query_failure ? 2 : 0;
+        auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+        auto preferred = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Preferred));
+        auto ordinary = pool->make_group();
+        int calls = 0;
+        auto failure = preferred.submit([&] { ++calls; });
+        preferred.close();
+        preferred.drain();
+        try {
+            failure.get();
+            ADD_FAILURE() << "Both native attempts failed but the job succeeded";
+        } catch (const CE::Exceptions::failed_operation& error) {
+            EXPECT_NE(std::string(error.what()).find(query_failure ? "query failure" : "set failure 2"), std::string::npos);
+        }
+        auto recovery = ordinary.submit([&] { return native.mask; });
+        ordinary.close();
+        ordinary.drain();
+        EXPECT_EQ(recovery.get(), (std::vector<unsigned int>{2, 7}));
+        EXPECT_EQ(calls, 0);
+        EXPECT_EQ(native.sets, (std::vector<std::vector<unsigned int>>{{2}, {2, 7}, {2, 7}}));
+        EXPECT_EQ(preferred.status().policy_failures, 1u);
+        EXPECT_EQ(ordinary.status().policy_failures, 0u);
+    }
+}
+
+TEST(worker_pool_faults, post_set_query_failure_rejects_work_and_restores_the_next_groups_mask) {
+    RecordingWorkerNative native;
+    native.failed_query = 2; // The set succeeds, but its readback cannot verify it.
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    auto required = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    auto ordinary = pool->make_group();
+    int calls = 0;
+    auto failure = required.submit([&] { ++calls; });
+    required.close();
+    required.drain();
+    EXPECT_THROW(failure.get(), CE::Exceptions::failed_operation);
+    auto recovery = ordinary.submit([&] { return native.mask; });
+    ordinary.close();
+    ordinary.drain();
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(recovery.get(), (std::vector<unsigned int>{2, 7}));
+    EXPECT_EQ(native.sets, (std::vector<std::vector<unsigned int>>{{2}, {2, 7}}));
+    EXPECT_EQ(required.status().policy_failures, 1u);
+}
+
+TEST(worker_pool_faults, cached_required_query_failure_skips_work_and_forces_next_job_verification) {
+    RecordingWorkerNative native;
+    native.failed_query = 2; // Discovery succeeds; the cached required mask read fails.
+    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto group = pool->make_group(options);
+    int calls = 0;
+    auto failure = group.submit([&] { ++calls; });
+    EXPECT_THROW(failure.get(), CE::Exceptions::failed_operation);
+    auto recovery = group.submit([&] { return native.mask; });
+    group.close();
+    group.drain();
+    EXPECT_EQ(recovery.get(), (std::vector<unsigned int>{2, 7}));
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(native.sets, (std::vector<std::vector<unsigned int>>{{2, 7}}));
+    EXPECT_EQ(group.status().policy_failures, 1u);
+    EXPECT_EQ(group.status().completed, 2u);
+}
+
+TEST(worker_pool_faults, partial_thread_start_failure_joins_started_work_and_preserves_the_original_error) {
+    std::promise<void> entered;
+    auto started = entered.get_future().share();
+    std::atomic<int> exited{0};
+    int attempts = 0;
+    auto captured = std::make_shared<int>(42);
+    std::weak_ptr<int> retained = captured;
+    CE::Engine::WorkerDetail::WorkerNativeAdapter adapter;
+    adapter.start_thread = [captured = std::move(captured), &attempts, &entered, started, &exited](std::function<void()> work) {
+        if (++attempts == 2) {
+            started.wait(); // The first thread has actually entered its wrapper.
+            throw CE::Exceptions::failed_operation(CE_HERE, "Controlled second thread-start failure");
+        }
+        return std::thread([work = std::move(work), &entered, &exited] {
+            entered.set_value();
+            work(); // Constructor rollback must close/wake this idle worker.
+            ++exited;
+        });
+    };
+    try {
+        static_cast<void>(CE::Engine::WorkerDetail::WorkerPoolAccess::create(3, std::move(adapter)));
+        ADD_FAILURE() << "The second thread start did not reject construction";
+    } catch (const CE::Exceptions::failed_operation& error) {
+        EXPECT_NE(std::string(error.what()).find("second thread-start failure"), std::string::npos);
+    }
+    EXPECT_EQ(attempts, 2);
+    EXPECT_EQ(exited.load(), 1); // Joined before the failing constructor returns.
+    EXPECT_TRUE(retained.expired());
 }

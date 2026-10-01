@@ -18,6 +18,8 @@ namespace CE::Engine {
     namespace WorkerDetail {
         struct PoolState;
         struct GroupState;
+        struct WorkerNativeAdapter;
+        struct WorkerPoolAccess;
         struct Job {
             std::move_only_function<void()> run;
             std::move_only_function<void(std::exception_ptr)> fail;
@@ -121,9 +123,15 @@ namespace CE::Engine {
      * external completion checks instead. Pool ownership must outlive its jobs.
      */
     class WorkerPool final {
+        friend struct WorkerDetail::WorkerPoolAccess;
         std::shared_ptr<WorkerDetail::PoolState> state_;
         std::vector<std::thread> workers_;
         std::mutex shutdown_mutex_;
+
+        WorkerPool(
+            std::size_t worker_count,
+            WorkerDetail::WorkerNativeAdapter adapter
+        );
 
     public:
         explicit WorkerPool(std::size_t worker_count = 1);

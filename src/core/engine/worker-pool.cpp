@@ -24,6 +24,7 @@ namespace CE::Engine::WorkerDetail {
         std::vector<std::shared_ptr<GroupState>> groups;
         std::size_t capacity = 0;
         WorkerCapabilities capabilities;
+        WorkerNativeAdapter native;
         bool accepting = true;
     };
 
@@ -87,13 +88,13 @@ namespace CE::Engine::WorkerDetail {
                 try {
                     const auto& desired = selected->policy.effective_cpus;
                     if (!mask_known || current_mask != desired) {
-                        apply_affinity(desired);
+                        apply_affinity(pool->native, desired);
                         current_mask = desired;
                         mask_known = true;
                     }
-                    else if (selected->options.cpu.strength == WorkerPolicyStrength::Required && current_affinity() != desired) {
+                    else if (selected->options.cpu.strength == WorkerPolicyStrength::Required && pool->native.query_affinity() != desired) {
                         // Restrictions may change while the pool is alive.
-                        apply_affinity(desired);
+                        apply_affinity(pool->native, desired);
                     }
                 }
                 catch (...) {
@@ -101,7 +102,7 @@ namespace CE::Engine::WorkerDetail {
                     mask_known = false;
                     if (selected->options.cpu.strength == WorkerPolicyStrength::Preferred) {
                         try {
-                            apply_affinity(pool->capabilities.available_cpus);
+                            apply_affinity(pool->native, pool->capabilities.available_cpus);
                             current_mask = pool->capabilities.available_cpus;
                             mask_known = true;
                             policy_error = {};
@@ -183,17 +184,24 @@ namespace CE::Engine {
     }
 
     WorkerPool::WorkerPool(const std::size_t worker_count)
+    : WorkerPool(worker_count, WorkerDetail::native_worker_adapter()) {}
+
+    WorkerPool::WorkerPool(
+        const std::size_t worker_count,
+        WorkerDetail::WorkerNativeAdapter adapter
+    )
     : state_(std::make_shared<WorkerDetail::PoolState>()) {
         if (worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
         state_->capacity = worker_count;
-        state_->capabilities = WorkerDetail::discover_capabilities();
+        state_->native = std::move(adapter);
+        state_->capabilities = WorkerDetail::discover_capabilities(state_->native);
         try {
             workers_.reserve(worker_count);
             for (std::size_t i = 0; i < worker_count; ++i)
-                workers_.emplace_back([state = state_, i, mask = state_->capabilities.available_cpus]() mutable {
+                workers_.push_back(state_->native.start_thread([state = state_, i, mask = state_->capabilities.available_cpus]() mutable {
                     WorkerDetail::run_worker(state, i, std::move(mask));
-                });
+                }));
         }
         catch (...) {
             // Already-created threads must wake and join before construction fails.
@@ -206,6 +214,13 @@ namespace CE::Engine {
 
     WorkerPool::~WorkerPool() {
         shutdown();
+    }
+
+    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(
+        const std::size_t worker_count,
+        WorkerNativeAdapter adapter
+    ) {
+        return std::unique_ptr<WorkerPool>(new WorkerPool(worker_count, std::move(adapter)));
     }
 
     WorkerGroupPolicy WorkerGroup::policy() const {

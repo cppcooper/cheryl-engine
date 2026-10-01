@@ -1,9 +1,14 @@
 #pragma once
 
-#include <core/engine/worker-pool.h>
+#include "worker-pool-internal.h"
 
 namespace CE::Engine::WorkerDetail {
-    WorkerCapabilities discover_capabilities();
-    std::vector<unsigned int> current_affinity();
-    void apply_affinity(const std::vector<unsigned int>& cpus);
+    WorkerNativeAdapter native_worker_adapter();
+    WorkerCapabilities discover_capabilities(
+        const WorkerNativeAdapter& adapter
+    );
+    void apply_affinity(
+        const WorkerNativeAdapter& adapter,
+        const std::vector<unsigned int>& cpus
+    );
 }

@@ -113,3 +113,19 @@ The latter prequeues 3:1 workloads, checks each job's actual mask, and compares
 the first eight selections. It tests mask switching together with weighted
 scheduling; it does not exercise live OS restriction or native application failure.
 These two additional scenarios are also uncompiled and unexecuted.
+
+Checkpoint 62 prepares controlled native-boundary failures through a private,
+per-pool adapter. Production still uses pthread get/set and std::thread; the
+adapter centralizes the same set-then-readback check, without global overrides or
+a new public construction API. The source-only test factory uses the production
+scheduler, promise settlement, capture release and constructor rollback paths.
+
+Eight new scenarios cover discovery query failure, effective-mask mismatch,
+required set failure with capture-deleter reentry, verified preferred fallback,
+failed fallback set/readback with recovery, post-set query failure, cached-mask
+query failure and partial thread-start failure. The startup fixture enters one
+real thread wrapper before rejecting the second start, then expects closure,
+join, original-error preservation and adapter-capture release before return.
+Affinity values/errors are synthetic and do not change the test host's CPU policy.
+These scenarios have not been compiled or executed; they prepare controlled
+failure coverage without proving actual OS rejection or runtime acceptance.
