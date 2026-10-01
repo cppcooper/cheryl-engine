@@ -1,4 +1,5 @@
 #include <backends/opengl/glslprogram.h>
+#include "upload-check.h"
 #include <internals/exceptions.h>
 #include <cstdlib>
 #include <iostream>
@@ -13,10 +14,13 @@ namespace CE::Assets {
             decltype(glad_glGetActiveUniform) query,
             decltype(glad_glGetUniformLocation) location
         ) {
+            RenderAPIs::require_no_gl_error("OpenGL error before program reflection");
             GLint count = 0;
             GLint maximum_length = 0;
             glGetProgramiv(program, count_parameter, &count);
+            RenderAPIs::require_no_gl_error("Could not query program reflection count");
             glGetProgramiv(program, length_parameter, &maximum_length);
+            RenderAPIs::require_no_gl_error("Could not query program reflection name length");
             if (count < 0 || (count > 0 && maximum_length <= 0))
                 throw Exceptions::failed_operation(CE_HERE, "Invalid linked program reflection limits");
             if (count == 0)
@@ -28,10 +32,12 @@ namespace CE::Assets {
                 GLSLVariable variable;
                 GLsizei written = 0;
                 query(program, static_cast<GLuint>(index), maximum_length, &written, &variable.size, &variable.type, name.data());
+                RenderAPIs::require_no_gl_error("Could not reflect program variable");
                 if (written <= 0 || written >= maximum_length)
                     throw Exceptions::failed_operation(CE_HERE, "Invalid linked program reflection name");
                 variable.name.assign(name.data(), static_cast<std::size_t>(written));
                 variable.location = location(program, variable.name.c_str());
+                RenderAPIs::require_no_gl_error("Could not query reflected variable location");
                 variables.push_back(std::move(variable));
             }
             return variables;
@@ -51,7 +57,10 @@ namespace CE::Assets {
 
     void GLSLProgram::require_linked() const {
         GLint linked = GL_FALSE;
-        glGetProgramiv(program_.id(), GL_LINK_STATUS, &linked);
+        const auto id = program_.id();
+        RenderAPIs::require_no_gl_error("OpenGL error before program link-status query");
+        glGetProgramiv(id, GL_LINK_STATUS, &linked);
+        RenderAPIs::require_no_gl_error("Could not query program link status");
         if (linked != GL_TRUE)
             throw Exceptions::failed_operation(CE_HERE, "GLSL pipeline requires a successfully linked program");
     }
