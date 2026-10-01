@@ -91,6 +91,18 @@ stream-to-pool lock order. Prepared sources cover close with queued accepted wor
 reentrant rejection reporting, and independent stream progress; they do not force
 the old submission interleaving. Native pump-rejection acceptance remains open.
 
+### A8: cache insertion moved its final local candidate owner into fallible work
+
+Checkpoint 47 keeps a local strong candidate owner through try_emplace. Previously
+node construction could move away that last owner, then insertion/rehash failure
+could destroy the node under the cache write lock. A final deleter inspecting that
+cache could deadlock. Keeping the argument's owner makes final cleanup occur after
+lock unwinding, including duplicate and failed insertion. Replacement already
+inserts an empty slot before exchanging ownership, and clear detaches the map.
+Prepared generic-cache sources cover duplicate-candidate deleter reentry and a
+controlled hash-rejection failure. Allocation/rehash failure was checked by owner
+and exception-scope review; those fixtures do not force allocation failure.
+
 ## Coverage at this checkpoint
 
 | Task | Paths reviewed in this pass | Assessment and remaining review |

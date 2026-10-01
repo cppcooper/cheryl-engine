@@ -123,7 +123,10 @@ namespace CE::Assets {
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
             std::unique_lock lock(assets_mutex_);
-            return loaded_assets.try_emplace(key, std::move(asset)).first->second;
+            // Keep this local owner until the lock has unwound. Node/rehash
+            // failure may destroy an insertion candidate while still inside
+            // try_emplace; that must not run its final deleter under this lock.
+            return loaded_assets.try_emplace(key, asset).first->second;
         }
         spointer replace_asset(const Key& key, spointer asset) {
             if (!asset)

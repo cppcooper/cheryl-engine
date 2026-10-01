@@ -77,3 +77,10 @@ runtime adapters cover maintenance before a first frame with a full backlog and
 first-error preservation. Strong-residency/cache-domain scenarios cover explicit
 clear and retained owners across provider rebind. These sources are uncompiled
 and unexecuted; real context-loss and GPU acceptance remain open.
+
+Cache insertion retains a local candidate owner across fallible node construction
+and rehash. A failed or duplicate insertion can release its final candidate only
+after the cache write lock unwinds. Replacement exchanges an already established
+slot, and clear detaches the whole map before release. This includes material
+candidates and their retained program/image resources; reentrant deleters remain
+outside publication locks on all three paths.
