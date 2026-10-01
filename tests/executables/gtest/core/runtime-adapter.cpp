@@ -627,6 +627,19 @@ namespace {
         return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation), std::move(rendering),
             std::make_unique<MemoryProvider>(), input, std::move(execution));
     }
+
+    void expect_cancelled_request(
+        std::future<void>& completion
+    ) {
+        ASSERT_TRUE(completion.valid());
+        ASSERT_EQ(completion.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        try {
+            completion.get();
+            FAIL() << "An accepted request cancelled before execution must report broken_promise";
+        } catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+    }
 } // namespace
 
 TEST(
@@ -2031,8 +2044,8 @@ TEST(
         EXPECT_EQ(game.shutdowns, 1);
         EXPECT_EQ(renderer->shutdowns, 1);
         EXPECT_EQ(input.attached_window(), nullptr);
-        EXPECT_THROW(cancelled_platform.get(), CE::Exceptions::failed_operation);
-        EXPECT_THROW(cancelled_simulation.get(), CE::Exceptions::failed_operation);
+        expect_cancelled_request(cancelled_platform);
+        expect_cancelled_request(cancelled_simulation);
         EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
         EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
         EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
@@ -2105,7 +2118,7 @@ TEST(
     }
     EXPECT_EQ(starts, 1);
     EXPECT_EQ(uploaded.get(), 42);
-    EXPECT_THROW(cancelled.get(), CE::Exceptions::failed_operation);
+    expect_cancelled_request(cancelled);
     EXPECT_EQ(simulation_callbacks, 0);
     EXPECT_EQ(upload_thread, std::this_thread::get_id());
     EXPECT_EQ(game.updates, 0);
