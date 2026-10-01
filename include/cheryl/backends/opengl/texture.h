@@ -42,7 +42,8 @@ namespace CE::Assets {
         void bind(std::uint32_t unit) const override;
         void require_binding(std::uint32_t unit) const;
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return handle_.resource_domain(); }
-        static void unbind();
+        // Select the requested unit explicitly and require this texture's live context.
+        void unbind(std::uint32_t unit) const;
     };
 }
 #endif

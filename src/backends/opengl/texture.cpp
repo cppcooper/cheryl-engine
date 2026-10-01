@@ -90,7 +90,7 @@ namespace CE::Assets {
         binding_unit_limit_ = texture_unit_limit();
         bind(0);
         upload(pixels.rgba.data(), width, height, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
-        unbind();
+        unbind(0);
     }
 
     Texture::Texture(
@@ -112,7 +112,7 @@ namespace CE::Assets {
         binding_unit_limit_ = texture_unit_limit();
         bind(0);
         upload(bitmap_data, width, height, use_mipmaps, pixelate, wrap_opt, fmt);
-        unbind();
+        unbind(0);
     }
 
     void Texture::require_binding(const std::uint32_t unit) const {
@@ -128,7 +128,9 @@ namespace CE::Assets {
         glBindTexture(GL_TEXTURE_2D, id);
     }
 
-    void Texture::unbind() {
+    void Texture::unbind(const std::uint32_t unit) const {
+        require_binding(unit);
+        glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 }

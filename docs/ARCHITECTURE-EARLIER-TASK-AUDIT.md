@@ -103,6 +103,15 @@ Prepared generic-cache sources cover duplicate-candidate deleter reentry and a
 controlled hash-rejection failure. Allocation/rehash failure was checked by owner
 and exception-scope review; those fixtures do not force allocation failure.
 
+### A9: static texture unbinding bypassed native ownership and inherited a unit
+
+Checkpoint 48 replaces Texture::unbind() with instance-bound unbind(unit), checking
+the owning live/current context and unit limit before selecting and clearing that
+unit. Constructor cleanup supplies unit zero explicitly. Other binding paths already
+check their owners/domains. Prepared native recording sources cover unrelated
+active-unit state and rejection on foreign/missing/closed contexts or invalid units.
+No real OpenGL execution has occurred.
+
 ## Coverage at this checkpoint
 
 | Task | Paths reviewed in this pass | Assessment and remaining review |

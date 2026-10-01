@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <string>
@@ -402,4 +403,43 @@ TEST(opengl_pipeline, invalid_geometry_parameters_and_pass_constraints_leave_nat
     EXPECT_EQ(native.state_changes, 0);
     EXPECT_EQ(native.geometry_binds, 0);
     EXPECT_TRUE(native.draws.empty());
+}
+
+TEST(opengl_texture, unbinding_selects_an_explicit_unit_instead_of_inheriting_the_last_active_one) {
+    NativeProgramRecorder native;
+    auto first = native.image();
+    auto second = native.image();
+    first->bind(1);
+    second->bind(3);
+    native.image_binds.clear();
+    first->unbind(1);
+    EXPECT_EQ(native.image_binds, (std::vector<std::pair<std::uint32_t, GLuint>>{{1, 0}}));
+}
+
+TEST(opengl_texture, unbinding_rejects_foreign_missing_and_closed_contexts_before_any_native_bind) {
+    NativeProgramRecorder native;
+    bool current = true;
+    int queries = 0;
+    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [&] { ++queries; return current; });
+    const unsigned char pixels[]{255, 255, 255, 255};
+    Texture image(lifetime, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+    native.image_binds.clear();
+    const auto before_foreign = queries;
+    auto foreign = std::async(std::launch::async, [&] {
+        EXPECT_THROW(image.unbind(1), CE::Exceptions::failed_operation);
+    });
+    foreign.get();
+    EXPECT_EQ(queries, before_foreign);
+    EXPECT_TRUE(native.image_binds.empty());
+    current = false;
+    EXPECT_THROW(image.unbind(1), CE::Exceptions::failed_operation);
+    current = true;
+    EXPECT_THROW(image.unbind(8), invalid_args);
+    EXPECT_TRUE(native.image_binds.empty());
+    lifetime->abandon();
+    current = false;
+    const auto before_closed = queries;
+    EXPECT_THROW(image.unbind(1), CE::Exceptions::failed_operation);
+    EXPECT_EQ(queries, before_closed);
+    EXPECT_TRUE(native.image_binds.empty());
 }

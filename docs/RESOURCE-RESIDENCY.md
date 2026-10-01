@@ -84,3 +84,9 @@ after the cache write lock unwinds. Replacement exchanges an already established
 slot, and clear detaches the whole map before release. This includes material
 candidates and their retained program/image resources; reentrant deleters remain
 outside publication locks on all three paths.
+
+Texture::unbind(unit) is instance-bound and selects the supplied unit after
+checking its texture's owner/current/live context and unit limit. The former static
+unbind bypassed those guards and cleared whichever unit another operation left
+active. Native recording sources cover explicit unit selection and foreign,
+missing, invalid-unit, and closed-context rejection before binding.
