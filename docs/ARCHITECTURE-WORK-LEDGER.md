@@ -55,13 +55,14 @@ see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
   time. Frame preparation occurs once per useful batch; rendering retains the latest
   complete frame. Regression scenarios and timing/suspension/optimization documentation
   are prepared; compilation, regression execution, and real acceptance remain open.
-- Task 7 partially implemented: typed 2D definitions (7.1), explicit native builders
-  (7.2), immutable snapshots,
-  copied/validated parameter resolution, retained image/unit requests, and independent
-  geometry/image binding. Native reflection/value uploads and program/image domain
-  validation are implemented in source; fixed-state/pass authority, geometry-instance
-  checks, and reload/frame integration remain pending. Task 8 and task 9 executed
-  acceptance remain open.
+- Task 7 implemented in source through checkpoint 43: typed definitions, explicit
+  native builders/reflection, copied parameter ownership, independent image units,
+  full blend/depth/cull state, pass constraints, geometry/domain validation, immutable
+  recipe publication/reload, and demo/frame consumers. Acceptance remains unexecuted.
+- Task 8 implemented in source through checkpoint 44: resolved packets and retained
+  generations/resources, CPU sprite/tile/graphic/text submission, const Font layout,
+  typed FFont banks, authored ordering, reusable frame storage, low-level playback,
+  and retirement of immediate Graphic/Tile/Font and Draw2D/iDraw/DrawInfo APIs.
 - Task 6 complete in source: AssetCacheContext preserves the global loading domain
   and strong residency. Resource ownership is traced through caches/composites/frames
   to move-only native registrations. Both modes service maintenance independently
@@ -200,56 +201,43 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-Source scope for tasks 0–6 is present, including 4.7 (factory forwarding), but
-the independent audit is still open. Checkpoints 35–38 fix two review findings,
-prepare additional coverage, and record the review limits. Task 9 preparation
-accompanies those changes; executed acceptance remains open. Continue the earlier
-task audit as described in ARCHITECTURE-EARLIER-TASK-AUDIT.md before resuming task 7's
-fixed-state/pass authority, geometry-instance checks, and frame/reload integration, then
-task 8 (resolved packets and immediate-draw migration). Preserve strong residency,
-the established timing/input contracts, owner maintenance, and native-domain checks.
+This 40-minute continuation starts at the user-pushed checkpoint
+`3990e5030663f96d7f00ed341e6a7a0bf91dcad6`, whose tree matches the earlier local
+35–38 audit delivery. The original task base remains unchanged. The user authorized
+continued implementation with selective review; the broader task-0–6 audit stays open.
 
-This continuation reserves numbered patches **35–38**; the next unused filename
-is **cheryl-engine-39.patch**. The user-pushed branch includes checkpoints 01–34.
-Apply **cheryl-engine-continuation.patch** to pushed base
-`8f796148e64d3dde6faf29b9333893133eb9cceb`, or apply 35–38 individually in order.
-The separately retained **cheryl-engine.patch** is cumulative from the fixed
-original base and includes thirty-four earlier commits again. Use it for a fresh
-checkout at the original base; do not combine these application routes.
-Earlier local execution/timing/residency/foundation commits remain on checkpoint branches. Current
-commits retain individual authors/messages after reconciling identical pushed trees.
+- 39 fixes queued payload/ticket preparation failures: report the original exception
+  once through the asynchronous sink, with active-state checks and unlocked callbacks.
+- 40 adds common geometry/range/pass validation and complete native fixed state;
+  depth clears reset their write mask. Recording sources cover adjacent state and
+  invalid requests before native mutation.
+- 41 adds strongly retained immutable material recipe publication and reload;
+  failed/null builders preserve prior generations, with provider/loading-owner guards.
+- 42 adds resolved draw packets, CPU asset submission, retained font handles, and
+  const glyph layout, including typed FFont bank selection.
+- 43 migrates frame publication/playback and demo material bootstrap/reload. Packet
+  groups validate before insertion; recycling releases packet/pass handles and keeps
+  storage capacity. Failed demo reload retains its material and exposes the error.
+- 44 retires immediate asset drawing, shared FFont print state, and formatting casts;
+  common semantic and static/animated tile submission regression sources replace them.
+- 45 converges documentation and records this checkpoint's preparation limits.
 
-Resource residency/maintenance is complete in source. Task 7 now has typed
-PipelineDefinition/MaterialDefinition, immutable Pipeline/Material snapshots,
-and copied ParameterSet resolution with explicit ownership and precedence.
-Geometry2D no longer includes/binds Image; image units are supplied per binding
-request and OpenGL validates an upload-time retained context limit. Current
-DrawStyle still retains Shader. The new generations are consumed by explicit native
-builders, with reflected uniform/attribute validation and complete parameter/resource
-binding checks before mutation. Frame consumers still need migration. Fixed state,
-geometry-instance compatibility, and successful recipe reload publication remain pending.
+Numbered patches **39–45** continue from the pushed base above; the next unused
+filename is **cheryl-engine-46.patch**. Apply `cheryl-engine-continuation.patch` to that
+pushed base, or apply 39–45 individually in order. `cheryl-engine.patch` is cumulative
+from the fixed original base and repeats earlier commits. Use only one application
+route. Current commit ordering/authorship is retained without squashing.
 
-See [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md) for the exact boundary.
-Six new pipeline/material regression scenarios and the adapted graphic source
-cover ownership, overrides, required/optional/type failures, generation preservation,
-and independent image-unit selection. These are prepared sources, not executed results.
+Next work is task 9 convergence: inspect startup/update/shutdown across the migrated
+execution/rendering paths, review remaining event/worker/native-construction failure
+combinations, and prepare missing acceptance scenarios. The partial earlier audit
+and all executed acceptance remain open. Source scope for tasks 7–8 is implemented;
+that does not establish type/link correctness, runtime behavior, or audit sign-off.
 
-The residency continuation statically parses seventeen changed C++ files. The
-GLAD calling-convention declaration macro is normalized for syntax-tree inspection
-on this Linux target; this is not preprocessing/type checking or compilation.
-Whitespace and combined/incremental mailbox checks are preparation evidence.
-
-The pipeline continuation statically parses 23 changed C++ files without syntax
-errors and passes whitespace review. Combined and individual mailbox replay
-must reproduce the source tree and author/date/message ordering before delivery.
-
-The native builder continuation statically parses 13 changed C++ files, normalizing
-the GLAD calling-convention macro in its prepared recording fixture. Whitespace
-and combined/individual/original-base mailbox replay checks are preparation evidence.
-Six more native regression sources cover reflection, optional reset, copied uploads,
-and sampler-domain/unit failures. No compilation or regression execution occurred.
-
-No commits/branches were pushed by the assistant. No compilation, CMake configuration, regression
-execution, or real GLFW/OpenGL acceptance was performed in this continuation.
-Unsupported native affinity/topology capabilities are explicit; the Linux adapter
-and scheduling policies still need executed acceptance when authorized.
+Changed C++ files undergo syntax-tree inspection (normalizing GLAD's calling-convention
+macro in its recording fixture), plus whitespace/include/API/ownership review.
+Combined continuation, ordered increments, and original-base mailbox replay must
+reproduce the exact source tree and author/date/message ordering before delivery.
+No configuration, compilation, regression execution, real-context acceptance, or
+assistant remote write occurs in this continuation. Unsupported affinity/topology
+capabilities and the remaining native/shutdown acceptance gates stay explicit.

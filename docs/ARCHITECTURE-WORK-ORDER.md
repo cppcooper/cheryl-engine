@@ -35,7 +35,7 @@ The final addendum overrides earlier suggestions to defer groups or hybrid recov
 
 Other settled constraints remain: keep the EventSystem singleton; keep polling independent of simulation; consume the whole available polling backlog at each update; do not replay Events/Text; render the latest complete published frame; retain strong asset caches without automatic eviction; perform native GL deletion on its context thread; retain one active global cache/provider domain; make the renderer independent of high-level asset classes; stub batching/sorting rather than implement it fully.
 
-## Repository findings that affect the order
+## Planning-snapshot findings that affect the order
 
 The reviewed execution code is identical at the planning snapshot to `54a91b6`; the additional commit only raises the CMake minimum to 3.28. C++23 remains selected.
 
@@ -173,10 +173,10 @@ failure, startup, or executed acceptance gates.
 
 - [x] **7.1** Define PipelineDefinition (program sources, vertex expectations, topology, blend/depth/cull behavior, parameter contract) and MaterialDefinition (pipeline reference, resource bindings, defaults). Keep the 2D scope modest.
 - [x] **7.2** Build backend-compatible pipelines/materials through explicit bootstrap APIs. Compiled stages stay transient; linked programs remain retained executable resources. Start with typed definitions; document a future separate definition-file parser outside generic manifest discovery.
-- [ ] **7.3** Define copied parameter values and ownership by pass/material/draw. Support engine semantics plus pipeline-specific scalar/vector/matrix/sampler values without common code selecting GLSL names. Specify required/optional values, type validation, and override precedence.
-- [ ] **7.4** Implement independently bound geometry and material resources. Remove Geometry2D's Image dependency. Texture units/sampler bindings belong to draw/material binding; sharing one image between materials must not require changing a cached image's binding-unit state.
-- [ ] **7.5** Give fixed render state one clear authority and define pass constraints. Validate geometry layout/topology and program/image domain compatibility. Prevent depth/blend/cull state leaking between draws or passes.
-- [ ] **7.6** Preserve successful-replacement shader reload with immutable logical generations. Existing frames retain their old pipeline/material generation; failed replacement retains the previous one. Do not mutate a published frame's material defaults or parameter definitions.
+- [x] **7.3** Define copied parameter values and ownership by pass/material/draw. Support engine semantics plus pipeline-specific scalar/vector/matrix/sampler values without common code selecting GLSL names. Specify required/optional values, type validation, and override precedence.
+- [x] **7.4** Implement independently bound geometry and material resources. Remove Geometry2D's Image dependency. Texture units/sampler bindings belong to draw/material binding; sharing one image between materials must not require changing a cached image's binding-unit state.
+- [x] **7.5** Give fixed render state one clear authority and define pass constraints. Validate geometry layout/topology and program/image domain compatibility. Prevent depth/blend/cull state leaking between draws or passes.
+- [x] **7.6** Preserve successful-replacement shader reload with immutable logical generations. Existing frames retain their old pipeline/material generation; failed replacement retains the previous one. Do not mutate a published frame's material defaults or parameter definitions.
 
 **Boundary D7 — actual material variety:** trace a normal sprite, alpha font, and a two-texture effect with time/color/intensity parameters. Add parameter-schema, sampler-binding, state-ownership, or recipe-publication subtasks if one cannot fit cleanly. Do not force every program to accept sprite uniforms or introduce a general hot-reload transaction.
 
@@ -186,22 +186,21 @@ unit ownership (part of 7.4), and immutable definition/default snapshots (part o
 7.6). The remaining work is explicit:
 
 - [x] **7.2a / 7.3a** Add OpenGL builder mappings/reflection and value uploads. Optional active uniforms need defaults/reset semantics so absent values cannot retain previous draws' data.
-- [ ] **7.4a / 7.5a** Bind resolved material resources, validate layout/topology/native domains, and apply all fixed state under explicit pass constraints. Current legacy adapters deliberately select unit zero.
-- [ ] **7.6a** Publish successful pipeline/material replacements through bootstrap/reload; retain old frame generations and preserve the previous generation on failure.
+- [x] **7.4a / 7.5a** Bind resolved material resources, validate layout/topology/native domains, and apply all fixed state under explicit pass constraints. Sampler units are explicit in each resolved request.
+- [x] **7.6a** Publish successful pipeline/material replacements through bootstrap/reload; retain old frame generations and preserve the previous generation on failure.
 
 The existing shader2d sprite/font sources have the same six engine/sampler roles;
 font alpha comes from the atlas swizzle. The prepared two-image effect schema
-uses its own time/color/intensity keys, with no forced sprite contract. Native
-builder/frame integration and all executed acceptance remain open.
+uses its own time/color/intensity keys, with no forced sprite contract. Checkpoints 39–44 add fixed-state/geometry checks, recipe publication/reload,
+packet/frame consumers, and immediate-draw retirement. Executed acceptance remains open.
 
 Checkpoint 31–34 adds explicit native pipeline/material builders, cached linked
 uniform locations, exact reflection/storage/Vertex2D attribute checks, copied
 value uploads, and image-domain/unit validation before binding. Active optional
 custom uniforms require a default/reset, and uncontracted active uniforms fail.
 Linked compilation stages now detach after linking; retaining a program no longer
-retains its stages. Frame usage, geometry-instance compatibility, fixed-state/pass
-authority, and recipe reload remain pending. Six recording-native scenarios are
-prepared, without compilation or execution.
+retains its stages. Those checkpoints prepared six recording-native scenarios without execution.
+Checkpoints 40–44 supply the remaining state, geometry, reload, and frame integration.
 
 **Complete when:** program processing rules and material resources/defaults are separate, geometry/image binding is independent, and custom materials can supply different parameter sets safely.
 
@@ -209,13 +208,18 @@ prepared, without compilation or execution.
 
 **Depends on:** tasks 6–7; uses task 5's publication cadence.
 
-- [ ] **8.1** Define DrawPacket2D with retained geometry/material generation, resolved vertex range, copied transform/parameters, and authored-order information. Use backend-neutral resource contracts; validate ranges before publication and again where backend limits require it.
-- [ ] **8.2** Add asset-facing submission/resolution helpers outside the renderer. Convert Sprite/cell, Tileset/Tile/TileAnimation, and Graphic into packets. Preserve per-instance animation state and the existing triangles versus independent-strip ranges.
-- [ ] **8.3** Resolve text to glyph packets using immutable metrics on the preparation side. Provide retained glyph geometry/atlas handles rather than borrowed references. Keep current ASCII/fallback behavior documented; Unicode input capture does not imply Unicode font shaping.
-- [ ] **8.4** Migrate the Font abstract contract toward layout/submission. Resolve FFont's stored print state and unchecked format cast as an explicit legacy migration subtask; do not expand this into new FFont loading/features. Preserve its meaningful contract or record a separate compatibility decision.
-- [ ] **8.5** Replace Graphic::draw, Tile/TileAnimation::draw, and font immediate printing with submission. Retain Asset2D as shared geometry/image composition where useful. Retire Draw2D/iDraw/DrawInfo only after their architectural responsibilities have moved; call counts do not establish legitimacy.
-- [ ] **8.6** Remove high-level asset includes/visitation from RenderFrame and OpenGLRenderer. Keep frame capacity reuse, latest-complete handoff, and safe recycling; resolve text and assets before publishing a complete frame.
-- [ ] **8.7** Add minimal ordering/batch metadata and TODOs. Authored order is the default, particularly for UI and alpha content. Stub later compatibility keys/reordering policy without implementing a sorter, batch merger, or extra GPU draw machinery.
+- [x] **8.1** Define DrawPacket2D with retained geometry/material generation, resolved vertex range, copied transform/parameters, and authored-order information. Use backend-neutral resource contracts; validate ranges before publication and again where backend limits require it.
+- [x] **8.2** Add asset-facing submission/resolution helpers outside the renderer. Convert Sprite/cell, Tileset/Tile/TileAnimation, and Graphic into packets. Preserve per-instance animation state and the existing triangles versus independent-strip ranges.
+- [x] **8.3** Resolve text to glyph packets using immutable metrics on the preparation side. Provide retained glyph geometry/atlas handles rather than borrowed references. Keep current ASCII/fallback behavior documented; Unicode input capture does not imply Unicode font shaping.
+- [x] **8.4** Migrate the Font abstract contract toward layout/submission. Resolve FFont's stored print state and unchecked format cast as an explicit legacy migration subtask; do not expand this into new FFont loading/features. Preserve its meaningful contract or record a separate compatibility decision.
+- [x] **8.5** Replace Graphic::draw, Tile/TileAnimation::draw, and font immediate printing with submission. Retain Asset2D as shared geometry/image composition where useful. Retire Draw2D/iDraw/DrawInfo only after their architectural responsibilities have moved; call counts do not establish legitimacy.
+- [x] **8.6** Remove high-level asset includes/visitation from RenderFrame and OpenGLRenderer. Keep frame capacity reuse, latest-complete handoff, and safe recycling; resolve text and assets before publishing a complete frame.
+- [x] **8.7** Add minimal ordering/batch metadata and TODOs. Authored order is the default, particularly for UI and alpha content. Stub later compatibility keys/reordering policy without implementing a sorter, batch merger, or extra GPU draw machinery.
+
+Checkpoint 42–44 moves asset/range selection and const Font layout to CPU submission
+helpers, then removes the immediate interfaces. FFont retains width and alternate-bank
+layout through typed options; placement/rotation comes from the caller model. No
+FFont loading features or Unicode shaping were added. Ordering remains authored.
 
 **Boundary D8 — migration completeness:** review every immediate entry point and its replacement, especially abstract Font and FFont. Add distinct adapters/layout subtasks before removing interfaces. Confirm that packet resolution owns resources and cannot call GL on simulation.
 

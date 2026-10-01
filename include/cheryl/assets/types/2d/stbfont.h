@@ -31,7 +31,10 @@ namespace CE::Assets {
     struct STBFont final : Font {
         explicit STBFont(STBFontData data);
         ~STBFont() override = default;
-        [[nodiscard]] std::vector<GlyphPlacement2D> layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
+        [[nodiscard]] std::vector<GlyphPlacement2D> layout(
+            std::string_view text,
+            FontLayoutOptions options = FontLayoutOptions{}
+        ) const override;
         [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size,
                                                    ResourceProvider& provider);
 

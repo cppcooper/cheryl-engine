@@ -2,6 +2,7 @@
 #include <assets/types/2d/stbfont.h>
 #include <assets/types/2d/ffont.h>
 #include <gtest/gtest.h>
+#include <internals/exceptions.h>
 
 #include <array>
 #include <chrono>

@@ -4,7 +4,7 @@
 order, starting from the user-pushed `8f796148e64d3dde6faf29b9333893133eb9cceb`.
 Earlier completion labels describe implemented source scope. They do not establish
 that the implementation is correct, that every path was reviewed, or that the
-acceptance criteria passed. Task 7 is paused while this audit continues.
+acceptance criteria passed. The broader audit remains open alongside implementation, as subsequently requested.
 
 ## Findings and prepared changes
 
@@ -62,17 +62,33 @@ corrects those boundaries and distinguishes source scope from audit sign-off.
 The attached-stage retention issue found during task 7 was already fixed in
 checkpoint 32; it is further evidence that the earlier task-6 review was incomplete.
 
+### A5: queued payload preparation could report cancellation and propagate separately
+
+Checkpoint 39 moves ticket allocation and owned-payload construction into the same
+failure boundary as posting. A payload-copy failure records the original exception
+on an existing ticket before its destructor can report cancellation; allocation
+failure without a ticket reports through the active listener's sink after unlocking.
+Prepared throwing-copy/target scenarios cover sink reentry and recovery. These have
+not been executed, and the broader queued lifecycle combinations remain open.
+
+### A6: fixed-state integration exposed depth-clear mask dependence
+
+Pipeline draws can disable depth writes. OpenGL depth clearing obeys that retained
+mask, so checkpoint 40 enables writes before clearing; the next draw reapplies its
+own complete policy. This is a state/ownership review finding, not an observed GPU
+failure. Native acceptance remains open.
+
 ## Coverage at this checkpoint
 
 | Task | Paths reviewed in this pass | Assessment and remaining review |
 | --- | --- | --- |
 | 0: baseline | Pushed/local tree reconciliation, original base, identity, patch numbering, aggregate regression discovery. | Remote and previous local checkpoint trees match. Original base retained; patches 35–38 continue from the pushed head. |
 | 1: dispatch | Platform/simulation queue state, saved endpoints, detached drain and cancellation; both runtime update boundaries. | No new defect found in these paths. Recheck owner-bound capture release and producer/closure interactions during the full convergence review. |
-| 2: events | Registration ownership, invocation/removal/wait lock order, concurrent close, cancellation tickets, posting serialization, worker stream. | A1 fixed. Payload-copy failure, nested concurrent dispatch, and target rejection/cancellation combinations still need focused review and executed acceptance. |
+| 2: events | Registration ownership, invocation/removal/wait lock order, concurrent close, cancellation tickets, posting serialization, worker stream. | A1/A5 fixed in source. Nested concurrent dispatch, and target rejection/cancellation combinations still need focused review and executed acceptance. |
 | 3: workers | Job ownership/accounting, weighted eligibility selection, caps, close/drain/join, self-wait rejection, affinity readback/fallback. | A3 prepared. Dynamic restriction changes, native failure paths, startup rollback, and overlapping weighted affinity workloads are not comprehensively validated. |
 | 4: integration | Context-owned/injected groups, factory forwarding, documented preparation/upload handoff, both shutdown paths and platform pumping. | No new defect found in these paths. Quiesce runs after simulation joins and must not wait on work needing platform service. Reentrant producer/failure combinations remain open. |
 | 5: timing | Scheduler arithmetic/recovery, simulation versus observation time, input consumption, frame slots/publication, polling deadlines. | A2 fixed. Reviewed bounded batch and full-backlog ordering; runtime clock, expensive callbacks, and presentation behavior still need acceptance. |
-| 6: residency | Strong cache publication/clear/rebind, provider release, move-only lifetime retirement, native creation guards, idle/shutdown maintenance, resource ownership declarations. | No new deletion defect found in these paths. Full composite-construction failure review, retained resources across context loss, and real GPU behavior remain open. Pipeline/frame migration is still task 7/8 work. |
+| 6: residency | Strong cache publication/clear/rebind, provider release, move-only lifetime retirement, native creation guards, idle/shutdown maintenance, resource ownership declarations. | No new deletion defect found in these paths. Full composite-construction failure review, retained resources across context loss, and real GPU behavior remain open. Checkpoints 40–44 implement pipeline/frame migration; native acceptance stays open. |
 
 ## Validation and continuation
 
@@ -85,5 +101,5 @@ acceptance, or remote write occurred in this batch.
 Continue the task-2 failure/lifecycle audit first, then worker native/startup failure
 and execution shutdown combinations, followed by the remaining resource failure
 paths. Review exact fixtures and implementation together. Keep tasks 0–6 source
-scope recorded, but leave audit sign-off and all executed acceptance open. Resume
-task 7 after that review checkpoint; do not infer completeness from batch duration.
+scope recorded, but leave audit sign-off and all executed acceptance open. Continue selective review alongside task-9 convergence; do not infer completeness
+from batch duration.

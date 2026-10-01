@@ -21,12 +21,12 @@ The ownership audit follows these paths:
 | --- | --- | --- |
 | Image/texture | Texture cache, Asset2D, STBFont, application handles | Texture owns one move-only OpenGLHandle. |
 | Geometry | Asset2D, STBFont, application handles | VAO owns vertex-array registration plus one 2D VBO; the legacy mesh also owns its index buffer. |
-| Linked program | Shader cache, DrawStyle, application handles | GLSLProgram owns one tracked program handle; successful replacement preserves old owners. |
+| Linked program | Shader cache, GLSLPipeline, application handles | GLSLProgram owns one tracked program handle; successful replacement preserves old owners. |
 | Compiled stage | Local shader-link guard and temporary program attachment | Mark for deletion after compilation; detach every stage after linking so retained programs do not retain stages. Failure destroys the guarded program and its remaining attachments. |
 | Font atlas/glyphs | Font cache and STBFont's image/geometry composition | Texture/VAO final-owner retirement; layout metadata has independent CPU ownership. |
 | Sprite/tileset/graphic | Strong cache or application handle; const Asset2D image/geometry handles | Composite release drops constituent owners; no second native deleter. |
-| Published frame | Each command retains its asset/font and shader handles | Platform recycling releases the frame's owners; other owners can keep resources resident. |
-| Pipeline/material | GLSLPipeline retains its program and definition/default image values; Material retains its pipeline and copied image defaults; resolved parameter sets retain image handles. Current frames still retain legacy Shader. | Native handles retire through the same program/image owners. Fixed state, recipe replacement, and pipeline/material frame consumption remain task 7/8 work. |
+| Published frame | Each packet retains geometry/material and copied image parameter handles; pass parameters retain their own images | Platform recycling releases the frame's owners; other owners can keep resources resident. |
+| Pipeline/material | GLSLPipeline retains its program and definition/default image values; Material retains its pipeline and copied image defaults; resolved parameter sets retain image handles. Frames retain immutable material generations. | Native handles retire through the same program/image owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
 
 `OpenGLHandle` registration is move-only. Destruction from any thread marks its
 registration pending; it never calls GL. Duplicate pending retirement is ignored,
@@ -55,10 +55,9 @@ do not synthesize early simulation updates or consume input themselves.
 
 Tracking, use, collection, shutdown, and untracked failure cleanup require the
 native owner and its actual current context. A resource from another backend is
-rejected by the OpenGL renderer's independent image binding check; a resource from another native
-context fails its own lifetime guard. One context being current does not make
-another context's IDs valid. These guards are preserved for task 7's richer
-material/geometry domain validation.
+rejected by pipeline/geometry/image domain checks before binding; another native
+context's resources are rejected as well. One context being current does not make
+another context's IDs valid. Native pipeline/geometry/image domain validation preserves these guards.
 
 Native creation guards retain an untracked ID until registration succeeds.
 Program linking then transfers ownership to an OpenGLHandle before constructing

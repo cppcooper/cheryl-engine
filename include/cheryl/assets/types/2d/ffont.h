@@ -27,7 +27,10 @@ namespace CE::Assets {
         Font({std::get<1>(data), std::get<2>(data)}),
         widths(std::get<0>(data)) {}
         ~FFont() override = default;
-        [[nodiscard]] std::vector<GlyphPlacement2D> layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
+        [[nodiscard]] std::vector<GlyphPlacement2D> layout(
+            std::string_view text,
+            FontLayoutOptions options = FontLayoutOptions{}
+        ) const override;
         static FFontData load_ffont(const std::filesystem::path& path, ResourceProvider& provider);
     };
 }

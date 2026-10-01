@@ -12,7 +12,7 @@ and real-platform acceptance remain open; see
 | CPU asset data | Vertex layouts, typed manifests, grid generation, and owned RGBA decoding have no graphics-context dependency. `Loader::prepare()` runs independently of a provider. |
 | Display and presentation | `iDisplaySystem` owns a selected window implementation. `iWindow` and monitor snapshots carry neutral data; `iPresentationSurface` presents. GLFW handles remain inside the platform/backend implementation. The renderer does not own the display. |
 | Input | `iInputSystem` supplies State plus independently requested ordered Events/Text. GLFW/Gainput translation stays in its adapter; games consume tick values and routed views. The default factory owns input; an explicit-reference overload borrows it. |
-| Draw and material | Simulation writes complete ordered `RenderFrame` passes. Sprite, tile, graphic, and text commands retain immutable asset handles and copied transforms. `ShaderPass` and `ShaderDraw` express standard parameters; `GLSLMaterialBindings` maps them to OpenGL names. |
+| Draw and material | Simulation writes complete ordered `RenderFrame` passes. CPU submission helpers resolve sprite, tile, graphic, and glyph packets retaining geometry/material generations and copied values. `GLSLPipelineBindings` maps contract keys to native names; each pipeline applies full fixed state. |
 | Resource creation and caches | `ResourceProvider` uploads decoded pixels and transient vertex spans, creates font atlases, and links programs. Cache readers retain handles under shared locks; construction and retired-handle destruction stay outside locks. One provider/loading thread binds the singleton caches until teardown. |
 | Composition and scheduling | One runtime session owns platform polling and presentation. Concurrent mode adds one simulation worker and three reusable frame slots. `platform_dispatcher().submit()` transfers owned resource requests with future results; shutdown cancels pending requests before game cleanup. |
 | OpenGL lifetime | Active resource use requires the owner thread and its actual current context. Handles retire without OpenGL calls from their destructors. Renderer shutdown restores its context, deletes tracked handles, closes their lifetime, and releases the context. Failed destructor cleanup invalidates retained handles. |
@@ -27,12 +27,12 @@ Construct an owned `Loader(root)` for each root. Its retained `manifests()` snap
 replaces the old borrowed vector reference; singleton compatibility rejects a
 different root instead of silently reusing the first one.
 
-Shader-cache loading only links and publishes. Bind cameras through frame-pass
-matrices or explicit `DrawInfo::camera`; shader-manager camera broadcasts and
-setters are removed. Standard draw parameters go through semantic bindings.
-Application-specific raw uniform methods remain available. `reload_program()`
-publishes a successfully linked replacement while existing frames retain their
-old handle; failed linking preserves the previous cache entry.
+Shader-cache loading only links and publishes explicit programs. Frame preparation
+resolves pass cameras and draw/material parameters into owned packets. MaterialMgr
+publishes complete recipes after successful construction; existing frames retain
+old generations and failures preserve the previous entry. Immediate draw APIs are
+retired. OpenGLResourceProvider builds typed pipelines/materials through explicit
+backend mappings; common submission never binds native resources.
 
 Backend providers implement `create_image(DecodedImage)` and
 `upload_geometry(span<const Vertex2D>, topology)`. The shared-pointer/count

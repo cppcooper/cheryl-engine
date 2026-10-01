@@ -2,7 +2,7 @@
 
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
-`refactor-runtime-render-resource-architecture`. Tasks 1–6 of the second-pass
+`refactor-runtime-render-resource-architecture`. Tasks 1–8 of the second-pass
 work order are implemented in source. **This continuation has not been compiled
 or tested.** Historical normal/sandbox build results below predate these changes
 and do not validate the current HEAD. Individual local commits remain intact.
@@ -21,11 +21,11 @@ open. Source preparation checks are separate from executed acceptance.
 | Work item | Prepared source and regression coverage | Execution state |
 | --- | --- | --- |
 | Backend composition | Neutral display/window, presentation, input, renderer, and resource contracts; GLFW/OpenGL factory; in-memory adapter probe without native API headers. | Not executed. |
-| Simulation and frames | Sequential scheduling, concurrent simulation worker, whole input batches, latest-frame handoff, reusable slots, immutable draw commands, and per-entity animation values. | Not executed. |
+| Simulation and frames | Sequential scheduling, concurrent simulation worker, whole input batches, latest-frame handoff, reusable slots, resolved geometry/material/glyph packets, and per-entity animation values. | Not executed. |
 | Input contract | State timing, polling policies, ordered Events/Text, scoped capture, focus routing, adapter capabilities, and demo textbox. | Not executed; detailed acceptance remains in the input status document. |
 | Lifecycle and ownership | Owned or borrowed input, single-use runtime/context sessions, cleanup after partial initialization, original-failure preservation, worker join, frame recycling, and input-before-window destruction. | Not executed. |
 | Platform requests | Owned/move-only callbacks, future results and isolated failures, FIFO batch drains, shared scheduler wake, dispatch while polling is paused, and shutdown cancellation that destroys pending captures on the platform. | Not executed. |
-| Materials and camera | Semantic pass/draw parameters, configurable GLSL names, cache-only linking, explicit successful-replacement reload, retained old programs, and scalar camera revision comparisons. | Not executed. |
+| Materials and camera | Typed pipelines/materials, copied semantic/custom parameters, reflected mappings, full fixed state/pass constraints, native domains, immutable recipe reload, retained old frame generations, and scalar camera revision comparisons. | Not executed. |
 | Cache publication | Shared-lock lookups, unique-lock publication, retained handles, destruction outside cache locks, loading-thread/provider checks, and refill rejection during provider teardown. | Not executed. |
 | Asset preparation and upload | Owned loaders with independent roots, fresh deterministic scans, worker-safe parsing/decoding, validation against owned pixels, metadata snapshots, explicit application bootstrap, and transient vertex upload. | Not executed. |
 | OpenGL context and lifetime | Owner plus actual-current-context guards, upload/draw bounds, deferred retirement, context restoration for shutdown, closed-handle rejection, and failure invalidation without GL calls. | Not executed. |

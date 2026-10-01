@@ -51,8 +51,9 @@ future. Shutdown closes context worker acceptance and stops simulation while pum
 platform requests needed by accepted work. Once simulation and CPU work settle,
 remaining platform requests cancel before frame/game cleanup; their futures report
 `broken_promise`. A shared scheduler wake remains valid through concurrent submit
-and close without retaining the runtime itself. F5 in the demo queues a shader
-reload and adopts the resulting handle during a later update.
+and close without retaining the runtime itself. F5 in the demo queues a material recipe
+reload and adopts its immutable generation during a later update. Failure retains
+the old material and reports its error in the overlay.
 Callbacks must preserve the session's current graphics context. Backend resource
 guards reject another context even when it is selected on the correct thread.
 `stop()` sets an atomic request and wakes the concurrent scheduler's waits.
@@ -61,16 +62,17 @@ guards reject another context even when it is selected on the correct thread.
 the final useful update of a bounded batch when a slot is free. If all slots are occupied, the update still
 advances the simulation and only that tick's visual snapshot is skipped. The
 runtime lends the game a reusable `RenderFrame` slot through the writer. The game
-fills ordered passes with copied projection/view matrices and ordered sprite,
-tile, graphic, and text commands. Each command's model matrix
-already contains its position, rotation, and scale; the simulation retains the
-authoritative entity transform and does not read an old frame to advance it.
-Grid commands contain a **resolved atlas cell**, not an animation cursor; text
-commands own their strings. The runtime publishes the complete slot without
+fills ordered passes with copied camera values, custom pass parameters, constraints,
+and resolved DrawPacket2D values. Asset helpers select geometry ranges and lay out
+text on simulation, resolving transforms, engine semantics, custom parameters, and
+image requests into owned values. Packets retain geometry and material generations;
+no asset, Font, string, animation cursor, or live entity is needed by playback.
+The caller model carries placement/rotation; DrawStyle2D.scale also scales local
+geometry and glyph offsets explicitly. The runtime publishes the complete slot without
 copying it and prevents further mutation while the renderer consumes it.
 
 Recycling a superseded or shutdown slot clears only the active passes' draw
-commands, releasing their asset handles on the graphics thread while its context
+packets and pass parameters, releasing their resource handles on the graphics thread while its context
 is current. The platform retains its latest complete slot between publications. Recycling keeps pass objects and draw-vector capacity for later ticks. One
 slot suffices when update and render are sequential; concurrent update/render
 need at least two. A third permits a completed frame to wait while one is being
@@ -79,17 +81,17 @@ Text strings may still allocate, and the final release of a GPU-backed handle
 must occur on the graphics thread or through backend-managed deferred destruction.
 
 The cached `Sprite` now owns immutable clip definitions and grid resources.
-An entity keeps its sprite handle and its own `SpriteAnimation` playback value,
-advances the latter using simulation time, and publishes `animation.cell()` with
-the sprite handle. The playback value aliases the shared definition; it neither
-copies the frame list nor retains the GPU resources. Cached sprite and tileset
-assets have no mutable selected cell. Legacy `Tile`, `TileAnimation`, `Graphic`,
-and font calls still draw immediately; the renderer consumes frame commands on
-the graphics thread instead. Text commands and the legacy font path now read
-shared glyph data without storing the message or angle on the font.
+An entity keeps its sprite handle and its own SpriteAnimation playback value,
+advances it using simulation time, and resolves animation.cell() before publishing.
+The playback value aliases the shared definition without retaining GPU resources.
+Cached sprite/tileset assets have no mutable selected cell. Graphic/Tile/Font
+immediate drawing and DrawInfo/iDraw/Draw2D are retired; submission helpers select
+ranges and const Font layout supplies glyph placements. FFont's alternate bank is
+a typed option without stored print state or unchecked formatting pointers.
 
-`OpenGLRenderer::render()` consumes ordered passes, binds each material and pass
-camera, and reads font glyphs without mutating shared assets. GPU handles are
+OpenGLRenderer consumes authored packet order, checks its native pipeline domain,
+and applies complete validated pipeline state/parameters/geometry for every draw.
+GPU handles are
 retired through the renderer's context-owned release queue. Sequential runtime
 polls when eligible and starts the independent observation/simulation clocks after
 initialization. It prepares one frame after a bounded update batch and retains it
@@ -129,14 +131,11 @@ never invoked by a platform callback. Enter/Escape releases focus.
 The input implementation's remaining validation gate is recorded in
 [INPUT-IMPLEMENTATION-STATUS.md](INPUT-IMPLEMENTATION-STATUS.md).
 
-Common draw calls bind `ShaderPass` (projection/view) and `ShaderDraw`
-(model/alpha/scale/texture unit). `GLSLMaterialBindings` maps those roles to the
-OpenGL shader's names; empty names omit unused roles. Custom uniform methods
-remain available for application-specific parameters. The shader cache links and
-publishes programs without binding or broadcasting camera state. Use pass matrices
-or `DrawInfo::camera` instead of the removed shader-cache camera setters.
-`reload_program` publishes a successfully linked replacement while older frames
-retain the old handle; a failed reload leaves the previous entry intact.
+Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied custom
+pass/material/draw values without common code selecting native uniform names.
+GLSLPipelineBindings owns explicit backend mappings. MaterialMgr builds complete
+recipe replacements before publishing; retained frame owners keep old generations
+and failed builders leave the prior entry intact. See PIPELINES-AND-MATERIALS.md.
 
 Asset-manager lookups copy published handles under shared locks; publication and
 clearing use unique locks. Asset construction and removed-handle destruction run
