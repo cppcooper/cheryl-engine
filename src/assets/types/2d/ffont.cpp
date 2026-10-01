@@ -50,6 +50,29 @@ namespace CE::Assets {
         }
     }
 
+    std::vector<GlyphPlacement2D> FFont::layout(const std::string_view text, const FontLayoutOptions options) const {
+        std::vector<GlyphPlacement2D> result;
+        result.reserve(text.size());
+        float x = 0.0f;
+        float y = 0.0f;
+        const std::size_t bank = options.alternate_bank ? 128 : 0;
+        for (const unsigned char requested : text) {
+            if (requested == '\n') {
+                x = 0.0f;
+                y -= 1.0f / 128.0f; // Preserve the legacy unscaled line advance.
+                continue;
+            }
+            if (requested == '\r')
+                continue;
+            const auto letter = requested < 32 || requested > 126 ? static_cast<unsigned char>('?') : requested;
+            const auto index = bank + letter - 32;
+            if (letter != ' ')
+                result.push_back({index, x, y});
+            x += widths[index] / 128.0f;
+        }
+        return result;
+    }
+
     void make_vertices(Vertex2D* vertices) {
         for (int idx = 0; idx < num_chars_ffont; ++idx) {
             uint16_t x0 = idx % 16;

@@ -139,3 +139,14 @@ uniform reset after another draw, inactive optional uniforms without sprite role
 reflection/type/storage failures, invalid attributes/unlinked programs, and sampler
 domain/unit failures before any bind. These sources use synthetic IDs and restore
 all replaced entry points; they do not replace real-context acceptance.
+
+## CPU submission foundation
+
+DrawPacket2D retains geometry, an immutable material generation, and copied resolved
+parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
+and laid-out font glyphs before rendering, without binding native resources.
+ImageParameter2D selects a public sampler key and unit explicitly. Text layout is
+const and returns glyph placements; FFont bank selection is typed. Resolved glyph
+packets retain the geometry/atlas even after the Font object is released.
+Frame publication and playback migration are the next checkpoint. Immediate draw
+APIs remain temporarily available until their callers have moved.

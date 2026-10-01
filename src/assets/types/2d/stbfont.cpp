@@ -81,6 +81,17 @@ namespace CE::Assets {
         });
     }
 
+    std::vector<GlyphPlacement2D> STBFont::layout(const std::string_view text, const FontLayoutOptions options) const {
+        if (options.alternate_bank)
+            throw Exceptions::invalid_args(CE_HERE, "STB fonts do not contain an alternate glyph bank");
+        std::vector<GlyphPlacement2D> result;
+        result.reserve(text.size());
+        for_each_glyph(text, [&](const std::size_t index, const float x, const float y) {
+            result.push_back({index, x, y});
+        });
+        return result;
+    }
+
     STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size, ResourceProvider& provider) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");

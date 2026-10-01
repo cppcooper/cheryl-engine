@@ -28,6 +28,7 @@ namespace CE::Assets {
         widths(std::get<0>(data)) {}
         ~FFont() override = default;
         void print(std::string text, FontDrawInfo* format) override;
+        [[nodiscard]] std::vector<GlyphPlacement2D> layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
         static FFontData load_ffont(const std::filesystem::path& path, ResourceProvider& provider);
     private:
         std::array<float, num_chars_ffont> widths;
