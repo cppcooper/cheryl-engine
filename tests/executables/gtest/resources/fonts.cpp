@@ -3,6 +3,8 @@
 #include <core/resources/fileio/fonts-system.h>
 #include <assets/resources/resource-provider.h>
 #include <assets/types/2d/font-upload-internal.h>
+#include <assets/types/2d/font-bake-internal.h>
+#include <testing/failing-memory-resource.h>
 #include <internals/exceptions.h>
 
 #include <array>
@@ -10,6 +12,8 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <memory_resource>
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -155,6 +159,60 @@ TEST(system_fonts, fallback_font) {
     ASSERT_TRUE(CE::Resources::select_default_system_font(fallback).has_value());
     EXPECT_EQ(*CE::Resources::select_default_system_font(fallback), fs::path("/fonts/AlphaCustom.otf"));
     EXPECT_FALSE(CE::Resources::select_default_system_font({}).has_value());
+}
+
+TEST(font_bake, incomplete_bakes_retry_a_cleared_larger_atlas_and_keep_the_successful_pixels) {
+    for (const int incomplete : {0, -3}) {
+        SCOPED_TRACE(incomplete);
+        auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+        std::vector<int> sizes;
+        {
+            const auto atlas = FontDetail::bake_font_atlas("fixture.ttf", [&](std::span<unsigned char> pixels, const int size) {
+                sizes.push_back(size);
+                EXPECT_EQ(pixels.size(), static_cast<std::size_t>(size) * size);
+                EXPECT_TRUE(std::all_of(pixels.begin(), pixels.end(), [](const auto value) { return value == 0; }));
+                pixels.front() = 7;
+                pixels.back() = 9;
+                return sizes.size() == 1 ? incomplete : 1;
+            }, std::pmr::polymorphic_allocator<unsigned char>{memory.get()});
+            EXPECT_EQ(sizes, (std::vector<int>{256, 512}));
+            EXPECT_EQ(atlas.size, 512);
+            EXPECT_EQ(atlas.pixels.front(), 7);
+            EXPECT_EQ(atlas.pixels.back(), 9);
+            EXPECT_GT(memory->outstanding.load(), 0u);
+        }
+        EXPECT_EQ(memory->outstanding.load(), 0u);
+    }
+}
+
+TEST(font_bake, reaching_the_atlas_limit_rejects_partial_data_and_releases_storage) {
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    std::vector<int> sizes;
+    const auto bake = [&](std::span<unsigned char> pixels, const int size) {
+        sizes.push_back(size);
+        pixels.front() = 7;
+        return -3;
+    };
+    EXPECT_THROW(
+        (void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
+        CE::Exceptions::runtime_exception
+    );
+    EXPECT_EQ(sizes, (std::vector<int>{256, 512, 1024, 2048, 4096}));
+    EXPECT_EQ(memory->outstanding.load(), 0u);
+}
+
+TEST(font_bake, rejected_cpu_allocation_precedes_the_baker_and_releases_no_unowned_storage) {
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    memory->reject_next();
+    int calls = 0;
+    const auto bake = [&](std::span<unsigned char>, int) { ++calls; return 1; };
+    EXPECT_THROW(
+        (void)FontDetail::bake_font_atlas("fixture.ttf", bake, std::pmr::polymorphic_allocator<unsigned char>{memory.get()}),
+        std::bad_alloc
+    );
+    EXPECT_EQ(calls, 0);
+    EXPECT_EQ(memory->rejected.load(), 1u);
+    EXPECT_EQ(memory->outstanding.load(), 0u);
 }
 
 TEST(font_upload, invalid_size_and_missing_or_empty_files_never_start_resource_uploads) {

@@ -2,6 +2,7 @@
 #include <assets/types/2d/stbfont.h>
 #include <assets/types/primitives/vertex.h>
 #include "font-upload-internal.h"
+#include "font-bake-internal.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
@@ -97,22 +98,11 @@ namespace CE::Assets {
 
         // Bake the fixed printable range into a growing alpha atlas until every glyph fits.
         std::array<stbtt_bakedchar, font_character_count> baked_characters{};
-        int atlas_size = 256;
-        std::vector<unsigned char> bitmap;
-        while (true) {
-            // Retry the whole printable range at double resolution; a
-            // partial bake cannot supply stable glyph indices for drawing.
-            bitmap.assign(static_cast<std::size_t>(atlas_size) * atlas_size, 0);
-            const int result =
-                stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), bitmap.data(), atlas_size, atlas_size,
-                    first_font_character, static_cast<int>(font_character_count), baked_characters.data());
-            if (result > 0)
-                break;
-            if (atlas_size == 4096) {
-                throw Exceptions::runtime_exception(CE_HERE, "Font glyphs do not fit in an atlas: '" + font_path.string() + "'");
-            }
-            atlas_size *= 2;
-        }
+        auto atlas = FontDetail::bake_font_atlas(font_path, [&](const std::span<unsigned char> pixels, const int size) {
+            return stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), pixels.data(), size, size,
+                first_font_character, static_cast<int>(font_character_count), baked_characters.data());
+        });
+        const int atlas_size = atlas.size;
 
         constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);
         constexpr std::size_t vertices_bytes = sizeof(Vertex2D) * vertex_count;
@@ -139,7 +129,7 @@ namespace CE::Assets {
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.
-        return FontDetail::upload_baked_font(provider, std::move(vertices), bitmap,
+        return FontDetail::upload_baked_font(provider, std::move(vertices), atlas.pixels,
             PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)}, advances, line_height);
     }
 }
