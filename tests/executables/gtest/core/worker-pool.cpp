@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <future>
 #include <memory>
 #include <stdexcept>
@@ -48,6 +49,45 @@ TEST(worker_pool, group_concurrency_one_preserves_fifo_while_groups_share_the_po
     EXPECT_EQ(order, (std::vector<int>{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_EQ(separate.get(), 9);
     EXPECT_TRUE(other.status().accepting);
+}
+
+TEST(worker_pool, a_parallel_group_cap_leaves_shared_capacity_for_another_group) {
+    CE::Engine::WorkerPool pool(3);
+    auto capped = pool.make_group({2});
+    auto other = pool.make_group();
+    std::promise<void> two_entered;
+    std::promise<void> release;
+    auto may_finish = release.get_future().share();
+    std::atomic<int> entered{0};
+    std::atomic<int> active{0};
+    std::atomic<int> peak{0};
+    std::vector<std::future<void>> jobs;
+    for (int i = 0; i < 3; ++i) {
+        jobs.push_back(capped.submit([&] {
+            const auto running = ++active;
+            auto observed = peak.load();
+            while (observed < running && !peak.compare_exchange_weak(observed, running)) {}
+            if (++entered == 2)
+                two_entered.set_value();
+            may_finish.wait();
+            --active;
+        }));
+    }
+    two_entered.get_future().wait();
+    auto independent = other.submit([] { return 17; });
+    // A timeout bounds failure cleanup; the two held jobs establish the state.
+    EXPECT_EQ(independent.wait_for(std::chrono::seconds{1}), std::future_status::ready);
+    EXPECT_EQ(capped.status().running, 2u);
+    EXPECT_EQ(capped.status().pending, 1u);
+    EXPECT_EQ(entered.load(), 2);
+    release.set_value();
+    capped.close();
+    capped.drain();
+    for (auto& job : jobs)
+        job.get();
+    EXPECT_EQ(independent.get(), 17);
+    EXPECT_EQ(entered.load(), 3);
+    EXPECT_EQ(peak.load(), 2);
 }
 
 TEST(worker_pool, close_drains_accepted_jobs_and_saved_groups_reject_after_destruction) {
@@ -126,6 +166,38 @@ TEST(worker_pool, a_required_cpu_group_runs_on_its_eligible_cpu) {
     EXPECT_EQ(selected_cpu.get(), static_cast<int>(options.cpu.cpus.front()));
     pinned.close();
     pinned.drain();
+}
+
+TEST(worker_pool, switching_groups_restores_the_effective_cpu_mask_on_the_shared_worker) {
+    CE::Engine::WorkerPool pool;
+    const auto capabilities = pool.capabilities();
+    if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
+        GTEST_SKIP() << "Mask restoration requires at least two eligible CPUs";
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.cpus = {capabilities.available_cpus.front()};
+    auto pinned = pool.make_group(options);
+    options.cpu.cpus.clear();
+    auto inherited = pool.make_group(options);
+    const auto read_mask = [] {
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        if (sched_getaffinity(0, sizeof(mask), &mask) != 0)
+            throw std::runtime_error("Cannot read the executing worker's CPU mask");
+        std::vector<unsigned int> cpus;
+        for (unsigned int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
+            if (CPU_ISSET(cpu, &mask))
+                cpus.push_back(cpu);
+        return cpus;
+    };
+    const std::vector<unsigned int> pinned_mask{capabilities.available_cpus.front()};
+    EXPECT_EQ(pinned.submit(read_mask).get(), pinned_mask);
+    EXPECT_EQ(inherited.submit(read_mask).get(), capabilities.available_cpus);
+    EXPECT_EQ(pinned.submit(read_mask).get(), pinned_mask);
+    pinned.close();
+    inherited.close();
+    pinned.drain();
+    inherited.drain();
 }
 #endif
 
