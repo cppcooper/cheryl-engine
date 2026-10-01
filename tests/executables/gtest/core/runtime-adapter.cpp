@@ -17,6 +17,7 @@
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
 
 #include <array>
@@ -382,6 +383,8 @@ namespace {
             std::span<const CE::Vertex2D> vertices,
             CE::Assets::PrimitiveTopology topology
         ) override {
+            if (on_upload_geometry)
+                return on_upload_geometry(vertices, topology);
             uploaded_vertices = vertices.size();
             uploaded_topology = topology;
             uploaded_geometry.assign(vertices.begin(), vertices.end());
@@ -402,6 +405,8 @@ namespace {
         int linked_programs = 0;
         int created_images = 0;
         std::function<std::shared_ptr<CE::Assets::Image>()> on_load_image;
+        std::function<std::shared_ptr<CE::Assets::Geometry2D>(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology)>
+            on_upload_geometry;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::vector<CE::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
@@ -1043,6 +1048,115 @@ TEST(resource_upload, a_legacy_vertex_owner_is_released_after_the_transient_copy
     EXPECT_TRUE(owner.expired());
     ASSERT_EQ(provider.uploaded_geometry.size(), 6u);
     EXPECT_FLOAT_EQ(provider.uploaded_geometry.front().x, 7.0f);
+}
+
+TEST(resource_upload, geometry_failure_releases_transient_cpu_and_graphic_image_owners) {
+    MemoryProvider provider;
+    auto quad = std::make_shared<CE::Quad>();
+    std::weak_ptr<CE::Quad> cpu_owner = quad;
+    std::shared_ptr<CE::Vertex2D> vertices{quad, quad->vertices.data()};
+    quad.reset();
+    provider.on_upload_geometry = [&](auto borrowed, auto) -> std::shared_ptr<CE::Assets::Geometry2D> {
+        EXPECT_FALSE(cpu_owner.expired());
+        EXPECT_EQ(borrowed.size(), 6u);
+        throw CE::Exceptions::bad_alloc(CE_HERE);
+    };
+    EXPECT_THROW((void)provider.upload_geometry(std::move(vertices), 6, CE::Assets::PrimitiveTopology::Triangles),
+        CE::Exceptions::bad_alloc);
+    EXPECT_TRUE(cpu_owner.expired());
+
+    auto image = std::make_shared<MemoryImage>(CE::Assets::PixelSize{1, 1});
+    std::weak_ptr<MemoryImage> image_owner = image;
+    provider.on_upload_geometry = [](auto borrowed, auto) -> std::shared_ptr<CE::Assets::Geometry2D> {
+        EXPECT_EQ(borrowed.size(), 6u);
+        throw CE::Exceptions::bad_alloc(CE_HERE);
+    };
+    EXPECT_THROW((void)CE::Assets::Graphic::from_image(std::move(image), provider, {0.0f, 0.0f}), CE::Exceptions::bad_alloc);
+    EXPECT_TRUE(image_owner.expired());
+}
+
+TEST(asset_preparation, partial_sprite_and_tileset_upload_preserves_metadata_and_retained_resources) {
+    using namespace CE::Assets;
+    for (const bool tilesets : {false, true}) {
+        SCOPED_TRACE(tilesets);
+        MemoryProvider provider;
+        Loader loader("unused-prepared-root");
+        const auto image_key = std::filesystem::path{"audit-category.png"};
+        const auto make_prepared = [&](const std::vector<std::string>& names) {
+            PreparedAssets prepared;
+            prepared.images.push_back({image_key, {{1, 1}, {255, 255, 255, 255}}});
+            AssetManifest manifest;
+            manifest.name_space = "audit-category";
+            for (const auto& name : names) {
+                if (tilesets) {
+                    TilesetDefinition definition{};
+                    definition.name_space = manifest.name_space;
+                    definition.name = name;
+                    definition.texture = image_key;
+                    definition.grid = {.frame = {1, 1}, .rows = 1, .columns = 1};
+                    manifest.tilesets.push_back(std::move(definition));
+                }
+                else {
+                    SpriteDefinition definition{};
+                    definition.name_space = manifest.name_space;
+                    definition.name = name;
+                    definition.texture = image_key;
+                    definition.grid = {.frame = {1, 1}, .rows = 1, .columns = 1};
+                    manifest.sprites.push_back(std::move(definition));
+                }
+            }
+            prepared.manifests.push_back(std::move(manifest));
+            return prepared;
+        };
+        const auto geometry_for = [&](const std::string& name) -> std::shared_ptr<Geometry2D> {
+            const auto key = "audit-category:" + name;
+            if (tilesets) {
+                const auto asset = TilesetMgr::get().get_asset(key);
+                return asset ? asset->geometry : nullptr;
+            }
+            const auto asset = SpriteMgr::get().get_asset(key);
+            return asset ? asset->geometry : nullptr;
+        };
+        int uploads = 0;
+        int reject_at = 3;
+        std::vector<std::weak_ptr<Geometry2D>> native_owners;
+        provider.on_upload_geometry = [&](auto vertices, auto topology) -> std::shared_ptr<Geometry2D> {
+            if (++uploads == reject_at)
+                throw CE::Exceptions::bad_alloc(CE_HERE);
+            auto geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = static_cast<std::uint32_t>(vertices.size());
+            geometry->uploaded_topology = topology;
+            native_owners.push_back(geometry);
+            return geometry;
+        };
+        loader.upload(make_prepared({"kept"}), provider);
+        const auto previous = loader.manifests();
+        auto retained = geometry_for("kept");
+        ASSERT_TRUE(retained);
+        EXPECT_THROW(loader.upload(make_prepared({"complete", "failed"}), provider), CE::Exceptions::bad_alloc);
+        EXPECT_EQ(loader.manifests(), previous);
+        EXPECT_EQ(geometry_for("kept"), retained);
+        EXPECT_TRUE(geometry_for("complete"));
+        EXPECT_FALSE(geometry_for("failed"));
+        ASSERT_EQ(native_owners.size(), 2u);
+        EXPECT_FALSE(native_owners[0].expired());
+        EXPECT_FALSE(native_owners[1].expired());
+        reject_at = 0;
+        loader.upload(make_prepared({"complete", "failed"}), provider);
+        EXPECT_NE(loader.manifests(), previous);
+        EXPECT_EQ(previous->front().name_space, "audit-category");
+        EXPECT_TRUE(geometry_for("failed"));
+        ASSERT_EQ(native_owners.size(), 3u);
+        if (tilesets)
+            TilesetMgr::get().clear_assets();
+        else
+            SpriteMgr::get().clear_assets();
+        EXPECT_FALSE(native_owners[0].expired());
+        EXPECT_TRUE(native_owners[1].expired());
+        EXPECT_TRUE(native_owners[2].expired());
+        retained.reset();
+        EXPECT_TRUE(native_owners[0].expired());
+    }
 }
 
 TEST(platform_requests, a_saved_submission_endpoint_rejects_after_context_destruction) {
