@@ -214,32 +214,41 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-This 40-minute continuation starts at user-pushed
-`7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`. Its tree matches saved local 39–45.
-The original task base remains unchanged; the partial audit remains open.
+This recovery continuation uses a 20-minute work window and up to 10 minutes to
+finish a clean checkpoint. The workspace had reverted to local checkpoint 30;
+the saved cumulative patch recovered all 51 commits from the fixed original base
+to the exact recorded checkpoint-51 tree. The remote is still at checkpoint 45,
+`7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`. Saved original increments 46–51
+were reapplied there without changing their author/date/message order. Older local
+and full recovery histories remain on checkpoint branches.
 
-- 46 fixes worker event pump publication and closure ordering (A7).
-- 47 preserves cache candidate ownership through fallible publication (A8).
-- 48 guards texture unbinding and selects its explicit unit (A9).
-- 49 prepares retained frame/reload and preparation/render failure cleanup in both modes.
-- 50 prepares required CPU-mask revalidation after a previous job changes native state.
-- 51 updates source-convergence evidence, acceptance gates, and a local PR description draft.
+- Recovered 46–48: worker pump publication, cache candidate ownership, and guarded
+  explicit-unit texture unbinding fixes (A7–A9).
+- Recovered 49–51: both-mode frame/reload/failure coverage, required-mask revalidation,
+  convergence documentation, and the PR description draft.
+- 52 prepares capture-deleter reentry and overlapping weighted CPU-mask scenarios;
+  held-worker fixture cleanup joins before captured recording state can unwind.
+- 53 prepares failed-shutdown context recovery and abandonment with late worker
+  release across native resource kinds.
+- 54 records recovery evidence, additional coverage, and the current delivery base.
 
-Numbered patches **46–51** continue from the pushed base; the next unused filename
-is **cheryl-engine-52.patch**. Apply `cheryl-engine-continuation.patch` there, or apply
-46–51 individually in order. `cheryl-engine.patch` starts at the fixed original base
-and repeats earlier commits. Use one application route. Commit order/authorship
-remains intact.
+Numbered patches **46–54** continue from the pushed base above. The next unused
+filename is **cheryl-engine-55.patch**. `cheryl-engine-continuation.patch` includes
+recovered 46–51 and new 52–54. If 46–51 are already applied locally, use
+`cheryl-engine-followup.patch` for just 52–54. The cumulative `cheryl-engine.patch`
+starts at the fixed original base and repeats earlier work. Use one application
+route; commits remain ordered with their original authors and messages.
 
 Tasks 1–8 and task-9 source preparation are implemented. Compilation, aggregate
-regression execution, real sequential/concurrent rendering/affinity/reload/retirement,
-and shutdown/failure acceptance remain open under 9.5. PR metadata publication
-remains a separately requested action under 9.7; a concrete local draft is ready.
-The partial audit and controlled failure-coverage gaps remain explicit in
+regressions, real sequential/concurrent rendering/affinity/reload/retirement, and
+shutdown/failure acceptance remain open under 9.5. PR metadata publication remains
+separately requested under 9.7; a concrete local draft is ready. The partial audit
+and controlled failure gaps stay explicit in
 [ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md).
 
-Changed C++ syntax trees and whitespace are checked alongside include/API/ownership
-review; formatting follows the repository style manually. All three mailbox replay
-routes must reproduce the exact tree and ordered author/date/messages before
-final delivery. No configuration, compilation, tests, native acceptance, or assistant
-remote write occurs in this continuation.
+Changed C++ syntax trees and whitespace are checked with include/API/ownership
+review; formatting follows the repository style manually. Combined continuation,
+ordered increments, original-base cumulative, and the new-only followup mailbox
+must reproduce the exact tree and author/date/message ordering before delivery.
+No configuration, compilation, regression execution, real native acceptance, or
+assistant remote write occurs in this recovery continuation.

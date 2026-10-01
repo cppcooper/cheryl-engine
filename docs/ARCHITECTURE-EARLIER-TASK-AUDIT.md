@@ -137,6 +137,8 @@ correctness, linking, native execution, or race freedom. No configuration, build
 regression execution, real-context acceptance, or assistant remote write occurs.
 
 Keep the partial audit open. Controlled native affinity/thread-start failure,
-allocation/rehash failure, the old pump-submission window, context loss, overlapping
-affinity workloads, and cross-task producer/failure combinations remain acceptance
-or coverage gaps. Do not infer exhaustive review or correctness from batch duration.
+allocation/rehash failure, the old pump-submission window, real context loss, and
+cross-task producer/failure combinations remain acceptance or coverage gaps.
+Recovery checkpoints 52–53 prepare overlapping weighted affinity, capture-deleter
+reentry, failed-shutdown recovery, and abandonment/late-release coverage. Those
+sources also remain unexecuted. Do not infer exhaustive review or correctness from batch duration.
