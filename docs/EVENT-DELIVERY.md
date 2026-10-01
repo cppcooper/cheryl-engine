@@ -100,3 +100,11 @@ abandons the stream outside producer posting locks. This closes a second window
 in which another listener's cancellation sink could run under the first listener's
 posting lock. The finding comes from ownership/interleaving review; executed
 native-policy acceptance remains open.
+
+Checkpoint 56 adds an internal submission seam, retaining WorkerGroup::submit for
+the public adapter. Controlled sources discard a pump before publication and check
+same-listener sink reentry/recovery, then discard one published pump shared by two
+listeners on another thread and check per-listener cancellation and recovery.
+The aggregate target alone receives the private source include path. These fixtures
+model loss without running an OS policy adapter; they are uncompiled/unexecuted and
+do not force every old producer interleaving or prove actual affinity failure.

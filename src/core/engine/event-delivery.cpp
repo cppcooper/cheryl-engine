@@ -1,4 +1,5 @@
 #include <core/engine/event-delivery.h>
+#include "event-delivery-internal.h"
 
 #include <utility>
 #include <atomic>
@@ -9,11 +10,16 @@
 namespace {
     struct WorkerStream {
         CE::Engine::WorkerGroup group;
+        CE::Engine::DeliveryDetail::WorkerSubmission submit;
         std::mutex mutex;
         std::deque<CE::SubSystems::EventBus::Work> pending;
         bool scheduled = false;
 
-        explicit WorkerStream(CE::Engine::WorkerGroup value) : group(std::move(value)) {}
+        WorkerStream(
+            CE::Engine::WorkerGroup value,
+            CE::Engine::DeliveryDetail::WorkerSubmission submission
+        )
+        : group(std::move(value)), submit(std::move(submission)) {}
     };
 
     void abandon_stream(const std::shared_ptr<WorkerStream>& stream) {
@@ -97,7 +103,15 @@ namespace CE::Engine {
     }
 
     SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group) {
-        auto stream = std::make_shared<WorkerStream>(std::move(group));
+        auto submit = [group](SubSystems::EventBus::Work work) { (void)group.submit(std::move(work)); };
+        return DeliveryDetail::worker_stream_delivery(std::move(group), std::move(submit));
+    }
+
+    SubSystems::EventBus::Delivery DeliveryDetail::worker_stream_delivery(
+        WorkerGroup group,
+        DeliveryDetail::WorkerSubmission submit
+    ) {
+        auto stream = std::make_shared<WorkerStream>(std::move(group), std::move(submit));
         return [stream](SubSystems::EventBus::Work work) {
             std::shared_ptr<WorkerPump> pump;
             SubSystems::EventBus::Work rejected;
@@ -115,7 +129,7 @@ namespace CE::Engine {
                     try {
                         // Submit while holding the stream lock. Other producers
                         // may join only after this pump is actually accepted.
-                        (void)stream->group.submit([job = WorkerPumpJob(pump)]() mutable {
+                        stream->submit([job = WorkerPumpJob(pump)]() mutable {
                             job.entered = true;
                             drain_stream(job.pump->stream);
                         });

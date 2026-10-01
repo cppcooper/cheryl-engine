@@ -2,6 +2,7 @@
 
 #include <core/subsystems/event-bus.h>
 #include <core/engine/event-delivery.h>
+#include <core/engine/event-delivery-internal.h>
 #include <internals/exceptions.h>
 
 #include <any>
@@ -11,6 +12,15 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+namespace {
+    // Declare after borrowed recording state so an assertion's early return
+    // invalidates tickets before pending pumps destroy their error sinks.
+    struct CloseBusOnExit {
+        CE::SubSystems::EventBus& bus;
+        ~CloseBusOnExit() { bus.close(); }
+    };
+}
 
 TEST(event_bus, ignoring_an_identifier_keeps_the_registration_alive) {
     CE::SubSystems::EventBus bus;
@@ -450,4 +460,87 @@ TEST(event_bus, independent_worker_streams_can_progress_while_one_callback_is_he
     group.close();
     group.drain();
     bus.close();
+}
+
+TEST(event_bus, a_pump_lost_before_publication_reports_once_and_reentrant_delivery_starts_a_fresh_pump) {
+    CE::Engine::WorkerPool pool;
+    auto group = pool.make_group();
+    CE::SubSystems::EventBus bus;
+    std::vector<CE::SubSystems::EventBus::Work> pumps;
+    int offers = 0;
+    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group,
+        [&](CE::SubSystems::EventBus::Work pump) {
+            if (++offers > 1)
+                pumps.push_back(std::move(pump));
+            // The first accepted callable is discarded before publication,
+            // modeling native rejection before entry without invoking callbacks.
+        });
+    int errors = 0;
+    std::vector<int> received;
+    CloseBusOnExit cleanup{bus};
+    bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); }, delivery,
+        [&](std::exception_ptr error) {
+            EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+            ++errors;
+            if (errors == 1)
+                bus.dispatch("tick", 2); // Must run outside this listener's posting lock.
+        });
+    bus.dispatch("tick", 1);
+    EXPECT_EQ(errors, 1);
+    EXPECT_EQ(offers, 2);
+    EXPECT_TRUE(received.empty());
+    ASSERT_EQ(pumps.size(), 1u);
+    auto pump = std::move(pumps.front());
+    pumps.clear();
+    pump(); // Explicit execution happens only after submission has returned.
+    EXPECT_EQ(received, (std::vector<int>{2}));
+    bus.dispatch("tick", 3);
+    EXPECT_EQ(offers, 3);
+    ASSERT_EQ(pumps.size(), 1u);
+    pumps.front()();
+    pumps.clear();
+    EXPECT_EQ(received, (std::vector<int>{2, 3}));
+    EXPECT_EQ(errors, 1);
+}
+
+TEST(event_bus, a_pump_lost_after_publication_reports_each_listener_on_the_cancelling_thread_and_recovers) {
+    CE::Engine::WorkerPool pool;
+    auto group = pool.make_group();
+    CE::SubSystems::EventBus bus;
+    std::vector<CE::SubSystems::EventBus::Work> pumps;
+    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group,
+        [&](CE::SubSystems::EventBus::Work pump) { pumps.push_back(std::move(pump)); });
+    int errors = 0;
+    int reports = 0;
+    std::vector<int> received;
+    std::thread::id cancellation_thread;
+    CloseBusOnExit cleanup{bus};
+    bus.register_listener("report", [&](std::any) { ++reports; });
+    const auto on_error = [&](std::exception_ptr error) {
+        EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+        EXPECT_EQ(std::this_thread::get_id(), cancellation_thread);
+        ++errors;
+        bus.dispatch("report", 0); // Reporting reenters after the stream lock is released.
+    };
+    bus.register_listener("first", [&](std::any value) { received.push_back(std::any_cast<int>(value)); }, delivery, on_error);
+    bus.register_listener("second", [&](std::any value) { received.push_back(std::any_cast<int>(value)); }, delivery, on_error);
+    bus.dispatch("first", 1);
+    bus.dispatch("second", 2);
+    ASSERT_EQ(pumps.size(), 1u); // Both listeners have joined the same accepted pump.
+    auto cancelled = std::move(pumps.front());
+    pumps.clear();
+    auto worker = std::async(std::launch::async, [&, cancelled = std::move(cancelled)]() mutable {
+        cancellation_thread = std::this_thread::get_id();
+        cancelled = nullptr;
+    });
+    worker.get();
+    EXPECT_EQ(errors, 2);
+    EXPECT_EQ(reports, 2);
+    EXPECT_TRUE(received.empty());
+    bus.dispatch("first", 3);
+    ASSERT_EQ(pumps.size(), 1u);
+    pumps.front()();
+    pumps.clear();
+    EXPECT_EQ(received, (std::vector<int>{3}));
+    EXPECT_EQ(errors, 2);
 }
