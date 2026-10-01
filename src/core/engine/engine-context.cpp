@@ -8,6 +8,7 @@
 #include <internals/exceptions.h>
 
 #include <utility>
+#include <span>
 
 namespace CE::Engine {
     EngineContext::EngineContext(
@@ -95,10 +96,15 @@ namespace CE::Engine {
     }
 
     void EngineContext::finish_workers() {
-        std::vector<WorkerGroup> groups;
+        std::span<const WorkerGroup> groups;
         WorkerPool* owned;
         {
             std::lock_guard lock(execution_mutex_);
+            if (!worker_submissions_closed_)
+                throw Exceptions::failed_operation(CE_HERE, "Worker submissions must close before finishing groups");
+            // The submission barrier fixes this member's storage until context
+            // destruction. Borrow its retained owners without allocating a copy
+            // while recovering from construction/allocation failure.
             groups = worker_groups_;
             owned = owned_workers_.get();
         }

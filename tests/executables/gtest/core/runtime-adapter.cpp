@@ -28,6 +28,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <new>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
@@ -422,6 +423,7 @@ namespace {
         int maintenance_calls = 0;
         std::thread::id maintenance_thread;
         std::function<void()> on_initialize;
+        std::function<void()> on_deinitialize;
         CE::FramebufferSize viewport{};
         bool depth_enabled = false;
         glm::vec4 clear_colour{0.0f};
@@ -441,7 +443,11 @@ namespace {
                 on_initialize();
         }
 
-        void deinitialize() override { ++shutdowns; }
+        void deinitialize() override {
+            ++shutdowns;
+            if (on_deinitialize)
+                on_deinitialize();
+        }
         void maintain_resources() override {
             ++maintenance_calls;
             maintenance_thread = std::this_thread::get_id();
@@ -1408,6 +1414,124 @@ TEST(execution_shutdown, accepted_worker_upload_can_finish_while_the_platform_is
         EXPECT_EQ(upload_thread, std::this_thread::get_id());
         EXPECT_FALSE(group.status().accepting);
         EXPECT_THROW(static_cast<void>(engine->make_worker_group()), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, asset_initialization_failure_preserves_pending_upload_and_simulation_cleanup) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        OneTickGame game(input, true);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        std::promise<void> posted;
+        auto posted_future = posted.get_future();
+        std::future<int> result;
+        std::future<void> cancelled;
+        std::weak_ptr<CE::Vertex2D> cpu_owner;
+        int uploads = 0;
+        int quiesces = 0;
+        const auto platform_thread = std::this_thread::get_id();
+        provider.on_upload_geometry = [](auto, auto) -> std::shared_ptr<CE::Assets::Geometry2D> {
+            throw std::bad_alloc{};
+        };
+        game.on_init = [&] {
+            cancelled = simulation.submit([] {});
+            result = group.submit([&] {
+                auto upload = platform.submit([&](CE::Engine::EngineContext& context) {
+                    EXPECT_EQ(std::this_thread::get_id(), platform_thread);
+                    const CE::Assets::DecodedImage pixels{CE::Assets::PixelSize{1, 1}, {255, 255, 255, 255}};
+                    auto image = context.resources().create_image(pixels);
+                    EXPECT_EQ(image->pixel_size().width, 1u);
+                    ++uploads;
+                    return 42;
+                });
+                posted.set_value();
+                return upload.get();
+            });
+            if (posted_future.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Worker did not post its upload");
+            auto vertices = std::shared_ptr<CE::Vertex2D>(new CE::Vertex2D[6]{}, std::default_delete<CE::Vertex2D[]>{});
+            cpu_owner = vertices;
+            (void)provider.upload_geometry(std::move(vertices), 6, CE::Assets::PrimitiveTopology::Triangles);
+        };
+        game.on_quiesce = [&] {
+            ++quiesces;
+            throw std::runtime_error("Later producer cleanup failed");
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(result.get(), 42);
+            EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_THROW(cancelled.get(), std::future_error);
+            EXPECT_TRUE(cpu_owner.expired());
+        };
+        EXPECT_THROW(runtime.run(), std::bad_alloc);
+        EXPECT_EQ(uploads, 1);
+        EXPECT_EQ(quiesces, 1);
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, failed_worker_upload_settles_before_game_cleanup_and_preserves_its_error) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        std::promise<void> posted;
+        auto posted_future = posted.get_future();
+        std::future<void> result;
+        std::weak_ptr<CE::Vertex2D> cpu_owner;
+        provider.on_upload_geometry = [](auto, auto) -> std::shared_ptr<CE::Assets::Geometry2D> {
+            throw std::bad_alloc{};
+        };
+        game.on_init = [&] {
+            auto vertices = std::shared_ptr<CE::Vertex2D>(new CE::Vertex2D[6]{}, std::default_delete<CE::Vertex2D[]>{});
+            cpu_owner = vertices;
+            result = group.submit([platform, vertices = std::move(vertices), &posted]() mutable {
+                auto upload = platform.submit([vertices = std::move(vertices)](CE::Engine::EngineContext& context) mutable {
+                    return context.resources().upload_geometry(std::move(vertices), 6, CE::Assets::PrimitiveTopology::Triangles);
+                });
+                posted.set_value();
+                (void)upload.get();
+            });
+            if (posted_future.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Worker did not post its upload");
+            runtime.stop();
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_TRUE(cpu_owner.expired());
+            result.get(); // The application's observation propagates the worker's original error.
+        };
+        renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failed"); };
+        EXPECT_THROW(runtime.run(), std::bad_alloc);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_TRUE(cpu_owner.expired());
+        EXPECT_FALSE(group.status().accepting);
     }
 }
 
