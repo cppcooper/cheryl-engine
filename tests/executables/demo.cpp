@@ -24,6 +24,8 @@
 #include <exception>
 #include <format>
 #include <future>
+#include <functional>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -63,6 +65,9 @@ class Game : public CE::GFramework::AbstractGame {
     std::uint64_t clicks_ = 0;
     double wheel_ = 0.0;
     std::uint64_t gamepad_presses_ = 0;
+    std::uint64_t updates_ = 0;
+    std::uint64_t update_limit_ = 0;
+    std::function<void()> stop_;
 
 public:
     Game(
@@ -71,6 +76,18 @@ public:
         bool load_all_assets
     )
     : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
+
+    void stop_after_updates(
+        const std::uint64_t count,
+        std::function<void()> stop
+    ) {
+        if (count == 0 || !stop)
+            throw CE::Exceptions::invalid_args(CE_HERE, "A finite demo run requires an update count and stop callback");
+        update_limit_ = count;
+        stop_ = std::move(stop);
+    }
+
+    [[nodiscard]] std::uint64_t completed_updates() const { return updates_; }
 
     void init() override {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
@@ -218,6 +235,8 @@ public:
             pan_ += movement * 240.0f;
             camera_.set_view_matrix(glm::translate(glm::mat4(1.0f), glm::vec3(-pan_, 0.0f)));
         }
+        if (++updates_ == update_limit_ && stop_)
+            stop_();
     }
 
     void prepare_render_frame(
@@ -289,6 +308,7 @@ int main(
 ) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
+    unsigned int max_updates = 0;
     auto mode = CE::GFramework::RunMode::Sequential;
     CE::Input::PollingOptions polling;
     CE::GFramework::SimulationTimingOptions timing;
@@ -307,6 +327,8 @@ int main(
             mode = CE::GFramework::RunMode::Concurrent;
         else if (argument == "--input-unlimited")
             polling.policy = CE::Input::PollingPolicy::Unlimited;
+        else if (argument.starts_with("--max-updates="))
+            max_updates = number(argument.substr(std::string_view("--max-updates=").size()));
         else if (argument == "--fixed")
             timing.mode = CE::GFramework::SimulationMode::Fixed;
         else if (argument == "--variable-catch-up") {
@@ -335,5 +357,9 @@ int main(
     auto engine = CE::Engine::make_glfw_opengl_context();
     Game game(*engine, asset_root, load_all_assets);
     GameRuntime game_runtime(*engine, game, mode, polling, timing);
+    if (max_updates != 0)
+        game.stop_after_updates(max_updates, [&game_runtime] { game_runtime.stop(); });
     game_runtime.run();
+    if (max_updates != 0)
+        std::cout << "Completed " << game.completed_updates() << " demo updates\n";
 }
