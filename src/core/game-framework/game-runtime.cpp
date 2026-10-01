@@ -1,4 +1,5 @@
 #include <core/game-framework/game-runtime.h>
+#include "game-runtime-internal.h"
 
 #include <core/controls/input-accumulator.h>
 #include <core/controls/input-interface.h>
@@ -22,6 +23,17 @@
 #include <vector>
 
 namespace CE::GFramework {
+    void RuntimeDetail::GameRuntimeAccess::set_simulation_thread_factory(
+        GameRuntime& runtime,
+        std::function<std::thread(std::function<void()>)> factory
+    ) {
+        if (!factory)
+            throw Exceptions::invalid_args(CE_HERE, "Simulation thread factory must not be empty");
+        if (runtime.run_started_.load(std::memory_order_acquire))
+            throw Exceptions::failed_operation(CE_HERE, "Simulation thread factory must be configured before run");
+        runtime.simulation_thread_factory_ = std::move(factory);
+    }
+
     GameRuntime::GameRuntime(
         Engine::EngineContext& engine,
         AbstractGame& game,
@@ -254,7 +266,7 @@ namespace CE::GFramework {
 
             // The worker owns simulation and its clock; the calling thread alone
             // touches the window, input adapter, renderer, and presentation surface.
-            worker = std::thread([&, previous_poll = std::move(previous_poll)]() mutable {
+            auto simulate = [&, previous_poll = std::move(previous_poll)]() mutable {
                 try {
                     simulation_dispatcher_.bind_owner();
                     const auto started_at = SimulationClock::now();
@@ -347,7 +359,11 @@ namespace CE::GFramework {
                     handoff.worker_done = true;
                 }
                 scheduler_->wake.notify_all();
-            });
+            };
+            worker = simulation_thread_factory_ ? simulation_thread_factory_(std::move(simulate))
+                                                : std::thread(std::move(simulate));
+            if (!worker.joinable())
+                throw Exceptions::failed_operation(CE_HERE, "Simulation thread factory returned no thread");
 
             std::optional<std::size_t> current_frame;
             // Full batches pause only polling. Rendering and recycling remain

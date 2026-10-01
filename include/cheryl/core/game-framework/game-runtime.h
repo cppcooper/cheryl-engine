@@ -9,14 +9,20 @@
 #include <chrono>
 #include <condition_variable>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 namespace CE::Engine {
     class EngineContext;
 }
 
 namespace CE::GFramework {
+    namespace RuntimeDetail {
+        struct GameRuntimeAccess;
+    }
+
     struct AbstractGame;
 
     enum class RunMode { Sequential, Concurrent };
@@ -48,6 +54,7 @@ namespace CE::GFramework {
         };
         std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
         Engine::SimulationDispatcher simulation_dispatcher_;
+        std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
 
     public:
         GameRuntime(
@@ -63,6 +70,7 @@ namespace CE::GFramework {
         [[nodiscard]] Engine::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
+        friend struct RuntimeDetail::GameRuntimeAccess;
         void run_sequential();
         void run_concurrent();
         void finish_unstarted_session();

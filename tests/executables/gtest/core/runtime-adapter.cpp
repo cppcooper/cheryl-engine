@@ -11,6 +11,7 @@
 #include <core/engine/event-delivery.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
+#include <core/game-framework/game-runtime-internal.h>
 #include <assets/submission/draw2d.h>
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
@@ -1808,6 +1809,81 @@ TEST(execution_shutdown, owned_root_startup_rollback_settles_queued_callbacks_be
         EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
         EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
     }
+}
+
+TEST(execution_shutdown, simulation_thread_start_failure_settles_worker_upload_and_unbound_simulation) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game, CE::GFramework::RunMode::Concurrent);
+    auto group = engine->make_worker_group();
+    auto platform = engine->platform_dispatcher().submission();
+    auto simulation = runtime.simulation_dispatcher().submission();
+    std::promise<void> worker_entered;
+    auto entered = worker_entered.get_future();
+    std::promise<void> release_upload;
+    auto upload_gate = release_upload.get_future().share();
+    std::future<int> uploaded;
+    std::future<void> cancelled;
+    std::weak_ptr<int> simulation_capture;
+    std::weak_ptr<CE::Assets::DecodedImage> cpu_capture;
+    int simulation_callbacks = 0;
+    int starts = 0;
+    std::thread::id upload_thread;
+    CE::GFramework::RuntimeDetail::GameRuntimeAccess::set_simulation_thread_factory(runtime, [&](std::function<void()>) -> std::thread {
+        ++starts;
+        release_upload.set_value();
+        throw std::runtime_error("Controlled simulation thread-start failure");
+    });
+    game.on_init = [&] {
+        auto owner = std::make_shared<int>(42);
+        simulation_capture = owner;
+        cancelled = simulation.submit([owner = std::move(owner), &simulation_callbacks] { ++simulation_callbacks; });
+        auto pixels = std::make_shared<CE::Assets::DecodedImage>(
+            CE::Assets::DecodedImage{CE::Assets::PixelSize{1, 1}, {255, 255, 255, 255}}
+        );
+        cpu_capture = pixels;
+        uploaded = group.submit([pixels = std::move(pixels), platform, upload_gate, &worker_entered, &upload_thread] {
+            worker_entered.set_value();
+            if (upload_gate.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Simulation startup did not release upload");
+            auto completion = platform.submit([pixels, &upload_thread](CE::Engine::EngineContext& context) {
+                upload_thread = std::this_thread::get_id();
+                static_cast<void>(context.resources().create_image(*pixels));
+                return 42;
+            });
+            return completion.get();
+        });
+        if (entered.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+            throw std::runtime_error("Preparation worker did not enter");
+    };
+    game.on_quiesce = [] { throw std::runtime_error("Later quiesce failure"); };
+    game.on_deinit = [&] {
+        EXPECT_EQ(uploaded.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_TRUE(cpu_capture.expired());
+        EXPECT_TRUE(simulation_capture.expired());
+    };
+    renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failure"); };
+    try {
+        runtime.run();
+        FAIL() << "Simulation thread startup must fail";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string_view(error.what()), "Controlled simulation thread-start failure");
+    }
+    EXPECT_EQ(starts, 1);
+    EXPECT_EQ(uploaded.get(), 42);
+    EXPECT_THROW(cancelled.get(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(simulation_callbacks, 0);
+    EXPECT_EQ(upload_thread, std::this_thread::get_id());
+    EXPECT_EQ(game.updates, 0);
+    EXPECT_EQ(game.shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_FALSE(group.status().accepting);
+    EXPECT_THROW((void)platform.submit([](CE::Engine::EngineContext&) {}), CE::Exceptions::failed_operation);
+    EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
 }
 
 TEST(execution_shutdown, an_injected_root_keeps_unrelated_application_groups_available) {
