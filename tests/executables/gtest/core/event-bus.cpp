@@ -382,3 +382,72 @@ TEST(event_bus, a_saved_worker_target_reports_rejection_after_its_pool_is_destro
     EXPECT_EQ(errors, 1);
     bus.close();
 }
+
+TEST(event_bus, closing_a_worker_group_keeps_accepted_callbacks_and_rejects_new_delivery_with_reentrant_reporting) {
+    CE::Engine::WorkerPool pool(2);
+    auto group = pool.make_group();
+    const auto delivery = CE::Engine::worker_event_delivery(group);
+    CE::SubSystems::EventBus bus;
+    std::promise<void> entered;
+    auto started = entered.get_future();
+    std::promise<void> release;
+    auto may_finish = release.get_future().share();
+    std::vector<int> received;
+    const auto unexpected = [](std::exception_ptr) { ADD_FAILURE() << "Accepted delivery was lost"; };
+    bus.register_listener("accepted", [&](std::any value) {
+        if (std::any_cast<int>(value) == 0) {
+            entered.set_value();
+            may_finish.wait();
+        }
+        received.push_back(std::any_cast<int>(value));
+    }, delivery, unexpected);
+    bus.dispatch("accepted", 0);
+    EXPECT_EQ(started.wait_for(std::chrono::seconds{1}), std::future_status::ready);
+    bus.dispatch("accepted", 1); // The same pump owns this queued callback.
+    group.close();
+
+    int errors = 0;
+    int immediate = 0;
+    CE::SubSystems::EventBus::Registration rejected;
+    bus.register_listener("report", [&](std::any) { ++immediate; });
+    rejected = bus.register_listener("rejected", [](std::any) { ADD_FAILURE() << "Closed group invoked a new callback"; },
+        delivery, [&](std::exception_ptr error) {
+            EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+            ++errors;
+            bus.dispatch("report", 0);
+            EXPECT_TRUE(bus.unregister_listener(rejected));
+        });
+    bus.dispatch("rejected", 2);
+    EXPECT_EQ(errors, 1);
+    EXPECT_EQ(immediate, 1);
+    release.set_value();
+    group.drain();
+    EXPECT_EQ(received, (std::vector<int>{0, 1}));
+    bus.close();
+}
+
+TEST(event_bus, independent_worker_streams_can_progress_while_one_callback_is_held) {
+    CE::Engine::WorkerPool pool(2);
+    auto group = pool.make_group();
+    CE::SubSystems::EventBus bus;
+    std::promise<void> entered;
+    auto started = entered.get_future();
+    std::promise<void> release;
+    auto may_finish = release.get_future().share();
+    std::promise<void> independent;
+    auto progressed = independent.get_future();
+    const auto unexpected = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected worker delivery error"; };
+    bus.register_listener("held", [&](std::any) { entered.set_value(); may_finish.wait(); },
+        CE::Engine::worker_event_delivery(group), unexpected);
+    bus.register_listener("independent", [&](std::any) { independent.set_value(); },
+        CE::Engine::worker_event_delivery(group), unexpected);
+    bus.dispatch("held", 0);
+    EXPECT_EQ(started.wait_for(std::chrono::seconds{1}), std::future_status::ready);
+    bus.dispatch("independent", 0);
+    // A bounded wait checks progress; the promise establishes the held state.
+    EXPECT_EQ(progressed.wait_for(std::chrono::seconds{1}), std::future_status::ready);
+    release.set_value();
+    group.close();
+    group.drain();
+    bus.close();
+}

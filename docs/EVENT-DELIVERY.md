@@ -80,3 +80,13 @@ Accepted stream work drains before group completion. Group closure rejects new
 stream work even when a pump is active. A failed/cancelled pump releases its
 pending captures outside stream locks, letting owned event tickets report loss.
 Do not block a stream callback on another callback in that same stream.
+
+Initial pump submission is serialized with stream publication. Another producer
+cannot return accepted merely because a pump which may still fail submission was
+marked scheduled. Closure checks also share the stream mutex with the pump's final
+empty-queue check. Submission failure removes only the initiating request, and
+its captures leave the stream lock before error reporting. Lock order is stream
+then pool; worker accounting releases the pool lock before touching a stream or
+releasing callback captures. Prepared closure/reentry and independent-stream
+scenarios exercise these lifecycle contracts; the old submission window was found
+by interleaving review, without a deterministic executed reproduction.

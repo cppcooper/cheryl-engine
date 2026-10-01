@@ -78,6 +78,19 @@ mask, so checkpoint 40 enables writes before clearing; the next draw reapplies i
 own complete policy. This is a state/ownership review finding, not an observed GPU
 failure. Native acceptance remains open.
 
+### A7: a worker stream advertised a pump before submission succeeded
+
+Checkpoint 46 serializes the first pump's pool submission with stream publication.
+Previously another producer could return accepted while the initiating submit was
+still fallible. Rejection then destroyed both requests on the initiating producer,
+including another listener's cancellation sink under the initiating listener's
+posting lock. Reentry could block on that lock. Checking group closure under the
+stream mutex also excludes the draining pump's final empty-queue/completion step.
+The fix releases only the failed initiating capture after unlocking and keeps the
+stream-to-pool lock order. Prepared sources cover close with queued accepted work,
+reentrant rejection reporting, and independent stream progress; they do not force
+the old submission interleaving. Native pump-rejection acceptance remains open.
+
 ## Coverage at this checkpoint
 
 | Task | Paths reviewed in this pass | Assessment and remaining review |

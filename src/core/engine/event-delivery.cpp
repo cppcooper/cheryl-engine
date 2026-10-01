@@ -82,27 +82,39 @@ namespace CE::Engine {
     SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group) {
         auto stream = std::make_shared<WorkerStream>(std::move(group));
         return [stream](SubSystems::EventBus::Work work) {
-            // Acceptance cannot rely solely on an already-running pump: group
-            // closure must reject new stream work even while that pump drains.
-            if (!stream->group.status().accepting)
-                return false;
             std::shared_ptr<WorkerPump> pump;
+            SubSystems::EventBus::Work rejected;
             {
                 std::lock_guard lock(stream->mutex);
-                if (!stream->scheduled) {
-                    // Allocate before publishing anything which needs a pump.
+                // Check closure while excluding the pump's final empty-queue
+                // check. Accepted work cannot appear after that pump completes.
+                if (!stream->group.status().accepting)
+                    return false;
+                if (!stream->scheduled)
                     pump = std::make_shared<WorkerPump>(stream);
-                }
                 stream->pending.push_back(std::move(work));
-                stream->scheduled = true;
-                if (pump)
+                if (pump) {
+                    stream->scheduled = true;
                     pump->published = true;
-            }
-            if (pump) {
-                (void)stream->group.submit([pump] {
-                    pump->entered.store(true, std::memory_order_release);
-                    drain_stream(pump->stream);
-                });
+                    try {
+                        // Submit while holding the stream lock. Other producers
+                        // may join only after this pump is actually accepted.
+                        (void)stream->group.submit([pump] {
+                            pump->entered.store(true, std::memory_order_release);
+                            drain_stream(pump->stream);
+                        });
+                    } catch (...) {
+                        // Only this request was published under the stream lock.
+                        // Do not cancel another listener while its caller still
+                        // holds an EventBus posting lock. Release our capture
+                        // after unlocking; its bus ticket preserves the error.
+                        rejected = std::move(stream->pending.front());
+                        stream->pending.pop_front();
+                        stream->scheduled = false;
+                        pump->published = false;
+                        throw;
+                    }
+                }
             }
             return true;
         };
