@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <chrono>
 #include <memory>
 #include <utility>
 
@@ -130,6 +131,35 @@ TEST(font_layout, legacy_fancy_selection_is_typed_and_does_not_mutate_another_la
     EXPECT_EQ(fancy[0].index, plain[0].index + 128);
     EXPECT_FLOAT_EQ(plain[1].x, 0.5f);
     EXPECT_FLOAT_EQ(fancy[1].x, 1.0f);
+    EXPECT_EQ(geometry->native_calls, 0);
+    EXPECT_EQ(image->native_calls, 0);
+}
+
+TEST(asset_submission, static_tiles_and_animation_select_owned_strip_ranges_without_native_work) {
+    using namespace std::chrono_literals;
+    auto geometry = std::make_shared<SubmissionGeometry>(16, PrimitiveTopology::TriangleStrip);
+    auto image = std::make_shared<SubmissionImage>();
+    TilesetDefinition definition;
+    definition.grid.frame = {16, 16};
+    definition.grid.rows = 1;
+    definition.grid.columns = 4;
+    Tileset tileset(TilesetData{geometry, image, definition});
+    const auto style = make_style(PrimitiveTopology::TriangleStrip);
+    const auto context = make_context();
+    const auto grid = resolve_tile(tileset, 3, style, context);
+    const auto tile = resolve_tile(tileset.tile(3), style, context);
+    EXPECT_EQ(grid.first_vertex, 12u);
+    EXPECT_EQ(tile.first_vertex, grid.first_vertex);
+    TileAnimationDefinition clip;
+    clip.frames = {{0, 100ms}, {2, 100ms}};
+    TileAnimation animation(clip, geometry, image);
+    animation[1];
+    const auto animated = resolve_tile(animation, style, context);
+    animation[0];
+    EXPECT_EQ(animated.first_vertex, 8u);
+    EXPECT_EQ(animated.vertex_count, 4u);
+    EXPECT_EQ(std::get<ImageBinding>(animated.parameters.at("image")).image, image);
+    EXPECT_THROW(resolve_tile(tileset, 4, style, context), CE::Exceptions::invalid_args);
     EXPECT_EQ(geometry->native_calls, 0);
     EXPECT_EQ(image->native_calls, 0);
 }

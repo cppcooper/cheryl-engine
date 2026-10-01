@@ -29,10 +29,4 @@ namespace CE::Assets {
         return from_image(provider.load_image(file), provider, pivot);
     }
 
-    void Graphic::draw(const DrawInfo& info) {
-        geometry->bind();
-        texture->bind(0);
-        info.use_shader();
-        geometry->draw(0, VAONumbers::vertices_per_quad);
-    }
 }

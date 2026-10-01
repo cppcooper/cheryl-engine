@@ -1,7 +1,6 @@
 #pragma once
 
 #include <assets/types/2d/base/asset2d.h>
-#include <core/rendering/draw-info.h>
 #include <math/anchor.h>
 
 #include <filesystem>
@@ -19,14 +18,12 @@ namespace CE::Assets {
         [[nodiscard]] static Graphic from_image(
             std::shared_ptr<Image> image,
             ResourceProvider& provider,
-            math::Pivot pivot = {0.0f, 0.0f}
+            math::Pivot pivot = math::Pivot{0.0f, 0.0f}
         );
         [[nodiscard]] static Graphic load(
             const std::filesystem::path& file,
             ResourceProvider& provider,
-            math::Pivot pivot = {0.0f, 0.0f}
+            math::Pivot pivot = math::Pivot{0.0f, 0.0f}
         );
-
-        void draw(const DrawInfo& info);
     };
 }

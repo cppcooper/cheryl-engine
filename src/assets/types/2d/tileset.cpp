@@ -1,31 +1,19 @@
 #include <assets/types/2d/tileset.h>
-#include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
 #include <utility>
 
 namespace CE::Assets {
-    void Tile::draw(const DrawInfo& info) {
-        geometry->bind();
-        texture->bind(0);
-        info.use_shader();
-        geometry->draw(VAONumbers::calculate_num_strip_vertices(offset_), VAONumbers::vertices_per_strip_quad);
-    }
-
     TileAnimation::TileAnimation(
         TileAnimationDefinition definition,
         const shptr<Geometry2D>& geometry,
         const shptr<Image>& texture
     )
     :
-    Draw2D(geometry, texture),
+    Asset2D(geometry, texture),
     Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
     definition_(std::move(definition)) {}
-
-    void TileAnimation::draw(const DrawInfo& info) {
-        Tile(definition_.frames[index_].cell, geometry, texture).draw(info);
-    }
 
     std::chrono::milliseconds TileAnimation::frame_duration() const {
         return definition_.frames.at(index_).duration;

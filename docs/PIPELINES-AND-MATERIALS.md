@@ -154,4 +154,8 @@ RenderPassWriter validates individual packets or a whole glyph group before publ
 and assigns stable authored order. RenderFrame keeps reusable vector capacity and
 releases packet/pass handles on recycle. The OpenGL renderer checks its native
 pipeline domain, then calls the validated fixed-state draw path in authored order.
-Immediate draw APIs remain temporarily available pending removal.
+Graphic/Tile/TileAnimation drawing and Font printing now use submission helpers.
+Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. FFont
+keeps immutable width metrics and typed normal/alternate-bank layout; callers place
+and rotate text through DrawStyle2D.model_matrix. ASCII fallback is explicit, with
+no font shaping or FFont loading expansion.

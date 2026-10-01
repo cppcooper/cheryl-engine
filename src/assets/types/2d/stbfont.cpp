@@ -7,7 +7,6 @@
 
 #include <core/resources/memory.h>
 #include <core/resources/memory/managed-block.hpp>
-#include <ext/matrix_transform.hpp>
 
 #include <algorithm>
 #include <array>
@@ -58,27 +57,6 @@ namespace CE::Assets {
     : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
-    }
-
-    void STBFont::print(std::string text, FontDrawInfo* format) {
-        if (!format)
-            throw Exceptions::invalid_args(CE_HERE, "A font draw requires formatting information");
-        if (!format->material)
-            throw Exceptions::invalid_args(CE_HERE, "A font draw requires a shader program");
-        auto& material = *format->material;
-        material.bind_pass(format->camera);
-        geometry->bind();
-        texture->bind(0);
-
-        // The legacy immediate path now shares the same read-only layout as a
-        // published text command. Rotation/scale belong to the caller's model.
-        auto model = glm::translate(format->model_matrix, format->position);
-        model = glm::rotate(model, format->angle, glm::vec3(0.0f, 0.0f, 1.0f));
-        model = glm::scale(model, glm::vec3(format->scale, format->scale, 1.0f));
-        for_each_glyph(text, [&](const std::size_t index, const float x, const float y) {
-            material.bind_draw({glm::translate(model, glm::vec3(x, y, 0.0f)), format->alpha, 1.0f, 0});
-            geometry->draw(index * VAONumbers::vertices_per_quad, VAONumbers::vertices_per_quad);
-        });
     }
 
     std::vector<GlyphPlacement2D> STBFont::layout(const std::string_view text, const FontLayoutOptions options) const {

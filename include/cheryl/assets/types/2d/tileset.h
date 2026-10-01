@@ -1,7 +1,6 @@
 #pragma once
 
 #include <assets/types/2d/base/asset2d.h>
-#include <assets/types/2d/base/draw2d.h>
 #include <assets/types/primitives/frame.h>
 #include <assets/definitions/tileset.h>
 
@@ -21,20 +20,18 @@ namespace CE::Assets {
         TilesetDefinition definition;
     };
 
-    struct Tile final : Draw2D, Frame<Tile> {
+    struct Tile final : Asset2D, Frame<Tile> {
         explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture) :
-            Draw2D(geometry, texture), Frame(cell, 0, 1) {}
+            Asset2D(geometry, texture), Frame(cell, 0, 1) {}
 
-        void draw(const DrawInfo& info) override;
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
     /** A selected tile clip with mutable frame index; advancing elapsed time belongs to its caller. */
-    struct TileAnimation final : Draw2D, Frame<TileAnimation> {
+    struct TileAnimation final : Asset2D, Frame<TileAnimation> {
         explicit TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,
                                const shptr<Image>& texture);
 
-        void draw(const DrawInfo& info) override;
         [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
