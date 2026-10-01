@@ -244,6 +244,14 @@ FFont loading features or Unicode shaping were added. Ordering remains authored.
 - [ ] **9.5d** Exercise real driver/context/material reload, retained resources, idle retirement and shutdown/failure combinations.
 - [ ] **9.5e** Complete real font parsing/rasterization, stb allocation failure and rotated FFont rendering acceptance; keep preexisting FFont feature TODOs out of scope.
 - [ ] **9.5f** Record remaining actual OS policy rejection/restriction behavior and reconcile all native acceptance results before closing 9.5.
+
+Checkpoint 95 partially executes 9.5c/d/e: eight finite real-demo configurations,
+real software-driver context/deletion/late-owner checks and default-font parsing/
+baking/upload pass. Full aggregate results are 334 normal and 330 sandbox with no
+skips. Desktop visual/input/resize/F5 observations are delegated to the user in
+[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md); these rows remain open for their
+remaining acceptance. No whole-gate completion is inferred from the work-period end.
+
 - [x] **9.6** Preserve coherent local commits and their ordering/authorship. Use detailed Adds/Updates/Revises/Deletes/Fixes messages; deliver uniquely numbered incremental mailbox patches at meaningful chunks. At implementation completion, verify and deliver one cumulative `cheryl-engine.patch` from the preserved original base, without squashing or repeating earlier commits in later incremental patches. Do not push unless requested.
 - [ ] **9.7** Keep PR #9's description aligned with completed behavior and pending acceptance. Metadata updates are a separately requested action; the recommended branch/title are already in place.
 

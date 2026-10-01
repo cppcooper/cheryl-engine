@@ -64,6 +64,53 @@ an external 120-second timeout. Configurations ran serially to avoid shared test
 interference. The archive preserves the initial failing sandbox output/XML and both
 corrected full-suite outputs/XML; discovery was not substituted for execution.
 
+## Native execution: checkpoints 93–95
+
+Remote 92 is now `f8ab42f5cb4f10ae7c5379795054d879a0cf2a64`. Its exact tree and
+ordered patch metadata match saved local 92. Checkpoints 93–94 add the existing
+demo's `--max-updates=N` option and two opt-in aggregate native-context tests.
+The validated C++ revision is `4161ec04857f08b346114f1640a116feb6cbffbc` (94).
+
+A real TCP Xvfb session supplies an X11 display on Mesa 25.2.8 llvmpipe (LLVM 20.1.2),
+OpenGL core 4.5. This is a software driver, not physical-GPU acceptance. Unix sockets
+are rejected with EPERM in this workspace. The server and clients must run in the
+same execution session; separate commands could not connect. Xvfb/XKB/font packages
+were extracted into the existing workspace prefix, with an extracted xkbcomp helper
+linked at the server-required path. TCP sessions use a private authorization file
+and terminate after validation; authorization bytes are not part of the archive.
+
+Both complete Release builds pass. With `CHERYL_NATIVE_GL_TESTS=1` and the real
+DISPLAY, the full normal suite passes **334 tests**, including both native cases;
+the sandbox suite passes **330**. Neither run has failures, errors, disabled cases
+or skips. The new native file is excluded by its sandbox preprocessor guard and
+uses the existing aggregate target. Unrequested native cases explicitly skip in
+normal builds; requesting them with an unusable display does not count as a pass.
+
+Native observations: provider texture storage remains live after final foreign
+release until owner maintenance runs without drawing. Selecting another unshared
+context rejects image use/collection; renderer shutdown selects its own context,
+deletes retained texture storage, closes resource use and supports final foreign
+release after both windows/the engine are gone. `glIsTexture` and `glGetError`
+observe actual driver state.
+
+Eight finite real-demo runs each complete twelve updates and exit zero: both modes
+under variable stepping with finite input, variable stepping with unlimited input,
+fixed drop with 3 ms steps/capacity one, and fixed hybrid with 3 ms steps/prefix one/
+maximum two fixed updates. Real font parsing/baking/atlas upload, shader linking,
+packet preparation, drawing/presentation and normal cleanup execute. These runs
+exercise configurations without proving forced catch-up, input responsiveness,
+pixel appearance, presentation pacing, interactive resize or reload.
+
+Current manual observations are assigned to the user's desktop in
+[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md): both modes, camera/mouse/text
+focus, resize, successful/failed/recovered F5 reload and normal window close.
+Those results remain pending. Independent automated/source work can continue.
+Next automated work can cover real material/program reload and forced native
+failure paths while desktop checks supply hardware/input/visual evidence.
+The original remaining-acceptance section below describes the prior checkpoint;
+9.5c/d/e/f remain open for their outstanding acceptance. Rotated FFont, internal stb allocation
+failure and remaining OS restrictions remain separate. No push or PR write occurred.
+
 ## Remaining acceptance and next work period
 
 Task 9.5 stays open. Next establish a real GLFW/OpenGL execution surface and exercise

@@ -223,7 +223,27 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Task-9 build and aggregate execution: checkpoints 91–92
+### Real software-driver execution: checkpoints 93–95
+
+Remote now integrates 91–92 at `f8ab42f5cb4f10ae7c5379795054d879a0cf2a64` with the
+same exact tree and ordered author/date/messages as saved local 92.
+93 adds finite demo updates; 94 adds two opt-in native tests in the existing
+aggregate target; 95 records native results and a short desktop handoff.
+Both Release builds pass. Real Mesa llvmpipe OpenGL 4.5 runs all 334 normal tests,
+including foreign texture retirement/idle collection and context switching/shutdown/
+late-owner release; all 330 sandbox cases pass too, without skips. Eight finite
+demos exercise both modes under variable finite/unlimited and fixed drop/hybrid
+configurations. Software-driver evidence does not close visual/hardware/input or
+forced-overload acceptance. Desktop camera/mouse/text/resize/F5/close observations
+are assigned to the user; independent native reload/failure work can continue.
+
+New/pending patches are **93–95** from remote 92; next unused number is **96**.
+New-only and all-pending combined routes both start at that remote. The cumulative
+route preserves the fixed original base and full ordered history. All routes must
+replay exact trees and ordered metadata. Native logs/XML/commands are delivered
+with a validation archive. Task 9.5c–f and 9.7 remain open; no push or PR write.
+
+### Task-9 build and aggregate execution: checkpoints 91–92 (historical)
 
 The remote now contains all audit patches through 90 at
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`; its tree and ordered patch metadata

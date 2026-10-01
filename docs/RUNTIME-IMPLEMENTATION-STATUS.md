@@ -1,5 +1,12 @@
 # Runtime and framework implementation status
 
+Checkpoint 95 adds current native evidence: real Mesa llvmpipe context/lifetime
+checks and eight finite sequential/concurrent demo runs pass. Full normal/sandbox
+suites now pass 334/330 cases without skips under requested native execution.
+Hardware/input/visual/reload observations are assigned to the user's desktop;
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) and
+[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md) record scope and pending results.
+
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
 `refactor-runtime-render-resource-architecture`. Tasks 1–8 of the second-pass

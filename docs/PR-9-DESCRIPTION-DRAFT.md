@@ -29,3 +29,10 @@ Earlier build reports are historical. The completed-task source audit closes at 
 sources. Controlled runtime and Linux affinity scenarios have executed; real GPU/demo/font
 acceptance remains open. Current evidence and remaining gates are recorded in
 docs/ARCHITECTURE-VALIDATION.md.
+
+Native follow-up: Mesa 25.2.8 llvmpipe executes real texture retirement, selected-
+context restoration and retained-image release after engine/window destruction.
+The full native-enabled normal suite passes 334 cases; sandbox passes 330, with no
+skips. Eight finite real-demo configurations complete in both modes. These results
+cover the software driver and configured paths; desktop hardware/input/visual/
+resize/reload observations, forced overload and remaining font/OS failures stay open.
