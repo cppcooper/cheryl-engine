@@ -29,14 +29,22 @@ namespace CE::Assets {
      * metrics, so published text commands can share a font without changing it.
      */
     struct STBFont final : Font {
+    private:
+        std::array<float, font_character_count> advances_{};
+        float line_height_{};
+
+    public:
         explicit STBFont(STBFontData data);
         ~STBFont() override = default;
         [[nodiscard]] std::vector<GlyphPlacement2D> layout(
             std::string_view text,
             FontLayoutOptions options = FontLayoutOptions{}
         ) const override;
-        [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size,
-                                                   ResourceProvider& provider);
+        [[nodiscard]] static STBFontData load_font(
+            const std::filesystem::path& font_path,
+            int font_size,
+            ResourceProvider& provider
+        );
 
         [[nodiscard]] const Geometry2D& glyph_geometry() const { return *geometry; }
         [[nodiscard]] const Image& glyph_atlas() const { return *texture; }
@@ -67,9 +75,5 @@ namespace CE::Assets {
                 cursor_x += advances_[index];
             }
         }
-
-    private:
-        std::array<float, font_character_count> advances_{};
-        float line_height_{};
     };
 }

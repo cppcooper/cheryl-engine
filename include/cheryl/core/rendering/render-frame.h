@@ -32,6 +32,13 @@ namespace CE::RenderAPIs {
      * prevent writing or recycling while the renderer reads this frame.
      */
     class RenderFrame final {
+    private:
+        friend class RenderFrameWriter;
+        friend class RenderPassWriter;
+
+        std::vector<RenderPass> passes_;
+        std::size_t active_passes_ = 0;
+
     public:
         RenderFrame() = default;
         RenderFrame(const RenderFrame&) = delete;
@@ -50,19 +57,17 @@ namespace CE::RenderAPIs {
             }
             active_passes_ = 0;
         }
-
-    private:
-        friend class RenderFrameWriter;
-        friend class RenderPassWriter;
-
-        std::vector<RenderPass> passes_;
-        std::size_t active_passes_ = 0;
     };
 
     /** A short-lived handle to one pass. Its index stays valid if adding another pass
      * grows the frame's outer vector. Use it only while the frame is being prepared.
      */
     class RenderPassWriter final {
+    private:
+        friend class RenderFrameWriter;
+        RenderFrame& frame_;
+        std::size_t index_;
+
     public:
         void reserve_draws(std::size_t count) { frame_.passes_[index_].draws.reserve(count); }
 
@@ -95,19 +100,25 @@ namespace CE::RenderAPIs {
         }
 
     private:
-        friend class RenderFrameWriter;
-        RenderPassWriter(RenderFrame& frame, std::size_t index) : frame_(frame), index_(index) {}
-
-        RenderFrame& frame_;
-        std::size_t index_;
+        RenderPassWriter(
+            RenderFrame& frame,
+            std::size_t index
+        )
+        : frame_(frame), index_(index) {}
     };
 
     /** Writes into a free slot after update(). Camera matrices are copied once per
      * pass; draw packets are constructed in the slot's retained vector storage.
      */
     class RenderFrameWriter final {
+    private:
+        RenderFrame& frame_;
+
     public:
-        explicit RenderFrameWriter(RenderFrame& frame) : frame_(frame) {
+        explicit RenderFrameWriter(
+            RenderFrame& frame
+        )
+        : frame_(frame) {
             if (frame_.active_passes_ != 0)
                 throw Exceptions::failed_operation(CE_HERE, "Render frame must be recycled before writing again");
         }
@@ -131,8 +142,5 @@ namespace CE::RenderAPIs {
             ++frame_.active_passes_;
             return RenderPassWriter(frame_, index);
         }
-
-    private:
-        RenderFrame& frame_;
     };
 }

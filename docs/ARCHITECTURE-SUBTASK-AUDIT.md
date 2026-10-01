@@ -2,6 +2,10 @@
 
 1 October 2026. This audit starts at saved checkpoint 57
 (`68e6c7d9190d8653e17f653dc90e7e0a66bad5e6`), then incorporates A11 in 58.
+The source at that checkpoint matches user-pushed 57,
+`5e4adfdc94cec7590916282c876762ada4d0e123`; unapplied 58–59 were carried forward
+onto that remote history without changing their final tree. Checkpoints 60–61
+continue native upload and text-compatibility review.
 The user requested review of every completed task/subtask and its dependents,
 particularly batch-ending completion claims, before advancing task 9.
 
@@ -35,8 +39,8 @@ Inspected paths: Repository metadata, ledger, commit/patch history and declarati
 | Subtask | Result | Source evidence / remaining review |
 | --- | --- | --- |
 | 0.1 | Checked source | Active branch/instruction search and saved tree checked; no applicable AGENTS.md found. |
-| 0.2 | Checked source | Original e8c9788 base retained; latest confirmed pushed base is 54, with local 55–58 after it. |
-| 0.3 | Partial | identity verified; full format/declaration-order audit remains. RenderFrame writers and STBFont still place fields below methods. |
+| 0.2 | Checked source | Original e8c9788 base retained; remote 57 tree matched saved local 57; unapplied 58–59 preserved and carried onto that history. |
+| 0.3 | Partial | Identity verified; RenderFrame/writer and STBFont field order corrected in 61 and CODE-STYLE reconciled with the 140-column root config. Full formatting/declaration review remains; clang-format 23+ is unavailable. |
 | 0.4 | Checked source | Original/incremental bases, unique numbers and saved checkpoints checked; patch replay is a separate static check. |
 
 ### Task 1
@@ -121,7 +125,8 @@ Inspected paths: AssetMgr/AssetCacheContext, ResourceProvider teardown, native l
 | 6.3 | Checked source | Strong map/generation ownership and publish/replace/clear unlock order inspected, including A8 retained insertion candidate. |
 | 6.4 | Checked source | Independent maintenance in both idle loops and accepted-work shutdown inspected; partial renderer init is excluded. |
 | 6.5 | Checked source | 10ms platform wait cap includes full backlog/no first frame; blocking callback/presentation latency is explicitly outside the bound. |
-| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; allocation/native upload/context-loss evidence remains. |
+| 6.6 | Partial | track/adopt/discard, context guards, shutdown recovery/abandon and single program owner inspected; A12 corrects texture/buffer native error publication. Allocation, other category failures and real context loss remain open. |
+| 6.6a | Fix prepared | A12 checks generation/storage/mipmap/layout errors before returning a resource; 60 prepares synthetic error/retirement/alignment scenarios, without real driver execution. |
 
 ### Task 7
 
@@ -148,7 +153,7 @@ Inspected paths: DrawPacket/frame writers, CPU submission, Font/STBFont/FFont, o
 | 8.1 | Checked source | Packet resource/generation retention, copied parameters, overflow-safe ranges and authored order inspected. |
 | 8.2 | Checked source | CPU sprite/static/animated tile/Graphic range resolution and retained strip/triangle geometry inspected. |
 | 8.3 | Checked source | Const layout, glyph resources, model/scale placement and ASCII/tab/newline/fallback source fixtures inspected. |
-| 8.4 | Partial | typed FFont bank/immutable widths and old width/line behavior compared at 43; complete legacy compatibility review remains. |
+| 8.4 | Checked source | Original and 43 print/draw compared with layout/submission and 44 removal. Bank widths and line advance retained; one caller rotation/local newline, safe fallback, CR and space behavior explicitly recorded in ASSET-RENDER-BOUNDARIES. Rotated multiline source coverage prepared in 61, unexecuted. |
 | 8.5 | Checked source | Live sources searched for retired immediate drawing/printing and DrawInfo/iDraw/Draw2D; remaining draws are low-level contracts. |
 | 8.6 | Checked source | Asset-free frame/playback, indexed writers, retained vector capacity, latest complete slot and platform recycle paths inspected. |
 | 8.7 | Checked source | Per-pass insertion order and ordered playback inspected; sorting/merging remain explicit TODOs. |
@@ -173,17 +178,18 @@ both modes. This is source inspection, not proof of every producer interleaving.
 
 ## Remaining audit work before moving on
 
-1. Finish format/declaration-order review (0.3), correcting confirmed drift while
-   leaving unrelated code alone. Full formatting has not been verified.
+1. Finish format/declaration-order review (0.3). Confirmed frame/writer/STBFont field
+   drift is corrected; full formatting has not been verified.
 2. Finish concurrent producer/invalidation/payload-destructor combinations and
    prepared coverage review (2.5/2.6). A11's false/throw cases are unexecuted.
 3. Finish controlled native affinity query/apply/fallback and partial thread-start
    failure evidence (3.5/3.6), including dependent event/asset settlement.
 4. Complete resource category construction/failure evidence (6.2/6.6/7.2):
-   allocation/rehash, failed native storage/upload, current-context loss and
-   retained owners must remain distinct cases.
-5. Complete Font/FFont legacy-entry compatibility and combined producer/failure
-   fixture review (8.4/4.6), especially removals at batch-ending checkpoints.
+   allocation/rehash, program/category construction failures, current-context loss
+   and retained owners must remain distinct cases. A12 now prepares texture/buffer
+   upload/generation/mipmap error coverage; real native failure remains unexecuted.
+5. Finish combined producer/failure fixture review (4.6). FFont entry compatibility
+   is now recorded; actual rotated multiline rendering remains acceptance work.
 
 Old FFont file-read/validation TODOs predate its layout migration; the work order
 explicitly excludes new FFont loading/features. They are not silently counted as
@@ -192,4 +198,4 @@ fixed. Likewise source rollback inspection is not a controlled native fault test
 Build/type/link checks, aggregate regressions, real runtime/native acceptance and
 PR metadata remain open 9.5/9.7 gates. Those are additional gates, not substitutes
 for finishing this source review. Task 9 remains on hold until this audit is
-finished. See [A1–A11](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.
+finished. See [A1–A12](ARCHITECTURE-EARLIER-TASK-AUDIT.md) for finding history.

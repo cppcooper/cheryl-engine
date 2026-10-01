@@ -136,6 +136,51 @@ TEST(font_layout, legacy_fancy_selection_is_typed_and_does_not_mutate_another_la
     EXPECT_EQ(image->native_calls, 0);
 }
 
+TEST(asset_submission, legacy_font_widths_lines_and_safe_fallback_use_one_caller_transform) {
+    auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
+    auto image = std::make_shared<SubmissionImage>();
+    std::array<float, num_chars_ffont> widths;
+    widths.fill(128.0f);
+    widths['A' - 32] = 64.0f;
+    FFont font(FFontData{widths, geometry, image});
+    auto style = make_style(PrimitiveTopology::Triangles);
+    style.scale = 2.0f;
+    // A quarter-turn around (10, 20): local +x becomes world +y, and
+    // local -y becomes world +x. Every line uses this same caller transform.
+    style.model_matrix[0] = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f};
+    style.model_matrix[1] = glm::vec4{-1.0f, 0.0f, 0.0f, 0.0f};
+    style.model_matrix[3] = glm::vec4{10.0f, 20.0f, 0.0f, 1.0f};
+    const auto packets = resolve_text(font, "A A\nA\r\x01\xff", style, make_context());
+    ASSERT_EQ(packets.size(), 5u);
+    const auto first = std::get<glm::mat4>(packets[0].parameters.at("model"));
+    const auto after_space = std::get<glm::mat4>(packets[1].parameters.at("model"));
+    const auto new_line = std::get<glm::mat4>(packets[2].parameters.at("model"));
+    const auto control_fallback = std::get<glm::mat4>(packets[3].parameters.at("model"));
+    const auto high_byte_fallback = std::get<glm::mat4>(packets[4].parameters.at("model"));
+    EXPECT_FLOAT_EQ(first[3][0], 10.0f);
+    EXPECT_FLOAT_EQ(first[3][1], 20.0f);
+    EXPECT_FLOAT_EQ(after_space[3][0], 10.0f);
+    EXPECT_FLOAT_EQ(after_space[3][1], 23.0f);
+    EXPECT_FLOAT_EQ(new_line[3][0], 10.0f + 2.0f / 128.0f);
+    EXPECT_FLOAT_EQ(new_line[3][1], 20.0f);
+    EXPECT_FLOAT_EQ(control_fallback[3][1], 21.0f);
+    EXPECT_FLOAT_EQ(high_byte_fallback[3][1], 23.0f);
+    for (const auto& packet : packets) {
+        EXPECT_EQ(packet.vertex_count, 6u);
+        EXPECT_EQ(packet.geometry, geometry);
+        EXPECT_EQ(std::get<ImageBinding>(packet.parameters.at("image")).image, image);
+        EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("scale")), 2.0f);
+        const auto model = std::get<glm::mat4>(packet.parameters.at("model"));
+        EXPECT_FLOAT_EQ(model[0][0], 0.0f);
+        EXPECT_FLOAT_EQ(model[0][1], 1.0f);
+        EXPECT_FLOAT_EQ(model[1][0], -1.0f);
+    }
+    EXPECT_EQ(packets[3].first_vertex, static_cast<std::size_t>('?' - 32) * 6);
+    EXPECT_EQ(packets[4].first_vertex, packets[3].first_vertex);
+    EXPECT_EQ(geometry->native_calls, 0);
+    EXPECT_EQ(image->native_calls, 0);
+}
+
 TEST(asset_submission, static_tiles_and_animation_select_owned_strip_ranges_without_native_work) {
     using namespace std::chrono_literals;
     auto geometry = std::make_shared<SubmissionGeometry>(16, PrimitiveTopology::TriangleStrip);

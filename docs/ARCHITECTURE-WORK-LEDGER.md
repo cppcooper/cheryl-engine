@@ -223,7 +223,42 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Explicit subtask audit: checkpoints 58–59
+### Native construction and text audit: checkpoints 60–61
+
+The remote now includes 55–57, ending at
+`5e4adfdc94cec7590916282c876762ada4d0e123`. Its source tree matches saved
+local 57. Unapplied 58–59 were preserved and carried onto that remote history;
+their final tree remains unchanged. The original task base is still e8c9788.
+
+- 60 fixes A12: reported texture/buffer storage, generation, mipmap and layout
+  failures reject construction before publication. Existing untracked discard and
+  tracked retirement ownership remain distinct. Six recording-native scenarios
+  are prepared, including both legacy mesh uploads and atlas alignment.
+- 61 records the FFont compatibility decision and prepares rotated multiline,
+  width/space/control/high-byte submission coverage. It corrects confirmed frame
+  writer/STBFont field-order drift and the style document's obsolete width.
+
+The explicit audit remains open. Native policy/thread-start fault evidence,
+concurrent producer/invalidation combinations, remaining category/allocation
+failures, combined runtime failure review and full formatting remain unfinished.
+Build/regression/real-driver acceptance and PR publication remain separate gates.
+No configuration, compilation, test execution or assistant remote write occurred.
+
+Numbered delivery is **60–61**, after the already delivered 58–59. Next unused
+number is **62**. `cheryl-engine-followup.patch` contains 60–61 only.
+`cheryl-engine-continuation.patch` contains all unapplied **58–61**, from remote 57.
+The original-base `cheryl-engine.patch` repeats the full ordered history. Choose
+one matching route when applying; do not apply overlapping mailboxes together.
+The user is withholding pending patches until the audit is finished.
+
+Static checks inspect changed syntax trees (with GLAD's calling-convention macro
+elided), documentation links/requirement rows and whitespace. Mailbox replay must
+reproduce the exact final source tree and ordered author/date/messages. These are
+preparation checks, not C++ type/link or executed native validation.
+
+See [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md).
+
+### Explicit subtask audit: checkpoints 58–59 (historical)
 
 This audit continues saved local checkpoint 57,
 `68e6c7d9190d8653e17f653dc90e7e0a66bad5e6`. The latest confirmed pushed base
