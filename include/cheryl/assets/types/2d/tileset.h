@@ -29,15 +29,19 @@ namespace CE::Assets {
 
     /** A selected tile clip with mutable frame index; advancing elapsed time belongs to its caller. */
     struct TileAnimation final : Asset2D, Frame<TileAnimation> {
-        explicit TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry,
-                               const shptr<Image>& texture);
+    private:
+        TileAnimationDefinition definition_;
+
+    public:
+        explicit TileAnimation(
+            TileAnimationDefinition definition,
+            const shptr<Geometry2D>& geometry,
+            const shptr<Image>& texture
+        );
 
         [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
-
-    private:
-        TileAnimationDefinition definition_;
     };
 
     // TODO: Integrate a tile-map selection layer here: derive a Wang signature or bitmask from
@@ -47,6 +51,11 @@ namespace CE::Assets {
      * These queries expose metadata; they do not inspect a world or choose neighbors.
      */
     struct Tileset final : Asset2D {
+    private:
+        TilesetDefinition definition_;
+        std::unordered_map<CellIndex, std::string> animation_targets_;
+
+    public:
         explicit Tileset(TilesetData data);
 
         [[nodiscard]] Tile tile(std::size_t cell) const;
@@ -56,9 +65,5 @@ namespace CE::Assets {
         [[nodiscard]] CellIndex orientation(const std::string& name) const;
         [[nodiscard]] const AutotileDefinition& autotile(const std::string& name) const;
         [[nodiscard]] const TilesetDefinition& definition() const { return definition_; }
-
-    private:
-        TilesetDefinition definition_;
-        std::unordered_map<CellIndex, std::string> animation_targets_;
     };
 }

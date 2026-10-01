@@ -85,6 +85,11 @@ namespace {
 
     /** Holds mutable window state for a runtime test without a native window. */
     class MemoryWindow final : public CE::iWindow {
+        CE::FramebufferSize size_{320, 240};
+        CE::Enum::window_mode mode_ = CE::Enum::window_mode::NORMAL;
+        bool closed_ = false;
+        mutable bool cursor_hidden_ = false;
+
     public:
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {size_.width, size_.height}; }
         [[nodiscard]] CE::FramebufferSize framebuffer_size() const override { return size_; }
@@ -95,12 +100,6 @@ namespace {
         void hide_cursor(bool hide) const override { cursor_hidden_ = hide; }
         void request_close() { closed_ = true; }
         [[nodiscard]] bool cursor_hidden() const { return cursor_hidden_; }
-
-    private:
-        CE::FramebufferSize size_{320, 240};
-        CE::Enum::window_mode mode_ = CE::Enum::window_mode::NORMAL;
-        bool closed_ = false;
-        mutable bool cursor_hidden_ = false;
     };
 
     /** Creates and activates MemoryWindow through the display interface. */
@@ -108,6 +107,12 @@ namespace {
     public:
         std::function<void()> on_destroy;
 
+    private:
+        std::vector<CE::Monitor> monitors_{{1, 320, 240}};
+        std::unique_ptr<MemoryWindow> window_;
+        CE::iWindow* active_ = nullptr;
+
+    public:
         ~MemoryDisplay() override {
             if (on_destroy)
                 on_destroy();
@@ -129,11 +134,6 @@ namespace {
         void activate_window(CE::iWindow& window) override { active_ = &window; }
 
         [[nodiscard]] MemoryWindow& window() { return *window_; }
-
-    private:
-        std::vector<CE::Monitor> monitors_{{1, 320, 240}};
-        std::unique_ptr<MemoryWindow> window_;
-        CE::iWindow* active_ = nullptr;
     };
 
     /** Emits one button transition per poll and records its attached window. */
@@ -350,6 +350,12 @@ namespace {
     /** Records shader uses and camera matrices passed during drawing. */
     class MemoryShader final : public CE::Assets::Shader {
     public:
+        CE::Assets::ShaderDraw last_draw;
+        int raw_uniform_writes = 0;
+        int uses = 0;
+        glm::mat4 projection{0.0f};
+        glm::mat4 view{0.0f};
+
         void bind_pass(const CE::Assets::ShaderPass& pass) override {
             use();
             projection = pass.projection;
@@ -363,16 +369,24 @@ namespace {
         void set_uniform_value(const char*, unsigned int) override { ++raw_uniform_writes; }
         void set_uniform_value(const char*, bool) override { ++raw_uniform_writes; }
         void set_uniform_matrix(const char*, const glm::mat4&) override { ++raw_uniform_writes; }
-        CE::Assets::ShaderDraw last_draw;
-        int raw_uniform_writes = 0;
-        int uses = 0;
-        glm::mat4 projection{0.0f};
-        glm::mat4 view{0.0f};
     };
 
     /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
     class MemoryProvider final : public CE::Assets::ResourceProvider {
     public:
+        std::uint32_t uploaded_vertices = 0;
+        std::thread::id resource_thread;
+        int atlas_uploads = 0;
+        int linked_programs = 0;
+        int created_images = 0;
+        std::function<std::shared_ptr<CE::Assets::Image>()> on_load_image;
+        std::function<std::shared_ptr<CE::Assets::Geometry2D>(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology)>
+            on_upload_geometry;
+        CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
+        std::vector<CE::Vertex2D> uploaded_geometry;
+        std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
+        std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
+
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(const std::filesystem::path&) override {
             if (on_load_image)
                 return on_load_image();
@@ -414,19 +428,6 @@ namespace {
             ++linked_programs;
             return shader;
         }
-
-        std::uint32_t uploaded_vertices = 0;
-        std::thread::id resource_thread;
-        int atlas_uploads = 0;
-        int linked_programs = 0;
-        int created_images = 0;
-        std::function<std::shared_ptr<CE::Assets::Image>()> on_load_image;
-        std::function<std::shared_ptr<CE::Assets::Geometry2D>(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology)>
-            on_upload_geometry;
-        CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
-        std::vector<CE::Vertex2D> uploaded_geometry;
-        std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
-        std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
     };
 
     /** Records frame handoff while the test supplies its own display and input. */
@@ -490,7 +491,6 @@ namespace {
             camera_projection = projection;
             camera_view = view;
         }
-
     };
 
     class MemorySurface final : public CE::RenderAPIs::iPresentationSurface {
@@ -1832,11 +1832,13 @@ TEST(execution_shutdown, simulation_thread_start_failure_settles_worker_upload_a
     int simulation_callbacks = 0;
     int starts = 0;
     std::thread::id upload_thread;
-    CE::GFramework::RuntimeDetail::GameRuntimeAccess::set_simulation_thread_factory(runtime, [&](std::function<void()>) -> std::thread {
-        ++starts;
-        release_upload.set_value();
-        throw std::runtime_error("Controlled simulation thread-start failure");
-    });
+    CE::GFramework::RuntimeDetail::GameRuntimeAccess::set_simulation_thread_factory(
+        runtime, [&](std::function<void()>) -> std::thread {
+            ++starts;
+            release_upload.set_value();
+            throw std::runtime_error("Controlled simulation thread-start failure");
+        }
+    );
     game.on_init = [&] {
         auto owner = std::make_shared<int>(42);
         simulation_capture = owner;

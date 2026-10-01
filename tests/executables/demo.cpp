@@ -43,6 +43,27 @@ namespace DemoActions {
 } // namespace DemoActions
 
 class Game : public CE::GFramework::AbstractGame {
+    static constexpr CE::Input::FocusId text_box = 1;
+    CE::Input::CaptureLease events_;
+    CE::Input::CaptureLease text_capture_;
+    CE::Input::FocusLease focus_;
+    std::u32string text_;
+    std::size_t caret_ = 0;
+    CE::Engine::EngineContext& engine_;
+    CE::Camera2D camera_;
+    std::filesystem::path asset_root_;
+    bool load_all_assets_;
+    std::shared_ptr<CE::Assets::STBFont> font_;
+    std::shared_ptr<const CE::Assets::Material> font_shader_;
+    std::future<std::shared_ptr<const CE::Assets::Material>> pending_shader_;
+    std::string reload_error_;
+    glm::vec2 pan_{0.0f, 0.0f};
+    float mouse_x_ = 0.0f;
+    float mouse_y_ = 0.0f;
+    std::uint64_t clicks_ = 0;
+    double wheel_ = 0.0;
+    std::uint64_t gamepad_presses_ = 0;
+
 public:
     Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets)
     : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
@@ -253,27 +274,6 @@ private:
         }
         return preview;
     }
-
-    static constexpr CE::Input::FocusId text_box = 1;
-    CE::Input::CaptureLease events_;
-    CE::Input::CaptureLease text_capture_;
-    CE::Input::FocusLease focus_;
-    std::u32string text_;
-    std::size_t caret_ = 0;
-    CE::Engine::EngineContext& engine_;
-    CE::Camera2D camera_;
-    std::filesystem::path asset_root_;
-    bool load_all_assets_;
-    std::shared_ptr<CE::Assets::STBFont> font_;
-    std::shared_ptr<const CE::Assets::Material> font_shader_;
-    std::future<std::shared_ptr<const CE::Assets::Material>> pending_shader_;
-    std::string reload_error_;
-    glm::vec2 pan_{0.0f, 0.0f};
-    float mouse_x_ = 0.0f;
-    float mouse_y_ = 0.0f;
-    std::uint64_t clicks_ = 0;
-    double wheel_ = 0.0;
-    std::uint64_t gamepad_presses_ = 0;
 };
 
 using CE::GFramework::GameRuntime;
