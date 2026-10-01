@@ -13,6 +13,7 @@
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <core/resources/asset-management/asset-loader.h>
+#include <core/resources/asset-management/material-mgr.h>
 #include <core/resources/asset-management/shader-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
@@ -297,6 +298,20 @@ namespace {
         }
 
         [[nodiscard]] std::size_t bind_count() const { return binds_; }
+    };
+
+    class MemoryPipeline final : public CE::Assets::Pipeline {
+    public:
+        explicit MemoryPipeline(float intensity) : Pipeline(make_definition(intensity)) {}
+
+    private:
+        static CE::Assets::PipelineDefinition make_definition(float intensity) {
+            CE::Assets::PipelineDefinition result;
+            result.program_sources = {"memory.vert", "memory.frag"};
+            result.parameters = {{"intensity", CE::Assets::ParameterType::Float, true,
+                CE::Assets::ParameterSemantic::Custom, intensity}};
+            return result;
+        }
     };
 
     /** Records shader uses and camera matrices passed during drawing. */
@@ -1454,4 +1469,64 @@ TEST(asset_cache, strong_residency_survives_unused_handles_and_explicit_clear_pr
     retained.reset();
     EXPECT_TRUE(destroyed);
     EXPECT_TRUE(observed.expired());
+}
+
+TEST(material_cache, successful_recipe_reload_retains_old_generations_and_failure_preserves_the_current_one) {
+    auto& materials = CE::Assets::MaterialMgr::get();
+    auto provider = std::make_unique<MemoryProvider>();
+    MemoryProvider next_provider;
+    int builds = 0;
+    float intensity = 1.0f;
+    const CE::Assets::MaterialMgr::Builder build = [&](CE::Assets::ResourceProvider& owner) {
+        EXPECT_EQ(&owner, provider.get());
+        ++builds;
+        auto pipeline = std::make_shared<MemoryPipeline>(intensity);
+        return std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{pipeline, {}});
+    };
+    materials.load_material("effect", *provider, build);
+    const auto old = materials.get_asset("effect");
+    ASSERT_TRUE(old);
+    intensity = 2.0f;
+    materials.load_material("effect", *provider, build);
+    EXPECT_EQ(builds, 1);
+    materials.reload_material("effect", *provider, build);
+    const auto current = materials.get_asset("effect");
+    ASSERT_TRUE(current);
+    EXPECT_NE(old.get(), current.get());
+    EXPECT_FLOAT_EQ(std::get<float>(old->resolve({}, {}, {}, {}).at("intensity")), 1.0f);
+    EXPECT_FLOAT_EQ(std::get<float>(current->resolve({}, {}, {}, {}).at("intensity")), 2.0f);
+
+    EXPECT_THROW(materials.reload_material("effect", *provider,
+        [](CE::Assets::ResourceProvider&) -> std::shared_ptr<const CE::Assets::Material> {
+            throw std::runtime_error("candidate linking failed");
+        }), std::runtime_error);
+    EXPECT_THROW(materials.reload_material("effect", *provider,
+        [](CE::Assets::ResourceProvider&) { return std::shared_ptr<const CE::Assets::Material>{}; }), CE::Exceptions::failed_operation);
+    EXPECT_EQ(materials.get_asset("effect"), current);
+    EXPECT_THROW(materials.load_material("effect", next_provider, build), CE::Exceptions::failed_operation);
+    provider.reset();
+    EXPECT_EQ(materials.size(), 0u);
+    EXPECT_FLOAT_EQ(std::get<float>(old->resolve({}, {}, {}, {}).at("intensity")), 1.0f);
+    materials.load_material("new-effect", next_provider, [](CE::Assets::ResourceProvider&) {
+        return std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<MemoryPipeline>(3.0f), {}});
+    });
+    EXPECT_TRUE(CE::Assets::AssetCacheContext::is_bound_to(next_provider));
+}
+
+TEST(material_cache, recipe_reload_rejects_a_foreign_loading_thread_before_invoking_the_builder) {
+    auto& materials = CE::Assets::MaterialMgr::get();
+    MemoryProvider provider;
+    int builds = 0;
+    const CE::Assets::MaterialMgr::Builder build = [&](CE::Assets::ResourceProvider&) {
+        ++builds;
+        return std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<MemoryPipeline>(1.0f), {}});
+    };
+    materials.load_material("effect", provider, build);
+    const auto current = materials.get_asset("effect");
+    auto rejected = std::async(std::launch::async, [&] {
+        EXPECT_THROW(materials.reload_material("effect", provider, build), CE::Exceptions::failed_operation);
+    });
+    rejected.get();
+    EXPECT_EQ(builds, 1);
+    EXPECT_EQ(materials.get_asset("effect"), current);
 }

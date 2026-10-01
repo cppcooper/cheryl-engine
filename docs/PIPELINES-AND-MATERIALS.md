@@ -12,7 +12,8 @@ copying/slicing. Its backend subclass must retain the linked executable program;
 compiled stages remain transient. `Material` copies its recipe on construction.
 Definition/default access is read-only. Building another pipeline/material
 instance preserves the old logical generation while its readers retain it.
-This is the ownership foundation for reload; actual ShaderMgr/frame replacement
+MaterialMgr publishes complete immutable recipes, including their pipeline
+generation, through explicit application-supplied builders. Frame consumption
 has not yet migrated to these types.
 
 ## Parameters and ownership
@@ -72,9 +73,14 @@ validation checks complete primitives and bounded ranges before publication;
 native drawing additionally checks VAO/program domain identity and the live current
 context. Program/image native domains are checked as well.
 
-ShaderMgr still publishes retained Shader handles, and DrawStyle still stores one.
-Successful pipeline/material recipe replacement and retained old-frame generations
-must be wired into bootstrap/reload before 7.6 is complete. Task 8 must then resolve
+ShaderMgr still publishes legacy Shader handles, and DrawStyle still stores one.
+MaterialMgr::load_material retains an existing key; reload_material builds a full
+candidate outside cache locks, then replaces one recipe after success. Builders
+own their typed definitions/backend mappings and validate all dependent resources.
+A throw or null candidate retains the previous complete recipe; retained readers
+keep the old material/pipeline/image generation. Provider teardown clears recipes
+before other resource caches, with the same loading-owner/domain exclusion.
+Bootstrap and frame usage still need migration. Task 8 must then resolve
 asset/text commands into geometry/material packets outside the renderer.
 
 Start with typed C++ definitions and explicit bootstrap/build APIs. A future
