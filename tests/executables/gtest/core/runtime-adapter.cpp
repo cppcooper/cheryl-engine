@@ -196,6 +196,7 @@ namespace {
         std::function<void()> on_init;
         std::function<void()> on_deinit;
         std::function<void()> on_quiesce;
+        std::function<void(CE::RenderAPIs::RenderFrameWriter&)> on_prepare;
         int initializations = 0;
         int shutdowns = 0;
         int updates = 0;
@@ -256,6 +257,10 @@ namespace {
 
         void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
             ++draws;
+            if (on_prepare) {
+                on_prepare(frame);
+                return;
+            }
             glm::mat4 view{1.0f};
             view[3][0] = pressed.load() ? 1.0f : 0.0f;
             (void)frame.begin_pass(glm::mat4{1.0f}, view);
@@ -407,6 +412,7 @@ namespace {
     class MemoryRenderer final : public CE::RenderAPIs::iRenderer {
     public:
         std::function<void()> on_render;
+        std::function<void(const CE::RenderAPIs::RenderFrame&)> on_frame;
         std::function<void()> on_maintenance;
         int maintenance_calls = 0;
         std::thread::id maintenance_thread;
@@ -444,6 +450,8 @@ namespace {
             last_pass_count = frame.passes().size();
             last_marked_pressed = !frame.passes().empty() && frame.passes().front().view[3][0] == 1.0f;
             render_thread = std::this_thread::get_id();
+            if (on_frame)
+                on_frame(frame);
             if (on_render)
                 on_render();
         }
@@ -1548,4 +1556,115 @@ TEST(material_cache, recipe_reload_rejects_a_foreign_loading_thread_before_invok
     rejected.get();
     EXPECT_EQ(builds, 1);
     EXPECT_EQ(materials.get_asset("effect"), current);
+}
+
+TEST(frame_lifetime, reload_and_preparation_or_render_failure_release_packet_resources_before_game_cleanup) {
+    enum class Failure { None, Preparation, Rendering };
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        for (const auto failure : {Failure::None, Failure::Preparation, Failure::Rendering}) {
+            SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+            SCOPED_TRACE(failure == Failure::Preparation ? "preparation failure"
+                : failure == Failure::Rendering ? "render failure" : "successful reload");
+            MemoryInput input;
+            MemoryRenderer* renderer = nullptr;
+            MemorySurface* surface = nullptr;
+            auto engine = make_test_context(input, renderer, surface);
+            OneTickGame game(input);
+            CE::GFramework::GameRuntime runtime(*engine, game, mode);
+            auto& materials = CE::Assets::MaterialMgr::get();
+            const auto platform = std::this_thread::get_id();
+            std::thread::id image_release_thread;
+            std::shared_ptr<CE::Assets::Geometry2D> simulation_geometry;
+            std::shared_ptr<const CE::Assets::Material> simulation_material;
+            std::weak_ptr<const CE::Assets::Geometry2D> retained_geometry;
+            std::weak_ptr<const CE::Assets::Material> retained_material;
+            std::weak_ptr<const CE::Assets::Pipeline> retained_pipeline;
+            std::weak_ptr<const CE::Assets::Image> retained_image;
+            std::promise<void> rendered;
+            auto first_frame = rendered.get_future().share();
+
+            game.on_init = [&] {
+                auto geometry = std::make_shared<MemoryGeometry>();
+                geometry->uploaded_vertices = 6;
+                simulation_geometry = geometry;
+                retained_geometry = geometry;
+                auto image = std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* resource) {
+                    image_release_thread = std::this_thread::get_id();
+                    delete resource;
+                });
+                retained_image = image;
+                materials.load_material("frame-retention", engine->resources(), [image](CE::Assets::ResourceProvider&) {
+                    return std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{
+                        std::make_shared<MemoryPipeline>(1.0f, CE::Assets::PrimitiveTopology::Triangles, true),
+                        {{"image", CE::Assets::ImageBinding{image, 1}}}});
+                });
+                simulation_material = materials.get_asset("frame-retention");
+                retained_material = simulation_material;
+                retained_pipeline = simulation_material->definition().pipeline;
+            };
+            game.on_tick = [&] {
+                // Hold a later concurrent tick so it cannot supersede the first
+                // complete packet frame before the recording renderer inspects it.
+                if (game.updates > 1)
+                    first_frame.wait();
+            };
+            game.on_prepare = [&](CE::RenderAPIs::RenderFrameWriter& writer) {
+                auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+                CE::RenderAPIs::DrawStyle2D style;
+                style.material = std::move(simulation_material);
+                pass.add(CE::RenderAPIs::resolve_draw_packet(std::move(simulation_geometry), 0, 6,
+                    style, pass.semantics(), pass.parameters(), pass.constraints()));
+                // A concurrent slot remains Writing here; cleanup still owns
+                // its partially prepared packet and must recycle it on platform.
+                if (failure == Failure::Preparation)
+                    throw std::runtime_error("frame preparation failed");
+            };
+            renderer->on_frame = [&](const CE::RenderAPIs::RenderFrame& frame) {
+                runtime.stop();
+                rendered.set_value(); // Always release a held tick before assertions/failure.
+                ASSERT_EQ(frame.passes().size(), 1u);
+                ASSERT_EQ(frame.passes()[0].draws.size(), 1u);
+                const auto& packet = frame.passes()[0].draws[0];
+                EXPECT_EQ(packet.material, retained_material.lock());
+                EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("intensity")), 1.0f);
+                materials.reload_material("frame-retention", engine->resources(), [](CE::Assets::ResourceProvider&) {
+                    return std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{
+                        std::make_shared<MemoryPipeline>(2.0f), {}});
+                });
+                EXPECT_NE(packet.material, materials.get_asset("frame-retention"));
+                EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("intensity")), 1.0f);
+                materials.clear_assets();
+                EXPECT_FALSE(retained_material.expired());
+                EXPECT_FALSE(retained_pipeline.expired());
+                EXPECT_FALSE(retained_geometry.expired());
+                EXPECT_FALSE(retained_image.expired());
+                if (failure == Failure::Rendering)
+                    throw std::runtime_error("frame render failed");
+            };
+            game.on_quiesce = [&] { materials.clear_assets(); };
+            game.on_deinit = [&] {
+                EXPECT_TRUE(retained_material.expired());
+                EXPECT_TRUE(retained_pipeline.expired());
+                EXPECT_TRUE(retained_geometry.expired());
+                EXPECT_TRUE(retained_image.expired());
+                EXPECT_EQ(image_release_thread, platform);
+                if (failure != Failure::None)
+                    throw std::runtime_error("later game cleanup failed");
+            };
+            if (failure == Failure::None)
+                EXPECT_NO_THROW(runtime.run());
+            else {
+                try {
+                    runtime.run();
+                    FAIL() << "The selected frame stage must fail";
+                } catch (const std::runtime_error& error) {
+                    EXPECT_EQ(std::string_view(error.what()), failure == Failure::Preparation
+                        ? "frame preparation failed" : "frame render failed");
+                }
+            }
+            EXPECT_EQ(game.shutdowns, 1);
+            EXPECT_EQ(renderer->shutdowns, 1);
+            EXPECT_EQ(image_release_thread, platform);
+        }
+    }
 }

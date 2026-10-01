@@ -36,6 +36,18 @@ are preparation checks. They do not establish C++ type/link correctness, thread
 correctness, GPU behavior, or platform acceptance. Any executed validation should
 record its configurations, commands, and observed results here.
 
+## Frame-generation convergence sources
+
+Checkpoint 49 prepares both runtime modes with a real resolved packet in the
+recording adapter. Successful recipe replacement leaves the published packet's
+old parameters/material/pipeline/images intact; explicit cache clear releases only
+its own owners. A preparation throw after packet insertion leaves a partial
+Writing slot for platform cleanup. A render throw follows the same recycling
+boundary. Each scenario checks geometry/material/pipeline/image release before
+game deinit, image final release on the platform thread, and original-error
+preservation through a later cleanup failure. A promise prevents a later concurrent
+tick from superseding the frame under inspection. These sources are unexecuted.
+
 ## Compilation follow-up
 
 Based on pushed commit `84df4f39b26f8d21ccabee7e722ac1585ff4338e`, all default
