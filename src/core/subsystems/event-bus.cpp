@@ -102,13 +102,15 @@ namespace CE::SubSystems {
         std::shared_ptr<DeliveryTicket> ticket;
         try {
             // Preparation belongs to queued delivery's error contract as well.
-            // Keep the ticket local so partial capture construction cannot report
-            // cancellation before the original failure has been recorded.
+            // Keep the entire ticket/payload local through posting. A target may
+            // destroy rejected work while the posting lock is still held; neither
+            // its error sink nor a payload destructor may reenter under that lock.
             ticket = std::make_shared<DeliveryTicket>(listener);
-            Work work([ticket, owned_payload = std::any(payload)] {
+            ticket->payload = payload;
+            Work work([ticket] {
                 ticket->entered.store(true, std::memory_order_release);
                 try {
-                    invoke(ticket->listener, owned_payload);
+                    invoke(ticket->listener, ticket->payload);
                 }
                 catch (...) {
                     report_error(ticket->listener, std::current_exception());
@@ -134,8 +136,8 @@ namespace CE::SubSystems {
                     report_error(listener, std::current_exception());
             }
         }
-        // This local ticket keeps rejection/destruction reporting outside the
-        // posting lock, allowing an error sink to dispatch or unregister safely.
+        // The local owner releases rejection reporting and the copied payload
+        // outside posting, including payload destructors which dispatch again.
     }
 
     void EventBus::invoke(const std::shared_ptr<Listener>& listener, const std::any& payload) {

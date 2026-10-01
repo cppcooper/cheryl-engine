@@ -98,6 +98,7 @@ These are the proposed concrete choices within the agreed architecture:
 **Complete when:** a persistent listener can be removed safely, queued work cannot start after invalidation, in-flight target destruction has an explicit solution, and ordering/error guarantees are stated precisely.
 
 - [x] **2.3a / 2.4a** Serialize invalidation with registry removal for concurrent close and unregister. Checkpoint 35 closes the detached-entry publication gap while releasing callback captures outside locks. Audit and execution limits are recorded separately.
+- [x] **2.6a** Retain the copied queued payload through posting, together with its error ticket. Checkpoint 58 prevents target rejection from running a reentrant payload destructor under the posting lock; returning-false and throwing-target sources are prepared, unexecuted. Depends on 2.5/2.6 and applies to the task-4 delivery adapters.
 
 ## 3. Build WorkerPool and WorkerGroup
 

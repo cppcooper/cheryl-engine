@@ -136,6 +136,23 @@ are uncompiled/unexecuted, model callable loss without an OS adapter, and do not
 force every old intermediate producer interleaving. The finding rests on source
 ownership/interleaving review; native policy and startup failure acceptance stay open.
 
+### A11: rejected queued payload destruction could reenter under the posting lock
+
+The local ticket kept cancellation reporting outside the listener's posting lock,
+but the deferred callable owned its copied payload separately. A target returning
+false or throwing could destroy that callable before the offer returned, releasing
+the payload while the bus still held posting. A copied payload destructor or final
+deleter which dispatched to the same listener would try to reacquire that mutex.
+The A5/A7/A10 reporting fixes did not protect this separate capture owner.
+
+Checkpoint 58 puts the payload inside the ticket. Its producer-side local owner
+now pins both reporting and payload destruction through the posting scope. Copy
+preparation still occurs before posting and inside the original-error boundary.
+The prepared scenario rejects once by returning false or throwing, redispatches
+from only the copied payload's destructor, then explicitly drains the accepted
+replacement. It checks one original failure, one copy release, and recovery.
+This is a source ownership/reentry finding; the scenario is not compiled or run.
+
 ## Coverage at this checkpoint
 
 The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,

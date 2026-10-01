@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <functional>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -19,6 +20,18 @@ namespace {
     struct CloseBusOnExit {
         CE::SubSystems::EventBus& bus;
         ~CloseBusOnExit() { bus.close(); }
+    };
+
+    struct RedispatchOnCopiedPayloadRelease {
+        std::function<void()>& release;
+        bool copied = false;
+
+        explicit RedispatchOnCopiedPayloadRelease(std::function<void()>& callback) : release(callback) {}
+        RedispatchOnCopiedPayloadRelease(const RedispatchOnCopiedPayloadRelease& source) : release(source.release), copied(true) {}
+        ~RedispatchOnCopiedPayloadRelease() {
+            if (copied)
+                release();
+        }
     };
 }
 
@@ -342,6 +355,49 @@ TEST(event_bus, a_throwing_delivery_target_reports_its_original_error_and_can_be
     target.drain();
     EXPECT_EQ(calls, 1);
     EXPECT_EQ(failures, 1);
+}
+
+TEST(event_bus, rejected_payload_release_can_redispatch_to_the_same_listener_after_returning_false_or_throwing) {
+    for (const bool throwing : {false, true}) {
+        CE::SubSystems::EventBus bus;
+        QueuedDelivery target;
+        int offers = 0;
+        int failures = 0;
+        int releases = 0;
+        std::vector<int> received;
+        std::function<void()> release = [&] {
+            ++releases;
+            bus.dispatch("tick", 2);
+        };
+        CloseBusOnExit cleanup{bus};
+        bus.register_listener("tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); },
+            [&](CE::SubSystems::EventBus::Work work) {
+                if (++offers == 1) {
+                    if (throwing)
+                        throw CE::Exceptions::failed_operation(CE_HERE, "The target rejected its first payload");
+                    return false; // Destroys this target's work before returning to the bus.
+                }
+                return target.target()(std::move(work));
+            }, [&](std::exception_ptr error) {
+                ++failures;
+                if (throwing)
+                    EXPECT_THROW(std::rethrow_exception(error), CE::Exceptions::failed_operation);
+                else
+                    EXPECT_THROW(std::rethrow_exception(error), std::future_error);
+            });
+
+        // Only the bus's copy redispatches on release; the producer's original
+        // stays unarmed. This exercises payload destruction, not sink reentry.
+        const std::any payload(std::in_place_type<RedispatchOnCopiedPayloadRelease>, release);
+        bus.dispatch("tick", payload);
+        EXPECT_EQ(releases, 1);
+        EXPECT_EQ(failures, 1);
+        EXPECT_EQ(offers, 2);
+        EXPECT_TRUE(received.empty());
+        target.drain();
+        EXPECT_EQ(received, (std::vector<int>{2}));
+        EXPECT_EQ(failures, 1);
+    }
 }
 
 TEST(event_bus, a_worker_delivery_stream_preserves_callback_completion_order_on_a_parallel_pool) {

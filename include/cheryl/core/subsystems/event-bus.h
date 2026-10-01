@@ -44,6 +44,7 @@ namespace CE::SubSystems {
         };
         struct DeliveryTicket {
             std::shared_ptr<Listener> listener;
+            std::any payload;
             std::exception_ptr failure;
             std::atomic<bool> entered{false};
 

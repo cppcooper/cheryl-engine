@@ -62,6 +62,12 @@ also escape from dispatch. Immediate failures still propagate to the caller. Sin
 must not throw and must remain valid through pending-task destruction; a throwing
 sink terminates rather than disappearing in a discarded target future.
 
+The local delivery ticket owns the copied payload as well as rejection reporting.
+If a target destroys rejected work during its offer, final payload destruction
+waits until the listener's posting lock has been released. Payload destructors,
+including final shared-owner deleters, may therefore dispatch again without
+reentering that lock. Payload-copy failure still reports the original exception.
+
 The completion barrier protects the listener callback's borrowed target. An error
 sink is independent: prefer an owned logging/reporting handle, not the same raw
 `this`. Unregister can race a delivery already being offered; that task can still
