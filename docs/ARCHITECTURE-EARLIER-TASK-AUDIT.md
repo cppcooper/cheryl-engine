@@ -1,7 +1,7 @@
 # Earlier-task audit checkpoint
 
-1 October 2026. This is a partial review of tasks 0–6 against the second-pass work
-order, starting from the user-pushed `8f796148e64d3dde6faf29b9333893133eb9cceb`.
+1 October 2026. This is a partial review of tasks 0–6 and their integration with
+tasks 7–8 against the second-pass work order, starting from the user-pushed `8f796148e64d3dde6faf29b9333893133eb9cceb`.
 Earlier completion labels describe implemented source scope. They do not establish
 that the implementation is correct, that every path was reviewed, or that the
 acceptance criteria passed. The broader audit remains open alongside implementation, as subsequently requested.
@@ -114,26 +114,29 @@ No real OpenGL execution has occurred.
 
 ## Coverage at this checkpoint
 
-| Task | Paths reviewed in this pass | Assessment and remaining review |
-| --- | --- | --- |
-| 0: baseline | Pushed/local tree reconciliation, original base, identity, patch numbering, aggregate regression discovery. | Remote and previous local checkpoint trees match. Original base retained; patches 35–38 continue from the pushed head. |
-| 1: dispatch | Platform/simulation queue state, saved endpoints, detached drain and cancellation; both runtime update boundaries. | No new defect found in these paths. Recheck owner-bound capture release and producer/closure interactions during the full convergence review. |
-| 2: events | Registration ownership, invocation/removal/wait lock order, concurrent close, cancellation tickets, posting serialization, worker stream. | A1/A5 fixed in source. Nested concurrent dispatch, and target rejection/cancellation combinations still need focused review and executed acceptance. |
-| 3: workers | Job ownership/accounting, weighted eligibility selection, caps, close/drain/join, self-wait rejection, affinity readback/fallback. | A3 prepared. Dynamic restriction changes, native failure paths, startup rollback, and overlapping weighted affinity workloads are not comprehensively validated. |
-| 4: integration | Context-owned/injected groups, factory forwarding, documented preparation/upload handoff, both shutdown paths and platform pumping. | No new defect found in these paths. Quiesce runs after simulation joins and must not wait on work needing platform service. Reentrant producer/failure combinations remain open. |
-| 5: timing | Scheduler arithmetic/recovery, simulation versus observation time, input consumption, frame slots/publication, polling deadlines. | A2 fixed. Reviewed bounded batch and full-backlog ordering; runtime clock, expensive callbacks, and presentation behavior still need acceptance. |
-| 6: residency | Strong cache publication/clear/rebind, provider release, move-only lifetime retirement, native creation guards, idle/shutdown maintenance, resource ownership declarations. | No new deletion defect found in these paths. Full composite-construction failure review, retained resources across context loss, and real GPU behavior remain open. Checkpoints 40–44 implement pipeline/frame migration; native acceptance stays open. |
+The 46–51 continuation starts from pushed `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`,
+which matches the previous local 39–45 tree. Source review spans both runtime modes,
+dispatcher queue/capture ownership, event lifecycle and lock order, worker scheduling
+and native policy, scheduler/input arithmetic, cache publication, native construction
+and binding, material resolution, CPU submission, and frame retention/recycling.
+A7–A9 are source fixes found by this review. No additional handoff defect was found
+in the inspected frame state transitions; that is a limited review result.
+
+Checkpoint 49 adds coordinated frame/reload/failure cleanup sources in both modes.
+Checkpoint 50 adds required CPU-mask revalidation after a job changes its own mask.
+The detailed path/evidence/remaining-acceptance map is in
+[ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md).
 
 ## Validation and continuation
 
-All six changed C++ files receive syntax-tree inspection, and the continuation
-receives whitespace and combined/incremental/original-base mailbox replay checks.
-These checks do not establish C++ type correctness, linking, native execution, or
-race freedom. No configuration, compilation, regression execution, real-context
-acceptance, or remote write occurred in this batch.
+Changed C++ files receive syntax-tree inspection; whitespace, API/include, and
+ownership/lock review accompany the changes. Combined continuation, numbered
+increments, and original-base mailbox replay check exact source trees and
+ordered author/date/messages before delivery. These checks do not establish type
+correctness, linking, native execution, or race freedom. No configuration, build,
+regression execution, real-context acceptance, or assistant remote write occurs.
 
-Continue the task-2 failure/lifecycle audit first, then worker native/startup failure
-and execution shutdown combinations, followed by the remaining resource failure
-paths. Review exact fixtures and implementation together. Keep tasks 0–6 source
-scope recorded, but leave audit sign-off and all executed acceptance open. Continue selective review alongside task-9 convergence; do not infer completeness
-from batch duration.
+Keep the partial audit open. Controlled native affinity/thread-start failure,
+allocation/rehash failure, the old pump-submission window, context loss, overlapping
+affinity workloads, and cross-task producer/failure combinations remain acceptance
+or coverage gaps. Do not infer exhaustive review or correctness from batch duration.

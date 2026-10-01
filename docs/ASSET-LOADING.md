@@ -64,8 +64,10 @@ retrieves an already-initialized singleton.
 
 The generic loader loads images, sprites, and tilesets. The application explicitly
 chooses system fonts and shader recipes. The demo always selects its font and
-`shader2d` program, including with `--full-assets`; F5 queues a program reload.
-Fonts and shader recipes remain outside manifest 1.0.
+`shader2d` material recipe, including with `--full-assets`; F5 queues material
+replacement built from the shader recipe. Failed replacement keeps the previous
+generation, and published packets retain their selected generation. Fonts and
+shader/material recipes remain outside manifest 1.0.
 
 `ResourceProvider::create_image` accepts decoded RGBA pixels.
 `upload_geometry(span<const Vertex2D>, topology)` copies the transient view before

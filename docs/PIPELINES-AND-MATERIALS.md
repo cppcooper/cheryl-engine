@@ -136,7 +136,7 @@ straight alpha uses source-alpha/one-minus-source-alpha RGB with one/one-minus-s
 alpha; premultiplied alpha uses one/one-minus-source-alpha; additive uses source-alpha/one
 RGB and one/one alpha. All use additive blend equations.
 
-Six prepared recording-GLAD scenarios cover a native two-image effect, optional
+Prepared recording-GLAD scenarios cover a native two-image effect, optional
 uniform reset after another draw, inactive optional uniforms without sprite roles,
 reflection/type/storage failures, invalid attributes/unlinked programs, and sampler
 domain/unit failures before any bind. These sources use synthetic IDs and restore

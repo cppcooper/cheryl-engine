@@ -173,6 +173,19 @@ see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
   injection alone leaves the normal application bootstrap unable to select capacity.
   Added GlfwOpenGLConfig::execution and forwarded it for owned/borrowed input. Complete.
 
+- D0: user-pushed checkpoints 39–45 are `7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`.
+  Their tree matches local `e0c6bfbb34aed5a3cdfdf6360471cee0786aa39c`.
+  That local series remains on its checkpoint branch; continuation starts at 46.
+- D2 / audit A7: a worker stream advertised acceptance before fallible initial pump
+  submission completed. Serialize submission/publication and release rejected
+  captures outside the stream lock. Fixed in 46; native fault execution stays open.
+- D6 / audit A8: fallible cache insertion could destroy its last moved candidate
+  owner while holding the write lock. Keep the local strong owner until unlocking.
+  Fixed in 47; duplicate/hash-rejection sources and ownership review are prepared.
+- D6 / audit A9: static texture unbinding bypassed owner/context guards and used an
+  inherited active unit. Use guarded instance unbind(unit). Fixed in 48 with
+  recording sources; no real-context acceptance is claimed.
+
 ## Patch protocol
 
 Generate a new numbered mailbox patch at every coherent checkpoint, using the
@@ -201,43 +214,32 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-This 40-minute continuation starts at the user-pushed checkpoint
-`3990e5030663f96d7f00ed341e6a7a0bf91dcad6`, whose tree matches the earlier local
-35–38 audit delivery. The original task base remains unchanged. The user authorized
-continued implementation with selective review; the broader task-0–6 audit stays open.
+This 40-minute continuation starts at user-pushed
+`7f042e9d91e28a9addb8d66284e9cdb3ff6938fd`. Its tree matches saved local 39–45.
+The original task base remains unchanged; the partial audit remains open.
 
-- 39 fixes queued payload/ticket preparation failures: report the original exception
-  once through the asynchronous sink, with active-state checks and unlocked callbacks.
-- 40 adds common geometry/range/pass validation and complete native fixed state;
-  depth clears reset their write mask. Recording sources cover adjacent state and
-  invalid requests before native mutation.
-- 41 adds strongly retained immutable material recipe publication and reload;
-  failed/null builders preserve prior generations, with provider/loading-owner guards.
-- 42 adds resolved draw packets, CPU asset submission, retained font handles, and
-  const glyph layout, including typed FFont bank selection.
-- 43 migrates frame publication/playback and demo material bootstrap/reload. Packet
-  groups validate before insertion; recycling releases packet/pass handles and keeps
-  storage capacity. Failed demo reload retains its material and exposes the error.
-- 44 retires immediate asset drawing, shared FFont print state, and formatting casts;
-  common semantic and static/animated tile submission regression sources replace them.
-- 45 converges documentation and records this checkpoint's preparation limits.
+- 46 fixes worker event pump publication and closure ordering (A7).
+- 47 preserves cache candidate ownership through fallible publication (A8).
+- 48 guards texture unbinding and selects its explicit unit (A9).
+- 49 prepares retained frame/reload and preparation/render failure cleanup in both modes.
+- 50 prepares required CPU-mask revalidation after a previous job changes native state.
+- 51 updates source-convergence evidence, acceptance gates, and a local PR description draft.
 
-Numbered patches **39–45** continue from the pushed base above; the next unused
-filename is **cheryl-engine-46.patch**. Apply `cheryl-engine-continuation.patch` to that
-pushed base, or apply 39–45 individually in order. `cheryl-engine.patch` is cumulative
-from the fixed original base and repeats earlier commits. Use only one application
-route. Current commit ordering/authorship is retained without squashing.
+Numbered patches **46–51** continue from the pushed base; the next unused filename
+is **cheryl-engine-52.patch**. Apply `cheryl-engine-continuation.patch` there, or apply
+46–51 individually in order. `cheryl-engine.patch` starts at the fixed original base
+and repeats earlier commits. Use one application route. Commit order/authorship
+remains intact.
 
-Next work is task 9 convergence: inspect startup/update/shutdown across the migrated
-execution/rendering paths, review remaining event/worker/native-construction failure
-combinations, and prepare missing acceptance scenarios. The partial earlier audit
-and all executed acceptance remain open. Source scope for tasks 7–8 is implemented;
-that does not establish type/link correctness, runtime behavior, or audit sign-off.
+Tasks 1–8 and task-9 source preparation are implemented. Compilation, aggregate
+regression execution, real sequential/concurrent rendering/affinity/reload/retirement,
+and shutdown/failure acceptance remain open under 9.5. PR metadata publication
+remains a separately requested action under 9.7; a concrete local draft is ready.
+The partial audit and controlled failure-coverage gaps remain explicit in
+[ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md).
 
-Changed C++ files undergo syntax-tree inspection (normalizing GLAD's calling-convention
-macro in its recording fixture), plus whitespace/include/API/ownership review.
-Combined continuation, ordered increments, and original-base mailbox replay must
-reproduce the exact source tree and author/date/message ordering before delivery.
-No configuration, compilation, regression execution, real-context acceptance, or
-assistant remote write occurs in this continuation. Unsupported affinity/topology
-capabilities and the remaining native/shutdown acceptance gates stay explicit.
+Changed C++ syntax trees and whitespace are checked alongside include/API/ownership
+review; formatting follows the repository style manually. All three mailbox replay
+routes must reproduce the exact tree and ordered author/date/messages before
+final delivery. No configuration, compilation, tests, native acceptance, or assistant
+remote write occurs in this continuation.

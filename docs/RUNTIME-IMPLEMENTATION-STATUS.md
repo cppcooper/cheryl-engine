@@ -165,6 +165,8 @@ with a 10 ms wait bound; native failure cleanup and linked-program adoption have
 owner/current-context and single-ownership guards. Recording regression sources
 remain uncompiled/unexecuted. See [RESOURCE-RESIDENCY.md](RESOURCE-RESIDENCY.md).
 
-Continue with task 7 (pipeline/material contracts), then task 8 (resolved render
-packets). The numbered work order and discoveries are retained in
-[ARCHITECTURE-WORK-LEDGER.md](ARCHITECTURE-WORK-LEDGER.md).
+Tasks 7–8 are implemented in source: explicit pipeline/material contracts, retained
+resolved packets, CPU asset/text submission, and low-level renderer playback.
+Task 9 source convergence and its remaining acceptance actions are recorded in
+[ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md). The numbered
+work order and discoveries remain in [ARCHITECTURE-WORK-LEDGER.md](ARCHITECTURE-WORK-LEDGER.md).

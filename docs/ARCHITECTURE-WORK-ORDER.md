@@ -227,13 +227,18 @@ FFont loading features or Unicode shaping were added. Ordering remains authored.
 
 ## 9. Converge documentation and validation
 
-- [ ] **9.1** Update runtime/frame, input timing, asset/render, asset-loading, and resource-lifetime documents as each task lands. Add compact event-delivery and worker-policy documents with concrete registration, affinity-group, shutdown, and recovery examples.
-- [ ] **9.2** Add meaningful regression sources alongside implementation: pending/in-flight unsubscribe, ordered worker events, pool/group shutdown and limits, timing recovery/input clocks, cache retention/idle retirement, pipeline parameters/state, and packet/text ownership.
-- [ ] **9.3** Use controlled clocks, latches, and recording adapters; avoid sleeps as race proofs. Explain scenario/setup/action/result in human-readable tests. Integrate into the existing aggregate target rather than proliferating executables.
-- [ ] **9.4** Perform permitted static checks: formatting, whitespace, header dependencies, ownership/lock review, API/implementation correspondence, and documentation consistency. No compilation or test execution is authorized by this planning request.
+- [x] **9.1** Update runtime/frame, input timing, asset/render, asset-loading, and resource-lifetime documents as each task lands. Add compact event-delivery and worker-policy documents with concrete registration, affinity-group, shutdown, and recovery examples.
+- [x] **9.2** Add meaningful regression sources alongside implementation: pending/in-flight unsubscribe, ordered worker events, pool/group shutdown and limits, timing recovery/input clocks, cache retention/idle retirement, pipeline parameters/state, and packet/text ownership.
+- [x] **9.3** Use controlled clocks, latches, and recording adapters; avoid sleeps as race proofs. Explain scenario/setup/action/result in human-readable tests. Integrate into the existing aggregate target rather than proliferating executables.
+- [x] **9.4** Perform permitted static checks: formatting, whitespace, header dependencies, ownership/lock review, API/implementation correspondence, and documentation consistency. No compilation or test execution is authorized by this planning request.
 - [ ] **9.5** When explicitly requested, compile normal/sandbox configurations, execute the aggregate regressions, and exercise real sequential/concurrent demos, timing policies, material/shader reload, affinity capabilities, idle collection, and shutdown/failure paths. Keep this acceptance gate open until results are recorded.
-- [ ] **9.6** Preserve coherent local commits and their ordering/authorship. Use detailed Adds/Updates/Revises/Deletes/Fixes messages; deliver uniquely numbered incremental mailbox patches at meaningful chunks. At implementation completion, verify and deliver one cumulative `cheryl-engine.patch` from the preserved original base, without squashing or repeating earlier commits in later incremental patches. Do not push unless requested.
+- [x] **9.6** Preserve coherent local commits and their ordering/authorship. Use detailed Adds/Updates/Revises/Deletes/Fixes messages; deliver uniquely numbered incremental mailbox patches at meaningful chunks. At implementation completion, verify and deliver one cumulative `cheryl-engine.patch` from the preserved original base, without squashing or repeating earlier commits in later incremental patches. Do not push unless requested.
 - [ ] **9.7** Keep PR #9's description aligned with completed behavior and pending acceptance. Metadata updates are a separately requested action; the recommended branch/title are already in place.
+
+Source-preparation checks above record implemented documents/fixtures and permitted
+checks of changed source and reviewed paths. They do not close the partial audit or
+executed acceptance. See [ARCHITECTURE-CONVERGENCE-REVIEW.md](ARCHITECTURE-CONVERGENCE-REVIEW.md)
+for coverage, native failure gaps, and the local PR description draft.
 
 **Boundary D9 — convergence:** inspect the complete startup/update/shutdown path after the execution and rendering migrations meet. Insert any necessary cross-task fixes as named subtasks with their own completion evidence. Distinguish source completion from executed acceptance; existing build reports are historical evidence, not validation of future changes.
 
