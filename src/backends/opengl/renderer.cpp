@@ -93,6 +93,10 @@ namespace CE::RenderAPIs {
             return;
         resources_->require_owner();
         context_.make_current();
+        resources_->require_current();
+        // Deleting a current program only flags it until it is unbound. Finish
+        // native deletion even when the borrowed window/context stays alive.
+        glUseProgram(0);
         resources_->shutdown();
         initialized_ = false;
         stopped_ = true;
@@ -129,7 +133,11 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::maintain_resources() {
-        resources()->collect();
+        const auto domain = resources();
+        // The final frame may retire the program still bound by its last draw.
+        // A later draw selects its own program; idle collection must free this one.
+        glUseProgram(0);
+        domain->collect();
     }
 
     void OpenGLRenderer::set_viewport(
