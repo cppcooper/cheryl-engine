@@ -19,8 +19,7 @@ interfaces must not expose them.
 Units are zero-based requests owned by the draw/material; cached images retain
 no mutable binding unit. CPU submission specifies image parameters and units.
 The OpenGL renderer checks an image's backend independently of geometry binding.
-Standard
-shader parameters use `ShaderPass` and `ShaderDraw`; the OpenGL material maps
+Standard shader parameters use `ShaderPass` and `ShaderDraw`; the OpenGL material maps
 semantic roles to its uniform names, including the selected texture unit. Custom
 uniform APIs remain available for application parameters. Common drawing code
 does not select GLSL names.
@@ -36,28 +35,25 @@ returning. RGBA source rows are top-to-bottom; OpenGL uploads them bottom-up
 to match the atlas UV convention. The caller's pixels remain intact. STB's one-channel
 alpha atlas uses its own baked UVs and keeps its supplied row order. GPU handle destruction is coordinated by the OpenGL renderer while
 its own context is current. Actual-context checks also apply to uploads and draw
-operations. Architecture and API migration are described in
+operations. Runtime architecture and application APIs are described in
 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md).
 
-## Legacy FFont compatibility decision
+## FFont layout contract
 
-FFont's CPU layout and text submission replace its stored message, fancy flag,
-print angle and unchecked format cast. The old implementation at checkpoint 43
-and the original task base was compared with the migrated code during the audit.
-The meaningful atlas contract is retained; incidental unsafe draw behavior is
-explicitly changed as follows.
+FFont exposes const CPU layout with typed bank selection. Text placement and
+rotation belong to the submission's model instead of mutable font print state.
 
-| Behavior | Migrated contract |
+| Behavior | Contract |
 | --- | --- |
 | Glyph selection | Printable ASCII selects glyph `letter - 32`; typed alternate-bank selection adds 128. Both banks retain their own immutable widths. |
 | Pen advance | Glyph/space width is divided by 128, then multiplied by DrawStyle2D.scale during submission. Space advances without a packet. |
 | Newline | Reset local x and subtract 1/128 from local y; submission applies the caller's scale and model to every line. |
-| Rotation | One caller model controls all glyphs/lines. The old first-line rotation by scale and subsequent-line rotation by print_angle are not preserved. Newlines follow the model's local axes instead of resetting a world-space origin. |
-| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont has its separately documented four-space advance. Old unchecked/signed byte indexing is removed. |
+| Rotation | One caller model controls all glyphs/lines. Newlines follow the model's local axes. |
+| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont uses a four-space advance. |
 | State and lifetime | Layout does not store caller text/format. Each resolved glyph packet retains geometry, material and any supplied atlas binding. |
 
-The recording submission sources cover typed banks, different bank widths,
-space/newline advances, carriage return, control/high-byte fallback and a rotated,
-scaled multiline model without native calls. These sources are uncompiled and
-unexecuted. File-read/format-validation TODOs in the old loader remain outside this
-migration; no new FFont loader or Unicode shaping is supplied.
+Recording submission cases cover banks/widths, whitespace/fallback, and transformed
+multiline layout; real native cases also check retained FFont packets and atlas rows.
+See [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) for those scopes.
+FFont file-read/format validation and Unicode shaping remain unfinished in
+[TODO.md](TODO.md).

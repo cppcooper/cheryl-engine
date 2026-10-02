@@ -17,14 +17,14 @@ acceptance results are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.m
 | OpenGL lifetime | Active resource use requires the owner thread and its actual current context. Handles retire without OpenGL calls from their destructors. Renderer shutdown restores its context, deletes tracked handles, closes their lifetime, and releases the context. Failed destructor cleanup invalidates retained handles. |
 | Portable integration | The in-memory display/window, input, presentation, renderer, and resource provider exercise both runtime modes without OpenGL/GLFW headers. Aggregate regressions cover lifecycle, dispatch, cache publication, materials, preparation, and input routing. |
 
-## API migration
+## Application APIs
 
 Use `engine.display()`, `engine.window()`, and `engine.surface()` for the selected
-platform and presentation contracts; the old renderer-owned display API is gone.
+platform and presentation contracts.
 Use `engine.resources()` for backend asset creation after renderer initialization.
-Construct an owned `Loader(root)` for each root. Its retained `manifests()` snapshot
-replaces the old borrowed vector reference; singleton compatibility rejects a
-different root instead of silently reusing the first one.
+Construct an owned `Loader(root)` for each root. `manifests()` returns a retained
+immutable snapshot; singleton compatibility rejects a different root after its
+first initialization.
 
 Shader-cache loading only links and publishes explicit programs. Frame preparation
 resolves pass cameras and draw/material parameters into owned packets. MaterialMgr
@@ -71,8 +71,8 @@ its previous successful snapshot. Material recipe reload has a separate successf
 replacement contract that preserves retained generations.
 
 Tile-map neighbor selection and application meanings for views/orientations remain
-gameplay work. Input supplies committed Unicode scalars, while the existing fonts
-and demo editor retain their ASCII and editing limits. Audio, networking, world/
-physics systems, text shaping, automatic cache eviction, and advanced worker topology
+gameplay work. Input and the demo editor retain committed Unicode scalars; the fonts
+render printable ASCII, and the editor supplies no grapheme/IME contract. Audio,
+networking, world/physics systems, text shaping, automatic cache eviction, and advanced worker topology
 are separate extensions. Concrete unfinished work is in [TODO.md](TODO.md) and
 [ASSET-MANIFEST-TODO.md](ASSET-MANIFEST-TODO.md).

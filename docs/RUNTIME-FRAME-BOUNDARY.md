@@ -136,7 +136,7 @@ Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied cus
 pass/material/draw values without common code selecting native uniform names.
 GLSLPipelineBindings owns explicit backend mappings. MaterialMgr builds complete
 recipe replacements before publishing; retained frame owners keep old generations
-and failed builders leave the prior entry intact. See PIPELINES-AND-MATERIALS.md.
+and failed builders leave the prior entry intact. See [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md).
 
 Asset-manager lookups copy published handles under shared locks; publication and
 clearing use unique locks. Asset construction and removed-handle destruction run
@@ -150,8 +150,9 @@ Owned `Loader` instances prepare manifests and decoded RGBA pixels without the
 provider, rescanning their immutable roots each time. Upload consumes those owned
 pixels on the loading/platform thread and publishes a retained metadata snapshot
 after success. Geometry upload accepts a transient vertex span and copies it
-before returning. Preparation workers are application-owned; coordinate their
-lifetime before submitting completed data through the platform queue. See
+before returning. Use context-owned WorkerGroups to prepare owned data, then submit upload through
+saved platform endpoints. Accepted group work settles during runtime shutdown;
+independently owned workers require application lifetime coordination. See
 [ASSET-LOADING.md](ASSET-LOADING.md).
 
 OpenGL resource operations require a live owner thread and the selected current

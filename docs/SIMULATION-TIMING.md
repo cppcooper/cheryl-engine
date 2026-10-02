@@ -87,19 +87,11 @@ The demo accepts `--fixed`, `--fixed-step-ms=N`, `--variable-interval-ms=N`,
 demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 --recovery-prefix=2 --recovery-cap-ms=100
 ```
 
-Scheduler, tick-input and recording-runtime regressions execute in both complete
-Release suites. Checkpoint 103 additionally runs real sequential/concurrent
-adapters with deliberate 80 ms update work under variable, fixed-drop and capped
-catch-up policies. A real-swap wrapper holds presentation: sequential timing
-includes that work, while a condition predicate proves concurrent updates continue
-when frame slots fill. Native State backlog checks prove full capacity pauses
-polling while platform dispatch and presentation continue. Checkpoint 105 additionally
-sends synthetic X11 key events through the normal native pump in both fixed-drop/
-catch-up runtime modes. Exact Events/Text order,
-focus metadata and semantic transitions survive backlog/recovery without replay.
-Bounded timing/input/presentation acceptance is complete. See
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) for exact scopes/results.
+Scheduler and tick-input regressions use explicit clocks. Recording and native
+runtime cases exercise both modes, bounded recovery, slow updates/presentation,
+full polling backlogs, and ordered input without replay. Executed scopes and
+platform limits are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
-TODO: add an optimization configurer that suggests pacing/recovery limits from
-measured workloads while preserving explicit user configuration. It must not
-silently replace fixed delta, change input history, or introduce interpolation.
+A profiling-based optimization configurer remains unfinished in [TODO.md](TODO.md).
+It must preserve explicit timing/input configuration, rather than silently replacing
+fixed delta, changing input history, or introducing interpolation.

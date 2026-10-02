@@ -25,9 +25,9 @@ unexecuted work is cancelled by promise destruction (`broken_promise`). Do not
 wait on a future from the thread required to complete it. Wake callbacks own their
 scheduler state so an enqueue racing closure can safely finish its notification.
 
-These dispatchers have distinct APIs and ownership domains. Event delivery can
-later adapt their endpoints through a callable without an Executor base class or
-an EventSystem dependency on either dispatcher.
+Event delivery adapters use these saved endpoints through a callable. EventBus
+remains independent of both dispatcher types; the adapters belong to composition
+code. See [EVENT-DELIVERY.md](EVENT-DELIVERY.md).
 
 ## Simulation boundary
 
@@ -49,7 +49,7 @@ and further platform/simulation submissions.
 Simulation shutdown cancels its pending batch on the simulation owner before
 publishing worker completion. Initialization failure before owner binding cancels
 on the initializing thread. The platform joins simulation before game cleanup.
-Runtime stopping now closes context CPU groups, stops/cancels simulation work,
+Runtime stopping closes context CPU groups, stops/cancels simulation work,
 and pumps platform requests while joining simulation and settling CPU work. A
 worker awaiting accepted platform completion therefore cannot strand the owner
 in a blocking join. After CPU groups settle, remaining platform requests cancel

@@ -1,4 +1,4 @@
-# Pipeline and material foundations
+# Pipelines, materials, and render submission
 
 `PipelineDefinition` describes retained program source paths, the existing
 position3/UV2 vertex layout, triangle/strip topology, fixed blend/depth/cull
@@ -13,16 +13,16 @@ compiled stages remain transient. `Material` copies its recipe on construction.
 Definition/default access is read-only. Building another pipeline/material
 instance preserves the old logical generation while its readers retain it.
 MaterialMgr publishes complete immutable recipes, including their pipeline
-generation, through explicit application-supplied builders. Frame consumption
-has not yet migrated to these types.
+generation, through explicit application-supplied builders. RenderFrame packets
+retain those generations for low-level renderer playback.
 
 ## Parameters and ownership
 
 Parameter values own scalars, vectors, matrices, and their map keys. A sampler
 owns a shared `const Image` handle plus a binding-unit request. Each pass and draw
-must supply its own copied ParameterSet when the frame migration is implemented;
-material defaults already belong to the immutable material snapshot. Resolution
-returns a new owned set, never a view into the caller's inputs.
+supplies copied ParameterSet values; material defaults belong to the immutable
+material snapshot. Resolution returns a new owned set, never a view into the
+caller's inputs.
 
 | Source | Ownership | Precedence |
 | --- | --- | --- |
@@ -53,19 +53,18 @@ Geometry selects only its vertex array/buffer. Image binding accepts a zero-base
 unit for each request; OpenGL converts it to GL_TEXTURE0 + unit and checks the
 current context's unit limit, sampled once during upload rather than queried on
 every draw. Image upload uses unit zero as temporary setup and
-stores no unit. Current frame/legacy adapters also select zero explicitly.
+stores no unit. Asset submission selects the requested key/unit explicitly.
 Two material recipes can retain the same image with different unit requests
 without mutating each other's recipe or the cached image. Sampling/filter/wrap
 policy remains the image's existing upload policy; per-material sampler objects
 are a separate extension, not claimed by this foundation.
 
-## Remaining integration
+## Frame and recipe integration
 
-Task 7 is unfinished. OpenGL pipeline building, explicit mappings/reflection,
-required/optional validation, copied-value uploads, and sampler-domain/unit checks
-are implemented in source. Frame and recipe integration remain pending.
-GLSLPipeline::draw applies complete fixed state after validating pass constraints,
-geometry, and parameters. RenderFrame packets now use that path.
+OpenGL pipeline builders validate explicit mappings/reflection, required/optional
+values, copied-value uploads, and sampler domains/units. GLSLPipeline::draw applies
+complete fixed state after validating pass constraints, geometry, and parameters.
+RenderFrame packets use that path.
 Linked attributes must match Vertex2D's
 position3 at location zero and UV2 at location one; inactive inputs may be omitted.
 Geometry exposes immutable CPU-readable layout/topology/count metadata. Pipeline
@@ -73,7 +72,8 @@ validation checks complete primitives and bounded ranges before publication;
 native drawing additionally checks VAO/program domain identity and the live current
 context. Program/image native domains are checked as well.
 
-ShaderMgr still publishes legacy Shader handles for explicit program access; DrawStyle2D stores an immutable Material handle.
+ShaderMgr publishes Shader handles for explicit program access; DrawStyle2D stores
+an immutable Material handle.
 MaterialMgr::load_material retains an existing key; reload_material builds a full
 candidate outside cache locks, then replaces one recipe after success. Builders
 own their typed definitions/backend mappings and validate all dependent resources.
@@ -85,15 +85,14 @@ Frame preparation resolves asset/text submissions into owned packets; playback o
 consumes geometry, material, ranges, and copied parameters. A failed demo reload keeps
 the previous generation and reports its error in the overlay.
 
-Start with typed C++ definitions and explicit bootstrap/build APIs. A future
-definition-file parser should produce these types separately from generic manifest
-discovery. Do not add guessed shader-stage scanning to asset manifests.
+Recipes use typed C++ definitions and explicit bootstrap/build APIs. There is no
+pipeline/material definition-file parser in manifest 1.0; a future parser would
+produce these types separately from generic manifest discovery.
 
-The common regression sources exercise a two-image effect with time/color/intensity,
-copied inputs, type/required/optional validation, immutable generations, failed
-replacement construction, and independent unit selection. Native sprite and alpha
-font traces, native state/reload tests, compilation, and execution remain
-acceptance work. No real GL behavior is established by source preparation.
+Common regressions exercise a two-image effect with time/color/intensity, copied
+inputs, type/required/optional validation, immutable generations, failed replacement,
+and independent unit selection. Recorded native state/reload, retained-packet, and
+font execution scopes are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 ## Native bootstrap and binding
 
@@ -136,13 +135,13 @@ straight alpha uses source-alpha/one-minus-source-alpha RGB with one/one-minus-s
 alpha; premultiplied alpha uses one/one-minus-source-alpha; additive uses source-alpha/one
 RGB and one/one alpha. All use additive blend equations.
 
-Prepared recording-GLAD scenarios cover a native two-image effect, optional
+Recording-GLAD scenarios cover a native two-image effect, optional
 uniform reset after another draw, inactive optional uniforms without sprite roles,
 reflection/type/storage failures, invalid attributes/unlinked programs, and sampler
 domain/unit failures before any bind. These sources use synthetic IDs and restore
 all replaced entry points; they do not replace real-context acceptance.
 
-## CPU submission foundation
+## CPU submission
 
 DrawPacket2D retains geometry, an immutable material generation, and copied resolved
 parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
@@ -154,7 +153,7 @@ RenderPassWriter validates individual packets or a whole glyph group before publ
 and assigns stable authored order. RenderFrame keeps reusable vector capacity and
 releases packet/pass handles on recycle. The OpenGL renderer checks its native
 pipeline domain, then calls the validated fixed-state draw path in authored order.
-Graphic/Tile/TileAnimation drawing and Font printing now use submission helpers.
+Graphic/Tile/TileAnimation and text drawing use CPU submission helpers.
 Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. FFont
 keeps immutable width metrics and typed normal/alternate-bank layout; callers place
 and rotate text through DrawStyle2D.model_matrix. ASCII fallback is explicit, with

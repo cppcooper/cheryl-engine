@@ -6,7 +6,7 @@
 
 A reservation stores only unclaimed `Block<T>` ranges. `emplace(index, args...)` prepares split blocks and the handle before constructing the object, then transfers the one slot to the handle. If construction throws, the reservation still owns that slot. At destruction it returns the remaining contiguous ranges, while claimed object handles can outlive it. Trusted release methods used by destructors are `noexcept`: an internal invariant violation terminates rather than throwing from a deleter. Public return methods continue to report invalid calls with exceptions.
 
-Underlying `Mem::ObjMMgr<T>` instances can die before the pool's last backing owner. The existing lifetime token causes that owner's callback to skip reuse bookkeeping; its captured `HeapBlock` still owns and frees the bytes. Grid and STB font geometry handles follow the same rule through `make_managed_block`.
+Underlying `Mem::ObjMMgr<T>` instances can die before the pool's last backing owner. The existing lifetime token causes that owner's callback to skip reuse bookkeeping; its captured `HeapBlock` still owns and frees the bytes. Grid and STB font geometry handles follow the same rule through `make_managed_block`. This supports ordered teardown, but the weak token does not serialize a final handle release with concurrent manager destruction. Retaining a safe byte-manager release context remains unfinished in [TODO.md](TODO.md).
 
 The protected legacy `AssetMgr::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders now use reservations and create handles only for entries they actually construct. `Pool<T>::retrieve_objects` retains pool state in its element deleters; it no longer looks up a singleton when those handles die.
 

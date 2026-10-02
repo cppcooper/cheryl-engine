@@ -78,25 +78,7 @@ context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
 
-## Executed acceptance
-
-Checkpoint 109 executes two further Linux cases through the production adapter.
-The caller temporarily narrows its own nine-CPU inherited mask to CPU 0; a newly
-created pool discovers that single eligible CPU. Required outside eligibility
-rejects, preferred intersection/fallback uses the inherited CPU, and real worker
-mask/CPU observations match. Every child joins before the caller mask restores,
-with restoration guarded on exceptional test exits.
-
-An absent CPU ID inside CPU_SETSIZE reaches pthread_setaffinity_np with a valid
-nonempty mask. The actual kernel Invalid argument error reaches the accepted job's
-future; the next required job on that worker sees its inherited mask. This callback
-failure does not increment pre-callback policy failure accounting. Existing
-controlled adapter cases separately execute policy suppression/readback/fallback
-and startup rollback. All worker regressions execute in the complete 349 normal /
-335 sandbox suites without skips. 110 closes bounded 9.5f/9.5 acceptance; see
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
-
-## Policy example and coverage history
+## Policy example
 
 An application can choose a share and cap independently of CPU eligibility:
 
@@ -116,37 +98,8 @@ platform dependencies while this work finishes, then closes platform requests an
 recycles retained frames before application/resource cleanup. Outside runtime,
 the owner must service any such dependencies before waiting for group drainage.
 
-The following checkpoint notes retain their source-preparation scope. Current
-executed acceptance is recorded above.
-
-The aggregate regression sources prepare held-job cap isolation, weighted share,
-saved-handle rejection, same-pool wait rejection, and pinned/inherited/pinned mask
-restoration. Checkpoint 50 adds a required-mask revalidation scenario: a job narrows
-its own mask behind the adapter's cache, and the next job on that same group must
-restore its effective set. Linux mask scenarios explicitly skip unavailable
-capabilities. None has been executed in this continuation. Native affinity failure
-and partial thread-start rollback still need controlled failure execution; the
-current success-path fixtures do not establish either outcome.
-
-Checkpoint 52 prepares capture-deleter reentry into another group before source
-drainage completes, and a Linux overlapping-mask scenario on one held worker.
-The latter prequeues 3:1 workloads, checks each job's actual mask, and compares
-the first eight selections. It tests mask switching together with weighted
-scheduling; it does not exercise live OS restriction or native application failure.
-These two additional scenarios are also uncompiled and unexecuted.
-
-Checkpoint 62 prepares controlled native-boundary failures through a private,
-per-pool adapter. Production still uses pthread get/set and std::thread; the
-adapter centralizes the same set-then-readback check, without global overrides or
-a new public construction API. The source-only test factory uses the production
-scheduler, promise settlement, capture release and constructor rollback paths.
-
-Eight new scenarios cover discovery query failure, effective-mask mismatch,
-required set failure with capture-deleter reentry, verified preferred fallback,
-failed fallback set/readback with recovery, post-set query failure, cached-mask
-query failure and partial thread-start failure. The startup fixture enters one
-real thread wrapper before rejecting the second start, then expects closure,
-join, original-error preservation and adapter-capture release before return.
-Affinity values/errors are synthetic and do not change the test host's CPU policy.
-These scenarios have not been compiled or executed; they prepare controlled
-failure coverage without proving actual OS rejection or runtime acceptance.
+Recorded worker validation covers caps, weighted shares, capture release before
+drain completion, saved-handle rejection, mask switching/revalidation, actual
+inherited restrictions and kernel rejection, plus controlled affinity and
+thread-start failures. See [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md)
+for executed scopes and host limits.

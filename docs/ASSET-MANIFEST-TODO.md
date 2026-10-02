@@ -1,11 +1,23 @@
-# Remaining asset-manifest metadata TODO
+# Unresolved asset-manifest metadata
 
-These items are not blockers for loading every texture/grid, applying pivots, playing the verified animations, or using the Puny World autotiles. They need matching source metadata or an artwork-owner decision before more semantics can be encoded safely.
+The checked-in manifests encode the available grids, pivots, animation profiles,
+clips, and autotile tables. These remaining items need matching source metadata or
+an artwork-owner decision before additional semantics can be encoded safely.
 
-- MiniWorld character sheets other than the five Swordsman variants: obtain verified action-row, facing, and timing documentation before assigning profiles. Similar dimensions alone are not enough to assume the Swordsman layout.
-- MiniWorld directional weapons/projectiles: name orientation cells and choose any spin/flight timings once their intended runtime behavior is decided. Their grids and center pivots are already present.
-- Legacy 0x72 dungeon sheet: locate metadata for the bundled 368×384 revision, or explicitly replace it with a newer release and remap it. The current upstream v5 sheet is 512×256, so its named slices cannot safely be copied onto this older layout.
-- Colored/Orc buildings and Mage City: the physical grids and verified regional/color views are complete; add per-cell gameplay names only if the engine needs semantic lookup below the view level.
-- Character Customizer: decide whether runtime customization should load composited exports or retain selectable layers. The runtime PNG is flattened, while the bundled XCF is the authoritative layered artwork.
+- MiniWorld character sheets other than the five Swordsman variants: obtain action-
+  row, facing, and timing documentation before assigning profiles. Similar dimensions
+  alone do not establish the Swordsman layout.
+- MiniWorld directional weapons/projectiles: name orientation cells and choose spin/
+  flight timings once their intended runtime behavior is decided. Grids and center
+  pivots are already encoded.
+- Legacy 0x72 dungeon sheet: locate metadata matching the 23×24 grid of 16-pixel cells
+  (368×384 occupied pixels), or explicitly replace the sheet and remap it. Metadata
+  for a different revision/layout cannot safely supply this sheet's named slices.
+- Colored/Orc buildings and Mage City: add per-cell gameplay names only if the engine
+  needs semantic lookup below the existing regional/color view level.
+- Character Customizer: decide whether runtime customization loads composited exports
+  or retains selectable layers. The current manifest selects a flattened PNG; layer
+  selection needs a different asset/runtime contract.
 
-No additional inspection is needed for the Puny World animations/Wang sets, the Swordsman animation profile, or the manifest pivot values; those are encoded now.
+Engine-side tile selection and animation substitution remain separately listed in
+[TODO.md](TODO.md).

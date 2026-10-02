@@ -4,7 +4,7 @@ The authoritative format is `assets/schemas/asset-manifest-1.0.schema.json`. Man
 
 ## Identity and inheritance
 
-- A globally unique asset ID is `namespace` plus the sprite or tileset map key. The engine should preserve both components rather than relying on filenames.
+- A globally unique asset ID is `namespace:name`, combining the namespace and sprite or tileset map key. The loader checks duplicate IDs across manifests before upload.
 - An entry's `texture` overrides the manifest-level `texture`. One of those fields is required by the schema.
 - An entry's `pivot` overrides `defaults.sprite.pivot` or `defaults.tileset.pivot` according to the containing map.
 - Texture paths are forward-slash, case-sensitive paths relative to the manifest file.
@@ -77,4 +77,4 @@ The Puny World manifest is transcribed from the author-supplied `punyworld-overw
 
 ## Runtime implementation
 
-The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [`ASSET-LOADING.md`](ASSET-LOADING.md) for the runtime entry point, validation/load order, retrieval APIs, and the remaining animation-controller and tile-map-renderer integration work.
+The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [ASSET-LOADING.md](ASSET-LOADING.md) for the runtime entry point, validation/load order, retrieval APIs, and per-entity sprite playback. Tile-map neighbor selection and animated-target substitution remain unfinished in [TODO.md](TODO.md).

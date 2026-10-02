@@ -6,7 +6,9 @@ Cheryl collects physical input on the platform thread. `InputBindings` can map o
 constexpr CE::Input::ActionId Jump{1};
 constexpr CE::Input::ActionId Save{2};
 
-auto& bindings = engine.input().bindings();
+auto& input = engine.input();
+auto& bindings = input.bindings();
+const auto keyboard = input.keyboard_id(); // Bind during game init, after adapter startup.
 (void)bindings.bind_button({keyboard, gainput::KeySpace}, Jump);
 (void)bindings.bind_button(CE::Input::InputChord{{{keyboard, gainput::KeyCtrlL},
                                                   {keyboard, gainput::KeyS}}}, Save);
@@ -22,7 +24,7 @@ State timestamps are poll observation times. Multiple semantic transitions insid
 
 `AxisOptions::kind` defaults to `AxisKind::Absolute`: current position/value persists and `delta()` compares the final value with the previous consumption's value. `AxisKind::Relative` uses `on_delta()` and sums movement across the batch, then resets to zero. Absolute cursor coordinates and controller axes use the first contract; wheel and relative pointer movement use the second. Bindings for one action cannot mix kinds. Unbinding a held action publishes one release or zero absolute-axis sample. `TickInput::polls()` exposes retained sample handles, but does not promise a physical event stream or reconstruct event order within a poll.
 
-Input adapters report physical changes; bindings translate them into semantic action state. GLFW callbacks retain key and mouse-button edges plus scroll pulses, while cursor position is sampled once after the event pump. Game logic will receive complete tick input at the update boundary instead of running from device callbacks on the polling thread.
+Input adapters report physical changes; bindings translate them into semantic action state. GLFW callbacks retain key and mouse-button edges plus scroll pulses, while cursor position is sampled once after the event pump. Game logic receives complete tick input at the update boundary instead of running from device callbacks on the polling thread.
 
 For code using the earlier API, replace `bind_button(control, callback)` or `bind_axis(control, callback)` with a semantic `ActionId` binding and read it in `update(const TickContext&)`. Custom adapters call `on_button(control, held)` or `on_axis(control, value)`; Gainput's old value is not needed by the binding layer.
 

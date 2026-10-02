@@ -41,7 +41,6 @@ in-flight callbacks that borrow a bus or other target before destroying it.
 Registry snapshots and invocation guards retain callback ownership as needed,
 without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.
 
-
 ## Optional queued delivery
 
 Pass a delivery callable and error sink to `register_listener`. The bus accepts
@@ -87,50 +86,22 @@ stream work even when a pump is active. A failed/cancelled pump releases its
 pending captures outside stream locks, letting owned event tickets report loss.
 Do not block a stream callback on another callback in that same stream.
 
+## Worker-stream acceptance and cancellation
+
 Initial pump submission is serialized with stream publication. Another producer
-cannot return accepted merely because a pump which may still fail submission was
-marked scheduled. Closure checks also share the stream mutex with the pump's final
-empty-queue check. Submission failure removes only the initiating request, and
-its captures leave the stream lock before error reporting. Lock order is stream
-then pool; worker accounting releases the pool lock before touching a stream or
-releasing callback captures. Prepared closure/reentry and independent-stream
-scenarios exercise these lifecycle contracts; the old submission window was found
-by interleaving review, without a deterministic executed reproduction.
+cannot return accepted before that submission succeeds. Closure checks share the
+stream mutex with the pump's final empty-queue check. Submission failure removes
+only the initiating request, and its captures leave the stream lock before error
+reporting. Lock order is stream then pool; worker accounting releases the pool lock
+before touching a stream or releasing callback captures.
 
-Checkpoint 55 extends the handoff for accepted pumps rejected by native policy
-before entry. Cancellation belongs to the submitted callable, not a producer's
-local shared owner. An atomic preparing/accepted/cancelled handshake records early
-loss without taking the already-held stream lock; the producer then withdraws
-only its initiating request. After publication, unentered callable destruction
-abandons the stream outside producer posting locks. This closes a second window
-in which another listener's cancellation sink could run under the first listener's
-posting lock. The finding comes from ownership/interleaving review; executed
-native-policy acceptance remains open.
+Cancellation belongs to the submitted callable. An atomic preparing/accepted/
+cancelled handshake records loss before callback entry without taking the producer's
+already-held stream lock. Before publication, the producer withdraws only its own
+request. After publication, unentered callable destruction abandons the stream
+outside producer posting locks. This permits error-sink redispatch and capture-
+destructor reentry without running another listener's cancellation under that lock.
 
-Checkpoint 56 adds an internal submission seam, retaining WorkerGroup::submit for
-the public adapter. Controlled sources discard a pump before publication and check
-same-listener sink reentry/recovery, then discard one published pump shared by two
-listeners on another thread and check per-listener cancellation and recovery.
-The aggregate target alone receives the private source include path. These fixtures
-model loss without running an OS policy adapter; they are uncompiled/unexecuted and
-do not force every old producer interleaving or prove actual affinity failure.
-
-Checkpoint 57 also prepares throwing submission with original-error retention and
-same-listener recovery. No controlled fixture invokes a pump inline while offered;
-explicit test playback happens after publication. Closure guards invalidate borrowed
-recording sinks before pending captures unwind on an assertion's early return.
-
-Checkpoint 63 prepares three further combinations. Two simultaneous producers
-dispatch through one serial worker stream and check each producer's own order,
-without specifying their global interleaving. A held payload copy lets invalidation
-finish before preparation returns; the offered work must skip invocation and its
-copied payload's final destructor must safely reenter unregister after unlocking.
-
-The third scenario uses checkpoint 62's private native adapter with the production
-WorkerGroup submission path. It holds policy application until two listeners have
-joined a published pump, then rejects that pump before callback entry. Both tickets
-must report cancellation on the worker, one sink redispatches to start a fresh pump,
-and group completion includes the failed pump's capture release and recovery.
-The native mask/error is synthetic; this is stronger source preparation than
-dropping a stored callable, but neither fixture nor real OS failure has been run.
-It does not force the earlier pre-publication window or every producer interleaving.
+[Recorded validation](ARCHITECTURE-VALIDATION.md) includes controlled pump rejection,
+concurrent producers, payload-copy invalidation, native-policy suppression, and
+reentrant recovery. Typed channels remain unfinished in [TODO.md](TODO.md).

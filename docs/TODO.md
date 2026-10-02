@@ -29,9 +29,11 @@ Unresolved artwork metadata is tracked separately in
   `human_readable`, then add the deferred boundary cases. See
   [bytes.h](../include/cheryl/math/bytes.h) and
   [math.cpp](../tests/executables/gtest/math/math.cpp).
-- Convert low-level shader attribute/uniform diagnostic printing into parsers that
-  register events. The existing printing APIs remain available. See
-  [glslprogram.h](../include/cheryl/backends/opengl/glslprogram.h).
+- Complete the event-reporting part of shader diagnostics. Structured uniform/
+  attribute reflection queries already exist; the printing APIs still write their
+  results to standard output. See
+  [glslprogram.h](../include/cheryl/backends/opengl/glslprogram.h) and
+  [glslprogram.cpp](../src/backends/opengl/glslprogram.cpp).
 
 ## Gameplay and execution extensions
 

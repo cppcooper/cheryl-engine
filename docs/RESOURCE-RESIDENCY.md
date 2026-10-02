@@ -82,16 +82,6 @@ skips dependent mipmap generation. This detects reported native failures without
 promising recovery from memory exhaustion or context loss. OpenGL leaves native
 state undefined after OUT_OF_MEMORY; real-driver acceptance remains separate.
 
-Prepared recording-native regressions cover worker-thread final release,
-exactly-once collection/shutdown, retained handles after closure, moved/reused
-registrations, wrong-context collection, and guarded untracked cleanup. Recording
-runtime adapters cover maintenance before a first frame with a full backlog and
-first-error preservation. Strong-residency/cache-domain scenarios cover explicit
-clear and retained owners across provider rebind. These fixtures now execute in the full normal/sandbox suites. Five additional
-real-context cases observe actual driver IDs and retained-frame pixels; forced real
-context loss and additional native faults remain open in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
-
 Cache insertion retains a local candidate owner across fallible node construction
 and rehash. A failed or duplicate insertion can release its final candidate only
 after the cache write lock unwinds. Replacement exchanges an already established
@@ -99,17 +89,18 @@ slot, and clear detaches the whole map before release. This includes material
 candidates and their retained program/image resources; reentrant deleters remain
 outside publication locks on all three paths.
 
-Texture::unbind(unit) is instance-bound and selects the supplied unit after
-checking its texture's owner/current/live context and unit limit. The former static
-unbind bypassed those guards and cleared whichever unit another operation left
-active. Native recording sources cover explicit unit selection and foreign,
-missing, invalid-unit, and closed-context rejection before binding.
+`Texture::unbind(unit)` selects the supplied unit after checking the texture's
+owner/current/live context and unit limit. It does not depend on an inherited active
+unit.
 
-Checkpoint 53 prepares two recording-only shutdown/context-loss scenarios. Failed
-shutdown with a missing current context must preserve pending and live entries so
-owner recovery can collect and sweep each ID once. If recovery fails, abandon must
-invalidate pending and retained entries of every resource kind without a native
-delete or later query of a destroyed context, including late worker-thread release.
-These scenarios use synthetic IDs and now pass in the aggregate suite. Real
-selected-context restoration, frame-resource deletion before window destruction
-and late foreign release also pass at 97; forced real context loss remains separate.
+If shutdown cannot obtain the current context, pending/live registrations remain
+available for owner recovery and an exactly-once sweep. If recovery fails during
+renderer destruction, `abandon()` invalidates every registration without a native
+delete or later query of the destroyed context. Late foreign-thread release is safe
+for those invalidated handles.
+
+Recorded validation covers strong residency, cache-domain rebinding, idle maintenance,
+recording failure/recovery/abandonment, real selected-context restoration, retained
+frame pixels and native deletion before window destruction. Hardware context loss
+and reset recovery remain outside those executed scopes. See
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
