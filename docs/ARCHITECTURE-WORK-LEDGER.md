@@ -12,6 +12,13 @@ separately pending.
 
 ## Progress
 
+Current checkpoint 110: tasks 0–8 implementation and the bounded source audit are
+complete; technical acceptance 9.5 now closes with executed native failure cleanup
+and actual OS affinity checks. Full suites pass 349 normal / 335 sandbox cases
+without skips. Only separately requested PR metadata publication (9.7) remains
+open. The source-scope entries below preserve their historical checkpoint claims;
+current execution is in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+
 The entries below record implemented source scope. Earlier uses of "complete"
 are not correctness evidence. The bounded completed-task source audit closes at
 checkpoint 90; see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
@@ -225,7 +232,42 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Optional native backend guard: checkpoint 107
+### Technical acceptance closure: checkpoints 108–110
+
+108 adds six native runtime initialization/partial-frame/presentation failures
+across both modes. Accepted CPU work is released only during quiesce, then posts
+a real platform upload; every completion settles before game cleanup. Deinit
+unbinds the actual context and throws a later error. Renderer shutdown restores
+its owner/current context and deletes program/VAO/buffer/original/upload textures
+while the borrowed window remains alive. The original error survives, retained
+owners expire, input detaches, and closed endpoints reject subsequent work.
+
+109 adds two Linux OS checks through the production affinity adapter. Restriction
+narrows the caller's nine-CPU mask to CPU 0, verifies inherited pool discovery,
+required rejection and preferred intersection/fallback, joins the child and
+restores the caller. A nonempty in-range absent-CPU 1023 mask reaches the kernel
+and returns Invalid argument; the callback future fails and the same worker
+successfully executes its next required job. This is separate from controlled
+pre-callback policy suppression/accounting and does not mutate privileged policy.
+
+Both default Release builds and focused checks pass. Full suites pass **349 normal
+/ 335 sandbox**, without failures, errors, disabled tests or skips: twelve real
+native-context and three real-font cases execute. The expanded native source also
+compiles without the X11 test macro and contains no X11 helper references.
+110 reconciles this evidence with prior finite-demo, reported desktop, timing/input,
+reload/retirement and font results, closing 9.5d.2/9.5f.1 and parents 9.5d/f/9.5.
+The bounded source audit stays closed at 90; 9.7 publication is separately pending.
+No push or PR write occurred. This period adds test/evidence source and requires no
+production behavior correction or new manual acceptance checklist.
+
+Pending delivery is **99–110** from user-confirmed applied 98, using
+`cheryl-engine-99-110-from-19912dd.patch`; new numbered patches are 108–110 and the
+next unused number is **111**. Existing patches 99–107 remain intact. Numbered,
+pending and cumulative replay verify the exact tree, ordered authors/dates/messages
+and binary PNG bytes. The validation archive includes current reports and the
+prior 107 archive; no additional run is needed for documentation-only 110.
+
+### Optional native backend guard: checkpoint 107 (historical)
 
 Final dependency review finds that the new Linux X11 fixture must be omitted when
 GLFW_BUILD_X11 is disabled. A source-specific compile definition now guards its

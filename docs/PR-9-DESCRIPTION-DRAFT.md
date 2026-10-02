@@ -18,7 +18,7 @@ govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 Aggregate regression sources cover dispatch/event lifetime, worker policies,
 timing/input recovery, cache/native ownership, material parameters, frame/text
 retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
-Complete aggregate runs pass 346 native-enabled normal and 333 sandbox cases with
+Complete aggregate runs pass 349 native-enabled normal and 335 sandbox cases with
 no skips. Startup-fixture cancellation expectations match accepted-request
 broken_promise behavior. Real Linux affinity mask cases execute.
 
@@ -64,10 +64,21 @@ State suppression and one pass-through semantic tap survive recovery without rep
 All eleven native cases execute; bounded timing/input/presentation acceptance is
 complete with prior demo/desktop evidence. Physical keyboard/IME coverage is separate.
 
-Composed native-resource/runtime failure cleanup and actual OS affinity
-restriction/rejection remain open in the finite 9.5d.2/9.5f.1 scopes. The completed-task
+A further native case runs six initialization/partial-frame/presentation failures
+across both runtime modes with real resource creation and accepted CPU/platform
+uploads. Cleanup preserves the original error through a later deinit exception,
+restores the actual unbound context, and deletes driver handles while the window
+remains alive. All twelve native cases execute.
+
+Two production Linux affinity checks narrow/restore only the caller's inherited
+mask, verify worker discovery and required/preferred eligibility, and send an
+in-range absent-CPU request to the kernel. The actual Invalid argument error reaches
+the callback future, followed by successful required-group recovery on the same
+worker. Controlled pre-callback policy failures retain their separate evidence.
+
+Bounded task-9 technical acceptance is complete at checkpoint 110. The completed-task
 source audit closes at checkpoint 90, including clang-format 23.1.2, declaration
 inventory and controlled native/startup/retained-owner failure sources. Current
-evidence and remaining task-9 gates are recorded in
+evidence and bounded task-9 acceptance closure are recorded in
 [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). This is a local draft;
 PR metadata publication remains separately pending.

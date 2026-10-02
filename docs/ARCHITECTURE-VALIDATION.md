@@ -1,14 +1,18 @@
 # Task 9 validation record
 
-Latest checkpoint 107 records successful complete builds and 346 normal / 333
-sandbox tests, including eleven real-context and three real-font cases without skips.
-The ordered-input implementation is `82b33791b36be7de57180175b0d391bbb1aa5403` (105);
-107 additionally guards its compilation for the selected GLFW backend.
-Native X server Events/Text survive full backlog, capture/focus replacement and
-fixed-drop/capped catch-up in both runtime modes. Bounded acceptance 9.5c closes
-with 103's timing/presentation/State work and the prior reported desktop checks.
-9.5e stays complete. Native-runtime cleanup and actual OS restriction/rejection
-acceptance remain open. Earlier results retain their checkpoint scope.
+Checkpoint 110 closes bounded task-9 technical acceptance. Validated source 109
+adds native runtime failure cleanup and actual inherited affinity restriction/
+OS rejection checks. Both complete Release builds pass; all **349 normal / 335
+sandbox** cases pass without failures or skips, including twelve real-context,
+three real-font and two new OS-affinity cases. The six native failure combinations
+preserve the original error, settle accepted CPU/platform work and delete driver
+handles after restoring the actual current context. The affinity checks restore
+the calling thread's nine-CPU mask after narrowing it to CPU 0; an absent CPU 1023
+request reaches the kernel and returns Invalid argument, followed by worker recovery.
+Together with prior timing/input/font/demo/desktop evidence, 9.5 is complete for
+its recorded scopes. **Only separately requested PR metadata publication (9.7)
+remains open.** Earlier sections retain their checkpoint scope; current evidence
+is in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 1 October 2026. Remote checkpoint 90,
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`, contains the complete audit series.
@@ -449,6 +453,67 @@ Pending delivery is now **99–107** from applied 98, in
 `cheryl-engine-99-107-from-19912dd.patch`; next unused number is **108**. Source
 behavior and the bounded 9.5c/9.5e closures are unchanged. 9.5d.2/9.5f.1 and 9.7
 remain open. This guard was completed during the checkpoint packaging buffer.
+
+## Native runtime/OS acceptance closure: checkpoints 108–110
+
+Validated source is 109, `d07d1a0f98599f46b41aee20cb507a0ef7379f2c`.
+108, `293f275846eae0a4183e63c5d6d1e2a531f4fc3f`, adds the native runtime case;
+109 adds the two actual OS affinity cases. Both default Release builds complete,
+including the normal demo. The focused three-case run and full **349 normal / 335
+sandbox** runs pass with zero failures, errors, disabled tests or skips. Twelve
+real-context and three real-font cases execute. The expanded native translation
+unit also compiles with CHERYL_NATIVE_X11_TESTS absent; nm finds no X11 helper
+references. This retains the explicit compile-only scope, without claiming a full
+Wayland build. No production behavior correction was required in this period.
+
+The native case records **six** mode/failure combinations: initialization after
+resource creation, throw after a frame has retained its packet, and throw after
+a real completed swap. Each accepts a CPU job retaining native dependencies and
+owned CPU data. The job waits until quiesce, after submissions close, then submits
+a real platform image upload. Shutdown pumps that completion and joins the owned
+worker before game cleanup; its future returns 42 and accounting settles exactly
+one accepted job. Geometry/material/image owners expire after frame/game release.
+Input detaches and closed worker/platform endpoints reject subsequent submissions.
+
+Deinit really unbinds the GLFW context and raises a secondary cleanup failure.
+Maintenance rejects the absent current binding, while renderer shutdown restores
+its owner context and completes program/VAO/buffer/original-texture/upload-texture
+deletion. Driver glIs* queries verify deletion while the borrowed window remains
+alive, and run rethrows the original failure. This exercises context-binding
+recovery; it does not simulate a hardware GPU reset. **9.5d.2 and parent 9.5d close**
+with the already executed context/reload/retirement/late-owner scopes.
+
+The affinity restriction case uses the unmodified production native adapter.
+It narrows only the calling test thread from CPUs 0–8 to CPU 0. A new child/pool
+inherits and discovers that mask; required CPU 1 rejects, preferred {0,1}
+intersects to {0}, and preferred {1} falls back to {0}. Actual job mask/CPU
+observations match. The restricted child joins before a guarded restoration of
+the caller's complete nine-CPU mask, verified by readback and recorded in XML.
+
+The rejection case selects absent CPU 1023 inside the adapter's mask capacity.
+A nonempty, in-range request reaches pthread_setaffinity_np and the kernel returns
+**Invalid argument**. The accepted callback future reports failed_operation and
+its next required job executes on the unchanged inherited mask. Both jobs settle;
+policy_failures stays zero because rejection happened inside the callback.
+Controlled adapter fixtures separately establish rejection before callback entry,
+preferred fallback, accounting and constructor rollback. No external process mask,
+cgroup, privileged system policy or physical CPU configuration changes.
+
+**9.5f.1/9.5f and parent 9.5 close** after reconciliation with prior full regression,
+finite-demo and reported desktop results, software-driver context/reload/retirement,
+forced timing/input/presentation and TrueType/CFF/rotated-FFont evidence. The source
+audit remains complete at 90. Sanitizers, physical GPU/device/IME variants and
+privileged live policy changes were not claimed by these bounded scopes. Only
+separately requested PR metadata publication **9.7** remains open; its local draft
+is current. No push, PR write or new manual checklist occurred.
+
+The current validation archive contains raw build/focused/full/XML/driver records,
+runner commands and timeouts, native/worker source, compile-only backend guard
+proof and patch replay results, plus the prior 107 archive for earlier acceptance.
+Pending delivery is **99–110** from user-confirmed applied 98 in
+`cheryl-engine-99-110-from-19912dd.patch`; only 108–110 are new this period. Fixed-base
+cumulative delivery and individually numbered commits preserve their ordering.
+Documentation-only 110 does not require another execution run.
 
 ## Earlier acceptance plan (checkpoint 92)
 

@@ -1,6 +1,6 @@
 # Cheryl Engine — Second-pass work order
 
-30 September 2026. **Implementation in progress; see ARCHITECTURE-WORK-LEDGER.md for checkpoints.**
+Created 30 September 2026. **Implementation and bounded technical acceptance complete at checkpoint 110; PR metadata publication remains separately pending.**
 
 Planning snapshot: [`e8c9788f63cf4688e144b84feeb8f9aabf62540f`](https://github.com/cppcooper/cheryl-engine/commit/e8c9788f63cf4688e144b84feeb8f9aabf62540f), branch `refactor-runtime-render-resource-architecture`, [PR #9](https://github.com/cppcooper/cheryl-engine/pull/9). PR #8 is closed without merging. The branch and PR already have the recommended names; another rename is unnecessary.
 
@@ -18,11 +18,13 @@ Planning snapshot: [`e8c9788f63cf4688e144b84feeb8f9aabf62540f`](https://github.c
 
 Each task below has numbered subtasks, a completion condition, and a discovery boundary. The boundaries are places to expand the work order before dependent work proceeds; they are not automatic permission checkpoints.
 
-Checked subtasks record implemented/prepared source scope, not audit sign-off or
-executed acceptance. The explicit requirement/dependency audit of tasks 0–8 is in
+Tasks 0–8 checked subtasks record implemented/prepared source scope; task-9
+acceptance rows record the executed scopes described in the validation record.
+The explicit requirement/dependency audit of tasks 0–8 is in
 [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md); its listed source
-review is finished at checkpoint 90. Task-9 source work is unblocked; executed
-acceptance (9.5) and separately requested PR metadata (9.7) remain open.
+review is finished at checkpoint 90. Bounded technical acceptance (9.5) closes at
+110 after the last native cleanup/OS policy checks; separately requested PR
+metadata publication (9.7) remains open.
 Finding history is in [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
 
 ## What the chronological review settled
@@ -236,23 +238,24 @@ FFont loading features or Unicode shaping were added. Ordering remains authored.
 - [x] **9.1** Update runtime/frame, input timing, asset/render, asset-loading, and resource-lifetime documents as each task lands. Add compact event-delivery and worker-policy documents with concrete registration, affinity-group, shutdown, and recovery examples.
 - [x] **9.2** Add meaningful regression sources alongside implementation: pending/in-flight unsubscribe, ordered worker events, pool/group shutdown and limits, timing recovery/input clocks, cache retention/idle retirement, pipeline parameters/state, and packet/text ownership.
 - [x] **9.3** Use controlled clocks, latches, and recording adapters; avoid sleeps as race proofs. Explain scenario/setup/action/result in human-readable tests. Integrate into the existing aggregate target rather than proliferating executables.
-- [x] **9.4** Perform permitted static checks: formatting, whitespace, header dependencies, ownership/lock review, API/implementation correspondence, and documentation consistency. No compilation or test execution is authorized by this planning request.
-- [ ] **9.5** When explicitly requested, compile normal/sandbox configurations, execute the aggregate regressions, and exercise real sequential/concurrent demos, timing policies, material/shader reload, affinity capabilities, idle collection, and shutdown/failure paths. Keep this acceptance gate open until results are recorded.
-- [x] **9.5a** Compile/link current normal and sandbox Release configurations. Checkpoint 91 records successful builds of all default targets, including the normal demo.
-- [x] **9.5b** Execute complete aggregate suites in both configurations. Checkpoint 91 corrects two inconsistent cancellation expectations; 332 normal and 330 sandbox cases pass without skips. Real Linux affinity mask cases execute; driver/demo/font acceptance remains open in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+- [x] **9.4** Perform permitted static checks: formatting, whitespace, header dependencies, ownership/lock review, API/implementation correspondence, and documentation consistency. The initial planning request deferred compilation/execution; later authorized results are recorded under 9.5.
+- [x] **9.5** Compile normal/sandbox configurations, execute the aggregate regressions, and exercise real sequential/concurrent demos, timing policies, material/shader reload, affinity capabilities, idle collection, and shutdown/failure paths. Checkpoint 110 reconciles the bounded results in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) and closes this technical gate.
+- [x] **9.5a** Compile/link current normal and sandbox Release configurations. Source 109 builds all default targets, including the normal demo; the expanded native source also compiles with the X11-test macro absent.
+- [x] **9.5b** Execute complete aggregate suites in both configurations. Source 109 passes 349 normal / 335 sandbox cases without skips, including twelve native-context and three real-font cases. Earlier fixture expectation corrections and results retain their checkpoint scope.
 - [x] **9.5c** Exercise real sequential/concurrent demos, timing/polling/backpressure, resize/close and slow presentation. Checkpoints 103/105 close the bounded automated workloads and ordered native input scopes alongside the prior finite-demo and reported desktop results; see the validation record.
-- [ ] **9.5d** Exercise real driver/context/material reload, retained resources, idle retirement and shutdown/failure combinations.
+- [x] **9.5d** Exercise real driver/context/material reload, retained resources, idle retirement and shutdown/failure combinations. 9.5d.1/9.5d.2 close the recorded standalone and composed scopes at 110.
 - [x] **9.5e** Complete the recorded real font parsing/rasterization, stb allocation failure and rotated FFont rendering acceptance scopes. 99 executes two-face allocation sweeps; 101 corrects RGBA atlas rows and validates actual rotated FFont packets/banks/widths/newline/retirement plus image/STB row boundaries. Keep preexisting FFont feature TODOs out of scope; see [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) for bounded evidence.
-- [ ] **9.5f** Record remaining actual OS policy rejection/restriction behavior and reconcile all native acceptance results before closing 9.5.
+- [x] **9.5f** Record actual inherited OS affinity restriction/discovery/restoration and native request rejection. 9.5f.1 passes at source 109; 110 reconciles prior aggregate, demo, desktop, native context, timing/input and font results to close 9.5.
 
 Checkpoint 95 partially executes 9.5c/d/e: eight finite real-demo configurations,
 real software-driver context/deletion/late-owner checks and default-font parsing/
 baking/upload pass. Full aggregate results are 334 normal and 330 sandbox with no
 skips. Checkpoint 96 records the user's reported desktop checklist pass for
 visual/input/text focus, resize, successful/failed/recovered F5 reload and normal
-close in [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md). These rows remain open
-for forced overload/presentation, further native failure/resource combinations,
-stb internal allocation, rotated FFont and actual OS restriction/rejection acceptance.
+close in [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md). At that historical
+checkpoint these rows remained open for overload/presentation, native failure,
+stb allocation, rotated FFont and actual OS restriction/rejection; later
+checkpoints below execute and close those scopes.
 
 - [x] **9.5c.1** Execute forced native update and presentation workloads. Checkpoint 103 runs four timing policies in both modes, with real clocks/Gainput/OpenGL and retained draw packets. A condition-held concurrent presentation observes eight updates but two preparations, with actual pixel readback and resumed presentation. Controlled post-swap work does not claim physical GPU/compositor pacing.
 
@@ -260,13 +263,13 @@ stb internal allocation, rotated FFont and actual OS restriction/rejection accep
 
 - [x] **9.5c.3** Execute ordered native Events/Text during backlog and recovery. Checkpoint 105 sends synthetic X server keys through the normal GLFW pump/character conversion in sequential/concurrent fixed-drop and capped catch-up runs. Each delivers eleven records once with correct old/new focus metadata and one pass-through semantic press/release. A concurrent mailbox gate proves three-poll capacity pauses native processing before resumption. Full suites pass 346 normal / 333 sandbox without skips. This closes parent 9.5c with 9.5c.1/c.2 and prior desktop/demo results.
 
-- [ ] **9.5d.2** Execute composed native-resource and partial-frame/runtime failure cleanup in both modes. Verify real handle deletion, owner/context recovery, original-failure preservation and accepted CPU/platform dependency settlement. Existing standalone context/reload/retirement checks remain valid; use this finite composition scope to close parent 9.5d.
+- [x] **9.5d.2** Execute composed native-resource and partial-frame/runtime failure cleanup in both modes. Source 108 runs six initialization/partial-frame/presentation failures; accepted CPU/platform uploads settle before game cleanup. Real context unbinding and secondary deinit failure preserve the original error; owner recovery deletes programs, VAOs, buffers and both textures while the window remains alive. This closes parent 9.5d with 9.5d.1.
 
-- [ ] **9.5f.1** Execute actual inherited OS affinity restriction and native request rejection. Narrow and restore only the test's own calling-thread mask; check discovery, required/preferred eligibility and rejected native-mask error behavior. Separate real OS errors from already executed controlled adapter failures, then reconcile all results before closing 9.5f/9.5.
+- [x] **9.5f.1** Execute actual inherited OS affinity restriction and native request rejection. Source 109 narrows/restores only the calling test thread's mask, verifies production discovery and required/preferred eligibility, and sends an in-range absent-CPU request to pthread_setaffinity_np. Its actual kernel error settles the callback future; the same worker recovers. Controlled pre-callback failures retain their separate evidence. Full 349/335 suites pass; 110 reconciles results and closes 9.5f/9.5.
 
-- [x] **9.5d.1** Execute real retained-frame shader replacement/cache clear, partial compile/link/file/reflection failure cleanup and live-window shutdown/late-owner release. Checkpoint 97 fixes deferred deletion of the last current program before maintenance/shutdown. Five native cases and full suites pass: 337 normal / 330 sandbox, no skips. Parent 9.5d stays open for remaining native fault/context-loss combinations.
+- [x] **9.5d.1** Execute real retained-frame shader replacement/cache clear, partial compile/link/file/reflection failure cleanup and live-window shutdown/late-owner release. Checkpoint 97 fixes deferred deletion of the last current program before maintenance/shutdown. Five native cases and full suites pass: 337 normal / 330 sandbox, no skips. At 97, parent 9.5d remained open for composed native runtime failure; 108/110 close it.
 
-- [x] **9.5e.1** Execute real TrueType/CFF parsing and raster allocation rejection before provider upload. Checkpoint 99 fixes silent partial atlases and unchecked-null raster allocation by unwinding through tracked scratch ownership. Three real-font cases sweep 793/727 allocation requests and nested failure; full suites pass 340 normal / 333 sandbox without skips, and both finite real-demo modes pass. Parent 9.5e stays open for rotated FFont output.
+- [x] **9.5e.1** Execute real TrueType/CFF parsing and raster allocation rejection before provider upload. Checkpoint 99 fixes silent partial atlases and unchecked-null raster allocation by unwinding through tracked scratch ownership. Three real-font cases sweep 793/727 allocation requests and nested failure; full suites pass 340 normal / 333 sandbox without skips, and both finite real-demo modes pass. At 99, parent 9.5e remained open for rotated FFont output; 101 closes that scope.
 
 - [x] **9.5e.2** Execute rotated FFont output through real widths loading, atlas geometry, production shaders and retained packets. Checkpoint 101 fixes RGBA row orientation and validates bank selection, widths/spaces, a transformed newline and resource retirement. File/prepared image readbacks and unchanged STB alpha rows also pass. Full suites pass 342 normal / 333 sandbox without skips; both finite demo modes pass. This closes parent 9.5e with 9.5e.1.
 

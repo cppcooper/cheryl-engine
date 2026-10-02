@@ -1,25 +1,25 @@
 # Runtime and framework implementation status
 
-Checkpoint 107 guards the native X11 fixture for the selected GLFW backend and
-preserves the ordered input acceptance at 105. Both Release
-builds and all 346 normal / 333 sandbox cases pass without skips, including eleven
-real-context and three real-font cases. Synthetic X server key events reach the
-normal GLFW pump and character conversion in both runtime modes under fixed-drop
-and capped catch-up recovery. All eleven records arrive once with preserved focus
-metadata; exclusive keyboard State is suppressed and the later pass-through tap
-contributes one press/release. Together with 103 and the reported desktop results,
-this closes bounded 9.5c acceptance. Font acceptance 9.5e remains complete.
-Native-runtime resource failure cleanup, actual OS affinity restrictions/rejections,
-and PR publication remain open. Current evidence is in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+Checkpoint 110 closes bounded task-9 technical acceptance. Validated source 109
+adds native runtime failure cleanup and actual inherited affinity restriction/
+OS rejection checks. Both complete Release builds pass; all **349 normal / 335
+sandbox** cases pass without failures or skips, including twelve real-context,
+three real-font and two new OS-affinity cases. The six native failure combinations
+preserve the original error, settle accepted CPU/platform work and delete driver
+handles after restoring the actual current context. The affinity checks restore
+the calling thread's nine-CPU mask after narrowing it to CPU 0; an absent CPU 1023
+request reaches the kernel and returns Invalid argument, followed by worker recovery.
+Together with prior timing/input/font/demo/desktop evidence, 9.5 is complete for
+its recorded scopes. **Only separately requested PR metadata publication (9.7)
+remains open.** Earlier sections retain their checkpoint scope; current evidence
+is in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
 `refactor-runtime-render-resource-architecture`. Tasks 1–8 of the second-pass
 work order are implemented in source. **Current normal/sandbox Release builds pass;
-full aggregate runs pass 332 normal and 330 sandbox tests with no skips after two
-startup-fixture expectation corrections.** [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md)
-records the validated source revision, commands and remaining native acceptance.
+full aggregate runs pass 349 normal and 335 sandbox tests with no skips.** [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md)
+records the validated source revision, commands and bounded acceptance closure.
 Individual local commits remain intact.
 
 The completed-task source audit closes at checkpoint 90 after reviewing every
@@ -29,14 +29,15 @@ declaration inventory and native startup/retained-owner review are recorded in
 [ARCHITECTURE-SUBTASK-AUDIT.md](ARCHITECTURE-SUBTASK-AUDIT.md), with finding history in
 [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md). Closure is
 bounded source review, not exhaustive correctness or type/link/runtime acceptance.
-Task-9 build/aggregate execution passes; native acceptance and PR metadata remain
-open as specified by the work order. The table below records the pre-execution
+Task-9 build/aggregate/native acceptance is complete for the recorded scopes; PR
+metadata publication remains separately open as specified by the work order.
+The table below records the pre-execution
 source-audit snapshot; current results are in the linked validation record.
 
 Earlier input/runtime work began at
 `d690266c389f08e74efe0481c5fc6b744870ea29`. Its compilation follow-up is retained
-below as historical evidence; automated tests and real demo acceptance remain
-open. Source preparation checks are separate from executed acceptance.
+below as historical evidence; automated tests and real demo acceptance were still
+open at that snapshot. Source preparation checks are separate from executed acceptance.
 
 | Work item | Prepared source and regression coverage | Execution state |
 | --- | --- | --- |

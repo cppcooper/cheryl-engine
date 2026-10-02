@@ -78,7 +78,25 @@ context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
 
-## Policy example and prepared coverage
+## Executed acceptance
+
+Checkpoint 109 executes two further Linux cases through the production adapter.
+The caller temporarily narrows its own nine-CPU inherited mask to CPU 0; a newly
+created pool discovers that single eligible CPU. Required outside eligibility
+rejects, preferred intersection/fallback uses the inherited CPU, and real worker
+mask/CPU observations match. Every child joins before the caller mask restores,
+with restoration guarded on exceptional test exits.
+
+An absent CPU ID inside CPU_SETSIZE reaches pthread_setaffinity_np with a valid
+nonempty mask. The actual kernel Invalid argument error reaches the accepted job's
+future; the next required job on that worker sees its inherited mask. This callback
+failure does not increment pre-callback policy failure accounting. Existing
+controlled adapter cases separately execute policy suppression/readback/fallback
+and startup rollback. All worker regressions execute in the complete 349 normal /
+335 sandbox suites without skips. 110 closes bounded 9.5f/9.5 acceptance; see
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+
+## Policy example and coverage history
 
 An application can choose a share and cap independently of CPU eligibility:
 
@@ -97,6 +115,9 @@ those cores. Quiesce producers before context shutdown. Runtime pumps accepted
 platform dependencies while this work finishes, then closes platform requests and
 recycles retained frames before application/resource cleanup. Outside runtime,
 the owner must service any such dependencies before waiting for group drainage.
+
+The following checkpoint notes retain their source-preparation scope. Current
+executed acceptance is recorded above.
 
 The aggregate regression sources prepare held-job cap isolation, weighted share,
 saved-handle rejection, same-pool wait rejection, and pinned/inherited/pinned mask

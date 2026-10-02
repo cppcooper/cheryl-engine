@@ -1,7 +1,7 @@
 # Input implementation status
 
-Current evidence at checkpoint 106: complete normal/sandbox Release suites pass
-346/333 cases without skips. All input/polling/capture/routing/runtime regressions
+Current evidence at checkpoint 110: complete normal/sandbox Release suites pass
+349/335 cases without skips; bounded task-9 technical acceptance is complete. All input/polling/capture/routing/runtime regressions
 execute. Native State backpressure and slow timing/presentation pass at 103;
 105 drives synthetic X server keys through GLFW/Gainput in both fixed-drop/catch-up
 runtime modes, preserving ordered Events/Text, focus changes and semantic State
