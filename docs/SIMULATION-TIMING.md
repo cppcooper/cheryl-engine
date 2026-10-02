@@ -87,8 +87,15 @@ The demo accepts `--fixed`, `--fixed-step-ms=N`, `--variable-interval-ms=N`,
 demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 --recovery-prefix=2 --recovery-cap-ms=100
 ```
 
-Prepared scheduler, tick-input, and runtime regressions have not been compiled
-or executed. Real sequential/concurrent acceptance remains open.
+Scheduler, tick-input and recording-runtime regressions execute in both complete
+Release suites. Checkpoint 103 additionally runs real sequential/concurrent
+adapters with deliberate 80 ms update work under variable, fixed-drop and capped
+catch-up policies. A real-swap wrapper holds presentation: sequential timing
+includes that work, while a condition predicate proves concurrent updates continue
+when frame slots fill. Native State backlog checks prove full capacity pauses
+polling while platform dispatch and presentation continue. Ordered native Events/Text
+under forced backlog remains open. See
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) for exact scopes/results.
 
 TODO: add an optimization configurer that suggests pacing/recovery limits from
 measured workloads while preserving explicit user configuration. It must not

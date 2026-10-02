@@ -225,7 +225,39 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### RGBA rows and rotated FFont acceptance: checkpoints 101–102
+### Real-runtime overload acceptance: checkpoints 103–104
+
+The user confirms application through 98. A fresh fetch still observes remote 95;
+delivery therefore uses the saved 98 tree, not that stale remote observation.
+Pending 99–102 remain intact. Source 103 is `7f3690427011f2d5eec6737f1920058973dc0790`;
+104 records the executed evidence and current delivery route.
+
+Three real-runtime aggregate cases execute actual GLFW/Gainput/OpenGL adapters.
+Eight slow-update runs cover four timing policies in both modes with real clock
+lag, fixed deltas, capped catch-up and discarded time. A real-swap surface wrapper
+holds presentation after its first swap: sequential elapsed time reflects that
+work; a concurrent condition predicate proves eight updates while only two frames
+can be prepared. Real pixel reads verify the packet before each swap. Native
+State forwarding fills lockstep/three-poll finite capacity during a held update.
+Two distinct completed platform drains prove polling pauses while the old frame
+continues presenting; the next update consumes the full batch in order and polling
+resumes. The workloads are controlled; no physical GPU stall or hardware record
+injection is claimed. The first build's missing fixture header was corrected.
+
+Both full Release builds and 345 normal / 333 sandbox cases pass without skips,
+including ten real-context and three real-font cases. Focused execution passes
+all three new native cases. Documentation-only 104 is not retested. The period
+stops at the 20-minute source checkpoint. 9.5c.1/c.2 close for their bounded scopes;
+parent 9.5c remains open for ordered native Events/Text under forced backlog.
+9.5d/f and 9.7 remain open; 9.5e stays complete. No push or PR write.
+
+Pending patches are **99–104**, next unused number **105**. Use
+`cheryl-engine-99-104-from-19912dd.patch` after applied 98. Canonical followup and
+continuation contain the same six commits, excluding already-applied 96–98.
+Cumulative delivery preserves the original task base. All three replay routes
+verify exact trees, PNG bytes and ordered author/date/message records.
+
+### RGBA rows and rotated FFont acceptance: checkpoints 101–102 (historical)
 
 Remote remains checkpoint 95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
 Pending 96–100 are retained. Source 101 is `6c7cafc2b8396aa66c54613643a1db30346bdc57`;

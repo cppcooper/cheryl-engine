@@ -18,7 +18,7 @@ govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 Aggregate regression sources cover dispatch/event lifetime, worker policies,
 timing/input recovery, cache/native ownership, material parameters, frame/text
 retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
-Complete aggregate runs pass 342 native-enabled normal and 333 sandbox cases with
+Complete aggregate runs pass 345 native-enabled normal and 333 sandbox cases with
 no skips. Startup-fixture cancellation expectations match accepted-request
 broken_promise behavior. Real Linux affinity mask cases execute.
 
@@ -48,7 +48,15 @@ stb alpha ordering stay intact. Driver readbacks verify real PNG decoding and
 all three image creation routes. All seven native cases pass; font acceptance
 is complete for the recorded scopes. Both finite demo modes pass after this fix.
 
-Forced timing/backlog/presentation overload, further native resource/failure
+Three additional native runtime cases force slow updates under four timing
+policies in both modes, hold real-swap presentation while concurrent updates
+continue despite occupied frame slots, and fill actual State polling capacity
+while platform requests and retained-frame presentation remain live. Eight updates
+and two preparations are observed during the held presentation; ordered full-batch
+consumption and resumed polling pass. All ten native cases execute. These are
+controlled workloads on the software driver, not physical compositor stall claims.
+
+Ordered native Events/Text under forced backlog, further native resource/failure
 combinations and remaining
 actual OS policy rejection/restriction acceptance stay open. The completed-task
 source audit closes at checkpoint 90, including clang-format 23.1.2, declaration

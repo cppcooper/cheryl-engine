@@ -1,13 +1,14 @@
 # Architecture convergence review
 
-Checkpoint 102 records the RGBA row-orientation fix and rotated FFont acceptance
-at 101. Full Release builds pass; complete suites pass 342 normal and 333 sandbox
-cases without skips, including seven real-context and three real-font cases.
-Both finite demo modes pass after the fix. Font acceptance 9.5e is complete for
-the recorded scopes, and the user's desktop checklist remains a reported pass.
-Forced overload, further native faults and remaining OS acceptance stay open.
-Current evidence is in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+Checkpoint 104 records real-runtime overload acceptance at 103. Both Release
+builds pass; complete native-enabled suites pass 345 normal and 333 sandbox
+cases without skips, including ten real-context and three real-font cases.
+Slow updates exercise four timing policies in both modes. Controlled presentation
+holds prove concurrent updates continue while frame publication is limited; full
+native State batches pause polling while presentation and platform dispatch continue.
+Font acceptance 9.5e remains complete. Ordered native Events/Text under forced
+backlog, further native faults and remaining OS acceptance stay open. Current evidence
+is in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 **Historical checkpoint-90 snapshot.** 1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
 completed-task source audit closes at checkpoint 90, including batch-ending claims

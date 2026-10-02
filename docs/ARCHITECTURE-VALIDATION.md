@@ -1,10 +1,12 @@
 # Task 9 validation record
 
-Latest checkpoint 102 records successful complete builds and 342 normal / 333
-sandbox tests, including seven real-context and three real-font cases without skips.
-The validated C++ commit is `6c7cafc2b8396aa66c54613643a1db30346bdc57` (101).
-Both finite demo modes pass after the RGBA row-orientation fix. Font acceptance
-9.5e is complete for the recorded scopes. Earlier results retain their checkpoint scope.
+Latest checkpoint 104 records successful complete builds and 345 normal / 333
+sandbox tests, including ten real-context and three real-font cases without skips.
+The validated C++ commit is `7f3690427011f2d5eec6737f1920058973dc0790` (103).
+New real-runtime cases exercise forced update/presentation work and native State
+backpressure. The existing finite demo and reported desktop results remain scoped
+to their recorded revisions; 103 changes test sources only. Font acceptance 9.5e
+is complete. Earlier results retain their checkpoint scope.
 
 1 October 2026. Remote checkpoint 90,
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`, contains the complete audit series.
@@ -299,6 +301,65 @@ allocation acceptance. Task 9.5 stays open for forced timing/input/presentation
 overload, further native fault/context-loss combinations and remaining actual OS
 policy restrictions/rejections. The user's existing desktop report is retained;
 no new manual checklist is assigned. 9.7 publication remains open. No push or PR write.
+
+## Real-runtime overload acceptance: checkpoints 103–104
+
+The user confirms patches through **98** are applied. A fresh fetch still observes
+remote 95 (`2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`); that does not override the
+user's local application report. Pending delivery is **99–104**, based on the saved
+98 tree at `19912dd54972dd08bcef3ff96057379a38207be2`. The unique application bundle
+is `cheryl-engine-99-104-from-19912dd.patch`, excluding 96–98. The source revision
+is `7f3690427011f2d5eec6737f1920058973dc0790` (103); 104 records evidence only.
+
+Three opt-in aggregate cases use real GLFW/Gainput/Mesa OpenGL adapters and
+resolved triangle/material packets. None replaces the runtime clock or native GL
+calls. All three execute rather than skip:
+
+- Slow updates: sequential and concurrent runs each exercise variable timing,
+  fixed drop-excess-lag, capped variable catch-up with one fixed-prefix update,
+  and capped catch-up with no fixed prefix. Each of the eight runs deliberately
+  spends at least 80 ms inside its first update, then stops after 24 updates.
+  Assertions observe the real input-consumption lag, variable elapsed delta,
+  unchanged 10 ms fixed deltas, discarded lag and catch-up deltas no greater than
+  the configured 15 ms cap. Controlled-clock scheduler regressions separately
+  establish exact batch bounds and once-per-batch dropped-time accounting.
+- Slow presentation: a delegating native context forwards current-context operations,
+  framebuffer reads and GLFW swaps. After its first completed swap, it holds the
+  owner inside `present()`. The sequential run deliberately delays 80 ms and
+  observes that elapsed time in a later update. The concurrent run instead waits
+  on a condition predicate until eight updates finish; the two-second deadline
+  only bounds a broken runtime. XML records **8 updates / 2 preparations** during
+  that hold: the current frame occupies one slot, publication exhausts the other
+  two, and authoritative simulation continues. Presentation subsequently resumes.
+  Every actual swap is preceded by a real red-pixel readback of the retained packet.
+- Full State backlog: a forwarding native input observer preserves actual Gainput
+  snapshots. In concurrent lockstep (capacity one) and finite (capacity three),
+  the fourth update holds consumption until real unchanged polls fill capacity.
+  Two separate platform drains finish while native poll sequence stays fixed;
+  presentation advances between them. Once the update releases, the next update
+  receives exactly every retained poll in sequence and subsequent polling resumes.
+  No sleeping establishes the drain order or full-batch invariant.
+
+This is bounded native workload acceptance on Mesa llvmpipe, not an induced physical
+GPU/compositor stall. The input case forwards real State and creates no hardware
+Events/Text; ordered native records during forced backlog remain open. Existing
+aggregate recording/input tests and the user's reported desktop focus/resize/close
+results retain their separate scopes. No new manual checklist is assigned.
+
+Both complete Release builds pass. Full enabled runs pass **345 normal / 333
+sandbox** cases with zero failures, errors, disabled cases or skips, including all
+ten native and three real-font allocation cases. Focused execution passes the three
+new cases. The first fixture build missed the explicit AbstractGame header; adding
+it corrects compilation without changing production. Raw build/focused/full logs,
+XML, driver identity, command/timeouts, runner and patch replay results are archived.
+Formatting and whitespace checks pass. Source work ends at the 20-minute checkpoint;
+104's documentation-only changes need no repeated build/test execution.
+
+**9.5c.1** closes for forced native timing/presentation workloads and **9.5c.2** closes
+for native State backpressure. Parent 9.5c remains open for ordered native Events/Text
+under forced backlog. 9.5d/f remain open for further native fault/context-loss
+combinations and actual OS restriction/rejection behavior. Font acceptance 9.5e
+stays complete. 9.7 publication remains separately pending. No push or PR write.
 
 ## Earlier acceptance plan (checkpoint 92)
 

@@ -254,6 +254,10 @@ close in [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md). These rows remain
 for forced overload/presentation, further native failure/resource combinations,
 stb internal allocation, rotated FFont and actual OS restriction/rejection acceptance.
 
+- [x] **9.5c.1** Execute forced native update and presentation workloads. Checkpoint 103 runs four timing policies in both modes, with real clocks/Gainput/OpenGL and retained draw packets. A condition-held concurrent presentation observes eight updates but two preparations, with actual pixel readback and resumed presentation. Controlled post-swap work does not claim physical GPU/compositor pacing.
+
+- [x] **9.5c.2** Execute native State backpressure while presentation and platform requests remain live. Checkpoint 103 fills lockstep/three-poll finite batches during a held concurrent update, proves polling stays paused across two completed platform drains, and verifies the whole ordered batch is consumed before polling resumes. Parent 9.5c remains open for ordered native Events/Text under forced backlog; the prior reported desktop pass is retained. Full suites pass 345 normal / 333 sandbox without skips.
+
 - [x] **9.5d.1** Execute real retained-frame shader replacement/cache clear, partial compile/link/file/reflection failure cleanup and live-window shutdown/late-owner release. Checkpoint 97 fixes deferred deletion of the last current program before maintenance/shutdown. Five native cases and full suites pass: 337 normal / 330 sandbox, no skips. Parent 9.5d stays open for remaining native fault/context-loss combinations.
 
 - [x] **9.5e.1** Execute real TrueType/CFF parsing and raster allocation rejection before provider upload. Checkpoint 99 fixes silent partial atlases and unchecked-null raster allocation by unwinding through tracked scratch ownership. Three real-font cases sweep 793/727 allocation requests and nested failure; full suites pass 340 normal / 333 sandbox without skips, and both finite real-demo modes pass. Parent 9.5e stays open for rotated FFont output.

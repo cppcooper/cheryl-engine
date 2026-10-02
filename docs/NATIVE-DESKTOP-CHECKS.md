@@ -45,5 +45,9 @@ console error and your GPU/driver if known. Screenshots are optional; a short te
 report is enough to begin investigation. These observations complement automated
 context/lifetime checks and do not hold up independent source work.
 
-Still separate: forced slow simulation/presentation and overload recovery, more
-native reload/failure/resource combinations and remaining OS policy restriction/rejection acceptance.
+Checkpoint 103 separately executes controlled slow updates and presentation plus
+full native State backlog, documented in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). The prior desktop report is
+retained without requiring another checklist. Ordered native Events/Text under
+forced backlog, further native fault/context-loss combinations and remaining OS
+policy restriction/rejection acceptance stay open.
