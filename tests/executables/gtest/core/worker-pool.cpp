@@ -6,15 +6,20 @@
 
 #include <core/engine/worker-pool.h>
 #include <core/engine/worker-pool-internal.h>
+#include <core/engine/worker-affinity.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <exception>
+#include <filesystem>
 #include <future>
 #include <memory>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <utility>
 
@@ -85,6 +90,27 @@ namespace {
 #include <sched.h>
 
 namespace {
+    class RestoreCallingThreadAffinity final {
+        const CE::Engine::WorkerDetail::WorkerNativeAdapter native_ = CE::Engine::WorkerDetail::native_worker_adapter();
+        const std::vector<unsigned int> inherited_ = native_.query_affinity();
+
+    public:
+        ~RestoreCallingThreadAffinity() {
+            try {
+                CE::Engine::WorkerDetail::apply_affinity(native_, inherited_);
+            } catch (const std::exception& error) {
+                ADD_FAILURE() << "Restoring the calling test thread's affinity failed: " << error.what();
+            }
+        }
+        RestoreCallingThreadAffinity() = default;
+        RestoreCallingThreadAffinity(
+            const RestoreCallingThreadAffinity&
+        ) = delete;
+        RestoreCallingThreadAffinity& operator=(
+            const RestoreCallingThreadAffinity&
+        ) = delete;
+    };
+
     std::vector<unsigned int> read_worker_cpu_mask() {
         cpu_set_t mask;
         CPU_ZERO(&mask);
@@ -293,6 +319,109 @@ TEST(
 }
 
 #if defined(__linux__)
+TEST(
+    worker_pool_native,
+    restricted_inherited_mask_controls_discovery_and_required_preferred_eligibility
+) {
+    const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
+    const auto inherited = native.query_affinity();
+    if (inherited.size() < 2)
+        GTEST_SKIP() << "Restriction/eligibility comparison requires two inherited CPUs";
+    const std::vector<unsigned int> restricted{inherited.front()};
+    {
+        // Only this caller changes its own mask. Threads created below inherit
+        // it; the guard restores it even after an exception or fatal assertion.
+        RestoreCallingThreadAffinity restore;
+        CE::Engine::WorkerDetail::apply_affinity(native, restricted);
+        CE::Engine::WorkerPool pool;
+        EXPECT_TRUE(pool.capabilities().cpu_affinity);
+        EXPECT_EQ(pool.capabilities().available_cpus, restricted);
+        CE::Engine::WorkerGroupOptions options;
+        options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+        options.cpu.cpus = {inherited[1]};
+        EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::invalid_args);
+        options.cpu.cpus = restricted;
+        auto required = pool.make_group(options);
+        options.cpu.strength = CE::Engine::WorkerPolicyStrength::Preferred;
+        options.cpu.cpus = {inherited[0], inherited[1]};
+        auto intersected = pool.make_group(options);
+        options.cpu.cpus = {inherited[1]};
+        auto fallback = pool.make_group(options);
+        EXPECT_EQ(required.policy().effective_cpus, restricted);
+        EXPECT_EQ(intersected.policy().effective_cpus, restricted);
+        EXPECT_EQ(fallback.policy().effective_cpus, restricted);
+        EXPECT_NE(intersected.policy().limitations.find("fell back"), std::string::npos);
+        EXPECT_NE(fallback.policy().limitations.find("fell back"), std::string::npos);
+        for (const auto* group : {&required, &intersected, &fallback}) {
+            auto observation = group->submit([] { return std::pair{read_worker_cpu_mask(), sched_getcpu()}; });
+            group->close();
+            group->drain();
+            const auto [mask, cpu] = observation.get();
+            EXPECT_EQ(mask, restricted);
+            EXPECT_EQ(cpu, static_cast<int>(restricted.front()));
+            EXPECT_EQ(group->status().accepted, 1u);
+            EXPECT_EQ(group->status().completed, 1u);
+            EXPECT_EQ(group->status().policy_failures, 0u);
+        }
+        pool.shutdown(); // Every restricted child is joined before caller restoration.
+        EXPECT_EQ(native.query_affinity(), restricted);
+    }
+    EXPECT_EQ(native.query_affinity(), inherited);
+    ::testing::Test::RecordProperty("inherited_cpu_count", static_cast<int>(inherited.size()));
+    ::testing::Test::RecordProperty("restricted_cpu", static_cast<int>(restricted.front()));
+    ::testing::Test::RecordProperty("calling_mask_restored", "true");
+}
+
+TEST(
+    worker_pool_native,
+    a_genuine_os_affinity_rejection_settles_a_job_and_keeps_the_shared_worker_usable
+) {
+    if (!std::filesystem::exists("/sys/devices/system/cpu/possible"))
+        GTEST_SKIP() << "Kernel rejection acceptance requires an exposed CPU inventory";
+    std::optional<unsigned int> absent_cpu;
+    for (unsigned int cpu = CPU_SETSIZE; cpu-- > 0;) {
+        if (!std::filesystem::exists("/sys/devices/system/cpu/cpu" + std::to_string(cpu))) {
+            absent_cpu = cpu;
+            break;
+        }
+    }
+    if (!absent_cpu)
+        GTEST_SKIP() << "No absent CPU ID inside the native mask is available for kernel rejection";
+    CE::Engine::WorkerPool pool;
+    const auto inherited = pool.capabilities().available_cpus;
+    CE::Engine::WorkerGroupOptions options;
+    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto group = pool.make_group(options);
+    bool entered = false;
+    auto rejected = group.submit([cpu = *absent_cpu, &entered] {
+        // The production adapter reaches pthread_setaffinity_np with a nonempty
+        // mask and an in-range ID. The kernel rejects it after callback entry.
+        entered = true;
+        const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
+        native.set_affinity({cpu});
+    });
+    std::string rejection_message;
+    try {
+        rejected.get();
+        ADD_FAILURE() << "The kernel accepted an absent CPU's affinity mask";
+    } catch (const CE::Exceptions::failed_operation& error) {
+        rejection_message = error.what();
+        EXPECT_NE(rejection_message.find("Setting worker CPU affinity failed"), std::string::npos);
+    }
+    auto recovery = group.submit([] { return read_worker_cpu_mask(); });
+    group.close();
+    group.drain();
+    EXPECT_TRUE(entered);
+    EXPECT_EQ(recovery.get(), inherited);
+    EXPECT_EQ(group.status().accepted, 2u);
+    EXPECT_EQ(group.status().completed, 2u);
+    EXPECT_EQ(group.status().policy_failures, 0u); // Failure occurred inside the callback.
+    EXPECT_EQ(group.status().running, 0u);
+    EXPECT_EQ(group.status().pending, 0u);
+    ::testing::Test::RecordProperty("kernel_rejected_cpu", static_cast<int>(*absent_cpu));
+    ::testing::Test::RecordProperty("kernel_rejection", rejection_message);
+}
+
 TEST(
     worker_pool,
     a_required_cpu_group_runs_on_its_eligible_cpu
