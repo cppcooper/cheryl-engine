@@ -36,7 +36,10 @@ logical owners, and closes the lifetime. A later release does not delete again.
 Using a closed handle fails before querying its borrowed context.
 
 `iRenderer::maintain_resources()` is the backend-neutral platform maintenance
-operation. OpenGL implements it with the context-owned retirement collector.
+operation. OpenGL validates the selected current context, unbinds its last program,
+then runs the context-owned retirement collector. A deleted current program stays
+alive until it is unbound; this also happens before the shutdown sweep while a
+borrowed window/context may remain alive. Subsequent draws select their own program.
 Backends without deferred resource release implement a no-op. Both runtime modes
 call it after platform/render/recycle work and before waiting, including when no
 simulation update or first frame is available. It also runs while accepted CPU
@@ -84,8 +87,10 @@ exactly-once collection/shutdown, retained handles after closure, moved/reused
 registrations, wrong-context collection, and guarded untracked cleanup. Recording
 runtime adapters cover maintenance before a first frame with a full backlog and
 first-error preservation. Strong-residency/cache-domain scenarios cover explicit
-clear and retained owners across provider rebind. These sources are uncompiled
-and unexecuted; real context-loss and GPU acceptance remain open.
+clear and retained owners across provider rebind. These fixtures now execute in the full normal/sandbox suites. Five additional
+real-context cases observe actual driver IDs and retained-frame pixels; forced real
+context loss and additional native faults remain open in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 Cache insertion retains a local candidate owner across fallible node construction
 and rehash. A failed or duplicate insertion can release its final candidate only
@@ -105,5 +110,6 @@ shutdown with a missing current context must preserve pending and live entries s
 owner recovery can collect and sweep each ID once. If recovery fails, abandon must
 invalidate pending and retained entries of every resource kind without a native
 delete or later query of a destroyed context, including late worker-thread release.
-These sources use synthetic IDs and have not been compiled or executed; real
-context-loss and driver cleanup remain separate acceptance checks.
+These scenarios use synthetic IDs and now pass in the aggregate suite. Real
+selected-context restoration, frame-resource deletion before window destruction
+and late foreign release also pass at 97; forced real context loss remains separate.

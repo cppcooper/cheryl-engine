@@ -18,14 +18,19 @@ govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 Aggregate regression sources cover dispatch/event lifetime, worker policies,
 timing/input recovery, cache/native ownership, material parameters, frame/text
 retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
-Complete aggregate runs pass 334 native-enabled normal and 330 sandbox cases with
+Complete aggregate runs pass 337 native-enabled normal and 330 sandbox cases with
 no skips after correcting two startup-fixture cancellation expectations; production
 behavior is unchanged. Real Linux affinity mask cases execute.
 
 Mesa 25.2.8 llvmpipe executes texture retirement, selected-context restoration and
 retained-image release after engine/window destruction. Eight finite real-demo
 configurations complete in both modes, including real default-font parsing/baking/
-upload. The user reports the desktop checklist passed with expected behavior:
+upload. Three further native cases validate retained shader-source frame generations after
+cache clear, partial compile/link/file/reflection failure cleanup and live-window
+shutdown with final foreign owner release. Maintenance/shutdown now unbinds the last
+program so its native deletion completes before the borrowed context is destroyed.
+The initial shutdown case reproduced the failure; all five native cases now pass.
+The user reports the desktop checklist passed with expected behavior:
 camera/mouse/text focus, resize, valid/failed/recovered F5 reload and normal close.
 The checklist requests sequential and concurrent modes; GPU/driver identity and
 exact local build flags were not supplied.

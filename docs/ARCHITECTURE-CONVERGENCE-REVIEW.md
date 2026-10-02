@@ -1,13 +1,11 @@
 # Architecture convergence review
 
-Checkpoint 95 adds current native evidence: real Mesa llvmpipe context/lifetime
-checks and eight finite sequential/concurrent demo runs pass. Full normal/sandbox
-suites now pass 334/330 cases without skips under requested native execution.
-Checkpoint 96 records the user's desktop checklist pass: input/text focus, resize,
-successful/failed/recovered reload and normal window close. Further timing/native/
-font/OS acceptance remains open;
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) and
-[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md) record scope and reported results.
+Checkpoint 98 records the bound-program retirement fix at 97 and five passing
+real-context cases. Both full Release builds pass; the complete suites pass
+337 normal and 330 sandbox cases without skips. The user's desktop checklist is
+recorded as passing at 96. Forced overload, further native faults, font allocation/
+rotated FFont and remaining OS acceptance stay open. Current evidence is in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
 completed-task source audit closes at checkpoint 90, including batch-ending claims

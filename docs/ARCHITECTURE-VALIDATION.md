@@ -1,5 +1,10 @@
 # Task 9 validation record
 
+Latest checkpoint 98 records successful complete builds and 337 normal / 330
+sandbox tests, including five real-context cases without skips. The validated
+C++ commit is `00f8ca67534c2597266e6590a4a226e2892e73a6` (97). Earlier execution
+records below retain their checkpoint scope.
+
 1 October 2026. Remote checkpoint 90,
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`, contains the complete audit series.
 Its tree exactly matches saved local 90, `2299004dfa8f9d83461a79c99cb712c05b4c2731`;
@@ -130,6 +135,50 @@ failure, rotated FFont output and remaining actual OS policy restrictions/reject
 The user's report closes the manual checklist, rather than those separate scenarios.
 9.7 publication remains open. Next independent work can exercise real reload/failure
 paths and forced overload. No push or PR write occurred.
+
+## Native retained-frame and failure acceptance: checkpoints 97–98
+
+The user will skip applying documentation-only 96 separately. The next pending
+bundle therefore includes **96–98** from confirmed remote 95,
+`2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`, with its recorded desktop pass.
+
+Three additional opt-in cases execute against actual Mesa llvmpipe OpenGL objects:
+
+- A fragment-source change swaps red and green while the authored color stays red.
+  Old and new retained frames still produce their distinct pixel readbacks after
+  cache clear and external-owner release. Recycling and idle maintenance delete
+  programs, vertex arrays and buffers at the observed lifetime boundaries.
+- Compile failure, link-interface mismatch, a missing fragment after successful
+  vertex compilation and post-link reflection rejection preserve the published
+  material and its red frame output. Forwarding only native create entry points
+  records actual driver IDs; shader/program queries confirm partial cleanup and
+  collection of the adopted rejected candidate. Entry points restore on every exit.
+- Renderer shutdown closes a still-bound frame's program, vertex array, buffer and
+  texture while the borrowed window/context remains alive. Closed program/image/
+  geometry use rejects before and after engine destruction. Final logical owners
+  then release on another thread.
+
+The initial five-case native run passed four and failed shutdown: `glIsProgram`
+remained true after shutdown while the window was still alive. Deleting the current
+program defers its deletion until it is unbound. 97 unbinds after owner/current-
+context validation before idle collection and before shutdown. Later draws select
+complete program state. The final idle case deliberately leaves its last program
+bound, so neither collection nor shutdown relies on a later draw/window destruction.
+
+Both full Release builds pass after the fix. Native-requested normal execution
+passes **337** cases, including all five native cases; sandbox passes **330**.
+Failures, errors, disabled cases and skips are all zero. The archive retains the
+initial failure, final full logs/XML, build commands and the bounded same-session
+Xvfb runner. Private authorization files are excluded and temporary displays/helper
+links are cleaned up. Formatting and whitespace checks pass. 98 changes only docs;
+no repeated build/test run is needed for that checkpoint.
+
+9.5d.1 is complete for these scenarios. 9.5c–f remain open for forced timing/input/
+presentation overload, further native fault/context-loss combinations, internal
+stb allocation, rotated FFont and remaining actual OS restrictions/rejections.
+The user's existing desktop report is preserved; these source changes affect native
+maintenance/shutdown, which the native cases execute. No new desktop checklist is
+assigned in this period. 9.7 publication remains open; no push or PR write occurred.
 
 ## Earlier acceptance plan (checkpoint 92)
 

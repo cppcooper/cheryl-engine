@@ -254,6 +254,8 @@ close in [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md). These rows remain
 for forced overload/presentation, further native failure/resource combinations,
 stb internal allocation, rotated FFont and actual OS restriction/rejection acceptance.
 
+- [x] **9.5d.1** Execute real retained-frame shader replacement/cache clear, partial compile/link/file/reflection failure cleanup and live-window shutdown/late-owner release. Checkpoint 97 fixes deferred deletion of the last current program before maintenance/shutdown. Five native cases and full suites pass: 337 normal / 330 sandbox, no skips. Parent 9.5d stays open for remaining native fault/context-loss combinations.
+
 - [x] **9.6** Preserve coherent local commits and their ordering/authorship. Use detailed Adds/Updates/Revises/Deletes/Fixes messages; deliver uniquely numbered incremental mailbox patches at meaningful chunks. At implementation completion, verify and deliver one cumulative `cheryl-engine.patch` from the preserved original base, without squashing or repeating earlier commits in later incremental patches. Do not push unless requested.
 - [ ] **9.7** Keep PR #9's description aligned with completed behavior and pending acceptance. Metadata updates are a separately requested action; the recommended branch/title are already in place.
 

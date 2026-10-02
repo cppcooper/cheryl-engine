@@ -223,7 +223,33 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### User desktop acceptance report: checkpoint 96
+### Bound-program retirement and native acceptance: checkpoints 97–98
+
+Confirmed remote 95 remains `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+The user declines applying documentation-only 96 separately, so this delivery
+includes it with 97's source fix/native tests and 98's current evidence.
+
+Three new real-context cases cover retained shader-source generations after cache
+clear, compile/link/file/reflection failure cleanup and retained frame-resource
+shutdown followed by final foreign release. The initial shutdown test failed because
+the last current program was only flagged for deletion while the borrowed context
+remained alive. 97 unbinds before owner maintenance/shutdown, with current-context
+validation before GL mutation. Five native cases now pass. Both full builds and
+337 normal / 330 sandbox aggregate cases pass without skips. Real pixel and native
+object queries run on Mesa llvmpipe; raw initial/final evidence is archived.
+
+Source work stops at the first checkpoint just past 20 minutes. Remaining 9.5c–f
+acceptance is forced timing/backlog/presentation overload, further native faults/
+context loss, stb internal allocation, rotated FFont and actual OS restrictions/
+rejections. The existing desktop report is preserved. 9.7 remains open.
+
+Pending patches are **96–98**, next unused number **99**. The uniquely named
+`cheryl-engine-96-98-from-2c23bf8.patch` is the application route from the confirmed
+remote. Updated followup/continuation routes contain the same three pending commits;
+the cumulative route retains the fixed original base. Replay verifies exact trees
+and ordered author/date/messages. No push or PR write occurred.
+
+### User desktop acceptance report: checkpoint 96 (historical)
 
 The remote integrates 93–95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
 Its exact tree and ordered author/date/messages match saved local 95; this remote
