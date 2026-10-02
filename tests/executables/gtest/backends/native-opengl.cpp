@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <backends/opengl/glfw-backend.h>
+#include <backends/opengl/glfw-context.h>
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/pipeline.h>
 #include <assets/resources/resource-provider.h>
@@ -10,6 +11,10 @@
 #include <backends/opengl/resource-provider.h>
 #include <backends/opengl/texture.h>
 #include <core/display/window.h>
+#include <core/display/display-system.h>
+#include <core/controls/input-system.h>
+#include <core/game-framework/game-runtime.h>
+#include <core/game-framework/abstract-game.h>
 #include <core/rendering/render-frame.h>
 #include <core/resources/asset-management/material-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
@@ -22,11 +27,17 @@
 #include <GLFW/glfw3.h>
 
 #include <cstdlib>
+#include <atomic>
 #include <array>
 #include <chrono>
+#include <condition_variable>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -723,6 +734,348 @@ TEST(
     EXPECT_EQ(observed_alpha, alpha);
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
+}
+
+namespace {
+    struct NativeTickRecord {
+        CE::GFramework::UpdateKind kind;
+        double delta;
+        double dropped;
+        double observed;
+        std::vector<std::uint64_t> polls;
+    };
+
+    struct NativeRuntimeGame : CE::GFramework::AbstractGame {
+        CE::Engine::EngineContext& engine;
+        NativeShaderFiles files;
+        std::shared_ptr<CE::Assets::Geometry2D> geometry;
+        std::shared_ptr<const CE::Assets::Material> material;
+        std::vector<NativeTickRecord> ticks; // Simulation-owned until run() joins.
+        mutable std::atomic<std::size_t> preparations{0};
+        std::function<void()> after_update;
+
+        explicit NativeRuntimeGame(
+            CE::Engine::EngineContext& context
+        )
+        : engine(context) {}
+        void init() override {
+            geometry = fullscreen_triangle(engine.resources());
+            material = material_builder(files.stages(), {1, 0, 0, 1})(engine.resources());
+        }
+        void update(
+            const CE::GFramework::TickContext& tick
+        ) override {
+            ticks.push_back({tick.update_kind, tick.delta_seconds, tick.dropped_seconds, tick.observed_seconds(), {}});
+            for (const auto& poll : tick.input.polls())
+                ticks.back().polls.push_back(poll->poll());
+            EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{64, 64}));
+            after_update();
+        }
+        void prepare_render_frame(
+            CE::RenderAPIs::RenderFrameWriter& frame
+        ) const override {
+            ++preparations;
+            auto pass = frame.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+            pass.add({geometry, material, 0, 3, material->resolve({}, {}, {}, {})});
+        }
+        void deinit() override {
+            material.reset();
+            geometry.reset();
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        }
+    };
+
+    // Every operation still reaches the real GLFW context. Only the first
+    // completed swap gets a controlled acceptance workload on its owner.
+    class DelayedNativeSurface final : public CE::RenderAPIs::iOpenGLContext {
+        CE::RenderAPIs::GlfwOpenGLContext native_;
+        bool delayed_ = false;
+    public:
+        std::function<void()> after_first_swap;
+        std::size_t presentations = 0;
+        explicit DelayedNativeSurface(
+            CE::Window& window
+        )
+        : native_(window, 0) {}
+        void make_current() override { native_.make_current(); }
+        void release_current() override { native_.release_current(); }
+        bool is_current() const override { return native_.is_current(); }
+        ProcAddress proc_address(
+            const char* name
+        ) const override {
+            return native_.proc_address(name);
+        }
+        void present() override {
+            std::array<unsigned char, 4> pixel{};
+            glReadBuffer(GL_BACK);
+            glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+            EXPECT_EQ(pixel, (std::array<unsigned char, 4>{255, 0, 0, 255}));
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+            native_.present();
+            ++presentations;
+            if (!std::exchange(delayed_, true))
+                after_first_swap();
+        }
+    };
+
+    std::unique_ptr<CE::Engine::EngineContext> delayed_native_context(
+        DelayedNativeSurface*& observed,
+        std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<CE::Input::InputSystem>()
+    ) {
+        auto display = std::make_unique<CE::DisplaySystem>();
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+#endif
+        auto* window =
+            display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 64, 64, "Cheryl delayed native presentation");
+        display->activate_window(*window);
+        auto surface = std::make_unique<DelayedNativeSurface>(*window);
+        observed = surface.get();
+        auto renderer = std::make_unique<CE::RenderAPIs::OpenGLRenderer>(*surface);
+        auto resources = std::make_unique<CE::Assets::OpenGLResourceProvider>(*renderer);
+        return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(surface), std::move(renderer),
+            std::move(resources), std::move(input));
+    }
+
+    // Forward complete native State snapshots; no synthetic input samples.
+    // This acceptance scope needs only State, so Events/Text remain on native_.
+    class ObservedNativeInput final : public CE::Input::iInputSystem {
+        CE::Input::InputSystem native_;
+        std::mutex mutex_;
+        std::condition_variable progress_;
+        std::uint64_t sequence_ = 0;
+    public:
+        void initialize(
+            CE::iWindow& window
+        ) override {
+            native_.initialize(window);
+        }
+        void poll() override {
+            native_.poll();
+            {
+                std::lock_guard lock(mutex_);
+                sequence_ = native_.action_snapshot()->poll();
+            }
+            progress_.notify_all();
+        }
+        void deinitialize() override { native_.deinitialize(); }
+        CE::Input::InputBindings& bindings() override { return native_.bindings(); }
+        std::shared_ptr<const CE::Input::ActionSnapshot> action_snapshot() override { return native_.action_snapshot(); }
+        std::shared_ptr<const CE::Input::PollSnapshot> poll_snapshot() override { return native_.poll_snapshot(); }
+        CE::Input::DeviceId keyboard_id() const override { return native_.keyboard_id(); }
+        CE::Input::DeviceId mouse_id() const override { return native_.mouse_id(); }
+        CE::Input::DeviceId gamepad_id() const override { return native_.gamepad_id(); }
+        bool wait_for_sequence(
+            std::uint64_t target
+        ) {
+            std::unique_lock lock(mutex_);
+            return progress_.wait_for(lock, std::chrono::seconds{2}, [&] { return sequence_ >= target; });
+        }
+        std::uint64_t sequence() {
+            std::lock_guard lock(mutex_);
+            return sequence_;
+        }
+    };
+}
+
+TEST(
+    native_opengl,
+    real_runtime_recovers_from_slow_updates_in_both_modes
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::GFramework;
+    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+        for (int policy = 0; policy < 4; ++policy) {
+            SCOPED_TRACE(::testing::Message() << "run mode=" << static_cast<int>(mode) << " policy=" << policy);
+            auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+            NativeRuntimeGame game(*engine);
+            SimulationTimingOptions timing;
+            timing.variable_interval = std::chrono::milliseconds{5};
+            timing.fixed_step = std::chrono::milliseconds{10};
+            timing.max_fixed_updates = 2;
+            timing.recovery_cap = std::chrono::milliseconds{15};
+            if (policy != 0)
+                timing.mode = SimulationMode::Fixed;
+            if (policy >= 2) {
+                timing.recovery = LagRecovery::VariableCatchUp;
+                timing.fixed_updates_before_recovery = policy == 2 ? 1 : 0;
+            }
+            GameRuntime runtime(*engine, game, mode, {}, timing);
+            game.after_update = [&] {
+                if (game.ticks.size() == 1) {
+                    // This is deliberately slow work, not a sleep used to prove
+                    // thread ordering. The next real-clock batch must recover it.
+                    const auto deadline = SimulationClock::now() + std::chrono::milliseconds{80};
+                    std::this_thread::sleep_until(deadline);
+                }
+                if (game.ticks.size() == 24)
+                    runtime.stop();
+            };
+            ASSERT_NO_THROW(runtime.run());
+            ASSERT_EQ(game.ticks.size(), 24u);
+            ASSERT_GT(game.preparations.load(), 0u);
+            bool saw_lag = false;
+            bool saw_variable_lag = false;
+            bool saw_recovery = false;
+            bool saw_drop = false;
+            for (const auto& tick : game.ticks) {
+                saw_lag |= tick.observed >= 0.07;
+                saw_variable_lag |= tick.delta >= 0.07;
+                saw_drop |= tick.dropped > 0;
+                if (policy == 0) {
+                    EXPECT_EQ(tick.kind, UpdateKind::Variable);
+                    EXPECT_EQ(tick.dropped, 0);
+                } else if (tick.kind == UpdateKind::Fixed) {
+                    EXPECT_DOUBLE_EQ(tick.delta, 0.01);
+                } else {
+                    EXPECT_GE(policy, 2);
+                    EXPECT_EQ(tick.kind, UpdateKind::VariableCatchUp);
+                    EXPECT_LE(tick.delta, 0.015);
+                    saw_recovery = true;
+                }
+            }
+            EXPECT_TRUE(saw_lag);
+            if (policy == 0)
+                EXPECT_TRUE(saw_variable_lag);
+            if (policy != 0)
+                EXPECT_TRUE(saw_drop);
+            if (policy >= 2)
+                EXPECT_TRUE(saw_recovery);
+        }
+    }
+}
+
+TEST(
+    native_opengl,
+    real_runtime_keeps_simulation_advancing_during_slow_presentation
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::GFramework;
+    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+        SCOPED_TRACE(static_cast<int>(mode));
+        DelayedNativeSurface* surface = nullptr;
+        auto engine = delayed_native_context(surface);
+        NativeRuntimeGame game(*engine);
+        SimulationTimingOptions timing;
+        timing.variable_interval = std::chrono::milliseconds{5};
+        GameRuntime runtime(*engine, game, mode, {}, timing);
+        std::mutex mutex;
+        std::condition_variable progress;
+        std::size_t updates = 0;
+        std::size_t updates_during_hold = 0;
+        std::size_t preparations_during_hold = 0;
+        std::size_t stop_at = 200; // Finite fallback if no presentation occurs.
+        bool hold_completed = false;
+        game.after_update = [&] {
+            bool stop;
+            {
+                std::lock_guard lock(mutex);
+                ++updates;
+                stop = updates >= stop_at;
+            }
+            progress.notify_all();
+            if (stop)
+                runtime.stop();
+        };
+        surface->after_first_swap = [&] {
+            if (mode == RunMode::Sequential) {
+                std::this_thread::sleep_until(SimulationClock::now() + std::chrono::milliseconds{80});
+                std::lock_guard lock(mutex);
+                stop_at = updates + 8;
+                hold_completed = true;
+            } else {
+                std::unique_lock lock(mutex);
+                const auto initial_updates = updates;
+                const auto initial_preparations = game.preparations.load();
+                // A predicate proves progress while the platform is held inside
+                // presentation. The deadline only bounds a broken runtime.
+                hold_completed = progress.wait_for(lock, std::chrono::seconds{2}, [&] { return updates >= initial_updates + 8; });
+                updates_during_hold = updates - initial_updates;
+                preparations_during_hold = game.preparations.load() - initial_preparations;
+                stop_at = updates + 8;
+            }
+        };
+        ASSERT_NO_THROW(runtime.run());
+        EXPECT_TRUE(hold_completed);
+        EXPECT_GT(surface->presentations, 1u);
+        if (mode == RunMode::Concurrent) {
+            RecordProperty("updates_during_presentation", static_cast<int>(updates_during_hold));
+            RecordProperty("preparations_during_presentation", static_cast<int>(preparations_during_hold));
+            EXPECT_GE(updates_during_hold, 8u);
+            // Three slots include the presented frame. Occupied snapshots stop
+            // new frame preparation, while authoritative updates continue.
+            EXPECT_LE(preparations_during_hold, 2u);
+            EXPECT_GT(updates_during_hold, preparations_during_hold);
+        } else {
+            bool saw_presentation_lag = false;
+            for (const auto& tick : game.ticks)
+                saw_presentation_lag |= tick.delta >= 0.07;
+            EXPECT_TRUE(saw_presentation_lag);
+        }
+    }
+}
+
+TEST(
+    native_opengl,
+    full_native_poll_batches_pause_input_but_keep_presenting_and_dispatching
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::GFramework;
+    for (const std::size_t capacity : {1u, 3u}) {
+        SCOPED_TRACE(capacity);
+        auto input = std::make_unique<ObservedNativeInput>();
+        auto* observed_input = input.get();
+        DelayedNativeSurface* surface = nullptr;
+        auto engine = delayed_native_context(surface, std::move(input));
+        surface->after_first_swap = [] {};
+        NativeRuntimeGame game(*engine);
+        CE::Input::PollingOptions polling;
+        polling.policy = capacity == 1 ? CE::Input::PollingPolicy::Lockstep : CE::Input::PollingPolicy::Finite;
+        polling.capacity = capacity;
+        SimulationTimingOptions timing;
+        timing.variable_interval = std::chrono::milliseconds{5};
+        GameRuntime runtime(*engine, game, RunMode::Concurrent, polling, timing);
+        std::uint64_t last_consumed = 0;
+        std::size_t first_presentations = 0;
+        game.after_update = [&] {
+            if (game.ticks.size() == 4) {
+                ASSERT_FALSE(game.ticks.back().polls.empty());
+                last_consumed = game.ticks.back().polls.back();
+                ASSERT_TRUE(observed_input->wait_for_sequence(last_consumed + capacity));
+                // Hold this update until two distinct platform drains finish.
+                // With no consumption, a full batch must prevent more native
+                // polls while the previously published frame keeps presenting.
+                for (int drain = 0; drain < 2; ++drain) {
+                    auto request = engine->platform_dispatcher().submit([&, drain](CE::Engine::EngineContext&) {
+                        EXPECT_EQ(observed_input->sequence(), last_consumed + capacity);
+                        if (drain == 0)
+                            first_presentations = surface->presentations;
+                        else
+                            EXPECT_GT(surface->presentations, first_presentations);
+                    });
+                    ASSERT_EQ(request.wait_for(std::chrono::seconds{2}), std::future_status::ready);
+                    request.get();
+                }
+            }
+            if (game.ticks.size() == 12)
+                runtime.stop();
+        };
+        ASSERT_NO_THROW(runtime.run());
+        ASSERT_EQ(game.ticks.size(), 12u);
+        ASSERT_GT(first_presentations, 0u);
+        ASSERT_EQ(game.ticks[4].polls.size(), capacity);
+        for (std::size_t index = 0; index < capacity; ++index)
+            EXPECT_EQ(game.ticks[4].polls[index], last_consumed + index + 1);
+        EXPECT_GT(game.ticks[5].polls.size(), 0u);
+    }
 }
 
 #endif
