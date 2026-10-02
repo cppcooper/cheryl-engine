@@ -4,8 +4,12 @@
 
 #include <assets/resources/decoded-image.h>
 #include <glad/gl.h>
+#include <algorithm>
+#include <cstddef>
+#include <limits>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace CE::Assets {
     namespace {
@@ -37,9 +41,8 @@ namespace CE::Assets {
         }
     }
 
-    template <typename T>
     void upload(
-        const T* bits,
+        const unsigned char* bits,
         int width,
         int height,
         bool use_mipmaps,
@@ -47,6 +50,23 @@ namespace CE::Assets {
         GLint wrap_opt,
         GLenum fmt
     ) {
+        std::vector<unsigned char> bottom_up;
+        if (fmt == GL_RGBA) {
+            // Decoded RGBA rows start at the image's top. Atlas geometry maps
+            // top-left rectangles to upward-positive UVs, so GL row zero must
+            // receive the source's bottom row. stb's red-only font atlas uses
+            // its own baked UV convention and keeps the supplied row order.
+            const auto w = static_cast<std::size_t>(width);
+            const auto h = static_cast<std::size_t>(height);
+            if (w > std::numeric_limits<std::size_t>::max() / 4 || h > std::numeric_limits<std::size_t>::max() / (w * 4))
+                throw Exceptions::invalid_args(CE_HERE, "Texture pixels exceed addressable storage");
+            const auto row_bytes = w * 4;
+            bottom_up.resize(row_bytes * h);
+            for (std::size_t row = 0; row < h; ++row)
+                std::copy_n(bits + (h - row - 1) * row_bytes, row_bytes, bottom_up.data() + row * row_bytes);
+            bits = bottom_up.data();
+        }
+
         // Apply anisotropic filtering only for supported color textures; the red-only
         // font atlas uses swizzle and unpack-alignment handling below.
         if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {

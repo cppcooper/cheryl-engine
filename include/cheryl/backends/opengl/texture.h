@@ -25,6 +25,8 @@ namespace CE::Assets {
             bool pixelate,
             int wrap_opt
         );
+        // Raw RGBA rows are top-to-bottom, matching DecodedImage. Red-only stb
+        // atlas rows retain the order expected by stb's baked UV coordinates.
         explicit Texture(
             std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
             const unsigned char* bitmap_data,

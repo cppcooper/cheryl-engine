@@ -5,10 +5,15 @@
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/pipeline.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/submission/draw2d.h>
+#include <assets/types/2d/ffont.h>
 #include <backends/opengl/resource-provider.h>
+#include <backends/opengl/texture.h>
 #include <core/display/window.h>
 #include <core/rendering/render-frame.h>
 #include <core/resources/asset-management/material-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <ext/matrix_clip_space.hpp>
 #include <internals/exceptions.h>
 
 #ifndef GLFW_INCLUDE_NONE
@@ -166,6 +171,85 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         glReadPixels(32, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
         EXPECT_EQ(glGetError(), GL_NO_ERROR);
         return pixel;
+    }
+
+    CE::Assets::DecodedImage legacy_font_pixels() {
+        // Top-to-bottom source rows, with distinct banks and asymmetric glyphs.
+        CE::Assets::DecodedImage image{{128, 128}, std::vector<unsigned char>(128 * 128 * 4, 0)};
+        for (std::size_t pixel = 0; pixel < image.rgba.size(); pixel += 4)
+            image.rgba[pixel + 3] = 255;
+        const auto paint = [&](const std::size_t index, const std::array<unsigned char, 3> color, const bool asymmetric) {
+            for (std::size_t y = 0; y < 8; ++y) {
+                for (std::size_t x = 0; x < 8; ++x) {
+                    const auto offset = (((index / 16) * 8 + y) * 128 + (index % 16) * 8 + x) * 4;
+                    for (std::size_t channel = 0; channel < 3; ++channel)
+                        image.rgba[offset + channel] = asymmetric && y >= 4 ? color[channel] / 4 : color[channel];
+                }
+            }
+        };
+        paint('A' - 32, {255, 0, 0}, true);
+        paint('B' - 32, {0, 255, 0}, false);
+        paint(128 + 'A' - 32, {0, 0, 255}, true);
+        paint(128 + 'B' - 32, {255, 0, 255}, false);
+        return image;
+    }
+
+    std::shared_ptr<const CE::Assets::Material> legacy_font_material(
+        CE::Assets::ResourceProvider& resources
+    ) {
+        using namespace CE::Assets;
+        auto& native = dynamic_cast<OpenGLResourceProvider&>(resources);
+        const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/shaders/shader2d";
+        PipelineDefinition definition;
+        definition.program_sources = {shaders.string() + ".vert", shaders.string() + ".frag"};
+        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
+            {"view", ParameterType::Mat4, true, ParameterSemantic::View}, {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+            {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
+            {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}};
+        const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
+            {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
+        return native.build_material({native.build_pipeline(std::move(definition), bindings), {}});
+    }
+
+    void retain_legacy_text(
+        CE::RenderAPIs::RenderFrame& frame,
+        const CE::Assets::FFont& font,
+        const std::string_view text,
+        const CE::RenderAPIs::DrawStyle2D& style,
+        const bool alternate = false
+    ) {
+        const auto projection = glm::ortho(0.0f, 64.0f, 0.0f, 64.0f, -1.0f, 1.0f);
+        CE::Assets::SubmissionContext2D context;
+        context.pass = {projection, glm::mat4{1.0f}};
+        context.image = CE::Assets::ImageParameter2D{"image", 3};
+        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        auto pass = writer.begin_pass(projection, glm::mat4{1.0f});
+        pass.add(CE::Assets::resolve_text(font, text, style, context, {alternate}));
+    }
+
+    struct NativeFramePixels {
+        std::array<unsigned char, 64 * 64 * 4> rgba{};
+        std::array<unsigned char, 4> at(
+            const std::size_t x,
+            const std::size_t y
+        ) const {
+            const auto offset = (y * 64 + x) * 4;
+            return {rgba[offset], rgba[offset + 1], rgba[offset + 2], rgba[offset + 3]};
+        }
+    };
+
+    NativeFramePixels draw_pixels(
+        CE::RenderAPIs::OpenGLRenderer& renderer,
+        const CE::RenderAPIs::RenderFrame& frame
+    ) {
+        renderer.set_viewport({64, 64});
+        renderer.clear();
+        renderer.render(frame);
+        NativeFramePixels result;
+        glReadBuffer(GL_BACK);
+        glReadPixels(0, 0, 64, 64, GL_RGBA, GL_UNSIGNED_BYTE, result.rgba.data());
+        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        return result;
     }
 
     // Observe real driver-created IDs without allocating inside the forwarding calls.
@@ -484,6 +568,161 @@ TEST(
     EXPECT_TRUE(material_owner.expired());
     EXPECT_TRUE(geometry_owner.expired());
     EXPECT_TRUE(image_owner.expired());
+}
+
+TEST(
+    native_opengl,
+    rotated_legacy_font_banks_widths_lines_and_retained_resources_match_pixels
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    renderer.initialize();
+    NativeShaderFiles files;
+    const auto widths_file = files.directory / "widths.bin";
+    std::array<short, num_chars_ffont> widths;
+    widths.fill(128);
+    widths['A' - 32] = 64;
+    {
+        std::ofstream output(widths_file, std::ios::binary);
+        output.write(reinterpret_cast<const char*>(widths.data()), sizeof(widths));
+        ASSERT_TRUE(output.good());
+    }
+    auto pixels = legacy_font_pixels();
+    auto& textures = TextureMgr::get();
+    const auto texture_key = files.directory / "whitefont.png";
+    textures.load_asset(texture_key, pixels, engine->resources());
+    auto font = std::make_shared<FFont>(FFont::load_ffont(widths_file, engine->resources()));
+    const std::weak_ptr<FFont> font_owner = font;
+    const std::weak_ptr<Geometry2D> geometry_owner = font->glyph_geometry_handle();
+    const std::weak_ptr<Image> image_owner = font->glyph_atlas_handle();
+    const auto texture = bound_texture_id(*font->glyph_atlas_handle());
+    GLint vao = 0, buffer = 0;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &buffer);
+    ASSERT_NE(vao, 0);
+    ASSERT_NE(buffer, 0);
+    auto material = legacy_font_material(engine->resources());
+    DrawStyle2D style;
+    style.material = material;
+    style.scale = 16;
+    style.model_matrix[3] = {12.5f, 12.5f, 0, 1};
+    RenderFrame upright, rotated, alternate, baseline, multiline;
+    retain_legacy_text(upright, *font, "A A", style);
+    style.model_matrix[0] = {0, 1, 0, 0};
+    style.model_matrix[1] = {-1, 0, 0, 0};
+    retain_legacy_text(rotated, *font, "A A", style);
+    retain_legacy_text(alternate, *font, "A A", style, true);
+    // Legacy newline advances 1/128 local units. Scale 128 makes its
+    // quarter-turned displacement one pixel at the visible clipped edge.
+    style.scale = 128;
+    style.model_matrix[3] = {-51, 32.5f, 0, 1};
+    retain_legacy_text(baseline, *font, "B", style);
+    retain_legacy_text(multiline, *font, "A\nB", style);
+    pixels.rgba.clear();
+    std::filesystem::remove(widths_file);
+    font.reset();
+    style.material.reset();
+    material.reset();
+    textures.clear_assets();
+    EXPECT_TRUE(font_owner.expired());
+    EXPECT_FALSE(geometry_owner.expired());
+    EXPECT_FALSE(image_owner.expired());
+    EXPECT_FALSE(textures.contains(texture_key));
+
+    const auto straight = draw_pixels(renderer, upright);
+    EXPECT_EQ(straight.at(12, 18), (std::array<unsigned char, 4>{255, 0, 0, 255}));
+    EXPECT_EQ(straight.at(12, 6), (std::array<unsigned char, 4>{63, 0, 0, 255}));
+    EXPECT_EQ(straight.at(36, 18), (std::array<unsigned char, 4>{255, 0, 0, 255}));
+    const auto turned = draw_pixels(renderer, rotated);
+    EXPECT_EQ(turned.at(6, 12), (std::array<unsigned char, 4>{255, 0, 0, 255}));
+    EXPECT_EQ(turned.at(18, 12), (std::array<unsigned char, 4>{63, 0, 0, 255}));
+    EXPECT_EQ(turned.at(6, 36), (std::array<unsigned char, 4>{255, 0, 0, 255}));
+    EXPECT_EQ(turned.at(12, 24), (std::array<unsigned char, 4>{0, 0, 0, 255}));
+    const auto fancy = draw_pixels(renderer, alternate);
+    EXPECT_EQ(fancy.at(6, 12), (std::array<unsigned char, 4>{0, 0, 255, 255}));
+    EXPECT_EQ(fancy.at(18, 12), (std::array<unsigned char, 4>{0, 0, 63, 255}));
+    EXPECT_EQ(fancy.at(6, 44), (std::array<unsigned char, 4>{0, 0, 255, 255}));
+    EXPECT_EQ(fancy.at(12, 32), (std::array<unsigned char, 4>{0, 0, 0, 255}));
+    const auto single = draw_pixels(renderer, baseline);
+    EXPECT_EQ(single.at(13, 32), (std::array<unsigned char, 4>{0, 0, 0, 255}));
+    const auto lines = draw_pixels(renderer, multiline);
+    EXPECT_EQ(lines.at(13, 32)[0], 0);
+    EXPECT_GE(lines.at(13, 32)[1], 64);
+    EXPECT_EQ(lines.at(13, 32)[2], 0);
+    EXPECT_EQ(lines.at(14, 32), (std::array<unsigned char, 4>{0, 0, 0, 255}));
+    GLint program = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+    ASSERT_NE(program, 0);
+    renderer.maintain_resources();
+    EXPECT_EQ(glIsTexture(texture), GL_TRUE);
+    EXPECT_EQ(glIsVertexArray(vao), GL_TRUE);
+    EXPECT_EQ(glIsBuffer(buffer), GL_TRUE);
+    EXPECT_EQ(glIsProgram(program), GL_TRUE);
+    upright.recycle();
+    rotated.recycle();
+    alternate.recycle();
+    baseline.recycle();
+    multiline.recycle();
+    EXPECT_TRUE(geometry_owner.expired());
+    EXPECT_TRUE(image_owner.expired());
+    renderer.maintain_resources();
+    EXPECT_EQ(glIsTexture(texture), GL_FALSE);
+    EXPECT_EQ(glIsVertexArray(vao), GL_FALSE);
+    EXPECT_EQ(glIsBuffer(buffer), GL_FALSE);
+    EXPECT_EQ(glIsProgram(program), GL_FALSE);
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    renderer.deinitialize();
+}
+
+TEST(
+    native_opengl,
+    rgba_file_and_provider_rows_flip_while_stb_alpha_rows_keep_their_order
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    renderer.initialize();
+    const auto path = std::filesystem::path(CHERYL_SOURCE_DIR) / "tests/fixtures/rgba-two-rows.png";
+    const auto decoded = decode_image(path);
+    const std::array<unsigned char, 24> top_down{
+        255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255};
+    const std::array<unsigned char, 24> bottom_up{
+        0, 255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255};
+    ASSERT_EQ(decoded.size.width, 3u);
+    ASSERT_EQ(decoded.size.height, 2u);
+    ASSERT_EQ(decoded.rgba, (std::vector<unsigned char>(top_down.begin(), top_down.end())));
+    const auto direct = std::make_shared<Texture>(renderer.resources(), path.string().c_str(), false, false, GL_CLAMP_TO_EDGE);
+    const auto loaded = engine->resources().load_image(path);
+    const auto prepared = engine->resources().create_image(decoded);
+    const std::array<const Image*, 3> images{direct.get(), loaded.get(), prepared.get()};
+    for (const Image* image : images) {
+        image->bind(0);
+        std::array<unsigned char, 24> observed{};
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, observed.data());
+        glBindTexture(GL_TEXTURE_2D, 0);
+        EXPECT_EQ(observed, bottom_up);
+        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    }
+    EXPECT_EQ(decoded.rgba, (std::vector<unsigned char>(top_down.begin(), top_down.end())));
+    const std::array<unsigned char, 6> alpha{1, 2, 3, 4, 5, 6};
+    const auto atlas = engine->resources().create_font_atlas(alpha, {3, 2});
+    atlas->bind(0);
+    GLint previous_pack = 0;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &previous_pack);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    std::array<unsigned char, 6> observed_alpha{};
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, observed_alpha.data());
+    glPixelStorei(GL_PACK_ALIGNMENT, previous_pack);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    EXPECT_EQ(observed_alpha, alpha);
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    renderer.deinitialize();
 }
 
 #endif
