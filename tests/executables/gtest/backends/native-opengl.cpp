@@ -13,6 +13,7 @@
 #include <core/display/window.h>
 #include <core/display/display-system.h>
 #include <core/controls/input-system.h>
+#include <core/controls/glfw-bindings.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/render-frame.h>
@@ -25,6 +26,12 @@
 #define GLFW_INCLUDE_NONE
 #endif
 #include <GLFW/glfw3.h>
+#if defined(__linux__)
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <X11/keysym.h>
+#undef None
+#endif
 
 #include <cstdlib>
 #include <atomic>
@@ -743,6 +750,8 @@ namespace {
         double dropped;
         double observed;
         std::vector<std::uint64_t> polls;
+        std::vector<CE::Input::InputRecord> records;
+        CE::Input::ButtonTickState observed_button;
     };
 
     struct NativeRuntimeGame : CE::GFramework::AbstractGame {
@@ -753,6 +762,8 @@ namespace {
         std::vector<NativeTickRecord> ticks; // Simulation-owned until run() joins.
         mutable std::atomic<std::size_t> preparations{0};
         std::function<void()> after_update;
+        std::function<void()> after_init;
+        std::optional<CE::Input::ActionId> observed_action;
 
         explicit NativeRuntimeGame(
             CE::Engine::EngineContext& context
@@ -761,13 +772,18 @@ namespace {
         void init() override {
             geometry = fullscreen_triangle(engine.resources());
             material = material_builder(files.stages(), {1, 0, 0, 1})(engine.resources());
+            if (after_init)
+                after_init();
         }
         void update(
             const CE::GFramework::TickContext& tick
         ) override {
-            ticks.push_back({tick.update_kind, tick.delta_seconds, tick.dropped_seconds, tick.observed_seconds(), {}});
+            ticks.push_back({tick.update_kind, tick.delta_seconds, tick.dropped_seconds, tick.observed_seconds(), {}, {}, {}});
             for (const auto& poll : tick.input.polls())
                 ticks.back().polls.push_back(poll->poll());
+            ticks.back().records.assign(tick.input.records().begin(), tick.input.records().end());
+            if (observed_action)
+                ticks.back().observed_button = tick.input.button(*observed_action);
             EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{64, 64}));
             after_update();
         }
@@ -850,18 +866,24 @@ namespace {
         std::condition_variable progress_;
         std::uint64_t sequence_ = 0;
     public:
+        std::function<void()> before_poll;
+        std::function<void()> after_poll;
         void initialize(
             CE::iWindow& window
         ) override {
             native_.initialize(window);
         }
         void poll() override {
+            if (before_poll)
+                before_poll();
             native_.poll();
             {
                 std::lock_guard lock(mutex_);
                 sequence_ = native_.action_snapshot()->poll();
             }
             progress_.notify_all();
+            if (after_poll)
+                after_poll();
         }
         void deinitialize() override { native_.deinitialize(); }
         CE::Input::InputBindings& bindings() override { return native_.bindings(); }
@@ -870,6 +892,7 @@ namespace {
         CE::Input::DeviceId keyboard_id() const override { return native_.keyboard_id(); }
         CE::Input::DeviceId mouse_id() const override { return native_.mouse_id(); }
         CE::Input::DeviceId gamepad_id() const override { return native_.gamepad_id(); }
+        CE::Input::InputSystem& native() { return native_; }
         bool wait_for_sequence(
             std::uint64_t target
         ) {
@@ -1077,5 +1100,206 @@ TEST(
         EXPECT_GT(game.ticks[5].polls.size(), 0u);
     }
 }
+
+#if defined(__linux__)
+namespace {
+    // Send synthetic server events to this test's own window. XSync establishes
+    // server receipt, while only the runtime's normal GLFW poll dispatches them.
+    void send_x11_key(
+        CE::Window& window,
+        const KeySym symbol,
+        const int type,
+        const unsigned state,
+        Time& time
+    ) {
+        auto* display = glfwGetX11Display();
+        const auto target = glfwGetX11Window(window.native_handle());
+        XEvent event{};
+        event.xkey.type = type;
+        event.xkey.display = display;
+        event.xkey.window = target;
+        event.xkey.root = DefaultRootWindow(display);
+        event.xkey.same_screen = True;
+        event.xkey.time = time;
+        time += 30; // Distinct presses, outside legacy release/repeat filtering.
+        event.xkey.state = state;
+        event.xkey.keycode = XKeysymToKeycode(display, symbol);
+        ASSERT_NE(event.xkey.keycode, 0u);
+        ASSERT_NE(XSendEvent(display, target, False, KeyPressMask | KeyReleaseMask, &event), 0);
+        XSync(display, False);
+    }
+}
+
+TEST(
+    native_opengl,
+    x11_ordered_events_text_and_focus_survive_full_backlog_and_recovery
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real X11 GLFW display to run native acceptance";
+    using namespace CE::GFramework;
+    using namespace CE::Input;
+    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+        for (const auto recovery : {LagRecovery::DropExcessLag, LagRecovery::VariableCatchUp}) {
+            SCOPED_TRACE(::testing::Message() << "mode=" << static_cast<int>(mode) << " recovery=" << static_cast<int>(recovery));
+            auto input = std::make_unique<ObservedNativeInput>();
+            auto* observed = input.get();
+            DelayedNativeSurface* surface = nullptr;
+            auto engine = delayed_native_context(surface, std::move(input));
+            if (glfwGetPlatform() != GLFW_PLATFORM_X11)
+                GTEST_SKIP() << "This native record case requires GLFW's X11 backend";
+            surface->after_first_swap = [] {};
+            auto& window = dynamic_cast<CE::Window&>(engine->window());
+            NativeRuntimeGame game(*engine);
+            constexpr ActionId typing_action{91};
+            game.observed_action = typing_action;
+            PollingOptions polling;
+            polling.policy = PollingPolicy::Finite;
+            polling.capacity = 3;
+            SimulationTimingOptions timing;
+            timing.mode = SimulationMode::Fixed;
+            timing.fixed_step = std::chrono::milliseconds{10};
+            timing.max_fixed_updates = 2;
+            timing.recovery = recovery;
+            timing.fixed_updates_before_recovery = 1;
+            timing.recovery_cap = std::chrono::milliseconds{20};
+            GameRuntime runtime(*engine, game, mode, polling, timing);
+            CaptureLease old_events, old_text, new_events, new_text;
+            FocusLease old_focus, new_focus;
+            std::uint64_t old_epoch = 0;
+            Time event_time = 100;
+            std::promise<void> full_verified;
+            auto verified = full_verified.get_future();
+            std::future<void> gate;
+            game.after_init = [&] {
+                auto& native = observed->native();
+                for (const auto key : {GLFW_KEY_A, GLFW_KEY_B, GLFW_KEY_C})
+                    (void)native.bindings().bind_button({native.keyboard_id(), gainput_key(key)}, typing_action);
+                old_events = native.capture(InputMode::Events);
+                old_text = native.capture(InputMode::Text);
+                old_focus = native.routing().focus(7);
+                old_epoch = old_focus.epoch();
+                if (mode == RunMode::Concurrent)
+                    gate = runtime.simulation_dispatcher().submit([&] {
+                        // This runs before consumption. Holding simulation here lets
+                        // native polls fill capacity even if the clock is already due.
+                        if (verified.wait_for(std::chrono::seconds{2}) != std::future_status::ready)
+                            throw CE::Exceptions::failed_operation(CE_HERE, "Native full-batch verification timed out");
+                        verified.get();
+                    });
+            };
+            observed->before_poll = [&] {
+                const auto next = observed->sequence() + 1;
+                if (next == 1) {
+                    send_x11_key(window, XK_a, KeyPress, ShiftMask, event_time);
+                    send_x11_key(window, XK_a, KeyPress, ShiftMask, event_time); // GLFW repeat plus another committed character.
+                    send_x11_key(window, XK_a, KeyRelease, ShiftMask, event_time);
+                } else if (next == 2) {
+                    send_x11_key(window, XK_b, KeyPress, 0, event_time);
+                    send_x11_key(window, XK_b, KeyRelease, 0, event_time);
+                }
+            };
+            observed->after_poll = [&] {
+                if (observed->sequence() != 3)
+                    return;
+                auto& native = observed->native();
+                new_focus = native.routing().focus(42, KeyboardRouting::PassThrough);
+                old_focus.reset(); // Cannot clear the replacement owner.
+                old_events.reset();
+                old_text.reset();
+                new_events = native.capture(InputMode::Events);
+                new_text = native.capture(InputMode::Text);
+                // The concurrent gate keeps this batch full. Server events wait
+                // for resumed polling. Sequential mode tests the same native
+                // record/focus transition between polls on the shared owner.
+                send_x11_key(window, XK_c, KeyPress, 0, event_time);
+                send_x11_key(window, XK_c, KeyRelease, 0, event_time);
+                if (mode == RunMode::Concurrent)
+                    auto first = engine->platform_dispatcher().submit([&](CE::Engine::EngineContext&) {
+                        EXPECT_EQ(observed->sequence(), 3u);
+                        auto second = engine->platform_dispatcher().submit([&](CE::Engine::EngineContext&) {
+                            EXPECT_EQ(observed->sequence(), 3u);
+                            full_verified.set_value();
+                        });
+                    });
+            };
+            game.after_update = [&] {
+                if (game.ticks.size() == 1)
+                    std::this_thread::sleep_until(SimulationClock::now() + std::chrono::milliseconds{120});
+                if (game.ticks.size() == 16)
+                    runtime.stop();
+            };
+            ASSERT_NO_THROW(runtime.run());
+            if (gate.valid())
+                ASSERT_NO_THROW(gate.get());
+            ASSERT_EQ(game.ticks.size(), 16u);
+            if (mode == RunMode::Concurrent) {
+                ASSERT_EQ(game.ticks.front().polls.size(), 3u);
+                ASSERT_EQ(game.ticks.front().records.size(), 8u);
+            }
+            std::vector<InputRecord> earlier;
+            for (const auto& tick : game.ticks)
+                earlier.insert(earlier.end(), tick.records.begin(), tick.records.end());
+            ASSERT_EQ(earlier.size(), 11u);
+            const std::array<ButtonPhase, 5> phases{
+                ButtonPhase::Press, ButtonPhase::Repeat, ButtonPhase::Release, ButtonPhase::Press, ButtonPhase::Release};
+            const std::array<std::size_t, 5> buttons{0, 2, 4, 5, 7};
+            for (std::size_t i = 0; i < buttons.size(); ++i) {
+                ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[buttons[i]].data));
+                EXPECT_EQ(std::get<ButtonEvent>(earlier[buttons[i]].data).phase, phases[i]);
+                EXPECT_EQ(std::get<ButtonEvent>(earlier[buttons[i]].data).native_code, i < 3 ? GLFW_KEY_A : GLFW_KEY_B);
+                EXPECT_EQ(has_modifier(std::get<ButtonEvent>(earlier[buttons[i]].data).modifiers, Modifiers::Shift), i < 3);
+            }
+            EXPECT_EQ(std::get<TextEvent>(earlier[1].data).codepoint, U'A');
+            EXPECT_EQ(std::get<TextEvent>(earlier[3].data).codepoint, U'A');
+            EXPECT_EQ(std::get<TextEvent>(earlier[6].data).codepoint, U'b');
+            ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[8].data));
+            EXPECT_EQ(std::get<ButtonEvent>(earlier[8].data).phase, ButtonPhase::Press);
+            EXPECT_EQ(std::get<ButtonEvent>(earlier[8].data).native_code, GLFW_KEY_C);
+            ASSERT_TRUE(std::holds_alternative<TextEvent>(earlier[9].data));
+            EXPECT_EQ(std::get<TextEvent>(earlier[9].data).codepoint, U'c');
+            ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[10].data));
+            EXPECT_EQ(std::get<ButtonEvent>(earlier[10].data).phase, ButtonPhase::Release);
+            EXPECT_EQ(std::get<ButtonEvent>(earlier[10].data).native_code, GLFW_KEY_C);
+            std::size_t delivered = 0, c_presses = 0, c_releases = 0;
+            std::uint64_t sequence = 0;
+            bool saw_drop = false, saw_recovery = false;
+            InputClock::time_point previous_observation = InputClock::time_point::min();
+            for (const auto& tick : game.ticks) {
+                saw_drop |= tick.dropped > 0;
+                saw_recovery |= tick.kind == UpdateKind::VariableCatchUp;
+                c_presses += tick.observed_button.press_count;
+                c_releases += tick.observed_button.release_count;
+                EXPECT_FALSE(tick.observed_button.held());
+                for (const auto& record : tick.records) {
+                    EXPECT_EQ(record.sequence, ++sequence);
+                    EXPECT_GE(record.observed_at, previous_observation);
+                    previous_observation = record.observed_at;
+                    EXPECT_EQ(record.device, observed->keyboard_id());
+                    if (delivered < 8) {
+                        EXPECT_EQ(record.target, 7u);
+                        EXPECT_EQ(record.focus_epoch, old_epoch);
+                        EXPECT_FALSE(record.to_gameplay);
+                    } else {
+                        EXPECT_EQ(record.target, 42u);
+                        EXPECT_EQ(record.focus_epoch, new_focus.epoch());
+                        EXPECT_TRUE(record.to_gameplay);
+                        if (const auto* text = std::get_if<TextEvent>(&record.data))
+                            EXPECT_EQ(text->codepoint, U'c');
+                    }
+                    ++delivered;
+                }
+            }
+            EXPECT_EQ(delivered, 11u); // Eight old-focus records, then one three-record C tap.
+            EXPECT_EQ(c_presses, 1u);
+            EXPECT_EQ(c_releases, 1u);
+            EXPECT_TRUE(saw_drop);
+            EXPECT_EQ(saw_recovery, recovery == LagRecovery::VariableCatchUp);
+            const auto prefix = mode == RunMode::Sequential ? "sequential_" : "concurrent_";
+            RecordProperty(std::string(prefix) + (recovery == LagRecovery::DropExcessLag ? "drop_records" : "catchup_records"),
+                static_cast<int>(delivered));
+        }
+    }
+}
+#endif
 
 #endif
