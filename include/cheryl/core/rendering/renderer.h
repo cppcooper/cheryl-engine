@@ -1,38 +1,45 @@
 #pragma once
 
-#include <core/display/display-system-interface.h>
+#include <core/display/framebuffer-size.h>
+#include <core/rendering/render-frame.h>
 #include <glm.hpp>
 
-#include <memory>
-
-namespace CE::Assets {
-    struct ResourceProvider;
-}
-
 namespace CE::RenderAPIs {
-    /** Owns a display backend and presents frames; resource creation and camera state are
-     * delegated to the selected graphics backend through this interface.
+    /** Renders using a compatible graphics context. Does not own the display,
+     * presentation surface, resource provider, or mutable game state.
+     * render() consumes ordered passes from a published frame on the graphics thread.
+     * The operations below are backend primitives for the frame renderer.
      */
-    struct iRenderer {
-        // TODO: Revisit display ownership. Graphics and window backends are intended to vary
-        // independently, but the renderer currently owns the display system. Engine composition
-        // may be the cleaner ownership/injection boundary if those choices remain independent.
-        // TODO: Specify renderer thread affinity. OpenGL contexts are current to one thread at a time,
-        // while GLFW window/event operations have main-thread restrictions. A render thread therefore
-        // needs explicit context ownership and command submission rather than arbitrary calls across threads.
-        std::unique_ptr<iDisplaySystem> display;
+    class iRenderer {
+    public:
         virtual ~iRenderer() = default;
 
-        virtual void initialize_libraries() = 0;
-        virtual void initialize_rendering_context() = 0;
+        virtual void initialize() = 0;
         virtual void deinitialize() = 0;
+        // Platform/context-owner maintenance, even without a new frame. Deferred
+        // resource backends collect final-owner retirements here; others may do nothing.
+        virtual void maintain_resources() = 0;
+        virtual void render(
+            const RenderFrame& frame
+        ) = 0;
         virtual void clear() = 0;
-        virtual void set_viewport(FramebufferSize size) = 0;
-        virtual void set_depth_test(bool enabled) = 0;
-        virtual void set_clear_colour(float r, float g, float b, float a) = 0;
-        virtual void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) = 0;
-        virtual void swap_buffer() = 0;
-        [[nodiscard]] virtual Assets::ResourceProvider& resources() = 0;
+        virtual void set_viewport(
+            FramebufferSize size
+        ) = 0;
+        virtual void set_depth_test(
+            bool enabled
+        ) = 0;
+        virtual void set_clear_colour(
+            float r,
+            float g,
+            float b,
+            float a
+        ) = 0;
+        // A view supplied for a render pass; camera dimensionality does not set depth policy.
+        virtual void set_camera_matrices(
+            const glm::mat4& projection,
+            const glm::mat4& view
+        ) = 0;
     };
 }
 

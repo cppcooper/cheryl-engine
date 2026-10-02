@@ -1,57 +1,63 @@
+#include <core/rendering/draw-packet.h>
 #include <gtest/gtest.h>
 
-#include <assets/abstracts/idraw.h>
-
 #include <memory>
-#include <string_view>
 
 #ifdef GL_VERSION_3_3
 #error The draw contract must not include OpenGL.
 #endif
 
 namespace {
-    /** Records DrawInfo's material values without compiling a shader program. */
-    struct RecordingShader final : CE::Assets::Shader {
-        int uses = 0;
-        float alpha = 0.0f;
-        float scale = 0.0f;
-        glm::mat4 model{0.0f};
-
-        void use() override { ++uses; }
-        void set_uniform_value(const char* name, float value) override {
-            if (std::string_view(name) == "in_Alpha")
-                alpha = value;
-            if (std::string_view(name) == "in_Scale")
-                scale = value;
-        }
-        void set_uniform_value(const char*, int) override {}
-        void set_uniform_value(const char*, unsigned int) override {}
-        void set_uniform_value(const char*, bool) override {}
-        void set_uniform_matrix(const char* name, const glm::mat4& value) override {
-            if (std::string_view(name) == "modelMatrix")
-                model = value;
+    class ContractGeometry final : public CE::Assets::Geometry2D {
+    public:
+        CE::Assets::VertexLayout2D vertex_layout() const noexcept override { return CE::Assets::VertexLayout2D::Position3UV2; }
+        CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::Triangles; }
+        std::size_t vertex_count() const noexcept override { return 6; }
+        void bind() const override { FAIL() << "Resolution must not bind geometry"; }
+        void draw(
+            std::size_t,
+            std::size_t
+        ) const override {
+            FAIL() << "Resolution must not issue native draws";
         }
     };
+    class ContractPipeline final : public CE::Assets::Pipeline {
+    public:
+        ContractPipeline()
+        : Pipeline(make_definition()) {}
 
-    struct RecordingDrawable final : CE::Assets::iDraw {
-        void draw(const CE::DrawInfo& info) override { info.use_shader(); }
+    private:
+        static CE::Assets::PipelineDefinition make_definition() {
+            using namespace CE::Assets;
+            PipelineDefinition definition;
+            definition.program_sources = {"contract.vert", "contract.frag"};
+            definition.parameters = {{"view", ParameterType::Mat4, true, ParameterSemantic::View},
+                {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+                {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
+                {"scale", ParameterType::Float, true, ParameterSemantic::Scale}};
+            return definition;
+        }
     };
 }
 
-TEST(draw_contract, material_without_glsl) {
-    // Supply a recording shader with distinct alpha, scale, and model values.
-    auto material = std::make_shared<RecordingShader>();
-    CE::DrawInfo info;
-    info.material = material;
-    info.alpha = 0.4f;
-    info.scale = 2.0f;
-    info.model_matrix[3][0] = 42.0f;
-
-    // The drawable delegates to DrawInfo; inspect what it sent to the shader.
-    RecordingDrawable drawable;
-    drawable.draw(info);
-    EXPECT_EQ(material->uses, 1);
-    EXPECT_FLOAT_EQ(material->alpha, 0.4f);
-    EXPECT_FLOAT_EQ(material->scale, 2.0f);
-    EXPECT_FLOAT_EQ(material->model[3][0], 42.0f);
+TEST(
+    draw_contract,
+    material_without_glsl_resolves_owned_semantics_without_native_calls
+) {
+    CE::RenderAPIs::DrawStyle2D style;
+    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<ContractPipeline>(), {}});
+    style.alpha = 0.4f;
+    style.scale = 2.0f;
+    style.model_matrix[3][0] = 42.0f;
+    CE::Assets::ShaderPass pass;
+    pass.view[3][1] = 19.0f;
+    const auto packet = CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, pass, {}, {});
+    pass.view[3][1] = 100.0f;
+    style.model_matrix[3][0] = 0.0f;
+    style.material.reset();
+    ASSERT_TRUE(packet.material);
+    EXPECT_FLOAT_EQ(std::get<glm::mat4>(packet.parameters.at("view"))[3][1], 19.0f);
+    EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("alpha")), 0.4f);
+    EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("scale")), 2.0f);
+    EXPECT_FLOAT_EQ(std::get<glm::mat4>(packet.parameters.at("model"))[3][0], 42.0f);
 }

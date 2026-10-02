@@ -2,6 +2,8 @@
 #include "monitor.h"
 #include "window-interface.h"
 
+#include <string>
+
 class GLFWwindow;
 class GLFWmonitor;
 
@@ -27,7 +29,8 @@ namespace CE {
 
     private:
         friend class DisplaySystem;
-        Window(const Monitor& monitor, GLFWmonitor* native_monitor, Enum::window_mode mode, int width, int height);
+        Window(const Monitor& monitor, GLFWmonitor* native_monitor, Enum::window_mode mode, int width, int height,
+               const std::string& title);
 
         static void on_window_size(GLFWwindow* window, int width, int height);
         static void on_framebuffer_size(GLFWwindow* window, int width, int height);

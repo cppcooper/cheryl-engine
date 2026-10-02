@@ -3,6 +3,7 @@
 #include "window.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -14,8 +15,8 @@ namespace CE {
         int height{};
     };
 
-    // Tracks GLFW windows and monitor information. Rendering state belongs to the renderer.
-    // Monitor modes are snapshots; this backend can refresh them if monitors change at runtime.
+    // Owns GLFW and its windows. Monitor modes are snapshots; this backend can refresh
+    // them if monitors change at runtime. Construct and destroy on the platform thread.
     class DisplaySystem final : public iDisplaySystem {
     public:
         DisplaySystem();
@@ -27,12 +28,21 @@ namespace CE {
         [[nodiscard]] std::pair<float, float> content_scale(const Monitor& monitor) const override;
 
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height) override;
+        Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height,
+                              const std::string& title);
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, Resolution resolution);
         Window* create_window(const Monitor& monitor, Enum::window_mode mode);
         // Selects the initial render window. Additional rendering contexts need GPU resource management.
         void activate_window(iWindow& window) override;
 
     private:
+        struct GlfwLibrary {
+            GlfwLibrary();
+            ~GlfwLibrary();
+            GlfwLibrary(const GlfwLibrary&) = delete;
+            GlfwLibrary& operator=(const GlfwLibrary&) = delete;
+        } glfw_;
+
         [[nodiscard]] static Monitor create_primary_monitor();
         [[nodiscard]] GLFWmonitor* native_monitor(const Monitor& monitor) const;
 

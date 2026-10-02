@@ -1,6 +1,5 @@
 #pragma once
-#include "assets/primitives.h"
-#include "assets/abstracts.h"
-#include "assets/manifest.h"
-#include "assets/2d-assets.h"
-//#include "assets/3d-assets.h"
+#include "assets/resources.h"
+#include "assets/definitions/manifest.h"
+#include "assets/types.h"
+#include "assets/submission/draw2d.h"

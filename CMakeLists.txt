@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
 project(cheryl)
 
@@ -30,15 +30,16 @@ if(NOT CHERYL_SANDBOX_BUILD)
         find_package(X11 REQUIRED)
     endif()
 endif()
-file(GLOB_RECURSE LIB_SOURCES LIST_DIRECTORIES false src/* ${CMAKE_CURRENT_BINARY_DIR}/_deps/glad-src/src/*)
-file(GLOB_RECURSE GTEST_SOURCES LIST_DIRECTORIES false tests/executables/gtest/*)
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS LIST_DIRECTORIES false src/* ${CMAKE_CURRENT_BINARY_DIR}/_deps/glad-src/src/*)
+file(GLOB_RECURSE GTEST_SOURCES CONFIGURE_DEPENDS LIST_DIRECTORIES false tests/executables/gtest/*)
 if(CHERYL_SANDBOX_BUILD)
-    list(FILTER LIB_SOURCES EXCLUDE REGEX "/(glfw-bindings|input-mapper|input-system|opengl-engine)\\.cpp$")
+    list(FILTER LIB_SOURCES EXCLUDE REGEX "/(glfw-bindings|input-mapper|input-system)\\.cpp$")
 endif()
 message("Library sources: ${LIB_SOURCES}")
 message("Common test sources: ${TEST_SOURCES}")
 
 # dependencies
+find_package(Threads REQUIRED)
 set(BACKWARD_SHARED STATIC)
 set(SPDLOG_USE_STD_FORMAT ON)
 set(GLM_ENABLE_EXPERIMENTAL ON)
@@ -54,7 +55,8 @@ add_subdirectory(extern/glad/cmake)
 add_subdirectory(extern/glm EXCLUDE_FROM_ALL)
 add_subdirectory(extern/glfw EXCLUDE_FROM_ALL)
 
-glad_add_library(gl46 STATIC EXCLUDE_FROM_ALL API gl:core=4.6 EXTENSIONS GL_EXT_texture_filter_anisotropic )
+# Use the pinned GLAD specification instead of downloading a newer one during compilation.
+glad_add_library(gl46 STATIC EXCLUDE_FROM_ALL REPRODUCIBLE API gl:core=4.6 EXTENSIONS GL_EXT_texture_filter_anisotropic )
 
 # includes
 include_directories(include)
@@ -84,6 +86,7 @@ endif()
 
 # library
 add_library(${LIB_TARGET} STATIC ${LIB_SOURCES})
+target_link_libraries(${LIB_TARGET} PUBLIC Threads::Threads)
 if(CHERYL_SANDBOX_BUILD)
     target_compile_definitions(${LIB_TARGET} PUBLIC CHERYL_SANDBOX_BUILD=1)
 endif()
@@ -93,8 +96,17 @@ add_dependencies(${LIB_TARGET} gl46)
 include(GoogleTest)
 enable_testing()
 add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
-TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include)
+target_link_libraries(${TEST_TARGET} PRIVATE Threads::Threads)
+TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include src)
 target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11 AND NOT CHERYL_SANDBOX_BUILD)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/executables/gtest/backends/native-opengl.cpp"
+        APPEND PROPERTY COMPILE_DEFINITIONS CHERYL_NATIVE_X11_TESTS=1)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    # backward-cpp's fallback resolver reads exported symbols in Release builds.
+    target_link_options(${TEST_TARGET} PRIVATE -rdynamic)
+endif()
 if(CHERYL_SANDBOX_BUILD)
     target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SANDBOX_BUILD=1)
     target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object glfw gl46 GL)

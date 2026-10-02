@@ -1,15 +1,15 @@
-#include <gtest/gtest.h>
-#include <core/resources/memory.h>
-#include <core/resources/objects/object-construction.hpp>
-#include <testing/block.h>
-#include <templates/asset-mgr.h>
-#include <internals/macros/int-literals.h>
 #include <algorithm>
 #include <array>
+#include <core/resources/memory.h>
+#include <core/resources/objects/object-construction.hpp>
 #include <cstdint>
 #include <cstring>
+#include <gtest/gtest.h>
+#include <internals/macros/int-literals.h>
 #include <random>
 #include <set>
+#include <templates/asset-mgr.h>
+#include <testing/block.h>
 
 namespace {
     struct CheckedOut {
@@ -50,26 +50,28 @@ namespace {
             const auto end = start + owner.length;
             std::vector<CE::Mem::Block> pieces;
             for (const auto& section : sections) {
-                if (section.owner.get() == owner.owner.get()) pieces.push_back(section);
+                if (section.owner.get() == owner.owner.get())
+                    pieces.push_back(section);
             }
-            std::sort(pieces.begin(), pieces.end(), [](const auto& a, const auto& b) {
-                return a.head.get() < b.head.get();
-            });
+            std::sort(pieces.begin(), pieces.end(), [](const auto& a, const auto& b) { return a.head.get() < b.head.get(); });
             if (pieces.empty()) {
                 if (exact(pool, owner) != (stale.contains(owner) || exact(release, owner))) {
                     return ::testing::AssertionFailure() << "Owner pool/stale mismatch " << owner;
                 }
             } else {
-                if (exact(pool, owner)) return ::testing::AssertionFailure() << "Pooled owner has sections " << owner;
+                if (exact(pool, owner))
+                    return ::testing::AssertionFailure() << "Pooled owner has sections " << owner;
                 auto cursor = start;
                 for (const auto& piece : pieces) {
                     if (piece.length == 0 || reinterpret_cast<std::uintptr_t>(piece.head.get()) != cursor) {
                         return ::testing::AssertionFailure() << "Hole or overlap at " << piece;
                     }
                     cursor += piece.length;
-                    if (cursor > end) return ::testing::AssertionFailure() << "Section exceeds owner " << piece;
+                    if (cursor > end)
+                        return ::testing::AssertionFailure() << "Section exceeds owner " << piece;
                 }
-                if (cursor != end) return ::testing::AssertionFailure() << "Uncovered owner tail " << owner;
+                if (cursor != end)
+                    return ::testing::AssertionFailure() << "Uncovered owner tail " << owner;
             }
         }
         // Cross-check free, stale, and pending entries against their owner.
@@ -80,9 +82,8 @@ namespace {
             }
         }
         for (const auto& section : sections) {
-            const auto owner = std::find_if(registry.begin(), registry.end(), [&](const auto& block) {
-                return block.owner.get() == section.owner.get();
-            });
+            const auto owner =
+                std::find_if(registry.begin(), registry.end(), [&](const auto& block) { return block.owner.get() == section.owner.get(); });
             if (owner == registry.end()) {
                 return ::testing::AssertionFailure() << "Section has no owner " << section;
             }
@@ -105,7 +106,8 @@ namespace {
             if (!exact(registry, block) && !exact(sections, block)) {
                 return ::testing::AssertionFailure() << "Live block is untracked " << block;
             }
-            if (exact(pool, block)) return ::testing::AssertionFailure() << "Live block is pooled " << block;
+            if (exact(pool, block))
+                return ::testing::AssertionFailure() << "Live block is pooled " << block;
             const auto first = reinterpret_cast<std::uintptr_t>(block.head.get());
             const auto last = first + block.length;
             for (const auto& free : pool) {
@@ -161,7 +163,8 @@ TEST(memory, mixed_checkouts_and_returns) {
     }
     // Drain the remaining checkouts, then recheck the bookkeeping with an
     // empty independent list of live ranges.
-    for (const auto& entry : live) manager.return_chunk(entry.block);
+    for (const auto& entry : live)
+        manager.return_chunk(entry.block);
     EXPECT_TRUE(valid_partition({}));
 }
 
@@ -238,7 +241,8 @@ TEST(memory, preallocation) {
     std::set<void*> before;
     {
         std::shared_lock lock(std::get<0>(bm.registry));
-        for (const auto& owner : std::get<1>(bm.registry)) before.emplace(owner.head.get());
+        for (const auto& owner : std::get<1>(bm.registry))
+            before.emplace(owner.head.get());
     }
     // Grow 32 bytes by a factor of two, then add 16: one new 80-byte owner
     // should satisfy the requested 128-byte alignment.
@@ -247,7 +251,8 @@ TEST(memory, preallocation) {
     {
         std::shared_lock lock(std::get<0>(bm.registry));
         for (const auto& owner : std::get<1>(bm.registry)) {
-            if (!before.contains(owner.head.get())) added.push_back(owner);
+            if (!before.contains(owner.head.get()))
+                added.push_back(owner);
         }
     }
     ASSERT_EQ(added.size(), 1);
@@ -268,19 +273,23 @@ TEST(memory, typed_allocator_releases_full_block) {
         BlockManagement<void> bm;
         std::shared_lock sec_lock(std::get<0>(bm.sections));
         for (const auto& section : std::get<1>(bm.sections)) {
-            if (section.head.get() == ptr) granted_bytes = section.length;
+            if (section.head.get() == ptr)
+                granted_bytes = section.length;
         }
         if (granted_bytes == 0) {
             std::shared_lock reg_lock(std::get<0>(bm.registry));
             for (const auto& owner : std::get<1>(bm.registry)) {
-                if (owner.head.get() == ptr) granted_bytes = owner.length;
+                if (owner.head.get() == ptr)
+                    granted_bytes = owner.length;
             }
         }
     }
     ASSERT_GE(granted_bytes, sizeof(*ptr) * count);
     // Write through the requested typed elements before releasing storage.
-    for (std::size_t i = 0; i < count; ++i) ptr[i] = i + 100;
-    for (std::size_t i = 0; i < count; ++i) EXPECT_EQ(ptr[i], i + 100);
+    for (std::size_t i = 0; i < count; ++i)
+        ptr[i] = i + 100;
+    for (std::size_t i = 0; i < count; ++i)
+        EXPECT_EQ(ptr[i], i + 100);
 
     // Deallocate using the requested count, then verify the pool covers the
     // full manager-granted byte span, including its tail.
@@ -291,7 +300,8 @@ TEST(memory, typed_allocator_releases_full_block) {
         std::shared_lock lock(std::get<0>(bm.pool));
         const auto last = static_cast<void*>(reinterpret_cast<unsigned char*>(ptr) + granted_bytes - 1);
         for (const auto& free : std::get<1>(bm.pool)) {
-            if (free.contains(ptr) && free.contains(last)) all_bytes_returned = true;
+            if (free.contains(ptr) && free.contains(last))
+                all_bytes_returned = true;
         }
     }
     EXPECT_TRUE(all_bytes_returned);
@@ -307,8 +317,15 @@ namespace {
     struct TrackedAsset final : TrackedAssetBase {
         static inline int live = 0;
         static inline int destroyed = 0;
-        explicit TrackedAsset(int value) : value_(value) { ++live; }
-        ~TrackedAsset() override { --live; ++destroyed; }
+
+        explicit TrackedAsset(int value)
+        : value_(value) { ++live; }
+
+        ~TrackedAsset() override {
+            --live;
+            ++destroyed;
+        }
+
         [[nodiscard]] int value() const override { return value_; }
 
     private:
@@ -317,7 +334,7 @@ namespace {
 
     struct AssetCacheProbe : CE::Assets::AssetMgr<TrackedAssetBase, int> {
         using AssetMgr::allocate;
-        void retain(int key, const std::shared_ptr<TrackedAsset>& asset) { loaded_assets[key] = asset; }
+        void retain(int key, const std::shared_ptr<TrackedAsset>& asset) { publish_asset(key, asset); }
     };
 }
 
@@ -376,7 +393,8 @@ TEST(memory, independent_pool_handles) {
     auto objects = pool.retrieve_objects(3, 21);
     ASSERT_EQ(objects.size(), 3);
     EXPECT_EQ(TrackedAsset::live, 3);
-    for (const auto& object : objects) EXPECT_EQ(object->value(), 21);
+    for (const auto& object : objects)
+        EXPECT_EQ(object->value(), 21);
 
     // An interior object's handle returns only its own slot; its neighbors
     // remain constructed until their handles are released.

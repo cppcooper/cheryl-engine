@@ -1,28 +1,19 @@
 #pragma once
+#include <assets/resources/shader.h>
+#include <glm.hpp>
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <assets/abstracts/shader.h>
-#include <glm.hpp>
 
 using ShaderAssetMgr = CE::Assets::AssetMgr<CE::Assets::Shader>;
 namespace CE::Assets {
     struct ResourceProvider;
 
-    /** Cache compiled stages and linked programs by path; linked programs receive the
-     * current camera matrices when they are loaded or when the camera changes.
-     */
+    /** Cache linked programs by path. Camera/draw state is bound at submission. */
     struct ShaderMgr final : ShaderAssetMgr, Singleton_CTS<ShaderMgr> {
         ShaderMgr() = default;
         ~ShaderMgr() override = default;
-        void load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider);
-        void load_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages,
-                          ResourceProvider& provider);
-        void set_projection_matrix(const glm::mat4& projection);
-        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view);
-
-    private:
-        glm::mat4 projection_{1.0f};
-        glm::mat4 view_{1.0f};
-        std::vector<std::filesystem::path> linked_programs_;
+        void load_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages, ResourceProvider& provider);
+        // Replacing a cache entry leaves previously published frames' handles alive.
+        void reload_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages, ResourceProvider& provider);
     };
 }

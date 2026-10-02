@@ -8,16 +8,30 @@
 #endif
 #include <GLFW/glfw3.h>
 #include <random>
+#include <string>
 
-const char* generate_title();
-GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int);
+namespace {
+    const char* generate_title();
+    GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int, const std::string&);
+}
 
 namespace CE {
-    Window::Window(const Monitor& monitor, GLFWmonitor* native_monitor, const Enum::window_mode mode, const int width,
-                   const int height) :
-        logical_size_(width, height), window_mode_(mode), monitor_(monitor), glfw_monitor_(native_monitor),
-        glfw_window_(create_native_window(native_monitor, mode, width, height)), windowed_width_(width),
-        windowed_height_(height) {
+    Window::Window(
+        const Monitor& monitor,
+        GLFWmonitor* native_monitor,
+        const Enum::window_mode mode,
+        const int width,
+        const int height,
+        const std::string& title
+    )
+    :
+    logical_size_(width, height),
+    window_mode_(mode),
+    monitor_(monitor),
+    glfw_monitor_(native_monitor),
+    glfw_window_(create_native_window(native_monitor, mode, width, height, title)),
+    windowed_width_(width),
+    windowed_height_(height) {
         glfwGetMonitorPos(glfw_monitor_, &windowed_x_, &windowed_y_);
         if (mode == Enum::window_mode::NORMAL) {
             glfwSetWindowPos(glfw_window_, windowed_x_, windowed_y_);
@@ -101,18 +115,18 @@ namespace CE {
         // Windowed and borderless use a detached monitor; fullscreen attaches
         // the selected monitor at its video mode and refresh rate.
         switch (mode) {
-        case Enum::window_mode::NORMAL:
-            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
-            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
-            break;
-        case Enum::window_mode::BORDERLESS:
-            glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
-            glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
-            break;
-        case Enum::window_mode::FULLSCREEN:
-            glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height,
-                                 vidmode->refreshRate);
-            break;
+            case Enum::window_mode::NORMAL:
+                glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+                glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
+                break;
+            case Enum::window_mode::BORDERLESS:
+                glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
+                glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
+                break;
+            case Enum::window_mode::FULLSCREEN:
+                glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height,
+                    vidmode->refreshRate);
+                break;
         }
         // Mode switches can change framebuffer size independently of logical window size.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
@@ -131,24 +145,29 @@ namespace CE {
     }
 }
 
-namespace Enum = CE::Enum;
-GLFWwindow* create_native_window(GLFWmonitor* monitor, const Enum::window_mode mode, const int width,
-                                 const int height) {
-    if (width <= 0 || height <= 0)
-        throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
-    if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS &&
-        mode != Enum::window_mode::FULLSCREEN)
-        throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+namespace {
+    GLFWwindow* create_native_window(
+        GLFWmonitor* monitor,
+        const CE::Enum::window_mode mode,
+        const int width,
+        const int height,
+        const std::string& title
+    ) {
+        if (width <= 0 || height <= 0)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+        if (mode != CE::Enum::window_mode::NORMAL && mode != CE::Enum::window_mode::BORDERLESS &&
+            mode != CE::Enum::window_mode::FULLSCREEN)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
-    // The initial mode decides both decoration and whether GLFW creates the
-    // window directly on the monitor; later switches use Window::set_mode.
-    glfwWindowHint(GLFW_DECORATED, mode == Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
-    auto* fullscreen_monitor = mode == Enum::window_mode::FULLSCREEN ? monitor : nullptr;
-    auto* native = glfwCreateWindow(width, height, generate_title(), fullscreen_monitor, nullptr);
-    if (!native)
-        throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
-    return native;
-}
+        // The initial mode decides decoration and whether GLFW attaches the monitor.
+        glfwWindowHint(GLFW_DECORATED, mode == CE::Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
+        auto* fullscreen_monitor = mode == CE::Enum::window_mode::FULLSCREEN ? monitor : nullptr;
+        auto* native = glfwCreateWindow(width, height, title.empty() ? generate_title() : title.c_str(),
+            fullscreen_monitor, nullptr);
+        if (!native)
+            throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
+        return native;
+    }
 
     const char* generate_title() {
         std::random_device rng;
@@ -198,3 +217,4 @@ GLFWwindow* create_native_window(GLFWmonitor* monitor, const Enum::window_mode m
                 return "Out of range!";
         }
     }
+}
