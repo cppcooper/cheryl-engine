@@ -80,4 +80,4 @@ Generic tools are independent of input: `StateTracker<T>` compares successive sa
 
 GLFW callback work catches its first failure and reports it from `update()` instead of unwinding through the C callback stack. Runtime cleanup detaches callbacks, clears focus and pending capture, and tears down rendering after a poll/worker failure. Already delivered immutable handles remain valid. Capacity limits completed polls, not records inside one pump; an OS pump can deliver many records, all retained when their channels were active. At shutdown the runtime discards pending input after stopping/joining simulation; it does not perform an extra final update.
 
-Implementation and validation status are recorded in [INPUT-IMPLEMENTATION-STATUS.md](INPUT-IMPLEMENTATION-STATUS.md).
+Recorded validation scopes are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).

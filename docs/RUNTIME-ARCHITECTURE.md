@@ -1,13 +1,12 @@
-# Runtime and backend boundaries
+# Runtime architecture and backend boundaries
 
 The selected backend is composed through `EngineContext`; `GameRuntime` uses its
 display, window, input, presentation, renderer, and resource contracts. The current
 GLFW/OpenGL implementation and the in-memory integration probe follow those same
-contracts. Source implementation is prepared. Compilation, automated execution,
-and real-platform acceptance remain open; see
-[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).
+contracts. The architecture is implemented; recorded build, regression, and native
+acceptance results are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
-| Boundary | Prepared implementation |
+| Boundary | Contract |
 | --- | --- |
 | CPU asset data | Vertex layouts, typed manifests, grid generation, and owned RGBA decoding have no graphics-context dependency. `Loader::prepare()` runs independently of a provider. |
 | Display and presentation | `iDisplaySystem` owns a selected window implementation. `iWindow` and monitor snapshots carry neutral data; `iPresentationSurface` presents. GLFW handles remain inside the platform/backend implementation. The renderer does not own the display. |
@@ -16,7 +15,7 @@ and real-platform acceptance remain open; see
 | Resource creation and caches | `ResourceProvider` uploads decoded pixels and transient vertex spans, creates font atlases, and links programs. Cache readers retain handles under shared locks; construction and retired-handle destruction stay outside locks. One provider/loading thread binds the singleton caches until teardown. |
 | Composition and scheduling | One runtime session owns platform polling and presentation. Concurrent mode adds one simulation worker and three reusable frame slots. `platform_dispatcher().submit()` transfers owned resource requests with future results; shutdown cancels pending requests before game cleanup. |
 | OpenGL lifetime | Active resource use requires the owner thread and its actual current context. Handles retire without OpenGL calls from their destructors. Renderer shutdown restores its context, deletes tracked handles, closes their lifetime, and releases the context. Failed destructor cleanup invalidates retained handles. |
-| Adapter proof source | The memory display/window, input, presentation, renderer, and resource provider exercise both runtime modes without OpenGL/GLFW headers. Regression source covers lifecycle, dispatch, cache publication, materials, preparation, and input routing. These cases have not been executed in this pass. |
+| Portable integration | The in-memory display/window, input, presentation, renderer, and resource provider exercise both runtime modes without OpenGL/GLFW headers. Aggregate regressions cover lifecycle, dispatch, cache publication, materials, preparation, and input routing. |
 
 ## API migration
 
@@ -45,3 +44,35 @@ are application bootstrap choices. Sprite/tileset definitions and image upload
 remain generic. CPU preparation and upload are described in
 [ASSET-LOADING.md](ASSET-LOADING.md); runtime ownership and frame handoff are in
 [RUNTIME-FRAME-BOUNDARY.md](RUNTIME-FRAME-BOUNDARY.md).
+
+## Execution and shutdown
+
+Platform and simulation requests use separate dispatchers with safe saved submission
+endpoints. EventBus owns persistent registrations; delivery adapters select platform,
+simulation, or serial worker-stream execution. EngineContext creates tracked worker
+groups on a lazy owned pool or an injected shared pool. The dedicated simulation
+thread remains separate from that general CPU capacity. See
+[THREAD-DISPATCH.md](THREAD-DISPATCH.md), [EVENT-DELIVERY.md](EVENT-DELIVERY.md), and
+[WORKER-EXECUTION.md](WORKER-EXECUTION.md).
+
+Runtime shutdown closes context worker submissions, stops simulation, and pumps
+accepted platform dependencies while simulation joins. The game then quiesces its
+external producers while targets remain alive. Accepted CPU work settles before
+remaining platform requests cancel, frames recycle, and game/input/graphics cleanup
+runs. An injected pool's unrelated application groups remain open. Cleanup preserves
+the first failure, including after partial initialization.
+
+## Current limits
+
+Singleton asset caches support one active provider/loading-owner domain. Repeated
+generic loads preserve existing keys; upload is not an atomic hot-reload transaction.
+Failed upload may leave completed cache entries while published metadata stays at
+its previous successful snapshot. Material recipe reload has a separate successful-
+replacement contract that preserves retained generations.
+
+Tile-map neighbor selection and application meanings for views/orientations remain
+gameplay work. Input supplies committed Unicode scalars, while the existing fonts
+and demo editor retain their ASCII and editing limits. Audio, networking, world/
+physics systems, text shaping, automatic cache eviction, and advanced worker topology
+are separate extensions. Concrete unfinished work is in [TODO.md](TODO.md) and
+[ASSET-MANIFEST-TODO.md](ASSET-MANIFEST-TODO.md).

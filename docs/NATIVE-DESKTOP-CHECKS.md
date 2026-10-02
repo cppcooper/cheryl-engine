@@ -1,14 +1,4 @@
-# Desktop acceptance checks
-
-## Reported result
-
-1 October 2026: after applying checkpoint 95 at
-`2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`, the user reports:
-"I ran all the tests, I think. No failures. Everything went as expected."
-The supplied desktop checklist is recorded as passing based on that report,
-covering input/text focus, resize, successful/failed/recovered F5 reload and
-normal window close in the requested sequential/concurrent runs. No GPU/driver
-identity or additional automated-suite counts were supplied.
+# Desktop smoke checks
 
 ## Repeatable sequence
 
@@ -17,7 +7,7 @@ then repeat with `--concurrent`. Keep the run interactive by omitting
 `--max-updates`; that option is only for finite automation. The automated normal
 configuration uses GLFW's X11 backend with Wayland disabled.
 
-For each mode, report pass/fail and any console error for these observations:
+In each mode, check these observations:
 
 1. Text renders clearly; WASD pans the camera and R resets it. Mouse coordinates,
    click count and wheel values respond. Resize the window several times: text
@@ -42,14 +32,5 @@ For each mode, report pass/fail and any console error for these observations:
 
 For a failure, identify sequential/concurrent mode, the action, visible behavior,
 console error and your GPU/driver if known. Screenshots are optional; a short text
-report is enough to begin investigation. These observations complement automated
-context/lifetime checks and do not hold up independent source work.
-
-Checkpoint 103 separately executes controlled slow updates and presentation plus
-full native State backlog, documented in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). The prior desktop report is
-retained without requiring another checklist. Checkpoint 105 adds ordered Events/Text
-through synthetic X server keys and the normal native pump in both modes, closing
-the bounded timing/input/presentation
-acceptance scope. Composed native-resource/runtime failure cleanup and actual OS
-affinity restriction/rejection remain open; no new manual checklist is assigned.
+report is enough to begin investigation. These observations complement the automated
+context/lifetime cases in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).

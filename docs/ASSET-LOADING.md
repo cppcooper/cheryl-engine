@@ -90,7 +90,6 @@ cached sprite has no mutable playback cursor. Tile-map neighbor selection and
 application meanings for views/orientations remain gameplay work.
 
 Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
-Manifest, preparation/upload, and runtime-adapter regression sources belong to the
-aggregated `all-tests` target. Compilation, execution, and real-platform acceptance
-remain outstanding as described in
-[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).
+Manifest, preparation/upload, and runtime-adapter regressions belong to the
+aggregated `all-tests` target. Recorded build and execution scopes are in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).

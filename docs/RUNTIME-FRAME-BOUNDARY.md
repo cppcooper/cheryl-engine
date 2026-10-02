@@ -128,8 +128,9 @@ Exclusive focus gates gameplay keyboard State while controller/mouse input
 continues. UI code reads ordered text/editing records during simulation; it is
 never invoked by a platform callback. Enter/Escape releases focus.
 
-The input implementation's remaining validation gate is recorded in
-[INPUT-IMPLEMENTATION-STATUS.md](INPUT-IMPLEMENTATION-STATUS.md).
+Input capture/routing contracts are described in
+[input-state-model.md](input-state-model.md); recorded execution scopes are in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied custom
 pass/material/draw values without common code selecting native uniform names.
@@ -159,8 +160,8 @@ and closes their lifetime before releasing it. Retained handles reject use after
 closure without querying the borrowed context. If destructor cleanup cannot
 recover the context, it invalidates handles without OpenGL calls; platform context
 destruction releases remaining native resources. The context outlives its renderer.
-Full preparation status and the outstanding execution gate are recorded in
-[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).
+Recorded build and native acceptance scopes are in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 ### Saved platform submission endpoints
 
