@@ -28,6 +28,9 @@ class Singleton_CTS {
         std::call_once(construct_flag(), [&](){ get_impl() = std::make_unique<Type>(std::forward<Args>(args)...);});
     }
 public:
+    // Observe an already constructed singleton during provider shutdown without creating it.
+    static Type* get_existing() noexcept { return get_impl().get(); }
+
     template<typename... Args>
     static Type& get(Args... args) {
         // Construct once for a matching signature. If this call cannot

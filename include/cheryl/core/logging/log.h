@@ -384,10 +384,7 @@ namespace CE {
                 const std::lock_guard default_lock(LogDetail::default_logger_mutex);
                 const bool restore_default = spdlog::default_logger() == logger;
                 reopen_state = ReopenState{
-                    logger->log_level(),
-                    file->log_level(),
-                    console->log_level(),
-                    restore_default
+                    logger->log_level(), file->log_level(), console->log_level(), restore_default
                 };
                 if (restore_default) {
                     set_default_logger(m_fallback_logger);

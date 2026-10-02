@@ -12,4 +12,29 @@ The protected legacy `AssetMgr::allocate` interface remains available for caller
 
 If construction of a `retrieve_objects` batch fails, completed handles release their slots and the unconstructed tail is returned as one range. `ObjCtor` reserves its tracking entry before invoking a constructor, so tracking allocation cannot fail after the object becomes live.
 
-GPU lifetime remains separate: `GLSLProgram::~GLSLProgram` currently calls `glDeleteProgram` and requires a current context; VAO/VBO deletion and `Texture` deletion still need a context owned release queue. These operations were not changed as part of the CPU resource lifetime work.
+GPU handles are registered with the OpenGL renderer's resource lifetime. Texture,
+VAO/VBO, and program destructors only retire registrations. Resource use and native
+deletion require both the owner thread and its actual current context. Renderer
+shutdown restores that context, deletes every tracked handle, closes the lifetime,
+and releases the context. External asset handles may outlive shutdown; use then
+fails before querying the borrowed context. If destructor cleanup cannot recover
+the context, it invalidates registrations without OpenGL calls, leaving remaining
+native cleanup to platform context destruction.
+
+`AssetCacheContext` guards strong cache residency and the active loading domain.
+Asset caches clear and release their provider binding when the provider is
+destroyed. Shared-lock lookups retain complete handles; unique-lock publication
+and clearing release retired handles outside cache locks. Provider teardown marks
+the binding as releasing first so reentrant deleters cannot refill the caches.
+`GameRuntime` stops simulation/worker acceptance while pumping accepted platform
+dependencies, then cancels remaining platform work, recycles frames, and cleans up
+the game before stopping input and graphics. Renderer maintenance runs independently
+of new frames, before bounded idle waits and while accepted work settles. Owned input is
+destroyed before the provider, renderer, surface, and display. The platform
+context must outlive its renderer. See
+[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md) for the open
+execution-validation gate.
+
+The resource-by-resource ownership trace, explicit residency policy, 10 ms idle
+wait bound, native failure guards, and open acceptance checks are in
+[RESOURCE-RESIDENCY.md](RESOURCE-RESIDENCY.md).

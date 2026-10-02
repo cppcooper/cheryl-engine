@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <assets/primitives/vertex.h>
+#include <assets/types/primitives/vertex.h>
 
 #include <array>
 #include <cstddef>
@@ -18,8 +18,14 @@ namespace {
 TEST(geometry_primitives, quad_faces) {
     // A standalone image keeps two independent triangles and their UVs.
     CE::Quad quad{};
-    quad.vertices = {{{0, 0, 0, 0, 0}, {2, 0, 0, 1, 0}, {2, 3, 0, 1, 1},
-                      {0, 0, 0, 0, 0}, {2, 3, 0, 1, 1}, {0, 3, 0, 0, 1}}};
+    quad.vertices = {{{0, 0, 0, 0, 0},
+                      {2, 0, 0, 1, 0},
+                      {2, 3, 0, 1, 1},
+                      {0, 0, 0, 0, 0},
+                      {2, 3, 0, 1, 1},
+                      {0, 3, 0, 0, 1}
+        }
+    };
     CE::Triangle first{};
     first.vertices = {quad.vertices[0], quad.vertices[1], quad.vertices[2]};
     CE::Triangle second{};

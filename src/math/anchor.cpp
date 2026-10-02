@@ -1,6 +1,6 @@
 #include <math/anchor.h>
 
-#include <assets/primitives/vertex.h>
+#include <assets/types/primitives/vertex.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
@@ -35,9 +35,15 @@ namespace CE::math {
             Vertex2D top_left;
         };
 
-        Corners make_corners(const Pivot pivot, const std::uint32_t texture_width,
-                             const std::uint32_t texture_height, const std::uint32_t width,
-                             const std::uint32_t height, const std::uint32_t x0, const std::uint32_t y0) {
+        Corners make_corners(
+            const Pivot pivot,
+            const std::uint32_t texture_width,
+            const std::uint32_t texture_height,
+            const std::uint32_t width,
+            const std::uint32_t height,
+            const std::uint32_t x0,
+            const std::uint32_t y0
+        ) {
             validate(pivot, texture_width, texture_height);
 
             const auto tw = static_cast<float>(texture_width);
@@ -58,8 +64,11 @@ namespace CE::math {
             const float v0 = 1.0f - ((sy + fh) / th);
             const float v1 = 1.0f - (sy / th);
 
-            return {{left, bottom, 0.0f, u0, v0}, {right, bottom, 0.0f, u1, v0},
-                    {right, top, 0.0f, u1, v1}, {left, top, 0.0f, u0, v1}};
+            return {{left, bottom, 0.0f, u0, v0},
+                    {right, bottom, 0.0f, u1, v0},
+                    {right, top, 0.0f, u1, v1},
+                    {left, top, 0.0f, u0, v1}
+            };
         }
     }
 
@@ -85,31 +94,37 @@ namespace CE::math {
 
     Pivot get_pivot(const AnchorType anchor) {
         switch (anchor) {
-        case AnchorType::TopLeft:
-            return {0.0f, 0.0f};
-        case AnchorType::TopCenter:
-            return {0.5f, 0.0f};
-        case AnchorType::TopRight:
-            return {1.0f, 0.0f};
-        case AnchorType::CenterLeft:
-            return {0.0f, 0.5f};
-        case AnchorType::CenterRight:
-            return {1.0f, 0.5f};
-        case AnchorType::BottomLeft:
-            return {0.0f, 1.0f};
-        case AnchorType::BottomCenter:
-            return {0.5f, 1.0f};
-        case AnchorType::BottomRight:
-            return {1.0f, 1.0f};
-        case AnchorType::Center:
-            return {0.5f, 0.5f};
+            case AnchorType::TopLeft:
+                return {0.0f, 0.0f};
+            case AnchorType::TopCenter:
+                return {0.5f, 0.0f};
+            case AnchorType::TopRight:
+                return {1.0f, 0.0f};
+            case AnchorType::CenterLeft:
+                return {0.0f, 0.5f};
+            case AnchorType::CenterRight:
+                return {1.0f, 0.5f};
+            case AnchorType::BottomLeft:
+                return {0.0f, 1.0f};
+            case AnchorType::BottomCenter:
+                return {0.5f, 1.0f};
+            case AnchorType::BottomRight:
+                return {1.0f, 1.0f};
+            case AnchorType::Center:
+                return {0.5f, 0.5f};
         }
         return {0.5f, 0.5f};
     }
 
-    Quad Anchor::MakeQuad(const Pivot pivot, const std::uint32_t texture_width, const std::uint32_t texture_height,
-                          const std::uint32_t width, const std::uint32_t height, const std::uint32_t x0,
-                          const std::uint32_t y0) {
+    Quad Anchor::MakeQuad(
+        const Pivot pivot,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         const auto corners = make_corners(pivot, texture_width, texture_height, width, height, x0, y0);
 
         Quad quad{};
@@ -122,39 +137,74 @@ namespace CE::math {
         return quad;
     }
 
-    QuadTriangleStrip Anchor::MakeQuadStrip(const Pivot pivot, const std::uint32_t texture_width,
-                                           const std::uint32_t texture_height, const std::uint32_t width,
-                                           const std::uint32_t height, const std::uint32_t x0, const std::uint32_t y0) {
+    QuadTriangleStrip Anchor::MakeQuadStrip(
+        const Pivot pivot,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         const auto corners = make_corners(pivot, texture_width, texture_height, width, height, x0, y0);
         Triangle first{};
         first.vertices = {corners.bottom_left, corners.bottom_right, corners.top_left};
         return {first, corners.top_right};
     }
 
-    void Anchor::MakePivot(const Pivot pivot, Vertex2D* vertices, const std::uint32_t texture_width,
-                           const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
-                           const std::uint32_t x0, const std::uint32_t y0) {
+    void Anchor::MakePivot(
+        const Pivot pivot,
+        Vertex2D* vertices,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         const auto quad = MakeQuad(pivot, texture_width, texture_height, width, height, x0, y0);
         std::copy(quad.vertices.begin(), quad.vertices.end(), vertices);
     }
 
-    void Anchor::MakePivot(const Pivot pivot, float* vertices, const std::uint32_t texture_width,
-                           const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
-                           const std::uint32_t x0, const std::uint32_t y0) {
+    void Anchor::MakePivot(
+        const Pivot pivot,
+        float* vertices,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         // The interleaved float API presents the same quad as the typed API.
         const auto quad = MakeQuad(pivot, texture_width, texture_height, width, height, x0, y0);
-        for (std::size_t i = 0; i < quad.vertices.size(); ++i) set_vertex(vertices, i, quad.vertices[i]);
+        for (std::size_t i = 0; i < quad.vertices.size(); ++i)
+            set_vertex(vertices, i, quad.vertices[i]);
     }
 
-    void Anchor::MakeAnchor(const AnchorType type, Vertex2D* vertices, const std::uint32_t texture_width,
-                            const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
-                            const std::uint32_t x0, const std::uint32_t y0) {
+    void Anchor::MakeAnchor(
+        const AnchorType type,
+        Vertex2D* vertices,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         MakePivot(get_pivot(type), vertices, texture_width, texture_height, width, height, x0, y0);
     }
 
-    void Anchor::MakeAnchor(const AnchorType type, float* vertices, const std::uint32_t texture_width,
-                            const std::uint32_t texture_height, const std::uint32_t width, const std::uint32_t height,
-                            const std::uint32_t x0, const std::uint32_t y0) {
+    void Anchor::MakeAnchor(
+        const AnchorType type,
+        float* vertices,
+        const std::uint32_t texture_width,
+        const std::uint32_t texture_height,
+        const std::uint32_t width,
+        const std::uint32_t height,
+        const std::uint32_t x0,
+        const std::uint32_t y0
+    ) {
         MakePivot(get_pivot(type), vertices, texture_width, texture_height, width, height, x0, y0);
     }
 

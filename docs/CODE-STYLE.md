@@ -7,9 +7,9 @@ The root `.clang-format` is the formatting authority for C and C++ code. It bega
 - Use four spaces and never tabs for new or edited code.
 - Use attached pointer and reference declarators: `Texture* texture` and `const GridDefinition& grid`.
 - Keep opening braces on the declaration or control-statement line.
-- Keep enum members on separate lines. Do not add comments to namespace-closing braces.
+- Let the root formatter decide enum wrapping; short enums may fit on one line. Do not add comments to namespace-closing braces.
 - Short inline accessors may remain on one line; keep out-of-line function definitions expanded.
-- Treat 120 columns as the limit. Let `clang-format` decide whether a declaration or expression fits on one line; do not manually align continuation lines.
+- Treat 140 columns as the limit, matching the root configuration for clang-format 23+. Let `clang-format` decide whether a declaration or expression fits on one line; do not manually align continuation lines.
 - Preserve meaningful include groups. In a source file, put its matching header first, then other project or third-party headers, then standard-library headers, with blank lines between groups.
 
 Format individual files with:
@@ -32,6 +32,7 @@ git clang-format <base-revision>
 - Types and enum values use `PascalCase`. Functions, methods, and local variables use `snake_case`.
 - Private data members introduced in modernized code use a trailing underscore, such as `root_path_`. Preserve established public APIs and legacy subsystem names rather than renaming them only for style.
 - Mark converting constructors `explicit`, and use `override` or `final` where the relationship is known.
+- Put data declarations above methods. Break declaration/definition parameters as a block and put constructor initializers on the following line, as specified by the root formatter configuration.
 - Add `[[nodiscard]]` to query or factory functions when silently discarding the result is probably a mistake.
 - Include what a file uses instead of relying on transitive includes.
 - Keep comments focused on invariants, ownership, coordinate systems, or other non-obvious intent. Avoid narrating code that is already clear.

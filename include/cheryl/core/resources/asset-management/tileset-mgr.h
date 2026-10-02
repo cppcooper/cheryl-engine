@@ -1,7 +1,7 @@
 #pragma once
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
-#include <assets/2d/tileset.h>
+#include <assets/types/2d/tileset.h>
 
 using TSMgr = CE::Assets::AssetMgr<CE::Assets::Tileset, std::string>;
 namespace CE::Assets {

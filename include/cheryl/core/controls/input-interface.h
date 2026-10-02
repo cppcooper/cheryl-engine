@@ -1,17 +1,19 @@
 #pragma once
 
 #include "input-bindings.h"
+#include "input-capture.h"
+#include "poll-snapshot.h"
+
+#include <memory>
 
 namespace CE {
     class iWindow;
 }
 
 namespace CE::Input {
-    // TODO: Define which thread poll() runs on and where game-facing input is delivered. A concurrent
-    // implementation should separate platform event collection from simulation consumption rather than
-    // making bindings implicitly execute on whichever thread owns an input backend.
-    /** Engine-facing input adapter. Device/button IDs are opaque to the engine; each
-     * implementation translates platform events and exposes bindings to the game.
+    /** Platform-thread adapter. State is always available; supported Events/Text
+     * channels are independently requested through scoped capture handles.
+     * Backends latch capture before pumping and publish the complete poll once.
      */
     class iInputSystem {
     public:
@@ -20,8 +22,25 @@ namespace CE::Input {
         virtual void poll() = 0;
         virtual void deinitialize() = 0;
         [[nodiscard]] virtual InputBindings& bindings() = 0;
+        [[nodiscard]] virtual std::shared_ptr<const ActionSnapshot> action_snapshot() { return bindings().action_snapshot(); }
         [[nodiscard]] virtual DeviceId keyboard_id() const = 0;
         [[nodiscard]] virtual DeviceId mouse_id() const = 0;
         [[nodiscard]] virtual DeviceId gamepad_id() const = 0;
+        [[nodiscard]] virtual bool supports(InputMode mode) const { return mode == InputMode::State; }
+        [[nodiscard]] virtual bool supports_focus() const { return false; }
+        [[nodiscard]] CaptureLease capture(InputMode mode);
+        [[nodiscard]] InputRouting& routing();
+        [[nodiscard]] virtual std::shared_ptr<const PollSnapshot> poll_snapshot();
+
+    protected:
+        void begin_input_poll();
+        [[nodiscard]] InputCapture& capture_buffer() { return capture_; }
+        [[nodiscard]] std::shared_ptr<const PollSnapshot> publish_input(InputClock::time_point observed_at = InputClock::now());
+        void discard_captured_input();
+
+    private:
+        InputCapture capture_;
+        InputRouting routing_;
+        std::atomic<std::shared_ptr<const PollSnapshot>> published_poll_{nullptr};
     };
 }

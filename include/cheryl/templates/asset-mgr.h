@@ -1,5 +1,4 @@
 #pragma once
-#include <assets/abstracts.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>
@@ -8,74 +7,205 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace CE::Assets {
     struct ResourceProvider;
 
-    // Singleton asset managers use one resource provider for their process lifetime.
-    // TODO: Give this binding an explicit cache/resource lifecycle. The process-global provider
-    // pointer never resets, so backend replacement, multiple providers, and coordinated GPU
-    // teardown cannot currently be represented by the cache model.
-    // TODO: Include provider binding in the concurrency contract. bound_provider_ is unsynchronized, so
-    // concurrent first loads or backend/cache lifecycle changes would race even before asset maps are touched.
-    class ProviderBoundCache {
+    /** Guards the single active provider/loading-owner domain shared by all caches.
+     * This is publication/teardown context, not an eviction or residency manager.
+     * Cache maps retain strong handles until explicit clear/replacement or provider
+     * teardown; readers retain independent handles across either operation.
+     */
+    class AssetCacheContext {
+        friend struct ResourceProvider;
+        inline static std::mutex provider_mutex_;
+        inline static const ResourceProvider* bound_provider_ = nullptr;
+        inline static std::thread::id owner_;
+        inline static bool releasing_ = false;
+
     public:
-        static void verify_provider(const ResourceProvider& provider) {
-            if (bound_provider_ && bound_provider_ != &provider)
-                throw Exceptions::failed_operation(
-                    CE_HERE, "Asset caches are already bound to another resource provider");
+        static void verify_provider(
+            const ResourceProvider& provider
+        ) {
+            std::lock_guard lock(provider_mutex_);
+            verify_locked(provider);
+        }
+        [[nodiscard]] static bool is_bound_to(
+            const ResourceProvider& provider
+        ) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            return bound_provider_ == &provider;
         }
 
     protected:
-        static void bind_provider(const ResourceProvider& provider) {
-            verify_provider(provider);
-            bound_provider_ = &provider;
+        static void bind_provider(
+            const ResourceProvider& provider
+        ) {
+            std::lock_guard lock(provider_mutex_);
+            verify_locked(provider);
+            if (!bound_provider_) {
+                bound_provider_ = &provider;
+                owner_ = std::this_thread::get_id();
+            }
         }
 
     private:
-        inline static const ResourceProvider* bound_provider_ = nullptr;
+        static bool begin_provider_release(
+            const ResourceProvider& provider
+        ) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            if (bound_provider_ != &provider)
+                return false;
+            releasing_ = true;
+            return true;
+        }
+        static void release_provider(
+            const ResourceProvider& provider
+        ) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            if (bound_provider_ != &provider)
+                return;
+            bound_provider_ = nullptr;
+            owner_ = {};
+            releasing_ = false;
+        }
+        static void verify_locked(
+            const ResourceProvider& provider
+        ) {
+            if (bound_provider_ && bound_provider_ != &provider)
+                throw Exceptions::failed_operation(CE_HERE, "Asset caches are bound to another resource provider");
+            if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
+                throw Exceptions::failed_operation(CE_HERE, "Asset loading requires the active provider's owner thread");
+        }
     };
 
     /**
      * Caches constructed assets by key. reserve() provides storage whose slots
      * callers construct selectively with emplace(); the older allocate()
      * interface returns unconstructed handles for manual construction.
-     * TODO: Define synchronization/publication before background loading or hot reload. loaded_assets is an
-     * ordinary unordered_map, so concurrent load/get/clear operations are data races even when the underlying
-     * pooled object lifetime is otherwise safe.
+     * Publish complete assets under a unique lock; readers copy retained handles
+     * under a shared lock. Construction and final release happen outside the lock.
      */
-    template <typename AssetType, typename Key = std::filesystem::path>
-    struct AssetMgr : ProviderBoundCache {
+    template <typename AssetType,
+        typename Key = std::filesystem::path,
+        typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
+    struct AssetMgr : AssetCacheContext {
         using spointer = std::shared_ptr<AssetType>;
         using key_type = Key;
+
+    protected:
+        mutable std::shared_mutex assets_mutex_;
+        std::unordered_map<Key, spointer, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
+
+    public:
         AssetMgr() = default;
-        virtual ~AssetMgr() { loaded_assets.clear(); }
-        [[nodiscard]] virtual spointer get_asset(const Key& key) const {
+        virtual ~AssetMgr() { clear_assets(); }
+        [[nodiscard]] virtual spointer get_asset(
+            const Key& key
+        ) const {
+            std::shared_lock lock(assets_mutex_);
             if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
                 return asset->second;
             }
             return nullptr;
         }
-        [[nodiscard]] bool contains(const Key& key) const { return loaded_assets.contains(key); }
-        [[nodiscard]] std::size_t size() const { return loaded_assets.size(); }
+        [[nodiscard]] bool contains(
+            const Key& key
+        ) const {
+            std::shared_lock lock(assets_mutex_);
+            return loaded_assets.contains(key);
+        }
+        [[nodiscard]] std::size_t size() const {
+            std::shared_lock lock(assets_mutex_);
+            return loaded_assets.size();
+        }
+        virtual void clear_assets() noexcept {
+            // Preserve allocator identity: swapping maps with unequal, nonpropagating
+            // allocators is invalid. Default production caches still use std::allocator.
+            const auto allocator = [this] {
+                std::shared_lock lock(assets_mutex_);
+                return loaded_assets.get_allocator();
+            }();
+            decltype(loaded_assets) retired(allocator);
+            {
+                std::unique_lock lock(assets_mutex_);
+                retired.swap(loaded_assets);
+            }
+            // A deleter can inspect this cache without re-entering its write lock.
+        }
 
     protected:
+        explicit AssetMgr(
+            const Allocator& allocator
+        )
+        : loaded_assets(allocator) {}
+
+        spointer publish_asset(
+            const Key& key,
+            spointer asset
+        ) {
+            return publish_asset(key, std::move(asset), []() noexcept {});
+        }
+
+        // A derived cache can commit prepared metadata in the publication lock.
+        // The callback must not throw or reenter this cache.
+        template <typename Published>
+        spointer publish_asset(
+            const Key& key,
+            spointer asset,
+            Published&& published
+        ) {
+            static_assert(std::is_nothrow_invocable_v<Published>);
+            if (!asset)
+                throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
+            std::unique_lock lock(assets_mutex_);
+            // Keep this local owner until the lock has unwound. Node/rehash
+            // failure may destroy an insertion candidate while still inside
+            // try_emplace; that must not run its final deleter under this lock.
+            const auto entry = loaded_assets.try_emplace(key, asset).first;
+            std::forward<Published>(published)();
+            return entry->second;
+        }
+        spointer replace_asset(
+            const Key& key,
+            spointer asset
+        ) {
+            if (!asset)
+                throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
+            spointer retired;
+            spointer result;
+            {
+                std::unique_lock lock(assets_mutex_);
+                auto entry = loaded_assets.try_emplace(key, spointer{}).first;
+                retired = std::exchange(entry->second, std::move(asset));
+                result = entry->second;
+            }
+            return result;
+        }
         /** Reserve raw slots for selective construction with emplace(). */
         template <typename Derived>
-        auto reserve(const std::size_t N) {
+        auto reserve(
+            const std::size_t N
+        ) {
             static_assert(std::is_base_of_v<AssetType, Derived>);
             return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
         }
 
         /** Provide raw object handles for callers that construct slots manually. */
         template <typename Derived>
-        std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
-            static_assert(std::is_base_of_v<AssetType, Derived>,
-                          "The allocated class type must be derived from the managed type.");
+        std::vector<std::shared_ptr<Derived>> allocate(
+            const std::size_t N
+        ) {
+            static_assert(std::is_base_of_v<AssetType, Derived>, "The allocated class type must be derived from the managed type.");
             if (N == 0) {
                 return {};
             }
@@ -94,6 +224,5 @@ namespace CE::Assets {
                 context->release_owned(p, 1);
             });
         }
-        std::unordered_map<Key, spointer> loaded_assets{};
     };
 }

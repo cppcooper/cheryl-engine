@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <assets/manifest.h>
-#include <assets/2d/grid-geometry.h>
+#include <assets/definitions/manifest.h>
+#include <assets/geometry/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>
@@ -52,8 +52,7 @@ TEST(asset_pivot, invalid_pivot_diagnostics) {
     try {
         CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
         FAIL() << "An invalid pivot should throw";
-    }
-    catch (const CE::Exceptions::invalid_args& error) {
+    } catch (const CE::Exceptions::invalid_args& error) {
         EXPECT_NE(std::string(error.what()).find("A pivot must be normalized"), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);
@@ -144,7 +143,7 @@ TEST(asset_manifest, profile_inheritance) {
 
     // Inspect one generated sprite for its full name, inherited pivot, and animations.
     const auto sprite = std::ranges::find_if(manifest.sprites,
-                                             [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
+        [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
     ASSERT_NE(sprite, manifest.sprites.end());
     EXPECT_EQ(sprite->id(), "miniworld:soldier_swordsman_cyan");
     EXPECT_EQ(sprite->pivot, (CE::math::Pivot{0.5f, 1.0f}));
@@ -183,7 +182,7 @@ TEST(asset_manifest, overworld_tileset) {
     EXPECT_FALSE(terrain.variants.empty());
     const auto terrain_variant_count =
         std::accumulate(terrain.variants.begin(), terrain.variants.end(), std::size_t{},
-                        [](const std::size_t count, const auto& entry) { return count + entry.second.size(); });
+            [](const std::size_t count, const auto& entry) { return count + entry.second.size(); });
     EXPECT_EQ(terrain_variant_count, terrain.tiles.size());
 
     // Check the second autotile uses edge-based terrain with its own tile set.
@@ -296,8 +295,7 @@ TEST(asset_manifest, invalid_cell_reference) {
     try {
         static_cast<void>(ManifestLoader::parse(input, "bad.json"));
         FAIL() << "An out-of-range cell should throw";
-    }
-    catch (const CE::Exceptions::runtime_exception& error) {
+    } catch (const CE::Exceptions::runtime_exception& error) {
         EXPECT_NE(std::string(error.what()).find("bad.json"), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("at line "), std::string::npos);
         EXPECT_NE(std::string(error.what()).find("inside "), std::string::npos);

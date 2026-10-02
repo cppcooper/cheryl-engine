@@ -1,59 +1,96 @@
 # Asset loading
 
-Asset loading is split into a document layer and explicit asset-type construction paths. `ManifestLoader` parses and semantically validates manifest 1.0 without requiring OpenGL. `Loader` discovers manifests and files, validates cross-manifest state and texture dimensions, then dispatches typed definitions to the texture, sprite, and tileset managers.
+`ManifestLoader` parses manifest 1.0 into CPU-only definitions. An owned `Loader`
+keeps one immutable root: `prepare()` discovers documents and decodes owned RGBA
+pixels without a resource provider; `upload()` creates missing backend assets and
+publishes a retained metadata snapshot on the provider's loading thread.
 
 ## Runtime entry point
 
-Call the loader only after the engine has created an OpenGL context:
+After initializing the selected backend, load a root with its provider:
 
 ```cpp
-auto& loader = CE::Assets::Loader::get("assets");
-loader.load_assets();
-
-auto actor = CE::Assets::SpriteMgr::get().get_asset(
-    "miniworld:soldier_swordsman_cyan");
-auto terrain = CE::Assets::TilesetMgr::get().get_asset(
-    "punyworld:overworld");
+CE::Assets::Loader loader("assets");
+loader.load_assets(engine.resources());
+auto actor = CE::Assets::SpriteMgr::get().get_asset("miniworld:soldier_swordsman_cyan");
+auto documents = loader.manifests(); // shared_ptr<const vector<AssetManifest>>
 ```
 
-The loader reads only JSON files directly inside the supplied asset root. It does not treat `assets/schemas/*.json` as manifests. Texture paths are resolved relative to their manifest, while sprites and tilesets are registered by `namespace:key` rather than by manifest filename.
+Each preparation scans again. Only root-level JSON files are manifests;
+`assets/schemas/*.json` is excluded. Image paths are resolved relative to each
+manifest, and asset keys use `namespace:name`. Referenced images and standalone
+PNGs below the root are deduplicated and decoded in sorted order. Cross-document
+IDs and every grid's bounds are checked against those exact decoded dimensions
+before any upload. Upload consumes the owned pixels without reopening image files.
+Pixels are four-channel RGBA in the decoder's default top-to-bottom row order.
+OpenGL reverses those rows in transient upload storage to match the atlas
+geometry's upward-positive UV coordinates; the supplied pixels remain unchanged.
+The separate stb alpha-atlas path preserves its baked row/UV convention.
 
-The load order is:
+Preparation can use a tracked context WorkerGroup. Own both the Loader and
+PreparedAssets through the platform handoff; simulation only retrieves ready
+futures, and never blocks on CPU preparation or GPU upload:
 
-1. Parse every manifest into typed, GL-independent definitions.
-2. Reject duplicate asset IDs, missing textures, corrupt image metadata, and grids outside decoded texture bounds before constructing assets.
-3. Load referenced and standalone PNG textures.
-4. Construct every sprite and tileset grid from its resolved numeric pivot.
-5. Select and bake a system font using the existing stb_truetype dependency.
-6. Load existing shader stages, then explicitly link shader2d.vert and shader2d.frag as the shader2d text program.
+```cpp
+auto workers = engine.make_worker_group();
+auto platform = engine.platform_dispatcher().submission();
+auto loader = std::make_shared<CE::Assets::Loader>("assets");
+auto preparing = workers.submit([loader, platform] {
+    auto prepared = loader->prepare();
+    return platform.submit(
+        [loader, prepared = std::move(prepared)](CE::Engine::EngineContext& owner) mutable {
+            loader->upload(std::move(prepared), owner.resources());
+            return loader->manifests();
+        }
+    );
+});
+// A later update: only after preparing.wait_for(0s) reports ready, get the
+// returned upload future. Check that future's readiness before reading metadata.
+```
 
-Fonts remain outside the manifest schema. `FontMgr::default_font()` returns the selected face. Existing shader stage
-keys remain available; the text program is keyed by `assets/shaders/shader2d` without an extension.
+An owned root or injected shared root supplies physical capacity; this group
+belongs to the context shutdown domain. Accepted CPU jobs finish while the
+platform dispatcher remains available. Any final unexecuted upload is cancelled
+before resource teardown, so its future reports failure instead of hanging.
+Use platform submission endpoints rather than borrowed dispatcher pointers.
 
-`Loader::manifests()` retains the resolved documents for inspection after a successful load. A failed parse does not replace that collection.
+`load_assets(provider)` is the synchronous convenience path. Preparation failure
+changes no caches or published metadata. Upload failure may retain already-created
+cache entries, but metadata stays at the previous successful snapshot. Repeated
+loads preserve existing asset keys; this is not an atomic asset hot-reload API.
+Readers retain old metadata snapshots even after another upload or loader destruction.
+Construct separate loaders for separate roots. Legacy `Loader::get(root)` remains
+available but rejects a different root after its first initialization; `get()` only
+retrieves an already-initialized singleton.
 
-## Typed manifest data
+## Resources and application bootstrap
 
-`assets/manifest.h` is the shared contract between parsing, asset construction, and later engine systems. It retains:
+The generic loader loads images, sprites, and tilesets. The application explicitly
+chooses system fonts and shader recipes. The demo always selects its font and
+`shader2d` material recipe, including with `--full-assets`; F5 queues material
+replacement built from the shader recipe. Failed replacement keeps the previous
+generation, and published packets retain their selected generation. Fonts and
+shader/material recipes remain outside manifest 1.0.
 
-- grid origins, frame sizes, spacing, and row-major cell addressing;
-- arbitrary normalized pivots, named views, and orientation cells;
-- explicit timed animations and expanded profile animations with facings;
-- animated-tile targets and per-frame durations;
-- Wang terrain metadata, weighted tile variants, and signature lookup tables;
-- four- and eight-neighbor bit orders and mask-to-cell lookup tables.
+`ResourceProvider::create_image` accepts decoded RGBA pixels.
+`upload_geometry(span<const Vertex2D>, topology)` copies the transient view before
+returning. The older shared-pointer/count overload keeps its CPU owner only through
+that upload. Atlas cells use independent four-vertex strips; images and glyphs use
+six-vertex triangle quads. Backend handles never retain these CPU buffers. OpenGL
+checks dimension, byte-count, vertex-count, and draw-range limits before use.
 
-`Sprite::definition()` and `Tileset::definition()` expose this metadata after GPU construction. `Sprite::animation(name, facing)` returns a timed sequence; non-looping sequences clamp at their final frame. `Tileset::animation(name)` and `Tileset::animation_for(target)` provide the corresponding animated-tile sequences. Named views, orientations, and autotiles also have direct lookup methods.
+## Typed manifest data and consumers
 
-For tooling or tests that do not have a graphics context, use `ManifestLoader::load(file)` or `ManifestLoader::parse(stream, source)` directly. The `asset-manifest-tests` CMake target exercises this path without a window-system dependency.
+`assets/definitions/` retains grid origins, frame sizes, spacing, pivots, views,
+orientations, timed clips and facings, animated tile targets, Wang terrain metadata,
+weighted variants, and neighbor-mask lookup tables. `Sprite::definition()` and
+`Tileset::definition()` expose them after construction. Entity-owned
+`SpriteAnimation` already advances timed clips and publishes resolved cells; the
+cached sprite has no mutable playback cursor. Tile-map neighbor selection and
+application meanings for views/orientations remain gameplay work.
 
-## Remaining engine integration
-
-The loader now preserves and exposes the complete manifest semantics. Runtime consumers still need to decide *when* to select or advance them:
-
-1. Add an animation controller that accumulates elapsed time using each frame's duration and respects the sequence's loop flag.
-2. In the tile-map renderer, derive a Wang signature or bitmask from neighboring terrain, choose among matching weighted variants, then apply `animation_for()` if the selected cell is an animated target.
-3. Decide which gameplay systems consume named views and orientation cells; the loader intentionally does not assign gameplay meaning beyond the manifest.
-4. Add unloading or hot-reload behavior if the engine needs asset-root changes after initial startup. Repeated loads currently preserve already-registered manager entries.
-
-These are rendering/game-state decisions rather than missing parsing or asset-construction work.
+Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
+Manifest, preparation/upload, and runtime-adapter regression sources belong to the
+aggregated `all-tests` target. Compilation, execution, and real-platform acceptance
+remain outstanding as described in
+[RUNTIME-IMPLEMENTATION-STATUS.md](RUNTIME-IMPLEMENTATION-STATUS.md).

@@ -1,5 +1,6 @@
 #pragma once
 #include "asset-management/shader-mgr.h"
+#include "asset-management/material-mgr.h"
 #include "asset-management/texture-mgr.h"
 #include "asset-management/font-mgr.h"
 #include "asset-management/sprite-mgr.h"

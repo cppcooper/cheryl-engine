@@ -1,52 +1,98 @@
-# Generated from CLion C/C++ Code Style settings
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-AccessModifierOffset: -4
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignOperands: false
-AlignTrailingComments: false
-AlwaysBreakTemplateDeclarations: Yes
-BinPackParameters: false
-BraceWrapping: 
-  AfterCaseLabel: false
-  AfterClass: false
-  AfterControlStatement: false
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
-  AfterExternBlock: false
-  BeforeCatch: true
-  BeforeElse: true
-  BeforeLambdaBody: false
-  BeforeWhile: true
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
-BreakBeforeBraces: Custom
-ColumnLimit: 140
-IncludeCategories: 
-  - Regex: '^<.*'
-    Priority: 1
-  - Regex: '^".*'
-    Priority: 2
-  - Regex: '.*'
-    Priority: 3
-IncludeIsMainRegex: '([-_](test|unittest))?$'
-IndentCaseLabels: true
+
+# Cheryl Engine C++ style.
+# Target: clang-format 23+.
+# Derived from the CLion code-style scheme and the current repository style.
+
+# Width / indentation
 IndentWidth: 4
-InsertNewlineAtEOF: true
-MacroBlockBegin: ''
-MacroBlockEnd: ''
-MaxEmptyLinesToKeep: 2
-NamespaceIndentation: All
-SpaceInEmptyParentheses: false
-SpacesInAngles: false
-SpacesInConditionalStatement: false
-SpacesInCStyleCastParentheses: false
-SpacesInParentheses: false
+ContinuationIndentWidth: 4
+BracedInitializerIndentWidth: 4
 TabWidth: 4
+UseTab: Never
+ColumnLimit: 140
+
+# Namespace bodies are indented in Cheryl.
+NamespaceIndentation: All
+CompactNamespaces: false
+AllowShortNamespacesOnASingleLine: false
+
+# Access labels line up with the class/struct indentation level.
+AccessModifierOffset: -4
+IndentAccessModifiers: false
+EmptyLineAfterAccessModifier: Leave
+EmptyLineBeforeAccessModifier: Leave
+
+# Braces / compact forms
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+InsertBraces: false
+
+# Pointer/reference spelling used throughout Cheryl.
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+
+# Preserve the repository's hand-organized include groups/order.
+SortIncludes: Never
+IncludeBlocks: Preserve
+
+# Function declarations / definitions.
+# Break parameters as a block for declarations/definitions, but do not apply
+# the same rule to ordinary function calls.
+BreakFunctionDeclarationParameters: true
+BreakFunctionDefinitionParameters: true
+PackParameters:
+  BinPack: OnePerLine
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: false
+
+# Cheryl places the closing ')' of multiline declarations/definitions on its
+# own line. clang-format applies this setting to multiline calls as well; this
+# is the closest available match to CLion's declaration-only rule.
+BreakBeforeCloseBracketFunction: true
+BreakAfterOpenBracketFunction: false
+
+# Function calls stay dense when they need to wrap.
+PackArguments:
+  BinPack: BinPack
+AllowAllArgumentsOnNextLine: true
+
+# Braced initializer lists: WRAP IF LONG, DO NOT AUTOMATICALLY CHOP.
+# C++11 braced lists are formatted like function calls, so values are packed
+# onto each line up to ColumnLimit rather than forced one-per-line.
+Cpp11BracedListStyle: FunctionCall
+BreakAfterOpenBracketBracedList: false
+BreakBeforeCloseBracketBracedList: false
+SpaceBeforeCpp11BracedList: false
+
+# Constructor initializer lists remain a distinct policy: move to the next
+# line and chop only when they no longer fit there.
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLineOnly
+ConstructorInitializerIndentWidth: 0
+
+# Inheritance / expressions
+BreakInheritanceList: AfterComma
+BreakBeforeTernaryOperators: true
+
+# switch / case
+IndentCaseLabels: true
+
+# Avoid formatter churn in comments and strings that were intentionally laid out.
+ReflowComments: false
+BreakStringLiterals: false
+
+# Whitespace preservation
+MaxEmptyLinesToKeep: 1
+FixNamespaceComments: false
+
 ...

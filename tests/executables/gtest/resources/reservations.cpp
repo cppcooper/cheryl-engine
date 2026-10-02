@@ -13,40 +13,55 @@ namespace {
         inline static int live = 0;
         inline static int destroyed = 0;
         int value;
-        explicit ReservationItem(int v) : value(v) {
-            if (v == -1) throw std::runtime_error("construction failed");
+
+        explicit ReservationItem(int v)
+        : value(v) {
+            if (v == -1)
+                throw std::runtime_error("construction failed");
             ++live;
         }
-        ~ReservationItem() { --live; ++destroyed; }
+
+        ~ReservationItem() {
+            --live;
+            ++destroyed;
+        }
     };
 
     struct LateItem {
         inline static int destroyed = 0;
         int value;
-        explicit LateItem(int v) : value(v) {}
+
+        explicit LateItem(int v)
+        : value(v) {}
+
         ~LateItem() { ++destroyed; }
     };
 
     struct FailingBatchItem {
         inline static int attempted = 0;
         inline static int live = 0;
+
         explicit FailingBatchItem() {
-            if (++attempted == 2) throw std::runtime_error("batch construction failed");
+            if (++attempted == 2)
+                throw std::runtime_error("batch construction failed");
             ++live;
         }
+
         ~FailingBatchItem() { --live; }
     };
 
     // Observe whole-allocation calls without changing allocator behavior.
-    template<typename T>
+    template <typename T>
     struct CountingAllocator {
         using value_type = T;
         inline static int allocated = 0;
         inline static int deallocated = 0;
+
         T* allocate(std::size_t n) {
             ++allocated;
             return std::allocator<T>{}.allocate(n);
         }
+
         void deallocate(T* p, std::size_t n) {
             ++deallocated;
             std::allocator<T>{}.deallocate(p, n);

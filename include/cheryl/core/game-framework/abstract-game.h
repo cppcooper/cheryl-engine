@@ -1,20 +1,36 @@
 #pragma once
 
+#include <core/rendering/render-frame.h>
+#include "tick-context.h"
+
 namespace CE::GFramework {
-    // TODO: Define the simulation/render handoff before update() and draw() can run concurrently.
-    // Invoking both on the same game object would expose mutable simulation state to two threads;
-    // prefer publishing an immutable/double-buffered render snapshot or command list at frame boundaries.
-    // TODO: Give UI/HUD rendering a camera-independent pass and route pointer focus through UI
-    // before gameplay bindings. The demo currently cancels camera pan manually to pin HUD text.
-    /** Game hooks called in order by GameRuntime on the current runtime thread.
-     * Input callbacks finish before update(); draw() follows engine frame preparation
-     * and precedes buffer swap. Both hooks currently share the same mutable game object.
+    /** Game simulation hooks driven by GameRuntime.
+     * update() receives one input state and its elapsed time, regardless of whether
+     * simulation runs on the platform thread or on a worker. The game is free to organize
+     * its logic without a prescribed controller or state-machine architecture.
+     * Drawing does not run on this interface. After advancing simulation,
+     * the runtime may lend a free frame slot to prepare_render_frame() on the
+     * simulation thread, then publish it.
+     * Concurrent mode can skip preparation when all slots are occupied; later updates
+     * still advance the authoritative simulation state.
+     * init() and deinit() run on the platform/graphics thread, before the worker starts and
+     * after it joins. In concurrent mode, update() and prepare_render_frame() run only on that
+     * worker. The game must not change input bindings or upload GPU resources from the worker.
      */
     struct AbstractGame {
         virtual ~AbstractGame() = default;
         virtual void init() = 0;
+        // Platform hook after simulation stops, before accepted CPU work settles.
+        // Stop external producers and invalidate borrowed event registrations.
+        // Keep dependencies alive; deinit() performs final destruction later.
+        // Do not block here on callbacks/jobs requiring platform dispatch.
+        virtual void quiesce() {}
         virtual void deinit() = 0;
-        virtual void update(double seconds) = 0;
-        virtual void draw(double seconds) = 0;
+        virtual void update(
+            const TickContext& tick
+        ) = 0;
+        virtual void prepare_render_frame(
+            RenderAPIs::RenderFrameWriter& frame
+        ) const = 0;
     };
 }

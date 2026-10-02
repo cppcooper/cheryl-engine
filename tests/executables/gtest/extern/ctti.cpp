@@ -3,9 +3,9 @@
 #include <ctti/detailed_nameof.hpp>
 #include <vector>
 
-class Foo{};
+class Foo {};
 
-class Bar{};
+class Bar {};
 
 TEST(externlibs, ctti_type_ids) {
     int number = 0;

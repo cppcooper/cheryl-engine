@@ -1,7 +1,7 @@
 cmake-build*/
 build/
 builds/
-extern/
+/extern/
 
 .git/
 .idea/
