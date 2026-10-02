@@ -3,7 +3,100 @@
 #include <assets/types/primitives/vertex.h>
 #include "font-upload-internal.h"
 #include "font-bake-internal.h"
+#include "font-stb-allocation-internal.h"
 
+#include <cstddef>
+#include <cstdlib>
+#include <limits>
+#include <memory>
+#include <memory_resource>
+#include <new>
+
+namespace {
+    // stb's C-style cleanup does not run when allocation throws. Track every
+    // live block until the bake returns so an exception can release the whole
+    // rasterization attempt, including its current glyph's scratch storage.
+    class StbAllocationScope {
+        struct alignas(
+            std::max_align_t
+        ) Block {
+            StbAllocationScope* owner;
+            Block* previous;
+            Block* next;
+            std::size_t bytes;
+        };
+
+        std::pmr::memory_resource& memory_;
+        Block* head_ = nullptr;
+        StbAllocationScope* previous_;
+        static thread_local StbAllocationScope* current_;
+
+        void release(
+            Block* block
+        ) noexcept {
+            if (block->previous)
+                block->previous->next = block->next;
+            else
+                head_ = block->next;
+            if (block->next)
+                block->next->previous = block->previous;
+            memory_.deallocate(block, block->bytes, alignof(Block));
+        }
+
+    public:
+        explicit StbAllocationScope(
+            std::pmr::memory_resource& memory
+        )
+        : memory_(memory), previous_(current_) {
+            current_ = this;
+        }
+        ~StbAllocationScope() {
+            while (head_)
+                release(head_);
+            current_ = previous_;
+        }
+        StbAllocationScope(
+            const StbAllocationScope&
+        ) = delete;
+        StbAllocationScope& operator=(
+            const StbAllocationScope&
+        ) = delete;
+
+        static void* allocate(
+            const std::size_t bytes
+        ) {
+            if (!current_)
+                return std::malloc(bytes);
+            if (bytes > std::numeric_limits<std::size_t>::max() - sizeof(Block))
+                throw std::bad_alloc{};
+            const auto total = sizeof(Block) + bytes;
+            auto* block = static_cast<Block*>(current_->memory_.allocate(total, alignof(Block)));
+            std::construct_at(block, Block{current_, nullptr, current_->head_, total});
+            if (current_->head_)
+                current_->head_->previous = block;
+            current_->head_ = block;
+            return block + 1;
+        }
+
+        static void free(
+            void* pointer
+        ) noexcept {
+            if (!pointer)
+                return;
+            if (!current_) {
+                std::free(pointer);
+                return;
+            }
+            auto* block = static_cast<Block*>(pointer) - 1;
+            block->owner->release(block);
+        }
+    };
+
+    thread_local StbAllocationScope* StbAllocationScope::current_ = nullptr;
+}
+
+#define STBTT_malloc(bytes, userdata) StbAllocationScope::allocate(bytes)
+#define STBTT_free(pointer, userdata) StbAllocationScope::free(pointer)
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
@@ -13,7 +106,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef>
 #include <fstream>
 #include <internals/exceptions.h>
 #include <utility>
@@ -99,6 +191,15 @@ namespace CE::Assets {
         const int font_size,
         ResourceProvider& provider
     ) {
+        return FontDetail::load_font_with_resource(font_path, font_size, provider, *std::pmr::new_delete_resource());
+    }
+
+    STBFontData FontDetail::load_font_with_resource(
+        const std::filesystem::path& font_path,
+        const int font_size,
+        ResourceProvider& provider,
+        std::pmr::memory_resource& memory
+    ) {
         if (font_size <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Font size must be positive");
         const auto font_bytes = read_font_file(font_path);
@@ -110,10 +211,13 @@ namespace CE::Assets {
 
         // Bake the fixed printable range into a growing alpha atlas until every glyph fits.
         std::array<stbtt_bakedchar, font_character_count> baked_characters{};
-        auto atlas = FontDetail::bake_font_atlas(font_path, [&](const std::span<unsigned char> pixels, const int size) {
-            return stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), pixels.data(), size, size,
-                first_font_character, static_cast<int>(font_character_count), baked_characters.data());
-        });
+        auto atlas = [&] {
+            StbAllocationScope allocations(memory);
+            return FontDetail::bake_font_atlas(font_path, [&](const std::span<unsigned char> pixels, const int size) {
+                return stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), pixels.data(), size, size,
+                    first_font_character, static_cast<int>(font_character_count), baked_characters.data());
+            });
+        }();
         const int atlas_size = atlas.size;
 
         constexpr auto vertex_count = static_cast<std::uint32_t>(font_character_count * VAONumbers::vertices_per_quad);

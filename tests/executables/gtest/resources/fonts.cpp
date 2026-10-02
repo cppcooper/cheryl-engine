@@ -4,13 +4,16 @@
 #include <assets/resources/resource-provider.h>
 #include <assets/types/2d/font-upload-internal.h>
 #include <assets/types/2d/font-bake-internal.h>
+#include <assets/types/2d/font-stb-allocation-internal.h>
 #include <testing/failing-memory-resource.h>
 #include <internals/exceptions.h>
 
 #include <array>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <memory_resource>
 #include <algorithm>
@@ -73,6 +76,110 @@ namespace {
             std::uint32_t
         ) const override {}
     };
+
+    struct RasterUploadProvider final : ResourceProvider {
+        int geometry_calls = 0;
+        int atlas_calls = 0;
+        std::shared_ptr<Image> create_image(
+            const DecodedImage&
+        ) override {
+            return {};
+        }
+        std::shared_ptr<Shader> link_program(
+            const std::vector<fs::path>&
+        ) override {
+            return {};
+        }
+        std::shared_ptr<Geometry2D> upload_geometry(
+            const std::span<const CE::Vertex2D> vertices,
+            const PrimitiveTopology topology
+        ) override {
+            ++geometry_calls;
+            EXPECT_EQ(vertices.size(), glyph_vertex_count);
+            EXPECT_EQ(topology, PrimitiveTopology::Triangles);
+            return std::make_shared<UploadedGlyphs>(vertices);
+        }
+        std::shared_ptr<Image> create_font_atlas(
+            const std::span<const unsigned char> alpha,
+            const PixelSize size
+        ) override {
+            ++atlas_calls;
+            EXPECT_TRUE(std::any_of(alpha.begin(), alpha.end(), [](const auto value) { return value != 0; }));
+            return std::make_shared<UploadedAtlas>(size, alpha);
+        }
+    };
+
+    struct NestedBakeMemoryResource final : std::pmr::memory_resource {
+        CE::Testing::FailingMemoryResource memory;
+        std::function<void()> nested_bake;
+
+    private:
+        void* do_allocate(
+            const std::size_t bytes,
+            const std::size_t alignment
+        ) override {
+            // Start the nested bake while the outer glyph already owns storage.
+            if (memory.requests.load() == 1)
+                nested_bake();
+            return memory.allocate(bytes, alignment);
+        }
+        void do_deallocate(
+            void* pointer,
+            const std::size_t bytes,
+            const std::size_t alignment
+        ) override {
+            memory.deallocate(pointer, bytes, alignment);
+        }
+        bool do_is_equal(
+            const std::pmr::memory_resource& other
+        ) const noexcept override {
+            return this == &other;
+        }
+    };
+
+    void reject_each_stb_allocation(
+        const fs::path& path
+    ) {
+        CE::Testing::FailingMemoryResource baseline;
+        RasterUploadProvider successful;
+        {
+            const auto font = FontDetail::load_font_with_resource(path, 128, successful, baseline);
+            EXPECT_NE(font.geometry, nullptr);
+            EXPECT_NE(font.texture, nullptr);
+            EXPECT_GT(font.line_height, 0);
+            const auto geometry = std::dynamic_pointer_cast<UploadedGlyphs>(font.geometry);
+            ASSERT_NE(geometry, nullptr);
+            const auto first = ('W' - first_font_character) * CE::VAONumbers::vertices_per_quad;
+            // This face exercises stb's heap scanline path (glyphs wider than 64 pixels).
+            EXPECT_GT(geometry->vertices[first + 1].x - geometry->vertices[first].x, 64);
+        }
+        ASSERT_EQ(successful.geometry_calls, 1);
+        ASSERT_EQ(successful.atlas_calls, 1);
+        ASSERT_EQ(baseline.outstanding.load(), 0u);
+        const auto requests = baseline.requests.load();
+        ASSERT_GT(requests, 100u);
+        ::testing::Test::RecordProperty("stb_allocation_requests", static_cast<int>(requests));
+        for (std::size_t request = 1; request <= requests; ++request) {
+            SCOPED_TRACE(request);
+            CE::Testing::FailingMemoryResource memory;
+            memory.reject_request = request;
+            RasterUploadProvider rejected;
+            EXPECT_THROW((void)FontDetail::load_font_with_resource(path, 128, rejected, memory), std::bad_alloc);
+            EXPECT_EQ(memory.requests.load(), request);
+            EXPECT_EQ(memory.rejected.load(), 1u);
+            EXPECT_EQ(memory.outstanding.load(), 0u);
+            EXPECT_EQ(rejected.geometry_calls, 0);
+            EXPECT_EQ(rejected.atlas_calls, 0);
+        }
+        // A failed bake must restore the thread's allocation scope. Reuse the
+        // public loader immediately after the final failure, then this resource.
+        RasterUploadProvider recovered;
+        EXPECT_NO_THROW((void)STBFont::load_font(path, 128, recovered));
+        EXPECT_NO_THROW((void)FontDetail::load_font_with_resource(path, 128, recovered, baseline));
+        EXPECT_EQ(recovered.geometry_calls, 2);
+        EXPECT_EQ(recovered.atlas_calls, 2);
+        EXPECT_EQ(baseline.outstanding.load(), 0u);
+    }
 
     struct FontUploadProvider final : ResourceProvider {
         enum class AtlasResult { Success, Throw, Null };
@@ -183,6 +290,69 @@ TEST(
     ASSERT_TRUE(CE::Resources::select_default_system_font(fallback).has_value());
     EXPECT_EQ(*CE::Resources::select_default_system_font(fallback), fs::path("/fonts/AlphaCustom.otf"));
     EXPECT_FALSE(CE::Resources::select_default_system_font({}).has_value());
+}
+
+TEST(
+    font_bake,
+    real_nested_bakes_restore_the_outer_allocation_scope
+) {
+    const auto* ttf = std::getenv("CHERYL_STB_ALLOCATION_TTF");
+    const auto* cff = std::getenv("CHERYL_STB_ALLOCATION_CFF");
+    if (!ttf || !*ttf || !cff || !*cff)
+        GTEST_SKIP() << "Set CHERYL_STB_ALLOCATION_TTF and CHERYL_STB_ALLOCATION_CFF to acceptance faces";
+    for (const bool reject_outer : {false, true}) {
+        SCOPED_TRACE(reject_outer);
+        NestedBakeMemoryResource outer;
+        CE::Testing::FailingMemoryResource inner;
+        inner.reject_request = 3;
+        RasterUploadProvider nested;
+        int nested_calls = 0;
+        outer.nested_bake = [&] {
+            ++nested_calls;
+            EXPECT_THROW((void)FontDetail::load_font_with_resource(cff, 128, nested, inner), std::bad_alloc);
+            EXPECT_EQ(inner.outstanding.load(), 0u);
+            EXPECT_EQ(outer.memory.outstanding.load(), 1u);
+        };
+        if (reject_outer)
+            outer.memory.reject_request = 3;
+        RasterUploadProvider provider;
+        if (reject_outer) {
+            EXPECT_THROW((void)FontDetail::load_font_with_resource(ttf, 128, provider, outer), std::bad_alloc);
+            EXPECT_EQ(provider.geometry_calls, 0);
+            EXPECT_EQ(provider.atlas_calls, 0);
+            EXPECT_EQ(outer.memory.rejected.load(), 1u);
+        } else {
+            EXPECT_NO_THROW((void)FontDetail::load_font_with_resource(ttf, 128, provider, outer));
+            EXPECT_EQ(provider.geometry_calls, 1);
+            EXPECT_EQ(provider.atlas_calls, 1);
+        }
+        EXPECT_EQ(nested_calls, 1);
+        EXPECT_EQ(inner.rejected.load(), 1u);
+        EXPECT_EQ(inner.outstanding.load(), 0u);
+        EXPECT_EQ(nested.geometry_calls, 0);
+        EXPECT_EQ(nested.atlas_calls, 0);
+        EXPECT_EQ(outer.memory.outstanding.load(), 0u);
+    }
+}
+
+TEST(
+    font_bake,
+    real_truetype_allocation_failures_release_scratch_and_precede_upload
+) {
+    const auto* path = std::getenv("CHERYL_STB_ALLOCATION_TTF");
+    if (!path || !*path)
+        GTEST_SKIP() << "Set CHERYL_STB_ALLOCATION_TTF to a TrueType acceptance face";
+    reject_each_stb_allocation(path);
+}
+
+TEST(
+    font_bake,
+    real_cff_allocation_failures_release_scratch_and_precede_upload
+) {
+    const auto* path = std::getenv("CHERYL_STB_ALLOCATION_CFF");
+    if (!path || !*path)
+        GTEST_SKIP() << "Set CHERYL_STB_ALLOCATION_CFF to a CFF OpenType acceptance face";
+    reject_each_stb_allocation(path);
 }
 
 TEST(
