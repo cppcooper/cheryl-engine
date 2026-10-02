@@ -225,7 +225,35 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Real font allocation acceptance: checkpoints 99–100
+### RGBA rows and rotated FFont acceptance: checkpoints 101–102
+
+Remote remains checkpoint 95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+Pending 96–100 are retained. Source 101 is `6c7cafc2b8396aa66c54613643a1db30346bdc57`;
+102 records evidence and closes the bounded font acceptance gate 9.5e.
+
+The first native FFont case fails ten pixel assertions because top-to-bottom RGBA
+uploads disagree with top-left atlas geometry UVs. 101 converts RGBA upload rows
+without mutating input; STB alpha keeps its separate row/UV convention. Real widths
+loading, actual glyph geometry and production shader packets then verify banks,
+widths/spaces, asymmetric quarter-turn output, transformed newline and cache/frame
+retirement. A second native case checks real PNG decoding and direct/file/prepared
+image creation against driver storage, plus unchanged odd-width STB alpha rows.
+Both full builds and 342 normal / 333 sandbox cases pass without skips, including
+seven native cases and three real-font fault cases. Both finite demos pass after
+the production fix. Initial/final evidence and the controlled PNG are archived.
+
+Source work stops at the 20-minute checkpoint. 9.5c/d/f remain open for forced
+overload, further native/context-loss combinations and actual OS restrictions/
+rejections. The user's prior desktop pass remains recorded; 9.7 publication stays
+pending. No push or PR write occurred.
+
+Pending patches are **96–102**, next unused number **103**. The application route
+from confirmed remote 95 is `cheryl-engine-96-102-from-2c23bf8.patch`. Canonical
+followup/continuation contain the same seven commits; the cumulative route retains
+the original base. All three replay routes verify exact trees, binary fixture bytes
+and ordered author/date/messages.
+
+### Real font allocation acceptance: checkpoints 99–100 (historical)
 
 Remote still contains checkpoint 95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
 Pending 96–98 are retained. Source 99 is `251b924135032a9a6b66856d2c1c10e73745eb68`;

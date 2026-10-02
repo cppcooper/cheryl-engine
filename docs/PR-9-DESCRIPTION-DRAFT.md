@@ -18,9 +18,9 @@ govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 Aggregate regression sources cover dispatch/event lifetime, worker policies,
 timing/input recovery, cache/native ownership, material parameters, frame/text
 retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
-Complete aggregate runs pass 340 native-enabled normal and 333 sandbox cases with
-no skips after correcting two startup-fixture cancellation expectations; production
-behavior is unchanged. Real Linux affinity mask cases execute.
+Complete aggregate runs pass 342 native-enabled normal and 333 sandbox cases with
+no skips. Startup-fixture cancellation expectations match accepted-request
+broken_promise behavior. Real Linux affinity mask cases execute.
 
 Mesa 25.2.8 llvmpipe executes texture retirement, selected-context restoration and
 retained-image release after engine/window destruction. Eight finite real-demo
@@ -29,7 +29,7 @@ upload. Three further native cases validate retained shader-source frame generat
 cache clear, partial compile/link/file/reflection failure cleanup and live-window
 shutdown with final foreign owner release. Maintenance/shutdown now unbinds the last
 program so its native deletion completes before the borrowed context is destroyed.
-The initial shutdown case reproduced the failure; all five native cases now pass.
+The initial shutdown case reproduced the failure; its five native cases pass.
 The user reports the desktop checklist passed with expected behavior:
 camera/mouse/text focus, resize, valid/failed/recovered F5 reload and normal close.
 The checklist requests sequential and concurrent modes; GPU/driver identity and
@@ -40,8 +40,16 @@ requests, before provider upload, and covers nested failures. The loader now rai
 bad_alloc and releases outstanding scratch instead of accepting a partial atlas or
 letting stb use null storage. Both finite demo modes pass after this change.
 
+Two further native cases validate actual rotated FFont packets, both banks,
+widths/spaces, transformed newline and retained resource retirement. They exposed
+RGBA atlas rows being uploaded in the wrong order. File/raw and provider RGBA
+uploads now reverse source rows to match geometry UVs, while caller pixels and
+stb alpha ordering stay intact. Driver readbacks verify real PNG decoding and
+all three image creation routes. All seven native cases pass; font acceptance
+is complete for the recorded scopes. Both finite demo modes pass after this fix.
+
 Forced timing/backlog/presentation overload, further native resource/failure
-combinations, rotated FFont output and remaining
+combinations and remaining
 actual OS policy rejection/restriction acceptance stay open. The completed-task
 source audit closes at checkpoint 90, including clang-format 23.1.2, declaration
 inventory and controlled native/startup/retained-owner failure sources. Current

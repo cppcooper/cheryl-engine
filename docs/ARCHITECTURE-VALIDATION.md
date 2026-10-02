@@ -1,10 +1,10 @@
 # Task 9 validation record
 
-Latest checkpoint 100 records successful complete builds and 340 normal / 333
-sandbox tests, including five real-context and three real-font cases without skips.
-The validated C++ commit is `251b924135032a9a6b66856d2c1c10e73745eb68` (99).
-Both finite demo modes also pass after the font allocation fix. Earlier execution
-records below retain their checkpoint scope.
+Latest checkpoint 102 records successful complete builds and 342 normal / 333
+sandbox tests, including seven real-context and three real-font cases without skips.
+The validated C++ commit is `6c7cafc2b8396aa66c54613643a1db30346bdc57` (101).
+Both finite demo modes pass after the RGBA row-orientation fix. Font acceptance
+9.5e is complete for the recorded scopes. Earlier results retain their checkpoint scope.
 
 1 October 2026. Remote checkpoint 90,
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`, contains the complete audit series.
@@ -243,6 +243,62 @@ remains open for rotated FFont output. Forced timing/input/presentation overload
 further native fault/context-loss combinations, remaining actual OS restrictions/
 rejections and 9.7 publication remain open. The user's prior desktop report remains
 accepted. No new manual checklist, push or PR write occurred.
+
+## Rotated FFont and image-row acceptance: checkpoints 101–102
+
+Confirmed remote 95 remains `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+Pending delivery is **96–102**, retaining the earlier unapplied checkpoints.
+The source revision is `6c7cafc2b8396aa66c54613643a1db30346bdc57` (101); 102 records evidence.
+
+The first native FFont run failed ten pixel assertions. The geometry's top-left
+atlas rectangles use upward-positive UVs, but decoded RGBA rows were uploaded in
+unchanged top-to-bottom order. Glyphs therefore sampled the wrong atlas rows,
+including incorrect banks. 101 reverses RGBA rows in transient OpenGL upload
+storage, leaving the caller's pixels unchanged. Both file/raw Texture construction
+and prepared/provider image loading share the conversion. Overflow is checked
+before allocating the copy. Red-only stb atlases keep their distinct baked UV row
+convention. No common geometry, font layout or preexisting FFont loading TODO changes.
+
+Two additional aggregate native cases execute on Mesa llvmpipe:
+
+- FFont reads a complete binary widths fixture and uses its actual generated glyph
+  geometry, a controlled top-to-bottom color atlas and the production shader2d
+  shaders. Five retained frames verify upright and quarter-turned asymmetric glyph
+  pixels, primary/alternate banks, different bank widths, spaces and the legacy
+  newline transformed along the caller's local axes. A clipped edge makes the
+  scaled 1/128 newline displacement observable as one pixel. The source image,
+  widths file, FFont object, material handles and texture cache are released before
+  drawing. Packets alone retain image/geometry/material resources. Maintenance
+  keeps live owners, then deletes texture, VAO, buffer and current program after
+  all frames recycle. Weak-owner checks and actual GL object queries pass.
+- A committed 3-by-2 RGBA PNG exercises real CPU decoding, direct file Texture
+  construction, provider file loading and prepared-image upload. Driver storage
+  reads match bottom-up RGBA rows, and the supplied decoded pixels remain intact.
+  An odd-width 3-by-2 one-channel atlas retains the exact original alpha byte order;
+  its readback restores pack alignment. This checks the row conversion's other
+  consumers and its boundary with STB, beyond the font's sampled pixel output.
+
+This is real backend playback of controlled FFont data, not a visual-quality claim
+for an unavailable external legacy font image or every glyph/transform. Existing
+CPU regressions retain unsupported-byte/fallback and layout compatibility coverage.
+The widths-file validation/format feature TODOs remain outside this task.
+
+Both complete Release builds pass. Full enabled runs pass **342 normal / 333
+sandbox** cases with zero failures, errors, disabled cases or skips. All seven
+native and three real-stb allocation cases execute. Both finite real-demo modes
+complete twelve updates and exit zero after the production row fix. The final
+auxiliary check changes test sources only. The archive retains initial pixel
+failure output/XML, final focused/full logs/XML, build logs, driver/commands, PNG
+fixture identity, runner and replay results. An intermediate auxiliary fixture
+compile error mixed derived/base pointers in a deduced initializer list; an explicit
+base-pointer array corrects it without changing assertions. Formatting and whitespace
+checks pass. No repeated build/test run is needed for documentation-only 102.
+
+9.5e.2 and parent 9.5e close for these scopes together with 99's real TrueType/CFF
+allocation acceptance. Task 9.5 stays open for forced timing/input/presentation
+overload, further native fault/context-loss combinations and remaining actual OS
+policy restrictions/rejections. The user's existing desktop report is retained;
+no new manual checklist is assigned. 9.7 publication remains open. No push or PR write.
 
 ## Earlier acceptance plan (checkpoint 92)
 

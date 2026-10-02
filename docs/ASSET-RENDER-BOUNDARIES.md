@@ -32,7 +32,9 @@ values. Frame playback does not inspect a font, sprite, tileset, or animation.
 
 CPU preparation owns RGBA pixels and temporary vertex data. Backend creation
 accepts decoded images and transient vertex spans; it copies upload data before
-returning. GPU handle destruction is coordinated by the OpenGL renderer while
+returning. RGBA source rows are top-to-bottom; OpenGL uploads them bottom-up
+to match the atlas UV convention. The caller's pixels remain intact. STB's one-channel
+alpha atlas uses its own baked UVs and keeps its supplied row order. GPU handle destruction is coordinated by the OpenGL renderer while
 its own context is current. Actual-context checks also apply to uploads and draw
 operations. Architecture and API migration are described in
 [API-ABSTRACTION-PLAN.md](API-ABSTRACTION-PLAN.md).

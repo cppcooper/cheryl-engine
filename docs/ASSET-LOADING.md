@@ -23,6 +23,9 @@ PNGs below the root are deduplicated and decoded in sorted order. Cross-document
 IDs and every grid's bounds are checked against those exact decoded dimensions
 before any upload. Upload consumes the owned pixels without reopening image files.
 Pixels are four-channel RGBA in the decoder's default top-to-bottom row order.
+OpenGL reverses those rows in transient upload storage to match the atlas
+geometry's upward-positive UV coordinates; the supplied pixels remain unchanged.
+The separate stb alpha-atlas path preserves its baked row/UV convention.
 
 Preparation can use a tracked context WorkerGroup. Own both the Loader and
 PreparedAssets through the platform handoff; simulation only retrieves ready
