@@ -240,7 +240,7 @@ TEST(
     EXPECT_EQ(animated.first_vertex, 8u);
     EXPECT_EQ(animated.vertex_count, 4u);
     EXPECT_EQ(std::get<ImageBinding>(animated.parameters.at("image")).image, image);
-    EXPECT_THROW(resolve_tile(tileset, 4, style, context), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(resolve_tile(tileset, 4, style, context)), CE::Exceptions::invalid_args);
     EXPECT_EQ(geometry->native_calls, 0);
     EXPECT_EQ(image->native_calls, 0);
 }
