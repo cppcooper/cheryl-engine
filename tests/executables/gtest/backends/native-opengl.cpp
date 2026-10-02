@@ -868,6 +868,7 @@ namespace {
     public:
         std::function<void()> before_poll;
         std::function<void()> after_poll;
+        bool deinitialized = false;
         void initialize(
             CE::iWindow& window
         ) override {
@@ -885,7 +886,10 @@ namespace {
             if (after_poll)
                 after_poll();
         }
-        void deinitialize() override { native_.deinitialize(); }
+        void deinitialize() override {
+            native_.deinitialize();
+            deinitialized = true;
+        }
         CE::Input::InputBindings& bindings() override { return native_.bindings(); }
         std::shared_ptr<const CE::Input::ActionSnapshot> action_snapshot() override { return native_.action_snapshot(); }
         std::shared_ptr<const CE::Input::PollSnapshot> poll_snapshot() override { return native_.poll_snapshot(); }
@@ -904,6 +908,187 @@ namespace {
             return sequence_;
         }
     };
+
+    enum class NativeRuntimeFault { Initialization, PartialFrame, Presentation };
+
+    struct NativeFailureResources {
+        GLuint program = 0;
+        GLint vao = 0;
+        GLint buffer = 0;
+        GLuint texture = 0;
+        GLuint shutdown_upload = 0;
+        std::size_t platform_completions = 0;
+        std::thread::id platform_owner;
+    };
+
+    // The CPU job retains native owners without calling GL. Quiesce releases it
+    // only after worker submissions close, so its upload needs the shutdown pump.
+    struct NativeFailureGame final : NativeRuntimeGame {
+        DelayedNativeSurface& surface;
+        const NativeRuntimeFault fault;
+        const std::shared_ptr<NativeFailureResources> observed = std::make_shared<NativeFailureResources>();
+        std::shared_ptr<CE::Assets::Image> image;
+        std::weak_ptr<CE::Assets::Geometry2D> geometry_owner;
+        std::weak_ptr<const CE::Assets::Material> material_owner;
+        std::weak_ptr<CE::Assets::Image> image_owner;
+        std::optional<CE::Engine::WorkerGroup> jobs;
+        std::future<int> completion;
+        std::promise<void> release_cpu;
+        std::size_t quiesces = 0;
+        std::size_t deinits = 0;
+
+        NativeFailureGame(
+            CE::Engine::EngineContext& context,
+            DelayedNativeSurface& presentation,
+            const NativeRuntimeFault requested
+        )
+        : NativeRuntimeGame(context), surface(presentation), fault(requested) {
+            after_update = [] {};
+            surface.after_first_swap = [this] {
+                if (fault == NativeRuntimeFault::Presentation)
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
+            };
+        }
+        void init() override {
+            NativeRuntimeGame::init();
+            observed->platform_owner = std::this_thread::get_id();
+            geometry->bind();
+            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &observed->vao);
+            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &observed->buffer);
+            const auto& pipeline = dynamic_cast<const CE::Assets::GLSLPipeline&>(*material->definition().pipeline);
+            pipeline.bind_parameters(material->resolve({}, {}, {}, {}));
+            GLint program = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+            observed->program = static_cast<GLuint>(program);
+            image = engine.resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+            observed->texture = bound_texture_id(*image);
+            geometry_owner = geometry;
+            material_owner = material;
+            image_owner = image;
+            auto allowed = release_cpu.get_future().share();
+            jobs.emplace(engine.make_worker_group());
+            completion = jobs->submit([allowed, platform = engine.platform_dispatcher().submission(), observed = observed,
+                                          geometry = geometry, material = material, image = image]() mutable {
+                allowed.wait();
+                auto owned_cpu_data = std::make_unique<int>(42);
+                auto uploaded =
+                    platform.submit([observed, owned_cpu_data = std::move(owned_cpu_data), geometry = std::move(geometry),
+                                        material = std::move(material), image = std::move(image)](CE::Engine::EngineContext& context) {
+                        EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
+                        EXPECT_EQ(glIsProgram(observed->program), GL_TRUE);
+                        EXPECT_EQ(glIsVertexArray(observed->vao), GL_TRUE);
+                        EXPECT_EQ(glIsBuffer(observed->buffer), GL_TRUE);
+                        EXPECT_EQ(glIsTexture(observed->texture), GL_TRUE);
+                        auto shutdown_image = context.resources().create_image(CE::Assets::DecodedImage{{1, 1}, {0, 255, 0, 255}});
+                        observed->shutdown_upload = bound_texture_id(*shutdown_image);
+                        EXPECT_EQ(glIsTexture(observed->shutdown_upload), GL_TRUE);
+                        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+                        ++observed->platform_completions;
+                        return *owned_cpu_data;
+                    });
+                return uploaded.get();
+            });
+            if (fault == NativeRuntimeFault::Initialization)
+                throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
+        }
+        void prepare_render_frame(
+            CE::RenderAPIs::RenderFrameWriter& frame
+        ) const override {
+            NativeRuntimeGame::prepare_render_frame(frame);
+            if (fault == NativeRuntimeFault::PartialFrame)
+                throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
+        }
+        void quiesce() override {
+            ++quiesces;
+            EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
+            if (jobs)
+                EXPECT_FALSE(jobs->status().accepting);
+            EXPECT_FALSE(geometry_owner.expired());
+            EXPECT_FALSE(material_owner.expired());
+            EXPECT_FALSE(image_owner.expired());
+            release_cpu.set_value();
+        }
+        void deinit() override {
+            ++deinits;
+            EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
+            if (completion.valid())
+                EXPECT_EQ(completion.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            if (jobs)
+                EXPECT_EQ(jobs->status().completed, 1u);
+            EXPECT_EQ(observed->platform_completions, 1u);
+            NativeRuntimeGame::deinit();
+            image.reset();
+            // Exercise real loss of the current binding, not a fake GL query.
+            // Maintenance will reject it, then renderer shutdown must rebind its
+            // owner context and delete resources despite this later hook error.
+            surface.release_current();
+            throw CE::Exceptions::failed_operation(CE_HERE, "Secondary native cleanup failure");
+        }
+    };
+}
+
+TEST(
+    native_opengl,
+    runtime_failure_settles_native_dependencies_and_recovers_cleanup_context_in_both_modes
+) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::GFramework;
+    std::size_t exercised = 0;
+    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+        for (const auto fault : {NativeRuntimeFault::Initialization, NativeRuntimeFault::PartialFrame, NativeRuntimeFault::Presentation}) {
+            SCOPED_TRACE(::testing::Message() << "mode=" << static_cast<int>(mode) << " fault=" << static_cast<int>(fault));
+            DelayedNativeSurface* surface = nullptr;
+            auto native_input = std::make_unique<ObservedNativeInput>();
+            auto* input = native_input.get();
+            auto engine = delayed_native_context(surface, std::move(native_input));
+            NativeFailureGame game(*engine, *surface, fault);
+            GameRuntime runtime(*engine, game, mode);
+            try {
+                runtime.run();
+                ADD_FAILURE() << "The selected native runtime failure did not propagate";
+            } catch (const CE::Exceptions::failed_operation& error) {
+                EXPECT_NE(std::string_view(error.what()).find("Original native runtime failure"), std::string_view::npos);
+                EXPECT_EQ(std::string_view(error.what()).find("Secondary native cleanup failure"), std::string_view::npos);
+            }
+            EXPECT_EQ(game.quiesces, 1u);
+            EXPECT_EQ(game.deinits, 1u);
+            ASSERT_TRUE(game.completion.valid());
+            ASSERT_EQ(game.completion.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(game.completion.get(), 42);
+            EXPECT_EQ(game.jobs->status().accepted, 1u);
+            EXPECT_EQ(game.jobs->status().completed, 1u);
+            EXPECT_EQ(game.jobs->status().running, 0u);
+            EXPECT_EQ(game.jobs->status().pending, 0u);
+            EXPECT_TRUE(game.geometry_owner.expired());
+            EXPECT_TRUE(game.material_owner.expired());
+            EXPECT_TRUE(game.image_owner.expired());
+            EXPECT_TRUE(input->deinitialized);
+            EXPECT_FALSE(surface->is_current());
+            EXPECT_EQ(surface->presentations, fault == NativeRuntimeFault::Presentation ? 1u : 0u);
+            EXPECT_EQ(game.preparations.load() > 0, fault != NativeRuntimeFault::Initialization);
+            EXPECT_THROW(static_cast<void>(engine->make_worker_group()), CE::Exceptions::failed_operation);
+            EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {})),
+                CE::Exceptions::failed_operation);
+            surface->make_current();
+            EXPECT_NE(game.observed->program, 0u);
+            EXPECT_NE(game.observed->vao, 0);
+            EXPECT_NE(game.observed->buffer, 0);
+            EXPECT_NE(game.observed->texture, 0u);
+            EXPECT_NE(game.observed->shutdown_upload, 0u);
+            // The borrowed window is still alive; driver deletion cannot be
+            // attributed to destroying its context at the end of the test.
+            EXPECT_EQ(glIsProgram(game.observed->program), GL_FALSE);
+            EXPECT_EQ(glIsVertexArray(game.observed->vao), GL_FALSE);
+            EXPECT_EQ(glIsBuffer(game.observed->buffer), GL_FALSE);
+            EXPECT_EQ(glIsTexture(game.observed->texture), GL_FALSE);
+            EXPECT_EQ(glIsTexture(game.observed->shutdown_upload), GL_FALSE);
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+            surface->release_current();
+            ++exercised;
+        }
+    }
+    ::testing::Test::RecordProperty("native_failure_scenarios", static_cast<int>(exercised));
 }
 
 TEST(
