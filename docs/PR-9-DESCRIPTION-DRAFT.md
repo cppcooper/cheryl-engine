@@ -15,24 +15,26 @@ reload preserves old generations held by published frames. Strong cache residenc
 owner/current-context guards, deferred native retirement, and idle maintenance
 govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 
-Aggregate regression sources cover dispatch/event lifetime,
-worker policies, timing/input recovery, cache/native ownership, material parameters,
-frame/text retention, reload, and failure cleanup. Changed-source syntax inspection,
-whitespace/API/ownership review, and mailbox replay are preparation checks only.
-Current normal/sandbox Release builds pass, including the normal demo. Complete
-aggregate runs pass 332 normal and 330 sandbox tests with no skips after two
-startup-fixture cancellation expectation corrections; production behavior is unchanged.
-Real Linux affinity mask cases execute. Real sequential/concurrent demos, OS policy
-rejection, driver reload/retirement/context recovery and font rendering remain open.
-Earlier build reports are historical. The completed-task source audit closes at checkpoint 90, including clang-format
-23.1.2, declaration inventory and controlled native/startup/retained-owner failure
-sources. Controlled runtime and Linux affinity scenarios have executed; real GPU/demo/font
-acceptance remains open. Current evidence and remaining gates are recorded in
-docs/ARCHITECTURE-VALIDATION.md.
+Aggregate regression sources cover dispatch/event lifetime, worker policies,
+timing/input recovery, cache/native ownership, material parameters, frame/text
+retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
+Complete aggregate runs pass 334 native-enabled normal and 330 sandbox cases with
+no skips after correcting two startup-fixture cancellation expectations; production
+behavior is unchanged. Real Linux affinity mask cases execute.
 
-Native follow-up: Mesa 25.2.8 llvmpipe executes real texture retirement, selected-
-context restoration and retained-image release after engine/window destruction.
-The full native-enabled normal suite passes 334 cases; sandbox passes 330, with no
-skips. Eight finite real-demo configurations complete in both modes. These results
-cover the software driver and configured paths; desktop hardware/input/visual/
-resize/reload observations, forced overload and remaining font/OS failures stay open.
+Mesa 25.2.8 llvmpipe executes texture retirement, selected-context restoration and
+retained-image release after engine/window destruction. Eight finite real-demo
+configurations complete in both modes, including real default-font parsing/baking/
+upload. The user reports the desktop checklist passed with expected behavior:
+camera/mouse/text focus, resize, valid/failed/recovered F5 reload and normal close.
+The checklist requests sequential and concurrent modes; GPU/driver identity and
+exact local build flags were not supplied.
+
+Forced timing/backlog/presentation overload, further native resource/failure
+combinations, stb internal allocation failure, rotated FFont output and remaining
+actual OS policy rejection/restriction acceptance stay open. The completed-task
+source audit closes at checkpoint 90, including clang-format 23.1.2, declaration
+inventory and controlled native/startup/retained-owner failure sources. Current
+evidence and remaining task-9 gates are recorded in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). This is a local draft;
+PR metadata publication remains separately pending.

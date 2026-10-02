@@ -223,7 +223,27 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Real software-driver execution: checkpoints 93–95
+### User desktop acceptance report: checkpoint 96
+
+The remote integrates 93–95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+Its exact tree and ordered author/date/messages match saved local 95; this remote
+history is now the delivery baseline. The user reported the supplied desktop
+checklist completed with no failures and expected behavior after the copied-asset
+reload command was clarified. 96 records that report and concrete repeatable
+commands. Input/text focus, resize, valid/failed/recovered F5 reload and normal
+window close are recorded as reported passes for the requested checklist.
+
+This is documentation-only evidence; automated build/test counts remain those
+validated at 94. Forced timing/backlog/presentation overload, further native
+failure/resource combinations, stb internal allocation, rotated FFont and actual
+OS restriction/rejection acceptance still keep 9.5c–f open. 9.7 stays open.
+
+Only **96** is newly pending from remote 95; next unused number is **97**.
+The delivery is the uniquely numbered `cheryl-engine-96.patch`, verified by replay
+from the current remote baseline. Earlier combined files describe checkpoint 95;
+they are not this follow-up. No push or PR write occurred.
+
+### Real software-driver execution: checkpoints 93–95 (historical)
 
 Remote now integrates 91–92 at `f8ab42f5cb4f10ae7c5379795054d879a0cf2a64` with the
 same exact tree and ordered author/date/messages as saved local 92.

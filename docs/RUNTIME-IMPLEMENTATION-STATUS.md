@@ -3,9 +3,11 @@
 Checkpoint 95 adds current native evidence: real Mesa llvmpipe context/lifetime
 checks and eight finite sequential/concurrent demo runs pass. Full normal/sandbox
 suites now pass 334/330 cases without skips under requested native execution.
-Hardware/input/visual/reload observations are assigned to the user's desktop;
+Checkpoint 96 records the user's desktop checklist pass: input/text focus, resize,
+successful/failed/recovered reload and normal window close. Further timing/native/
+font/OS acceptance remains open;
 [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) and
-[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md) record scope and pending results.
+[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md) record scope and reported results.
 
 Current continuation: original task base
 `e8c9788f63cf4688e144b84feeb8f9aabf62540f`, branch
@@ -106,6 +108,10 @@ establish compilation/linking for the configurations above, not runtime acceptan
   checks the selected context, and closed handles never query a borrowed context.
 
 ## Remaining acceptance
+
+The manual desktop checklist is recorded as passing from the user's report at 96.
+The broader scenarios below retain their own remaining acceptance; repeated manual
+input/resize/F5/normal-close checks are not required for this unchanged source.
 
 When execution is explicitly requested, run the `all-tests` regression suite in
 the normal and sandbox configurations; rebuild if source or configuration changes.

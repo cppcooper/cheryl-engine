@@ -101,17 +101,37 @@ packet preparation, drawing/presentation and normal cleanup execute. These runs
 exercise configurations without proving forced catch-up, input responsiveness,
 pixel appearance, presentation pacing, interactive resize or reload.
 
-Current manual observations are assigned to the user's desktop in
+At checkpoint 95, manual observations were assigned to the user's desktop in
 [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md): both modes, camera/mouse/text
 focus, resize, successful/failed/recovered F5 reload and normal window close.
-Those results remain pending. Independent automated/source work can continue.
+Checkpoint 96 records the subsequently reported result below.
 Next automated work can cover real material/program reload and forced native
 failure paths while desktop checks supply hardware/input/visual evidence.
 The original remaining-acceptance section below describes the prior checkpoint;
 9.5c/d/e/f remain open for their outstanding acceptance. Rotated FFont, internal stb allocation
 failure and remaining OS restrictions remain separate. No push or PR write occurred.
 
-## Remaining acceptance and next work period
+## User desktop observations: checkpoint 96
+
+The remote integrates 93–95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+Its exact tree and ordered author/date/messages match the delivered checkpoint.
+After the copied-asset F5 sequence was clarified, the user reported running the
+checks without failures and with everything behaving as expected on 1 October.
+[NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md) preserves that report and the
+repeatable commands. The supplied manual checklist is accepted as a reported pass:
+camera/mouse/text focus, resize, valid/failed/recovered reload and normal close,
+with sequential/concurrent modes requested by the checklist. Hardware/driver
+identity and exact local build flags were not supplied. This documentation-only
+checkpoint does not change the automated counts or validated C++ revision.
+
+Outstanding 9.5c–f acceptance remains forced timing/backlog/presentation overload,
+further native resource/reload/failure combinations, internal stb allocation
+failure, rotated FFont output and remaining actual OS policy restrictions/rejections.
+The user's report closes the manual checklist, rather than those separate scenarios.
+9.7 publication remains open. Next independent work can exercise real reload/failure
+paths and forced overload. No push or PR write occurred.
+
+## Earlier acceptance plan (checkpoint 92)
 
 Task 9.5 stays open. Next establish a real GLFW/OpenGL execution surface and exercise
 finite sequential/concurrent demo runs. This workspace has no DISPLAY, Wayland session
