@@ -46,5 +46,4 @@ report is enough to begin investigation. These observations complement automated
 context/lifetime checks and do not hold up independent source work.
 
 Still separate: forced slow simulation/presentation and overload recovery, more
-native reload/failure/resource combinations, rotated FFont output, stb internal
-allocation faults and remaining OS policy restriction/rejection acceptance.
+native reload/failure/resource combinations, rotated FFont output and remaining OS policy restriction/rejection acceptance.

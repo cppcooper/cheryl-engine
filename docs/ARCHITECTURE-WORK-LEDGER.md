@@ -6,13 +6,15 @@ This base remains fixed for the continuing work, including later sessions.
 The numbered tasks and discovery boundaries are in
 [ARCHITECTURE-WORK-ORDER.md](ARCHITECTURE-WORK-ORDER.md).
 Local commits use `cppcooper <cppcooper@users.noreply.github.com>`.
-Compilation, test execution, and remote writes have not been requested.
+Task-9 compilation and test execution are authorized and recorded in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). Remote writes remain
+separately pending.
 
 ## Progress
 
 The entries below record implemented source scope. Earlier uses of "complete"
-are not audit sign-off or correctness evidence. The review of tasks 0–6 is partial;
-see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
+are not correctness evidence. The bounded completed-task source audit closes at
+checkpoint 90; see [ARCHITECTURE-EARLIER-TASK-AUDIT.md](ARCHITECTURE-EARLIER-TASK-AUDIT.md).
 
 - Task 0 baseline established: no applicable AGENTS.md was found; repository
   identity and original base are recorded. Later user-pushed checkpoints are
@@ -207,7 +209,7 @@ sequence in order; do not apply both series to the same checkout.
 Delivery bases and the next unused number are recorded in the session checkpoint
 outside the repository, avoiding a commit that refers to its own hash.
 
-## Validation so far
+## Early validation (historical)
 
 Source/diff review and `git diff --check` completed at each checkpoint.
 Dispatcher/event/worker/shutdown regression sources are prepared, not compiled
@@ -223,7 +225,31 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Bound-program retirement and native acceptance: checkpoints 97–98
+### Real font allocation acceptance: checkpoints 99–100
+
+Remote still contains checkpoint 95 at `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+Pending 96–98 are retained. Source 99 is `251b924135032a9a6b66856d2c1c10e73745eb68`;
+100 records the executed results and current remaining gates.
+
+The real null-return stb reproducer accepts a changed TrueType atlas and crashes
+an isolated CFF child. 99 tracks real scratch allocations through a private scoped
+memory-resource boundary, throws before null consumption and frees manual-cleanup
+scratch on unwinding. Public loading stays unchanged. Tests reject all 793/727
+requests along two real ASCII bake traces, check no publication or live scratch,
+recover subsequent loads and exercise nested failures with live outer storage.
+Both full builds and 340 normal / 333 sandbox cases pass with no skips, including
+five native GL and three real-font cases. Both finite demo modes pass after the fix.
+Raw evidence and fixture identities are archived. 9.5e.1 closes for this bounded
+scope; rotated FFont, forced overload, further native/context-loss combinations,
+remaining OS policy rejection/restriction and PR publication remain open.
+
+Pending patches are **96–100**, next unused number **101**. The application route
+from the confirmed remote is `cheryl-engine-96-100-from-2c23bf8.patch`. Canonical
+followup/continuation contain the same five commits, and the cumulative route
+retains the original base. Numbered, combined and cumulative replays verify exact
+trees and ordered author/date/messages. No push or PR write occurred.
+
+### Bound-program retirement and native acceptance: checkpoints 97–98 (historical)
 
 Confirmed remote 95 remains `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
 The user declines applying documentation-only 96 separately, so this delivery

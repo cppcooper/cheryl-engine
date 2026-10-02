@@ -256,6 +256,8 @@ stb internal allocation, rotated FFont and actual OS restriction/rejection accep
 
 - [x] **9.5d.1** Execute real retained-frame shader replacement/cache clear, partial compile/link/file/reflection failure cleanup and live-window shutdown/late-owner release. Checkpoint 97 fixes deferred deletion of the last current program before maintenance/shutdown. Five native cases and full suites pass: 337 normal / 330 sandbox, no skips. Parent 9.5d stays open for remaining native fault/context-loss combinations.
 
+- [x] **9.5e.1** Execute real TrueType/CFF parsing and raster allocation rejection before provider upload. Checkpoint 99 fixes silent partial atlases and unchecked-null raster allocation by unwinding through tracked scratch ownership. Three real-font cases sweep 793/727 allocation requests and nested failure; full suites pass 340 normal / 333 sandbox without skips, and both finite real-demo modes pass. Parent 9.5e stays open for rotated FFont output.
+
 - [x] **9.6** Preserve coherent local commits and their ordering/authorship. Use detailed Adds/Updates/Revises/Deletes/Fixes messages; deliver uniquely numbered incremental mailbox patches at meaningful chunks. At implementation completion, verify and deliver one cumulative `cheryl-engine.patch` from the preserved original base, without squashing or repeating earlier commits in later incremental patches. Do not push unless requested.
 - [ ] **9.7** Keep PR #9's description aligned with completed behavior and pending acceptance. Metadata updates are a separately requested action; the recommended branch/title are already in place.
 

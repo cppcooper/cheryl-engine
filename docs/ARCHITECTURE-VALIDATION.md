@@ -1,8 +1,9 @@
 # Task 9 validation record
 
-Latest checkpoint 98 records successful complete builds and 337 normal / 330
-sandbox tests, including five real-context cases without skips. The validated
-C++ commit is `00f8ca67534c2597266e6590a4a226e2892e73a6` (97). Earlier execution
+Latest checkpoint 100 records successful complete builds and 340 normal / 333
+sandbox tests, including five real-context and three real-font cases without skips.
+The validated C++ commit is `251b924135032a9a6b66856d2c1c10e73745eb68` (99).
+Both finite demo modes also pass after the font allocation fix. Earlier execution
 records below retain their checkpoint scope.
 
 1 October 2026. Remote checkpoint 90,
@@ -179,6 +180,69 @@ stb allocation, rotated FFont and remaining actual OS restrictions/rejections.
 The user's existing desktop report is preserved; these source changes affect native
 maintenance/shutdown, which the native cases execute. No new desktop checklist is
 assigned in this period. 9.7 publication remains open; no push or PR write occurred.
+
+## Real stb allocation acceptance: checkpoints 99–100
+
+Confirmed remote 95 remains `2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`.
+The delivery includes pending **96–100**; 99 is the source change and 100 records
+its evidence. The source revision is `251b924135032a9a6b66856d2c1c10e73745eb68`.
+
+An isolated executable compiles the pinned stb implementation with a real
+null-return allocation hook. With DejaVuSans.ttf at 18 pixels, rejecting request
+one leaves the positive bake status unchanged at 68 but changes 22 atlas pixels.
+With NimbusSans-Regular.otf, rejecting request two terminates the isolated child
+with SIGSEGV. The CFF shape path writes into the returned allocation without a
+null check; the heap scanline path has a similar unchecked allocation. A positive
+bake status alone cannot establish successful rasterization after allocation failure.
+The reproducer's source, return codes and output are archived; its intentionally
+failing child is separate from the aggregate suite. Font files are not redistributed.
+
+99 routes real stb allocations during loading through a private scoped
+`memory_resource` boundary. Production uses `new_delete_resource`; no public API
+changes. Allocations throw before stb can consume null storage. Intrusive records
+track live blocks without another tracking allocation, and scope destruction frees
+scratch left by exception unwinding through stb's manual cleanup. Normal frees
+remove their records. Thread-local scope selection and previous-scope restoration
+support independent and nested bakes; the latter is executed explicitly. The scope
+ends before provider upload, so a failed bake publishes no geometry or atlas.
+
+Three aggregate opt-in cases execute real parsing/rasterization at 128 pixels:
+
+- DejaVuSans.ttf: reject each of **793** requests on its complete ASCII bake trace.
+- NimbusSans-Regular.otf (CFF): reject each of **727** requests on its trace.
+- Start a failing nested CFF bake while outer TrueType scratch is live, then
+  separately allow the outer bake to succeed or fail. Each resource retains its
+  own ownership, and both release all outstanding scratch.
+
+Every swept failure checks `bad_alloc`, the precise rejected request, zero live
+scratch and zero provider upload calls. Subsequent public/private loads succeed.
+Both reference faces have a glyph wider than 64 pixels, exercising heap scanline
+allocation as well as shape/contour/edge scratch. These are two concrete printable-
+ASCII traces, not every font, glyph range, size or possible interleaving.
+
+Both complete Release builds pass. Full runs with the native and font checks enabled
+pass **340 normal / 333 sandbox** cases, with zero failures, errors, disabled cases
+or skips; all five real OpenGL cases execute on the same Mesa llvmpipe driver.
+Two real demos then complete twelve updates each, sequential and concurrent, with
+successful real font bake/upload/render and normal cleanup. The archive includes
+raw build logs, full/focused XML and logs, fixture paths/hashes, commands, the bounded
+Xvfb runner and replay results. An initial helper count mismatch expected two font
+cases after the third was added; all three tests passed in that run. Only the
+helper's expected count changed, and the corrected focused/full runs passed.
+Formatting and whitespace checks pass. 100 changes documentation only.
+
+To run these optional font cases, set `CHERYL_STB_ALLOCATION_TTF` to a TrueType face
+and `CHERYL_STB_ALLOCATION_CFF` to a CFF OpenType face with a glyph wider than 64
+pixels at size 128, then run `all-tests --gtest_filter=font_bake.real_*` in either
+configuration. Missing paths explicitly skip; unusable supplied paths fail.
+The recorded fixture paths are `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`
+and `/usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf`.
+
+9.5e.1 is complete for this bounded real-font allocation acceptance. Parent 9.5e
+remains open for rotated FFont output. Forced timing/input/presentation overload,
+further native fault/context-loss combinations, remaining actual OS restrictions/
+rejections and 9.7 publication remain open. The user's prior desktop report remains
+accepted. No new manual checklist, push or PR write occurred.
 
 ## Earlier acceptance plan (checkpoint 92)
 

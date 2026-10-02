@@ -1,13 +1,14 @@
 # Architecture convergence review
 
-Checkpoint 98 records the bound-program retirement fix at 97 and five passing
-real-context cases. Both full Release builds pass; the complete suites pass
-337 normal and 330 sandbox cases without skips. The user's desktop checklist is
-recorded as passing at 96. Forced overload, further native faults, font allocation/
-rotated FFont and remaining OS acceptance stay open. Current evidence is in
+Checkpoint 100 records the real stb allocation fix at 99. Full Release builds
+pass; complete suites pass 340 normal and 333 sandbox cases without skips,
+including five real-context and three real-font cases. Both finite demo modes
+pass after the fix. The user's desktop checklist is recorded as passing at 96.
+Forced overload, further native faults, rotated FFont and remaining OS acceptance
+stay open. Current evidence is in
 [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
-1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
+**Historical checkpoint-90 snapshot.** 1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
 completed-task source audit closes at checkpoint 90, including batch-ending claims
 and identified startup/update/reload/shutdown dependencies. The latest confirmed
 remote remains checkpoint 57, `5e4adfdc94cec7590916282c876762ada4d0e123`; pending
