@@ -99,6 +99,10 @@ add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB
 target_link_libraries(${TEST_TARGET} PRIVATE Threads::Threads)
 TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include src)
 target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11 AND NOT CHERYL_SANDBOX_BUILD)
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/executables/gtest/backends/native-opengl.cpp"
+        APPEND PROPERTY COMPILE_DEFINITIONS CHERYL_NATIVE_X11_TESTS=1)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # backward-cpp's fallback resolver reads exported symbols in Release builds.
     target_link_options(${TEST_TARGET} PRIVATE -rdynamic)

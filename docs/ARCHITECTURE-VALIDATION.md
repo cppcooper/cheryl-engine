@@ -1,8 +1,9 @@
 # Task 9 validation record
 
-Latest checkpoint 106 records successful complete builds and 346 normal / 333
+Latest checkpoint 107 records successful complete builds and 346 normal / 333
 sandbox tests, including eleven real-context and three real-font cases without skips.
-The validated C++ commit is `82b33791b36be7de57180175b0d391bbb1aa5403` (105).
+The ordered-input implementation is `82b33791b36be7de57180175b0d391bbb1aa5403` (105);
+107 additionally guards its compilation for the selected GLFW backend.
 Native X server Events/Text survive full backlog, capture/focus replacement and
 fixed-drop/capped catch-up in both runtime modes. Bounded acceptance 9.5c closes
 with 103's timing/presentation/State work and the prior reported desktop checks.
@@ -428,6 +429,26 @@ now concrete:
 - **9.7:** publish PR metadata only when separately requested; the local draft stays
   current. Hardware GPU resets, physical input devices and privileged policy changes
   are outside the bounded automated claims above.
+
+## Optional-backend build guard: checkpoint 107
+
+A final dependency review found direct X11 helper references in the new Linux
+fixture even when GLFW's X11 backend was disabled. Checkpoint 107 sets the native
+X11 test macro only for Linux normal builds with GLFW_BUILD_X11 enabled, on this
+source file only. Both the native-access include and X11 case use that guard.
+Other aggregate native cases remain available. Production dependencies are unchanged.
+
+Normal/sandbox Release builds pass after the guard, and complete enabled suites
+again pass 346/333 cases without skips. The affected translation unit also compiles
+with the X11 test macro absent; nm confirms no glfwGetX11/XSendEvent/XSync helper
+references. This is an explicit disabled-macro compile check, not a complete
+Wayland-only build. The archive distinguishes the earlier overlapping suite run
+from the final run after the rebuilt executable is complete.
+
+Pending delivery is now **99–107** from applied 98, in
+`cheryl-engine-99-107-from-19912dd.patch`; next unused number is **108**. Source
+behavior and the bounded 9.5c/9.5e closures are unchanged. 9.5d.2/9.5f.1 and 9.7
+remain open. This guard was completed during the checkpoint packaging buffer.
 
 ## Earlier acceptance plan (checkpoint 92)
 

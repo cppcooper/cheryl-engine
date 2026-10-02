@@ -1,6 +1,7 @@
 # Runtime and framework implementation status
 
-Checkpoint 106 records native ordered input acceptance at 105. Both Release
+Checkpoint 107 guards the native X11 fixture for the selected GLFW backend and
+preserves the ordered input acceptance at 105. Both Release
 builds and all 346 normal / 333 sandbox cases pass without skips, including eleven
 real-context and three real-font cases. Synthetic X server key events reach the
 normal GLFW pump and character conversion in both runtime modes under fixed-drop

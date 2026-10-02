@@ -26,7 +26,7 @@
 #define GLFW_INCLUDE_NONE
 #endif
 #include <GLFW/glfw3.h>
-#if defined(__linux__)
+#if defined(__linux__) && defined(CHERYL_NATIVE_X11_TESTS)
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
 #include <X11/keysym.h>
@@ -1101,7 +1101,7 @@ TEST(
     }
 }
 
-#if defined(__linux__)
+#if defined(__linux__) && defined(CHERYL_NATIVE_X11_TESTS)
 namespace {
     // Send synthetic server events to this test's own window. XSync establishes
     // server receipt, while only the runtime's normal GLFW poll dispatches them.

@@ -225,7 +225,21 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Native ordered input acceptance: checkpoints 105–106
+### Optional native backend guard: checkpoint 107
+
+Final dependency review finds that the new Linux X11 fixture must be omitted when
+GLFW_BUILD_X11 is disabled. A source-specific compile definition now guards its
+native include and case. The affected source compiles without that definition and
+has no X11 helper references. Normal/sandbox builds and final enabled full suites
+pass 346/333 cases without skips. No full Wayland-only build is claimed.
+
+Source work ended at the 20-minute checkpoint; this necessary optional-backend fix
+was completed in the packaging buffer. Pending delivery is **99–107** from applied
+98, using `cheryl-engine-99-107-from-19912dd.patch`; next unused number is **108**.
+Numbered, pending and cumulative replays preserve exact tree/metadata/PNG bytes.
+9.5c/9.5e stay complete; 9.5d.2/9.5f.1 and 9.7 remain open. No push/PR write.
+
+### Native ordered input acceptance: checkpoints 105–106 (historical)
 
 The applied baseline remains 98. Fresh fetch still observes remote 95; pending
 99–104 remain intact. Source 105 is `82b33791b36be7de57180175b0d391bbb1aa5403`;
