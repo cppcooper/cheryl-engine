@@ -18,7 +18,7 @@ govern resource lifetime. Immediate high-level asset drawing APIs are retired.
 Aggregate regression sources cover dispatch/event lifetime, worker policies,
 timing/input recovery, cache/native ownership, material parameters, frame/text
 retention, reload and failure cleanup. Both normal/sandbox Release builds pass.
-Complete aggregate runs pass 345 native-enabled normal and 333 sandbox cases with
+Complete aggregate runs pass 346 native-enabled normal and 333 sandbox cases with
 no skips. Startup-fixture cancellation expectations match accepted-request
 broken_promise behavior. Real Linux affinity mask cases execute.
 
@@ -56,9 +56,16 @@ and two preparations are observed during the held presentation; ordered full-bat
 consumption and resumed polling pass. All ten native cases execute. These are
 controlled workloads on the software driver, not physical compositor stall claims.
 
-Ordered native Events/Text under forced backlog, further native resource/failure
-combinations and remaining
-actual OS policy rejection/restriction acceptance stay open. The completed-task
+An additional X11 native case sends synthetic server keys through normal GLFW
+key/character conversion in both modes under fixed-drop/capped catch-up. Eleven
+combined records retain order and old/new focus metadata across capture replacement;
+a full concurrent batch holds later server events until polling resumes. Exclusive
+State suppression and one pass-through semantic tap survive recovery without replay.
+All eleven native cases execute; bounded timing/input/presentation acceptance is
+complete with prior demo/desktop evidence. Physical keyboard/IME coverage is separate.
+
+Composed native-resource/runtime failure cleanup and actual OS affinity
+restriction/rejection remain open in the finite 9.5d.2/9.5f.1 scopes. The completed-task
 source audit closes at checkpoint 90, including clang-format 23.1.2, declaration
 inventory and controlled native/startup/retained-owner failure sources. Current
 evidence and remaining task-9 gates are recorded in

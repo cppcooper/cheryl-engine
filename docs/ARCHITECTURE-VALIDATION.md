@@ -1,12 +1,13 @@
 # Task 9 validation record
 
-Latest checkpoint 104 records successful complete builds and 345 normal / 333
-sandbox tests, including ten real-context and three real-font cases without skips.
-The validated C++ commit is `7f3690427011f2d5eec6737f1920058973dc0790` (103).
-New real-runtime cases exercise forced update/presentation work and native State
-backpressure. The existing finite demo and reported desktop results remain scoped
-to their recorded revisions; 103 changes test sources only. Font acceptance 9.5e
-is complete. Earlier results retain their checkpoint scope.
+Latest checkpoint 106 records successful complete builds and 346 normal / 333
+sandbox tests, including eleven real-context and three real-font cases without skips.
+The validated C++ commit is `82b33791b36be7de57180175b0d391bbb1aa5403` (105).
+Native X server Events/Text survive full backlog, capture/focus replacement and
+fixed-drop/capped catch-up in both runtime modes. Bounded acceptance 9.5c closes
+with 103's timing/presentation/State work and the prior reported desktop checks.
+9.5e stays complete. Native-runtime cleanup and actual OS restriction/rejection
+acceptance remain open. Earlier results retain their checkpoint scope.
 
 1 October 2026. Remote checkpoint 90,
 `a785c0e35e97a904df67b19af0d65a17d5ee1170`, contains the complete audit series.
@@ -360,6 +361,73 @@ for native State backpressure. Parent 9.5c remains open for ordered native Event
 under forced backlog. 9.5d/f remain open for further native fault/context-loss
 combinations and actual OS restriction/rejection behavior. Font acceptance 9.5e
 stays complete. 9.7 publication remains separately pending. No push or PR write.
+
+## Native ordered input acceptance: checkpoints 105–106
+
+The confirmed applied checkpoint remains **98**. Fresh fetch still observes remote
+95 (`2c23bf8164ac69e74a6e06bd999ef54a61d7c8f4`); the user's local application report
+sets delivery scope. Pending delivery is **99–106**, retaining 99–104. Use
+`cheryl-engine-99-106-from-19912dd.patch` after applied 98. Source 105 is
+`82b33791b36be7de57180175b0d391bbb1aa5403`; 106 records evidence only.
+
+One Linux/X11 opt-in aggregate case runs four scenarios: sequential/concurrent,
+each with fixed-drop or capped variable catch-up. The sender uses XSendEvent and
+XSync against only its own native test window; GLFW's ordinary X11 event pump and
+character conversion generate the callbacks. No input callback is directly invoked
+or replaced and no synthetic PollSnapshot is created. This is synthetic server
+input, not physical keyboard, arbitrary layout/IME, or device coverage.
+
+Each scenario checks exactly eleven delivered records in combined sequence and
+nondecreasing observation-time order: A press, text `A`, A repeat, another text
+`A`, A release; B press, text `b`, B release; and a later C press/text `c`/release.
+Native key codes, Shift modifiers, repeat phases and characters match. The first
+eight records retain target 7, its epoch and exclusive routing after focus and
+capture leases are replaced. The later C tap uses target 42, its new epoch and
+pass-through routing. All three keys map to one semantic action: exclusive A/B
+contribute no press/release, and C contributes exactly one of each with no held
+State or record replay in subsequent recovery updates.
+
+Concurrent mode holds a simulation-mailbox callback before consumption. Three
+actual native polls fill capacity, including the unchanged third observation.
+The C tap has already reached the server/Xlib queue while two separate completed
+platform drains verify the native poll sequence is still three. Releasing the gate
+transfers all three polls and their eight old-focus records at the first update;
+normal resumed polling later captures C under the replacement focus. Sequential
+mode runs the same sender, adapter, focus/capture changes and recovery on its shared
+owner without a cross-thread gate. Its initial consumption need not have identical
+batch boundaries. In both modes the first update deliberately spends 120 ms to
+force dropped lag; capped catch-up also produces its distinct update kind. Future
+coordination establishes full-batch ordering independently of that workload delay.
+XML reports eleven records for each of the four mode/recovery combinations.
+
+Both full Release builds pass. Complete enabled runs pass **346 normal / 333
+sandbox** cases with zero failures, errors, disabled cases or skips, including all
+eleven native and three real-font cases. Focused execution passes the X11 case;
+the full run also checks the final three-key semantic binding and modifier assertions.
+The aggregate target and production dependencies are unchanged. The new case is
+compiled on Linux and skips on another GLFW platform. Raw build/focused/full logs,
+XML, driver identity, command/timeouts, runner and exact patch replay results are
+archived. Formatting and whitespace pass. No additional build/test run is required
+for documentation-only 106. No new manual checklist, push or PR write occurred.
+
+**9.5c.3 and parent 9.5c close** for these recorded scopes together with 103's native
+timing/presentation/State backpressure and the existing finite-demo and reported
+desktop checks. Font acceptance 9.5e stays complete. Remaining task-9 execution is
+now concrete:
+
+- **9.5d.2:** compose real resource creation and partial frame/native failure with
+  GameRuntime cleanup in both modes. Check actual handle deletion, owner/context
+  recovery and original-failure preservation across later cleanup failure and
+  accepted CPU/platform dependencies. Existing context switching, reload failure,
+  idle retirement and late-owner cases retain their already executed scope.
+- **9.5f.1:** execute inherited affinity restriction/discovery with a temporarily
+  narrowed calling-thread mask, reported required/preferred eligibility, restoration,
+  and a genuinely rejected native OS affinity request. Controlled adapter failures
+  already exercise pre-callback suppression/accounting; do not label them actual
+  OS rejection. Reconcile this evidence before closing 9.5f and parent 9.5.
+- **9.7:** publish PR metadata only when separately requested; the local draft stays
+  current. Hardware GPU resets, physical input devices and privileged policy changes
+  are outside the bounded automated claims above.
 
 ## Earlier acceptance plan (checkpoint 92)
 

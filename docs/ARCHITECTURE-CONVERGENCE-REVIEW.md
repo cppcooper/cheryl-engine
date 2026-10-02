@@ -1,14 +1,16 @@
 # Architecture convergence review
 
-Checkpoint 104 records real-runtime overload acceptance at 103. Both Release
-builds pass; complete native-enabled suites pass 345 normal and 333 sandbox
-cases without skips, including ten real-context and three real-font cases.
-Slow updates exercise four timing policies in both modes. Controlled presentation
-holds prove concurrent updates continue while frame publication is limited; full
-native State batches pause polling while presentation and platform dispatch continue.
-Font acceptance 9.5e remains complete. Ordered native Events/Text under forced
-backlog, further native faults and remaining OS acceptance stay open. Current evidence
-is in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+Checkpoint 106 records native ordered input acceptance at 105. Both Release
+builds and all 346 normal / 333 sandbox cases pass without skips, including eleven
+real-context and three real-font cases. Synthetic X server key events reach the
+normal GLFW pump and character conversion in both runtime modes under fixed-drop
+and capped catch-up recovery. All eleven records arrive once with preserved focus
+metadata; exclusive keyboard State is suppressed and the later pass-through tap
+contributes one press/release. Together with 103 and the reported desktop results,
+this closes bounded 9.5c acceptance. Font acceptance 9.5e remains complete.
+Native-runtime resource failure cleanup, actual OS affinity restrictions/rejections,
+and PR publication remain open. Current evidence is in
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
 
 **Historical checkpoint-90 snapshot.** 1 October 2026. Source preparation for tasks 1–8 is implemented. The explicit
 completed-task source audit closes at checkpoint 90, including batch-ending claims

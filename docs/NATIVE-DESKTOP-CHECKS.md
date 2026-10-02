@@ -48,6 +48,8 @@ context/lifetime checks and do not hold up independent source work.
 Checkpoint 103 separately executes controlled slow updates and presentation plus
 full native State backlog, documented in
 [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md). The prior desktop report is
-retained without requiring another checklist. Ordered native Events/Text under
-forced backlog, further native fault/context-loss combinations and remaining OS
-policy restriction/rejection acceptance stay open.
+retained without requiring another checklist. Checkpoint 105 adds ordered Events/Text
+through synthetic X server keys and the normal native pump in both modes, closing
+the bounded timing/input/presentation
+acceptance scope. Composed native-resource/runtime failure cleanup and actual OS
+affinity restriction/rejection remain open; no new manual checklist is assigned.

@@ -225,7 +225,38 @@ These preparation checks do not establish C++ type/link correctness or runtime b
 
 ## Stopping checkpoint and continuation
 
-### Real-runtime overload acceptance: checkpoints 103–104
+### Native ordered input acceptance: checkpoints 105–106
+
+The applied baseline remains 98. Fresh fetch still observes remote 95; pending
+99–104 remain intact. Source 105 is `82b33791b36be7de57180175b0d391bbb1aa5403`;
+106 records results, bounded 9.5c closure and explicit remaining execution scopes.
+
+One aggregate X11 case runs both modes with fixed-drop/capped catch-up. Synthetic
+server keys reach the real GLFW pump and character conversion. The exact eleven
+records preserve repeat/modifier/key/character order, observation timestamps and
+old/new focus metadata across lease replacement. A concurrent mailbox gate keeps
+three real polls full while a later C tap waits in Xlib's queue; two platform drains
+prove polling stays paused. Resumption captures C under new pass-through focus.
+Mapping all three keys to one action verifies exclusive A/B suppression, one C
+press/release and no transient replay across forced recovery. Sequential consumption
+may divide the same records differently; the combined stream remains identical.
+No physical keyboard/IME coverage is inferred from the synthetic server sender.
+
+Both full Release builds and 346 normal / 333 sandbox cases pass without skips,
+including eleven native and three real-font cases. XML records eleven delivered
+records in each of four mode/recovery combinations. 9.5c.3 and parent 9.5c close
+with 103 and prior desktop/demo evidence; 9.5e remains complete. Remaining 9.5d.2
+composes native-resource/runtime failure cleanup; 9.5f.1 executes actual inherited
+OS restriction and rejected native affinity requests. 9.7 remains separately
+pending. The period stops at the 20-minute source checkpoint; no push/PR write.
+
+Pending patches are **99–106**, next unused number **107**. Use
+`cheryl-engine-99-106-from-19912dd.patch` after applied 98, excluding already-applied
+96–98. Canonical followup/continuation contain the same eight commits; cumulative
+delivery retains the fixed original base. All three replay routes match exact
+trees, PNG bytes and ordered author/date/message records.
+
+### Real-runtime overload acceptance: checkpoints 103–104 (historical)
 
 The user confirms application through 98. A fresh fetch still observes remote 95;
 delivery therefore uses the saved 98 tree, not that stale remote observation.

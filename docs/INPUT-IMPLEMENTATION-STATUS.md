@@ -1,5 +1,17 @@
 # Input implementation status
 
+Current evidence at checkpoint 106: complete normal/sandbox Release suites pass
+346/333 cases without skips. All input/polling/capture/routing/runtime regressions
+execute. Native State backpressure and slow timing/presentation pass at 103;
+105 drives synthetic X server keys through GLFW/Gainput in both fixed-drop/catch-up
+runtime modes, preserving ordered Events/Text, focus changes and semantic State
+without replay. The user's earlier desktop checklist remains a reported pass.
+These are bounded scopes; physical device, arbitrary OS layout/IME and non-X11
+platform coverage are not inferred. See
+[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+
+**Historical preparation snapshot follows.**
+
 Prepared on 2026-09-29 from original task base
 `d690266c389f08e74efe0481c5fc6b744870ea29`.
 Source implementation is prepared. Normal and sandbox compilation/linking pass
