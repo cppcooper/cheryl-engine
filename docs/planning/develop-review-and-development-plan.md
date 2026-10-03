@@ -985,3 +985,25 @@ states those differences.
 Added independent first-include numeric regression sources, a second translation
 unit for linkage, width/range boundaries, and malformed complete-token cases.
 Static checks only; compilation, linkage execution, and tests remain unexecuted.
+
+### U3c — safe legacy reads; semantic format discovery boundary
+
+Followed FFont path history back to `0329cff` (September 25, 2024). That first
+loader already read 256 native shorts and looked up whitefont.png. No tracked
+original widths asset, writer, or format specification was found. The current
+native acceptance fixture serializes the same native-short array with widths
+128 and 64; it proves a useful current consumer, not a universal width bound or
+portable encoding.
+
+Changed opening to binary input-only and reject any incomplete/failed full-array
+read before geometry allocation, cache lookup, or provider upload. Added missing,
+empty, short, and one-byte-truncated source cases asserting zero uploads. Existing
+successful native fixture semantics are preserved, including ignored trailing data.
+No builds/tests were run.
+
+**Stopped at the U3 format boundary:** endian/portable integer representation,
+allowed widths, exact-size/trailing-data rules, and original atlas metadata need an
+authoritative fixture/writer or a chosen versioned replacement format. They were
+not inferred from the synthetic test. [legacy-ffont.md](../resources/legacy-ffont.md)
+records the evidence and remaining decision. The semantic-validation checklist
+stays open; independent U4 safety work can proceed without this decision.

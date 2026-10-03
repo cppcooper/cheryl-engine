@@ -30,6 +30,10 @@ namespace CE::Assets {
         ~FFont() override = default;
         [[nodiscard]] std::vector<GlyphPlacement2D>
         layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
+        /** Read 256 native shorts from a binary input file before any provider upload.
+         * Incomplete reads fail; legacy trailing bytes are ignored. Metadata/endian
+         * validation remains at the format boundary in docs/resources/legacy-ffont.md.
+         */
         static FFontData load_ffont(const std::filesystem::path& path, ResourceProvider& provider);
     };
 }

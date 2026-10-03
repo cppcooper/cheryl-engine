@@ -55,5 +55,6 @@ rotation belong to the submission's model instead of mutable font print state.
 Recording submission cases cover banks/widths, whitespace/fallback, and transformed
 multiline layout; real native cases also check retained FFont packets and atlas rows.
 See [architecture-validation.md](../development/architecture-validation.md) for those scopes.
-FFont file-read/format validation and Unicode shaping remain unfinished in
+FFont semantic format validation remains at [the legacy input boundary](../resources/legacy-ffont.md).
+Unicode shaping remains unfinished in
 [todo.md](../planning/todo.md).

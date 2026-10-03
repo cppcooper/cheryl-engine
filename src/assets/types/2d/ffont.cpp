@@ -42,14 +42,20 @@ namespace CE::Assets {
     }
 
     FFontData FFont::load_ffont(const std::filesystem::path& path, ResourceProvider& provider) {
-        std::fstream file(path);
+        std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             throw Exceptions::failed_operation(CE_HERE,
                 std::format("Cannot open file '{}'", path));
         }
-        // todo: make sure we have the file we want
+        // TODO: Confirm legacy metadata (byte order, width bounds, atlas identity,
+        // and trailing-data policy) from an authoritative asset or writer.
+        // Preserve the historical native-short encoding until that boundary is resolved.
         std::array<short, num_chars_ffont> buffer{};
-        file.read(reinterpret_cast<char*>(buffer.data()), buffer.size() * sizeof(short));
+        constexpr auto byte_count = static_cast<std::streamsize>(sizeof(buffer));
+        file.read(reinterpret_cast<char*>(buffer.data()), byte_count);
+        if (!file || file.gcount() != byte_count) {
+            throw Exceptions::bad_request(CE_HERE, "Legacy font widths file is truncated or unreadable.");
+        }
         file.close();
 
         // Convert stored glyph widths for pen movement, then upload the fixed

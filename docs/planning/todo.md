@@ -13,10 +13,10 @@ source changes remain distinct from unexecuted acceptance checks.
 
 ## Resource and utility fixes
 
-- Validate FFont widths-file opening, complete reads, and expected format before
-  constructing the font. The loader still has explicit placeholders and reads a
-  fixed array without checking the read result. See
-  [ffont.cpp](../../src/assets/types/2d/ffont.cpp).
+- Resolve FFont's legacy encoding, width bounds, atlas identity, and trailing-data
+  contract from an authoritative fixture/writer. Binary input and complete-read
+  rejection now precede upload; semantic validation remains at
+  [the legacy format boundary](../resources/legacy-ffont.md).
 - Complete the event-reporting part of shader diagnostics. Structured uniform/
   attribute reflection queries already exist; the printing APIs still write their
   results to standard output. See

@@ -2,6 +2,7 @@
 
 #include <core/resources/fileio/fonts-system.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/types/2d/ffont.h>
 #include <assets/types/2d/font-upload-internal.h>
 #include <assets/types/2d/font-bake-internal.h>
 #include <assets/types/2d/font-stb-allocation-internal.h>
@@ -429,4 +430,30 @@ TEST(font_upload, retained_backend_resources) {
     font.reset();
     EXPECT_TRUE(provider.uploaded_geometry.expired());
     EXPECT_TRUE(provider.uploaded_atlas.expired());
+}
+
+TEST(ffont, incomplete_widths) {
+    const TemporaryDirectory directory;
+    const auto path = directory.path / "widths.bin";
+    constexpr auto bytes = sizeof(short) * num_chars_ffont;
+    const std::array<char, bytes> contents{};
+    for (const std::size_t size : {std::size_t{0}, std::size_t{1}, bytes / 2, bytes - 1}) {
+        SCOPED_TRACE(size);
+        {
+            std::ofstream output(path, std::ios::binary);
+            output.write(contents.data(), static_cast<std::streamsize>(size));
+        }
+        RasterUploadProvider provider;
+        EXPECT_THROW((void)FFont::load_ffont(path, provider), CE::Exceptions::bad_request);
+        EXPECT_EQ(provider.geometry_calls, 0);
+        EXPECT_EQ(provider.atlas_calls, 0);
+    }
+}
+
+TEST(ffont, missing_widths) {
+    const TemporaryDirectory directory;
+    RasterUploadProvider provider;
+    EXPECT_THROW((void)FFont::load_ffont(directory.path / "missing.bin", provider), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.geometry_calls, 0);
+    EXPECT_EQ(provider.atlas_calls, 0);
 }
