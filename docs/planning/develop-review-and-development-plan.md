@@ -635,3 +635,14 @@ additional supported platform is selected by this slice.
 Each implementation unit records its source review and unexecuted acceptance work.
 Consumer-specific or unavailable legacy-file-format decisions remain explicit
 boundaries instead of speculative implementation.
+
+### Stale exception comment — complete
+
+Whitespace-insensitive blame traces the comment to `52b19bdb`, the original
+exception files added on 25 September 2024. The header at that commit has no
+matching function prototype beneath the comment; its implementation already uses
+thread-local trace buffers and returns an owned std::string. The stale comment is
+removed. The available history does not establish that a removed prototype was
+its original referent. This does not close U4's allocation/noexcept or bounded
+trace-formatting work. Validation: history/source inspection and diff checks;
+no build or tests were needed for the comment removal.

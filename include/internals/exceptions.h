@@ -8,8 +8,6 @@
 #include <cinttypes>
 
 namespace CE::Exceptions {
-    // single threaded function to construct a c-string for exception messages. UB if used on multiple threads concurrently
-
 #ifdef _MSC_VER
     class exception_base : public std::exception {
     public:
