@@ -59,7 +59,7 @@ engine expansion. Those groups should not acquire dependencies in reverse order.
 | --- | --- | --- |
 | Byte-manager release | Weak liveness tokens precede raw manager dereferences in two deleters. | Teardown may overlap release; resolve ownership before extending allocator use (U2). |
 | Memory transactions | Collections have individual locks, but checkout/return/merge/cull span collections. | Container locks do not establish operation atomicity; audit and define the supported concurrency contract (U2). |
-| Legacy FFont | Checks opening, but uses default fstream mode and unchecked native-short reads. | Truncated/malformed widths can reach upload. Establish the file format and validate before side effects (U3). |
+| Legacy FFont | Checks opening, but uses default fstream mode and unchecked native-short reads. | U3 repairs incomplete reads and deprecates the class. The owner confirms the original atlas is unavailable; recovering the widths format is no longer required work. |
 | Memory diagnostics | Empty stats divides 0 by 0; byte formatter has exact-boundary and suffix errors. | Diagnostics can misreport resource usage; independent corrections belong in U3. |
 | Fonts | Immutable printable-ASCII atlas/layout; UTF-8 bytes become individual fallbacks. | Committed Unicode input is not Unicode rendering. Layout/shaping and editing are distinct facilities (U11). |
 | Tile metadata | Queries, weighted candidate metadata, and animation targets exist. | No world-neighbor selector or deterministic selection service (U10). |
@@ -124,7 +124,7 @@ U identifiers are development units defined later.
 | ID | Source location | Analysis and resolution |
 | --- | --- | --- |
 | T1 | [singleton.h:11](../../include/cheryl/templates/singleton.h) | call_once protects construction only. First differing argument sets select a race winner; get_existing is not a construction synchronization mechanism. Audit both CTS/CTU access paths and all argument-bearing consumers; define explicit initialization/retrieval and operation ownership without removing architecturally useful interfaces (U1). |
-| T2 | [ffont.cpp:50](../../src/assets/types/2d/ffont.cpp) | Opening is already checked. The missing work is binary/input-only reading, complete length/content validation, format and atlas identity. Decide legacy compatibility/endian semantics before changing encoding (U3). |
+| T2 | [ffont.cpp:50](../../src/assets/types/2d/ffont.cpp) | Opening is already checked. U3 repairs binary/input-only reading and complete-read rejection. The subsequent scope decision deprecates FFont in favor of supplied font files through STBFont; preserve legacy behavior without inventing the missing atlas or a new widths format. |
 | T3 | [glslprogram.h:64](../../include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
 | T4 | [pool.hpp:171](../../include/cheryl/core/resources/objects/pool.hpp) | Object handles retain PoolState, but its backing-byte deleter still captures a raw manager with a weak token. Solve the underlying release ownership once, and adopt it here (U2). |
 | T5 | [mem-mgr.hpp:24](../../include/cheryl/core/resources/memory/mem-mgr.hpp) | Define zero-allocation stats deliberately, preferably zero counts with an unavailable utilization percentage or explicitly documented zero. No NaN/inf output (U3). |
@@ -150,7 +150,7 @@ headers. Prioritize callers' decisions and failure boundaries.
 | `internals/exceptions.h`, `src/internal/exceptions.cpp`, `core/logging/log.cpp` | “single threaded … UB” comment conflicts with thread-local storage; truncation, allocation failure, and noexcept guarantees are unclear. | U4 documents actual guarantees and trace limitations alongside the repair. |
 | `templates/block.h`, `memory/mem-mgr.h/.hpp`, `managed-block.hpp`, `objects/pool.h/.hpp` | Existing comments explain local bookkeeping but do not establish the whole-operation concurrency and destruction contract. | U2 adds invariant/lock-order and handle-release documentation before exposing concurrency claims. |
 | `templates/singleton.h` | CTS/CTU names and examples do not clearly distinguish constructor accessibility, initialization races, later thread safety, and shutdown ordering. | U1 documents the supported contract for both variants. |
-| `assets/types/2d/ffont.h`, `src/assets/types/2d/ffont.cpp` | Constructor example omits the provider; width encoding, bank layout, atlas dependency, and fallback behavior are insufficiently specified. | U3 documents the verified file format and loading order. |
+| `assets/types/2d/ffont.h`, `src/assets/types/2d/ffont.cpp`, `stbfont.h` | Constructor example omits the provider; width encoding, bank layout, atlas dependency, and fallback behavior are insufficiently specified. | U3 documents FFont's deprecation and preserved legacy limitations, and STBFont's caller-supplied font-file contract. |
 | `math/bytes.h`, `math/string-numbers.h` | Unit boundaries, rounding, accepted syntax, full consumption, and failure behavior are not specified. | U3 gives a concise contract and examples. |
 | `core/resources/fileio/file-mgr.h/.cpp` | Header explains the independent index; source incorrectly mentions discovery “by the asset loader,” which now performs its own scan. Incremental indexing, missing roots, ordering, and borrowed lookup lifetime need clarity. | U15 documents current behavior; decide refresh support only if a consumer needs it. |
 | `core/resources/fileio/fonts-system.h`, `src/core/resources/fileio/fonts-list.cpp` | Public declarations lack skipped-root/error, preference, enumeration, and collection-face selection semantics. | U15 documents discovery versus default selection and checks what FontMgr actually supports. |
@@ -287,7 +287,7 @@ audits unless they merely describe an already established implementation.
 | Review entry | Classification | Scope and owning unit |
 | --- | --- | --- |
 | T1 singleton | Confirmed publication/access defect plus initialization contract audit | U1 implements synchronized publication, usable CTU construction, and explicit configuration. Legacy compatibility and Type operation ownership are stated rather than inferred. |
-| T2 FFont | Confirmed unchecked-read defect plus file-format contract audit | U3 must validate input before upload; format/endian/atlas decisions require authoritative legacy evidence. |
+| T2 FFont | Confirmed unchecked-read defect plus deprecated legacy facility | U3 repairs incomplete reads and marks FFont deprecated. Recovered widths do not restore the missing atlas; semantic format recovery is removed from required work. Existing interfaces and legacy behavior remain. |
 | T3 reflection diagnostics | Required consumer facility | Engine diagnostic consumers need records rather than direct stdout. Queries already exist; event delivery is a consumer choice in U6. |
 | T4/T6 byte handle release | Confirmed lifetime defect | U2a removes raw-facade dereferences; it does not close operation concurrency. |
 | T5 empty stats | Confirmed arithmetic defect | U3a reports an unavailable percentage for zero allocation. Shared-domain snapshot acceptance remains with U2b. |
@@ -437,20 +437,27 @@ cross-container races or throwing final deleters.
   necessary self-contained includes; add the deferred boundary cases with it.
 - [x] Define and implement empty stats and verify totals/utilization snapshots
   against the U2 concurrency contract. The zero-denominator repair is independent.
-- [ ] Identify the real FFont widths format, banks, atlas identity, byte order,
-  allowed width range, exact size/trailing-data rule, and read failure behavior.
+- [x] Resolve FFont's architectural purpose before extending its file format: the
+  owner confirms the original atlas is unavailable and chooses class deprecation.
+  Use STBFont for system or bundled font files; retain existing legacy interfaces.
 - [x] Open binary input-only and reject incomplete/failed reads before geometry/provider side effects.
-- [ ] Validate semantic widths/metadata after the authoritative legacy format boundary is resolved.
+- [x] Mark FFont deprecated, document preserved native-short/bank/atlas/trailing-data
+  limitations, and remove semantic format recovery from required implementation.
 - [x] Repair numeric-header guard/linkage defects; decide complete parse syntax and
   retain meaningful distinctions between invalid input and out-of-range values.
 - [x] Plan malformed/truncated font fixtures, zero upload on rejection, exact byte
   boundaries, and independent header/multiple-translation-unit numeric checks.
 
-**Acceptance:** Invalid files are rejected before upload, diagnostic output is
-finite/accurate, and numeric utilities have a usable explicit contract.
-**Discovery boundary:** If there is no authoritative legacy font format, document
-that dependency and defer encoding changes. Independent numeric/stats work can
-still complete. Commit these separate fixes independently.
+**Acceptance:** Incomplete/unreadable legacy widths are rejected before upload;
+FFont is deprecated with its existing behavior and interfaces preserved. Supplied
+font files use STBFont, diagnostic output is finite/accurate, and numeric utilities
+have a usable explicit contract. Deprecation does not claim semantic validation of
+arbitrary full-size legacy files.
+**Discovery boundary:** The recovered widths fixture cannot supply the unavailable
+atlas. Do not infer a portable encoding, universal width limits, or replacement
+artwork. Class removal and bank-interface migration require a separate decision;
+Unicode shaping and font selection/cache extensions retain their own boundaries.
+Commit these separate fixes independently.
 
 ### U4. Establish native callback and failure-reporting safety
 
@@ -893,9 +900,9 @@ The remaining implementation is ordered as follows:
    teardown. Different slots may progress concurrently; construction/destruction
    of the same slot is explicitly rejected, and user code executes outside the
    tracking lock. Backing owners retain the exact tracking context they use.
-3. U3: complete numeric inclusion/linkage and full-consumption contracts. Investigate
-   legacy FFont format history/fixtures before validating encoding; if authoritative
-   metadata is absent, preserve the encoding and stop at that format boundary.
+3. U3: complete numeric inclusion/linkage and full-consumption contracts. Preserve
+   legacy FFont encoding and reject incomplete reads. The subsequent owner decision
+   in U3d replaces further format recovery with class deprecation.
 4. U4: capture native resize callback failures and report them at normal platform
    operations, then make trace/exception reporting bounded and nonthrowing under
    allocation failure. Preserve the first runtime error and report distinct
@@ -1001,12 +1008,13 @@ empty, short, and one-byte-truncated source cases asserting zero uploads. Existi
 successful native fixture semantics are preserved, including ignored trailing data.
 No builds/tests were run.
 
-**Stopped at the U3 format boundary:** endian/portable integer representation,
-allowed widths, exact-size/trailing-data rules, and original atlas metadata need an
-authoritative fixture/writer or a chosen versioned replacement format. They were
+**Historical stop at the U3 format boundary, superseded by U3d:** endian/portable
+integer representation, allowed widths, exact-size/trailing-data rules, and original
+atlas metadata needed an authoritative fixture/writer or a chosen versioned replacement format. They were
 not inferred from the synthetic test. [legacy-ffont.md](../resources/legacy-ffont.md)
-records the evidence and remaining decision. The semantic-validation checklist
-stays open; independent U4 safety work can proceed without this decision.
+records the evidence. The later owner decision deprecates the class and removes
+semantic format recovery from required implementation; it does not validate the
+legacy encoding or reconstruct its missing artwork.
 
 ### U4a — deferred resize failures and emergency reporting contract
 
@@ -1097,9 +1105,9 @@ unchanged primary exception identity. Generated Cheryl errors expose their bound
 cause/location summary for emergency output instead of the trace prefix. The full
 contract is in [failure-reporting.md](../runtime/failure-reporting.md).
 
-**U1–U4 status:** U1, U2, and U4 source tasks are implemented; U3 numeric/diagnostic/read
-repairs are implemented, with semantic legacy font validation explicitly blocked on
-format evidence/choice. Checked boxes record source/planning completion, not executable
+**U1–U4 status:** U1, U2, U3, and U4 source/planning tasks are implemented. U3d resolves
+the legacy-font decision through deprecation; semantic format recovery is no longer
+required work. Checked boxes record source/planning completion, not executable
 acceptance. New regression sources have not been compiled or run. Required outstanding
 acceptance includes isolated allocation-failure/exhaustion cases, the empty shared byte
 domain case, multiple-translation-unit linkage, native callback/startup cases, and the
@@ -1110,3 +1118,37 @@ Discovered U5 follow-up: repeated distinct exceptions from a failing shutdown ma
 pump can emit repeated emergency records. Keep bounded emergency output independent of
 ordinary logging thresholds; decide aggregation/rate policy in the logging unit without
 silently discarding a new phase or cause.
+
+### U3d — deprecate FFont; preserve legacy interfaces
+
+The owner identified the original Bitbucket fontMetrics.dat, confirmed that its
+corresponding atlas is unavailable, and chose class deprecation. Retrieved the file
+at Bitbucket commit `5c28678cb0bc425bad51ff39d04e53cc104bb50f`: it is 512 bytes;
+interpreted as little-endian signed 16-bit widths, values range from 0 to 113.
+This recovers fixture evidence but cannot supply the atlas or establish universal
+format semantics. The source and checksum are recorded in
+[legacy-ffont.md](../resources/legacy-ffont.md).
+
+The coherent unit follows these tasks and boundaries:
+
+1. Establish the supported font path before changing legacy contracts. STBFont
+   already reads a caller-supplied font file and bakes its metrics/alpha atlas;
+   system-font discovery is optional, and bundled fonts use the same loader.
+2. Mark the class deprecated with a STBFont migration message. Preserve construction,
+   singleton initialization, resource/layout interfaces, typed bank selection,
+   native-short encoding, ignored trailing data, and complete-read rejection.
+3. Document the missing atlas and differences in advances, line height, draw scale,
+   and alternate-bank behavior. Close required format recovery through this explicit
+   scope decision; do not mark semantic validation as implemented.
+4. Retain regression sources and recorded historical acceptance. Statically inspect
+   the attribute, contract references, and diff; compilation/tests remain unexecuted.
+
+These tasks are implemented. Existing CMake flags suppress deprecated-declaration
+warnings for GNU/Clang; the public attribute lets consumer warning policies diagnose
+use. No warning-policy change is part of this unit. FFont remains usable with
+compatible caller-supplied metrics/artwork, and its runtime behavior is unchanged.
+
+**Discovery boundary:** Class removal and bank-interface migration need a separate
+decision. Collection-face selection, size-aware caching, and Unicode shaping remain
+with the font/resource consumer units; they do not require reconstructing FFont.
+All U1–U4 executable acceptance remains pending authorization.

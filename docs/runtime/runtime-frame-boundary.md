@@ -88,8 +88,10 @@ advances it using simulation time, and resolves animation.cell() before publishi
 The playback value aliases the shared definition without retaining GPU resources.
 Cached sprite/tileset assets have no mutable selected cell. Graphic/Tile/Font
 immediate drawing and DrawInfo/iDraw/Draw2D are retired; submission helpers select
-ranges and const Font layout supplies glyph placements. FFont's alternate bank is
-a typed option without stored print state or unchecked formatting pointers.
+ranges and const Font layout supplies glyph placements. Deprecated FFont retains
+its typed alternate-bank option without stored print state or unchecked formatting
+pointers. New fonts use STBFont with a supplied font file; see
+[FFont deprecation](../resources/legacy-ffont.md).
 
 OpenGLRenderer consumes authored packet order, checks its native pipeline domain,
 and applies complete validated pipeline state/parameters/geometry for every draw.

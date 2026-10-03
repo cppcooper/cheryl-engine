@@ -29,7 +29,7 @@ individual systems, development practices, and unfinished work.
 
 - [Resource residency and maintenance](resources/resource-residency.md)
 - [Resource lifetime and reservation](resources/resource-lifetime.md)
-- [Legacy FFont input boundary](resources/legacy-ffont.md)
+- [FFont deprecation and font-file migration](resources/legacy-ffont.md)
 
 ## Development
 

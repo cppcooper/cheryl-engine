@@ -147,14 +147,15 @@ DrawPacket2D retains geometry, an immutable material generation, and copied reso
 parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
 and laid-out font glyphs before rendering, without binding native resources.
 ImageParameter2D selects a public sampler key and unit explicitly. Text layout is
-const and returns glyph placements; FFont bank selection is typed. Resolved glyph
-packets retain the geometry/atlas even after the Font object is released.
+const and returns glyph placements; deprecated FFont bank selection remains typed.
+Resolved glyph packets retain the geometry/atlas even after the Font object is released.
 RenderPassWriter validates individual packets or a whole glyph group before publication
 and assigns stable authored order. RenderFrame keeps reusable vector capacity and
 releases packet/pass handles on recycle. The OpenGL renderer checks its native
 pipeline domain, then calls the validated fixed-state draw path in authored order.
 Graphic/Tile/TileAnimation and text drawing use CPU submission helpers.
-Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. FFont
-keeps immutable width metrics and typed normal/alternate-bank layout; callers place
-and rotate text through DrawStyle2D.model_matrix. ASCII fallback is explicit, with
-no font shaping or FFont loading expansion.
+Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
+FFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
+place and rotate text through DrawStyle2D.model_matrix. New fonts use STBFont with
+a supplied system or bundled font file. ASCII fallback is explicit; Unicode shaping
+remains separate. See [FFont deprecation](../resources/legacy-ffont.md).

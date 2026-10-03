@@ -13,10 +13,11 @@ source changes remain distinct from unexecuted acceptance checks.
 
 ## Resource and utility fixes
 
-- Resolve FFont's legacy encoding, width bounds, atlas identity, and trailing-data
-  contract from an authoritative fixture/writer. Binary input and complete-read
-  rejection now precede upload; semantic validation remains at
-  [the legacy format boundary](../resources/legacy-ffont.md).
+FFont is deprecated in favor of STBFont with a system or bundled font file. The
+original atlas is unavailable, so recovering the legacy widths format is no longer
+required work. Existing interfaces and complete-read rejection remain; see
+[the deprecation decision](../resources/legacy-ffont.md).
+
 - Complete the event-reporting part of shader diagnostics. Structured uniform/
   attribute reflection queries already exist; the printing APIs still write their
   results to standard output. See

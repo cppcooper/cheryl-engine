@@ -38,10 +38,12 @@ its own context is current. Actual-context checks also apply to uploads and draw
 operations. Runtime architecture and application APIs are described in
 [runtime-architecture.md](../runtime/runtime-architecture.md).
 
-## FFont layout contract
+## Legacy FFont layout contract
 
-FFont exposes const CPU layout with typed bank selection. Text placement and
-rotation belong to the submission's model instead of mutable font print state.
+FFont is deprecated in favor of STBFont with a supplied font file. Its existing
+const CPU layout and typed bank selection remain available to legacy consumers.
+Text placement and rotation belong to the submission's model instead of mutable
+font print state.
 
 | Behavior | Contract |
 | --- | --- |
@@ -55,6 +57,8 @@ rotation belong to the submission's model instead of mutable font print state.
 Recording submission cases cover banks/widths, whitespace/fallback, and transformed
 multiline layout; real native cases also check retained FFont packets and atlas rows.
 See [architecture-validation.md](../development/architecture-validation.md) for those scopes.
-FFont semantic format validation remains at [the legacy input boundary](../resources/legacy-ffont.md).
+Those fixtures use synthetic metrics/artwork; they do not recover the original
+font's unavailable atlas. The [deprecation and migration decision](../resources/legacy-ffont.md)
+closes the required semantic format recovery work.
 Unicode shaping remains unfinished in
 [todo.md](../planning/todo.md).

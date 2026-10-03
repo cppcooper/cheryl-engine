@@ -17,8 +17,12 @@ namespace CE::Assets {
     constexpr uint16_t num_chars_ffont = 256;
     using FFontData = std::tuple<std::array<float, num_chars_ffont>, std::shared_ptr<Geometry2D>, std::shared_ptr<Image>>;
 
-    struct FFont final : Font,
-                         Singleton_CTS<FFont> {
+    /** Deprecated legacy bitmap font with native-short widths and a separate
+     * whitefont.png atlas. The original atlas is unavailable; use STBFont to
+     * bake metrics and an atlas from a system or bundled font file.
+     */
+    struct [[deprecated("Use STBFont with a system or bundled font file.")]] FFont final : Font,
+                                                                                            Singleton_CTS<FFont> {
     private:
         const std::array<float, num_chars_ffont> widths;
 
@@ -32,7 +36,8 @@ namespace CE::Assets {
         layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
         /** Read 256 native shorts from a binary input file before any provider upload.
          * Incomplete reads fail; legacy trailing bytes are ignored. Metadata/endian
-         * validation remains at the format boundary in docs/resources/legacy-ffont.md.
+         * semantics remain unverified; see docs/resources/legacy-ffont.md for
+         * the deprecation decision and preserved legacy behavior.
          */
         static FFontData load_ffont(const std::filesystem::path& path, ResourceProvider& provider);
     };

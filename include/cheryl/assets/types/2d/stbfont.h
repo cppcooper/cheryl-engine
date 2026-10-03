@@ -39,6 +39,10 @@ namespace CE::Assets {
         ~STBFont() override = default;
         [[nodiscard]] std::vector<GlyphPlacement2D>
         layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
+        /** Bake printable ASCII from a caller-supplied font file at a positive
+         * font_size. System discovery is optional; bundled fonts use this same
+         * path. The first face is selected when the file contains a collection.
+         */
         [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size, ResourceProvider& provider);
 
         [[nodiscard]] const Geometry2D& glyph_geometry() const { return *geometry; }

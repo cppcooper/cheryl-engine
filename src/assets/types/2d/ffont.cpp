@@ -47,9 +47,9 @@ namespace CE::Assets {
             throw Exceptions::failed_operation(CE_HERE,
                 std::format("Cannot open file '{}'", path));
         }
-        // TODO: Confirm legacy metadata (byte order, width bounds, atlas identity,
-        // and trailing-data policy) from an authoritative asset or writer.
-        // Preserve the historical native-short encoding until that boundary is resolved.
+        // This deprecated loader preserves native-short encoding and ignored
+        // trailing data. The original atlas is unavailable; semantic format
+        // recovery is no longer required work (docs/resources/legacy-ffont.md).
         std::array<short, num_chars_ffont> buffer{};
         constexpr auto byte_count = static_cast<std::streamsize>(sizeof(buffer));
         file.read(reinterpret_cast<char*>(buffer.data()), byte_count);
