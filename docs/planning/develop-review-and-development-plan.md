@@ -433,15 +433,15 @@ cross-container races or throwing final deleters.
 
 ### U3. Complete independent file and numeric correctness units — T2, T5, T13
 
-- [ ] Fix human_readable boundaries, TiB-and-larger suffix order, zero/rounding, and
+- [x] Fix human_readable boundaries, TiB-and-larger suffix order, zero/rounding, and
   necessary self-contained includes; add the deferred boundary cases with it.
-- [ ] Define and implement empty stats and verify totals/utilization snapshots
+- [x] Define and implement empty stats and verify totals/utilization snapshots
   against the U2 concurrency contract. The zero-denominator repair is independent.
 - [ ] Identify the real FFont widths format, banks, atlas identity, byte order,
   allowed width range, exact size/trailing-data rule, and read failure behavior.
 - [ ] Validate all widths before geometry/provider side effects; use binary,
   input-only opening and an explicit full-read check.
-- [ ] Repair numeric-header guard/linkage defects; decide complete parse syntax and
+- [x] Repair numeric-header guard/linkage defects; decide complete parse syntax and
   retain meaningful distinctions between invalid input and out-of-range values.
 - [ ] Plan malformed/truncated font fixtures, zero upload on rejection, exact byte
   boundaries, and independent header/multiple-translation-unit numeric checks.
@@ -966,3 +966,22 @@ allocation-failure injection, executable concurrency, and sanitizer acceptance a
 still unexecuted. Static diff/call-site review was performed; builds/tests were not
 authorized. The installed formatter cannot read the repository's clang-format 23+
 configuration, so changed code was matched to the existing style manually.
+
+### U3b — complete-token numeric parsing and header linkage
+
+Removed the unmatched numeric-header endif and made parse_floats inline. Integer
+and floating parsers now require full consumption, including rejection of trailing
+space/data and embedded NULs. Syntax errors remain invalid_args; representability
+errors are bad_request, including integer overflow previously folded into syntax.
+
+Preserved parser selection and useful existing syntax rather than introducing a
+new grammar: integer input is base-10 from_chars, with no leading whitespace/plus
+and a minus only for signed parsing. Floating input follows stod's leading-space,
+sign, locale, and special-value rules, but rejects any unconsumed suffix. Automatic
+selection still chooses floating parsing only for a '.', 'e', or 'E' marker; it
+does not add base detection or special-value classification. The in-file contract
+states those differences.
+
+Added independent first-include numeric regression sources, a second translation
+unit for linkage, width/range boundaries, and malformed complete-token cases.
+Static checks only; compilation, linkage execution, and tests remain unexecuted.

@@ -7,13 +7,23 @@
 #include <string>
 #include <internals/exceptions.h>
 
-// Helper function to parse floating point numbers
-double parse_floats(const std::string& str) {
+/**
+ * Parse a complete token. Floating syntax follows stod (including leading space,
+ * a sign, and the current C locale); trailing data/space and embedded NULs fail.
+ * Integer syntax is base-10 from_chars: no leading space or plus, with a minus
+ * only for signed parsing. Invalid syntax throws invalid_args; a numeric value
+ * outside the selected parser's range throws bad_request.
+ */
+inline double parse_floats(const std::string& str) {
     try {
-        return std::stod(str);
-    } catch (const std::invalid_argument& e) {
+        std::size_t consumed = 0;
+        const auto value = std::stod(str, &consumed);
+        if (consumed != str.size())
+            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
+        return value;
+    } catch (const std::invalid_argument&) {
         throw CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
-    } catch (const std::out_of_range& e) {
+    } catch (const std::out_of_range&) {
         throw CE::Exceptions::bad_request(CE_HERE, "Floating point number out of range.");
     }
 }
@@ -25,6 +35,10 @@ template <bool is_unsigned> NumberVariant parse_integers(const std::string& str)
     if constexpr (is_unsigned) {
         uint64_t value;
         auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+        if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+        if (result.ec == std::errc::result_out_of_range)
+            throw CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
         if (result.ec != std::errc())
             throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
@@ -38,6 +52,10 @@ template <bool is_unsigned> NumberVariant parse_integers(const std::string& str)
     } else {
         int64_t value;
         auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+        if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
+            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+        if (result.ec == std::errc::result_out_of_range)
+            throw CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
         if (result.ec != std::errc())
             throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
@@ -52,7 +70,9 @@ template <bool is_unsigned> NumberVariant parse_integers(const std::string& str)
 }
 
 template <bool is_unsigned> NumberVariant string_to_number(const std::string& str) {
-    // Check if it's a floating-point number
+    // Preserve legacy selection: '.', 'e', or 'E' chooses the floating parser;
+    // otherwise use the requested signed/unsigned integer parser. This does not
+    // auto-detect bases or special floating values without those markers.
     if (str.find('.') != std::string::npos || str.find('e') != std::string::npos || str.find('E') != std::string::npos) {
         return parse_floats(str); // Always return double for floating point numbers
     } else {
@@ -60,5 +80,3 @@ template <bool is_unsigned> NumberVariant string_to_number(const std::string& st
         return parse_integers<is_unsigned>(str);
     }
 }
-
-#endif //STRING_NUMBERS_H
