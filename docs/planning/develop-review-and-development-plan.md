@@ -527,15 +527,15 @@ not permission to refactor unrelated scheduling or resource interfaces.
 
 ### U7. Make the engine target consumable
 
-- [ ] Audit public/private dependency and include propagation for normal/sandbox
+- [x] Audit public/private dependency and include propagation for normal/sandbox
   configurations. Determine which native libraries are platform-specific.
-- [ ] Express dependency requirements on the library target; add a stable consumer
+- [x] Express dependency requirements on the library target; add a stable consumer
   target name and choose install/export/package scope.
-- [ ] Add a future independent consumer that links the actual library rather than
+- [x] Add an independent consumer that links the actual library rather than
   recompiling its sources; plan header self-containment checks.
-- [ ] Review signal/trace bootstrap ownership in src/main.cpp and static-library
+- [x] Review signal/trace bootstrap ownership in src/main.cpp and static-library
   inclusion behavior; opt-in tooling should not depend on incidental linkage.
-- [ ] Keep optional backend/input/UI dependencies separate where the selected
+- [x] Keep optional backend/input/UI dependencies separate where the selected
   packaging boundary requires it.
 
 **Acceptance:** A minimal downstream application can consume the declared engine
@@ -1566,3 +1566,25 @@ and completed close before changing the threshold. No production delivery/filter
 guarantee is strengthened to accommodate either assumption. The profile runner
 uses a focused cheryl-logging-tests target linked to the actual engine, including
 the first-include policy source, rather than rebuilding unrelated test sources.
+
+### U7 — build-tree consumer and explicit bootstrap
+
+Selected build-tree composition, documented in
+[consuming-engine.md](../development/consuming-engine.md). Cheryl::Engine carries
+C++23, public headers, logging policy, and public/private dependency requirements.
+Tests now link the actual archive instead of recompiling engine sources. GoogleTest
+and demo targets are optional; Gainput/X11 remain normal-build requirements. Generic
+entry points remain distinct from explicit native/umbrella headers. An installed
+find_package distribution and unsupported platform combinations remain later work.
+
+The archive excludes src/main.cpp. Cheryl::SignalHandlers explicitly owns the
+legacy process bootstrap; only the demo opts in. Backward::Interface supplies stack
+capture/resolver requirements without automatically linking a signal-handler object.
+
+**Acceptance:** Independent Release consumer configure/build and execution passed
+in sandbox and normal Linux/X11 configurations on GCC 16.2.1/CMake 4.4.3. The
+consumer links only Cheryl::Engine across multiple translation units and compiles
+ten sandbox/eleven normal first-include header probes, including the native input
+entry point in normal mode. Generic translation units reject GL/GLFW header leakage.
+Configuration used CMAKE_POLICY_VERSION_MINIMUM=3.5 for pinned legacy dependencies;
+no vendor policy upgrade was made. Diff and local documentation-link checks passed.

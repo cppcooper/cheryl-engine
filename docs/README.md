@@ -36,6 +36,8 @@ individual systems, development practices, and unfinished work.
 
 - [C++ code style](development/code-style.md)
 - [Recorded validation and repeatable commands](development/architecture-validation.md)
+- [Logging acceptance](development/logging-acceptance.md)
+- [Consuming the engine](development/consuming-engine.md)
 - [Desktop smoke checks](development/native-desktop-checks.md)
 
 ## Planning
