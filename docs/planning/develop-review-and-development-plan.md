@@ -1289,3 +1289,100 @@ no compiler/configuration probes, builds, or tests were run.
 
 **Boundary:** Queue overflow remains blocking. Saturation and backend callback/sink
 failure policy must be settled before U6 adds ordinary logging to engine boundaries.
+
+### Remaining U5 work — queue behavior and backend containment
+
+The unattended session stops at this design boundary. U5a/U5b/U5c1 are committed
+source units, with static checks recorded; U5 and its executable acceptance are
+not complete. Broad U6 integration has not started. The owner has been asked whether
+a saturated ordinary-log queue should wait or discard with observable loss.
+
+**Proposed default, pending the owner's response:** Keep ordinary submission bounded
+without waiting for queue capacity, count discarded diagnostics, and publish aggregate
+loss summaries outside subsystem locks. Required terminal/cleanup failures retain
+U4's independent emergency report, even when ordinary logs are filtered or lost.
+This permits loss of ordinary ERROR records as well as lower severities; required
+failure reporting must be identified by its ownership contract, not inferred from
+a severity label. Nonblocking submission is not a promise of allocation-free or
+lock-free formatting, acquisition, or queue access.
+
+The source audit exposed the following implementation constraints:
+
+- [file_helper.cpp](../../extern/spdlog/src/details/file_helper.cpp) invokes close
+  handlers directly from close and destruction. A throwing before_close can prevent
+  the physical close; a throwing after_close can prevent Cheryl's completion callback.
+  These handlers need a nonthrowing boundary before destruction can be relied on.
+- [logger.h](../../extern/spdlog/include/spdlog/logger.h) reports and rethrows unknown
+  exceptions, including from async sink work. The bundled
+  [worker loop](../../extern/spdlog/src/details/thread_pool.cpp) has no enclosing
+  catch, so a non-standard sink/formatter/rotation-handler exception can escape
+  its thread. A caller-side logging guard cannot contain that backend failure.
+- Sink should_log/set_level are nonvirtual in
+  [sink.h](../../extern/spdlog/include/spdlog/sinks/sink.h). A forwarding sink that
+  always admits TRACE would invalidate U5a's actual-destination probe unless the
+  owned graph/probe explicitly consults the delegate's current gate. Preserve
+  independent destination levels and close/reopen restoration.
+- A failed rotation can leave a closed file, for which file_helper::write returns
+  without reporting. Catching an exception alone is insufficient: subsequent
+  diagnostic loss needs an observable degraded state and a defined recovery boundary.
+- [Async flush](../../extern/spdlog/src/async_logger.cpp) uses the same overflow policy
+  as records. Changing that policy can discard flush requests too. Submission,
+  completion, and physical durability must be specified separately.
+- Backend callbacks can recursively submit through any category's shared queue or
+  wait for their own sink completion. Blocking submission can deadlock the worker;
+  lifecycle reentry can deadlock independently of saturation. Emergency reporting
+  must not reenter the failed ordinary logger.
+
+Continue in the following coherent units; each unit includes its contract/source
+updates and its own commit. Execution remains subject to the existing authorization
+restriction, and unexecuted cases do not establish acceptance.
+
+1. **U5c2: settle submission and completion contracts before changing overflow.**
+   Record the owner's saturation choice, which failures require independent reporting,
+   and whether ordinary flush is only a best-effort queued request. Preserve strong
+   close for accepted/retained owners; do not claim successful I/O or fsync durability
+   from ownership completion. Determine the scope and lifetime of counters: the
+   current pool is shared across categories, so its discard count is not a per-logger
+   count. **Discovery boundary:** A requirement for guaranteed flush acknowledgement,
+   per-category delivery guarantees, or independent queues requires a separate
+   completion/queue design before changing the submission path.
+2. **U5c3: contain owned backend and callback failures.** Wrap close handlers so each
+   failure reports independently and completion can still run. Preserve the original
+   startup failure when construction fails. Contain all exceptions from owned sink
+   log/flush operations after delegate locks unwind, with bounded emergency reporting
+   and visible failure counters. Define degraded-generation behavior and explicit
+   close/reopen recovery, keeping the retained-file completion boundary. Preserve
+   actual delegate filtering before argument preparation and level restoration.
+   **Discovery boundary:** If a guard cannot preserve public sink ownership and
+   filtering contracts, settle the owned graph/interface change before adding logs.
+   Adding a strong pool reference to queued loggers/sinks is not a valid repair.
+3. **U5c4: enforce reentrancy boundaries and apply the chosen queue policy.** Detect
+   backend recursive emission across the shared categories; suppress/count it through
+   a nonrecursive reporting path. Reject forbidden close/wait/initialization reentry
+   before acquiring lifecycle locks or recursively entering singleton initialization.
+   Apply the chosen overflow behavior only after those boundaries exist. Expose a
+   copied statistics snapshot and bounded loss/degradation summaries outside locks,
+   including final shutdown accounting. **Discovery boundary:** A native-owner bypass
+   or callback cycle that cannot be guarded without changing the public contract must
+   be resolved before claiming deadlock containment or beginning U6.
+4. **U5c5: establish acceptance before dependent integration.** Prepare deterministic
+   cases for a held backend/full queue, discard counts and surviving record order,
+   flush loss/completion, standard and non-standard sink/formatter/handler failures,
+   callback reentry, failed startup retry, degraded close/reopen, retained owners,
+   and final/static teardown. Use isolated processes for fatal-path/fault-injection
+   cases. Run the compile-profile/disabled-argument matrix and relevant concurrency
+   checks only when authorized. **Discovery boundary:** Failures revise the affected
+   contract/unit before subsystem integration; throughput measurements cannot replace
+   correctness acceptance.
+5. **U6 first slice after those gates:** Use existing categories with operation/phase
+   and outcome fields at runtime/native ownership boundaries. Audit primary-error
+   ownership before each call site so future consumers do not receive duplicate
+   diagnostics. Add shader reflection records from existing query data, then inspect
+   normal-session noise before worker/event/resource integration. Stable correlation
+   IDs and aggregate metrics are explicit prerequisites where needed, rather than
+   reasons to repurpose the wrapping 16-bit log_id or log inside subsystem locks.
+
+Console-only/custom destinations and multi-worker configuration remain separate
+discovery units. Neither is required to add safe diagnostics to the currently
+supported file-backed logger. The original U7–U15 order remains in place; independent
+work should be selected only after checking its prerequisites and shared-tree state.

@@ -115,6 +115,13 @@ the pool, which can create a queue-owner cycle and final destruction on a worker
 
 The queue is still blocking. Saturation/drop policy and backend failure containment
 are the following U5 unit; broad subsystem integration remains gated on them.
+The remaining contract and ordered tasks are recorded in the
+[development plan](../planning/develop-review-and-development-plan.md#remaining-u5-work--queue-behavior-and-backend-containment).
+Current caller-side guards do not contain every async backend exception: the bundled
+worker can rethrow a non-standard sink exception, and file-close handlers can throw
+during destruction. Callback containment and an observable degraded-file state are
+required remaining work. Async flush is a queued request subject to the same overflow
+policy as records; it does not acknowledge physical durability.
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
 External native owners must not continue producing after facade teardown.
