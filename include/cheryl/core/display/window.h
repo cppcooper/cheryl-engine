@@ -3,13 +3,29 @@
 #include "window-interface.h"
 
 #include <string>
+#include <exception>
 
 class GLFWwindow;
 class GLFWmonitor;
 
 namespace CE {
-    // Owns a GLFW window and its logical and framebuffer dimensions.
+    /** Owns a GLFW window and its logical/framebuffer dimensions on the platform
+     * thread. Native callbacks retain their first failure; normal polling and
+     * explicit resize/mode boundaries consume it through check_native_failure().
+     */
     class Window final : public iWindow {
+        ViewPort<int> logical_size_;
+        FramebufferSize framebuffer_size_{};
+        Enum::window_mode window_mode_;
+        Monitor monitor_;
+        GLFWmonitor* glfw_monitor_;
+        GLFWwindow* glfw_window_;
+        int windowed_x_ = 0;
+        int windowed_y_ = 0;
+        int windowed_width_;
+        int windowed_height_;
+        mutable std::exception_ptr native_failure_;
+
     public:
         ~Window() override;
         Window(const Window&) = delete;
@@ -22,6 +38,7 @@ namespace CE {
         [[nodiscard]] FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
         [[nodiscard]] Enum::window_mode mode() const override { return window_mode_; }
         [[nodiscard]] bool should_close() const override;
+        void check_native_failure() const override;
 
         void resize(int width, int height) override;
         void set_mode(Enum::window_mode mode) override;
@@ -38,19 +55,9 @@ namespace CE {
             const std::string& title
         );
 
-        static void on_window_size(GLFWwindow* window, int width, int height);
-        static void on_framebuffer_size(GLFWwindow* window, int width, int height);
+        static void on_window_size(GLFWwindow* window, int width, int height) noexcept;
+        static void on_framebuffer_size(GLFWwindow* window, int width, int height) noexcept;
         void update_framebuffer_size(int width, int height);
 
-        ViewPort<int> logical_size_;
-        FramebufferSize framebuffer_size_{};
-        Enum::window_mode window_mode_;
-        Monitor monitor_;
-        GLFWmonitor* glfw_monitor_;
-        GLFWwindow* glfw_window_;
-        int windowed_x_ = 0;
-        int windowed_y_ = 0;
-        int windowed_width_;
-        int windowed_height_;
     };
 }

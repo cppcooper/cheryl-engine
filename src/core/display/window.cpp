@@ -2,6 +2,7 @@
 
 #include <core/subsystems/event-system.h>
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
@@ -9,6 +10,7 @@
 #include <GLFW/glfw3.h>
 #include <random>
 #include <string>
+#include <utility>
 
 namespace {
     const char* generate_title();
@@ -48,9 +50,11 @@ namespace CE {
         glfwSetWindowSizeCallback(glfw_window_, nullptr);
         glfwSetWindowUserPointer(glfw_window_, nullptr);
         glfwDestroyWindow(glfw_window_);
+        if (native_failure_)
+            Diagnostics::report_failure("window destruction with an unconsumed callback failure", native_failure_);
     }
 
-    void Window::on_window_size(GLFWwindow* handle, const int width, const int height) {
+    void Window::on_window_size(GLFWwindow* handle, const int width, const int height) noexcept {
         auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
         if (!window)
             return;
@@ -61,10 +65,26 @@ namespace CE {
         }
     }
 
-    void Window::on_framebuffer_size(GLFWwindow* handle, const int width, const int height) {
+    void Window::on_framebuffer_size(GLFWwindow* handle, const int width, const int height) noexcept {
         auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
-        if (window)
+        if (!window)
+            return;
+        if (window->native_failure_) {
+            // Keep the latest dimensions but suppress further listener work until
+            // the platform owner consumes the first failure.
+            window->framebuffer_size_ = {width, height};
+            return;
+        }
+        try {
             window->update_framebuffer_size(width, height);
+        } catch (...) {
+            window->native_failure_ = std::current_exception();
+        }
+    }
+
+    void Window::check_native_failure() const {
+        if (native_failure_)
+            std::rethrow_exception(std::exchange(native_failure_, {}));
     }
 
     void Window::update_framebuffer_size(const int width, const int height) {
@@ -76,6 +96,7 @@ namespace CE {
     }
 
     void Window::resize(const int width, const int height) {
+        check_native_failure();
         if (width <= 0 || height <= 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         glfwSetWindowSize(glfw_window_, width, height);
@@ -90,10 +111,12 @@ namespace CE {
         int framebuffer_height = 0;
         // A logical resize can yield a different pixel size on scaled displays.
         glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
+        check_native_failure();
         update_framebuffer_size(framebuffer_width, framebuffer_height);
     }
 
     void Window::set_mode(const Enum::window_mode mode) {
+        check_native_failure();
         if (window_mode_ == mode)
             return;
         if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS && mode != Enum::window_mode::FULLSCREEN)
@@ -130,6 +153,7 @@ namespace CE {
         int framebuffer_width = 0;
         int framebuffer_height = 0;
         glfwGetFramebufferSize(glfw_window_, &framebuffer_width, &framebuffer_height);
+        check_native_failure();
         update_framebuffer_size(framebuffer_width, framebuffer_height);
     }
 
@@ -138,6 +162,7 @@ namespace CE {
     }
 
     bool Window::should_close() const {
+        check_native_failure();
         return glfwWindowShouldClose(glfw_window_) == GLFW_TRUE;
     }
 }

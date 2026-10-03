@@ -1007,3 +1007,30 @@ authoritative fixture/writer or a chosen versioned replacement format. They were
 not inferred from the synthetic test. [legacy-ffont.md](../resources/legacy-ffont.md)
 records the evidence and remaining decision. The semantic-validation checklist
 stays open; independent U4 safety work can proceed without this decision.
+
+### U4a — deferred resize failures and emergency reporting contract
+
+Added iWindow::check_native_failure() as a platform-owner boundary with a default
+no-op for adapters without throwing native callbacks. GLFW window callbacks are
+noexcept and retain the first resize failure, including allocation/dispatch errors.
+Pending failure suppresses further listener work while dimensions continue to track
+native updates. The check consumes/rethrows through ordinary C++ calls: GLFW input
+update before publication, runtime after any input adapter pumps, should_close, and
+explicit resize/mode entry and completion. Window destruction reports an unconsumed
+failure without throwing. The new virtual boundary changes the window ABI; existing
+source adapters retain default behavior, and consumers must rebuild together.
+
+Introduced logger-independent emergency report/preserve helpers. They use a bounded
+1024-byte stack record and C stdio, with no C++ allocation, formatter, symbolizer,
+listener callbacks, or logger initialization. Output is best effort; truncation or
+I/O failure cannot replace the original exception. Reporting belongs outside locks.
+This is the fallback contract U5 can use for logger/destructor/allocation failures;
+it does not promise reliable delivery under process termination or a broken stderr.
+Input destruction now reports its caught cleanup exception instead of discarding it.
+
+Added a native source case invoking the actual registered resize callback with a
+throwing listener, checking first-failure retention, size updates, consume-once,
+explicit resize, and input-update reporting. Existing callback registration is
+restored and the persistent event registration is removed at scope exit. No native
+execution, builds, or tests were run. Exception/trace formatting and runtime secondary
+cleanup reporting remain the next U4 units.

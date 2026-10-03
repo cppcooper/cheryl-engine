@@ -120,6 +120,7 @@ namespace CE::GFramework {
                 // still applies. A delayed poll never delays simulation or rendering.
                 if (backlog.poll_due(Input::InputClock::now())) {
                     input.poll();
+                    window.check_native_failure();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
                     backlog.complete(input.poll_snapshot(), Input::InputClock::now());
@@ -379,6 +380,7 @@ namespace CE::GFramework {
 
                 if (poll_due) {
                     input.poll();
+                    window.check_native_failure();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
                     auto completed = input.poll_snapshot();

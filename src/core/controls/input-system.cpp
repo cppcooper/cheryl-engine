@@ -3,6 +3,7 @@
 #include <core/controls/glfw-bindings.h>
 #include <core/display/window.h>
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #include <gainput/GainputInputDeltaState.h>
 
@@ -173,7 +174,9 @@ namespace CE::Input {
         // finish detachment without allowing a publication failure to escape.
         try {
             deinitialize();
-        } catch (...) {}
+        } catch (...) {
+            Diagnostics::report_failure("input destruction", std::current_exception());
+        }
     }
 
     void InputSystem::initialize(iWindow& window) {
@@ -224,6 +227,7 @@ namespace CE::Input {
     void InputSystem::update() {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
+        window_->check_native_failure();
         if (callback_failure_)
             std::rethrow_exception(std::exchange(callback_failure_, {}));
         const auto size = window_->logical_size();

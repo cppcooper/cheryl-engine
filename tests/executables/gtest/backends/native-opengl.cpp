@@ -19,6 +19,7 @@
 #include <core/rendering/render-frame.h>
 #include <core/resources/asset-management/material-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
+#include <core/subsystems/event-system.h>
 #include <ext/matrix_clip_space.hpp>
 #include <internals/exceptions.h>
 
@@ -1394,5 +1395,50 @@ TEST(native_opengl, x11_input_recovery) {
     }
 }
 #endif
+
+namespace {
+    struct ResizeRegistration {
+        CE::SubSystems::EventSystem& events;
+        CE::SubSystems::EventSystem::Registration registration;
+        ~ResizeRegistration() { events.unregister_listener(registration); }
+    };
+}
+
+TEST(native_opengl, resize_callback_failure) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto* handle = window.native_handle();
+    const auto size = window.framebuffer_size();
+    auto& events = CE::SubSystems::EventSystem::get();
+    int calls = 0;
+    ResizeRegistration listener{events, events.register_listener("window-resized", [&](std::any) {
+                                    ++calls;
+                                    throw std::runtime_error("resize listener failed");
+                                })};
+    // Invoke the actual registered C callback deterministically, without asking
+    // the window manager to deliver a resize at a particular point in the test.
+    const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
+    glfwSetFramebufferSizeCallback(handle, callback);
+    ASSERT_NE(callback, nullptr);
+    EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
+    EXPECT_NO_THROW(callback(handle, size.width + 2, size.height + 2));
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(window.framebuffer_size(), (CE::FramebufferSize{size.width + 2, size.height + 2}));
+    EXPECT_THROW(window.check_native_failure(), std::runtime_error);
+    EXPECT_NO_THROW(window.check_native_failure());
+
+    EXPECT_NO_THROW(callback(handle, size.width + 3, size.height + 3));
+    EXPECT_THROW(window.resize(96, 80), std::runtime_error);
+    EXPECT_NO_THROW(window.check_native_failure());
+
+    engine->input().initialize(window);
+    EXPECT_NO_THROW(callback(handle, size.width + 4, size.height + 4));
+    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    EXPECT_THROW(input.update(), std::runtime_error);
+    EXPECT_NO_THROW(window.check_native_failure());
+    input.deinitialize();
+}
 
 #endif
