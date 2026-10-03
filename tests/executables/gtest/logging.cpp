@@ -642,7 +642,9 @@ TEST(logging, backend_reentry) {
         reject([&] { log.close(close_timeout); });
         reject([&] { log.flush(); });
         reject([&] { spdlog::get(reentry_target_name)->flush(); });
-        reject([&] { spdlog::get(reentry_name)->set_pattern("%v"); });
+        // The main thread can already have dropped this callback's own registry
+        // entry during close. The target stays open until the callback completes.
+        reject([&] { spdlog::get(reentry_target_name)->set_pattern("%v"); });
         reject([&] { (void)Logger<untouched_name>::get(); });
     };
     {
@@ -907,6 +909,10 @@ TEST(logging, config_reopen) {
     EXPECT_EQ(log.get_file_path(), expected_path);
     log.set_pattern("%v");
     log.info("configured-message");
+    // Async filtering happens on the backend too. Settle this record before
+    // raising its destination threshold; flush submission is not acknowledgement.
+    log.close();
+    log.reopen();
     log.set_level_filesink(spdlog::level::err);
     log.close();
     {

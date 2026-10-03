@@ -1557,3 +1557,12 @@ The first sandbox developer-profile build on GCC 16.2.1/CMake 4.4.3 exposed a U3
 legacy error message passing filesystem::path directly to C++23 std::format.
 C++23 has no standard path formatter. Format its string representation instead;
 this is a required compilation prerequisite, not legacy-format redesign.
+
+Focused execution found two acceptance-fixture lifetime assumptions: a callback
+looked up its own native registry entry after concurrent close had dropped it,
+and a configuration case raised its async destination threshold before its earlier
+INFO record completed. The fixtures now use a separately retained/open category
+and completed close before changing the threshold. No production delivery/filter
+guarantee is strengthened to accommodate either assumption. The profile runner
+uses a focused cheryl-logging-tests target linked to the actual engine, including
+the first-include policy source, rather than rebuilding unrelated test sources.
