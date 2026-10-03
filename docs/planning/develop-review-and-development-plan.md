@@ -482,7 +482,7 @@ that an explicit contract decision before broad call-site changes.
 
 Prerequisites: U1 initialization contract and U4 fallback contract.
 
-- [ ] Choose category representation, initialization owner, logical correlation IDs,
+- [x] Choose category representation, initialization owner, logical correlation IDs,
   supported destination configuration, and file/rotation defaults.
 - [x] Replace unconditional/global include-order masks with target-consistent
   profiles; apply gating to formatted and streaming calls, including expensive args.
@@ -1614,3 +1614,43 @@ provider guards, retained generations, and cancellation/shutdown. Public header
 compilation also passed as part of the independent normal/sandbox U7 consumers.
 Diff and local documentation-link checks passed. These results establish the
 selected existing contract, not native GPU budgets or unimplemented reload features.
+
+### U5 executable gate and U6 implementation boundaries
+
+All ten normal/sandbox rows passed: developer, support, release, release with
+0x07, and explicit off. Each row runs logging.* and seven isolated process cases
+with timeouts, record-order/file assertions, saturation loss checks, retained-owner
+completion, fatal ownership rejection, and static teardown. The developer row
+contains 29 passing regressions; stripped profiles retain their conditional checks
+and explicit saturation cases. U5's executable gate is satisfied. A supplementary
+Debug ASan/UBSan run is in progress; it is recorded separately from this matrix.
+
+Use existing compile-time string categories and host-configurable lazy/explicit
+Logger ownership. U6 adds process-local monotonic numeric domain IDs (never raw
+addresses), operation/phase/outcome fields, and queryable cumulative snapshots.
+Do not initialize extra per-subsystem log files or change host logger configuration.
+
+Follow these coherent U6 slices:
+
+1. Runtime/session and native lifetime records, terminal phase retention, shutdown
+   summaries, and timing/poll/frame counters. Capture mutable phase metadata on
+   each owning thread; report after locks/join, preserving original exceptions.
+2. Worker/group and dispatcher/event IDs and snapshots. Known EngineContext
+   construction holds its execution mutex across worker creation: worker constructors,
+   group creation, shutdown, and final capture destructors must not log there.
+   Report their snapshots from the context after unlock or an explicit unlocked
+   observer. Futures/error handlers retain callback-error ownership.
+3. Asset preparation/upload batch records and partial cache-publication counts;
+   shader reflection records from existing query results; quiet expected memory
+   misses with unlocked statistics/preallocation summaries.
+4. Platform/input capability and focus/device/resize observations outside native
+   callbacks. GLFW error callbacks use bounded emergency output and preserve the
+   existing host callback. Native GL debug observation is optional/capability-gated;
+   settle borrowed-context callback lifetime before installation. Prefer context
+   message-log polling when it preserves host callback ownership and eliminates a
+   dangling renderer user pointer on failed context recovery.
+
+Acceptance includes focused existing runtime, worker, dispatch/event, resource,
+memory, and recorded OpenGL cases plus diagnostic-specific quiet-session, partial
+publication, identity/counter, and callback-owner checks. Do not claim native driver
+or race-detector coverage from recorded calls alone. Independent U7/U8 are complete.
