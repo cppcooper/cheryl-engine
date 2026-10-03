@@ -1,7 +1,9 @@
 #include <backends/opengl/glfw-context.h>
 
 #include <core/display/window.h>
+#include "../../core/display/glfw-diagnostics.h"
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
@@ -13,12 +15,18 @@ namespace CE::RenderAPIs {
     : window_(window), swap_interval_(swap_interval) {
         if (swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
+        CE_LOG_DEBUG(
+            CE::enginelog, "subsystem=context domain={} operation=selection swap_interval={}", window_.diagnostic_id(), swap_interval_
+        );
     }
 
     void GlfwOpenGLContext::make_current() {
         glfwMakeContextCurrent(window_.native_handle());
-        if (!is_current())
+        if (!is_current()) {
+            DisplayDetail::report_glfw_diagnostics("make_current", true);
             throw Exceptions::failed_operation(CE_HERE, "Could not make the window's OpenGL context current");
+        }
+        DisplayDetail::report_glfw_diagnostics("make_current");
         glfwSwapInterval(swap_interval_);
     }
 

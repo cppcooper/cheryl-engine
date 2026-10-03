@@ -9,6 +9,7 @@
 namespace CE::RenderAPIs {
     namespace RendererDetail {
         struct RendererAccess;
+        class DebugOutput;
     }
     /** Implements rendering commands using a separately owned OpenGL context.
      * initialize() makes that context current before loading GL entry points;
@@ -26,10 +27,17 @@ namespace CE::RenderAPIs {
         bool initialized_ = false;
         bool stopped_ = false;
         bool destroying_ = false;
+        bool native_diagnostics_ = false;
+        std::unique_ptr<RendererDetail::DebugOutput> debug_output_;
+        int native_major_ = 0;
+        int native_minor_ = 0;
 
     public:
         explicit OpenGLRenderer(iOpenGLContext& context);
         ~OpenGLRenderer() override;
+        // Opt in before initialization. Observe renderer-owned commands only.
+        // GL 4.3/KHR_debug is optional; existing host callbacks remain owned by host.
+        void set_native_diagnostics(bool enabled);
 
         void initialize() override;
         void deinitialize() override;

@@ -4,6 +4,8 @@
 
 #include <string>
 #include <exception>
+#include <core/diagnostics.h>
+#include <chrono>
 
 class GLFWwindow;
 class GLFWmonitor;
@@ -25,6 +27,9 @@ namespace CE {
         int windowed_width_;
         int windowed_height_;
         mutable std::exception_ptr native_failure_;
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        mutable std::uint64_t resize_observations_ = 0;
+        mutable std::chrono::steady_clock::time_point next_diagnostic_;
 
     public:
         ~Window() override;
@@ -34,6 +39,7 @@ namespace CE {
         Window& operator=(Window&&) = delete;
 
         [[nodiscard]] GLFWwindow* native_handle() const { return glfw_window_; }
+        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         [[nodiscard]] ViewPort<int> logical_size() const override { return logical_size_; }
         [[nodiscard]] FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
         [[nodiscard]] Enum::window_mode mode() const override { return window_mode_; }

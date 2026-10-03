@@ -4,6 +4,7 @@
 #include <core/display/window.h>
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <gainput/GainputInputDeltaState.h>
 
@@ -222,14 +223,26 @@ namespace CE::Input {
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
         glfwSetScrollCallback(handle, on_scroll);
+        observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
+        CE_LOG_DEBUG(
+            CE::enginelog, "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", domain_,
+            window_->diagnostic_id(), keyboard_id_, mouse_id_, gamepad_id_, observed_window_focus_
+        );
     }
 
     void InputSystem::update() {
         if (!window_)
             throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
         window_->check_native_failure();
-        if (callback_failure_)
+        if (callback_failure_) {
+            Diagnostics::report_outcome("input", domain_, "native_callback", "failed");
             std::rethrow_exception(std::exchange(callback_failure_, {}));
+        }
+        const auto focused = glfwGetWindowAttrib(window_->native_handle(), GLFW_FOCUSED) == GLFW_TRUE;
+        if (focused != observed_window_focus_) {
+            observed_window_focus_ = focused;
+            CE_LOG_DEBUG(CE::enginelog, "subsystem=input domain={} operation=window_focus focused={}", domain_, focused);
+        }
         const auto size = window_->logical_size();
         const auto width = std::max(size.width, 1);
         const auto height = std::max(size.height, 1);
@@ -248,6 +261,13 @@ namespace CE::Input {
         // survives reattachment and a disconnected pad cannot leave an action stuck.
         const auto* pad = manager_.GetDevice(gamepad_id_);
         const bool available = pad && pad->IsAvailable();
+        if (available != observed_gamepad_available_) {
+            observed_gamepad_available_ = available;
+            CE_LOG_DEBUG(
+                CE::enginelog, "subsystem=input domain={} operation=device_availability device={} available={}", domain_, gamepad_id_,
+                available
+            );
+        }
         for (gainput::DeviceButtonId button = 0; button < gainput::PadButtonMax_; ++button) {
             const bool valid = available && pad->IsValidButtonId(button);
             if (button < gainput::PadButtonStart) {

@@ -1,6 +1,7 @@
 #include <backends/opengl/renderer.h>
 #include "renderer-internal.h"
 #include "upload-check.h"
+#include "debug-output.h"
 #include <backends/opengl/gl.h>
 #include <backends/opengl/pipeline.h>
 
@@ -13,7 +14,7 @@
 
 namespace CE::RenderAPIs {
     namespace {
-        void load_native_functions(iOpenGLContext& context) {
+        int load_native_functions(iOpenGLContext& context) {
             struct Loader {
                 iOpenGLContext& context;
                 std::exception_ptr failure;
@@ -36,6 +37,7 @@ namespace CE::RenderAPIs {
                 std::rethrow_exception(loader.failure);
             if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3))
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
+            return version;
         }
     }
 
@@ -49,6 +51,12 @@ namespace CE::RenderAPIs {
 
     OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
     : context_(context) {}
+
+    void OpenGLRenderer::set_native_diagnostics(const bool enabled) {
+        if (initialized_ || stopped_)
+            throw Exceptions::failed_operation(CE_HERE, "Native diagnostics must be selected before renderer startup");
+        native_diagnostics_ = enabled;
+    }
 
     OpenGLRenderer::~OpenGLRenderer() {
         destroying_ = true;
@@ -80,8 +88,11 @@ namespace CE::RenderAPIs {
             // without depending on the display's native window type.
             if (native_loader_)
                 native_loader_(context_);
-            else
-                load_native_functions(context_);
+            else {
+                const auto version = load_native_functions(context_);
+                native_major_ = GLAD_VERSION_MAJOR(version);
+                native_minor_ = GLAD_VERSION_MINOR(version);
+            }
             require_no_gl_error("OpenGL error before renderer startup configuration");
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -103,11 +114,29 @@ namespace CE::RenderAPIs {
             throw;
         }
         initialized_ = true;
-        CE_LOG_INFO(CE::enginelog, "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl baseline=3.3",
-                    resources_->diagnostics().domain);
+        if (native_diagnostics_) {
+            try {
+                debug_output_ = std::make_unique<RendererDetail::DebugOutput>();
+                debug_output_->start(resources_->diagnostics().domain);
+                const auto stats = debug_output_->diagnostics();
+                if (!stats.supported)
+                    CE_LOG_WARN(CE::enginelog, "subsystem=native_debug domain={} operation=enable outcome=unsupported", stats.domain);
+                CE_LOG_INFO(
+                    CE::enginelog, "subsystem=native_debug domain={} operation=capabilities supported={} installed={} host_owned={}",
+                    stats.domain, stats.supported, stats.installed, stats.host_owned
+                );
+            } catch (...) {
+                Diagnostics::report_failure("optional native diagnostic setup", std::current_exception());
+            }
+        }
+        CE_LOG_INFO(
+            CE::enginelog, "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
+            resources_->diagnostics().domain, native_major_, native_minor_
+        );
     }
 
     void OpenGLRenderer::deinitialize() {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         if (!initialized_)
             return;
         resources_->require_owner();
@@ -119,8 +148,12 @@ namespace CE::RenderAPIs {
         resources_->shutdown();
         initialized_ = false;
         stopped_ = true;
+        if (debug_output_)
+            debug_output_->stop();
         context_.release_current();
         if (!destroying_) {
+            if (debug_output_)
+                debug_output_->report(true);
             CE_LOG_INFO(CE::enginelog, "subsystem=renderer domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain);
             CE_LOG_DEBUG(CE::enginelog, "subsystem=native_resources domain={} operation=shutdown tracked={} deleted={} abandoned={}",
                          resources_->diagnostics().domain, resources_->diagnostics().tracked,
@@ -136,6 +169,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::render(const RenderFrame& frame) {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         const auto domain = resources();
         for (const auto& pass : frame.passes()) {
             for (const auto& packet : pass.draws) {
@@ -149,6 +183,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::clear() {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         (void)resources();
         // Depth clears obey the write mask left by the last pipeline draw.
         glDepthMask(GL_TRUE);
@@ -156,14 +191,18 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::maintain_resources() {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         const auto domain = resources();
         // The final frame may retire the program still bound by its last draw.
         // A later draw selects its own program; idle collection must free this one.
         glUseProgram(0);
         domain->collect();
+        if (debug_output_)
+            debug_output_->report();
     }
 
     void OpenGLRenderer::set_viewport(const FramebufferSize size) {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         (void)resources();
         if (size.width < 0 || size.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
@@ -171,6 +210,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::set_depth_test(const bool enabled) {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         (void)resources();
         if (enabled)
             glEnable(GL_DEPTH_TEST);
@@ -179,6 +219,7 @@ namespace CE::RenderAPIs {
     }
 
     void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
+        RendererDetail::DebugOutput::Scope observation(debug_output_.get());
         (void)resources();
         glClearColor(r, g, b, a);
     }

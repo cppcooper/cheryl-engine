@@ -152,6 +152,7 @@ namespace {
         std::function<void()> on_initialize;
         std::function<void()> on_deinitialize;
         bool default_press = true;
+        bool focus_supported = true;
         int initializations = 0;
         int shutdowns = 0;
 
@@ -196,7 +197,7 @@ namespace {
         }
 
         [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
-        [[nodiscard]] bool supports_focus() const override { return true; }
+        [[nodiscard]] bool supports_focus() const override { return focus_supported; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
@@ -562,6 +563,20 @@ TEST(runtime_adapter, sequential_frame) {
     EXPECT_EQ(stats.published, 1u);
     EXPECT_EQ(stats.rendered, 1u);
     EXPECT_EQ(stats.resizes, 1u);
+}
+
+TEST(runtime_adapter, optional_focus) {
+    MemoryInput input;
+    input.focus_supported = false;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
+    EXPECT_EQ(runtime.diagnostics().focus_changes, 0u);
 }
 
 TEST(runtime_adapter, game_init_failure) {

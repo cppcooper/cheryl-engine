@@ -505,18 +505,18 @@ insert more calls into memory transactions while the queue can block there.
 
 Prerequisite: U5; U2 must establish safe memory logging locations.
 
-- [ ] Add runtime/platform/native lifetime startup, failure, abandonment, and
+- [x] Add runtime/platform/native lifetime startup, failure, abandonment, and
   shutdown records first, using the logging-boundary table.
-- [ ] Add worker policy and dispatch/event delivery diagnostics without duplicating
+- [x] Add worker policy and dispatch/event delivery diagnostics without duplicating
   future/error-handler ownership. Introduce stable logical IDs where necessary.
-- [ ] Add asset batch/publication/reload records, including partial upload results.
-- [ ] Replace direct shader stdout output with records derived from existing
+- [x] Add asset batch/publication/reload records, including partial upload results.
+- [x] Replace direct shader stdout output with records derived from existing
   reflection queries; provide optional diagnostic-event delivery only if required.
-- [ ] Add input/display capability and focus/device transition records without
+- [x] Add input/display capability and focus/device transition records without
   capturing user text. Rate limit resize and repeated degraded-state warnings.
-- [ ] Reclassify memory expected misses and hot-path INFO/WARN records; provide
+- [x] Reclassify memory expected misses and hot-path INFO/WARN records; provide
   counters/periodic summaries for memory, timing, queues, and frame supersession.
-- [ ] Gate native graphics debug callbacks by capability and severity; do not make
+- [x] Gate native graphics debug callbacks by capability and severity; do not make
   KHR_debug mandatory for OpenGL 3.3.
 
 **Acceptance:** Failure scenarios identify operation/phase/domain and outcome;
@@ -1441,8 +1441,10 @@ ownership audit; saturation assumptions alone do not establish delivery requirem
 
 The owner requested continuation from U5c3 through U8 on
 `engine-foundations-and-consumer-facilities`. The initial working tree is clean.
-Build, compiler/configuration probes, test execution, and remote push remain
-unauthorized under AGENTS.md. Follow these units and commit each independently:
+At planning time, builds, compiler/configuration probes, tests, and remote push
+were unauthorized under AGENTS.md. The owner subsequently authorized focused
+execution as recorded below. U5c3 through U8 are complete; remote push remains
+unauthorized. The following units record the implementation sequence:
 
 1. **U5c3:** Preserve the retained native file ownership boundary while placing
    exception guards around the owned backend destinations. Keep actual delegate
@@ -1622,8 +1624,8 @@ All ten normal/sandbox rows passed: developer, support, release, release with
 with timeouts, record-order/file assertions, saturation loss checks, retained-owner
 completion, fatal ownership rejection, and static teardown. The developer row
 contains 29 passing regressions; stripped profiles retain their conditional checks
-and explicit saturation cases. U5's executable gate is satisfied. A supplementary
-Debug ASan/UBSan run is in progress; it is recorded separately from this matrix.
+and explicit saturation cases. U5's executable gate is satisfied. The supplementary
+Debug ASan/UBSan checks passed and are recorded separately from this matrix.
 
 Use existing compile-time string categories and host-configurable lazy/explicit
 Logger ownership. U6 adds process-local monotonic numeric domain IDs (never raw
@@ -1709,3 +1711,53 @@ construction/reflection and memory cases passed, including partial publication
 counts, shared byte-domain accounting, existing failure propagation, and concurrent
 memory transactions. Static diff checks passed. Native debug/display/input coverage
 remains the final U6 slice.
+
+### U6d — platform callbacks, input transitions, and periodic summaries
+
+Added numeric GLFW error capture/chained host callback containment and reporting
+after native callbacks/lifetime locks return. Display/window/context records identify
+capabilities and dimensions without titles/descriptions. Input attachment, window
+focus, routing focus, and gamepad availability transitions omit user text/keys.
+Resize and native errors coalesce at a two-second cadence. Runtime owners report
+their own periodic timing/frame/poll summaries outside scheduler locks, count input
+records/backpressure, warn on repeated/sustained degradation, and identify recovery.
+
+Optional OpenGLRenderer native diagnostics retain the 3.3 baseline and require
+4.3/KHR_debug capability and loaded entry points. Existing host callbacks prevent
+installation; later replacements prevent restoration over host state. The selected
+synchronous stack-scoped observer stores no renderer pointer in GL, performs no
+logging/allocation/GL calls in the callback, and ignores calls after failed recovery
+and owner destruction. This resolves the borrowed-context lifetime boundary without
+requiring message-log polling or taking ownership of host callbacks. Only
+renderer-owned command scopes are observed; raw host/upload commands are excluded.
+
+**Required discovery:** The real State-only native input adapter does not support
+focus routing. The first native run exposed an unconditional routing query in the
+new observer. The observer now checks supports_focus and contains observation
+failures without changing runtime error propagation; optional_focus is a focused
+regression. Native acceptance subsequently passed.
+
+**Final acceptance (2026-10-03):** 197 focused runtime, worker, event/dispatch,
+resource, memory, and recorded native cases passed in the current normal developer
+build and sandbox explicit-off build. The same 197 passed under Debug ASan/UBSan
+with leak detection and halt-on-error enabled. All seven isolated logging scenarios
+and logging.* passed again in current sandbox developer/off and sanitizer builds.
+Quiet-session inspection passed in normal/sandbox developer and sandbox off:
+four independent domains, three INFO lifecycle records per enabled session, no
+normal WARN/ERROR records, and no input payloads. The off build emits no INFO.
+
+Actual Linux/X11 OpenGL 4.6 acceptance passed 14 native_opengl cases, including
+optional debug-output enable/restoration, rendering/resources, polling/input, and
+resize callback failure recovery, plus seven callback-owner recording cases (21
+total). Native and leak-detection checks ran outside the sandbox to access the
+configured display and inspect threads. Final independent normal/sandbox consumers
+rebuilt their actual engine archive and first-include probes, then both ran with
+exit 0. GCC 16.2.1, CMake 4.4.3, Ninja 1.13.2, Python 3.14.7; legacy dependency
+configuration used CMAKE_POLICY_VERSION_MINIMUM=3.5. Static diff, Python syntax,
+and local documentation-link checks passed.
+
+U5–U8 are complete. Continue at U9 using the selected neutral UI probe and U7/U8
+consumer contracts. Installed package/export, TSan configuration, and additional
+platform validation remain explicit later work; Linux/X11 and ASan/UBSan evidence
+does not establish those capabilities. The individual implementation commits remain
+intact and no remote push is part of this continuation.

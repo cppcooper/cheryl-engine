@@ -1,9 +1,11 @@
 # Logging acceptance
 
 U5's execution gate covers owned destinations, queue loss, callback reentry,
-retained resources, and supported teardown. All sources are prepared; no results
-are claimed until the commands below are explicitly authorized under AGENTS.md.
-Do not infer a pass from source checks or the earlier architecture snapshot.
+retained resources, and supported teardown. The authorized normal/sandbox matrix
+and supplementary ASan/UBSan checks passed; the
+[development plan](../planning/develop-review-and-development-plan.md#u5-executable-gate-and-u6-implementation-boundaries)
+records the execution evidence and limits. The commands below reproduce that
+gate and require explicit build/test authorization under AGENTS.md.
 
 Configure separate normal/sandbox directories for each row. Use Release as the
 build configuration for this matrix so profile changes remain independent of the

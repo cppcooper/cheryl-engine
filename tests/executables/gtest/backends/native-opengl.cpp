@@ -330,6 +330,37 @@ TEST(native_opengl, deferred_worker_release) {
     renderer.deinitialize();
 }
 
+TEST(native_opengl, debug_output) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    renderer.set_native_diagnostics(true);
+    renderer.initialize();
+    const bool supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
+    if (supported) {
+        void* callback = nullptr;
+        void* user = nullptr;
+        glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
+        glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &user);
+        EXPECT_NE(callback, nullptr);
+        EXPECT_EQ(user, nullptr);
+        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), GL_TRUE);
+    }
+    renderer.clear();
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    renderer.deinitialize();
+    auto& context = dynamic_cast<CE::RenderAPIs::iOpenGLContext&>(engine->surface());
+    context.make_current();
+    if (supported) {
+        void* callback = nullptr;
+        glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
+        EXPECT_EQ(callback, nullptr);
+    }
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    context.release_current();
+}
+
 TEST(native_opengl, shutdown_context_restoration) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";

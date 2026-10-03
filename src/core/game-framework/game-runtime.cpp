@@ -57,6 +57,7 @@ namespace CE::GFramework {
         // Reserve the graph before either runtime can initialize or clean up its adapters.
         try {
             engine_.begin_session();
+            next_timing_report_ = next_platform_report_ = SimulationClock::now() + std::chrono::seconds{2};
             CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} context={} operation=session_begin mode={} timing={} polling={} capacity={}",
                         diagnostics_.domain, engine_.diagnostic_id(), static_cast<int>(mode_), static_cast<int>(timing_.mode),
                         static_cast<int>(polling_.policy), polling_.capacity);
@@ -89,10 +90,14 @@ namespace CE::GFramework {
         CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} operation=session_end outcome={} updates={} polls={} published={} rendered={}",
                     diagnostics_.domain, failed ? "failed" : "completed", diagnostics_.updates, diagnostics_.polls,
                     diagnostics_.published, diagnostics_.rendered);
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=runtime domain={} operation=summary superseded={} skipped={} dropped_batches={} dropped_ns={} peak_polls={} resizes={}",
-                     diagnostics_.domain, diagnostics_.superseded, diagnostics_.skipped_publication,
-                     diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds, diagnostics_.peak_polls, diagnostics_.resizes);
-        if (diagnostics_.dropped_batches)
+        CE_LOG_DEBUG(
+            CE::enginelog,
+            "subsystem=runtime domain={} operation=summary superseded={} skipped={} dropped_batches={} dropped_ns={} peak_polls={} resizes={} input_records={} focus_changes={} backpressure={}",
+            diagnostics_.domain, diagnostics_.superseded, diagnostics_.skipped_publication, diagnostics_.dropped_batches,
+            diagnostics_.dropped_nanoseconds, diagnostics_.peak_polls, diagnostics_.resizes, diagnostics_.input_records,
+            diagnostics_.focus_changes, diagnostics_.backpressure
+        );
+        if (diagnostics_.dropped_batches >= 2)
             CE_LOG_WARN(CE::enginelog, "subsystem=runtime domain={} operation=lag_recovery outcome=dropped batches={} duration_ns={}",
                         diagnostics_.domain, diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds);
     }
@@ -103,6 +108,91 @@ namespace CE::GFramework {
         else if (next && first != next)
             Diagnostics::report_outcome("runtime", diagnostics_.domain, phase, "secondary_failure");
         Diagnostics::preserve_failure(first, phase, std::move(next));
+    }
+
+    void GameRuntime::observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept {
+        if (snapshot)
+            diagnostics_.input_records += snapshot->records.size();
+        try {
+            auto& input = engine_.input();
+            if (!input.supports_focus())
+                return;
+            const auto focus = input.routing().current();
+            if (focus->epoch != observed_focus_epoch_) {
+                observed_focus_epoch_ = focus->epoch;
+                ++diagnostics_.focus_changes;
+                CE_LOG_DEBUG(
+                    CE::enginelog, "subsystem=input domain={} operation=focus target={} epoch={} routing={}", diagnostics_.domain,
+                    focus->target, focus->epoch, static_cast<int>(focus->routing)
+                );
+            }
+        } catch (...) {
+            Diagnostics::report_failure("input diagnostic observation", std::current_exception());
+        }
+    }
+
+    void GameRuntime::observe_timing(const SimulationBatch& batch) noexcept {
+        if (batch.dropped > SimulationClock::duration::zero()) {
+            ++diagnostics_.dropped_batches;
+            diagnostics_.dropped_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(batch.dropped).count();
+        }
+        const auto now = SimulationClock::now();
+        if (now < next_timing_report_)
+            return;
+        next_timing_report_ = now + std::chrono::seconds{2};
+        const auto newly_dropped = diagnostics_.dropped_batches - reported_drops_;
+        if (newly_dropped >= 2) {
+            lag_warning_ = true;
+            CE_LOG_WARN(
+                CE::enginelog, "subsystem=runtime domain={} operation=lag_recovery outcome=degraded new_batches={} dropped_ns={}",
+                diagnostics_.domain, newly_dropped, diagnostics_.dropped_nanoseconds
+            );
+        } else if (lag_warning_ && newly_dropped == 0) {
+            lag_warning_ = false;
+            CE_LOG_INFO(
+                CE::enginelog, "subsystem=runtime domain={} operation=lag_recovery outcome=recovered batches={}", diagnostics_.domain,
+                diagnostics_.dropped_batches
+            );
+        }
+        reported_drops_ = diagnostics_.dropped_batches;
+        CE_LOG_DEBUG(
+            CE::enginelog, "subsystem=runtime domain={} operation=simulation_summary updates={} published={} superseded={} skipped={}",
+            diagnostics_.domain, diagnostics_.updates, diagnostics_.published, diagnostics_.superseded, diagnostics_.skipped_publication
+        );
+    }
+
+    void GameRuntime::observe_platform(const bool pressure) noexcept {
+        const auto now = SimulationClock::now();
+        if (pressure) {
+            ++diagnostics_.backpressure;
+            if (pressure_started_ == SimulationClock::time_point{})
+                pressure_started_ = now;
+        } else if (pressure_started_ != SimulationClock::time_point{}) {
+            if (pressure_warning_)
+                CE_LOG_INFO(
+                    CE::enginelog,
+                    "subsystem=runtime domain={} operation=poll_backpressure outcome=recovered duration_ms={} observations={}",
+                    diagnostics_.domain, std::chrono::duration_cast<std::chrono::milliseconds>(now - pressure_started_).count(),
+                    diagnostics_.backpressure
+                );
+            pressure_started_ = {};
+            pressure_warning_ = false;
+        }
+        if (now < next_platform_report_)
+            return;
+        next_platform_report_ = now + std::chrono::seconds{2};
+        if (pressure && now - pressure_started_ >= std::chrono::milliseconds{100}) {
+            pressure_warning_ = true;
+            CE_LOG_WARN(
+                CE::enginelog, "subsystem=runtime domain={} operation=poll_backpressure outcome=degraded duration_ms={} observations={}",
+                diagnostics_.domain, std::chrono::duration_cast<std::chrono::milliseconds>(now - pressure_started_).count(),
+                diagnostics_.backpressure
+            );
+        }
+        CE_LOG_DEBUG(
+            CE::enginelog, "subsystem=runtime domain={} operation=platform_summary polls={} rendered={} peak_polls={} resizes={}",
+            diagnostics_.domain, diagnostics_.polls, diagnostics_.rendered, diagnostics_.peak_polls, diagnostics_.resizes
+        );
     }
 
     void GameRuntime::run_sequential() {
@@ -174,7 +264,9 @@ namespace CE::GFramework {
                     window.check_native_failure();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
-                    backlog.complete(input.poll_snapshot(), Input::InputClock::now());
+                    auto completed = input.poll_snapshot();
+                    observe_input(completed);
+                    backlog.complete(std::move(completed), Input::InputClock::now());
                     diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, backlog.completed_polls());
                 }
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
@@ -186,10 +278,8 @@ namespace CE::GFramework {
                     ++diagnostics_.resizes;
                 }
                 const auto batch = timing.advance(SimulationClock::now());
-                if (batch.dropped > SimulationClock::duration::zero()) {
-                    ++diagnostics_.dropped_batches;
-                    diagnostics_.dropped_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(batch.dropped).count();
-                }
+                observe_timing(batch);
+                observe_platform(false);
                 bool updated = false;
                 for (std::size_t i = 0; i < batch.steps.size(); ++i) {
                     // Every actual update gets its own detached mailbox and whole
@@ -361,10 +451,7 @@ namespace CE::GFramework {
                                 break;
                         }
                         const auto batch = timing.advance(SimulationClock::now());
-                        if (batch.dropped > SimulationClock::duration::zero()) {
-                            ++diagnostics_.dropped_batches;
-                            diagnostics_.dropped_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(batch.dropped).count();
-                        }
+                        observe_timing(batch);
                         bool updated = false;
                         for (std::size_t i = 0; i < batch.steps.size(); ++i) {
                             // Callbacks run outside the scheduler lock. Each recovery
@@ -472,13 +559,16 @@ namespace CE::GFramework {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
                 bool poll_due = false;
+                bool pressure = false;
                 {
                     std::lock_guard lock(scheduler_->mutex);
                     if (handoff.worker_done)
                         break;
                     poll_due = handoff.backlog.poll_due(Input::InputClock::now());
+                    pressure = !handoff.backlog.can_poll();
                 }
 
+                observe_platform(pressure);
                 if (poll_due) {
                     phase_ = "input_poll";
                     input.poll();
@@ -489,6 +579,7 @@ namespace CE::GFramework {
                     auto completed = input.poll_snapshot();
                     if (!completed)
                         throw Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
+                    observe_input(completed);
                     const auto size = window.framebuffer_size();
                     if (size != viewport) {
                         renderer.set_viewport(size);

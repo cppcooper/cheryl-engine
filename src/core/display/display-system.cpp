@@ -1,6 +1,8 @@
 #include <core/display/display-system.h>
+#include "glfw-diagnostics.h"
 
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
@@ -20,16 +22,40 @@ namespace CE {
     }
 
     DisplaySystem::GlfwLibrary::GlfwLibrary() {
-        std::lock_guard lock(glfw_lifetime_mutex);
-        if (glfw_displays == 0 && glfwInit() != GLFW_TRUE)
+        bool failed = false;
+        bool initialized = false;
+        {
+            std::lock_guard lock(glfw_lifetime_mutex);
+            if (glfw_displays == 0) {
+                DisplayDetail::install_glfw_diagnostics();
+                failed = glfwInit() != GLFW_TRUE;
+                if (failed)
+                    DisplayDetail::restore_glfw_diagnostics();
+                else
+                    initialized = true;
+            }
+            if (!failed)
+                ++glfw_displays;
+        }
+        DisplayDetail::report_glfw_diagnostics("initialize", failed);
+        if (failed)
             throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW");
-        ++glfw_displays;
+        if (initialized)
+            CE_LOG_INFO(
+                CE::enginelog, "subsystem=glfw domain={} operation=initialize outcome=ready platform={}",
+                DisplayDetail::glfw_diagnostics().domain, glfwGetPlatform()
+            );
     }
 
     DisplaySystem::GlfwLibrary::~GlfwLibrary() {
-        std::lock_guard lock(glfw_lifetime_mutex);
-        if (--glfw_displays == 0)
-            glfwTerminate();
+        {
+            std::lock_guard lock(glfw_lifetime_mutex);
+            if (--glfw_displays == 0) {
+                glfwTerminate();
+                DisplayDetail::restore_glfw_diagnostics();
+            }
+        }
+        DisplayDetail::report_glfw_diagnostics("terminate", true);
     }
 
     Monitor DisplaySystem::create_primary_monitor() {
@@ -62,6 +88,10 @@ namespace CE {
                 native_monitors_.push_back(handles[index]);
             }
         }
+        CE_LOG_INFO(
+            CE::enginelog, "subsystem=display domain={} operation=monitor_snapshot count={}", DisplayDetail::glfw_diagnostics().domain,
+            monitors_.size()
+        );
     }
 
     GLFWmonitor* DisplaySystem::native_monitor(const Monitor& monitor) const {

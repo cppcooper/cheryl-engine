@@ -17,7 +17,12 @@ rejects. Counts describe update attempts, completed polls, published/rendered fr
 supersession, skipped publication, dropped timing batches/duration, peak polling
 backlog, and resize observations. Normal ticks/frames emit no INFO records. Session
 start/capabilities/end and one final DEBUG summary are bounded by session lifecycle;
-lag drops produce an aggregate warning rather than per-update records.
+input observations count records and focus epochs without retaining their payloads.
+Each runtime owner emits its own DEBUG summary at most every two seconds, outside
+the scheduler lock. Repeated lag drops and polling capacity held for at least
+100 milliseconds produce coalesced WARN records at that cadence; recovery produces
+one INFO transition. A single timing drop remains visible in counters/DEBUG without
+a shutdown warning. Final summaries include polling backpressure observations.
 
 NativeResourceStats counts registrations, live/pending native handles, collection,
 shutdown deletion, and abandonment for one resource lifetime. Taking the snapshot
@@ -76,6 +81,57 @@ Normal lookup/reuse/split/merge misses remain quiet. Explicit preallocation repo
 completed blocks/width or a partial attempt; report_diagnostics is a host-triggered
 DEBUG snapshot, so the host chooses the sampling period. These are bookkeeping
 observations, not allocation-pressure/eviction budgets.
+
+GLFW initialization installs a bounded numeric error observer before the first
+DisplaySystem initializes the library. It chains the existing host callback with
+the borrowed description, catches a throwing host, and retains no description.
+Ordinary reporting happens after native callbacks and library lifetime locks have
+returned, with a two-second error cadence. Required native failures use emergency
+operation/code records. Final termination restores the borrowed callback while
+preserving a later host replacement. These lifecycle operations belong to the
+platform/main thread, consistent with [GLFW's callback contract](https://www.glfw.org/docs/latest/group__init.html).
+Destructor observations use emergency reporting only.
+
+Display/window records describe monitor counts, window mode and logical/pixel
+dimensions without titles. Resize callbacks accumulate counts; an unlocked
+platform observation emits the latest dimensions at most every two seconds.
+Input records describe State/Event/Text/Focus capability, native attachment,
+window focus, routing focus epochs and gamepad availability transitions. Focus
+routing is queried only when the adapter advertises support; observation failures
+cannot replace runtime failures. Character data, physical keys and event payloads
+are never included.
+
+OpenGLRenderer::set_native_diagnostics(true) opts in before startup. Debug output
+requires GL 4.3 or KHR_debug and the loaded entry points; OpenGL 3.3 remains the
+renderer baseline. Existing host callbacks prevent installation. When installed,
+the callback uses synchronous delivery and a stack-scoped thread-local observer
+around renderer-owned commands; GL receives no renderer user pointer. This follows
+the synchronous callback rules in [KHR_debug](https://registry.khronos.org/OpenGL/extensions/KHR/KHR_debug.txt).
+The callback performs no allocation, ordinary logging, GL/window calls or driver
+text copying. It counts high/medium severities and filters lower severities.
+Resource maintenance coalesces ERROR/WARN counts at most every two seconds;
+explicit shutdown reports remaining counts after native restoration. Host/raw
+upload commands outside renderer scopes are not observed.
+
+Successful shutdown restores the callback/user parameter and output/synchronous
+flags on the owning current context, unless a host has replaced the callback.
+Failed context recovery performs no restoration calls. The remaining static
+callback has no captured owner and ignores commands after its scope disappears,
+including after renderer destruction. This avoids a dangling renderer pointer
+without taking ownership of host callback state.
+
+The quiet-session acceptance runner checks bounded INFO records, matching runtime
+domains, no normal WARN/ERROR output, and absence of input payloads:
+
+```sh
+python3 tests/acceptance/diagnostics.py path/to/developer-build
+python3 tests/acceptance/diagnostics.py path/to/off-build --info-stripped
+```
+
+It uses previously built tests and requires explicit test authorization under
+AGENTS.md. Recording tests cover capability rejection and callback ownership;
+native_opengl.debug_output separately exercises a real supported context when
+CHERYL_NATIVE_GL_TESTS=1.
 
 These counters describe operations and handle ownership, not GPU allocation bytes,
 durability, scheduler guarantees, or race freedom. Native recording tests establish

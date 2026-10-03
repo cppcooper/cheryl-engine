@@ -1,6 +1,7 @@
 #pragma once
 
 #include "input-interface.h"
+#include <core/diagnostics.h>
 
 #ifndef CHERYL_SANDBOX_BUILD
 #include "input-mapper.h"
@@ -40,6 +41,9 @@ namespace CE::Input {
         std::vector<float> pad_axes_;
         std::vector<bool> pad_buttons_;
         std::exception_ptr callback_failure_;
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        bool observed_gamepad_available_ = false;
+        bool observed_window_focus_ = false;
 
         template <typename Work> void receive(Work&& work) noexcept {
             if (callback_failure_)

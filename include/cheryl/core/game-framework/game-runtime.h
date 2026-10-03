@@ -40,6 +40,9 @@ namespace CE::GFramework {
         std::uint64_t dropped_nanoseconds = 0;
         std::uint64_t peak_polls = 0;
         std::uint64_t resizes = 0;
+        std::uint64_t input_records = 0;
+        std::uint64_t focus_changes = 0;
+        std::uint64_t backpressure = 0;
     };
 
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
@@ -63,6 +66,13 @@ namespace CE::GFramework {
         RuntimeStats diagnostics_{Diagnostics::next_domain_id()};
         const char* phase_ = "reserve_session"; // Platform owner; retained first failing phase.
         std::atomic<bool> run_finished_{false};
+        std::uint64_t observed_focus_epoch_ = 0; // Platform owner.
+        SimulationClock::time_point next_timing_report_;
+        SimulationClock::time_point next_platform_report_;
+        SimulationClock::time_point pressure_started_;
+        std::uint64_t reported_drops_ = 0;
+        bool lag_warning_ = false;      // Simulation owner.
+        bool pressure_warning_ = false; // Platform owner.
         bool renderer_ready_ = false; // Platform-owned; partial initialization is not maintenance-ready.
         std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
@@ -99,5 +109,8 @@ namespace CE::GFramework {
         void finish_worker_shutdown(std::exception_ptr& failure);
         void preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next);
         void report_session(bool failed) const noexcept;
+        void observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept;
+        void observe_timing(const SimulationBatch& batch) noexcept;
+        void observe_platform(bool pressure) noexcept;
     };
 }
