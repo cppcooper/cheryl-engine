@@ -24,6 +24,9 @@ namespace CE::Assets {
      * This is publication/teardown context, not an eviction or residency manager.
      * Cache maps retain strong handles until explicit clear/replacement or provider
      * teardown; readers retain independent handles across either operation.
+     * Distinct owned Loaders still share this domain. Teardown rejects publication;
+     * after release, a later provider may bind it. Old handles keep their old native
+     * domain and cannot migrate to the replacement provider.
      */
     class AssetCacheContext {
         friend struct ResourceProvider;

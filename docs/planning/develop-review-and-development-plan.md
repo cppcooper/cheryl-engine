@@ -547,13 +547,13 @@ from claiming current Linux evidence covers other systems.
 
 ### U8. Resolve resource extension requirements before consumers
 
-- [ ] Document the supported one-provider domain and partial batch publication at
+- [x] Document the supported one-provider domain and partial batch publication at
   declarations, including retry behavior and prepared-data ownership.
-- [ ] Decide whether the chosen consumer needs atomic batch reload, multiple
+- [x] Decide whether the chosen consumer needs atomic batch reload, multiple
   domains, dynamic images/updates, eviction budgets, or none of these.
-- [ ] For required changes, define retained generations, in-flight frame safety,
+- [x] For required changes, define retained generations, in-flight frame safety,
   owner-thread upload, request cancellation, and publication rollback first.
-- [ ] Design metrics/budget accounting before automatic residency policies.
+- [x] Design metrics/budget accounting before automatic residency policies.
 
 **Acceptance:** Consumer resources have explicit creation/update/publication and
 retirement rules; unsupported capabilities are explicit.
@@ -1588,3 +1588,29 @@ ten sandbox/eleven normal first-include header probes, including the native inpu
 entry point in normal mode. Generic translation units reject GL/GLFW header leakage.
 Configuration used CMAKE_POLICY_VERSION_MINIMUM=3.5 for pinned legacy dependencies;
 no vendor policy upgrade was made. Diff and local documentation-link checks passed.
+
+### U8 — selected consumer resource and publication contracts
+
+Audited preparation/upload/cache/native retirement and documented the contracts at
+ResourceProvider, Image, Loader, TextureMgr, and AssetCacheContext declarations.
+[consumer-resource-contract.md](../resources/consumer-resource-contract.md) maps
+U0's neutral UI probe to one active provider/cache domain, owned CPU pixels, immutable
+replacement handles, retained frames, and the existing ASCII atlas. No mutable
+texture, multiple-domain, atomic batch reload, or automatic eviction API is needed
+for this scope. Their accounting/admission/ownership prerequisites are recorded
+before later consumers can require them.
+
+Prepared data owns no native handles; owner/context-affine upload consumes its value
+and can publish completed entries before failure. The metadata snapshot commits
+only after upload and final allocation succeed; retry skips existing keys. Logical
+retention preserves generations while the native domain is live, and permits safe
+destruction/CPU inspection after shutdown rather than binding to a closed domain.
+Pending requests cancel before execution; executing upload has no rollback contract.
+
+**Acceptance:** 25 current sandbox developer-profile cases passed across
+asset_preparation, resource_upload, asset_cache, material_cache, and
+execution_shutdown. These cover owned preparation, partial publication/retry,
+provider guards, retained generations, and cancellation/shutdown. Public header
+compilation also passed as part of the independent normal/sandbox U7 consumers.
+Diff and local documentation-link checks passed. These results establish the
+selected existing contract, not native GPU budgets or unimplemented reload features.

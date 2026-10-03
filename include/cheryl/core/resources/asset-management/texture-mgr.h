@@ -15,6 +15,8 @@ namespace CE::Assets {
         TextureMgr() = default;
         ~TextureMgr() override = default;
         [[nodiscard]] spointer get_asset(const std::filesystem::path& file) const override;
+        // Serialize on the cache/provider loading owner. Existing normalized keys
+        // are reused without rereading/replacing their immutable image contents.
         void load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider);
         void load_asset(const std::filesystem::path& file, const DecodedImage& image, ResourceProvider& provider);
     };

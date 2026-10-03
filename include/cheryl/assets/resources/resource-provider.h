@@ -14,12 +14,24 @@
 #include <vector>
 
 namespace CE::Assets {
-    // Uploads transient CPU data into resources owned by the selected backend.
-    // Implementations must finish copying the supplied pixels and vertices before returning.
+    /** Creates resources in one selected backend domain. Uploads obey that
+     * backend's owner-thread/current-context rules and copy transient CPU data
+     * before returning; returned handles do not borrow pixel/vertex storage.
+     * Uploaded contents are immutable for retained frames. A changed image or
+     * geometry requires a new handle and explicit publication by its owner.
+     * There is no generic in-place update, atomic batch, or residency-budget API.
+     * Global asset managers permit one active provider/loading owner; constructing
+     * another Loader does not create an independent cache/resource domain.
+     * Logical shared handles may outlive cache/provider teardown, but native use
+     * requires their original live backend domain. Final release follows backend
+     * retirement; it is not a promise of immediate native deletion.
+     */
     struct ResourceProvider {
         virtual ~ResourceProvider();
         // decode_image() is CPU-only; create_image() and other uploads obey backend thread affinity.
         [[nodiscard]] virtual std::shared_ptr<Image> load_image(const std::filesystem::path& file);
+        // Creates a fresh immutable image from owned top-to-bottom RGBA pixels.
+        // Caller retains/reuses the input; failure publishes no cache entry here.
         [[nodiscard]] virtual std::shared_ptr<Image> create_image(const DecodedImage& image) = 0;
         [[nodiscard]] virtual std::shared_ptr<Image> create_font_atlas(std::span<const unsigned char> alpha, PixelSize size) = 0;
         // Atlas grids upload triangle strips; whole images and glyphs upload independent triangles.

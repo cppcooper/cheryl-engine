@@ -5,7 +5,9 @@
 #include <cstdint>
 
 namespace CE::Assets {
-    // The dimensions of an image uploaded by the selected rendering backend.
+    // Immutable uploaded contents/dimensions in the selected backend domain.
+    // Retain this handle in frames/materials; changed pixels require a new image.
+    // Logical ownership after backend shutdown does not permit native bind/use.
     struct Image {
         virtual ~Image() = default;
         [[nodiscard]] virtual PixelSize pixel_size() const = 0;

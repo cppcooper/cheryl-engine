@@ -29,6 +29,7 @@ individual systems, development practices, and unfinished work.
 ## Resources
 
 - [Resource residency and maintenance](resources/resource-residency.md)
+- [Consumer resource contract](resources/consumer-resource-contract.md)
 - [Resource lifetime and reservation](resources/resource-lifetime.md)
 - [FFont deprecation and font-file migration](resources/legacy-ffont.md)
 
