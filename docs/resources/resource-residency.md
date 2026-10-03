@@ -103,4 +103,4 @@ Recorded validation covers strong residency, cache-domain rebinding, idle mainte
 recording failure/recovery/abandonment, real selected-context restoration, retained
 frame pixels and native deletion before window destruction. Hardware context loss
 and reset recovery remain outside those executed scopes. See
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+[architecture-validation.md](../development/architecture-validation.md).

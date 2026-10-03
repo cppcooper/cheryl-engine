@@ -27,7 +27,7 @@ scheduler state so an enqueue racing closure can safely finish its notification.
 
 Event delivery adapters use these saved endpoints through a callable. EventBus
 remains independent of both dispatcher types; the adapters belong to composition
-code. See [EVENT-DELIVERY.md](EVENT-DELIVERY.md).
+code. See [event-delivery.md](event-delivery.md).
 
 ## Simulation boundary
 

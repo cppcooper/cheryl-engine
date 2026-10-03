@@ -92,4 +92,4 @@ application meanings for views/orientations remain gameplay work.
 Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
 Manifest, preparation/upload, and runtime-adapter regressions belong to the
 aggregated `all-tests` target. Recorded build and execution scopes are in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+[architecture-validation.md](../development/architecture-validation.md).

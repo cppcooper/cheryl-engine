@@ -28,7 +28,7 @@ real-font opt-in cases were enabled for the reported complete runs.
   retained-frame shader reload, failed construction/link/reflection cleanup, rotated
   FFont packets, RGBA/alpha row conventions, forced timing/presentation workloads,
   State backpressure, ordered X11 Events/Text, and composed runtime failure cleanup.
-  Sources: [native-opengl.cpp](../tests/executables/gtest/backends/native-opengl.cpp).
+  Sources: [native-opengl.cpp](../../tests/executables/gtest/backends/native-opengl.cpp).
 - Native runtime cleanup covers initialization, partial-frame, and presentation failure
   in both modes. Accepted CPU/platform uploads settle before game cleanup; a later
   deinit error preserves the original failure. Driver queries observe native deletion
@@ -36,15 +36,15 @@ real-font opt-in cases were enabled for the reported complete runs.
 - Three real-font cases sweep all 793 TrueType and 727 CFF scratch allocation requests
   in two concrete ASCII bake traces, plus nested failures. Rejected allocations raise
   `bad_alloc`, release outstanding scratch, and prevent provider upload. Sources:
-  [fonts.cpp](../tests/executables/gtest/resources/fonts.cpp).
+  [fonts.cpp](../../tests/executables/gtest/resources/fonts.cpp).
 - Linux worker cases exercise actual inherited-mask discovery/restoration, required/
   preferred eligibility, native kernel rejection, and recovery. Controlled adapters
   separately cover failure before callback entry and partial thread-start rollback.
-  Sources: [worker-pool.cpp](../tests/executables/gtest/core/worker-pool.cpp).
+  Sources: [worker-pool.cpp](../../tests/executables/gtest/core/worker-pool.cpp).
 - Finite real-demo runs complete in both modes with normal font bake/upload/render
   and cleanup. Desktop camera/mouse input, text focus, resize, successful/failed/
   recovered F5 reload, and normal close were reported as passing on 1 October.
-  The repeatable sequence is in [NATIVE-DESKTOP-CHECKS.md](NATIVE-DESKTOP-CHECKS.md).
+  The repeatable sequence is in [native-desktop-checks.md](native-desktop-checks.md).
 
 ## Repeating validation
 
@@ -97,4 +97,4 @@ live policy changes, and a complete Wayland-only build were not recorded; the na
 translation unit was separately compiled with its X11 test guard disabled.
 
 These limits are coverage boundaries, not reopened completed tasks. Existing feature
-and resource TODOs are listed in [TODO.md](TODO.md).
+and resource TODOs are listed in [todo.md](../planning/todo.md).

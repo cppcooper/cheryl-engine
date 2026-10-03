@@ -4,7 +4,7 @@ The selected backend is composed through `EngineContext`; `GameRuntime` uses its
 display, window, input, presentation, renderer, and resource contracts. The current
 GLFW/OpenGL implementation and the in-memory integration probe follow those same
 contracts. The architecture is implemented; recorded build, regression, and native
-acceptance results are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+acceptance results are in [architecture-validation.md](../development/architecture-validation.md).
 
 | Boundary | Contract |
 | --- | --- |
@@ -42,8 +42,8 @@ that its context is selected.
 Generic asset loading does not choose a host font or infer shader recipes. Those
 are application bootstrap choices. Sprite/tileset definitions and image upload
 remain generic. CPU preparation and upload are described in
-[ASSET-LOADING.md](ASSET-LOADING.md); runtime ownership and frame handoff are in
-[RUNTIME-FRAME-BOUNDARY.md](RUNTIME-FRAME-BOUNDARY.md).
+[asset-loading.md](../assets/asset-loading.md); runtime ownership and frame handoff are in
+[runtime-frame-boundary.md](runtime-frame-boundary.md).
 
 ## Execution and shutdown
 
@@ -52,8 +52,8 @@ endpoints. EventBus owns persistent registrations; delivery adapters select plat
 simulation, or serial worker-stream execution. EngineContext creates tracked worker
 groups on a lazy owned pool or an injected shared pool. The dedicated simulation
 thread remains separate from that general CPU capacity. See
-[THREAD-DISPATCH.md](THREAD-DISPATCH.md), [EVENT-DELIVERY.md](EVENT-DELIVERY.md), and
-[WORKER-EXECUTION.md](WORKER-EXECUTION.md).
+[thread-dispatch.md](thread-dispatch.md), [event-delivery.md](event-delivery.md), and
+[worker-execution.md](worker-execution.md).
 
 Runtime shutdown closes context worker submissions, stops simulation, and pumps
 accepted platform dependencies while simulation joins. The game then quiesces its
@@ -74,5 +74,5 @@ Tile-map neighbor selection and application meanings for views/orientations rema
 gameplay work. Input and the demo editor retain committed Unicode scalars; the fonts
 render printable ASCII, and the editor supplies no grapheme/IME contract. Audio,
 networking, world/physics systems, text shaping, automatic cache eviction, and advanced worker topology
-are separate extensions. Concrete unfinished work is in [TODO.md](TODO.md) and
-[ASSET-MANIFEST-TODO.md](ASSET-MANIFEST-TODO.md).
+are separate extensions. Concrete unfinished work is in [todo.md](../planning/todo.md) and
+[asset-manifest-todo.md](../planning/asset-manifest-todo.md).

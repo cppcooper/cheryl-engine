@@ -32,18 +32,9 @@ OpenGL development/link dependencies.
 
 ## Documentation
 
-- [Runtime architecture and API boundaries](docs/RUNTIME-ARCHITECTURE.md)
-- [Frame ownership and runtime lifecycle](docs/RUNTIME-FRAME-BOUNDARY.md)
-- [Input State, Events, Text, and focus](docs/input-state-model.md)
-- [Simulation timing and recovery](docs/SIMULATION-TIMING.md)
-- [Thread dispatch](docs/THREAD-DISPATCH.md), [event delivery](docs/EVENT-DELIVERY.md),
-  and [worker execution](docs/WORKER-EXECUTION.md)
-- [Pipelines and materials](docs/PIPELINES-AND-MATERIALS.md) and
-  [asset/render header boundaries](docs/ASSET-RENDER-BOUNDARIES.md)
-- [Asset loading](docs/ASSET-LOADING.md) and [manifest format](docs/ASSET-MANIFESTS.md)
-- [Resource residency](docs/RESOURCE-RESIDENCY.md) and
-  [memory/resource lifetime](docs/resource-lifetime.md)
-- [Recorded validation and repeatable commands](docs/ARCHITECTURE-VALIDATION.md),
-  [desktop checks](docs/NATIVE-DESKTOP-CHECKS.md), and [code style](docs/CODE-STYLE.md)
-- [Unfinished engine work](docs/TODO.md) and
-  [unresolved asset metadata](docs/ASSET-MANIFEST-TODO.md)
+The [documentation index](docs/README.md) groups the engine docs by runtime,
+assets, rendering, resources, development, and planning.
+
+Start with [runtime architecture and API boundaries](docs/runtime/runtime-architecture.md)
+for the engine overview, [code style](docs/development/code-style.md) for contribution
+conventions, or [unfinished engine work](docs/planning/todo.md) for current TODOs.

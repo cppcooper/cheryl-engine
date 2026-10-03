@@ -90,8 +90,8 @@ demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 -
 Scheduler and tick-input regressions use explicit clocks. Recording and native
 runtime cases exercise both modes, bounded recovery, slow updates/presentation,
 full polling backlogs, and ordered input without replay. Executed scopes and
-platform limits are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+platform limits are in [architecture-validation.md](../development/architecture-validation.md).
 
-A profiling-based optimization configurer remains unfinished in [TODO.md](TODO.md).
+A profiling-based optimization configurer remains unfinished in [todo.md](../planning/todo.md).
 It must preserve explicit timing/input configuration, rather than silently replacing
 fixed delta, changing input history, or introducing interpolation.

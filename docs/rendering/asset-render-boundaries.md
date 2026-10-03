@@ -25,7 +25,7 @@ uniform APIs remain available for application parameters. Common drawing code
 does not select GLSL names.
 
 Typed pipeline definitions, immutable material defaults, and copied custom
-parameter resolution are described in [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md).
+parameter resolution are described in [pipelines-and-materials.md](pipelines-and-materials.md).
 Render packets retain a material generation and geometry, with copied parameter
 values. Frame playback does not inspect a font, sprite, tileset, or animation.
 
@@ -36,7 +36,7 @@ to match the atlas UV convention. The caller's pixels remain intact. STB's one-c
 alpha atlas uses its own baked UVs and keeps its supplied row order. GPU handle destruction is coordinated by the OpenGL renderer while
 its own context is current. Actual-context checks also apply to uploads and draw
 operations. Runtime architecture and application APIs are described in
-[RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md).
+[runtime-architecture.md](../runtime/runtime-architecture.md).
 
 ## FFont layout contract
 
@@ -54,6 +54,6 @@ rotation belong to the submission's model instead of mutable font print state.
 
 Recording submission cases cover banks/widths, whitespace/fallback, and transformed
 multiline layout; real native cases also check retained FFont packets and atlas rows.
-See [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md) for those scopes.
+See [architecture-validation.md](../development/architecture-validation.md) for those scopes.
 FFont file-read/format validation and Unicode shaping remain unfinished in
-[TODO.md](TODO.md).
+[todo.md](../planning/todo.md).

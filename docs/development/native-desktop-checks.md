@@ -33,4 +33,4 @@ In each mode, check these observations:
 For a failure, identify sequential/concurrent mode, the action, visible behavior,
 console error and your GPU/driver if known. Screenshots are optional; a short text
 report is enough to begin investigation. These observations complement the automated
-context/lifetime cases in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+context/lifetime cases in [architecture-validation.md](architecture-validation.md).

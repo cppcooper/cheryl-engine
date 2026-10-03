@@ -77,4 +77,4 @@ The Puny World manifest is transcribed from the author-supplied `punyworld-overw
 
 ## Runtime implementation
 
-The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [ASSET-LOADING.md](ASSET-LOADING.md) for the runtime entry point, validation/load order, retrieval APIs, and per-entity sprite playback. Tile-map neighbor selection and animated-target substitution remain unfinished in [TODO.md](TODO.md).
+The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [asset-loading.md](asset-loading.md) for the runtime entry point, validation/load order, retrieval APIs, and per-entity sprite playback. Tile-map neighbor selection and animated-target substitution remain unfinished in [todo.md](../planning/todo.md).

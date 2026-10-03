@@ -20,4 +20,4 @@ an artwork-owner decision before additional semantics can be encoded safely.
   selection needs a different asset/runtime contract.
 
 Engine-side tile selection and animation substitution remain separately listed in
-[TODO.md](TODO.md).
+[todo.md](todo.md).

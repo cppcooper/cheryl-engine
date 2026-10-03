@@ -1,7 +1,7 @@
 # Runtime frame boundary
 
 `GameRuntime` coordinates input polling, simulation, rendering, presentation, and
-shutdown. Both execution modes use the [same configurable timing policy](SIMULATION-TIMING.md), with variable/fixed steps and bounded direct/hybrid recovery. The application chooses a compatible platform, graphics context,
+shutdown. Both execution modes use the [same configurable timing policy](simulation-timing.md), with variable/fixed steps and bounded direct/hybrid recovery. The application chooses a compatible platform, graphics context,
 renderer, resources, and input adapter. The renderer uses the selected context
 and render target; it does not own the display system or read live game state.
 The presentation surface presents a completed frame.
@@ -102,7 +102,7 @@ pause polling while rendering continues. Every completed poll counts, including
 unchanged samples; the worker takes the entire batch at a cycle boundary and
 wakes polling into an empty backlog. Renderer retirement maintenance runs after platform work
 and before waiting, even without a new frame; idle waits are bounded to 10 ms.
-[Resource residency](RESOURCE-RESIDENCY.md) describes the bound and ownership trace. Each selected update consumes fresh input;
+[Resource residency](../resources/resource-residency.md) describes the bound and ownership trace. Each selected update consumes fresh input;
 held State persists and transient input is not repeated. Both runtime modes use
 the same timing configuration, including fixed steps and capped VariableCatchUp. The worker publishes a prepared slot without copying
 it. If it supersedes a waiting frame, the platform thread recycles the older
@@ -130,13 +130,13 @@ never invoked by a platform callback. Enter/Escape releases focus.
 
 Input capture/routing contracts are described in
 [input-state-model.md](input-state-model.md); recorded execution scopes are in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+[architecture-validation.md](../development/architecture-validation.md).
 
 Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied custom
 pass/material/draw values without common code selecting native uniform names.
 GLSLPipelineBindings owns explicit backend mappings. MaterialMgr builds complete
 recipe replacements before publishing; retained frame owners keep old generations
-and failed builders leave the prior entry intact. See [PIPELINES-AND-MATERIALS.md](PIPELINES-AND-MATERIALS.md).
+and failed builders leave the prior entry intact. See [pipelines-and-materials.md](../rendering/pipelines-and-materials.md).
 
 Asset-manager lookups copy published handles under shared locks; publication and
 clearing use unique locks. Asset construction and removed-handle destruction run
@@ -153,7 +153,7 @@ after success. Geometry upload accepts a transient vertex span and copies it
 before returning. Use context-owned WorkerGroups to prepare owned data, then submit upload through
 saved platform endpoints. Accepted group work settles during runtime shutdown;
 independently owned workers require application lifetime coordination. See
-[ASSET-LOADING.md](ASSET-LOADING.md).
+[asset-loading.md](../assets/asset-loading.md).
 
 OpenGL resource operations require a live owner thread and the selected current
 context. Renderer shutdown first restores that context, deletes tracked handles,
@@ -162,7 +162,7 @@ closure without querying the borrowed context. If destructor cleanup cannot
 recover the context, it invalidates handles without OpenGL calls; platform context
 destruction releases remaining native resources. The context outlives its renderer.
 Recorded build and native acceptance scopes are in
-[ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+[architecture-validation.md](../development/architecture-validation.md).
 
 ### Saved platform submission endpoints
 

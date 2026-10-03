@@ -101,5 +101,5 @@ the owner must service any such dependencies before waiting for group drainage.
 Recorded worker validation covers caps, weighted shares, capture release before
 drain completion, saved-handle rejection, mask switching/revalidation, actual
 inherited restrictions and kernel rejection, plus controlled affinity and
-thread-start failures. See [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md)
+thread-start failures. See [architecture-validation.md](../development/architecture-validation.md)
 for executed scopes and host limits.

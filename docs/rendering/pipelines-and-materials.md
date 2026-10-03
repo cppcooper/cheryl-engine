@@ -92,7 +92,7 @@ produce these types separately from generic manifest discovery.
 Common regressions exercise a two-image effect with time/color/intensity, copied
 inputs, type/required/optional validation, immutable generations, failed replacement,
 and independent unit selection. Recorded native state/reload, retained-packet, and
-font execution scopes are in [ARCHITECTURE-VALIDATION.md](ARCHITECTURE-VALIDATION.md).
+font execution scopes are in [architecture-validation.md](../development/architecture-validation.md).
 
 ## Native bootstrap and binding
 

@@ -102,6 +102,6 @@ request. After publication, unentered callable destruction abandons the stream
 outside producer posting locks. This permits error-sink redispatch and capture-
 destructor reentry without running another listener's cancellation under that lock.
 
-[Recorded validation](ARCHITECTURE-VALIDATION.md) includes controlled pump rejection,
+[Recorded validation](../development/architecture-validation.md) includes controlled pump rejection,
 concurrent producers, payload-copy invalidation, native-policy suppression, and
-reentrant recovery. Typed channels remain unfinished in [TODO.md](TODO.md).
+reentrant recovery. Typed channels remain unfinished in [todo.md](../planning/todo.md).
