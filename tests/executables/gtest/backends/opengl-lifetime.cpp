@@ -197,6 +197,11 @@ TEST(opengl_lifetime, retained_allocator_lifetime) {
     auto retained = std::make_unique<OpenGLHandle>(lifetime, GLResourceKind::Program, 105);
     memory.reset();
     lifetime->abandon();
+    const auto stats = lifetime->diagnostics();
+    EXPECT_EQ(stats.tracked, 1u);
+    EXPECT_EQ(stats.abandoned, 1u);
+    EXPECT_EQ(stats.live, 0u);
+    EXPECT_FALSE(stats.active);
     lifetime.reset();
     EXPECT_FALSE(borrowed_memory.expired());
     retained.reset();
@@ -255,10 +260,13 @@ TEST(opengl_lifetime, worker_release_retirement) {
     auto worker = std::async(std::launch::async, [handle = std::move(handle)]() mutable { handle.reset(); });
     worker.get();
     EXPECT_TRUE(native.deletions.empty());
+    EXPECT_EQ(lifetime->diagnostics().pending, 1u);
     lifetime->collect();
     ASSERT_EQ(native.deletions.size(), 1u);
     EXPECT_EQ(native.deletions.front(), (std::pair{GLResourceKind::Texture, GLuint{41}}));
     EXPECT_EQ(native.deletion_thread, std::this_thread::get_id());
+    EXPECT_EQ(lifetime->diagnostics().pending, 0u);
+    EXPECT_EQ(lifetime->diagnostics().deleted, 1u);
     lifetime->collect();
     lifetime->shutdown();
     EXPECT_EQ(native.deletions.size(), 1u);

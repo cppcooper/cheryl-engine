@@ -1,5 +1,7 @@
 #pragma once
 #include "exceptions.h"
+#include <core/diagnostics.h>
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdio>
@@ -7,6 +9,24 @@
 #include <utility>
 
 namespace CE::Diagnostics {
+    // Bounded operational context for required/noexcept failure paths. The
+    // strings are engine-owned labels, not payloads, paths, or user text.
+    inline void report_outcome(
+        const char* subsystem,
+        const DomainId domain,
+        const char* operation,
+        const char* outcome,
+        const std::uint64_t count = 0
+    ) noexcept {
+        std::array<char, 384> record{};
+        const auto length = std::snprintf(
+            record.data(), record.size(), "[Cheryl diagnostic] subsystem=%s domain=%llu operation=%s outcome=%s count=%llu\n",
+            subsystem, static_cast<unsigned long long>(domain), operation, outcome, static_cast<unsigned long long>(count)
+        );
+        if (length > 0)
+            (void)std::fwrite(record.data(), 1, std::min(static_cast<std::size_t>(length), record.size() - 1), stderr);
+    }
+
     /**
      * Best-effort emergency reporting, independent of the logger and symbolizer.
      * A bounded record is written with C stdio; no C++ allocation, formatting,

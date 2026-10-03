@@ -10,6 +10,7 @@
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <array>
 #include <algorithm>
@@ -54,17 +55,54 @@ namespace CE::GFramework {
         if (run_started_.exchange(true, std::memory_order_acq_rel))
             throw Exceptions::failed_operation(CE_HERE, "GameRuntime::run is single-use");
         // Reserve the graph before either runtime can initialize or clean up its adapters.
-        engine_.begin_session();
         try {
+            engine_.begin_session();
+            CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} operation=session_begin mode={} timing={} polling={} capacity={}",
+                        diagnostics_.domain, static_cast<int>(mode_), static_cast<int>(timing_.mode),
+                        static_cast<int>(polling_.policy), polling_.capacity);
             if (mode_ == RunMode::Sequential)
                 run_sequential();
             else
                 run_concurrent();
         } catch (...) {
             stop();
+            report_session(true);
+            run_finished_.store(true, std::memory_order_release);
             throw;
         }
         stop();
+        report_session(false);
+        run_finished_.store(true, std::memory_order_release);
+    }
+
+    RuntimeStats GameRuntime::diagnostics() const {
+        if (run_started_.load(std::memory_order_acquire) && !run_finished_.load(std::memory_order_acquire))
+            throw Exceptions::failed_operation(CE_HERE, "Runtime diagnostics require a completed or unstarted session");
+        return diagnostics_;
+    }
+
+    void GameRuntime::report_session(const bool failed) const noexcept {
+        if (failed) {
+            Diagnostics::report_outcome("runtime", diagnostics_.domain, phase_, "failed");
+            CE_LOG_ERROR(CE::enginelog, "subsystem=runtime domain={} operation={} outcome=failed", diagnostics_.domain, phase_);
+        }
+        CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} operation=session_end outcome={} updates={} polls={} published={} rendered={}",
+                    diagnostics_.domain, failed ? "failed" : "completed", diagnostics_.updates, diagnostics_.polls,
+                    diagnostics_.published, diagnostics_.rendered);
+        CE_LOG_DEBUG(CE::enginelog, "subsystem=runtime domain={} operation=summary superseded={} skipped={} dropped_batches={} dropped_ns={} peak_polls={} resizes={}",
+                     diagnostics_.domain, diagnostics_.superseded, diagnostics_.skipped_publication,
+                     diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds, diagnostics_.peak_polls, diagnostics_.resizes);
+        if (diagnostics_.dropped_batches)
+            CE_LOG_WARN(CE::enginelog, "subsystem=runtime domain={} operation=lag_recovery outcome=dropped batches={} duration_ns={}",
+                        diagnostics_.domain, diagnostics_.dropped_batches, diagnostics_.dropped_nanoseconds);
+    }
+
+    void GameRuntime::preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next) {
+        if (next && !first)
+            phase_ = phase;
+        else if (next && first != next)
+            Diagnostics::report_outcome("runtime", diagnostics_.domain, phase, "secondary_failure");
+        Diagnostics::preserve_failure(first, phase, std::move(next));
     }
 
     void GameRuntime::run_sequential() {
@@ -82,8 +120,10 @@ namespace CE::GFramework {
         std::exception_ptr failure;
 
         try {
+            phase_ = "window_selection";
             auto& window = engine_.window();
             renderer_started = true;
+            phase_ = "renderer_initialize";
             renderer.initialize();
             renderer_ready_ = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
@@ -96,11 +136,18 @@ namespace CE::GFramework {
             });
             simulation_dispatcher_.bind_owner();
             input_started = true;
+            phase_ = "input_initialize";
             input.initialize(window);
+            CE_LOG_INFO(CE::enginelog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
+                        diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
+                        input.supports(Input::InputMode::Text), input.supports_focus());
             game_started = true;
+            phase_ = "game_init";
             game_.init();
-            if (!stop_requested_.load(std::memory_order_acquire))
+            if (!stop_requested_.load(std::memory_order_acquire)) {
+                phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
+            }
 
             // Game initialization may register bindings and upload assets. Start
             // timing and sample the baseline only after it has completed.
@@ -116,15 +163,19 @@ namespace CE::GFramework {
             bool published = false;
 
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+                phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
                 // Sequential execution cannot poll during update(), but spacing
                 // still applies. A delayed poll never delays simulation or rendering.
                 if (backlog.poll_due(Input::InputClock::now())) {
+                    phase_ = "input_poll";
                     input.poll();
+                    ++diagnostics_.polls;
                     window.check_native_failure();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
                     backlog.complete(input.poll_snapshot(), Input::InputClock::now());
+                    diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, backlog.completed_polls());
                 }
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                     break;
@@ -132,8 +183,13 @@ namespace CE::GFramework {
                 if (size != viewport) {
                     renderer.set_viewport(size);
                     viewport = size;
+                    ++diagnostics_.resizes;
                 }
                 const auto batch = timing.advance(SimulationClock::now());
+                if (batch.dropped > SimulationClock::duration::zero()) {
+                    ++diagnostics_.dropped_batches;
+                    diagnostics_.dropped_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(batch.dropped).count();
+                }
                 bool updated = false;
                 for (std::size_t i = 0; i < batch.steps.size(); ++i) {
                     // Every actual update gets its own detached mailbox and whole
@@ -144,27 +200,36 @@ namespace CE::GFramework {
                     auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                     const auto& step = batch.steps[i];
                     const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                    phase_ = "game_update";
+                    ++diagnostics_.updates;
                     game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
                     updated = true;
                     if (stop_requested_.load(std::memory_order_acquire))
                         break;
                 }
-                if (!stop_requested_.load(std::memory_order_acquire))
+                if (!stop_requested_.load(std::memory_order_acquire)) {
+                    phase_ = "platform_dispatch";
                     engine_.platform_dispatcher().drain(engine_);
+                }
 
                 // Publish only the final useful state from the bounded batch.
                 // Retain that complete frame for cycles without a simulation update.
                 if (updated) {
+                    phase_ = "prepare_frame";
                     frame.recycle();
                     RenderAPIs::RenderFrameWriter writer(frame);
                     game_.prepare_render_frame(writer);
                     published = true;
+                    ++diagnostics_.published;
                 }
                 if (published) {
+                    phase_ = "render_present";
                     renderer.clear();
                     renderer.render(frame);
                     engine_.surface().present();
+                    ++diagnostics_.rendered;
                 }
+                phase_ = "renderer_maintenance";
                 renderer.maintain_resources();
                 std::unique_lock lock(scheduler_->mutex);
                 const auto deadline =
@@ -177,11 +242,11 @@ namespace CE::GFramework {
             failure = std::current_exception();
         }
 
-        const auto finish = [&failure](const char* phase, auto&& operation) {
+        const auto finish = [this, &failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                Diagnostics::preserve_failure(failure, phase, std::current_exception());
+                preserve_failure(failure, phase, std::current_exception());
             }
         };
         stop();
@@ -225,6 +290,7 @@ namespace CE::GFramework {
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
             bool worker_done = false;
+            const char* worker_phase = "simulation_start";
         };
 
         auto& renderer = engine_.renderer();
@@ -238,8 +304,10 @@ namespace CE::GFramework {
         std::exception_ptr failure;
 
         try {
+            phase_ = "window_selection";
             auto& window = engine_.window();
             renderer_started = true;
+            phase_ = "renderer_initialize";
             renderer.initialize();
             renderer_ready_ = true;
             engine_.platform_dispatcher().open([scheduler = scheduler_] {
@@ -253,11 +321,18 @@ namespace CE::GFramework {
                 scheduler->wake.notify_all();
             });
             input_started = true;
+            phase_ = "input_initialize";
             input.initialize(window);
+            CE_LOG_INFO(CE::enginelog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
+                        diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
+                        input.supports(Input::InputMode::Text), input.supports_focus());
             game_started = true;
+            phase_ = "game_init";
             game_.init();
-            if (!stop_requested_.load(std::memory_order_acquire))
+            if (!stop_requested_.load(std::memory_order_acquire)) {
+                phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
+            }
 
             auto previous_poll = input.action_snapshot();
             if (!previous_poll)
@@ -269,6 +344,7 @@ namespace CE::GFramework {
             // The worker owns simulation and its clock; the calling thread alone
             // touches the window, input adapter, renderer, and presentation surface.
             auto simulate = [&, previous_poll = std::move(previous_poll)]() mutable {
+                const char* worker_phase = "simulation_bind";
                 try {
                     simulation_dispatcher_.bind_owner();
                     const auto started_at = SimulationClock::now();
@@ -285,6 +361,10 @@ namespace CE::GFramework {
                                 break;
                         }
                         const auto batch = timing.advance(SimulationClock::now());
+                        if (batch.dropped > SimulationClock::duration::zero()) {
+                            ++diagnostics_.dropped_batches;
+                            diagnostics_.dropped_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(batch.dropped).count();
+                        }
                         bool updated = false;
                         for (std::size_t i = 0; i < batch.steps.size(); ++i) {
                             // Callbacks run outside the scheduler lock. Each recovery
@@ -305,6 +385,8 @@ namespace CE::GFramework {
                             auto state = accumulator.consume_polls(consumed_at, std::move(polls));
                             const auto& step = batch.steps[i];
                             const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
+                            worker_phase = "game_update";
+                            ++diagnostics_.updates;
                             game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
                             polls = {};
                             updated = true;
@@ -329,15 +411,21 @@ namespace CE::GFramework {
                                 }
                             }
                         }
-                        if (!writable)
+                        if (!writable) {
+                            ++diagnostics_.skipped_publication;
                             continue;
+                        }
 
                         RenderAPIs::RenderFrameWriter writer(slots[*writable].frame);
+                        worker_phase = "prepare_frame";
                         game_.prepare_render_frame(writer);
+                        ++diagnostics_.published;
                         {
                             std::lock_guard lock(scheduler_->mutex);
-                            if (handoff.ready)
+                            if (handoff.ready) {
                                 slots[*handoff.ready].state = SlotState::Retired;
+                                ++diagnostics_.superseded;
+                            }
                             slots[*writable].state = SlotState::Ready;
                             handoff.ready = *writable;
                         }
@@ -346,6 +434,7 @@ namespace CE::GFramework {
                 } catch (...) {
                     std::lock_guard lock(scheduler_->mutex);
                     handoff.worker_failure = std::current_exception();
+                    handoff.worker_phase = worker_phase;
                 }
                 // Release unexecuted simulation captures on their owner while
                 // game/resources still exist, before publishing worker_done.
@@ -356,9 +445,10 @@ namespace CE::GFramework {
                     bool secondary = false;
                     {
                         std::lock_guard lock(scheduler_->mutex);
-                        if (!handoff.worker_failure)
+                        if (!handoff.worker_failure) {
                             handoff.worker_failure = next;
-                        else
+                            handoff.worker_phase = "simulation_dispatcher_close";
+                        } else
                             secondary = handoff.worker_failure != next;
                     }
                     if (secondary)
@@ -370,6 +460,7 @@ namespace CE::GFramework {
                 }
                 scheduler_->wake.notify_all();
             };
+            phase_ = "simulation_start";
             worker = simulation_thread_factory_ ? simulation_thread_factory_(std::move(simulate)) : std::thread(std::move(simulate));
             if (!worker.joinable())
                 throw Exceptions::failed_operation(CE_HERE, "Simulation thread factory returned no thread");
@@ -378,6 +469,7 @@ namespace CE::GFramework {
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
             while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+                phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
                 bool poll_due = false;
                 {
@@ -388,7 +480,9 @@ namespace CE::GFramework {
                 }
 
                 if (poll_due) {
+                    phase_ = "input_poll";
                     input.poll();
+                    ++diagnostics_.polls;
                     window.check_native_failure();
                     if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                         break;
@@ -399,12 +493,14 @@ namespace CE::GFramework {
                     if (size != viewport) {
                         renderer.set_viewport(size);
                         viewport = size;
+                        ++diagnostics_.resizes;
                     }
                     {
                         std::lock_guard lock(scheduler_->mutex);
                         // Every completed poll consumes capacity, including an
                         // unchanged observation. No completed observation is discarded.
                         handoff.backlog.complete(std::move(completed), Input::InputClock::now());
+                        diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, handoff.backlog.completed_polls());
                         handoff.framebuffer_size = size;
                     }
                 }
@@ -441,12 +537,15 @@ namespace CE::GFramework {
                     current_frame = ready;
                 }
                 if (current_frame) {
+                    phase_ = "render_present";
                     renderer.clear();
                     renderer.render(slots[*current_frame].frame);
                     engine_.surface().present();
+                    ++diagnostics_.rendered;
                 }
                 // Retirement must progress even before the first frame, while
                 // input capacity is full, or while a slow update produces no frame.
+                phase_ = "renderer_maintenance";
                 renderer.maintain_resources();
 
                 std::unique_lock lock(scheduler_->mutex);
@@ -471,11 +570,11 @@ namespace CE::GFramework {
         }
 
         stop();
-        const auto finish = [&failure](const char* phase, auto&& operation) {
+        const auto finish = [this, &failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                Diagnostics::preserve_failure(failure, phase, std::current_exception());
+                preserve_failure(failure, phase, std::current_exception());
             }
         };
         finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
@@ -497,11 +596,13 @@ namespace CE::GFramework {
             worker.join();
         }
         std::exception_ptr worker_failure;
+        const char* worker_phase;
         {
             std::lock_guard lock(scheduler_->mutex);
             worker_failure = handoff.worker_failure;
+            worker_phase = handoff.worker_phase;
         }
-        Diagnostics::preserve_failure(failure, "simulation worker", std::move(worker_failure));
+        preserve_failure(failure, worker_phase, std::move(worker_failure));
         // Also handles initialization/thread-start failure before owner binding.
         finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
@@ -534,11 +635,11 @@ namespace CE::GFramework {
 
     void GameRuntime::finish_unstarted_session() {
         std::exception_ptr failure;
-        const auto finish = [&failure](const char* phase, auto&& operation) {
+        const auto finish = [this, &failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                Diagnostics::preserve_failure(failure, phase, std::current_exception());
+                preserve_failure(failure, phase, std::current_exception());
             }
         };
         finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
@@ -555,13 +656,13 @@ namespace CE::GFramework {
         try {
             engine_.platform_dispatcher().drain(engine_);
         } catch (...) {
-            Diagnostics::preserve_failure(failure, "shutdown platform dispatch", std::current_exception());
+            preserve_failure(failure, "shutdown platform dispatch", std::current_exception());
             // If dispatch itself fails, cancel rather than strand futures which
             // a worker is waiting for. Preserve the first failure during cleanup.
             try {
                 engine_.platform_dispatcher().close();
             } catch (...) {
-                Diagnostics::preserve_failure(failure, "shutdown platform cancellation", std::current_exception());
+                preserve_failure(failure, "shutdown platform cancellation", std::current_exception());
             }
         }
         // Maintenance failure is separate from dispatcher failure: keep servicing
@@ -570,7 +671,7 @@ namespace CE::GFramework {
             try {
                 engine_.renderer().maintain_resources();
             } catch (...) {
-                Diagnostics::preserve_failure(failure, "shutdown renderer maintenance", std::current_exception());
+                preserve_failure(failure, "shutdown renderer maintenance", std::current_exception());
             }
         }
     }
@@ -586,7 +687,7 @@ namespace CE::GFramework {
         try {
             engine_.finish_workers();
         } catch (...) {
-            Diagnostics::preserve_failure(failure, "finish workers", std::current_exception());
+            preserve_failure(failure, "finish workers", std::current_exception());
         }
     }
 }

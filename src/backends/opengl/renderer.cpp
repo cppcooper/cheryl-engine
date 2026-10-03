@@ -6,6 +6,7 @@
 
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <thread>
 #include <utility>
@@ -50,6 +51,7 @@ namespace CE::RenderAPIs {
     : context_(context) {}
 
     OpenGLRenderer::~OpenGLRenderer() {
+        destroying_ = true;
         if (initialized_) {
             try {
                 deinitialize();
@@ -101,6 +103,8 @@ namespace CE::RenderAPIs {
             throw;
         }
         initialized_ = true;
+        CE_LOG_INFO(CE::enginelog, "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl baseline=3.3",
+                    resources_->diagnostics().domain);
     }
 
     void OpenGLRenderer::deinitialize() {
@@ -116,6 +120,12 @@ namespace CE::RenderAPIs {
         initialized_ = false;
         stopped_ = true;
         context_.release_current();
+        if (!destroying_) {
+            CE_LOG_INFO(CE::enginelog, "subsystem=renderer domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain);
+            CE_LOG_DEBUG(CE::enginelog, "subsystem=native_resources domain={} operation=shutdown tracked={} deleted={} abandoned={}",
+                         resources_->diagnostics().domain, resources_->diagnostics().tracked,
+                         resources_->diagnostics().deleted, resources_->diagnostics().abandoned);
+        }
     }
 
     std::shared_ptr<OpenGLResourceLifetime> OpenGLRenderer::resources() const {

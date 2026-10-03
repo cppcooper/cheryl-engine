@@ -1,6 +1,7 @@
 #pragma once
 
 #include <backends/opengl/gl.h>
+#include <core/diagnostics.h>
 
 #include <cstddef>
 #include <functional>
@@ -17,6 +18,16 @@ namespace CE::RenderAPIs {
     }
 
     enum class GLResourceKind { Texture, Buffer, VertexArray, Program, ShaderStage };
+
+    struct NativeResourceStats {
+        Diagnostics::DomainId domain = 0;
+        std::uint64_t tracked = 0;
+        std::uint64_t live = 0;
+        std::uint64_t pending = 0;
+        std::uint64_t deleted = 0;
+        std::uint64_t abandoned = 0;
+        bool active = true;
+    };
 
     // All GL calls happen on the context thread. Asset destructors may run on another
     // thread, so they only mark their handles for deletion here.
@@ -38,6 +49,7 @@ namespace CE::RenderAPIs {
         std::thread::id owner_;
         std::function<bool()> is_current_;
         bool active_ = true;
+        NativeResourceStats diagnostics_{Diagnostics::next_domain_id()};
 
     public:
         // The predicate borrows a context that must outlive this active lifetime.
@@ -56,6 +68,8 @@ namespace CE::RenderAPIs {
         void abandon() noexcept;
         void require_owner() const;
         void require_current() const;
+        // Snapshot under the lifetime lock; no logging or native calls.
+        [[nodiscard]] NativeResourceStats diagnostics() const;
 
     private:
         friend struct ResourceDetail::LifetimeAccess;

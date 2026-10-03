@@ -555,6 +555,13 @@ TEST(runtime_adapter, sequential_frame) {
     EXPECT_EQ(renderer->shutdowns, 1);
     EXPECT_EQ(input.attached_window(), nullptr);
     EXPECT_EQ(game.update_thread, std::this_thread::get_id());
+    const auto stats = runtime.diagnostics();
+    EXPECT_NE(stats.domain, 0u);
+    EXPECT_EQ(stats.updates, 1u);
+    EXPECT_EQ(stats.polls, 1u);
+    EXPECT_EQ(stats.published, 1u);
+    EXPECT_EQ(stats.rendered, 1u);
+    EXPECT_EQ(stats.resizes, 1u);
 }
 
 TEST(runtime_adapter, game_init_failure) {
@@ -578,6 +585,9 @@ TEST(runtime_adapter, game_init_failure) {
         }
         const auto diagnostics = ::testing::internal::GetCapturedStderr();
         EXPECT_NE(diagnostics.find("game deinit: cleanup also failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("operation=game_init outcome=failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("domain=" + std::to_string(runtime.diagnostics().domain)), std::string::npos);
+        EXPECT_EQ(runtime.diagnostics().updates, 0u);
         EXPECT_EQ(game.initializations, 1);
         EXPECT_EQ(game.shutdowns, 1);
         EXPECT_EQ(input.routing().current()->target, 0u);
@@ -877,6 +887,12 @@ TEST(runtime_adapter, concurrent_frame) {
     EXPECT_TRUE(renderer->last_marked_pressed);
     EXPECT_EQ(renderer->shutdowns, 1);
     EXPECT_EQ(input.attached_window(), nullptr);
+    const auto stats = runtime.diagnostics();
+    EXPECT_NE(stats.domain, 0u);
+    EXPECT_EQ(stats.updates, game.updates);
+    EXPECT_EQ(stats.rendered, surface->presents);
+    EXPECT_GE(stats.published, 1u);
+    EXPECT_LE(stats.peak_polls, 1u);
 }
 
 TEST(runtime_adapter, routed_event_order) {

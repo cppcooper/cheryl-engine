@@ -2,6 +2,7 @@
 #include "resource-lifetime-internal.h"
 
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #include <utility>
 
@@ -64,6 +65,11 @@ namespace CE::RenderAPIs {
         require_current_locked();
     }
 
+    NativeResourceStats OpenGLResourceLifetime::diagnostics() const {
+        const std::lock_guard lock(mutex_);
+        return diagnostics_;
+    }
+
     void OpenGLResourceLifetime::delete_handle(const GLResourceKind kind, const GLuint id) noexcept {
         if (!id)
             return;
@@ -98,9 +104,13 @@ namespace CE::RenderAPIs {
             const auto slot = free_;
             free_ = entries_[slot].next;
             entries_[slot] = {kind, id};
+            ++diagnostics_.tracked;
+            ++diagnostics_.live;
             return slot;
         }
         entries_.push_back({kind, id});
+        ++diagnostics_.tracked;
+        ++diagnostics_.live;
         return entries_.size() - 1;
     }
 
@@ -112,8 +122,11 @@ namespace CE::RenderAPIs {
             entries_[slot].pending = true;
             entries_[slot].next = pending_;
             pending_ = slot;
+            ++diagnostics_.pending;
         } catch (...) {
             // The shutdown sweep still owns this handle if a mutex operation fails.
+            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "retire", "deferred_to_shutdown");
+            Diagnostics::report_failure("native resource retirement", std::current_exception());
         }
     }
 
@@ -125,6 +138,9 @@ namespace CE::RenderAPIs {
             auto& entry = entries_[slot];
             pending_ = entry.next;
             delete_handle(entry.kind, entry.id);
+            --diagnostics_.live;
+            --diagnostics_.pending;
+            ++diagnostics_.deleted;
             entry.id = 0;
             entry.pending = false;
             entry.next = free_;
@@ -142,29 +158,47 @@ namespace CE::RenderAPIs {
         } catch (...) {
             // No tracking allocation succeeded. If the context cannot be used,
             // native context destruction owns the remaining cleanup.
+            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "discard_untracked", "deferred_to_context", 1);
+            Diagnostics::report_failure("native untracked cleanup", std::current_exception());
         }
     }
 
     void OpenGLResourceLifetime::shutdown() {
-        const std::lock_guard lock(mutex_);
-        require_current_locked();
-        for (auto& entry : entries_) {
-            delete_handle(entry.kind, entry.id);
-            entry.id = 0;
-        }
-        active_ = false;
-        entries_.clear();
-        pending_ = free_ = none;
-    }
-
-    void OpenGLResourceLifetime::abandon() noexcept {
-        try {
+        {
             const std::lock_guard lock(mutex_);
+            require_current_locked();
+            for (auto& entry : entries_) {
+                delete_handle(entry.kind, entry.id);
+                entry.id = 0;
+            }
+            diagnostics_.deleted += diagnostics_.live;
+            diagnostics_.live = diagnostics_.pending = 0;
+            diagnostics_.active = false;
             active_ = false;
             entries_.clear();
             pending_ = free_ = none;
+        }
+    }
+
+    void OpenGLResourceLifetime::abandon() noexcept {
+        std::uint64_t count = 0;
+        try {
+            {
+                const std::lock_guard lock(mutex_);
+                count = diagnostics_.live;
+                diagnostics_.abandoned += count;
+                diagnostics_.live = diagnostics_.pending = 0;
+                diagnostics_.active = false;
+                active_ = false;
+                entries_.clear();
+                pending_ = free_ = none;
+            }
+            if (count)
+                Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "deferred_to_context", count);
         } catch (...) {
             // No OpenGL call is permitted from this failure fallback.
+            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "failed");
+            Diagnostics::report_failure("native resource abandonment", std::current_exception());
         }
     }
 

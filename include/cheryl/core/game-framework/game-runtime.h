@@ -2,6 +2,7 @@
 
 #include <core/controls/polling-backlog.h>
 #include <core/engine/simulation-dispatcher.h>
+#include <core/diagnostics.h>
 
 #include "simulation-scheduler.h"
 
@@ -27,6 +28,20 @@ namespace CE::GFramework {
 
     enum class RunMode { Sequential, Concurrent };
 
+    struct RuntimeStats {
+        Diagnostics::DomainId domain = 0;
+        std::uint64_t updates = 0;
+        std::uint64_t polls = 0;
+        std::uint64_t published = 0;
+        std::uint64_t rendered = 0;
+        std::uint64_t superseded = 0;
+        std::uint64_t skipped_publication = 0;
+        std::uint64_t dropped_batches = 0;
+        std::uint64_t dropped_nanoseconds = 0;
+        std::uint64_t peak_polls = 0;
+        std::uint64_t resizes = 0;
+    };
+
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
      * Each scheduled update receives accumulated State activity and the selected
      * simulation delta, with observation time available separately. Both modes
@@ -45,6 +60,9 @@ namespace CE::GFramework {
         RunMode mode_;
         Input::PollingOptions polling_;
         SimulationTimingOptions timing_;
+        RuntimeStats diagnostics_{Diagnostics::next_domain_id()};
+        const char* phase_ = "reserve_session"; // Platform owner; retained first failing phase.
+        std::atomic<bool> run_finished_{false};
         bool renderer_ready_ = false; // Platform-owned; partial initialization is not maintenance-ready.
         std::atomic<bool> run_started_{false};
         std::atomic<bool> stop_requested_{false};
@@ -67,6 +85,9 @@ namespace CE::GFramework {
 
         void run();
         void stop();
+        // Caller synchronizes with run start/return. Query before run or after
+        // its return/throw; live sampling rejects. Counters publish after join.
+        [[nodiscard]] RuntimeStats diagnostics() const;
         [[nodiscard]] Engine::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
@@ -76,5 +97,7 @@ namespace CE::GFramework {
         void finish_unstarted_session();
         void pump_shutdown_requests(std::exception_ptr& failure);
         void finish_worker_shutdown(std::exception_ptr& failure);
+        void preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next);
+        void report_session(bool failed) const noexcept;
     };
 }

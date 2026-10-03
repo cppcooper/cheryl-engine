@@ -1654,3 +1654,20 @@ Acceptance includes focused existing runtime, worker, dispatch/event, resource,
 memory, and recorded OpenGL cases plus diagnostic-specific quiet-session, partial
 publication, identity/counter, and callback-owner checks. Do not claim native driver
 or race-detector coverage from recorded calls alone. Independent U7/U8 are complete.
+
+### U6a — runtime and native lifetime outcomes
+
+Added monotonic diagnostic domains, runtime terminal-phase retention, session
+begin/end/capability records, and joined timing/poll/frame counters. No ordinary
+write is added to scheduler critical sections. Secondary cleanup outcomes retain
+bounded domain/phase metadata and the original failure precedence. Native lifetime
+snapshots account for track/retire/collect/shutdown/abandonment. Failed noexcept
+cleanup reports after unlock without touching an unavailable context; renderer
+destruction does not acquire ordinary logger dependencies.
+
+**Acceptance:** 48 focused runtime/startup/shutdown/timing/maintenance and recorded
+OpenGL lifetime/renderer cases passed. Existing failure-precedence cases now also
+assert primary phase/domain; sequential/concurrent counters and native retirement
+and abandonment observations are checked. The supplementary U5 Debug ASan/UBSan
+logging regressions and all seven isolated cases passed outside the sandbox, where
+LeakSanitizer can inspect threads. This is not TSan/native-driver evidence.

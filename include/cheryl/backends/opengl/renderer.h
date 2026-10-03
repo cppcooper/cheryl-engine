@@ -25,6 +25,7 @@ namespace CE::RenderAPIs {
         glm::mat4 view_{1.0f};
         bool initialized_ = false;
         bool stopped_ = false;
+        bool destroying_ = false;
 
     public:
         explicit OpenGLRenderer(iOpenGLContext& context);
