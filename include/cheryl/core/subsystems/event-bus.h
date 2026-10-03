@@ -1,4 +1,5 @@
 #pragma once
+#include <core/diagnostics.h>
 
 #include <any>
 #include <atomic>
@@ -14,6 +15,16 @@
 #include <vector>
 
 namespace CE::SubSystems {
+    struct EventStats {
+        Diagnostics::DomainId domain = 0;
+        std::uint64_t registrations = 0;
+        std::uint64_t active = 0;
+        std::uint64_t dispatches = 0;
+        std::uint64_t invocations = 0;
+        std::uint64_t queued_failures = 0;
+        std::uint64_t discarded = 0;
+        bool closed = false;
+    };
     /** An owned named-event registry. A bus separates registrations/lifecycle;
      * it does not select a thread. Immediate dispatch runs on its producer's thread.
      * String/any payload consistency remains the application author's contract.
@@ -30,7 +41,14 @@ namespace CE::SubSystems {
         using ErrorHandler = std::function<void(std::exception_ptr)>;
 
     private:
+        struct Counters {
+            const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
+            std::atomic<std::uint64_t> invocations{0};
+            std::atomic<std::uint64_t> queued_failures{0};
+            std::atomic<std::uint64_t> discarded{0};
+        };
         struct Listener {
+            std::shared_ptr<Counters> counters;
             std::string event;
             Callback callback;
             Delivery delivery;
@@ -56,6 +74,10 @@ namespace CE::SubSystems {
             std::unordered_map<std::string, std::vector<std::shared_ptr<Listener>>> channels;
             std::uint64_t next_id = 1;
             bool closed = false;
+            std::shared_ptr<Counters> counters = std::make_shared<Counters>();
+            std::uint64_t registrations = 0;
+            std::uint64_t active = 0;
+            std::uint64_t dispatches = 0;
         };
         std::shared_ptr<State> state_ = std::make_shared<State>();
 
@@ -68,13 +90,15 @@ namespace CE::SubSystems {
             std::weak_ptr<State> bus_;
             std::weak_ptr<Listener> listener_;
             std::uint64_t id_ = 0;
+            Diagnostics::DomainId bus_id_ = 0;
 
             Registration(const std::shared_ptr<State>& bus, const std::shared_ptr<Listener>& listener, std::uint64_t id)
-            : bus_(bus), listener_(listener), id_(id) {}
+            : bus_(bus), listener_(listener), id_(id), bus_id_(bus->counters->domain) {}
 
         public:
             Registration() = default;
             [[nodiscard]] std::uint64_t id() const { return id_; }
+            [[nodiscard]] Diagnostics::DomainId bus_id() const { return bus_id_; }
         };
 
         EventBus() = default;
@@ -98,6 +122,10 @@ namespace CE::SubSystems {
         // Every concurrent close returns after all invocation gates are closed.
         // Already-running callbacks retain ownership and are not waited for.
         void close();
+        [[nodiscard]] EventStats diagnostics() const;
+        // Explicit unlocked observer; registry edits/native callbacks/destructors
+        // do not emit ordinary logs. Payloads and names are not sampled.
+        void report_diagnostics() const noexcept;
 
     private:
         static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);

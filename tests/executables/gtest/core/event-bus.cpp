@@ -94,6 +94,10 @@ TEST(event_bus, independent_registrations) {
     EXPECT_EQ(calls, 0);
     first.dispatch("tick", 0);
     EXPECT_EQ(calls, 1);
+    EXPECT_NE(first.diagnostics().domain, second.diagnostics().domain);
+    EXPECT_EQ(first.diagnostics().registrations, 1u);
+    EXPECT_EQ(first.diagnostics().invocations, 1u);
+    EXPECT_EQ(second.diagnostics().invocations, 0u);
 }
 
 TEST(event_bus, immediate_delivery_order) {
@@ -259,6 +263,10 @@ TEST(event_bus, queued_unregister) {
     target.drain();
     EXPECT_EQ(calls, 0);
     EXPECT_EQ(errors, 0);
+    EXPECT_EQ(id.bus_id(), bus.diagnostics().domain);
+    EXPECT_EQ(bus.diagnostics().discarded, 1u);
+    EXPECT_EQ(bus.diagnostics().queued_failures, 0u);
+    EXPECT_EQ(bus.diagnostics().active, 0u);
 }
 
 TEST(event_bus, close_during_dispatch) {
@@ -334,6 +342,8 @@ TEST(event_bus, queued_error_reporting) {
     target.drain();
     ASSERT_EQ(errors.size(), 2u);
     EXPECT_THROW(std::rethrow_exception(errors[1]), std::runtime_error);
+    EXPECT_EQ(bus.diagnostics().queued_failures, 2u);
+    EXPECT_EQ(bus.diagnostics().invocations, 1u);
 }
 
 TEST(event_bus, delivery_rejection_reentry) {

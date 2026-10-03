@@ -1671,3 +1671,19 @@ assert primary phase/domain; sequential/concurrent counters and native retiremen
 and abandonment observations are checked. The supplementary U5 Debug ASan/UBSan
 logging regressions and all seven isolated cases passed outside the sandbox, where
 LeakSanitizer can inspect threads. This is not TSan/native-driver evidence.
+
+### U6b — execution and event observation owners
+
+Added context/pool/group/dispatcher/event domains and cumulative callback-failure,
+queue high-water/wait, accepted/completed/cancelled, invocation and discard snapshots.
+Worker observers run after context publication/drain releases its locks; native
+policy fallback/failure ranges coalesce without reporting job exception payloads.
+Dispatcher open/bind/close DEBUG records execute after queue unlock. Explicit event
+observers preserve callback/native/final-release safety and bus-qualified IDs without
+retaining a registry cycle. Futures and ErrorHandler remain callback-error owners.
+
+**Acceptance:** 74 current focused worker/native-policy/fault, event delivery,
+platform/simulation request, and execution shutdown cases passed. Additional
+assertions verify independent domains, callback versus policy failure counts,
+unregister discard without duplicate errors, detached completion, and cancellation.
+No scheduling, capacity, FIFO, or error-propagation policy changed.

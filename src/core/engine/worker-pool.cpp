@@ -1,5 +1,6 @@
 #include <core/engine/worker-pool.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 #include "worker-affinity.h"
 
 #include <algorithm>
@@ -7,6 +8,7 @@
 #include <deque>
 #include <mutex>
 #include <iterator>
+#include <atomic>
 
 namespace CE::Engine::WorkerDetail {
     struct GroupState {
@@ -16,6 +18,9 @@ namespace CE::Engine::WorkerDetail {
         std::optional<std::size_t> last_worker;
         std::deque<Job> pending;
         WorkerGroupStatus status;
+        std::atomic<std::uint64_t> callback_failures{0};
+        std::atomic<std::uint64_t> reported_policy_failures{0};
+        std::atomic<bool> reported_fallback{false};
     };
 
     struct PoolState {
@@ -26,6 +31,8 @@ namespace CE::Engine::WorkerDetail {
         WorkerCapabilities capabilities;
         WorkerNativeAdapter native;
         bool accepting = true;
+        const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
+        mutable std::atomic<bool> reported_startup{false};
     };
 
     thread_local PoolState* current_pool = nullptr;
@@ -83,6 +90,8 @@ namespace CE::Engine::WorkerDetail {
                 selected->pending.pop_front();
                 --selected->status.pending;
                 ++selected->status.running;
+                selected->status.queue_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - job.queued_at).count();
             }
             std::exception_ptr policy_error;
             if (pool->capabilities.cpu_affinity) {
@@ -144,9 +153,11 @@ namespace CE::Engine {
             std::lock_guard lock(pool->mutex);
             if (!pool->accepting || !group_->status.accepting)
                 throw Exceptions::failed_operation(CE_HERE, "Worker group is closed");
+            job.queued_at = std::chrono::steady_clock::now();
             group_->pending.push_back(std::move(job));
             ++group_->status.accepted;
             ++group_->status.pending;
+            group_->status.peak_pending = std::max<std::uint64_t>(group_->status.peak_pending, group_->status.pending);
         }
         pool->wake.notify_all();
     }
@@ -176,10 +187,43 @@ namespace CE::Engine {
 
     WorkerGroupStatus WorkerGroup::status() const {
         auto pool = pool_.lock();
+        WorkerGroupStatus result;
         if (!pool)
-            return group_->status; // Immutable after pool destruction/join.
-        std::lock_guard lock(pool->mutex);
-        return group_->status;
+            result = group_->status; // Immutable after pool destruction/join.
+        else {
+            std::lock_guard lock(pool->mutex);
+            result = group_->status;
+        }
+        result.callback_failures = group_->callback_failures.load(std::memory_order_relaxed);
+        return result;
+    }
+
+    void WorkerGroup::record_failure(const std::weak_ptr<WorkerDetail::GroupState>& group) noexcept {
+        if (const auto retained = group.lock())
+            retained->callback_failures.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    void WorkerGroup::report_diagnostics() const noexcept {
+        try {
+            const auto snapshot = status();
+            CE_LOG_DEBUG(CE::enginelog, "subsystem=workers domain={} pool={} operation=group_summary accepted={} completed={} pending={} running={} callback_failures={} policy_failures={} peak_pending={} queue_ns={}",
+                         snapshot.domain, snapshot.pool, snapshot.accepted, snapshot.completed, snapshot.pending, snapshot.running,
+                         snapshot.callback_failures, snapshot.policy_failures, snapshot.peak_pending, snapshot.queue_nanoseconds);
+            if (group_->policy.preferred_fallback && !group_->reported_fallback.exchange(true))
+                CE_LOG_WARN(CE::enginelog, "subsystem=workers domain={} pool={} operation=preferred_policy outcome=fallback cpus={}",
+                            snapshot.domain, snapshot.pool, group_->policy.effective_cpus.size());
+            auto reported = group_->reported_policy_failures.load();
+            while (snapshot.policy_failures > reported) {
+                if (group_->reported_policy_failures.compare_exchange_weak(reported, snapshot.policy_failures)) {
+                    CE_LOG_WARN(CE::enginelog, "subsystem=workers domain={} pool={} operation=native_policy outcome=degraded failures={} new={} strength={}",
+                                snapshot.domain, snapshot.pool, snapshot.policy_failures, snapshot.policy_failures - reported,
+                                static_cast<int>(group_->options.cpu.strength));
+                    break;
+                }
+            }
+        } catch (...) {
+            Diagnostics::report_failure("worker diagnostic snapshot", std::current_exception());
+        }
     }
 
     WorkerPool::WorkerPool(const std::size_t worker_count)
@@ -223,6 +267,17 @@ namespace CE::Engine {
         return state_->capabilities; // Inherited capability snapshot; restrictions may later change.
     }
 
+    Diagnostics::DomainId WorkerPool::diagnostic_id() const noexcept {
+        return state_->domain;
+    }
+
+    void WorkerPool::report_diagnostics() const noexcept {
+        if (!state_->reported_startup.exchange(true))
+            CE_LOG_INFO(CE::enginelog, "subsystem=workers domain={} operation=pool_capabilities capacity={} affinity={} cpus={} cache_topology={} numa={}",
+                        state_->domain, state_->capacity, state_->capabilities.cpu_affinity, state_->capabilities.available_cpus.size(),
+                        state_->capabilities.cache_topology, state_->capabilities.numa_placement);
+    }
+
     WorkerGroup WorkerPool::make_group(const WorkerGroupOptions options) {
         if (options.weight == 0 || options.weight > 1024 || options.priority > 7)
             throw Exceptions::invalid_args(CE_HERE, "Worker weight must be 1..1024 and priority 0..7");
@@ -235,11 +290,15 @@ namespace CE::Engine {
         if (hard && !options.cpu.cpus.empty() && !capabilities.cpu_affinity)
             throw Exceptions::failed_operation(CE_HERE, "Required CPU affinity is unsupported");
         auto group = std::make_shared<WorkerDetail::GroupState>();
+        group->status.domain = Diagnostics::next_domain_id();
+        group->status.pool = state_->domain;
         group->options = options;
         group->policy.requested = options;
         group->policy.affinity_supported = capabilities.cpu_affinity;
         group->policy.limitations = capabilities.limitations;
         group->policy.effective_cpus = capabilities.available_cpus;
+        group->policy.preferred_fallback = !hard && ((!options.cpu.cpus.empty() && !capabilities.cpu_affinity) ||
+                                                   options.cpu.shared_cache_domain || options.cpu.numa_node);
         if (!options.cpu.cpus.empty() && capabilities.cpu_affinity) {
             auto requested = options.cpu.cpus;
             std::sort(requested.begin(), requested.end());
@@ -254,8 +313,10 @@ namespace CE::Engine {
                 throw Exceptions::invalid_args(CE_HERE, "Required worker CPUs are not in the pool's eligible CPU set");
             if (!allowed.empty())
                 group->policy.effective_cpus = std::move(allowed);
-            if (group->policy.effective_cpus != requested)
+            if (group->policy.effective_cpus != requested) {
                 group->policy.limitations += "; preferred CPU set fell back to available eligibility";
+                group->policy.preferred_fallback = true;
+            }
         }
         group->status.accepting = true;
         {

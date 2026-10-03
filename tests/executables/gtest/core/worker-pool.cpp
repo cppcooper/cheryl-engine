@@ -128,6 +128,13 @@ TEST(worker_pool, job_results_and_failures) {
     EXPECT_THROW(failure.get(), std::runtime_error);
     EXPECT_EQ(next.get(), 17);
     EXPECT_EQ(group.status().completed, 3u);
+    const auto status = group.status();
+    EXPECT_EQ(status.callback_failures, 1u);
+    EXPECT_EQ(status.policy_failures, 0u);
+    EXPECT_EQ(status.pool, pool.diagnostic_id());
+    EXPECT_NE(status.domain, status.pool);
+    EXPECT_NE(status.domain, 0u);
+    EXPECT_GE(status.peak_pending, 1u);
 }
 
 TEST(worker_pool, serial_group_fifo) {
@@ -278,6 +285,7 @@ TEST(worker_pool, effective_policy) {
     EXPECT_EQ(group.policy().requested.weight, 3u);
     EXPECT_EQ(group.policy().requested.priority, 2u);
     EXPECT_EQ(group.policy().effective_cpus, pool.capabilities().available_cpus);
+    EXPECT_FALSE(group.policy().preferred_fallback);
     options.weight = 0;
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::invalid_args);
 }

@@ -824,6 +824,12 @@ TEST(platform_requests, callback_failure_isolation) {
     };
     runtime.run();
     EXPECT_EQ(game.shutdowns, 1);
+    const auto stats = engine->platform_dispatcher().diagnostics();
+    EXPECT_EQ(stats.accepted, 2u);
+    EXPECT_EQ(stats.completed, 2u);
+    EXPECT_EQ(stats.failures, 1u);
+    EXPECT_EQ(stats.cancelled, 0u);
+    EXPECT_EQ(stats.pending, 0u);
 }
 
 TEST(platform_requests, shutdown_cancellation) {
@@ -856,6 +862,8 @@ TEST(platform_requests, shutdown_cancellation) {
     game.on_deinit = [&] { EXPECT_TRUE(destroyed); };
     runtime.run();
     EXPECT_EQ(destruction_thread, std::this_thread::get_id());
+    EXPECT_EQ(engine->platform_dispatcher().diagnostics().cancelled, 1u);
+    EXPECT_EQ(engine->platform_dispatcher().diagnostics().completed, 0u);
     try {
         (void)pending.get();
         FAIL() << "The unexecuted request must be cancelled";
@@ -1407,6 +1415,11 @@ TEST(simulation_requests, mailbox_before_update) {
         };
         runtime.run();
         EXPECT_EQ(delivery_thread, game.update_thread);
+        const auto stats = runtime.simulation_dispatcher().diagnostics();
+        EXPECT_EQ(stats.accepted, 1u);
+        EXPECT_EQ(stats.completed, 1u);
+        EXPECT_EQ(stats.cancelled, 0u);
+        EXPECT_EQ(stats.running, 0u);
         if (mode == CE::GFramework::RunMode::Concurrent)
             EXPECT_NE(delivery_thread, std::this_thread::get_id());
         EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);

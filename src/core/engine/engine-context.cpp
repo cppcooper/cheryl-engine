@@ -8,6 +8,7 @@
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
 #include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <utility>
 #include <span>
@@ -74,34 +75,53 @@ namespace CE::Engine {
     }
 
     EngineContext::~EngineContext() {
+        destroying_ = true;
         try {
             close_worker_submissions();
             finish_workers();
         } catch (...) {
             // Failing to settle owned work cannot safely permit adapter destruction.
             Diagnostics::report_failure("engine context destruction", std::current_exception());
+            Diagnostics::report_outcome("execution", domain_, "context_destruction", "failed");
             std::terminate();
         }
     }
 
     WorkerGroup EngineContext::make_worker_group(WorkerGroupOptions options) {
-        std::lock_guard lock(execution_mutex_);
-        if (worker_submissions_closed_)
-            throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
-        WorkerPool* pool = execution_.shared_pool.get();
-        if (!pool) {
-            if (!owned_workers_) {
-                auto workers = owned_worker_factory_ ? owned_worker_factory_(execution_.worker_count)
-                                                     : std::make_unique<WorkerPool>(execution_.worker_count);
-                if (!workers)
-                    throw Exceptions::failed_operation(CE_HERE, "Owned worker factory returned no pool");
-                owned_workers_ = std::move(workers);
-            }
-            pool = owned_workers_.get();
+        WorkerPool* selected_pool = nullptr;
+        try {
+            auto group = [&] {
+                std::lock_guard lock(execution_mutex_);
+                if (worker_submissions_closed_)
+                    throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
+                WorkerPool* pool = execution_.shared_pool.get();
+                if (!pool) {
+                    if (!owned_workers_) {
+                        auto workers = owned_worker_factory_ ? owned_worker_factory_(execution_.worker_count)
+                                                             : std::make_unique<WorkerPool>(execution_.worker_count);
+                        if (!workers)
+                            throw Exceptions::failed_operation(CE_HERE, "Owned worker factory returned no pool");
+                        owned_workers_ = std::move(workers);
+                    }
+                    pool = owned_workers_.get();
+                }
+                auto group = pool->make_group(std::move(options));
+                worker_groups_.push_back(group);
+                selected_pool = pool;
+                return group;
+            }();
+            // Pool/group creation can run under the context lock; diagnostics
+            // are explicit observers after that entire publication transaction.
+            selected_pool->report_diagnostics();
+            group.report_diagnostics();
+            CE_LOG_DEBUG(CE::enginelog, "subsystem=execution domain={} operation=group_created group={} pool={}",
+                         domain_, group.status().domain, selected_pool->diagnostic_id());
+            return group;
+        } catch (...) {
+            Diagnostics::report_outcome("execution", domain_, "make_group", "failed");
+            CE_LOG_ERROR(CE::enginelog, "subsystem=execution domain={} operation=make_group outcome=failed", domain_);
+            throw;
         }
-        auto group = pool->make_group(std::move(options));
-        worker_groups_.push_back(group);
-        return group;
     }
 
     void EngineContext::close_worker_submissions() {
@@ -136,8 +156,11 @@ namespace CE::Engine {
         }
         // Jobs may reenter the context while finishing. Never hold its mutex
         // while waiting, and never shut down unrelated injected-pool groups.
-        for (const auto& group : groups)
+        for (const auto& group : groups) {
             group.drain();
+            if (!destroying_)
+                group.report_diagnostics();
+        }
         if (owned)
             owned->shutdown();
     }

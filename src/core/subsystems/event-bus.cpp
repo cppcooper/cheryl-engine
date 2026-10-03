@@ -1,5 +1,6 @@
 #include <core/subsystems/event-bus.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <limits>
 #include <algorithm>
@@ -28,6 +29,7 @@ namespace CE::SubSystems {
         if (delivery && !errors)
             throw Exceptions::invalid_args(CE_HERE, "Queued event delivery requires an error handler");
         auto listener = std::make_shared<Listener>();
+        listener->counters = state_->counters;
         listener->event = event;
         listener->callback = std::move(callback);
         listener->delivery = std::move(delivery);
@@ -42,6 +44,8 @@ namespace CE::SubSystems {
         const auto id = state_->next_id;
         state_->channels[event].push_back(listener);
         ++state_->next_id;
+        ++state_->registrations;
+        ++state_->active;
         return Registration(state_, listener, id);
     }
 
@@ -51,6 +55,7 @@ namespace CE::SubSystems {
             std::lock_guard lock(state_->mutex);
             if (state_->closed)
                 throw Exceptions::failed_operation(CE_HERE, "EventBus is closed");
+            ++state_->dispatches;
             const auto found = state_->channels.find(event);
             if (found == state_->channels.end())
                 return;
@@ -77,9 +82,12 @@ namespace CE::SubSystems {
         // unregister/close intentionally discard delivery without reporting.
         if (active)
             report_error(listener, failure);
+        else
+            listener->counters->discarded.fetch_add(1, std::memory_order_relaxed);
     }
 
     void EventBus::report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept {
+        listener->counters->queued_failures.fetch_add(1, std::memory_order_relaxed);
         // Error sinks must not throw. Termination makes a broken sink visible
         // instead of hiding it in a discarded dispatch-target future.
         listener->errors(std::move(failure));
@@ -92,8 +100,10 @@ namespace CE::SubSystems {
         }
         {
             std::lock_guard lock(listener->mutex);
-            if (!listener->active)
+            if (!listener->active) {
+                listener->counters->discarded.fetch_add(1, std::memory_order_relaxed);
                 return;
+            }
         }
         std::shared_ptr<DeliveryTicket> ticket;
         try {
@@ -139,9 +149,12 @@ namespace CE::SubSystems {
             std::lock_guard lock(listener->mutex);
             // Check and enter are one transaction with unregister. A snapshot
             // alone must not authorize a callback after invalidation returns.
-            if (!listener->active)
+            if (!listener->active) {
+                listener->counters->discarded.fetch_add(1, std::memory_order_relaxed);
                 return;
+            }
             ++listener->running;
+            listener->counters->invocations.fetch_add(1, std::memory_order_relaxed);
         }
         struct InvocationGuard {
             std::shared_ptr<Listener> listener;
@@ -181,6 +194,8 @@ namespace CE::SubSystems {
             const auto channel = state_->channels.find(listener->event);
             if (channel != state_->channels.end()) {
                 removed = std::erase(channel->second, listener) != 0;
+                if (removed)
+                    --state_->active;
                 if (channel->second.empty())
                     state_->channels.erase(channel);
             }
@@ -215,6 +230,7 @@ namespace CE::SubSystems {
         {
             std::lock_guard lock(state_->mutex);
             state_->closed = true;
+            state_->active = 0;
             // Registry -> listener is the lock order. Invocation releases its
             // entry lock before user code; completion never takes the registry.
             // Serialize all closers with invalidation, not only with detachment.
@@ -225,5 +241,24 @@ namespace CE::SubSystems {
         }
         // Callback captures are released outside registry and listener locks.
         // In-flight callbacks retain their entry until their guard leaves.
+    }
+
+    EventStats EventBus::diagnostics() const {
+        std::lock_guard lock(state_->mutex);
+        const auto& counters = *state_->counters;
+        return {counters.domain, state_->registrations, state_->active, state_->dispatches,
+                counters.invocations.load(std::memory_order_relaxed), counters.queued_failures.load(std::memory_order_relaxed),
+                counters.discarded.load(std::memory_order_relaxed), state_->closed};
+    }
+
+    void EventBus::report_diagnostics() const noexcept {
+        try {
+            const auto summary = diagnostics();
+            CE_LOG_DEBUG(CE::enginelog, "subsystem=events domain={} operation=summary registrations={} active={} dispatches={} invocations={} queued_failures={} discarded={} closed={}",
+                         summary.domain, summary.registrations, summary.active, summary.dispatches, summary.invocations,
+                         summary.queued_failures, summary.discarded, summary.closed);
+        } catch (...) {
+            Diagnostics::report_failure("event diagnostic snapshot", std::current_exception());
+        }
     }
 }

@@ -57,8 +57,8 @@ namespace CE::GFramework {
         // Reserve the graph before either runtime can initialize or clean up its adapters.
         try {
             engine_.begin_session();
-            CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} operation=session_begin mode={} timing={} polling={} capacity={}",
-                        diagnostics_.domain, static_cast<int>(mode_), static_cast<int>(timing_.mode),
+            CE_LOG_INFO(CE::enginelog, "subsystem=runtime domain={} context={} operation=session_begin mode={} timing={} polling={} capacity={}",
+                        diagnostics_.domain, engine_.diagnostic_id(), static_cast<int>(mode_), static_cast<int>(timing_.mode),
                         static_cast<int>(polling_.policy), polling_.capacity);
             if (mode_ == RunMode::Sequential)
                 run_sequential();

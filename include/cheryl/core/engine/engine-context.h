@@ -62,6 +62,8 @@ namespace CE::Engine {
         std::unique_ptr<WorkerPool> owned_workers_;
         std::vector<WorkerGroup> worker_groups_;
         bool worker_submissions_closed_ = false;
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        bool destroying_ = false;
 
     public:
         EngineContext(
@@ -92,6 +94,7 @@ namespace CE::Engine {
         [[nodiscard]] Assets::ResourceProvider& resources() const;
         [[nodiscard]] Input::iInputSystem& input() const;
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
+        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
         [[nodiscard]] WorkerGroup make_worker_group(WorkerGroupOptions options = WorkerGroupOptions{});

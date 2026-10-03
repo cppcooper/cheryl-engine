@@ -1,4 +1,6 @@
 #pragma once
+#include <core/diagnostics.h>
+#include <chrono>
 
 #include <cstddef>
 #include <cstdint>
@@ -23,6 +25,7 @@ namespace CE::Engine {
         struct Job {
             std::move_only_function<void()> run;
             std::move_only_function<void(std::exception_ptr)> fail;
+            std::chrono::steady_clock::time_point queued_at;
         };
     }
 
@@ -59,14 +62,20 @@ namespace CE::Engine {
         std::vector<unsigned int> effective_cpus;
         bool affinity_supported = false;
         std::string limitations;
+        bool preferred_fallback = false;
     };
 
     struct WorkerGroupStatus {
+        Diagnostics::DomainId domain = 0;
+        Diagnostics::DomainId pool = 0;
         std::uint64_t accepted = 0;
         std::uint64_t completed = 0;
         std::size_t pending = 0;
         std::size_t running = 0;
         std::uint64_t policy_failures = 0;
+        std::uint64_t callback_failures = 0;
+        std::uint64_t peak_pending = 0;
+        std::uint64_t queue_nanoseconds = 0;
         bool accepting = false;
     };
 
@@ -81,6 +90,7 @@ namespace CE::Engine {
 
         WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group);
         void enqueue(WorkerDetail::Job job) const;
+        static void record_failure(const std::weak_ptr<WorkerDetail::GroupState>& group) noexcept;
 
     public:
         template <typename Work> [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
@@ -88,7 +98,7 @@ namespace CE::Engine {
             auto completion = std::make_shared<std::promise<Result>>();
             auto result = completion->get_future();
             WorkerDetail::Job job;
-            job.run = [completion, work = std::forward<Work>(work)]() mutable {
+            job.run = [completion, tracked = std::weak_ptr<WorkerDetail::GroupState>(group_), work = std::forward<Work>(work)]() mutable {
                 try {
                     if constexpr (std::is_void_v<Result>) {
                         std::invoke(work);
@@ -97,6 +107,7 @@ namespace CE::Engine {
                         completion->set_value(std::invoke(work));
                     }
                 } catch (...) {
+                    record_failure(tracked);
                     completion->set_exception(std::current_exception());
                 }
             };
@@ -111,6 +122,9 @@ namespace CE::Engine {
         void drain() const;
         [[nodiscard]] WorkerGroupStatus status() const;
         [[nodiscard]] WorkerGroupPolicy policy() const;
+        // Explicit observer: caller holds no scheduler/context/application lock.
+        // Callback failures remain future-owned; policy degradation is coalesced.
+        void report_diagnostics() const noexcept;
     };
 
     /** Independently owned reusable CPU workers. One thread is the modest default;
@@ -136,6 +150,9 @@ namespace CE::Engine {
         [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         [[nodiscard]] WorkerCapabilities capabilities() const;
+        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept;
+        // Explicit observer; constructors/shutdown do not log under an outer owner lock.
+        void report_diagnostics() const noexcept;
         void close();
         void shutdown();
     };

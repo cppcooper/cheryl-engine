@@ -1,5 +1,8 @@
 #pragma once
 
+#include <core/diagnostics.h>
+#include <atomic>
+
 #include <functional>
 #include <future>
 #include <memory>
@@ -33,6 +36,8 @@ namespace CE::Engine {
             bool accepting = false;
             bool opened = false;
             bool draining = false;
+            Diagnostics::DispatchStats diagnostics{Diagnostics::next_domain_id()};
+            std::atomic<std::uint64_t> failures{0};
         };
         std::shared_ptr<State> state_ = std::make_shared<State>();
 
@@ -57,7 +62,7 @@ namespace CE::Engine {
                 // Keep callable ownership separate from the future's shared state.
                 // Cancellation releases captures even when the future is retained.
                 PlatformDispatcher::enqueue(
-                    state_, Task([work = std::forward<Work>(work), completion = std::move(completion)](EngineContext& engine) mutable {
+                    state_, Task([work = std::forward<Work>(work), completion = std::move(completion), tracked = std::weak_ptr<State>(state_)](EngineContext& engine) mutable {
                         try {
                             if constexpr (std::is_void_v<Result>) {
                                 std::invoke(work, engine);
@@ -66,6 +71,8 @@ namespace CE::Engine {
                                 completion.set_value(std::invoke(work, engine));
                             }
                         } catch (...) {
+                            if (const auto state = tracked.lock())
+                                state->failures.fetch_add(1, std::memory_order_relaxed);
                             completion.set_exception(std::current_exception());
                         }
                     })
@@ -85,6 +92,8 @@ namespace CE::Engine {
             return submission().submit(std::forward<Work>(work));
         }
         [[nodiscard]] bool has_pending() const;
+        // Queue snapshot only. Callback exceptions remain owned by their futures.
+        [[nodiscard]] Diagnostics::DispatchStats diagnostics() const;
 
     private:
         static void enqueue(const std::shared_ptr<State>& state, Task request);

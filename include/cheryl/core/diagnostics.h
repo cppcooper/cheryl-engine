@@ -17,6 +17,7 @@ namespace CE::Diagnostics {
         std::uint64_t cancelled = 0;
         std::uint64_t failures = 0;
         std::uint64_t pending = 0;
+        std::uint64_t running = 0; // Detached batch, including not-yet-entered callbacks.
         std::uint64_t peak_pending = 0;
     };
 }
