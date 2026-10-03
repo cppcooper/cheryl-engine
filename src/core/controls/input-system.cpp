@@ -290,6 +290,8 @@ namespace CE::Input {
     }
 
     void InputSystem::deinitialize() {
+        if (callback_failure_)
+            Diagnostics::report_failure("unconsumed input callback", std::exchange(callback_failure_, {}));
         if (!window_) {
             discard_captured_input();
             callback_failure_ = {};
@@ -315,12 +317,12 @@ namespace CE::Input {
         bindings_.clear();
     }
 
-    InputSystem* InputSystem::attached(GLFWwindow* handle) {
+    InputSystem* InputSystem::attached(GLFWwindow* handle) noexcept {
         const auto found = attached_inputs.find(handle);
         return found == attached_inputs.end() ? nullptr : found->second;
     }
 
-    void InputSystem::on_key(GLFWwindow* handle, const int key, const int scancode, const int action, const int modifiers) {
+    void InputSystem::on_key(GLFWwindow* handle, const int key, const int scancode, const int action, const int modifiers) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
                 const auto phase = action == GLFW_REPEAT  ? ButtonPhase::Repeat
@@ -338,7 +340,7 @@ namespace CE::Input {
             });
     }
 
-    void InputSystem::on_mouse_button(GLFWwindow* handle, const int button, const int action, const int modifiers) {
+    void InputSystem::on_mouse_button(GLFWwindow* handle, const int button, const int action, const int modifiers) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
                 const auto control = gainput_mouse_button(button);
@@ -352,7 +354,7 @@ namespace CE::Input {
             });
     }
 
-    void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) {
+    void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
                 input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, ScrollEvent{x, y});
@@ -367,14 +369,14 @@ namespace CE::Input {
             });
     }
 
-    void InputSystem::on_character(GLFWwindow* handle, const unsigned int codepoint) {
+    void InputSystem::on_character(GLFWwindow* handle, const unsigned int codepoint) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
                 input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard, TextEvent{static_cast<char32_t>(codepoint)});
             });
     }
 
-    void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) {
+    void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
                 input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, PointerEvent{x, y});

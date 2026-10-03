@@ -40,7 +40,9 @@ The default GLFW/OpenGL factory owns its input adapter; the overload taking an
 input reference borrows it through context destruction. Owned input detaches
 before the window is destroyed. A runtime and its context each permit one session.
 Game cleanup is paired with attempted initialization, including partial failure;
-cleanup preserves the first failure while still shutting down both adapters.
+cleanup preserves the first failure while still shutting down both adapters and
+reports subsequent failures with phase context. See [failure-reporting.md](failure-reporting.md)
+for deferred native callback checks and the bounded emergency reporting contract.
 `engine.platform_dispatcher().submit(work)` transfers owned request data to the platform
 thread, where graphics is current. The result is a future: inspect readiness from
 `update()`, then publish the resulting handle through the next render frame. Do not

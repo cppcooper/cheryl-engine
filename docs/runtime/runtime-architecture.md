@@ -60,7 +60,9 @@ accepted platform dependencies while simulation joins. The game then quiesces it
 external producers while targets remain alive. Accepted CPU work settles before
 remaining platform requests cancel, frames recycle, and game/input/graphics cleanup
 runs. An injected pool's unrelated application groups remain open. Cleanup preserves
-the first failure, including after partial initialization.
+the first failure, including after partial initialization, and reports later cleanup
+failures with phase context. Native callback and emergency fallback boundaries are
+documented in [failure-reporting.md](failure-reporting.md).
 
 ## Current limits
 

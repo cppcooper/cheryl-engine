@@ -48,6 +48,8 @@ namespace CE::Exceptions {
         }
         exception_base(exception_base&& other) noexcept = default;
         [[nodiscard]] const char* what() const noexcept override { return msg.empty() ? fallback_.data() : msg.c_str(); }
+        // Emergency output prefers cause/location over the allocating trace prefix.
+        [[nodiscard]] const char* diagnostic_summary() const noexcept { return fallback_[0] ? fallback_.data() : what(); }
 
         [[nodiscard]] static exception_base fallback(
             const char* category,

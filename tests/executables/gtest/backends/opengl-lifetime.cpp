@@ -24,6 +24,8 @@ namespace {
     class FailingStartupContext final : public CE::RenderAPIs::iOpenGLContext {
     public:
         bool become_current = true;
+        bool fail_acquisition = true;
+        bool fail_lookup = false;
         bool fail_release = false;
         bool current = false;
         int acquisitions = 0;
@@ -33,7 +35,8 @@ namespace {
         void make_current() override {
             ++acquisitions;
             current = become_current;
-            throw std::runtime_error("Original context acquisition failure");
+            if (fail_acquisition)
+                throw std::runtime_error("Original context acquisition failure");
         }
 
         void release_current() override {
@@ -48,6 +51,8 @@ namespace {
         [[nodiscard]] bool is_current() const override { return current; }
         [[nodiscard]] ProcAddress proc_address(const char*) const override {
             ++lookups;
+            if (fail_lookup)
+                throw std::runtime_error("Original procedure lookup failure");
             return nullptr;
         }
         void present() override {}
@@ -407,4 +412,33 @@ TEST(opengl_lifetime, invalid_registrations) {
     EXPECT_THROW((void)lifetime.track(GLResourceKind::Program, 0), failed_operation);
     lifetime.shutdown();
     EXPECT_TRUE(native.deletions.empty());
+}
+
+TEST(opengl_renderer, procedure_lookup_failure) {
+    // The generated loader requests glGetString first and returns immediately
+    // on null. Restore that process-wide entry even if an assertion fails.
+    struct RestoreProc {
+        decltype(glad_glGetString) original = glad_glGetString;
+        ~RestoreProc() { glad_glGetString = original; }
+    } restore;
+    FailingStartupContext context;
+    context.fail_acquisition = false;
+    context.fail_lookup = true;
+    context.fail_release = true;
+    CE::RenderAPIs::OpenGLRenderer renderer(context);
+    ::testing::internal::CaptureStderr();
+    try {
+        renderer.initialize();
+        ADD_FAILURE() << "Procedure lookup must fail";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "Original procedure lookup failure");
+    } catch (...) {
+        ADD_FAILURE() << "Unexpected procedure lookup exception type";
+    }
+    const auto diagnostic = ::testing::internal::GetCapturedStderr();
+    EXPECT_NE(diagnostic.find("OpenGL initialization context release: Later context release failure"), std::string::npos);
+    EXPECT_EQ(context.lookups, 1);
+    EXPECT_EQ(context.releases, 1);
+    EXPECT_FALSE(context.current);
+    EXPECT_NO_THROW(renderer.deinitialize());
 }

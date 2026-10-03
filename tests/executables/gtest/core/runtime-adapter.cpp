@@ -88,12 +88,18 @@ namespace {
         CE::Enum::window_mode mode_ = CE::Enum::window_mode::NORMAL;
         bool closed_ = false;
         mutable bool cursor_hidden_ = false;
+        mutable std::exception_ptr native_failure_;
 
     public:
         [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {size_.width, size_.height}; }
         [[nodiscard]] CE::FramebufferSize framebuffer_size() const override { return size_; }
         [[nodiscard]] CE::Enum::window_mode mode() const override { return mode_; }
         [[nodiscard]] bool should_close() const override { return closed_; }
+        void check_native_failure() const override {
+            if (native_failure_)
+                std::rethrow_exception(std::exchange(native_failure_, {}));
+        }
+        void defer_failure(std::exception_ptr failure) { native_failure_ = std::move(failure); }
         void resize(int width, int height) override { size_ = {width, height}; }
         void set_mode(CE::Enum::window_mode mode) override { mode_ = mode; }
         void hide_cursor(bool hide) const override { cursor_hidden_ = hide; }
@@ -561,12 +567,17 @@ TEST(runtime_adapter, game_init_failure) {
         game.on_init = [] { throw std::runtime_error("game initialization failed"); };
         game.on_deinit = [] { throw std::runtime_error("cleanup also failed"); };
         CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        ::testing::internal::CaptureStderr();
         try {
             runtime.run();
-            FAIL() << "Initialization must fail";
+            ADD_FAILURE() << "Initialization must fail";
         } catch (const std::runtime_error& failure) {
             EXPECT_STREQ(failure.what(), "game initialization failed");
+        } catch (...) {
+            ADD_FAILURE() << "Unexpected initialization exception type";
         }
+        const auto diagnostics = ::testing::internal::GetCapturedStderr();
+        EXPECT_NE(diagnostics.find("game deinit: cleanup also failed"), std::string::npos);
         EXPECT_EQ(game.initializations, 1);
         EXPECT_EQ(game.shutdowns, 1);
         EXPECT_EQ(input.routing().current()->target, 0u);
@@ -2274,5 +2285,33 @@ TEST(frame_lifetime, packet_cleanup_order) {
             EXPECT_EQ(renderer->shutdowns, 1);
             EXPECT_EQ(image_release_thread, platform);
         }
+    }
+}
+
+TEST(runtime_adapter, deferred_native_failure) {
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& window = dynamic_cast<MemoryWindow&>(engine->window());
+        OneTickGame game(input);
+        CE::GFramework::GameRuntime runtime(*engine, game, mode);
+        input.on_poll = [&] {
+            window.defer_failure(std::make_exception_ptr(std::runtime_error("deferred native failure")));
+            // Stopping during pumping must not hide a callback failure behind
+            // the loop's stop/close short circuit.
+            runtime.stop();
+        };
+        try {
+            runtime.run();
+            ADD_FAILURE() << "The pending native failure must propagate";
+        } catch (const std::runtime_error& failure) {
+            EXPECT_STREQ(failure.what(), "deferred native failure");
+        }
+        EXPECT_NO_THROW(window.check_native_failure());
+        EXPECT_EQ(input.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(game.shutdowns, 1);
     }
 }

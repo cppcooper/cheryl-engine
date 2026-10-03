@@ -67,3 +67,40 @@ TEST(diagnostics, fallback_record) {
     const auto count = std::fread(text.data(), 1, text.size() - 1, file.get());
     EXPECT_NE(std::string_view(text.data(), count).find("game deinit: cleanup failed"), std::string_view::npos);
 }
+
+TEST(diagnostics, bounded_record) {
+    const auto file = std::unique_ptr<std::FILE, decltype(&std::fclose)>(std::tmpfile(), std::fclose);
+    ASSERT_NE(file, nullptr);
+    std::exception_ptr failure;
+    try {
+        throw std::runtime_error(std::string(4096, 'x'));
+    } catch (...) {
+        failure = std::current_exception();
+    }
+    CE::Diagnostics::report_failure("long cleanup failure", failure, file.get());
+    std::rewind(file.get());
+    std::array<char, 1025> text{};
+    const auto count = std::fread(text.data(), 1, text.size(), file.get());
+    EXPECT_EQ(count, 1024u);
+    if (count > 0)
+        EXPECT_EQ(text[count - 1], '\n');
+}
+
+TEST(diagnostics, primary_failure) {
+    std::exception_ptr first;
+    try {
+        throw std::runtime_error("original failure");
+    } catch (...) {
+        CE::Diagnostics::preserve_failure(first, "initialization", std::current_exception());
+    }
+    const auto original = first;
+    ::testing::internal::CaptureStderr();
+    try {
+        throw std::runtime_error("later failure");
+    } catch (...) {
+        CE::Diagnostics::preserve_failure(first, "cleanup", std::current_exception());
+    }
+    const auto diagnostic = ::testing::internal::GetCapturedStderr();
+    EXPECT_EQ(first, original);
+    EXPECT_NE(diagnostic.find("cleanup: later failure"), std::string::npos);
+}

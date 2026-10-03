@@ -53,12 +53,12 @@ namespace CE::Input {
             }
         }
 
-        static InputSystem* attached(GLFWwindow* window);
-        static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers);
-        static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers);
-        static void on_scroll(GLFWwindow* window, double x, double y);
-        static void on_character(GLFWwindow* window, unsigned int codepoint);
-        static void on_cursor(GLFWwindow* window, double x, double y);
+        static InputSystem* attached(GLFWwindow* window) noexcept;
+        static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers) noexcept;
+        static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers) noexcept;
+        static void on_scroll(GLFWwindow* window, double x, double y) noexcept;
+        static void on_character(GLFWwindow* window, unsigned int codepoint) noexcept;
+        static void on_cursor(GLFWwindow* window, double x, double y) noexcept;
 
     public:
         InputSystem();

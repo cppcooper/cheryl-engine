@@ -9,6 +9,7 @@
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #include <array>
 #include <algorithm>
@@ -176,32 +177,32 @@ namespace CE::GFramework {
             failure = std::current_exception();
         }
 
-        const auto finish = [&failure](auto&& operation) {
+        const auto finish = [&failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                if (!failure)
-                    failure = std::current_exception();
+                Diagnostics::preserve_failure(failure, phase, std::current_exception());
             }
         };
         stop();
-        finish([this] { engine_.close_worker_submissions(); });
-        finish([this] { simulation_dispatcher_.close(); });
+        finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
+        finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
-            finish([this] { game_.quiesce(); });
+            finish("game quiesce", [this] { game_.quiesce(); });
         finish_worker_shutdown(failure);
-        finish([this] { engine_.platform_dispatcher().close(); });
+        finish("pending native window callback", [this] { engine_.window().check_native_failure(); });
+        finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
         // Frames and game dependencies remain alive through accepted CPU work.
-        finish([&frame] { frame.recycle(); });
+        finish("recycle frame", [&frame] { frame.recycle(); });
         if (game_started)
-            finish([this] { game_.deinit(); });
+            finish("game deinit", [this] { game_.deinit(); });
         if (renderer_ready_)
-            finish([&renderer] { renderer.maintain_resources(); });
+            finish("renderer maintenance", [&renderer] { renderer.maintain_resources(); });
         // Adapters must also clean up if initialize() only completed partway.
         if (input_started)
-            finish([&input] { input.deinitialize(); });
+            finish("input deinitialize", [&input] { input.deinitialize(); });
         if (renderer_started)
-            finish([&renderer] { renderer.deinitialize(); });
+            finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;
         if (failure)
             std::rethrow_exception(failure);
@@ -351,9 +352,17 @@ namespace CE::GFramework {
                 try {
                     simulation_dispatcher_.close();
                 } catch (...) {
-                    std::lock_guard lock(scheduler_->mutex);
-                    if (!handoff.worker_failure)
-                        handoff.worker_failure = std::current_exception();
+                    const auto next = std::current_exception();
+                    bool secondary = false;
+                    {
+                        std::lock_guard lock(scheduler_->mutex);
+                        if (!handoff.worker_failure)
+                            handoff.worker_failure = next;
+                        else
+                            secondary = handoff.worker_failure != next;
+                    }
+                    if (secondary)
+                        Diagnostics::report_failure("simulation owner dispatcher close", next);
                 }
                 {
                     std::lock_guard lock(scheduler_->mutex);
@@ -462,15 +471,14 @@ namespace CE::GFramework {
         }
 
         stop();
-        const auto finish = [&failure](auto&& operation) {
+        const auto finish = [&failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                if (!failure)
-                    failure = std::current_exception();
+                Diagnostics::preserve_failure(failure, phase, std::current_exception());
             }
         };
-        finish([this] { engine_.close_worker_submissions(); });
+        finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
         if (worker.joinable()) {
             // A finishing simulation callback may depend on platform completion.
             // Wait on published completion while still servicing that owner.
@@ -488,27 +496,29 @@ namespace CE::GFramework {
             }
             worker.join();
         }
+        std::exception_ptr worker_failure;
         {
             std::lock_guard lock(scheduler_->mutex);
-            if (!failure)
-                failure = handoff.worker_failure;
+            worker_failure = handoff.worker_failure;
         }
+        Diagnostics::preserve_failure(failure, "simulation worker", std::move(worker_failure));
         // Also handles initialization/thread-start failure before owner binding.
-        finish([this] { simulation_dispatcher_.close(); });
+        finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
         if (game_started)
-            finish([this] { game_.quiesce(); });
+            finish("game quiesce", [this] { game_.quiesce(); });
         finish_worker_shutdown(failure);
-        finish([this] { engine_.platform_dispatcher().close(); });
+        finish("pending native window callback", [this] { engine_.window().check_native_failure(); });
+        finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
         for (auto& slot : slots)
-            finish([&slot] { slot.frame.recycle(); });
+            finish("recycle frame", [&slot] { slot.frame.recycle(); });
         if (game_started)
-            finish([this] { game_.deinit(); });
+            finish("game deinit", [this] { game_.deinit(); });
         if (renderer_ready_)
-            finish([&renderer] { renderer.maintain_resources(); });
+            finish("renderer maintenance", [&renderer] { renderer.maintain_resources(); });
         if (input_started)
-            finish([&input] { input.deinitialize(); });
+            finish("input deinitialize", [&input] { input.deinitialize(); });
         if (renderer_started)
-            finish([&renderer] { renderer.deinitialize(); });
+            finish("renderer deinitialize", [&renderer] { renderer.deinitialize(); });
         renderer_ready_ = false;
         if (failure)
             std::rethrow_exception(failure);
@@ -524,20 +534,19 @@ namespace CE::GFramework {
 
     void GameRuntime::finish_unstarted_session() {
         std::exception_ptr failure;
-        const auto finish = [&failure](auto&& operation) {
+        const auto finish = [&failure](const char* phase, auto&& operation) {
             try {
                 operation();
             } catch (...) {
-                if (!failure)
-                    failure = std::current_exception();
+                Diagnostics::preserve_failure(failure, phase, std::current_exception());
             }
         };
-        finish([this] { engine_.close_worker_submissions(); });
-        finish([this] { simulation_dispatcher_.close(); });
-        finish([this] { engine_.platform_dispatcher().close(); });
+        finish("close worker submissions", [this] { engine_.close_worker_submissions(); });
+        finish("close simulation dispatcher", [this] { simulation_dispatcher_.close(); });
+        finish("close platform dispatcher", [this] { engine_.platform_dispatcher().close(); });
         // Neither mailbox has opened, so no accepted platform continuation can
         // require pumping; queued CPU jobs observe closed targets and settle.
-        finish([this] { engine_.finish_workers(); });
+        finish("finish workers", [this] { engine_.finish_workers(); });
         if (failure)
             std::rethrow_exception(failure);
     }
@@ -546,15 +555,13 @@ namespace CE::GFramework {
         try {
             engine_.platform_dispatcher().drain(engine_);
         } catch (...) {
-            if (!failure)
-                failure = std::current_exception();
+            Diagnostics::preserve_failure(failure, "shutdown platform dispatch", std::current_exception());
             // If dispatch itself fails, cancel rather than strand futures which
             // a worker is waiting for. Preserve the first failure during cleanup.
             try {
                 engine_.platform_dispatcher().close();
             } catch (...) {
-                if (!failure)
-                    failure = std::current_exception();
+                Diagnostics::preserve_failure(failure, "shutdown platform cancellation", std::current_exception());
             }
         }
         // Maintenance failure is separate from dispatcher failure: keep servicing
@@ -563,8 +570,7 @@ namespace CE::GFramework {
             try {
                 engine_.renderer().maintain_resources();
             } catch (...) {
-                if (!failure)
-                    failure = std::current_exception();
+                Diagnostics::preserve_failure(failure, "shutdown renderer maintenance", std::current_exception());
             }
         }
     }
@@ -580,8 +586,7 @@ namespace CE::GFramework {
         try {
             engine_.finish_workers();
         } catch (...) {
-            if (!failure)
-                failure = std::current_exception();
+            Diagnostics::preserve_failure(failure, "finish workers", std::current_exception());
         }
     }
 }

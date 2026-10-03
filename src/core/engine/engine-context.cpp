@@ -7,6 +7,7 @@
 #include <core/rendering/presentation-surface.h>
 #include <core/rendering/renderer.h>
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #include <utility>
 #include <span>
@@ -73,8 +74,14 @@ namespace CE::Engine {
     }
 
     EngineContext::~EngineContext() {
-        close_worker_submissions();
-        finish_workers();
+        try {
+            close_worker_submissions();
+            finish_workers();
+        } catch (...) {
+            // Failing to settle owned work cannot safely permit adapter destruction.
+            Diagnostics::report_failure("engine context destruction", std::current_exception());
+            std::terminate();
+        }
     }
 
     WorkerGroup EngineContext::make_worker_group(WorkerGroupOptions options) {

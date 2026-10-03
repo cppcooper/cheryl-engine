@@ -25,7 +25,12 @@ namespace CE::Obj {
                 auto constructed = std::make_shared<bool>(false);
                 auto handle = std::shared_ptr<T>(p, [context, constructed](T* object) noexcept {
                     if (*constructed) {
-                        context->tracking_->destroy(object);
+                        try {
+                            context->tracking_->destroy(object);
+                        } catch (...) {
+                            Diagnostics::report_failure("owned object destruction", std::current_exception());
+                            std::terminate();
+                        }
                         context->release_owned(object, 1);
                     }
                 });
@@ -46,6 +51,7 @@ namespace CE::Obj {
         try {
             return_objects(p, length);
         } catch (...) {
+            Diagnostics::report_failure("owned object range release", std::current_exception());
             std::terminate();
         }
     }
@@ -86,8 +92,13 @@ namespace CE::Obj {
         // disappears; the slot map distinguishes constructed from raw storage.
         std::shared_ptr<T> block_root(raw, [b, len, tracking = tracking_, byte_context = std::move(byte_context)](auto p) noexcept {
             // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
-            tracking->destroy(p, len);
-            tracking->erase(p, p + len);
+            try {
+                tracking->destroy(p, len);
+                tracking->erase(p, p + len);
+            } catch (...) {
+                Diagnostics::report_failure("object backing cleanup", std::current_exception());
+                std::terminate();
+            }
             byte_context->release_owned(b);
         });
 

@@ -5,6 +5,7 @@
 #include <backends/opengl/pipeline.h>
 
 #include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
 
 #include <thread>
 #include <utility>
@@ -12,9 +13,26 @@
 namespace CE::RenderAPIs {
     namespace {
         void load_native_functions(iOpenGLContext& context) {
+            struct Loader {
+                iOpenGLContext& context;
+                std::exception_ptr failure;
+            } loader{context};
             const auto version = gladLoadGLUserPtr(
-                [](void* user, const char* name) -> GLADapiproc { return static_cast<iOpenGLContext*>(user)->proc_address(name); }, &context
+                [](void* user, const char* name) noexcept -> GLADapiproc {
+                    auto& loader = *static_cast<Loader*>(user);
+                    if (loader.failure)
+                        return nullptr;
+                    try {
+                        return loader.context.proc_address(name);
+                    } catch (...) {
+                        loader.failure = std::current_exception();
+                        return nullptr;
+                    }
+                },
+                &loader
             );
+            if (loader.failure)
+                std::rethrow_exception(loader.failure);
             if (version == 0 || GLAD_VERSION_MAJOR(version) < 3 || (GLAD_VERSION_MAJOR(version) == 3 && GLAD_VERSION_MINOR(version) < 3))
                 throw Exceptions::failed_operation(CE_HERE, "An OpenGL 3.3 context is required");
         }
@@ -37,6 +55,7 @@ namespace CE::RenderAPIs {
                 deinitialize();
             } catch (...) {
                 // Retained assets must never query a context after its owner is destroyed.
+                Diagnostics::report_failure("OpenGL renderer destruction", std::current_exception());
                 resources_->abandon();
             }
         }
@@ -76,7 +95,9 @@ namespace CE::RenderAPIs {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
                 context_.release_current();
-            } catch (...) {}
+            } catch (...) {
+                Diagnostics::report_failure("OpenGL initialization context release", std::current_exception());
+            }
             throw;
         }
         initialized_ = true;

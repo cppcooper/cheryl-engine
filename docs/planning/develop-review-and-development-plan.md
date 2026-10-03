@@ -439,11 +439,11 @@ cross-container races or throwing final deleters.
   against the U2 concurrency contract. The zero-denominator repair is independent.
 - [ ] Identify the real FFont widths format, banks, atlas identity, byte order,
   allowed width range, exact size/trailing-data rule, and read failure behavior.
-- [ ] Validate all widths before geometry/provider side effects; use binary,
-  input-only opening and an explicit full-read check.
+- [x] Open binary input-only and reject incomplete/failed reads before geometry/provider side effects.
+- [ ] Validate semantic widths/metadata after the authoritative legacy format boundary is resolved.
 - [x] Repair numeric-header guard/linkage defects; decide complete parse syntax and
   retain meaningful distinctions between invalid input and out-of-range values.
-- [ ] Plan malformed/truncated font fixtures, zero upload on rejection, exact byte
+- [x] Plan malformed/truncated font fixtures, zero upload on rejection, exact byte
   boundaries, and independent header/multiple-translation-unit numeric checks.
 
 **Acceptance:** Invalid files are rejected before upload, diagnostic output is
@@ -454,15 +454,15 @@ still complete. Commit these separate fixes independently.
 
 ### U4. Establish native callback and failure-reporting safety
 
-- [ ] Define deferred resize/native failure ownership and where it is checked in
+- [x] Define deferred resize/native failure ownership and where it is checked in
   platform pumping and explicit resize calls. Never unwind through C callbacks.
-- [ ] Audit error construction/trace formatting for allocation, truncation, repeated
+- [x] Audit error construction/trace formatting for allocation, truncation, repeated
   calls after stream failure, and noexcept claims; choose bounded fallback behavior.
-- [ ] Preserve runtime first-failure semantics while retaining/reporting subsequent
+- [x] Preserve runtime first-failure semantics while retaining/reporting subsequent
   cleanup failures with phase context.
-- [ ] Define a nonthrowing reporting contract for destructors, native callbacks,
+- [x] Define a nonthrowing reporting contract for destructors, native callbacks,
   logger failure, and allocation exhaustion; avoid a logger dependency cycle.
-- [ ] Plan throwing-resize-listener, partial startup, primary-plus-cleanup-failure,
+- [x] Plan throwing-resize-listener, partial startup, primary-plus-cleanup-failure,
   exhausted/truncated trace, and fallback reporting acceptance cases.
 
 **Acceptance:** Failure reporting does not replace the original failure, throw from
@@ -1064,3 +1064,49 @@ and emergency-output regression sources. An isolated allocation-exhaustion harne
 is still required to verify actual trace/format/copy failures when execution is
 authorized; directly exercising fallback storage does not claim that coverage.
 Static checks only; no compilation or tests were run.
+
+### U4c — cleanup phase reporting and final callback audit
+
+Runtime sequential/concurrent/unstarted shutdown and dependency pumping now preserve
+the first exception and report each distinct later exception with its cleanup phase.
+Simulation-worker closure reports outside the scheduler mutex, and merging worker
+failure into platform failure also happens after releasing that mutex. Pending window
+failures are checked after pumping even when stop was requested, and once more during
+cleanup. Input detachment reports any callback failure left unconsumed behind a window
+failure. Marked the existing guarded input callbacks noexcept.
+
+The native callback audit also found the GLAD procedure-address callback could let a
+context adapter exception unwind into C. It now captures first failure and returns
+null; renderer startup rethrows that failure after loading, before considering the
+unsupported-version diagnostic. Its later context-release failure reports separately.
+Added a source case for procedure lookup plus release failure; the existing generated
+loader source was inspected to establish its first-null lookup behavior and restore
+the only affected process-wide function pointer in that fixture.
+
+Logger/renderer destruction, logger registry cleanup, owned byte/object release,
+object backing cleanup, and EngineContext destruction use the emergency reporter
+for caught failures. Byte final release goes directly through the retained transaction
+path even for invalid bookkeeping, avoiding ordinary logger lookup at teardown.
+The existing terminate policy for a failed trusted release or unsettled owned workers
+is preserved, with a bounded diagnostic emitted first. Native/user destructors that
+violate noexcept can still terminate before a surrounding guard can run.
+
+Added source checks for primary-plus-cleanup phase output in both runtime modes,
+deferred native failure during a stopping pump, bounded emergency records, and
+unchanged primary exception identity. Generated Cheryl errors expose their bounded
+cause/location summary for emergency output instead of the trace prefix. The full
+contract is in [failure-reporting.md](../runtime/failure-reporting.md).
+
+**U1–U4 status:** U1, U2, and U4 source tasks are implemented; U3 numeric/diagnostic/read
+repairs are implemented, with semantic legacy font validation explicitly blocked on
+format evidence/choice. Checked boxes record source/planning completion, not executable
+acceptance. New regression sources have not been compiled or run. Required outstanding
+acceptance includes isolated allocation-failure/exhaustion cases, the empty shared byte
+domain case, multiple-translation-unit linkage, native callback/startup cases, and the
+concurrency/sanitizer matrix established in U0. Do not begin dependent U5/U7/U9 work by
+treating those unexecuted checks as passing evidence.
+
+Discovered U5 follow-up: repeated distinct exceptions from a failing shutdown maintenance
+pump can emit repeated emergency records. Keep bounded emergency output independent of
+ordinary logging thresholds; decide aggregation/rate policy in the logging unit without
+silently discarding a new phase or cause.

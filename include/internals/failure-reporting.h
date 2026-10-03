@@ -1,4 +1,5 @@
 #pragma once
+#include "exceptions.h"
 #include <array>
 #include <cstddef>
 #include <cstdio>
@@ -29,6 +30,8 @@ namespace CE::Diagnostics {
             if (failure)
                 std::rethrow_exception(failure);
             append("no exception information");
+        } catch (const Exceptions::exception_base& error) {
+            append(error.diagnostic_summary());
         } catch (const std::exception& error) {
             append(error.what());
         } catch (...) {

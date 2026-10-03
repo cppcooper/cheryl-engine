@@ -1,6 +1,7 @@
 #pragma once
 #include "osink.h"
 #include <templates/singleton.h>
+#include <internals/failure-reporting.h>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
@@ -286,6 +287,7 @@ namespace CE {
         } catch (...) {
             // Destructors cannot propagate lifecycle failures. A timeout leaves Closing intact,
             // and the sink-held state controller remains alive until the final external owner exits.
+            Diagnostics::report_failure("logger destruction", std::current_exception());
         }
 
         release_registry_ownership();
@@ -305,6 +307,7 @@ namespace CE {
             }
         } catch (...) {
             // Registry cleanup is best-effort during noexcept destruction.
+            Diagnostics::report_failure("logger registry release", std::current_exception());
         }
     }
 
