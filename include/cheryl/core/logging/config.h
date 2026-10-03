@@ -8,11 +8,25 @@
 
 namespace CE {
     enum class LogProfile { Developer, Support, Release };
+    /** Per-Log behavior at shared queue capacity, for records and flush requests.
+     * Block waits for room; DiscardNew counts/rejects the new item without evicting
+     * accepted work. Neither acknowledges backend completion or durability.
+     */
+    enum class LogOverflowPolicy { Block, DiscardNew };
 
-    /** Initial configuration for the rotating file and console destinations.
-     * Levels may change while open; destination/rotation changes require a new
-     * owned Log or the singleton's first initialization. Off suppresses output
-     * but does not avoid opening the file. Configure before starting producers.
+    /** Independently sampled values from the shared Cheryl pool, including flush
+     * requests. Capacity discards span every Log using that pool and are not reset
+     * by close/reopen. Queued items exclude work already taken by the worker.
+     */
+    struct LogQueueStats {
+        std::size_t queued_items = 0;
+        std::size_t discarded_items = 0;
+    };
+
+    /** Initial destination and per-Log queue configuration. Levels may change
+     * while open; destination/rotation/overflow changes require a new owned Log
+     * or the singleton's first initialization. Off suppresses output but does
+     * not avoid opening the file. Configure before starting producers.
      */
     struct LogConfig {
         std::filesystem::path directory{"logs"};
@@ -22,6 +36,7 @@ namespace CE {
         spdlog::level logger_level = ctlog::profile == 2 ? spdlog::level::info : spdlog::level::debug;
         spdlog::level file_level = ctlog::profile == 2 ? spdlog::level::info : spdlog::level::debug;
         spdlog::level console_level = ctlog::profile == 0 ? spdlog::level::info : spdlog::level::warn;
+        LogOverflowPolicy overflow_policy = LogOverflowPolicy::Block;
 
         [[nodiscard]] static LogConfig for_logger(
             const char* name, const LogProfile profile = static_cast<LogProfile>(ctlog::profile)
@@ -60,6 +75,8 @@ namespace CE::LogDetail {
             throw Exceptions::invalid_args(CE_HERE, "Unknown runtime logging level");
         if (config.rotation_bytes == 0 || config.retained_files > 200000)
             throw Exceptions::invalid_args(CE_HERE, "Invalid rotating log limits");
+        if (config.overflow_policy != LogOverflowPolicy::Block && config.overflow_policy != LogOverflowPolicy::DiscardNew)
+            throw Exceptions::invalid_args(CE_HERE, "Unknown logging overflow policy");
         // Resolve relative paths once, before any file/registry side effects.
         // Reopening must not follow an unrelated change of working directory.
         config.directory = std::filesystem::absolute(config.directory.empty() ? std::filesystem::path{"."} : config.directory)

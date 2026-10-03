@@ -1292,19 +1292,23 @@ failure policy must be settled before U6 adds ordinary logging to engine boundar
 
 ### Remaining U5 work — queue behavior and backend containment
 
-The unattended session stops at this design boundary. U5a/U5b/U5c1 are committed
+The unattended session stopped at this design boundary. U5a/U5b/U5c1 are committed
 source units, with static checks recorded; U5 and its executable acceptance are
-not complete. Broad U6 integration has not started. The owner has been asked whether
-a saturated ordinary-log queue should wait or discard with observable loss.
+not complete. Broad U6 integration has not started. The owner subsequently chose
+to support both blocking and discarding, selected for each Log by its configuration.
 
-**Proposed default, pending the owner's response:** Keep ordinary submission bounded
-without waiting for queue capacity, count discarded diagnostics, and publish aggregate
-loss summaries outside subsystem locks. Required terminal/cleanup failures retain
-U4's independent emergency report, even when ordinary logs are filtered or lost.
-This permits loss of ordinary ERROR records as well as lower severities; required
-failure reporting must be identified by its ownership contract, not inferred from
-a severity label. Nonblocking submission is not a promise of allocation-free or
-lock-free formatting, acquisition, or queue access.
+**Queue decision:** Expose Block and DiscardNew as immutable initial settings.
+Block remains the compatibility default for all existing logger presets until
+their subsystem/error ownership audit justifies a different choice. DiscardNew
+rejects the newly submitted item when full and counts the loss, preserving items
+already accepted from any category. The existing shared spdlog pool supports both
+policies per logger; a new queue implementation is not required. Required
+terminal/cleanup failures retain U4's independent emergency report, even when
+ordinary logs are filtered or lost. Discarding applies to ordinary ERROR records
+too; required failure reporting is identified by ownership, not a severity label.
+Avoiding the capacity wait is not a promise of allocation-free or lock-free
+formatting, acquisition, or queue access. Normal-session saturation frequency has
+not been measured; bursts, slow sinks, and blocked callbacks still need acceptance.
 
 The source audit exposed the following implementation constraints:
 
@@ -1337,10 +1341,13 @@ Continue in the following coherent units; each unit includes its contract/source
 updates and its own commit. Execution remains subject to the existing authorization
 restriction, and unexecuted cases do not establish acceptance.
 
-1. **U5c2: settle submission and completion contracts before changing overflow.**
-   Record the owner's saturation choice, which failures require independent reporting,
-   and whether ordinary flush is only a best-effort queued request. Preserve strong
-   close for accepted/retained owners; do not claim successful I/O or fsync durability
+1. **U5c2: expose per-Log policy with its submission and completion contracts.**
+   Add validated Block/DiscardNew initial configuration, map to the existing spdlog
+   policies, and retain the selection after close/reopen. Preserve Block defaults.
+   Make shared queued/discarded item statistics observable without exposing a reset
+   that would erase another category's loss. Ordinary flush uses that same policy
+   and only submits a request. Required failures use independent reporting. Preserve
+   strong close for accepted/retained owners; do not claim successful I/O or fsync durability
    from ownership completion. Determine the scope and lifetime of counters: the
    current pool is shared across categories, so its discard count is not a per-logger
    count. **Discovery boundary:** A requirement for guaranteed flush acknowledgement,
@@ -1356,13 +1363,14 @@ restriction, and unexecuted cases do not establish acceptance.
    **Discovery boundary:** If a guard cannot preserve public sink ownership and
    filtering contracts, settle the owned graph/interface change before adding logs.
    Adding a strong pool reference to queued loggers/sinks is not a valid repair.
-3. **U5c4: enforce reentrancy boundaries and apply the chosen queue policy.** Detect
+3. **U5c4: enforce reentrancy boundaries and complete queue loss reporting.** Detect
    backend recursive emission across the shared categories; suppress/count it through
    a nonrecursive reporting path. Reject forbidden close/wait/initialization reentry
    before acquiring lifecycle locks or recursively entering singleton initialization.
-   Apply the chosen overflow behavior only after those boundaries exist. Expose a
-   copied statistics snapshot and bounded loss/degradation summaries outside locks,
-   including final shutdown accounting. **Discovery boundary:** A native-owner bypass
+   Complete bounded loss/degradation summaries outside locks and final shutdown
+   accounting from the shared statistics. Per-Log configuration can land separately
+   using the existing backend, but new subsystem calls and changed category defaults
+   must wait for these boundaries. **Discovery boundary:** A native-owner bypass
    or callback cycle that cannot be guarded without changing the public contract must
    be resolved before claiming deadlock containment or beginning U6.
 4. **U5c5: establish acceptance before dependent integration.** Prepare deterministic
@@ -1386,3 +1394,45 @@ Console-only/custom destinations and multi-worker configuration remain separate
 discovery units. Neither is required to add safe diagnostics to the currently
 supported file-backed logger. The original U7–U15 order remains in place; independent
 work should be selected only after checking its prerequisites and shared-tree state.
+
+### U5c2 — per-Log saturation policy
+
+Before source changes, this coherent unit was scoped as follows:
+
+1. Validate a LogOverflowPolicy setting before file/registry effects; default to
+   Block independently of compile/runtime severity profiles. Wire it into each
+   native async logger, including generations created by reopen. Keep the shared
+   8192-item/single-worker pool and already-accepted owner lifetime unchanged.
+2. Expose copied shared queue statistics through Log and its compatibility facade.
+   Include queued and discarded items, which cover flush requests as well as
+   records; document independent sampling, lifetime, and cross-category scope.
+3. Add acceptance sources that hold one backend operation, fill the shared queue,
+   and submit through a second Log. Show DiscardNew returns and preserves accepted
+   records while Block waits until capacity exists. Cover lost flush requests,
+   invalid settings before effects, and policy retention after reopen. Release
+   blocked workers/producers before any assertion can unwind into logger cleanup.
+4. Update the contract and record static validation; compile and execution remain
+   unauthorized. Commit this configuration/observation unit independently.
+
+These source tasks are implemented. LogConfig appends the validated overflow field
+after its existing members, preserving partial aggregate initialization order.
+All presets keep Block. DiscardNew maps to the bundled backend's existing behavior,
+without replacing accepted entries or allocating a second pool. The shared statistics
+remain available to an owned closed Log; its facade keeps normal lazy initialization.
+Configuration/template layouts have changed; source consumers must rebuild.
+
+The saturation sources exercise two generations of DiscardNew, including lost flush
+requests and ordered accepted output, and concurrent use of Block/DiscardNew through
+one pool. Capacity submissions under observation run on joined producers; an incorrect
+blocking mapping releases the held backend before producer/owner cleanup during a
+fatal assertion. The blocking case uses a bounded scheduling observation. These
+sources have not been compiled or run and do not replace the remaining isolated
+process/fault-injection or concurrency acceptance. Static source/diff and local
+documentation-link checks passed; no compiler/configuration probes, builds, or tests
+were run.
+
+**Discovery boundaries:** This unit does not establish backend exception/reentry
+containment, flush acknowledgement, or durability. If sharing the pool prevents a
+safe held-backend acceptance fixture, isolate its ownership without altering the
+production pool contract. Per-category default changes remain part of the U6 error
+ownership audit; saturation assumptions alone do not establish delivery requirements.

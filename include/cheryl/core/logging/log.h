@@ -136,9 +136,21 @@ namespace CE {
          * setters affect the current generation and are preserved by close/reopen.
          */
         [[nodiscard]] const LogConfig& initial_configuration() const noexcept { return configuration_; }
+        /** Observe all categories using this pool, including discarded flush
+         * requests. This is not a per-Log count or an atomic pair of values.
+         * Available while closed; does not reset the shared counters.
+         */
+        [[nodiscard]] LogQueueStats shared_queue_stats() const {
+            return {thread_pool_->queue_size(), thread_pool_->discard_counter()};
+        }
         [[nodiscard]] std::filesystem::path get_file_path() const;
         // Legacy wrapping 16-bit serial; do not use it as a session/domain ID.
         [[nodiscard]] uint16_t get_log_id() const;
+        /** Queue a flush with this Log's overflow policy. Block can wait for
+         * capacity; DiscardNew can lose the request. No backend acknowledgement
+         * is returned. Completed close releases accepted file owners after the
+         * producers have stopped; it does not promise physical durability.
+         */
         void flush() const;
         void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero());
         void reopen();
@@ -254,8 +266,11 @@ namespace CE {
             );
 
             std::vector<spdlog::sink_ptr> sinks{console, file};
+            const auto overflow = configuration_.overflow_policy == LogOverflowPolicy::Block
+                                    ? spdlog::async_overflow_policy::block
+                                    : spdlog::async_overflow_policy::discard_new;
             auto logger = std::make_shared<spdlog::async_logger>(
-                std::format("{}", name), sinks.begin(), sinks.end(), thread_pool_, spdlog::async_overflow_policy::block
+                std::format("{}", name), sinks.begin(), sinks.end(), thread_pool_, overflow
             );
 
             // Reapply the configuration captured by close() while the replacement resources

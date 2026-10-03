@@ -3,6 +3,7 @@
 #include <core/logging.h>
 #include <internals/compile-time-logging.hpp>
 #include <internals/exceptions.h>
+#include <spdlog/formatter.h>
 
 #include <atomic>
 #include <chrono>
@@ -47,6 +48,10 @@ namespace {
     constexpr char config_name[] = "logging-config";
     constexpr char bad_config_name[] = "logging-bad-config";
     constexpr char bad_path_name[] = "logging/invalid-name";
+    constexpr char queue_hold_name[] = "logging-queue-hold";
+    constexpr char discard_name[] = "logging-discard";
+    constexpr char blocking_name[] = "logging-blocking";
+    constexpr std::size_t queue_capacity = 8192;
 
     struct LogDirectory {
         fs::path path = fs::temp_directory_path() /
@@ -107,6 +112,64 @@ namespace {
 
         [[nodiscard]] spdlog::level console_level() const { return this->m_console.load()->log_level(); }
     };
+
+    struct BackendGate {
+        std::promise<void> entered;
+        std::future<void> ready = entered.get_future();
+        std::latch released{1};
+        std::atomic<bool> unblocked = false;
+
+        void unblock() noexcept {
+            if (!unblocked.exchange(true))
+                released.count_down();
+        }
+    };
+
+    struct BackendRelease {
+        std::shared_ptr<BackendGate> gate;
+
+        ~BackendRelease() { gate->unblock(); }
+    };
+
+    class HeldSink final : public spdlog::sinks::sink {
+        std::shared_ptr<BackendGate> gate;
+        bool first = true;
+
+    public:
+        explicit HeldSink(std::shared_ptr<BackendGate> gate)
+        : gate(std::move(gate)) {}
+
+        void log(const spdlog::details::log_msg&) override {
+            if (first) {
+                first = false;
+                gate->entered.set_value();
+                gate->released.wait();
+            }
+        }
+
+        void flush() override {}
+        void set_pattern(const std::string&) override {}
+        void set_formatter(std::unique_ptr<spdlog::formatter>) override {}
+    };
+
+    LogConfig queue_config(const char* name, const fs::path& directory) {
+        auto config = LogConfig::for_logger(name);
+        config.directory = directory;
+        config.rotate_on_open = false;
+        config.logger_level = config.file_level = spdlog::level::warn;
+        config.console_level = spdlog::level::off;
+        return config;
+    }
+
+    void expect_sequence(const std::string& content, const int generation) {
+        std::size_t cursor = 0;
+        for (std::size_t i = 0; i < queue_capacity; ++i) {
+            const auto marker = std::format("accepted[{}:{}]", generation, i);
+            const auto position = content.find(marker, cursor);
+            ASSERT_NE(position, std::string::npos) << "Missing or reordered marker: " << marker;
+            cursor = position + marker.size();
+        }
+    }
 
     class DefaultLoggerGuard final {
         std::shared_ptr<spdlog::logger> original = spdlog::default_logger();
@@ -574,6 +637,7 @@ TEST(logging, runtime_defaults) {
     EXPECT_TRUE(log.initial_configuration().directory.is_absolute());
     EXPECT_EQ(log.initial_configuration().rotation_bytes, 10u * 1024u * 1024u);
     EXPECT_EQ(log.initial_configuration().retained_files, 5u);
+    EXPECT_EQ(log.initial_configuration().overflow_policy, LogOverflowPolicy::Block);
     log.close();
 
     const auto developer = LogConfig::for_logger("memory", LogProfile::Developer);
@@ -582,12 +646,15 @@ TEST(logging, runtime_defaults) {
     EXPECT_EQ(developer.logger_level, spdlog::level::info);
     EXPECT_EQ(developer.file_level, spdlog::level::info);
     EXPECT_EQ(developer.console_level, spdlog::level::info);
+    EXPECT_EQ(developer.overflow_policy, LogOverflowPolicy::Block);
     EXPECT_EQ(support.logger_level, spdlog::level::info);
     EXPECT_EQ(support.file_level, spdlog::level::info);
     EXPECT_EQ(support.console_level, spdlog::level::warn);
+    EXPECT_EQ(support.overflow_policy, LogOverflowPolicy::Block);
     EXPECT_EQ(release.logger_level, spdlog::level::warn);
     EXPECT_EQ(release.file_level, spdlog::level::warn);
     EXPECT_EQ(release.console_level, spdlog::level::warn);
+    EXPECT_EQ(release.overflow_policy, LogOverflowPolicy::Block);
 }
 
 TEST(logging, config_reopen) {
@@ -645,6 +712,9 @@ TEST(logging, invalid_config) {
     config.file_level = static_cast<spdlog::level>(-1);
     EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
     config.file_level = spdlog::level::info;
+    config.overflow_policy = static_cast<LogOverflowPolicy>(-1);
+    EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
+    config.overflow_policy = LogOverflowPolicy::Block;
     EXPECT_THROW((TestLog<bad_path_name>{handlers, config}), Exceptions::invalid_args);
     EXPECT_EQ(opens, 0);
     EXPECT_FALSE(fs::exists(config.directory));
@@ -663,4 +733,128 @@ TEST(logging, host_pool) {
         EXPECT_EQ(spdlog::thread_pool(), original);
     }
     EXPECT_EQ(spdlog::thread_pool(), original);
+}
+
+TEST(logging, discard_queue) {
+    if constexpr (!ctlog::enabled(ctlog::WARNING_))
+        GTEST_SKIP() << "Queue submission requires a compiled severity";
+
+    const LogDirectory directory;
+    TestLog<queue_hold_name> holder{spdlog::file_event_handlers{}, queue_config(queue_hold_name, directory.path)};
+    auto config = queue_config(discard_name, directory.path);
+    config.overflow_policy = LogOverflowPolicy::DiscardNew;
+    TestLog<discard_name> log{spdlog::file_event_handlers{}, config};
+    const auto path = log.get_file_path();
+
+    for (int generation = 0; generation < 2; ++generation) {
+        holder.set_pattern("%v");
+        log.set_pattern("%v");
+        const auto gate = std::make_shared<BackendGate>();
+        auto native = holder.retain_logger();
+        // No producer has used this generation's logger yet. Attach the test sink
+        // while its sink graph is quiescent, before starting any writes.
+        native->sinks().push_back(std::make_shared<HeldSink>(gate));
+        std::promise<void> completed;
+        auto completion = completed.get_future();
+        std::jthread producer;
+        const BackendRelease release{gate};
+        holder.warn("hold-worker");
+        ASSERT_EQ(gate->ready.wait_for(close_timeout), std::future_status::ready);
+        ASSERT_EQ(log.shared_queue_stats().queued_items, 0u);
+        const auto discarded = log.shared_queue_stats().discarded_items;
+
+        for (std::size_t i = 0; i < queue_capacity; ++i)
+            log.warn("accepted[{}:{}]", generation, i);
+        ASSERT_EQ(log.shared_queue_stats().queued_items, queue_capacity);
+        ASSERT_EQ(log.shared_queue_stats().discarded_items, discarded);
+        // Submit on a joined producer so a mistaken Block mapping can fail the
+        // bounded observation, release the backend, and unwind without hanging.
+        producer = std::jthread([&] {
+            try {
+                log.warn("discarded[{}]", generation);
+                log.flush(); // Flush submission follows this Log's policy and is lost too.
+                completed.set_value();
+            } catch (...) {
+                completed.set_exception(std::current_exception());
+            }
+        });
+        ASSERT_EQ(completion.wait_for(close_timeout), std::future_status::ready);
+        EXPECT_NO_THROW(completion.get());
+        producer.join();
+        EXPECT_EQ(log.shared_queue_stats().queued_items, queue_capacity);
+        EXPECT_EQ(log.shared_queue_stats().discarded_items, discarded + 2);
+        EXPECT_EQ(holder.shared_queue_stats().discarded_items, discarded + 2);
+
+        gate->unblock();
+        native.reset();
+        EXPECT_NO_THROW(log.close(close_timeout));
+        EXPECT_NO_THROW(holder.close(close_timeout));
+        EXPECT_EQ(log.shared_queue_stats().discarded_items, discarded + 2);
+        EXPECT_EQ(log.shared_queue_stats().queued_items, 0u);
+        const auto content = read_file(path);
+        expect_sequence(content, generation);
+        EXPECT_EQ(content.find(std::format("discarded[{}]", generation)), std::string::npos);
+        if (generation == 0) {
+            log.reopen();
+            holder.reopen();
+            EXPECT_EQ(log.initial_configuration().overflow_policy, LogOverflowPolicy::DiscardNew);
+            EXPECT_EQ(log.shared_queue_stats().discarded_items, discarded + 2);
+        }
+    }
+}
+
+TEST(logging, blocking_queue) {
+    if constexpr (!ctlog::enabled(ctlog::WARNING_))
+        GTEST_SKIP() << "Queue submission requires a compiled severity";
+
+    const LogDirectory directory;
+    auto config = queue_config(queue_hold_name, directory.path);
+    config.overflow_policy = LogOverflowPolicy::DiscardNew;
+    TestLog<queue_hold_name> holder{spdlog::file_event_handlers{}, config};
+    TestLog<blocking_name> log{spdlog::file_event_handlers{}, queue_config(blocking_name, directory.path)};
+    const auto path = log.get_file_path();
+    const auto holder_path = holder.get_file_path();
+    holder.set_pattern("%v");
+    log.set_pattern("%v");
+    const auto gate = std::make_shared<BackendGate>();
+    auto native = holder.retain_logger();
+    native->sinks().push_back(std::make_shared<HeldSink>(gate));
+    std::promise<void> started;
+    auto starting = started.get_future();
+    std::promise<void> completed;
+    auto completion = completed.get_future();
+    std::jthread producer;
+    // Declared after the producer so fatal assertions release the backend before
+    // jthread destruction joins a producer that may be waiting for queue capacity.
+    const BackendRelease release{gate};
+    holder.warn("hold-worker");
+    ASSERT_EQ(gate->ready.wait_for(close_timeout), std::future_status::ready);
+    ASSERT_EQ(log.shared_queue_stats().queued_items, 0u);
+    const auto discarded = log.shared_queue_stats().discarded_items;
+    for (std::size_t i = 0; i < queue_capacity; ++i)
+        holder.warn("accepted[0:{}]", i);
+    ASSERT_EQ(log.shared_queue_stats().queued_items, queue_capacity);
+    ASSERT_EQ(log.shared_queue_stats().discarded_items, discarded);
+
+    producer = std::jthread([&] {
+        started.set_value();
+        try {
+            log.warn("blocking-marker");
+            completed.set_value();
+        } catch (...) {
+            completed.set_exception(std::current_exception());
+        }
+    });
+    ASSERT_EQ(starting.wait_for(close_timeout), std::future_status::ready);
+    EXPECT_EQ(completion.wait_for(50ms), std::future_status::timeout);
+    gate->unblock();
+    ASSERT_EQ(completion.wait_for(close_timeout), std::future_status::ready);
+    EXPECT_NO_THROW(completion.get());
+    producer.join();
+    native.reset();
+    EXPECT_NO_THROW(log.close(close_timeout));
+    EXPECT_NO_THROW(holder.close(close_timeout));
+    EXPECT_EQ(log.shared_queue_stats().discarded_items, discarded);
+    expect_contains(read_file(path), "blocking-marker");
+    expect_sequence(read_file(holder_path), 0);
 }

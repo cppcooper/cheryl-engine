@@ -23,6 +23,8 @@ namespace CE {
 
         [[nodiscard]] static const LogConfig& initial_configuration() { return Singleton_CTS<Log<name>>::get().initial_configuration(); }
 
+        [[nodiscard]] static LogQueueStats shared_queue_stats() { return Singleton_CTS<Log<name>>::get().shared_queue_stats(); }
+
         static void flush() { Singleton_CTS<Log<name>>::get().flush(); }
 
         static void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {

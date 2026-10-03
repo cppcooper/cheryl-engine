@@ -62,6 +62,41 @@ It reports startup settings; live level changes remain on the current resources
 and are captured/restored across close/reopen. Pattern setters affect the current
 generation; preserving later pattern overrides across reopening is not promised.
 
+LogConfig::overflow_policy selects Block or DiscardNew per Log, independently of
+severity profiles. The setting remains immutable and is reapplied after reopen.
+All existing presets retain Block as their compatibility default. Configure the
+owner before starting producers; future category default changes belong to the
+subsystem error-ownership audit. Source consumers must rebuild for the updated
+configuration/template layouts.
+
+| Overflow policy | When the shared queue is full |
+| --- | --- |
+| Block | Wait for capacity, then enqueue the new item. |
+| DiscardNew | Count and reject the new item; leave accepted items intact. |
+
+Both use the same shared 8192-item pool and can coexist across logger instances.
+spdlog already implements both paths; Cheryl passes each Log's setting to its
+native async logger. A Block write returns after submission, without waiting for
+backend output. DiscardNew avoids waiting for capacity, but formatting, allocation,
+and mutex acquisition can still take time. Queue saturation frequency has not been
+measured; bursts and slow or blocked sinks are relevant even when normal traffic
+is small.
+
+Flush follows the same per-Log policy: a DiscardNew flush request can be lost at
+capacity. flush only submits a request, with no completion/durability acknowledgement.
+Successful close retains its accepted-owner/file-completion boundary without needing
+an extra queued flush request. Neither policy guarantees successful physical I/O or
+fsync durability; required failure reports still use the independent emergency path.
+
+Log::shared_queue_stats and Logger::shared_queue_stats return queued_items and
+discarded_items across all logs sharing the pool, including flush requests.
+queued_items excludes work already taken by the worker. The fields are sampled
+independently; they are observations rather than an atomic pair or a completion
+barrier. The discard counter is not reset by close/reopen, and no per-Log reset
+is exposed. Owned Logs can inspect it while closed; the compatibility facade
+retains its normal lazy-initialization behavior. Filtered/closed writes do not
+count as queue-capacity discards.
+
 The file sink remains the close-completion boundary. Successful close means accepted
 queued owners and retained file owners have released that sink and its close callback
 has completed. A retained native logger/file sink can delay close; timed failure
@@ -113,15 +148,15 @@ throughput claim. Accepted queue entries retain their native
 logger/sinks; those loggers borrow the pool. Do not make sinks/queued loggers retain
 the pool, which can create a queue-owner cycle and final destruction on a worker.
 
-The queue is still blocking. Saturation/drop policy and backend failure containment
-are the following U5 unit; broad subsystem integration remains gated on them.
+The per-Log saturation policy is configurable; blocking remains the default.
+Backend failure containment and reentrancy are the remaining U5 units; broad
+subsystem integration remains gated on them.
 The remaining contract and ordered tasks are recorded in the
 [development plan](../planning/develop-review-and-development-plan.md#remaining-u5-work--queue-behavior-and-backend-containment).
 Current caller-side guards do not contain every async backend exception: the bundled
 worker can rethrow a non-standard sink exception, and file-close handlers can throw
 during destruction. Callback containment and an observable degraded-file state are
-required remaining work. Async flush is a queued request subject to the same overflow
-policy as records; it does not acknowledge physical durability.
+required remaining work.
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
 External native owners must not continue producing after facade teardown.
@@ -139,6 +174,13 @@ custom append/rotation settings, level restoration, relative-path stability afte
 scoped working-directory change, and invalid settings with zero file-open side effects.
 The host-pool source case constructs a separate pool owner even if the singleton
 already exists, catching the previous replacement of the host's global pool.
+Saturation sources hold a backend operation while another logger fills the shared
+queue. They cover DiscardNew returns/loss counts, lost flush requests, accepted
+record ordering, mixed per-Log policies, retained selection after reopen, and Block
+waiting for capacity. Invalid policy values reject before file/registry effects.
+The held-backend release guard runs before producer joins and logger cleanup on
+assertion failure. The blocking case includes a bounded scheduling observation;
+isolated timeout/fault-injection acceptance remains separate work.
 Compile/link execution and the profile matrix remain unexecuted; no compilation
-or tests were authorized. Queue saturation, sink failures, and shutdown require
+or tests were authorized. Executable saturation, sink failures, and shutdown require
 separate acceptance as the remaining lifecycle units land.
