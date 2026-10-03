@@ -1,6 +1,5 @@
 #include <core/logging/log.h>
-#include <backward.hpp>
-#include <spanstream>
+#include <internals/stack-trace-internal.h>
 
 #include <atomic>
 
@@ -14,34 +13,13 @@ namespace CE::LogDetail {
 }
 
 namespace CE {
-    std::string stack_trace(void* addr0) {
-        // Reuse thread-local formatting storage, then resolve a bounded slice of the
-        // current stack (or the caller-provided address) into a printable trace.
-        static thread_local std::array<char, 6144> buffer{};
-        static thread_local std::span bspan(buffer);
-        static thread_local std::spanstream ss(bspan);
-        //inform ss this is the end of any strings, required for repeat executions
-        buffer[0] = '\0';
-        //need to reset the position cursor
-        ss.seekp(0);
-        // We need to start generating the stack trace now.
-        using namespace backward;
-        StackTrace st;
-        // ideally we're going to shorten the stack trace to near addr0
-        if (addr0) {
-            st.load_from(addr0, 7);
-        } else {
-            st.load_here(17);
+    std::string stack_trace(void* addr0) noexcept {
+        try {
+            return TraceDetail::capture<6144>(addr0, addr0 ? 7 : 17, 0);
+        } catch (...) {
+            // Default construction and moving an empty string require no allocation.
+            // Ordinary logging decides how to display unavailable trace information.
+            return {};
         }
-        TraceResolver tr;
-        tr.load_stacktrace(st);
-        // manually prepare stack trace
-        for (size_t i = 0; i < st.size(); ++i) {
-            backward::ResolvedTrace trace = tr.resolve(st[i]);
-            ss << "#" << i << " " << trace.object_function << "[" << trace.addr << "]"
-               << " in " << trace.source.filename << ":" << trace.source.line << ":" << trace.source.col << std::endl;
-        }
-        ss << '\0'; //null terminate our string, required for repeat executions
-        return buffer.data();
     }
 }

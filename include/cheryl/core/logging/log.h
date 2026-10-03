@@ -69,7 +69,8 @@ namespace CE::LogDetail {
 }
 
 namespace CE {
-    extern std::string stack_trace(void* addr0 = nullptr);
+    // Bounded trace; empty if resolution or copying fails. Never masks the caller's failure.
+    extern std::string stack_trace(void* addr0 = nullptr) noexcept;
 
     template <const char*> class Log {
         template <typename T> using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;

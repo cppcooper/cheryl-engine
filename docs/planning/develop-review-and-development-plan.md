@@ -1034,3 +1034,33 @@ explicit resize, and input-update reporting. Existing callback registration is
 restored and the persistent event registration is removed at scope exit. No native
 execution, builds, or tests were run. Exception/trace formatting and runtime secondary
 cleanup reporting remain the next U4 units.
+
+### U4b — bounded traces and nonthrowing exception diagnostics
+
+Both exception and logger traces now write into a fixed diagnostic stream buffer,
+reserve a terminator byte, mark truncated text, copy only the written prefix, and
+reset buffer/stream state before reuse. Symbol resolution still uses backward and
+may allocate. The public stack_trace call catches failures and returns an empty
+string without allocation; callers treat an empty trace as unavailable information.
+
+Exception trace evaluation and formatting now occur inside the same catch boundary.
+The previous noexcept helper evaluated an allocating trace before its guard could
+run and then called allocating formatting without any guard. Every generated error
+now prepares owned bounded category/location/line/info first, attempts full trace
+and formatting, and preserves that fallback on failure. Exception copies also keep
+that fallback if copying the full string fails. Constructor argument expressions
+outside these functions and the language runtime's allocation for a thrown object
+remain outside this guarantee.
+
+**Contract decision:** use the same owned string plus 512-byte fallback storage on
+all compilers, replacing the MSVC-specific allocating std::exception message path.
+Derived constructor signatures and catch types remain; the base layout and trace
+noexcept contract change, so all consumers must rebuild together. The fallback is
+an owned terminated prefix, never a borrowed temporary or recursively constructed
+exception. Reporting it requires neither the logger nor trace resolution.
+
+Added bounded overflow/reuse, owned fallback copy/move/truncation, repeated trace,
+and emergency-output regression sources. An isolated allocation-exhaustion harness
+is still required to verify actual trace/format/copy failures when execution is
+authorized; directly exercising fallback storage does not claim that coverage.
+Static checks only; no compilation or tests were run.
