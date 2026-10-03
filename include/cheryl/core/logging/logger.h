@@ -6,18 +6,22 @@
 #include <utility>
 
 namespace CE {
-    // Default access lazily creates Log<name>. Configure custom file handlers with
-    // initialize(handlers) on the logging owner before any writer/default access;
+    // Default access lazily creates Log<name>. Configure with initialize(handlers,
+    // config) on the logging owner before any writer/default access;
     // repeated explicit initialization rejects. This compatibility constructor's
-    // handlers apply only if it performs the first successful construction.
+    // handlers/config apply only if it performs the first successful construction.
     template <const char* name> class Logger : public Singleton_CTS<Log<name>> {
     protected:
-        explicit Logger(const spdlog::file_event_handlers& event_handlers = {}) { Singleton_CTS<Log<name>>::get(event_handlers); }
+        explicit Logger(const spdlog::file_event_handlers& event_handlers = {}, LogConfig config = LogConfig::for_logger(name)) {
+            Singleton_CTS<Log<name>>::get(event_handlers, std::move(config));
+        }
 
     public:
         static void set_pattern(const char* fmt) { Singleton_CTS<Log<name>>::get().set_pattern(fmt); }
 
         [[nodiscard]] static std::filesystem::path get_file_path() { return Singleton_CTS<Log<name>>::get().get_file_path(); }
+
+        [[nodiscard]] static const LogConfig& initial_configuration() { return Singleton_CTS<Log<name>>::get().initial_configuration(); }
 
         static void flush() { Singleton_CTS<Log<name>>::get().flush(); }
 

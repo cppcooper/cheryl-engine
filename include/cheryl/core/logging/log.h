@@ -1,6 +1,7 @@
 #pragma once
 #include "osink.h"
 #include "compile-policy.h"
+#include "config.h"
 #include <templates/singleton.h>
 #include <internals/failure-reporting.h>
 
@@ -75,7 +76,7 @@ namespace CE {
     // Bounded trace; empty if resolution or copying fails. Never masks the caller's failure.
     extern std::string stack_trace(void* addr0 = nullptr) noexcept;
 
-    template <const char*> class Log {
+    template <const char* name> class Log {
         template <typename T> using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;
 
     protected:
@@ -92,11 +93,13 @@ namespace CE {
         using StateRule = LogDetail::StateRule;
         using ReopenState = LogDetail::ReopenState;
 
-        void construct_log();
-        void release_registry_ownership() const noexcept;
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
+        const LogConfig configuration_;
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
+
+        void construct_log();
+        void release_registry_ownership() const noexcept;
 
         [[nodiscard]] static bool admits(const std::shared_ptr<spdlog::logger>& logger, const spdlog::level level) noexcept {
             return logger && level != spdlog::level::off && logger->should_log(level) &&
@@ -126,9 +129,14 @@ namespace CE {
         void require_open_state(const LogStateController::Lock& lock, const char* operation) const;
 
     public:
-        explicit Log(spdlog::file_event_handlers event_handlers = {});
+        explicit Log(spdlog::file_event_handlers event_handlers = {}, LogConfig configuration = LogConfig::for_logger(name));
         ~Log() noexcept;
+        /** Owned immutable startup settings with an absolute directory. Live level
+         * setters affect the current generation and are preserved by close/reopen.
+         */
+        [[nodiscard]] const LogConfig& initial_configuration() const noexcept { return configuration_; }
         [[nodiscard]] std::filesystem::path get_file_path() const;
+        // Legacy wrapping 16-bit serial; do not use it as a session/domain ID.
         [[nodiscard]] uint16_t get_log_id() const;
         void flush() const;
         void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero());
@@ -231,8 +239,11 @@ namespace CE {
             // later enters Closing; destruction during a failed opening is intentionally ignored.
             auto console = std::make_shared<osink_mt>();
             const auto controller = state_controller;
+            const auto file_path = (configuration_.directory / std::format("{}.log", name)).string();
             auto file = std::shared_ptr<spdlog::sinks::rotating_file_sink_mt>(
-                new spdlog::sinks::rotating_file_sink_mt(std::format("logs/{}.log", name), 1024 * 1024 * 10, 5, true, event_handlers),
+                new spdlog::sinks::rotating_file_sink_mt(
+                    file_path, configuration_.rotation_bytes, configuration_.retained_files, configuration_.rotate_on_open, event_handlers
+                ),
                 [controller](spdlog::sinks::rotating_file_sink_mt* sink) {
                     delete sink;
                     controller->complete_close();
@@ -250,6 +261,10 @@ namespace CE {
                 logger->set_level(restore->logger);
                 file->set_level(restore->file);
                 console->set_level(restore->console);
+            } else {
+                logger->set_level(configuration_.logger_level);
+                file->set_level(configuration_.file_level);
+                console->set_level(configuration_.console_level);
             }
 
             // Register first, then commit default ownership and member publication while the
@@ -288,8 +303,9 @@ namespace CE {
     }
 
     template <const char* name>
-    Log<name>::Log(spdlog::file_event_handlers event_handlers)
+    Log<name>::Log(spdlog::file_event_handlers event_handlers, LogConfig configuration)
     : event_handlers(std::move(event_handlers)),
+      configuration_(LogDetail::prepare_configuration(std::move(configuration), name)),
       m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
         m_fallback_logger->set_level(spdlog::level::off);
         construct_log();

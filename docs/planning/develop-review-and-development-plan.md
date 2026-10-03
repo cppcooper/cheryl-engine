@@ -486,7 +486,7 @@ Prerequisites: U1 initialization contract and U4 fallback contract.
   supported destination configuration, and file/rotation defaults.
 - [x] Replace unconditional/global include-order masks with target-consistent
   profiles; apply gating to formatted and streaming calls, including expensive args.
-- [ ] Add explicit runtime logger/file/console defaults and overrides; document
+- [x] Add explicit runtime logger/file/console defaults and overrides; document
   compile-time versus runtime behavior.
 - [ ] Decide blocking versus bounded/drop behavior for queues and separate critical
   fallback reporting from ordinary async delivery. Count/report dropped diagnostics.
@@ -1227,3 +1227,30 @@ and executable profile matrix remains unexecuted. The contract is in
 **Boundary retained:** The queue still blocks and runtime defaults are not yet
 explicitly configured. U5b/U5c must settle those contracts before broad U6 logging.
 No compiler/configuration probes, builds, or tests were run for this unit.
+
+### U5b — explicit runtime presets and stable file configuration
+
+LogConfig now supplies developer/support/release logger/file/console levels before
+publication. Memory starts at INFO in developer/support and WARN in release;
+statistics/TRACE require explicit filtering changes. Existing setters remain
+independent and their current levels are restored after close/reopen.
+
+Startup settings select directory, rotation bytes, backup count, and rotation on
+open, retaining the prior logs/name.log, 10 MiB, five-backup defaults. Validate
+levels/rotation/name before file or registry effects, and resolve the directory once
+to an absolute normalized path. Reopening uses that path even after a working-directory
+change. Existing handler-first constructors and singleton initialization remain
+available with settings as the optional second argument. The immutable startup
+settings getter is borrowed; all source consumers must rebuild for the Log layout
+change. The legacy 16-bit log_id is not a globally unique session/correlation ID.
+
+Added source cases for published presets, memory defaults, append/rotation settings,
+reopen levels and stable paths, and invalid settings with zero file-open side effects.
+Completed the explicit minimal/off-profile expectations in the existing destructor
+acceptance source. Static review only; no builds, compiler probes, or tests were run.
+
+**Discovery boundary:** File/console threshold off does not remove the file sink or
+its startup effects. Console-only/custom sinks remain a separate ownership/completion
+unit. Pattern overrides remain generation-local, while levels preserve their existing
+restoration contract. Queue ownership, saturation, and backend failure containment
+still gate dependent U6 integration.

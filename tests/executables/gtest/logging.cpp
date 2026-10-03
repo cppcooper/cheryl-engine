@@ -43,6 +43,30 @@ namespace {
     constexpr char filtered_args_name[] = "logging-filtered-args";
     constexpr char compiled_args_name[] = "logging-compiled-args";
     constexpr char lazy_failure_name[] = "logging-lazy-failure";
+    constexpr char defaults_name[] = "logging-defaults";
+    constexpr char config_name[] = "logging-config";
+    constexpr char bad_config_name[] = "logging-bad-config";
+    constexpr char bad_path_name[] = "logging/invalid-name";
+
+    struct LogDirectory {
+        fs::path path = fs::temp_directory_path() /
+                        ("cheryl-log-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+
+        LogDirectory() { fs::create_directories(path); }
+        ~LogDirectory() {
+            std::error_code error;
+            fs::remove_all(path, error);
+        }
+    };
+
+    struct CurrentDirectoryGuard {
+        fs::path original = fs::current_path();
+
+        ~CurrentDirectoryGuard() {
+            std::error_code error;
+            fs::current_path(original, error);
+        }
+    };
 
     void remove_current_log_file(const char* name) {
         std::error_code error;
@@ -72,8 +96,8 @@ namespace {
 
     template <const char* name> class TestLog final : public Log<name> {
     public:
-        explicit TestLog(spdlog::file_event_handlers event_handlers = {})
-        : Log<name>(std::move(event_handlers)) {}
+        explicit TestLog(spdlog::file_event_handlers event_handlers = {}, LogConfig config = LogConfig::for_logger(name))
+        : Log<name>(std::move(event_handlers), std::move(config)) {}
 
         [[nodiscard]] std::shared_ptr<spdlog::logger> retain_logger() const { return this->m_logger.load(); }
 
@@ -176,7 +200,7 @@ TEST(logging, destructor_closes_file) {
     EXPECT_EQ(spdlog::get(destructor_close_name), nullptr);
     EXPECT_EQ(spdlog::get(std::format("{}-closed", destructor_close_name)), nullptr);
     EXPECT_EQ(spdlog::default_logger(), nullptr);
-    expect_contains(read_file(path), "destructor-close-message");
+    expect_level(read_file(path), "destructor-close-message", ctlog::INFO_);
 
     default_guard.restore();
 }
@@ -539,4 +563,91 @@ TEST(logging, partial_stream) {
         std::runtime_error
     );
     EXPECT_FALSE(emitted);
+}
+
+TEST(logging, runtime_defaults) {
+    TestLog<defaults_name> log;
+    const auto expected = ctlog::profile == 2 ? spdlog::level::info : spdlog::level::debug;
+    EXPECT_EQ(log.logger_level(), expected);
+    EXPECT_EQ(log.file_level(), expected);
+    EXPECT_EQ(log.console_level(), ctlog::profile == 0 ? spdlog::level::info : spdlog::level::warn);
+    EXPECT_TRUE(log.initial_configuration().directory.is_absolute());
+    EXPECT_EQ(log.initial_configuration().rotation_bytes, 10u * 1024u * 1024u);
+    EXPECT_EQ(log.initial_configuration().retained_files, 5u);
+    log.close();
+
+    const auto developer = LogConfig::for_logger("memory", LogProfile::Developer);
+    const auto support = LogConfig::for_logger("memory", LogProfile::Support);
+    const auto release = LogConfig::for_logger("memory", LogProfile::Release);
+    EXPECT_EQ(developer.logger_level, spdlog::level::info);
+    EXPECT_EQ(developer.file_level, spdlog::level::info);
+    EXPECT_EQ(developer.console_level, spdlog::level::info);
+    EXPECT_EQ(support.logger_level, spdlog::level::info);
+    EXPECT_EQ(support.file_level, spdlog::level::info);
+    EXPECT_EQ(support.console_level, spdlog::level::warn);
+    EXPECT_EQ(release.logger_level, spdlog::level::warn);
+    EXPECT_EQ(release.file_level, spdlog::level::warn);
+    EXPECT_EQ(release.console_level, spdlog::level::warn);
+}
+
+TEST(logging, config_reopen) {
+    const LogDirectory directory;
+    const auto relative = directory.path.lexically_relative(fs::current_path());
+    if (relative.empty())
+        GTEST_SKIP() << "The temporary directory must share the working directory's filesystem root";
+    const auto expected_path = directory.path / "logs" / std::format("{}.log", config_name);
+    fs::create_directories(expected_path.parent_path());
+    std::ofstream(expected_path) << "existing-marker\n";
+    auto config = LogConfig::for_logger(config_name);
+    config.directory = relative / "logs";
+    config.rotation_bytes = 1024;
+    config.retained_files = 2;
+    config.rotate_on_open = false;
+    config.logger_level = spdlog::level::trace;
+    config.file_level = spdlog::level::info;
+    config.console_level = spdlog::level::off;
+    TestLog<config_name> log{spdlog::file_event_handlers{}, config};
+    EXPECT_EQ(log.get_file_path(), expected_path);
+    log.set_pattern("%v");
+    log.info("configured-message");
+    log.set_level_filesink(spdlog::level::err);
+    log.close();
+    {
+        // This process-wide change is scoped after producers stop and the file
+        // closes. Reopening must continue using its original absolute directory.
+        const CurrentDirectoryGuard guard;
+        fs::current_path(directory.path);
+        log.reopen();
+        EXPECT_EQ(log.get_file_path(), expected_path);
+        EXPECT_EQ(log.logger_level(), spdlog::level::trace);
+        EXPECT_EQ(log.file_level(), spdlog::level::err);
+        EXPECT_EQ(log.console_level(), spdlog::level::off);
+        log.close();
+    }
+    const auto output = read_file(expected_path);
+    expect_contains(output, "existing-marker");
+    expect_level(output, "configured-message", ctlog::INFO_);
+}
+
+TEST(logging, invalid_config) {
+    const LogDirectory directory;
+    int opens = 0;
+    spdlog::file_event_handlers handlers;
+    handlers.before_open = [&](const spdlog::filename_t&) { ++opens; };
+    auto config = LogConfig::for_logger(bad_config_name);
+    config.directory = directory.path / "unopened";
+    config.rotation_bytes = 0;
+    EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
+    config.rotation_bytes = 1024;
+    config.retained_files = 200001;
+    EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
+    config.retained_files = 0; // Zero backup retention is supported by the rotating sink.
+    config.file_level = static_cast<spdlog::level>(-1);
+    EXPECT_THROW((TestLog<bad_config_name>{handlers, config}), Exceptions::invalid_args);
+    config.file_level = spdlog::level::info;
+    EXPECT_THROW((TestLog<bad_path_name>{handlers, config}), Exceptions::invalid_args);
+    EXPECT_EQ(opens, 0);
+    EXPECT_FALSE(fs::exists(config.directory));
+    EXPECT_EQ(spdlog::get(bad_config_name), nullptr);
+    EXPECT_EQ(spdlog::get(bad_path_name), nullptr);
 }
