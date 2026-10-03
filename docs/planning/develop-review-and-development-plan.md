@@ -1547,3 +1547,13 @@ Diff, Python syntax/static source, and local documentation-link checks are the
 only permitted checks performed so far. U5 executable acceptance is **pending**;
 U6 must not acquire a dependency on unaccepted logging containment. Continue U7
 and U8 independently while requesting explicit execution authorization.
+
+### Authorized focused execution and required compilation prerequisite
+
+The owner explicitly authorized focused builds/tests and the normal/sandbox logging
+profile matrix. This supersedes the earlier execution restriction for these checks
+and necessary consumer/integration validation; remote push remains unauthorized.
+The first sandbox developer-profile build on GCC 16.2.1/CMake 4.4.3 exposed a U3
+legacy error message passing filesystem::path directly to C++23 std::format.
+C++23 has no standard path formatter. Format its string representation instead;
+this is a required compilation prerequisite, not legacy-format redesign.

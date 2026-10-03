@@ -45,7 +45,7 @@ namespace CE::Assets {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             throw Exceptions::failed_operation(CE_HERE,
-                std::format("Cannot open file '{}'", path));
+                std::format("Cannot open file '{}'", path.string()));
         }
         // This deprecated loader preserves native-short encoding and ignored
         // trailing data. The original atlas is unavailable; semantic format
