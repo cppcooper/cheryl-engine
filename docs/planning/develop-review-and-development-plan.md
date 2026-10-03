@@ -392,14 +392,14 @@ contracts.
 
 ### U1. Define singleton initialization and ownership contracts — T1
 
-- [ ] Inventory argument-bearing singleton construction, nonconstructible retrieval,
+- [x] Inventory argument-bearing singleton construction, nonconstructible retrieval,
   get_existing, private-constructor CTU examples, and teardown consumers.
-- [ ] Decide explicit initialize/get behavior, repeated/conflicting configuration
+- [x] Decide explicit initialize/get behavior, repeated/conflicting configuration
   handling, constructor failure retry, and synchronized publication/retrieval.
-- [ ] Preserve owned Loader and its root-mismatch contract; avoid reintroducing global
+- [x] Preserve owned Loader and its root-mismatch contract; avoid reintroducing global
   assumptions into new consumers. Audit CTS and CTU independently.
-- [ ] Document later operation affinity/thread safety and shutdown order.
-- [ ] Plan short regression cases for concurrent first configuration, retrieval
+- [x] Document later operation affinity/thread safety and shutdown order.
+- [x] Plan short regression cases for concurrent first configuration, retrieval
   during initialization, failed construction, and CTU accessibility.
 
 **Acceptance:** Caller-visible initialization is deterministic or explicitly
@@ -867,3 +867,39 @@ not for future builds/tests or full UI implementation. Historical validation is
 unchanged. This correction changes planning documents only; local references,
 links/anchors, checklist completeness, and diffs are statically checked. No build,
 compilation, test execution, or new implementation work is performed in this unit.
+
+### U1–U4 continuation — implementation sequence
+
+U1's existing source implementation is retained after review. Its checklist now
+records the completed audit/design/documentation/regression-source work; executable
+acceptance remains pending. The audited consumers are: owned/legacy Loader (immutable
+root plus root-checking wrapper), FFont (explicit data initialization), Log/Logger
+(custom handlers before writers, otherwise lazy defaults), default asset caches,
+EventSystem, input adapter, byte managers, object pools, and the spdlog pool initializer.
+None requires reinitializing the generic singleton. Provider teardown uses noncreating
+get_existing reads under its existing loading-owner domain. Type operations retain
+their independent affinity/synchronization rules. CTS and CTU have separate storage,
+private-constructor access and retry paths; new code must not treat atomic publication
+as ownership during static destruction.
+
+The remaining implementation is ordered as follows:
+
+1. U2: stage only changed bookkeeping nodes while locking the shared domain's
+   collections as a unit; transfer prepared nodes without allocation at commit.
+   Allocate backing owners outside collection locks, and detach culled owners
+   before invoking their destructors. Preserve public/protected lookup and return
+   interfaces, with legacy raw collection edits requiring external quiescence.
+2. U2: retain and synchronize object-construction tracking independently of static
+   teardown. Different slots may progress concurrently; construction/destruction
+   of the same slot is explicitly rejected, and user code executes outside the
+   tracking lock. Backing owners retain the exact tracking context they use.
+3. U3: complete numeric inclusion/linkage and full-consumption contracts. Investigate
+   legacy FFont format history/fixtures before validating encoding; if authoritative
+   metadata is absent, preserve the encoding and stop at that format boundary.
+4. U4: capture native resize callback failures and report them at normal platform
+   operations, then make trace/exception reporting bounded and nonthrowing under
+   allocation failure. Preserve the first runtime error and report distinct
+   secondary cleanup outcomes through an allocation-independent fallback.
+
+Each coherent change is committed separately. No compiler/configuration probes,
+product tests, or remote pushes are performed without the requested authorization.
