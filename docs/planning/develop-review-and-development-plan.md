@@ -411,17 +411,17 @@ order to make byte release safe.
 
 ### U2. Resolve memory transactions and final-release lifetime — T4, T6, T7
 
-- [ ] Enumerate registry/section/pool/stale/release invariants and all transitions,
+- [x] Enumerate registry/section/pool/stale/release invariants and all transitions,
   including PoolState and inherited BlockManagement methods.
-- [ ] Choose operation serialization or a proven lock-order transaction scheme;
+- [x] Choose operation serialization or a proven lock-order transaction scheme;
   define concurrency with close, stats, cull, and object destruction.
-- [ ] Move byte release bookkeeping into safely retained state, or another design
+- [x] Move byte release bookkeeping into safely retained state, or another design
   that actually serializes close with final release. Remove the two weak-token/raw
   manager release races together.
-- [ ] Specify what happens to outstanding storage after facade destruction and
+- [x] Specify what happens to outstanding storage after facade destruction and
   ensure final-release paths cannot throw through shared_ptr deleters.
-- [ ] Keep callbacks, object destruction, backing frees, and logging outside locks.
-- [ ] Plan interleaving cases for release/close, split/return/cull, duplicate returns,
+- [x] Keep callbacks, object destruction, backing frees, and logging outside locks.
+- [x] Plan interleaving cases for release/close, split/return/cull, duplicate returns,
   zero/live slots, and failure rollback; plan sanitizer coverage when authorized.
 
 **Acceptance:** Both handle paths use the same safe byte release contract; every
@@ -939,3 +939,30 @@ prepare-before-commit audit does not substitute for that acceptance case.
 **Next boundary:** ObjCtor still shares an unsynchronized static map and can retain
 an iterator across reentrant user construction. That required repair remains U2c;
 block transactions alone do not complete U2's object lifetime contract.
+
+### U2c — retained object construction tracking
+
+Replaced ObjCtor's protected raw boolean map with a retained, synchronized Context.
+The raw/constructing/live/destroying phases claim a slot before user code and reject
+same-slot overlap. Constructors and destructors run outside the mutex; tracking
+publication reacquires by address instead of retaining an iterator across reentrant
+map growth. Tracking allocation precedes construction, and failed construction
+returns that slot to raw state. Batch semantics preserve earlier successful slots
+for the owning caller to clean up. Erase rejects a live/busy range without deleting
+any of its records.
+
+This is an explicit internal tracking contract change: unrestricted protected map
+writes cannot provide synchronized claims or retained shutdown lifetime. Public
+static construct/destroy/erase entry points remain. PoolState, its element handles,
+backing owners, allocator-aware operations, and legacy AssetMgr handles now retain
+and use the exact construction context during final cleanup. No static lookup is
+required after those owners are created. ObjectReservation's independently tracked
+claims keep their existing per-handle construction/destruction contract.
+
+Added source cases for distinct-slot concurrency, busy-slot rejection, and map
+growth from reentrant construction. Existing constructor failure, unclaimed ranges,
+and facade-lifetime cases remain relevant. U2's source tasks are implemented; its
+allocation-failure injection, executable concurrency, and sanitizer acceptance are
+still unexecuted. Static diff/call-site review was performed; builds/tests were not
+authorized. The installed formatter cannot read the repository's clang-format 23+
+configuration, so changed code was matched to the existing style manually.

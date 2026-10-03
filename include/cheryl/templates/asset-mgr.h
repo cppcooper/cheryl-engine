@@ -186,7 +186,7 @@ namespace CE::Assets {
             // Manual callers must construct slots themselves. Their final
             // handle destroys its slot and returns exactly that slot to pool.
             return block.vector([context](Derived* p) noexcept {
-                A_OPA::destroy(p);
+                context->construction_context()->destroy(p);
                 context->release_owned(p, 1);
             });
         }

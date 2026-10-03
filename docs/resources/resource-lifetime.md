@@ -39,8 +39,21 @@ collection access requires external quiescence and preservation of these invaria
 Live bytes/objects remain the caller's responsibility. Destroying a facade requires
 its own callers to finish; previously retained contexts can continue releasing
 ranges independently. `lifetime_token()` remains a compatibility observation and
-must not authorize raw-manager access during teardown. ObjCtor's slot synchronization
-and shutdown lifetime remain the next U2 boundary in [the plan](../planning/develop-review-and-development-plan.md#u2-resolve-memory-transactions-and-final-release-lifetime--t4-t6-t7).
+must not authorize raw-manager access during teardown.
+
+`ObjCtor<T>` retains a synchronized `Context` shared by that T. Each tracked slot
+is raw, constructing, live, or destroying. Claiming a raw slot allocates its entry
+before user construction; publication afterward cannot allocate. Constructors and
+destructors run outside the tracking mutex, and no map iterator crosses those calls.
+Distinct slots support concurrent or reentrant operations. Operations on a busy
+slot are rejected rather than racing its object lifetime. Erasing tracking requires
+an entirely inactive range; a live or busy slot leaves that erase request unchanged.
+Batch construction can still fail after earlier slots succeed; the owning batch
+must clean up those completed slots. Pool handles, allocator-backed destruction,
+and backing owners use their captured construction context during final cleanup.
+The old protected boolean map was replaced because unrestricted map writes cannot
+maintain those phase and synchronization guarantees. Public static construct,
+destroy, and erase entry points remain available for ordinary live callers.
 
 The protected legacy `AssetMgr::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders now use reservations and create handles only for entries they actually construct. `Pool<T>::retrieve_objects` retains pool state in its element deleters; it no longer looks up a singleton when those handles die.
 

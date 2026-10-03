@@ -5,6 +5,11 @@
 #include <core/resources/objects/factory.hpp>
 
 #include <stdexcept>
+#include <atomic>
+#include <barrier>
+#include <functional>
+#include <future>
+#include <thread>
 
 namespace {
     // Separate item types keep lifetime counters and pool bookkeeping isolated
@@ -214,4 +219,79 @@ TEST(memory, factory_constructor_failure) {
     EXPECT_EQ(FailingBatchItem::live, 0);
     EXPECT_EQ(Allocator::allocated, 1);
     EXPECT_EQ(Allocator::deallocated, 1);
+}
+
+namespace {
+    struct ConcurrentSlot {
+        inline static std::atomic<int> live{0};
+        ConcurrentSlot() { ++live; }
+        ~ConcurrentSlot() { --live; }
+    };
+
+    struct ReentrantSlot {
+        explicit ReentrantSlot(std::function<void()> action = {}) {
+            if (action)
+                action();
+        }
+    };
+
+    struct PendingSlot {
+        PendingSlot(std::promise<void>* entered, std::shared_future<void> finish) {
+            entered->set_value();
+            finish.wait();
+        }
+    };
+}
+
+TEST(memory, concurrent_slots) {
+    using Tracking = CE::Obj::ObjCtor<ConcurrentSlot>::Context;
+    auto tracking = std::make_shared<Tracking>();
+    auto* slots = std::allocator<ConcurrentSlot>{}.allocate(64);
+    std::barrier start(3);
+    std::jthread first([&] {
+        start.arrive_and_wait();
+        tracking->construct(slots, 32);
+    });
+    std::jthread second([&] {
+        start.arrive_and_wait();
+        tracking->construct(slots + 32, 32);
+    });
+    start.arrive_and_wait();
+    first.join();
+    second.join();
+    EXPECT_EQ(ConcurrentSlot::live, 64);
+    EXPECT_THROW(tracking->erase(slots, slots + 64), CE::Exceptions::bad_request);
+    tracking->destroy(slots, 64);
+    EXPECT_EQ(ConcurrentSlot::live, 0);
+    tracking->erase(slots, slots + 64);
+    std::allocator<ConcurrentSlot>{}.deallocate(slots, 64);
+}
+
+TEST(memory, reentrant_slots) {
+    auto tracking = std::make_shared<CE::Obj::ObjCtor<ReentrantSlot>::Context>();
+    auto* slots = std::allocator<ReentrantSlot>{}.allocate(128);
+    // The outer constructor grows the tracking map through other slots. No
+    // iterator from its claim may survive this reentrant map growth.
+    tracking->construct(slots, 1, std::function<void()>([&] { tracking->construct(slots + 1, 127); }));
+    tracking->destroy(slots, 128);
+    tracking->erase(slots, slots + 128);
+    std::allocator<ReentrantSlot>{}.deallocate(slots, 128);
+}
+
+TEST(memory, busy_slot) {
+    auto tracking = std::make_shared<CE::Obj::ObjCtor<PendingSlot>::Context>();
+    auto* slot = std::allocator<PendingSlot>{}.allocate(1);
+    std::promise<void> entered, finish;
+    auto ready = entered.get_future();
+    auto release = finish.get_future().share();
+    std::jthread worker([&] { tracking->construct(slot, 1, &entered, release); });
+    ready.wait();
+    EXPECT_THROW(tracking->destroy(slot), CE::Exceptions::bad_request);
+    EXPECT_THROW(tracking->construct(slot, 1, &entered, release), CE::Exceptions::bad_request);
+    EXPECT_THROW(tracking->erase(slot, slot + 1), CE::Exceptions::bad_request);
+    finish.set_value();
+    worker.join();
+    tracking->destroy(slot);
+    tracking->erase(slot, slot + 1);
+    std::allocator<PendingSlot>{}.deallocate(slot, 1);
 }

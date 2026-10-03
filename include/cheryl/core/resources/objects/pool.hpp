@@ -25,11 +25,11 @@ namespace CE::Obj {
                 auto constructed = std::make_shared<bool>(false);
                 auto handle = std::shared_ptr<T>(p, [context, constructed](T* object) noexcept {
                     if (*constructed) {
-                        ObjCtor<T>::destroy(object);
+                        context->tracking_->destroy(object);
                         context->release_owned(object, 1);
                     }
                 });
-                ObjCtor<T>::construct(p, 1, std::forward<Args>(args)...);
+                tracking_->construct(p, 1, std::forward<Args>(args)...);
                 *constructed = true;
                 objects.push_back(std::move(handle));
             }
@@ -43,14 +43,18 @@ namespace CE::Obj {
     }
 
     template <typename T> void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
-        return_objects(p, length);
+        try {
+            return_objects(p, length);
+        } catch (...) {
+            std::terminate();
+        }
     }
 
     template <typename T> Block<T> PoolState<T>::retrieve_block(std::size_t N) {
         if (N == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
         }
-        return BlockTransactions<T>::checkout(this->state_, N, std::align_val_t{alignof(T)}, [=] { return allocate(N); });
+        return BlockTransactions<T>::checkout(this->state_, N, std::align_val_t{alignof(T)}, [this, N] { return allocate(N); });
     }
 
     template <typename T> void PoolState<T>::return_objects(T* p, std::size_t length) {
@@ -80,10 +84,10 @@ namespace CE::Obj {
         auto byte_context = manager.release_context();
         // The owner deleter runs once after every alias to this allocation
         // disappears; the slot map distinguishes constructed from raw storage.
-        std::shared_ptr<T> block_root(raw, [b, len, byte_context = std::move(byte_context)](auto p) noexcept {
+        std::shared_ptr<T> block_root(raw, [b, len, tracking = tracking_, byte_context = std::move(byte_context)](auto p) noexcept {
             // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
-            ObjCtor<T>::destroy(p, len);
-            ObjCtor<T>::erase(p, p + len);
+            tracking->destroy(p, len);
+            tracking->erase(p, p + len);
             byte_context->release_owned(b);
         });
 

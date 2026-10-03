@@ -2,6 +2,7 @@
 #include <templates/block.h>
 #include <templates/singleton.h>
 #include <core/resources/memory/mem-mgr.h>
+#include "object-construction.hpp"
 
 namespace CE::Obj {
     /**
@@ -14,6 +15,11 @@ namespace CE::Obj {
                        std::enable_shared_from_this<PoolState<T>> {
         static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
 
+    private:
+        const std::shared_ptr<typename ObjCtor<T>::Context> tracking_ = ObjCtor<T>::release_context();
+
+    public:
+        [[nodiscard]] std::shared_ptr<typename ObjCtor<T>::Context> construction_context() const { return tracking_; }
         /** Construct N objects; each returned handle retains this release state. */
         template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
         /** Reserve N unconstructed slots in one Block. */
@@ -28,7 +34,7 @@ namespace CE::Obj {
         void release_owned(T* p, std::size_t length) noexcept;
 
     private:
-        [[nodiscard]] static Block<T> allocate(std::size_t length);
+        [[nodiscard]] Block<T> allocate(std::size_t length);
     };
 
     /**

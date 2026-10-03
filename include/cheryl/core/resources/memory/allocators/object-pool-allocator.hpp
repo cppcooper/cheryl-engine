@@ -72,7 +72,7 @@ template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<
 
     // Construct an object of type T at the given location
     template <typename... Args> static void construct(allocator_type& alloc, T* p, Args&&... args) {
-        CE::Obj::ObjCtor<T>::construct(p, 1ull, std::forward<Args>(args)...);
+        alloc.context()->construction_context()->construct(p, 1ull, std::forward<Args>(args)...);
     }
 
     // Construct an object of type T at the given location
@@ -84,7 +84,7 @@ template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<
     static void destroy(T* p, std::size_t N) { CE::Obj::ObjCtor<T>::destroy(p, N); }
 
     // Destroy an object of type T at the given location
-    static void destroy(allocator_type& alloc, T* p) { CE::Obj::ObjCtor<T>::destroy(p); }
+    static void destroy(allocator_type& alloc, T* p) { alloc.context()->construction_context()->destroy(p); }
 
     // Destroy an object of type T at the given location
     static void destroy(T* p) { CE::Obj::ObjCtor<T>::destroy(p); }
