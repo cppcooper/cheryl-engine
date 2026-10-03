@@ -13,10 +13,7 @@ namespace CE::Assets {
         const std::shared_ptr<Geometry2D> geometry;
         const std::shared_ptr<Image> texture;
 
-        Asset2D(
-            std::shared_ptr<Geometry2D> geometry,
-            std::shared_ptr<Image> texture
-        )
+        Asset2D(std::shared_ptr<Geometry2D> geometry, std::shared_ptr<Image> texture)
         : geometry(std::move(geometry)), texture(std::move(texture)) {}
     };
 }

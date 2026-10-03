@@ -7,11 +7,7 @@
 #include <utility>
 
 namespace CE::Assets {
-    Graphic Graphic::from_image(
-        std::shared_ptr<Image> image,
-        ResourceProvider& provider,
-        const math::Pivot pivot
-    ) {
+    Graphic Graphic::from_image(std::shared_ptr<Image> image, ResourceProvider& provider, const math::Pivot pivot) {
         if (!image)
             throw Exceptions::invalid_args(CE_HERE, "A graphic requires an image");
         const auto size = image->pixel_size();
@@ -27,11 +23,7 @@ namespace CE::Assets {
         return {std::move(geometry), std::move(image)};
     }
 
-    Graphic Graphic::load(
-        const std::filesystem::path& file,
-        ResourceProvider& provider,
-        const math::Pivot pivot
-    ) {
+    Graphic Graphic::load(const std::filesystem::path& file, ResourceProvider& provider, const math::Pivot pivot) {
         return from_image(provider.load_image(file), provider, pivot);
     }
 

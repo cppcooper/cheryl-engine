@@ -255,8 +255,9 @@ namespace CE::Input {
             } else {
                 const bool held = valid && pad->GetBool(button);
                 if (held != pad_buttons_[button])
-                    capture_buffer().record(gamepad_id_, DeviceKind::Gamepad,
-                        ButtonEvent{button, held ? ButtonPhase::Press : ButtonPhase::Release});
+                    capture_buffer().record(
+                        gamepad_id_, DeviceKind::Gamepad, ButtonEvent{button, held ? ButtonPhase::Press : ButtonPhase::Release}
+                    );
                 pad_buttons_[button] = held;
                 bindings_.on_button({gamepad_id_, button}, held);
             }
@@ -318,13 +319,14 @@ namespace CE::Input {
     void InputSystem::on_key(GLFWwindow* handle, const int key, const int scancode, const int action, const int modifiers) {
         if (auto* input = attached(handle))
             input->receive([&] {
-                const auto phase = action == GLFW_REPEAT ? ButtonPhase::Repeat
-                                       : action == GLFW_PRESS ? ButtonPhase::Press
-                                       : ButtonPhase::Release;
+                const auto phase = action == GLFW_REPEAT  ? ButtonPhase::Repeat
+                                   : action == GLFW_PRESS ? ButtonPhase::Press
+                                                          : ButtonPhase::Release;
                 const auto button = gainput_key(key);
                 // Preserve delivered callbacks before State ignores repeats or condenses transitions.
-                input->capture_buffer().record(input->keyboard_id_, DeviceKind::Keyboard,
-                    ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode});
+                input->capture_buffer().record(
+                    input->keyboard_id_, DeviceKind::Keyboard, ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode}
+                );
                 if (action != GLFW_REPEAT && button != gainput::InvalidDeviceButtonId) {
                     input->bindings_.on_button({input->keyboard_id_, button}, action == GLFW_PRESS);
                     input->keyboard_->queue_button(button, action == GLFW_PRESS);
@@ -336,12 +338,11 @@ namespace CE::Input {
         if (auto* input = attached(handle))
             input->receive([&] {
                 const auto control = gainput_mouse_button(button);
-                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse,
-                    ButtonEvent{control,
-                                action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release,
-                                input_modifiers(modifiers),
-                                button
-                    });
+                input->capture_buffer().record(
+                    input->mouse_id_, DeviceKind::Mouse,
+                    ButtonEvent{
+                        control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release, input_modifiers(modifiers), button}
+                );
                 input->mouse_->queue_button(control, action == GLFW_PRESS);
                 input->bindings_.on_button({input->mouse_id_, control}, action == GLFW_PRESS);
             });
@@ -354,8 +355,9 @@ namespace CE::Input {
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollX}, static_cast<float>(x));
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollY}, static_cast<float>(y));
                 if (y != 0.0) {
-                    input->bindings_.on_button({input->mouse_id_, y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown},
-                        true);
+                    input->bindings_.on_button(
+                        {input->mouse_id_, y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown}, true
+                    );
                     input->mouse_->queue_pulse(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
                 }
             });

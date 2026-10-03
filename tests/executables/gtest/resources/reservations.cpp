@@ -51,8 +51,7 @@ namespace {
     };
 
     // Observe whole-allocation calls without changing allocator behavior.
-    template <typename T>
-    struct CountingAllocator {
+    template <typename T> struct CountingAllocator {
         using value_type = T;
         inline static int allocated = 0;
         inline static int deallocated = 0;

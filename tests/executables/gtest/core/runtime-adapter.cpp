@@ -49,9 +49,11 @@ namespace {
         inline static std::atomic<unsigned int> next{0};
 
         TemporaryAssets()
-        : root(std::filesystem::temp_directory_path() /
-               ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
-                   std::to_string(next.fetch_add(1)))) {
+        : root(
+              std::filesystem::temp_directory_path() /
+              ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                  std::to_string(next.fetch_add(1)))
+          ) {
             std::filesystem::create_directories(root);
         }
 
@@ -60,9 +62,7 @@ namespace {
             std::filesystem::remove_all(root, error);
         }
 
-        void write_png(
-            const std::string& name = "pixel.png"
-        ) const {
+        void write_png(const std::string& name = "pixel.png") const {
             constexpr std::array<unsigned char, 70> bytes{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0,
                 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137,
                 153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130};
@@ -72,9 +72,7 @@ namespace {
             output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
         }
 
-        void write_manifest(
-            const std::string& name_space = "probe"
-        ) const {
+        void write_manifest(const std::string& name_space = "probe") const {
             std::string document =
                 R"JSON({"$schema":"./schemas/asset-manifest-1.0.schema.json","version":"1.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
             document.replace(document.find("probe"), 5, name_space);
@@ -96,22 +94,9 @@ namespace {
         [[nodiscard]] CE::FramebufferSize framebuffer_size() const override { return size_; }
         [[nodiscard]] CE::Enum::window_mode mode() const override { return mode_; }
         [[nodiscard]] bool should_close() const override { return closed_; }
-        void resize(
-            int width,
-            int height
-        ) override {
-            size_ = {width, height};
-        }
-        void set_mode(
-            CE::Enum::window_mode mode
-        ) override {
-            mode_ = mode;
-        }
-        void hide_cursor(
-            bool hide
-        ) const override {
-            cursor_hidden_ = hide;
-        }
+        void resize(int width, int height) override { size_ = {width, height}; }
+        void set_mode(CE::Enum::window_mode mode) override { mode_ = mode; }
+        void hide_cursor(bool hide) const override { cursor_hidden_ = hide; }
         void request_close() { closed_ = true; }
         [[nodiscard]] bool cursor_hidden() const { return cursor_hidden_; }
     };
@@ -136,29 +121,16 @@ namespace {
         [[nodiscard]] int monitor_count() const override { return static_cast<int>(monitors_.size()); }
         [[nodiscard]] const CE::Monitor& primary_monitor() const override { return monitors_.front(); }
         [[nodiscard]] CE::iWindow* active_window() const override { return active_; }
-        [[nodiscard]] std::pair<float, float> content_scale(
-            const CE::Monitor&
-        ) const override {
-            return {1, 1};
-        }
+        [[nodiscard]] std::pair<float, float> content_scale(const CE::Monitor&) const override { return {1, 1}; }
 
-        CE::iWindow* create_window(
-            const CE::Monitor&,
-            CE::Enum::window_mode mode,
-            int width,
-            int height
-        ) override {
+        CE::iWindow* create_window(const CE::Monitor&, CE::Enum::window_mode mode, int width, int height) override {
             window_ = std::make_unique<MemoryWindow>();
             window_->resize(width, height);
             window_->set_mode(mode);
             return window_.get();
         }
 
-        void activate_window(
-            CE::iWindow& window
-        ) override {
-            active_ = &window;
-        }
+        void activate_window(CE::iWindow& window) override { active_ = &window; }
 
         [[nodiscard]] MemoryWindow& window() { return *window_; }
     };
@@ -182,9 +154,7 @@ namespace {
                 on_destroy();
         }
 
-        void initialize(
-            CE::iWindow& window
-        ) override {
+        void initialize(CE::iWindow& window) override {
             window_ = &window;
             ++initializations;
             if (on_initialize)
@@ -209,25 +179,17 @@ namespace {
                 on_deinitialize();
         }
 
-        void key(
-            CE::Input::ButtonPhase phase
-        ) {
+        void key(CE::Input::ButtonPhase phase) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{test_button, phase});
             if (phase != CE::Input::ButtonPhase::Repeat)
                 bindings_.on_button({keyboard_id(), test_button}, phase == CE::Input::ButtonPhase::Press);
         }
 
-        void text(
-            char32_t codepoint
-        ) {
+        void text(char32_t codepoint) {
             capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{codepoint});
         }
 
-        [[nodiscard]] bool supports(
-            CE::Input::InputMode
-        ) const override {
-            return true;
-        }
+        [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
         [[nodiscard]] bool supports_focus() const override { return true; }
         [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
@@ -264,10 +226,7 @@ namespace {
         std::vector<double> dropped_intervals;
         std::vector<CE::GFramework::UpdateKind> update_kinds;
 
-        explicit OneTickGame(
-            CE::Input::iInputSystem& input,
-            const bool capture = false
-        )
+        explicit OneTickGame(CE::Input::iInputSystem& input, const bool capture = false)
         : input_(input), capture_(capture) {}
 
         void init() override {
@@ -297,9 +256,7 @@ namespace {
                 on_deinit();
         }
 
-        void update(
-            const CE::GFramework::TickContext& tick
-        ) override {
+        void update(const CE::GFramework::TickContext& tick) override {
             ++updates;
             simulation_deltas.push_back(tick.delta_seconds);
             observed_intervals.push_back(tick.observed_seconds());
@@ -314,9 +271,7 @@ namespace {
                 on_tick();
         }
 
-        void prepare_render_frame(
-            CE::RenderAPIs::RenderFrameWriter& frame
-        ) const override {
+        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
             ++draws;
             if (on_prepare) {
                 on_prepare(frame);
@@ -334,17 +289,11 @@ namespace {
     public:
         mutable std::vector<std::uint32_t> bound_units;
 
-        explicit MemoryImage(
-            CE::Assets::PixelSize size
-        )
+        explicit MemoryImage(CE::Assets::PixelSize size)
         : size_(size) {}
 
         [[nodiscard]] CE::Assets::PixelSize pixel_size() const override { return size_; }
-        void bind(
-            std::uint32_t unit
-        ) const override {
-            bound_units.push_back(unit);
-        }
+        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
     };
 
     /** Records independent geometry binding and draw ranges instead of GPU commands. */
@@ -364,10 +313,7 @@ namespace {
         [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
         void bind() const override { ++binds_; }
 
-        void draw(
-            std::size_t first,
-            std::size_t count
-        ) const override {
+        void draw(std::size_t first, std::size_t count) const override {
             first_vertex = first;
             drawn_vertices = count;
         }
@@ -385,11 +331,7 @@ namespace {
         : Pipeline(make_definition(intensity, topology, image)) {}
 
     private:
-        static CE::Assets::PipelineDefinition make_definition(
-            float intensity,
-            CE::Assets::PrimitiveTopology topology,
-            bool image
-        ) {
+        static CE::Assets::PipelineDefinition make_definition(float intensity, CE::Assets::PrimitiveTopology topology, bool image) {
             CE::Assets::PipelineDefinition result;
             result.program_sources = {"memory.vert", "memory.frag"};
             result.topology = topology;
@@ -409,50 +351,19 @@ namespace {
         glm::mat4 projection{0.0f};
         glm::mat4 view{0.0f};
 
-        void bind_pass(
-            const CE::Assets::ShaderPass& pass
-        ) override {
+        void bind_pass(const CE::Assets::ShaderPass& pass) override {
             use();
             projection = pass.projection;
             view = pass.view;
         }
 
-        void bind_draw(
-            const CE::Assets::ShaderDraw& draw
-        ) override {
-            last_draw = draw;
-        }
+        void bind_draw(const CE::Assets::ShaderDraw& draw) override { last_draw = draw; }
         void use() override { ++uses; }
-        void set_uniform_value(
-            const char*,
-            float
-        ) override {
-            ++raw_uniform_writes;
-        }
-        void set_uniform_value(
-            const char*,
-            int
-        ) override {
-            ++raw_uniform_writes;
-        }
-        void set_uniform_value(
-            const char*,
-            unsigned int
-        ) override {
-            ++raw_uniform_writes;
-        }
-        void set_uniform_value(
-            const char*,
-            bool
-        ) override {
-            ++raw_uniform_writes;
-        }
-        void set_uniform_matrix(
-            const char*,
-            const glm::mat4&
-        ) override {
-            ++raw_uniform_writes;
-        }
+        void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, unsigned int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, bool) override { ++raw_uniform_writes; }
+        void set_uniform_matrix(const char*, const glm::mat4&) override { ++raw_uniform_writes; }
     };
 
     /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
@@ -471,36 +382,28 @@ namespace {
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(
-            const std::filesystem::path&
-        ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image> load_image(const std::filesystem::path&) override {
             if (on_load_image)
                 return on_load_image();
             return std::make_shared<MemoryImage>(CE::Assets::PixelSize{32, 32});
         }
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_font_atlas(
-            std::span<const unsigned char>,
-            CE::Assets::PixelSize size
-        ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image>
+        create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize size) override {
             resource_thread = std::this_thread::get_id();
             ++atlas_uploads;
             return std::make_shared<MemoryImage>(size);
         }
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_image(
-            const CE::Assets::DecodedImage& image
-        ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& image) override {
             ++created_images;
             return std::make_shared<MemoryImage>(image.size);
         }
 
         using ResourceProvider::upload_geometry;
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(
-            std::span<const CE::Vertex2D> vertices,
-            CE::Assets::PrimitiveTopology topology
-        ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D>
+        upload_geometry(std::span<const CE::Vertex2D> vertices, CE::Assets::PrimitiveTopology topology) override {
             if (on_upload_geometry)
                 return on_upload_geometry(vertices, topology);
             uploaded_vertices = vertices.size();
@@ -512,9 +415,7 @@ namespace {
             return geometry;
         }
 
-        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(
-            const std::vector<std::filesystem::path>&
-        ) override {
+        [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
             ++linked_programs;
             return shader;
         }
@@ -562,9 +463,7 @@ namespace {
         }
         void clear() override { ++clears; }
 
-        void render(
-            const CE::RenderAPIs::RenderFrame& frame
-        ) override {
+        void render(const CE::RenderAPIs::RenderFrame& frame) override {
             ++renders;
             last_pass_count = frame.passes().size();
             last_marked_pressed = !frame.passes().empty() && frame.passes().front().view[3][0] == 1.0f;
@@ -575,29 +474,11 @@ namespace {
                 on_render();
         }
 
-        void set_viewport(
-            CE::FramebufferSize size
-        ) override {
-            viewport = size;
-        }
-        void set_depth_test(
-            bool enabled
-        ) override {
-            depth_enabled = enabled;
-        }
-        void set_clear_colour(
-            float r,
-            float g,
-            float b,
-            float a
-        ) override {
-            clear_colour = {r, g, b, a};
-        }
+        void set_viewport(CE::FramebufferSize size) override { viewport = size; }
+        void set_depth_test(bool enabled) override { depth_enabled = enabled; }
+        void set_clear_colour(float r, float g, float b, float a) override { clear_colour = {r, g, b, a}; }
 
-        void set_camera_matrices(
-            const glm::mat4& projection,
-            const glm::mat4& view
-        ) override {
+        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override {
             camera_projection = projection;
             camera_view = view;
         }
@@ -624,13 +505,13 @@ namespace {
         surface = presentation.get();
         auto rendering = std::make_unique<MemoryRenderer>();
         renderer = rendering.get();
-        return std::make_unique<CE::Engine::EngineContext>(std::move(display), std::move(presentation), std::move(rendering),
-            std::make_unique<MemoryProvider>(), input, std::move(execution));
+        return std::make_unique<CE::Engine::EngineContext>(
+            std::move(display), std::move(presentation), std::move(rendering), std::make_unique<MemoryProvider>(), input,
+            std::move(execution)
+        );
     }
 
-    void expect_cancelled_request(
-        std::future<void>& completion
-    ) {
+    void expect_cancelled_request(std::future<void>& completion) {
         ASSERT_TRUE(completion.valid());
         ASSERT_EQ(completion.wait_for(std::chrono::seconds{0}), std::future_status::ready);
         try {
@@ -642,10 +523,7 @@ namespace {
     }
 } // namespace
 
-TEST(
-    runtime_adapter,
-    sequential_frame
-) {
+TEST(runtime_adapter, sequential_frame) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -673,10 +551,7 @@ TEST(
     EXPECT_EQ(game.update_thread, std::this_thread::get_id());
 }
 
-TEST(
-    runtime_adapter,
-    game_init_failure
-) {
+TEST(runtime_adapter, game_init_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -701,10 +576,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    renderer_init_failure
-) {
+TEST(runtime_adapter, renderer_init_failure) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -718,10 +590,7 @@ TEST(
     EXPECT_EQ(game.shutdowns, 0);
 }
 
-TEST(
-    runtime_adapter,
-    adapter_init_failure
-) {
+TEST(runtime_adapter, adapter_init_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         for (const bool fail_input : {false, true}) {
             SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -769,17 +638,16 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    missing_active_window
-) {
+TEST(runtime_adapter, missing_active_window) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         MemoryInput input;
         auto rendering = std::make_unique<MemoryRenderer>();
         auto* renderer = rendering.get();
-        auto engine = std::make_unique<CE::Engine::EngineContext>(std::make_unique<MemoryDisplay>(), std::make_unique<MemorySurface>(),
-            std::move(rendering), std::make_unique<MemoryProvider>(), input);
+        auto engine = std::make_unique<CE::Engine::EngineContext>(
+            std::make_unique<MemoryDisplay>(), std::make_unique<MemorySurface>(), std::move(rendering), std::make_unique<MemoryProvider>(),
+            input
+        );
         auto group = engine->make_worker_group();
         auto owner = std::make_shared<int>(42);
         std::weak_ptr<int> capture = owner;
@@ -806,10 +674,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    stop_before_start
-) {
+TEST(runtime_adapter, stop_before_start) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         MemoryInput input;
@@ -844,10 +709,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    stopped_graph_restart
-) {
+TEST(runtime_adapter, stopped_graph_restart) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -863,10 +725,7 @@ TEST(
     EXPECT_EQ(renderer->shutdowns, 1);
 }
 
-TEST(
-    runtime_adapter,
-    input_window_lifetime
-) {
+TEST(runtime_adapter, input_window_lifetime) {
     bool display_alive = true;
     bool input_destroyed = false;
     auto display = std::make_unique<MemoryDisplay>();
@@ -878,17 +737,16 @@ TEST(
         input_destroyed = true;
         EXPECT_TRUE(display_alive);
     };
-    auto engine = std::make_unique<CE::Engine::EngineContext>(std::move(display), std::make_unique<MemorySurface>(),
-        std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(), std::move(input));
+    auto engine = std::make_unique<CE::Engine::EngineContext>(
+        std::move(display), std::make_unique<MemorySurface>(), std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(),
+        std::move(input)
+    );
     engine.reset();
     EXPECT_TRUE(input_destroyed);
     EXPECT_FALSE(display_alive);
 }
 
-TEST(
-    platform_requests,
-    owned_pixel_transfer
-) {
+TEST(platform_requests, owned_pixel_transfer) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -917,15 +775,14 @@ TEST(
         EXPECT_EQ(provider.resource_thread, std::this_thread::get_id());
         if (mode == CE::GFramework::RunMode::Concurrent)
             EXPECT_NE(game.update_thread, provider.resource_thread);
-        EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) { return 1; })),
-            CE::Exceptions::failed_operation);
+        EXPECT_THROW(
+            static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) { return 1; })),
+            CE::Exceptions::failed_operation
+        );
     }
 }
 
-TEST(
-    platform_requests,
-    callback_failure_isolation
-) {
+TEST(platform_requests, callback_failure_isolation) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -935,10 +792,8 @@ TEST(
     std::future<int> failure;
     std::future<int> success;
     game.on_init = [&] {
-        failure = engine->platform_dispatcher().submit([](
-                                                           CE::Engine::EngineContext&
-
-                                                       ) -> int { throw std::runtime_error("request failed"); });
+        failure =
+            engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) -> int { throw std::runtime_error("request failed"); });
         success = engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) { return 17; });
     };
     game.on_tick = [&] {
@@ -950,10 +805,7 @@ TEST(
     EXPECT_EQ(game.shutdowns, 1);
 }
 
-TEST(
-    platform_requests,
-    shutdown_cancellation
-) {
+TEST(platform_requests, shutdown_cancellation) {
     struct CapturedData {
         bool& destroyed;
         std::thread::id& thread;
@@ -967,8 +819,9 @@ TEST(
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
     auto engine = make_test_context(input, renderer, surface);
-    EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {})),
-        CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation
+    );
     OneTickGame game(input);
     CE::GFramework::GameRuntime runtime(*engine, game);
     std::future<int> pending;
@@ -990,10 +843,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    concurrent_frame
-) {
+TEST(runtime_adapter, concurrent_frame) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1018,10 +868,7 @@ TEST(
     EXPECT_EQ(input.attached_window(), nullptr);
 }
 
-TEST(
-    runtime_adapter,
-    routed_event_order
-) {
+TEST(runtime_adapter, routed_event_order) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         input.default_press = false;
@@ -1065,10 +912,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    poll_failure_cleanup
-) {
+TEST(runtime_adapter, poll_failure_cleanup) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1084,10 +928,7 @@ TEST(
     }
 }
 
-TEST(
-    runtime_adapter,
-    close_before_update
-) {
+TEST(runtime_adapter, close_before_update) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1105,10 +946,7 @@ TEST(
     EXPECT_EQ(input.attached_window(), nullptr);
 }
 
-TEST(
-    runtime_adapter,
-    render_failure_cleanup
-) {
+TEST(runtime_adapter, render_failure_cleanup) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1123,10 +961,7 @@ TEST(
     EXPECT_EQ(surface->presents, 0);
 }
 
-TEST(
-    runtime_adapter,
-    shared_sprite_grid
-) {
+TEST(runtime_adapter, shared_sprite_grid) {
     MemoryProvider provider;
     const std::filesystem::path texture = "memory-adapter/sprite.png";
     CE::Assets::TextureMgr::get().load_assets({texture}, provider);
@@ -1173,10 +1008,7 @@ TEST(
     frame.recycle();
 }
 
-TEST(
-    graphic,
-    whole_image
-) {
+TEST(graphic, whole_image) {
     MemoryProvider provider;
 
     // Loading one image gives the graphic a pixel-sized six-vertex quad and
@@ -1207,10 +1039,7 @@ TEST(
     EXPECT_EQ(provider.shader->uses, 0);
 }
 
-TEST(
-    material_cache,
-    program_reload_lifetime
-) {
+TEST(material_cache, program_reload_lifetime) {
     MemoryProvider provider;
     auto& shaders = CE::Assets::ShaderMgr::get();
     const std::filesystem::path key{"material-probe"};
@@ -1233,16 +1062,9 @@ TEST(
     EXPECT_EQ(shaders.get_asset(key), replacement);
 }
 
-TEST(
-    asset_cache,
-    concurrent_publication
-) {
+TEST(asset_cache, concurrent_publication) {
     struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
-        void publish(
-            int key
-        ) {
-            publish_asset(key, std::make_shared<MemoryImage>(CE::Assets::PixelSize{1, 1}));
-        }
+        void publish(int key) { publish_asset(key, std::make_shared<MemoryImage>(CE::Assets::PixelSize{1, 1})); }
     } cache;
     std::atomic<bool> finished{false};
     auto reader = std::async(std::launch::async, [&] {
@@ -1269,16 +1091,9 @@ TEST(
     EXPECT_EQ(retained->pixel_size().width, 1u);
 }
 
-TEST(
-    asset_cache,
-    clear_deleter_reentry
-) {
+TEST(asset_cache, clear_deleter_reentry) {
     struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
-        void publish(
-            std::shared_ptr<MemoryImage> image
-        ) {
-            publish_asset(1, std::move(image));
-        }
+        void publish(std::shared_ptr<MemoryImage> image) { publish_asset(1, std::move(image)); }
     } cache;
     std::size_t size_at_deletion = 99;
     cache.publish(std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
@@ -1289,10 +1104,7 @@ TEST(
     EXPECT_EQ(size_at_deletion, 0u);
 }
 
-TEST(
-    asset_cache,
-    provider_load_guards
-) {
+TEST(asset_cache, provider_load_guards) {
     bool refill_rejected = false;
     auto provider = std::make_unique<MemoryProvider>();
     auto* owner = provider.get();
@@ -1323,10 +1135,7 @@ TEST(
     EXPECT_EQ(textures.size(), 0u);
 }
 
-TEST(
-    asset_preparation,
-    prepared_pixel_ownership
-) {
+TEST(asset_preparation, prepared_pixel_ownership) {
     TemporaryAssets files;
     files.write_png();
     files.write_manifest();
@@ -1347,10 +1156,7 @@ TEST(
     EXPECT_EQ(loader.manifests()->size(), 1u);
 }
 
-TEST(
-    asset_preparation,
-    independent_metadata_scans
-) {
+TEST(asset_preparation, independent_metadata_scans) {
     TemporaryAssets first;
     TemporaryAssets second;
     first.write_png();
@@ -1378,26 +1184,21 @@ TEST(
     EXPECT_EQ(loader.manifests(), current);
 }
 
-TEST(
-    resource_upload,
-    legacy_vertex_copy
-) {
+TEST(resource_upload, legacy_vertex_copy) {
     MemoryProvider provider;
     auto quad = std::make_shared<CE::Quad>();
     quad->vertices[0].x = 7.0f;
     std::weak_ptr<CE::Quad> owner = quad;
-    (void)provider.upload_geometry(std::shared_ptr<CE::Vertex2D>{quad, quad->vertices.data()}, quad->vertices.size(),
-        CE::Assets::PrimitiveTopology::Triangles);
+    (void)provider.upload_geometry(
+        std::shared_ptr<CE::Vertex2D>{quad, quad->vertices.data()}, quad->vertices.size(), CE::Assets::PrimitiveTopology::Triangles
+    );
     quad.reset();
     EXPECT_TRUE(owner.expired());
     ASSERT_EQ(provider.uploaded_geometry.size(), 6u);
     EXPECT_FLOAT_EQ(provider.uploaded_geometry.front().x, 7.0f);
 }
 
-TEST(
-    resource_upload,
-    geometry_failure_cleanup
-) {
+TEST(resource_upload, geometry_failure_cleanup) {
     MemoryProvider provider;
     auto quad = std::make_shared<CE::Quad>();
     std::weak_ptr<CE::Quad> cpu_owner = quad;
@@ -1408,8 +1209,9 @@ TEST(
         EXPECT_EQ(borrowed.size(), 6u);
         throw CE::Exceptions::bad_alloc(CE_HERE);
     };
-    EXPECT_THROW((void)provider.upload_geometry(std::move(vertices), 6, CE::Assets::PrimitiveTopology::Triangles),
-        CE::Exceptions::bad_alloc);
+    EXPECT_THROW(
+        (void)provider.upload_geometry(std::move(vertices), 6, CE::Assets::PrimitiveTopology::Triangles), CE::Exceptions::bad_alloc
+    );
     EXPECT_TRUE(cpu_owner.expired());
 
     auto image = std::make_shared<MemoryImage>(CE::Assets::PixelSize{1, 1});
@@ -1422,10 +1224,7 @@ TEST(
     EXPECT_TRUE(image_owner.expired());
 }
 
-TEST(
-    asset_preparation,
-    partial_upload_lifetime
-) {
+TEST(asset_preparation, partial_upload_lifetime) {
     using namespace CE::Assets;
     for (const bool tilesets : {false, true}) {
         SCOPED_TRACE(tilesets);
@@ -1508,10 +1307,7 @@ TEST(
     }
 }
 
-TEST(
-    platform_requests,
-    expired_endpoint
-) {
+TEST(platform_requests, expired_endpoint) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1527,10 +1323,7 @@ TEST(
     EXPECT_THROW(static_cast<void>(endpoint.submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation);
 }
 
-TEST(
-    platform_requests,
-    reentrant_post
-) {
+TEST(platform_requests, reentrant_post) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1558,10 +1351,7 @@ TEST(
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
 }
 
-TEST(
-    simulation_requests,
-    mailbox_before_update
-) {
+TEST(simulation_requests, mailbox_before_update) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1596,10 +1386,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_requests,
-    reentrant_post
-) {
+TEST(simulation_requests, reentrant_post) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1635,10 +1422,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_requests,
-    shutdown_cancellation
-) {
+TEST(simulation_requests, shutdown_cancellation) {
     struct CapturedData {
         bool& destroyed;
         std::thread::id& destruction_thread;
@@ -1674,10 +1458,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_requests,
-    init_failure_cancellation
-) {
+TEST(simulation_requests, init_failure_cancellation) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1697,10 +1478,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_requests,
-    expired_endpoint
-) {
+TEST(simulation_requests, expired_endpoint) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -1714,10 +1492,7 @@ TEST(
     EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
 }
 
-TEST(
-    event_delivery,
-    runtime_owner_threads
-) {
+TEST(event_delivery, runtime_owner_threads) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1746,10 +1521,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    pending_upload_completion
-) {
+TEST(execution_shutdown, pending_upload_completion) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -1789,10 +1561,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    asset_init_failure
-) {
+TEST(execution_shutdown, asset_init_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         MemoryInput input;
@@ -1860,10 +1629,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    worker_upload_failure
-) {
+TEST(execution_shutdown, worker_upload_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         MemoryInput input;
@@ -1909,10 +1675,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    preparation_policy_failure
-) {
+TEST(execution_shutdown, preparation_policy_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         CE::Engine::WorkerDetail::WorkerNativeAdapter native{true, [] { return std::vector<unsigned int>{2, 7}; },
@@ -1971,10 +1734,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    owned_root_startup_rollback
-) {
+TEST(execution_shutdown, owned_root_startup_rollback) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
         MemoryInput input;
@@ -2052,10 +1812,7 @@ TEST(
     }
 }
 
-TEST(
-    execution_shutdown,
-    simulation_thread_failure
-) {
+TEST(execution_shutdown, simulation_thread_failure) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -2129,10 +1886,7 @@ TEST(
     EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
 }
 
-TEST(
-    execution_shutdown,
-    injected_root_isolation
-) {
+TEST(execution_shutdown, injected_root_isolation) {
     auto root = std::make_shared<CE::Engine::WorkerPool>(2);
     auto unrelated = root->make_group();
     MemoryInput input;
@@ -2155,10 +1909,7 @@ TEST(
     EXPECT_TRUE(unrelated.status().accepting);
 }
 
-TEST(
-    execution_shutdown,
-    quiesce_error_precedence
-) {
+TEST(execution_shutdown, quiesce_error_precedence) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -2176,10 +1927,7 @@ TEST(
     EXPECT_EQ(game.shutdowns, 1);
 }
 
-TEST(
-    simulation_timing,
-    configured_fixed_delta
-) {
+TEST(simulation_timing, configured_fixed_delta) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -2204,10 +1952,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_timing,
-    slow_update_recovery
-) {
+TEST(simulation_timing, slow_update_recovery) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -2239,10 +1984,7 @@ TEST(
     }
 }
 
-TEST(
-    simulation_timing,
-    invalid_timing
-) {
+TEST(simulation_timing, invalid_timing) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
     MemorySurface* surface = nullptr;
@@ -2250,17 +1992,16 @@ TEST(
     OneTickGame game(input);
     CE::GFramework::SimulationTimingOptions timing;
     timing.fixed_step = std::chrono::milliseconds{0};
-    EXPECT_THROW((void)CE::GFramework::GameRuntime(*engine, game, CE::GFramework::RunMode::Sequential, CE::Input::PollingOptions{}, timing),
-        CE::Exceptions::invalid_args);
+    EXPECT_THROW(
+        (void)CE::GFramework::GameRuntime(*engine, game, CE::GFramework::RunMode::Sequential, CE::Input::PollingOptions{}, timing),
+        CE::Exceptions::invalid_args
+    );
     EXPECT_EQ(renderer->initializations, 0);
     EXPECT_EQ(game.initializations, 0);
     EXPECT_EQ(input.attached_window(), nullptr);
 }
 
-TEST(
-    resource_maintenance,
-    retirement_under_backpressure
-) {
+TEST(resource_maintenance, retirement_under_backpressure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         int polls = 0;
@@ -2290,10 +2031,7 @@ TEST(
     }
 }
 
-TEST(
-    resource_maintenance,
-    maintenance_failure
-) {
+TEST(resource_maintenance, maintenance_failure) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
         MemoryRenderer* renderer = nullptr;
@@ -2317,10 +2055,7 @@ TEST(
     }
 }
 
-TEST(
-    asset_cache,
-    strong_residency
-) {
+TEST(asset_cache, strong_residency) {
     auto& textures = CE::Assets::TextureMgr::get();
     auto first = std::make_unique<MemoryProvider>();
     MemoryProvider second;
@@ -2355,10 +2090,7 @@ TEST(
     EXPECT_TRUE(observed.expired());
 }
 
-TEST(
-    material_cache,
-    recipe_reload_generations
-) {
+TEST(material_cache, recipe_reload_generations) {
     auto& materials = CE::Assets::MaterialMgr::get();
     auto provider = std::make_unique<MemoryProvider>();
     MemoryProvider next_provider;
@@ -2383,14 +2115,21 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<float>(old->resolve({}, {}, {}, {}).at("intensity")), 1.0f);
     EXPECT_FLOAT_EQ(std::get<float>(current->resolve({}, {}, {}, {}).at("intensity")), 2.0f);
 
-    EXPECT_THROW(materials.reload_material("effect", *provider,
-                     [](CE::Assets::ResourceProvider&) -> std::shared_ptr<const CE::Assets::Material> {
-                         throw std::runtime_error("candidate linking failed");
-                     }),
-        std::runtime_error);
-    EXPECT_THROW(materials.reload_material("effect", *provider,
-                     [](CE::Assets::ResourceProvider&) { return std::shared_ptr<const CE::Assets::Material>{}; }),
-        CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        materials.reload_material(
+            "effect", *provider,
+            [](CE::Assets::ResourceProvider&) -> std::shared_ptr<const CE::Assets::Material> {
+                throw std::runtime_error("candidate linking failed");
+            }
+        ),
+        std::runtime_error
+    );
+    EXPECT_THROW(
+        materials.reload_material(
+            "effect", *provider, [](CE::Assets::ResourceProvider&) { return std::shared_ptr<const CE::Assets::Material>{}; }
+        ),
+        CE::Exceptions::failed_operation
+    );
     EXPECT_EQ(materials.get_asset("effect"), current);
     EXPECT_THROW(materials.load_material("effect", next_provider, build), CE::Exceptions::failed_operation);
     provider.reset();
@@ -2402,10 +2141,7 @@ TEST(
     EXPECT_TRUE(CE::Assets::AssetCacheContext::is_bound_to(next_provider));
 }
 
-TEST(
-    material_cache,
-    foreign_recipe_reload
-) {
+TEST(material_cache, foreign_recipe_reload) {
     auto& materials = CE::Assets::MaterialMgr::get();
     MemoryProvider provider;
     int builds = 0;
@@ -2415,24 +2151,24 @@ TEST(
     };
     materials.load_material("effect", provider, build);
     const auto current = materials.get_asset("effect");
-    auto rejected = std::async(std::launch::async,
-        [&] { EXPECT_THROW(materials.reload_material("effect", provider, build), CE::Exceptions::failed_operation); });
+    auto rejected = std::async(std::launch::async, [&] {
+        EXPECT_THROW(materials.reload_material("effect", provider, build), CE::Exceptions::failed_operation);
+    });
     rejected.get();
     EXPECT_EQ(builds, 1);
     EXPECT_EQ(materials.get_asset("effect"), current);
 }
 
-TEST(
-    frame_lifetime,
-    packet_cleanup_order
-) {
+TEST(frame_lifetime, packet_cleanup_order) {
     enum class Failure { None, Preparation, Rendering };
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         for (const auto failure : {Failure::None, Failure::Preparation, Failure::Rendering}) {
             SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
-            SCOPED_TRACE(failure == Failure::Preparation ? "preparation failure"
-                         : failure == Failure::Rendering ? "render failure"
-                                                         : "successful reload");
+            SCOPED_TRACE(
+                failure == Failure::Preparation ? "preparation failure"
+                : failure == Failure::Rendering ? "render failure"
+                                                : "successful reload"
+            );
             MemoryInput input;
             MemoryRenderer* renderer = nullptr;
             MemorySurface* surface = nullptr;
@@ -2480,8 +2216,11 @@ TEST(
                 auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
                 CE::RenderAPIs::DrawStyle2D style;
                 style.material = std::move(simulation_material);
-                pass.add(CE::RenderAPIs::resolve_draw_packet(std::move(simulation_geometry), 0, 6, style, pass.semantics(),
-                    pass.parameters(), pass.constraints()));
+                pass.add(
+                    CE::RenderAPIs::resolve_draw_packet(
+                        std::move(simulation_geometry), 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints()
+                    )
+                );
                 // A concurrent slot remains Writing here; cleanup still owns
                 // its partially prepared packet and must recycle it on platform.
                 if (failure == Failure::Preparation)
@@ -2526,8 +2265,9 @@ TEST(
                     runtime.run();
                     FAIL() << "The selected frame stage must fail";
                 } catch (const std::runtime_error& error) {
-                    EXPECT_EQ(std::string_view(error.what()),
-                        failure == Failure::Preparation ? "frame preparation failed" : "frame render failed");
+                    EXPECT_EQ(
+                        std::string_view(error.what()), failure == Failure::Preparation ? "frame preparation failed" : "frame render failed"
+                    );
                 }
             }
             EXPECT_EQ(game.shutdowns, 1);

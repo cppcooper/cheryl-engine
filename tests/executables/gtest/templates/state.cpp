@@ -53,7 +53,8 @@ TEST(state_machine, guarded_transitions) {
     movement.on_enter(Movement::Airborne, [&] { order.push_back(3); });
     movement.add_transition(
         Movement::Grounded, MoveTrigger::Jump, Movement::Airborne, [&] { return posture.state() == Posture::Standing; },
-        [&] { order.push_back(2); });
+        [&] { order.push_back(2); }
+    );
     movement.add_transition(Movement::Airborne, MoveTrigger::Land, Movement::Grounded);
     posture.add_transition(Posture::Standing, PostureTrigger::Crouch, Posture::Crouched);
     posture.add_transition(Posture::Crouched, PostureTrigger::Stand, Posture::Standing);

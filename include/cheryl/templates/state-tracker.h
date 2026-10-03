@@ -8,7 +8,8 @@ template <typename T>
     requires std::copy_constructible<T> && std::assignable_from<T&, T>
 class StateTracker {
 public:
-    explicit StateTracker(T initial) : previous_(initial), current_(std::move(initial)) {}
+    explicit StateTracker(T initial)
+    : previous_(initial), current_(std::move(initial)) {}
 
     void update(T next) {
         previous_ = current_;

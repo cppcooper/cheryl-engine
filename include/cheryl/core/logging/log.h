@@ -26,18 +26,9 @@ namespace CE::LogDetail {
 
     [[nodiscard]] uint16_t next_log_id() noexcept;
 
-    enum class LogState {
-        Opening,
-        Open,
-        Closing,
-        Closed
-    };
+    enum class LogState { Opening, Open, Closing, Closed };
 
-    enum class StateRequirement {
-        Allow,
-        BadRequest,
-        FailedOperation
-    };
+    enum class StateRequirement { Allow, BadRequest, FailedOperation };
 
     struct StateRule {
         LogState state = LogState::Closed;
@@ -80,10 +71,8 @@ namespace CE::LogDetail {
 namespace CE {
     extern std::string stack_trace(void* addr0 = nullptr);
 
-    template <const char*>
-    class Log {
-        template <typename T>
-        using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;
+    template <const char*> class Log {
+        template <typename T> using atomic_shared_ptr = std::atomic<std::shared_ptr<T>>;
 
     protected:
         uint16_t log_id = 0;
@@ -107,11 +96,8 @@ namespace CE {
 
     protected:
         template <typename T>
-        [[nodiscard]] std::shared_ptr<T> acquire_open_resource(
-            const LogStateController::Lock& lock,
-            const atomic_shared_ptr<T>& resource,
-            const char* operation
-        ) const;
+        [[nodiscard]] std::shared_ptr<T>
+        acquire_open_resource(const LogStateController::Lock& lock, const atomic_shared_ptr<T>& resource, const char* operation) const;
         void require_open_state(const LogStateController::Lock& lock, const char* operation) const;
 
     public:
@@ -149,43 +135,37 @@ namespace CE {
             }
         }
 
-        template <typename... Args>
-        void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 logger->log(spdlog::level::trace, fmt, std::forward<Args>(args)...);
             }
         }
 
-        template <typename... Args>
-        void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 logger->log(spdlog::level::debug, fmt, std::forward<Args>(args)...);
             }
         }
 
-        template <typename... Args>
-        void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 logger->log(spdlog::level::info, fmt, std::forward<Args>(args)...);
             }
         }
 
-        template <typename... Args>
-        void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 logger->log(spdlog::level::warn, fmt, std::forward<Args>(args)...);
             }
         }
 
-        template <typename... Args>
-        void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 logger->log(spdlog::level::err, fmt, std::forward<Args>(args)...);
             }
         }
 
-        template <typename... Args>
-        void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if (auto logger = m_logger.load()) {
                 if (logger->should_log(spdlog::level::trace)) {
                     logger->log(spdlog::level::trace, "{}", stack_trace());
@@ -209,17 +189,16 @@ namespace spdlog::CE {
 
 // template definitions - methods
 namespace CE {
-    template <const char* name>
-    void Log<name>::construct_log() {
+    template <const char* name> void Log<name>::construct_log() {
         // Reserve the closed logger for construction and capture any state that must be
         // restored before releasing lifecycle synchronization.
         auto lock = state_controller->lock();
-        state_controller->require_state(lock, name, "construct", {
-            {LogState::Closed, StateRequirement::Allow},
-            {LogState::Open, StateRequirement::BadRequest, "it is already open"},
-            {LogState::Opening, StateRequirement::BadRequest, "it is already opening"},
-            {LogState::Closing, StateRequirement::FailedOperation, "it is closing"}
-        });
+        state_controller->require_state(
+            lock, name, "construct",
+            {{LogState::Closed, StateRequirement::Allow}, {LogState::Open, StateRequirement::BadRequest, "it is already open"},
+                {LogState::Opening, StateRequirement::BadRequest, "it is already opening"},
+                {LogState::Closing, StateRequirement::FailedOperation, "it is closing"}}
+        );
 
         const auto restore = reopen_state;
         state_controller->set_state(lock, LogState::Opening);
@@ -233,10 +212,7 @@ namespace CE {
             auto console = std::make_shared<osink_mt>();
             const auto controller = state_controller;
             auto file = std::shared_ptr<spdlog::sinks::rotating_file_sink_mt>(
-                new spdlog::sinks::rotating_file_sink_mt(
-                    std::format("logs/{}.log", name),
-                    1024 * 1024 * 10, 5, true, event_handlers
-                ),
+                new spdlog::sinks::rotating_file_sink_mt(std::format("logs/{}.log", name), 1024 * 1024 * 10, 5, true, event_handlers),
                 [controller](spdlog::sinks::rotating_file_sink_mt* sink) {
                     delete sink;
                     controller->complete_close();
@@ -245,11 +221,7 @@ namespace CE {
 
             std::vector<spdlog::sink_ptr> sinks{console, file};
             auto logger = std::make_shared<spdlog::async_logger>(
-                std::format("{}", name),
-                sinks.begin(),
-                sinks.end(),
-                spdlog::CE::TPInit::get().tp,
-                spdlog::async_overflow_policy::block
+                std::format("{}", name), sinks.begin(), sinks.end(), spdlog::CE::TPInit::get().tp, spdlog::async_overflow_policy::block
             );
 
             // Reapply the configuration captured by close() while the replacement resources
@@ -279,8 +251,7 @@ namespace CE {
             m_logger.store(std::move(logger));
             reopen_state.reset();
             state_controller->set_state(lock, LogState::Open);
-        }
-        catch (...) {
+        } catch (...) {
             // Registration is externally visible, so roll it back before returning Opening to
             // Closed. Release the state lock first because dropping the logger may destroy the
             // file sink, whose deleter also enters the state controller.
@@ -299,22 +270,19 @@ namespace CE {
     template <const char* name>
     Log<name>::Log(spdlog::file_event_handlers event_handlers)
     : event_handlers(std::move(event_handlers)),
-      m_fallback_logger(std::make_shared<spdlog::logger>(
-          std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
+      m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
         m_fallback_logger->set_level(spdlog::level::off);
         construct_log();
         log_id = LogDetail::next_log_id();
     }
 
-    template <const char* name>
-    Log<name>::~Log() noexcept {
+    template <const char* name> Log<name>::~Log() noexcept {
         // Ordinary destruction attempts the same strong close boundary exposed by close(): under
         // normal ownership, the file sink is destroyed before shutdown completes. External spdlog
         // owners can extend that lifetime, so destruction waits at most one minute.
         try {
             close(std::chrono::seconds{60});
-        }
-        catch (...) {
+        } catch (...) {
             // Destructors cannot propagate lifecycle failures. A timeout leaves Closing intact,
             // and the sink-held state controller remains alive until the final external owner exits.
         }
@@ -322,8 +290,7 @@ namespace CE {
         release_registry_ownership();
     }
 
-    template <const char* name>
-    void Log<name>::release_registry_ownership() const noexcept {
+    template <const char* name> void Log<name>::release_registry_ownership() const noexcept {
         try {
             const std::lock_guard default_lock(LogDetail::default_logger_mutex);
 
@@ -335,41 +302,34 @@ namespace CE {
             if (spdlog::get(m_fallback_logger->name()) == m_fallback_logger) {
                 spdlog::drop(m_fallback_logger->name());
             }
-        }
-        catch (...) {
+        } catch (...) {
             // Registry cleanup is best-effort during noexcept destruction.
         }
     }
 
-    template <const char* name>
-    std::filesystem::path Log<name>::get_file_path() const {
+    template <const char* name> std::filesystem::path Log<name>::get_file_path() const {
         const auto lock = state_controller->lock();
         return std::filesystem::absolute(acquire_open_resource(lock, m_file, "get the file path for")->filename());
     }
 
-    template <const char* name>
-    uint16_t Log<name>::get_log_id() const {
+    template <const char* name> uint16_t Log<name>::get_log_id() const {
         return log_id;
     }
 
-    template <const char* name>
-    void Log<name>::flush() const {
+    template <const char* name> void Log<name>::flush() const {
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_logger, "flush")->flush();
     }
 
-    template <const char* name>
-    void Log<name>::close(std::chrono::milliseconds timeout) {
+    template <const char* name> void Log<name>::close(std::chrono::milliseconds timeout) {
         auto lock = state_controller->lock();
-        state_controller->require_state(lock, name, "close", {
-            {LogState::Open, StateRequirement::Allow},
-            {LogState::Closing, StateRequirement::Allow},
-            {LogState::Closed, StateRequirement::Allow},
-            {LogState::Opening,
-             StateRequirement::BadRequest,
-             "it is still opening; review the caller's lifecycle assumptions or synchronization"
-            }
-        });
+        state_controller->require_state(
+            lock, name, "close",
+            {{LogState::Open, StateRequirement::Allow}, {LogState::Closing, StateRequirement::Allow},
+                {LogState::Closed, StateRequirement::Allow},
+                {LogState::Opening, StateRequirement::BadRequest,
+                    "it is still opening; review the caller's lifecycle assumptions or synchronization"}}
+        );
 
         if (state_controller->is_closed(lock)) {
             return;
@@ -383,9 +343,7 @@ namespace CE {
             {
                 const std::lock_guard default_lock(LogDetail::default_logger_mutex);
                 const bool restore_default = spdlog::default_logger() == logger;
-                reopen_state = ReopenState{
-                    logger->log_level(), file->log_level(), console->log_level(), restore_default
-                };
+                reopen_state = ReopenState{logger->log_level(), file->log_level(), console->log_level(), restore_default};
                 if (restore_default) {
                     set_default_logger(m_fallback_logger);
                 }
@@ -411,21 +369,16 @@ namespace CE {
         }
     }
 
-    template <const char* name>
-    void Log<name>::reopen() {
+    template <const char* name> void Log<name>::reopen() {
         auto lock = state_controller->lock();
-        state_controller->require_state(lock, name, "reopen", {
-            {LogState::Closed, StateRequirement::Allow},
-            {LogState::Open, StateRequirement::Allow},
-            {LogState::Closing,
-             StateRequirement::BadRequest,
-             "it is still closing; review the caller's lifecycle assumptions or synchronization"
-            },
-            {LogState::Opening,
-             StateRequirement::BadRequest,
-             "it is already opening; review the caller's lifecycle assumptions or synchronization"
-            }
-        });
+        state_controller->require_state(
+            lock, name, "reopen",
+            {{LogState::Closed, StateRequirement::Allow}, {LogState::Open, StateRequirement::Allow},
+                {LogState::Closing, StateRequirement::BadRequest,
+                    "it is still closing; review the caller's lifecycle assumptions or synchronization"},
+                {LogState::Opening, StateRequirement::BadRequest,
+                    "it is already opening; review the caller's lifecycle assumptions or synchronization"}}
+        );
 
         if (state_controller->is_open(lock)) {
             return;
@@ -435,28 +388,24 @@ namespace CE {
         construct_log();
     }
 
-    template <const char* name>
-    void Log<name>::make_default() const {
+    template <const char* name> void Log<name>::make_default() const {
         const auto lock = state_controller->lock();
         const auto logger = acquire_open_resource(lock, m_logger, "make default");
         const std::lock_guard default_lock(LogDetail::default_logger_mutex);
         set_default_logger(logger);
     }
 
-    template <const char* name>
-    void Log<name>::set_level_logger(spdlog::level level) const {
+    template <const char* name> void Log<name>::set_level_logger(spdlog::level level) const {
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_logger, "set the log level for")->set_level(level);
     }
 
-    template <const char* name>
-    void Log<name>::set_level_filesink(spdlog::level level) const {
+    template <const char* name> void Log<name>::set_level_filesink(spdlog::level level) const {
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_file, "set the file log level for")->set_level(level);
     }
 
-    template <const char* name>
-    void Log<name>::set_level_stdsink(spdlog::level level) const {
+    template <const char* name> void Log<name>::set_level_stdsink(spdlog::level level) const {
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_console, "set the console log level for")->set_level(level);
     }
@@ -477,14 +426,13 @@ namespace CE {
         throw Exceptions::failed_operation(CE_HERE, message);
     }
 
-    template <const char* name>
-    void Log<name>::require_open_state(const LogStateController::Lock& lock, const char* operation) const {
-        state_controller->require_state(lock, name, operation, {
-            {LogState::Open, StateRequirement::Allow},
-            {LogState::Closed, StateRequirement::BadRequest, "it is closed"},
-            {LogState::Closing, StateRequirement::FailedOperation, "it is closing"},
-            {LogState::Opening, StateRequirement::FailedOperation, "it is opening"}
-        });
+    template <const char* name> void Log<name>::require_open_state(const LogStateController::Lock& lock, const char* operation) const {
+        state_controller->require_state(
+            lock, name, operation,
+            {{LogState::Open, StateRequirement::Allow}, {LogState::Closed, StateRequirement::BadRequest, "it is closed"},
+                {LogState::Closing, StateRequirement::FailedOperation, "it is closing"},
+                {LogState::Opening, StateRequirement::FailedOperation, "it is opening"}}
+        );
     }
 }
 
@@ -547,15 +495,11 @@ namespace CE::LogDetail {
     inline bool LogStateController::wait_until_closed(Lock& lock, std::chrono::milliseconds timeout) {
         assert_locked(lock);
         if (timeout == std::chrono::milliseconds::zero()) {
-            cv.wait(lock, [this] {
-                return state == LogState::Closed;
-            });
+            cv.wait(lock, [this] { return state == LogState::Closed; });
             return true;
         }
 
-        return cv.wait_for(lock, timeout, [this] {
-            return state == LogState::Closed;
-        });
+        return cv.wait_for(lock, timeout, [this] { return state == LogState::Closed; });
     }
 
     inline bool LogStateController::is_open(const Lock& lock) const {

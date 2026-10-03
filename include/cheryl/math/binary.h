@@ -15,42 +15,36 @@ namespace CE::math {
         // narrowest fixed-width integer that can contain them; once Bits exceeds
         // the native word width, storage is split across native-word elements.
         using native_word = std::size_t;
-        inline constexpr std::size_t native_bits =
-            std::numeric_limits<native_word>::digits;
+        inline constexpr std::size_t native_bits = std::numeric_limits<native_word>::digits;
 
         // Select the smallest fixed-width integer that can hold Bits without
         // exceeding the native word size. If none qualify, use the native word.
         template <std::size_t Bits>
-        using bit_word_t =
-        std::conditional_t<Bits <= 8, std::uint8_t,
-                           std::conditional_t<Bits <= 16 && native_bits >= 16, std::uint16_t,
-                                              std::conditional_t<Bits <= 32 && native_bits >= 32, std::uint32_t,
-                                                                 std::conditional_t<Bits <= 64 && native_bits >= 64, std::uint64_t,
-                                                                                    native_word>>>>;
+        using bit_word_t = std::conditional_t<
+            Bits <= 8,
+            std::uint8_t,
+            std::conditional_t<
+                Bits <= 16 && native_bits >= 16,
+                std::uint16_t,
+                std::conditional_t<
+                    Bits <= 32 && native_bits >= 32,
+                    std::uint32_t,
+                    std::conditional_t<Bits <= 64 && native_bits >= 64, std::uint64_t, native_word>>>>;
 
         // Width, in bits, of the selected backing word.
-        template <std::size_t Bits>
-        inline constexpr std::size_t bit_word_bits =
-            std::numeric_limits<bit_word_t<Bits>>::digits;
+        template <std::size_t Bits> inline constexpr std::size_t bit_word_bits = std::numeric_limits<bit_word_t<Bits>>::digits;
 
         // Number of backing words required to store Bits.
-        template <std::size_t Bits>
-        inline constexpr std::size_t bit_word_count =
-            (Bits + bit_word_bits<Bits> - 1) / bit_word_bits<Bits>;
+        template <std::size_t Bits> inline constexpr std::size_t bit_word_count = (Bits + bit_word_bits<Bits> - 1) / bit_word_bits<Bits>;
 
         // Keep single-word bit arrays as a scalar; larger arrays become a packed
         // sequence of backing words.
         template <std::size_t Bits>
         using bit_storage_t =
-        std::conditional_t<
-            bit_word_count<Bits> == 1,
-            bit_word_t<Bits>,
-            std::array<bit_word_t<Bits>, bit_word_count<Bits>>
-        >;
+            std::conditional_t<bit_word_count<Bits> == 1, bit_word_t<Bits>, std::array<bit_word_t<Bits>, bit_word_count<Bits>>>;
 
         // Definition below
-        template <typename Word>
-        class BitReference;
+        template <typename Word> class BitReference;
     }
 
     /**
@@ -64,8 +58,7 @@ namespace CE::math {
      * individual bits can be assigned as though they were ordinary booleans.
      * words() exposes the same packed storage as a contiguous word array.
      */
-    template <std::size_t Bits>
-    class BitArray {
+    template <std::size_t Bits> class BitArray {
         static_assert(Bits > 0);
 
     public:
@@ -101,16 +94,14 @@ namespace CE::math {
          * Construction identifies the backing word and bit mask. Assignment writes
          * through that reference rather than rebinding it to another bit.
          */
-        template <typename Word>
-        class BitReference {
+        template <typename Word> class BitReference {
         public:
             BitReference& operator=(bool value) noexcept;
             BitReference& operator=(const BitReference& other) noexcept;
             explicit operator bool() const noexcept;
 
         private:
-            template <std::size_t>
-            friend class CE::math::BitArray;
+            template <std::size_t> friend class CE::math::BitArray;
 
             BitReference(Word& word, Word mask) noexcept;
 
@@ -122,57 +113,47 @@ namespace CE::math {
         BitReference<Word>::BitReference(Word& word, const Word mask) noexcept
         : word_(&word), mask_(mask) {}
 
-        template <typename Word>
-        BitReference<Word>& BitReference<Word>::operator=(const bool value) noexcept {
+        template <typename Word> BitReference<Word>& BitReference<Word>::operator=(const bool value) noexcept {
             if (value) {
                 *word_ |= mask_;
-            }
-            else {
+            } else {
                 *word_ &= static_cast<Word>(~mask_);
             }
             return *this;
         }
 
-        template <typename Word>
-        BitReference<Word>& BitReference<Word>::operator=(const BitReference& other) noexcept {
+        template <typename Word> BitReference<Word>& BitReference<Word>::operator=(const BitReference& other) noexcept {
             if (this != &other) {
                 *this = static_cast<bool>(other);
             }
             return *this;
         }
 
-        template <typename Word>
-        BitReference<Word>::operator bool() const noexcept {
+        template <typename Word> BitReference<Word>::operator bool() const noexcept {
             return (*word_ & mask_) != 0;
         }
     }
 
-    template <std::size_t Bits>
-    typename BitArray<Bits>::Reference BitArray<Bits>::operator[](const std::size_t index) noexcept {
+    template <std::size_t Bits> typename BitArray<Bits>::Reference BitArray<Bits>::operator[](const std::size_t index) noexcept {
         assert(index < Bits);
         return {word(index), mask(index)};
     }
 
-    template <std::size_t Bits>
-    bool BitArray<Bits>::operator[](const std::size_t index) const noexcept {
+    template <std::size_t Bits> bool BitArray<Bits>::operator[](const std::size_t index) const noexcept {
         assert(index < Bits);
         return (word(index) & mask(index)) != 0;
     }
 
-    template <std::size_t Bits>
-    std::span<typename BitArray<Bits>::word_type, BitArray<Bits>::word_count>
-    BitArray<Bits>::words() noexcept {
+    template <std::size_t Bits> std::span<typename BitArray<Bits>::word_type, BitArray<Bits>::word_count> BitArray<Bits>::words() noexcept {
         return std::span<word_type, word_count>{&word(0), word_count};
     }
 
     template <std::size_t Bits>
-    std::span<const typename BitArray<Bits>::word_type, BitArray<Bits>::word_count>
-    BitArray<Bits>::words() const noexcept {
+    std::span<const typename BitArray<Bits>::word_type, BitArray<Bits>::word_count> BitArray<Bits>::words() const noexcept {
         return std::span<const word_type, word_count>{&word(0), word_count};
     }
 
-    template <std::size_t Bits>
-    constexpr typename BitArray<Bits>::word_type BitArray<Bits>::mask(const std::size_t index) noexcept {
+    template <std::size_t Bits> constexpr typename BitArray<Bits>::word_type BitArray<Bits>::mask(const std::size_t index) noexcept {
         return word_type{1} << (index % word_bits);
     }
 
@@ -180,26 +161,21 @@ namespace CE::math {
     typename BitArray<Bits>::word_type& BitArray<Bits>::word([[maybe_unused]] const std::size_t index) noexcept {
         if constexpr (word_count == 1) {
             return storage_;
-        }
-        else {
+        } else {
             return storage_[index / word_bits];
         }
     }
 
     template <std::size_t Bits>
-    const typename BitArray<Bits>::word_type& BitArray<Bits>::word(
-        [[maybe_unused]] const std::size_t index
-    ) const noexcept {
+    const typename BitArray<Bits>::word_type& BitArray<Bits>::word([[maybe_unused]] const std::size_t index) const noexcept {
         if constexpr (word_count == 1) {
             return storage_;
-        }
-        else {
+        } else {
             return storage_[index / word_bits];
         }
     }
 
-    template <std::size_t Bits>
-    std::ostream& operator<<(std::ostream& out, const BitArray<Bits>& bits) {
+    template <std::size_t Bits> std::ostream& operator<<(std::ostream& out, const BitArray<Bits>& bits) {
         for (std::size_t i = Bits; i > 0; --i) {
             out << (bits[i - 1] ? '1' : '0');
         }

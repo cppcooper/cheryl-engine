@@ -77,9 +77,7 @@ namespace CE::Engine {
         finish_workers();
     }
 
-    WorkerGroup EngineContext::make_worker_group(
-        WorkerGroupOptions options
-    ) {
+    WorkerGroup EngineContext::make_worker_group(WorkerGroupOptions options) {
         std::lock_guard lock(execution_mutex_);
         if (worker_submissions_closed_)
             throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");

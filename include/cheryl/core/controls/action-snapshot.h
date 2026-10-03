@@ -15,13 +15,13 @@ namespace CE::Input {
     /** Game-defined semantic identifier. A game's enums can be converted explicitly at its boundary. */
     struct ActionId {
         std::uint32_t value;
-        constexpr explicit ActionId(std::uint32_t id) : value(id) {}
+        constexpr explicit ActionId(std::uint32_t id)
+        : value(id) {}
         constexpr bool operator==(const ActionId&) const = default;
     };
 } // namespace CE::Input
 
-template <>
-struct std::hash<CE::Input::ActionId> {
+template <> struct std::hash<CE::Input::ActionId> {
     std::size_t operator()(const CE::Input::ActionId id) const noexcept { return std::hash<std::uint32_t>{}(id.value); }
 };
 

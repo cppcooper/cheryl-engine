@@ -28,8 +28,7 @@ namespace CE {
         [[nodiscard]] std::pair<float, float> content_scale(const Monitor& monitor) const override;
 
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height) override;
-        Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height,
-                              const std::string& title);
+        Window* create_window(const Monitor& monitor, Enum::window_mode mode, int width, int height, const std::string& title);
         Window* create_window(const Monitor& monitor, Enum::window_mode mode, Resolution resolution);
         Window* create_window(const Monitor& monitor, Enum::window_mode mode);
         // Selects the initial render window. Additional rendering contexts need GPU resource management.

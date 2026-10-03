@@ -20,9 +20,6 @@ namespace CE::Engine::WorkerDetail {
     };
 
     struct WorkerPoolAccess {
-        [[nodiscard]] static std::unique_ptr<WorkerPool> create(
-            std::size_t worker_count,
-            WorkerNativeAdapter adapter
-        );
+        [[nodiscard]] static std::unique_ptr<WorkerPool> create(std::size_t worker_count, WorkerNativeAdapter adapter);
     };
 }

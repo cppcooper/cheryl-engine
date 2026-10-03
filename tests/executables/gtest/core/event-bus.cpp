@@ -31,9 +31,7 @@ namespace {
         bool open_ = false;
 
     public:
-        explicit PromiseGate(
-            std::promise<void>& release
-        )
+        explicit PromiseGate(std::promise<void>& release)
         : release_(release) {}
         ~PromiseGate() { open(); }
         void open() {
@@ -50,15 +48,9 @@ namespace {
         std::function<void()>& release;
         bool copied = false;
 
-        HeldPayloadCopy(
-            std::promise<void>& entry,
-            std::shared_future<void> gate,
-            std::function<void()>& released
-        )
+        HeldPayloadCopy(std::promise<void>& entry, std::shared_future<void> gate, std::function<void()>& released)
         : entered(entry), may_copy(std::move(gate)), release(released) {}
-        HeldPayloadCopy(
-            const HeldPayloadCopy& other
-        )
+        HeldPayloadCopy(const HeldPayloadCopy& other)
         : entered(other.entered), may_copy(other.may_copy), release(other.release), copied(true) {
             entered.set_value();
             may_copy.wait();
@@ -73,13 +65,9 @@ namespace {
         std::function<void()>& release;
         bool copied = false;
 
-        explicit RedispatchOnCopiedPayloadRelease(
-            std::function<void()>& callback
-        )
+        explicit RedispatchOnCopiedPayloadRelease(std::function<void()>& callback)
         : release(callback) {}
-        RedispatchOnCopiedPayloadRelease(
-            const RedispatchOnCopiedPayloadRelease& source
-        )
+        RedispatchOnCopiedPayloadRelease(const RedispatchOnCopiedPayloadRelease& source)
         : release(source.release), copied(true) {}
         ~RedispatchOnCopiedPayloadRelease() {
             if (copied)
@@ -88,10 +76,7 @@ namespace {
     };
 }
 
-TEST(
-    event_bus,
-    ignored_registration_id
-) {
+TEST(event_bus, ignored_registration_id) {
     CE::SubSystems::EventBus bus;
     int calls = 0;
     bus.register_listener("tick", [&](std::any value) { calls += std::any_cast<int>(value); });
@@ -100,10 +85,7 @@ TEST(
     EXPECT_EQ(calls, 5);
 }
 
-TEST(
-    event_bus,
-    independent_registrations
-) {
+TEST(event_bus, independent_registrations) {
     CE::SubSystems::EventBus first;
     CE::SubSystems::EventBus second;
     int calls = 0;
@@ -114,10 +96,7 @@ TEST(
     EXPECT_EQ(calls, 1);
 }
 
-TEST(
-    event_bus,
-    immediate_delivery_order
-) {
+TEST(event_bus, immediate_delivery_order) {
     CE::SubSystems::EventBus bus;
     std::vector<int> order;
     std::thread::id owner;
@@ -133,10 +112,7 @@ TEST(
     EXPECT_EQ(owner, producer_id);
 }
 
-TEST(
-    event_bus,
-    registration_during_dispatch
-) {
+TEST(event_bus, registration_during_dispatch) {
     CE::SubSystems::EventBus bus;
     std::vector<int> order;
     bool added = false;
@@ -153,10 +129,7 @@ TEST(
     EXPECT_EQ(order, (std::vector<int>{1, 1, 2}));
 }
 
-TEST(
-    event_bus,
-    unregister_during_dispatch
-) {
+TEST(event_bus, unregister_during_dispatch) {
     CE::SubSystems::EventBus bus;
     CE::SubSystems::EventBus::Registration second;
     int calls = 0;
@@ -167,10 +140,7 @@ TEST(
     EXPECT_FALSE(bus.unregister_listener(second));
 }
 
-TEST(
-    event_bus,
-    foreign_unregister
-) {
+TEST(event_bus, foreign_unregister) {
     CE::SubSystems::EventBus first;
     CE::SubSystems::EventBus second;
     int calls = 0;
@@ -181,10 +151,7 @@ TEST(
     EXPECT_EQ(calls, 1);
 }
 
-TEST(
-    event_bus,
-    self_unregister
-) {
+TEST(event_bus, self_unregister) {
     CE::SubSystems::EventBus bus;
     CE::SubSystems::EventBus::Registration id;
     int calls = 0;
@@ -199,10 +166,7 @@ TEST(
     EXPECT_EQ(calls, 1);
 }
 
-TEST(
-    event_bus,
-    running_callback_lifetime
-) {
+TEST(event_bus, running_callback_lifetime) {
     CE::SubSystems::EventBus bus;
     std::promise<void> entered;
     std::promise<void> release;
@@ -223,20 +187,14 @@ TEST(
     barrier.get();
 }
 
-TEST(
-    event_bus,
-    callback_failure_barrier
-) {
+TEST(event_bus, callback_failure_barrier) {
     CE::SubSystems::EventBus bus;
     const auto id = bus.register_listener("tick", [](std::any) { throw std::runtime_error("failed"); });
     EXPECT_THROW(bus.dispatch("tick", 0), std::runtime_error);
     EXPECT_TRUE(bus.unregister_and_wait(id));
 }
 
-TEST(
-    event_bus,
-    closed_bus
-) {
+TEST(event_bus, closed_bus) {
     CE::SubSystems::EventBus bus;
     const auto id = bus.register_listener("tick", [](std::any) {});
     bus.close();
@@ -248,11 +206,7 @@ TEST(
 namespace {
     struct CopyFailure {
         CopyFailure() = default;
-        CopyFailure(
-            const CopyFailure&
-        ) {
-            throw std::runtime_error("payload copy failed");
-        }
+        CopyFailure(const CopyFailure&) { throw std::runtime_error("payload copy failed"); }
     };
 
     struct QueuedDelivery {
@@ -274,10 +228,7 @@ namespace {
     };
 }
 
-TEST(
-    event_bus,
-    queued_payload_order
-) {
+TEST(event_bus, queued_payload_order) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     std::vector<int> received;
@@ -297,10 +248,7 @@ TEST(
     EXPECT_TRUE(errors.empty());
 }
 
-TEST(
-    event_bus,
-    queued_unregister
-) {
+TEST(event_bus, queued_unregister) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     int calls = 0;
@@ -313,10 +261,7 @@ TEST(
     EXPECT_EQ(errors, 0);
 }
 
-TEST(
-    event_bus,
-    close_during_dispatch
-) {
+TEST(event_bus, close_during_dispatch) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     std::promise<void> entered;
@@ -353,10 +298,7 @@ TEST(
     EXPECT_EQ(errors, 0);
 }
 
-TEST(
-    event_bus,
-    capture_release_reentry
-) {
+TEST(event_bus, capture_release_reentry) {
     for (const bool close_bus : {false, true}) {
         CE::SubSystems::EventBus bus;
         bool released = false;
@@ -376,10 +318,7 @@ TEST(
     }
 }
 
-TEST(
-    event_bus,
-    queued_error_reporting
-) {
+TEST(event_bus, queued_error_reporting) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     std::vector<std::exception_ptr> errors;
@@ -397,10 +336,7 @@ TEST(
     EXPECT_THROW(std::rethrow_exception(errors[1]), std::runtime_error);
 }
 
-TEST(
-    event_bus,
-    delivery_rejection_reentry
-) {
+TEST(event_bus, delivery_rejection_reentry) {
     CE::SubSystems::EventBus bus;
     CE::SubSystems::EventBus::Registration id;
     int failures = 0;
@@ -417,19 +353,13 @@ TEST(
     EXPECT_EQ(failures, 1);
 }
 
-TEST(
-    event_bus,
-    missing_error_sink
-) {
+TEST(event_bus, missing_error_sink) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     EXPECT_THROW(bus.register_listener("tick", [](std::any) {}, target.target()), CE::Exceptions::invalid_args);
 }
 
-TEST(
-    event_bus,
-    payload_copy_failure_reentry
-) {
+TEST(event_bus, payload_copy_failure_reentry) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     CE::SubSystems::EventBus::Registration id;
@@ -458,10 +388,7 @@ TEST(
     EXPECT_TRUE(target.pending.empty());
 }
 
-TEST(
-    event_bus,
-    delivery_target_failure
-) {
+TEST(event_bus, delivery_target_failure) {
     CE::SubSystems::EventBus bus;
     QueuedDelivery target;
     bool reject = true;
@@ -488,10 +415,7 @@ TEST(
     EXPECT_EQ(failures, 1);
 }
 
-TEST(
-    event_bus,
-    rejected_payload_reentry
-) {
+TEST(event_bus, rejected_payload_reentry) {
     for (const bool throwing : {false, true}) {
         CE::SubSystems::EventBus bus;
         QueuedDelivery target;
@@ -537,10 +461,7 @@ TEST(
     }
 }
 
-TEST(
-    event_bus,
-    worker_delivery_order
-) {
+TEST(event_bus, worker_delivery_order) {
     CE::Engine::WorkerPool pool(3);
     auto group = pool.make_group();
     auto delivery = CE::Engine::worker_event_delivery(group);
@@ -561,10 +482,7 @@ TEST(
     bus.close();
 }
 
-TEST(
-    event_bus,
-    shared_worker_stream
-) {
+TEST(event_bus, shared_worker_stream) {
     CE::Engine::WorkerPool pool(3);
     auto group = pool.make_group();
     auto delivery = CE::Engine::worker_event_delivery(group);
@@ -581,10 +499,7 @@ TEST(
     bus.close();
 }
 
-TEST(
-    event_bus,
-    expired_worker_target
-) {
+TEST(event_bus, expired_worker_target) {
     auto pool = std::make_unique<CE::Engine::WorkerPool>();
     auto delivery = CE::Engine::worker_event_delivery(pool->make_group());
     CE::SubSystems::EventBus bus;
@@ -596,10 +511,7 @@ TEST(
     bus.close();
 }
 
-TEST(
-    event_bus,
-    closed_worker_group
-) {
+TEST(event_bus, closed_worker_group) {
     CE::Engine::WorkerPool pool(2);
     auto group = pool.make_group();
     const auto delivery = CE::Engine::worker_event_delivery(group);
@@ -648,10 +560,7 @@ TEST(
     bus.close();
 }
 
-TEST(
-    event_bus,
-    independent_worker_streams
-) {
+TEST(event_bus, independent_worker_streams) {
     CE::Engine::WorkerPool pool(2);
     auto group = pool.make_group();
     CE::SubSystems::EventBus bus;
@@ -682,10 +591,7 @@ TEST(
     bus.close();
 }
 
-TEST(
-    event_bus,
-    unpublished_pump_recovery
-) {
+TEST(event_bus, unpublished_pump_recovery) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
     CE::SubSystems::EventBus bus;
@@ -727,16 +633,14 @@ TEST(
     EXPECT_EQ(errors, 1);
 }
 
-TEST(
-    event_bus,
-    published_pump_recovery
-) {
+TEST(event_bus, published_pump_recovery) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
     CE::SubSystems::EventBus bus;
     std::vector<CE::SubSystems::EventBus::Work> pumps;
-    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group,
-        [&](CE::SubSystems::EventBus::Work pump) { pumps.push_back(std::move(pump)); });
+    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group, [&](CE::SubSystems::EventBus::Work pump) {
+        pumps.push_back(std::move(pump));
+    });
     int errors = 0;
     int reports = 0;
     std::vector<int> received;
@@ -772,10 +676,7 @@ TEST(
     EXPECT_EQ(errors, 2);
 }
 
-TEST(
-    event_bus,
-    pump_submission_failure
-) {
+TEST(event_bus, pump_submission_failure) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
     CE::SubSystems::EventBus bus;
@@ -809,10 +710,7 @@ TEST(
     EXPECT_EQ(errors, 1);
 }
 
-TEST(
-    event_bus,
-    concurrent_producer_order
-) {
+TEST(event_bus, concurrent_producer_order) {
     CE::SubSystems::EventBus bus;
     std::vector<std::pair<int, int>> received;
     std::atomic<int> errors{0};
@@ -854,10 +752,7 @@ TEST(
     // The interleaving between producers is intentionally unspecified.
 }
 
-TEST(
-    event_bus,
-    invalidation_during_copy
-) {
+TEST(event_bus, invalidation_during_copy) {
     CE::SubSystems::EventBus bus;
     CE::SubSystems::EventBus::Registration id;
     int calls = 0;
@@ -888,10 +783,7 @@ TEST(
     EXPECT_EQ(releases, 1);
 }
 
-TEST(
-    event_bus,
-    pump_policy_recovery
-) {
+TEST(event_bus, pump_policy_recovery) {
     CE::SubSystems::EventBus bus;
     std::promise<void> policy_entered;
     std::promise<void> release;

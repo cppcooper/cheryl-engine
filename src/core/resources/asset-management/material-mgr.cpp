@@ -5,21 +5,13 @@
 #include <utility>
 
 namespace CE::Assets {
-    void MaterialMgr::load_material(
-        const std::filesystem::path& key,
-        ResourceProvider& provider,
-        const Builder& builder
-    ) {
+    void MaterialMgr::load_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder) {
         bind_provider(provider);
         if (!contains(key))
             reload_material(key, provider, builder);
     }
 
-    void MaterialMgr::reload_material(
-        const std::filesystem::path& key,
-        ResourceProvider& provider,
-        const Builder& builder
-    ) {
+    void MaterialMgr::reload_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder) {
         bind_provider(provider);
         if (!builder)
             throw Exceptions::invalid_args(CE_HERE, "Material reload needs an explicit recipe builder");

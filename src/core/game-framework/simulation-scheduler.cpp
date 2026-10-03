@@ -6,10 +6,7 @@
 #include <utility>
 
 namespace CE::GFramework {
-    SimulationScheduler::SimulationScheduler(
-        const SimulationTimingOptions options,
-        const SimulationClock::time_point start
-    )
+    SimulationScheduler::SimulationScheduler(const SimulationTimingOptions options, const SimulationClock::time_point start)
     : options_(options), observed_at_(start) {
         if (options_.mode != SimulationMode::Variable && options_.mode != SimulationMode::Fixed)
             throw Exceptions::invalid_args(CE_HERE, "Unknown simulation timing mode");
@@ -21,9 +18,7 @@ namespace CE::GFramework {
             throw Exceptions::invalid_args(CE_HERE, "Simulation timing requires positive fixed steps and bounded recovery configuration");
     }
 
-    SimulationBatch SimulationScheduler::advance(
-        const SimulationClock::time_point now
-    ) {
+    SimulationBatch SimulationScheduler::advance(const SimulationClock::time_point now) {
         if (now < observed_at_)
             throw Exceptions::invalid_args(CE_HERE, "Simulation clock must advance monotonically");
         const auto previous = observed_at_.time_since_epoch();

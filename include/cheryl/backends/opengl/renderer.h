@@ -27,34 +27,18 @@ namespace CE::RenderAPIs {
         bool stopped_ = false;
 
     public:
-        explicit OpenGLRenderer(
-            iOpenGLContext& context
-        );
+        explicit OpenGLRenderer(iOpenGLContext& context);
         ~OpenGLRenderer() override;
 
         void initialize() override;
         void deinitialize() override;
         void maintain_resources() override;
-        void render(
-            const RenderFrame& frame
-        ) override;
+        void render(const RenderFrame& frame) override;
         void clear() override;
-        void set_viewport(
-            FramebufferSize size
-        ) override;
-        void set_depth_test(
-            bool enabled
-        ) override;
-        void set_clear_colour(
-            float r,
-            float g,
-            float b,
-            float a
-        ) override;
-        void set_camera_matrices(
-            const glm::mat4& projection,
-            const glm::mat4& view
-        ) override;
+        void set_viewport(FramebufferSize size) override;
+        void set_depth_test(bool enabled) override;
+        void set_clear_colour(float r, float g, float b, float a) override;
+        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override;
         [[nodiscard]] std::shared_ptr<OpenGLResourceLifetime> resources() const;
 
     private:

@@ -167,8 +167,9 @@ namespace CE::GFramework {
                 std::unique_lock lock(scheduler_->mutex);
                 const auto deadline =
                     std::min({timing.next_update_at(), backlog.next_poll_at(), SimulationClock::now() + resource_maintenance_interval});
-                scheduler_->wake.wait_until(lock, deadline,
-                    [&] { return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending(); });
+                scheduler_->wake.wait_until(lock, deadline, [&] {
+                    return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending();
+                });
             }
         } catch (...) {
             failure = std::current_exception();
@@ -275,8 +276,9 @@ namespace CE::GFramework {
                     while (!stop_requested_.load(std::memory_order_acquire)) {
                         {
                             std::unique_lock lock(scheduler_->mutex);
-                            scheduler_->wake.wait_until(lock, timing.next_update_at(),
-                                [&] { return stop_requested_.load(std::memory_order_acquire); });
+                            scheduler_->wake.wait_until(lock, timing.next_update_at(), [&] {
+                                return stop_requested_.load(std::memory_order_acquire);
+                            });
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
                         }
@@ -478,8 +480,9 @@ namespace CE::GFramework {
                 }
                 pump_shutdown_requests(failure);
                 std::unique_lock lock(scheduler_->mutex);
-                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1},
-                    [&] { return handoff.worker_done || engine_.platform_dispatcher().has_pending(); });
+                scheduler_->wake.wait_for(lock, std::chrono::milliseconds{1}, [&] {
+                    return handoff.worker_done || engine_.platform_dispatcher().has_pending();
+                });
             }
             worker.join();
         }
@@ -537,9 +540,7 @@ namespace CE::GFramework {
             std::rethrow_exception(failure);
     }
 
-    void GameRuntime::pump_shutdown_requests(
-        std::exception_ptr& failure
-    ) {
+    void GameRuntime::pump_shutdown_requests(std::exception_ptr& failure) {
         try {
             engine_.platform_dispatcher().drain(engine_);
         } catch (...) {
@@ -566,9 +567,7 @@ namespace CE::GFramework {
         }
     }
 
-    void GameRuntime::finish_worker_shutdown(
-        std::exception_ptr& failure
-    ) {
+    void GameRuntime::finish_worker_shutdown(std::exception_ptr& failure) {
         while (!engine_.workers_idle()) {
             pump_shutdown_requests(failure);
             std::unique_lock lock(scheduler_->mutex);

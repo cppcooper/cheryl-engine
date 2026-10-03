@@ -7,8 +7,7 @@
 
 namespace CE::Assets {
     SpriteAnimation::SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition> definition)
-    :
-    definition_(std::move(definition)) {
+    : definition_(std::move(definition)) {
         if (!definition_ || definition_->frames.empty()) {
             throw Exceptions::bad_request(CE_HERE, "A sprite animation needs at least one frame");
         }
@@ -57,14 +56,17 @@ namespace CE::Assets {
         }
     }
 
-    CellIndex SpriteAnimation::cell() const { return definition_->frames[index_].cell; }
+    CellIndex SpriteAnimation::cell() const {
+        return definition_->frames[index_].cell;
+    }
 
-    std::chrono::milliseconds SpriteAnimation::frame_duration() const { return definition_->frames[index_].duration; }
+    std::chrono::milliseconds SpriteAnimation::frame_duration() const {
+        return definition_->frames[index_].duration;
+    }
 
     Sprite::Sprite(SpriteData data)
-    :
-    Asset2D(std::move(data.geometry), std::move(data.texture)),
-    definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
+    : Asset2D(std::move(data.geometry), std::move(data.texture)),
+      definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
         const auto cell_count = definition_->grid.cell_count();
         if (cell_count == 0) {
             throw Exceptions::bad_request(CE_HERE, "A sprite needs at least one grid cell");
@@ -106,14 +108,10 @@ namespace CE::Assets {
         }) == 1;
     }
 
-    SpriteAnimation Sprite::animation(
-        const std::string& animation_name,
-        const std::optional<std::string> facing
-    ) const {
+    SpriteAnimation Sprite::animation(const std::string& animation_name, const std::optional<std::string> facing) const {
         const auto exact = animation_indices_.find(animation_key(animation_name, facing));
         if (exact != animation_indices_.end()) {
-            return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(
-                definition_, &definition_->animations[exact->second]));
+            return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(definition_, &definition_->animations[exact->second]));
         }
         if (!facing) {
             const SpriteAnimationDefinition* match = nullptr;
@@ -122,8 +120,7 @@ namespace CE::Assets {
                     continue;
                 }
                 if (match) {
-                    throw Exceptions::bad_request(
-                        CE_HERE, "Sprite animation '" + animation_name + "' requires an explicit facing");
+                    throw Exceptions::bad_request(CE_HERE, "Sprite animation '" + animation_name + "' requires an explicit facing");
                 }
                 match = &animation;
             }
@@ -131,8 +128,7 @@ namespace CE::Assets {
                 return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(definition_, match));
             }
         }
-        throw Exceptions::bad_request(
-            CE_HERE, "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
+        throw Exceptions::bad_request(CE_HERE, "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
     }
 
     SpriteAnimation Sprite::operator[](const std::string& animation_name) const {

@@ -11,7 +11,7 @@ namespace CE::Input {
 
     struct PollingOptions {
         PollingPolicy policy = PollingPolicy::Lockstep;
-        std::size_t capacity = 1; // Completed polls, including unchanged observations; used by Finite.
+        std::size_t capacity = 1;                                    // Completed polls, including unchanged observations; used by Finite.
         InputClock::duration spacing = std::chrono::milliseconds(1); // Minimum delay after completing a poll.
     };
 

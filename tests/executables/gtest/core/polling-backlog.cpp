@@ -6,10 +6,7 @@
 
 using namespace std::chrono_literals;
 
-TEST(
-    polling_backlog,
-    lockstep_consumption
-) {
+TEST(polling_backlog, lockstep_consumption) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog;
     const auto now = bindings.action_snapshot()->observed_at();
@@ -28,10 +25,7 @@ TEST(
     EXPECT_TRUE(backlog.poll_due(now + 1ms));
 }
 
-TEST(
-    polling_backlog,
-    finite_capacity
-) {
+TEST(polling_backlog, finite_capacity) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 3, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -50,10 +44,7 @@ TEST(
     EXPECT_TRUE(backlog.consume().empty());
 }
 
-TEST(
-    polling_backlog,
-    poll_completion_spacing
-) {
+TEST(polling_backlog, poll_completion_spacing) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 2, 5ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -66,10 +57,7 @@ TEST(
     backlog.complete(bindings.publish_actions(now + 8ms), now + 8ms);
 }
 
-TEST(
-    polling_backlog,
-    unlimited_capacity
-) {
+TEST(polling_backlog, unlimited_capacity) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
@@ -80,10 +68,7 @@ TEST(
     EXPECT_EQ(backlog.consume().size(), 100u);
 }
 
-TEST(
-    polling_backlog,
-    invalid_polling_inputs
-) {
+TEST(polling_backlog, invalid_polling_inputs) {
     const CE::Input::PollingOptions empty{CE::Input::PollingPolicy::Finite, 0, 0ms};
     const CE::Input::PollingOptions negative{CE::Input::PollingPolicy::Finite, 1, -1ms};
     EXPECT_THROW((void)CE::Input::PollingBacklog{empty}, CE::Exceptions::invalid_args);
@@ -97,10 +82,7 @@ TEST(
     EXPECT_THROW(backlog.complete(poll, now), CE::Exceptions::invalid_args);
 }
 
-TEST(
-    polling_backlog,
-    deadline_saturation
-) {
+TEST(polling_backlog, deadline_saturation) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 5ms});
@@ -115,10 +97,7 @@ TEST(
     EXPECT_EQ(backlog.next_poll_at(), Clock::time_point::max());
 }
 
-TEST(
-    polling_backlog,
-    clock_limit_spacing
-) {
+TEST(polling_backlog, clock_limit_spacing) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog delayed({CE::Input::PollingPolicy::Unlimited, 0, Clock::duration::max()});

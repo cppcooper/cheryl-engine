@@ -24,8 +24,7 @@ namespace CE::ptr {
     }
 
     // returns a pointer whose address was offset by <offset> bytes
-    template<class T>
-    T* add_offset(void* ptr, const std::size_t offset_bytes) {
+    template <class T> T* add_offset(void* ptr, const std::size_t offset_bytes) {
         return reinterpret_cast<T*>(offset_address(ptr, offset_bytes));
     }
 
@@ -37,14 +36,13 @@ namespace CE::ptr {
     }
 
     // returns the offset from ptr to alignment for type <T>
-    template <typename T>
-    std::size_t get_alignment_offset(void* ptr) {
+    template <typename T> std::size_t get_alignment_offset(void* ptr) {
         return get_alignment_offset(ptr, std::align_val_t{alignof(T)});
     }
 
     // returns an aligned offset for ptr
     inline std::size_t align_offset(void* ptr, std::size_t offset_bytes, std::align_val_t alignment) {
-        return offset_bytes + get_alignment_offset(add_offset<void>(ptr,offset_bytes), alignment);
+        return offset_bytes + get_alignment_offset(add_offset<void>(ptr, offset_bytes), alignment);
     }
 
     // returns the alignment for address
@@ -95,7 +93,7 @@ namespace CE::ptr {
             case 4:
                 return static_cast<uint32_t>(hash % UINT32_MAX);
             case 8:
-                return hash;  // No need for modulus, 64 bits fit directly
+                return hash; // No need for modulus, 64 bits fit directly
             default:
                 throw Exceptions::invalid_args(CE_HERE, "Invalid hash size. Supported sizes: 1, 2, 4, or 8 bytes.");
         }

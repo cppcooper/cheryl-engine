@@ -9,13 +9,13 @@ namespace CE::Obj {
      * bookkeeping. Handles hold this context so their last release can merge
      * a slot back into the pool after the Pool<T> facade is destroyed.
      */
-    template<typename T>
-    struct PoolState : AbstractManager<T>, std::enable_shared_from_this<PoolState<T>> {
+    template <typename T>
+    struct PoolState : AbstractManager<T>,
+                       std::enable_shared_from_this<PoolState<T>> {
         static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
 
         /** Construct N objects; each returned handle retains this release state. */
-        template<typename... Args>
-        std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
+        template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
         /** Reserve N unconstructed slots in one Block. */
         Block<T> retrieve_block(std::size_t N);
         void return_objects(T* p, std::size_t length);
@@ -35,16 +35,17 @@ namespace CE::Obj {
      * Singleton entry point for allocating objects. Existing manager methods
      * remain available; release_context() gives handles a retained PoolState.
      */
-    template<typename T>
-    struct Pool : AbstractManager<T>, Singleton_CTS<Pool<T>> {
+    template <typename T>
+    struct Pool : AbstractManager<T>,
+                  Singleton_CTS<Pool<T>> {
         using release_context_type = PoolState<T>;
 
-        Pool() : context_(std::make_shared<release_context_type>()) {}
+        Pool()
+        : context_(std::make_shared<release_context_type>()) {}
         /** Retain the release state without requiring a later singleton lookup. */
         [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return context_; }
 
-        template<typename... Args>
-        std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args) {
+        template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args) {
             return context_->retrieve_objects(N, std::forward<Args>(args)...);
         }
         Block<T> retrieve_block(std::size_t N) { return context_->retrieve_block(N); }

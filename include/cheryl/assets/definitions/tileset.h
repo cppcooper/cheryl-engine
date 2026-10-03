@@ -14,21 +14,9 @@
 #include <vector>
 
 namespace CE::Assets {
-    enum class Direction {
-        North,
-        NorthEast,
-        East,
-        SouthEast,
-        South,
-        SouthWest,
-        West,
-        NorthWest
-    };
+    enum class Direction { North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest };
 
-    enum class WangType {
-        Corner,
-        Edge
-    };
+    enum class WangType { Corner, Edge };
 
     struct TerrainDefinition {
         std::uint32_t id{};
@@ -62,10 +50,7 @@ namespace CE::Assets {
         std::unordered_map<WangSignature, std::vector<std::size_t>, WangSignatureHash> variants;
     };
 
-    enum class BitmaskType {
-        FourNeighbor,
-        EightNeighbor
-    };
+    enum class BitmaskType { FourNeighbor, EightNeighbor };
 
     struct BitmaskAutotileDefinition {
         std::string description;

@@ -4,7 +4,9 @@ namespace CE::Input {
     InputMapper::InputMapper(gainput::InputManager& manager)
     : manager_(manager), id_(manager_.AddListener(this)) {}
 
-    InputMapper::~InputMapper() { manager_.RemoveListener(id_); }
+    InputMapper::~InputMapper() {
+        manager_.RemoveListener(id_);
+    }
 
     bool InputMapper::OnDeviceButtonFloat(
         const gainput::DeviceId device,

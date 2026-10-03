@@ -21,8 +21,7 @@
 #include <math/time.h>
 
 namespace {
-    template <typename T>
-    constexpr bool is_power_of_two(const T value) {
+    template <typename T> constexpr bool is_power_of_two(const T value) {
         return value != 0 && (value & (value - 1)) == 0;
     }
 }
@@ -48,10 +47,7 @@ TEST(math_binary, compact_storage) {
     static_assert(bit_word_count<native_bits + 1> == 2);
 
     EXPECT_EQ(sizeof(CE::math::BitArray<8>), sizeof(std::uint8_t));
-    EXPECT_EQ(
-        sizeof(CE::math::BitArray<native_bits + 1>),
-        sizeof(native_word) * 2
-    );
+    EXPECT_EQ(sizeof(CE::math::BitArray<native_bits + 1>), sizeof(native_word) * 2);
 }
 
 TEST(math_binary, individual_bits) {
@@ -165,18 +161,11 @@ TEST(math_anchor, named_anchors) {
         Pivot pivot;
     };
 
-    constexpr std::array cases{
-        AnchorCase{"TL", TopLeft, {0.0f, 0.0f}},
-        AnchorCase{"TC", TopCenter, {0.5f, 0.0f}},
-        AnchorCase{"TR", TopRight, {1.0f, 0.0f}},
-        AnchorCase{"CL", CenterLeft, {0.0f, 0.5f}},
-        AnchorCase{"ML", CenterLeft, {0.0f, 0.5f}},
-        AnchorCase{"CR", CenterRight, {1.0f, 0.5f}},
-        AnchorCase{"MR", CenterRight, {1.0f, 0.5f}},
-        AnchorCase{"BL", BottomLeft, {0.0f, 1.0f}},
-        AnchorCase{"BC", BottomCenter, {0.5f, 1.0f}},
-        AnchorCase{"BR", BottomRight, {1.0f, 1.0f}}
-    };
+    constexpr std::array cases{AnchorCase{"TL", TopLeft, {0.0f, 0.0f}}, AnchorCase{"TC", TopCenter, {0.5f, 0.0f}},
+        AnchorCase{"TR", TopRight, {1.0f, 0.0f}}, AnchorCase{"CL", CenterLeft, {0.0f, 0.5f}}, AnchorCase{"ML", CenterLeft, {0.0f, 0.5f}},
+        AnchorCase{"CR", CenterRight, {1.0f, 0.5f}}, AnchorCase{"MR", CenterRight, {1.0f, 0.5f}},
+        AnchorCase{"BL", BottomLeft, {0.0f, 1.0f}}, AnchorCase{"BC", BottomCenter, {0.5f, 1.0f}},
+        AnchorCase{"BR", BottomRight, {1.0f, 1.0f}}};
 
     // Names and aliases must resolve to the same normalized pivots used by the
     // geometry-building helpers.
@@ -243,20 +232,10 @@ TEST(math_anchor, invalid_pivots) {
 
     // A pivot has to identify a finite point within the image's unit square.
     EXPECT_THROW(
-        Anchor::MakePivot(
-            {std::numeric_limits<float>::quiet_NaN(), 0.5f},
-            vertices.data(), 64, 32, 16, 8
-        ),
-        CE::Exceptions::invalid_args
+        Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices.data(), 64, 32, 16, 8), CE::Exceptions::invalid_args
     );
-    EXPECT_THROW(
-        Anchor::MakePivot({-0.01f, 0.5f}, vertices.data(), 64, 32, 16, 8),
-        CE::Exceptions::invalid_args
-    );
-    EXPECT_THROW(
-        Anchor::MakePivot({0.5f, 1.01f}, vertices.data(), 64, 32, 16, 8),
-        CE::Exceptions::invalid_args
-    );
+    EXPECT_THROW(Anchor::MakePivot({-0.01f, 0.5f}, vertices.data(), 64, 32, 16, 8), CE::Exceptions::invalid_args);
+    EXPECT_THROW(Anchor::MakePivot({0.5f, 1.01f}, vertices.data(), 64, 32, 16, 8), CE::Exceptions::invalid_args);
 }
 
 TEST(math_anchor, zero_image_dimensions) {
@@ -264,14 +243,8 @@ TEST(math_anchor, zero_image_dimensions) {
     std::array<float, CE::VAONumbers::floats_per_quad> vertices{};
 
     // Either missing dimension makes texture coordinates impossible to compute.
-    EXPECT_THROW(
-        Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 0, 32, 16, 8),
-        CE::Exceptions::invalid_args
-    );
-    EXPECT_THROW(
-        Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 64, 0, 16, 8),
-        CE::Exceptions::invalid_args
-    );
+    EXPECT_THROW(Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 0, 32, 16, 8), CE::Exceptions::invalid_args);
+    EXPECT_THROW(Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 64, 0, 16, 8), CE::Exceptions::invalid_args);
 }
 
 TEST(math_pointers, range_endpoints) {
@@ -290,10 +263,7 @@ TEST(math_pointers, byte_offsets) {
     auto* begin = memory.data();
 
     // The two helpers agree on where a byte offset lands in this allocation.
-    EXPECT_EQ(
-        CE::ptr::offset_address(begin, 17),
-        reinterpret_cast<std::uintptr_t>(begin + 17)
-    );
+    EXPECT_EQ(CE::ptr::offset_address(begin, 17), reinterpret_cast<std::uintptr_t>(begin + 17));
     EXPECT_EQ(CE::ptr::add_offset<std::byte>(begin, 17), begin + 17);
 }
 
@@ -303,18 +273,9 @@ TEST(math_pointers, alignment_offsets) {
 
     // A deliberately aligned base needs no correction. Moving three bytes from
     // it requires thirteen more bytes to reach the next 16-byte boundary.
-    EXPECT_EQ(
-        CE::ptr::get_alignment_offset(begin, std::align_val_t{64}),
-        std::size_t{0}
-    );
-    EXPECT_EQ(
-        CE::ptr::get_alignment_offset(begin + 3, std::align_val_t{16}),
-        std::size_t{13}
-    );
-    EXPECT_EQ(
-        CE::ptr::align_offset(begin, 3, std::align_val_t{16}),
-        std::size_t{16}
-    );
+    EXPECT_EQ(CE::ptr::get_alignment_offset(begin, std::align_val_t{64}), std::size_t{0});
+    EXPECT_EQ(CE::ptr::get_alignment_offset(begin + 3, std::align_val_t{16}), std::size_t{13});
+    EXPECT_EQ(CE::ptr::align_offset(begin, 3, std::align_val_t{16}), std::size_t{16});
 }
 
 TEST(math_pointers, address_alignment) {
@@ -322,13 +283,9 @@ TEST(math_pointers, address_alignment) {
     auto* begin = memory.data();
 
     // calculate_alignment reports the largest power of two dividing an address.
-    EXPECT_EQ(
-        CE::ptr::calculate_alignment(std::uintptr_t{0x120}),
-        std::size_t{32}
-    );
+    EXPECT_EQ(CE::ptr::calculate_alignment(std::uintptr_t{0x120}), std::size_t{32});
 
-    const auto actual_alignment =
-        static_cast<std::size_t>(CE::ptr::calculate_alignment(begin));
+    const auto actual_alignment = static_cast<std::size_t>(CE::ptr::calculate_alignment(begin));
     EXPECT_GE(actual_alignment, std::size_t{64});
     EXPECT_TRUE(is_power_of_two(actual_alignment));
 }
@@ -350,10 +307,7 @@ TEST(math_pointers, pointer_hashes) {
     EXPECT_TRUE(std::holds_alternative<std::uint64_t>(hash64));
     EXPECT_EQ(hash32, CE::ptr::pointer_to_hash(pointer, 4));
 
-    EXPECT_THROW(
-        static_cast<void>(CE::ptr::pointer_to_hash(pointer, 3)),
-        CE::Exceptions::invalid_args
-    );
+    EXPECT_THROW(static_cast<void>(CE::ptr::pointer_to_hash(pointer, 3)), CE::Exceptions::invalid_args);
 }
 
 TEST(math_fit, growth_policies) {

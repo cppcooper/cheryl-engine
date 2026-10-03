@@ -29,8 +29,9 @@ namespace CE::Assets {
                 continue;
             }
             if (result) {
-                throw Exceptions::runtime_exception(CE_HERE,
-                    "Texture filename '" + file.string() + "' is ambiguous; use its resolved path");
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Texture filename '" + file.string() + "' is ambiguous; use its resolved path"
+                );
             }
             result = texture;
         }

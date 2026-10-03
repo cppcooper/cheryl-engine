@@ -85,11 +85,7 @@ namespace {
         std::string fail_startup_operation;
 
     private:
-        template <typename T>
-        void replace(
-            T& entry,
-            T replacement
-        ) {
+        template <typename T> void replace(T& entry, T replacement) {
             const auto old = entry;
             restore_.push_back([&entry, old] { entry = old; });
             entry = replacement;
@@ -115,20 +111,14 @@ namespace {
             entry_memory_->reject_next();
         }
 
-        static GLint maximum_name_length(
-            const std::vector<GLSLVariable>& variables
-        ) {
+        static GLint maximum_name_length(const std::vector<GLSLVariable>& variables) {
             std::size_t longest = 0;
             for (const auto& variable : variables)
                 longest = std::max(longest, variable.name.size());
             return static_cast<GLint>(longest + 1);
         }
 
-        static void GLAD_API_PTR program_query(
-            GLuint,
-            GLenum parameter,
-            GLint* value
-        ) {
+        static void GLAD_API_PTR program_query(GLuint, GLenum parameter, GLint* value) {
             switch (parameter) {
                 case GL_LINK_STATUS:
                     *value = active_->linked ? GL_TRUE : GL_FALSE;
@@ -151,14 +141,8 @@ namespace {
             }
         }
 
-        static void variable_query(
-            const GLSLVariable& variable,
-            GLsizei capacity,
-            GLsizei* written,
-            GLint* size,
-            GLenum* type,
-            GLchar* name
-        ) {
+        static void
+        variable_query(const GLSLVariable& variable, GLsizei capacity, GLsizei* written, GLint* size, GLenum* type, GLchar* name) {
             const auto count = std::min(variable.name.size(), static_cast<std::size_t>(std::max(0, capacity - 1)));
             std::copy_n(variable.name.data(), count, name);
             name[count] = '\0';
@@ -167,340 +151,145 @@ namespace {
             *type = variable.type;
         }
 
-        static void GLAD_API_PTR uniform_query(
-            GLuint,
-            GLuint index,
-            GLsizei capacity,
-            GLsizei* written,
-            GLint* size,
-            GLenum* type,
-            GLchar* name
-        ) {
+        static void GLAD_API_PTR
+        uniform_query(GLuint, GLuint index, GLsizei capacity, GLsizei* written, GLint* size, GLenum* type, GLchar* name) {
             variable_query(active_->uniforms.at(index), capacity, written, size, type, name);
         }
 
-        static void GLAD_API_PTR attribute_query(
-            GLuint,
-            GLuint index,
-            GLsizei capacity,
-            GLsizei* written,
-            GLint* size,
-            GLenum* type,
-            GLchar* name
-        ) {
+        static void GLAD_API_PTR
+        attribute_query(GLuint, GLuint index, GLsizei capacity, GLsizei* written, GLint* size, GLenum* type, GLchar* name) {
             variable_query(active_->attributes.at(index), capacity, written, size, type, name);
         }
 
-        static GLint location(
-            const std::vector<GLSLVariable>& variables,
-            const GLchar* name
-        ) {
+        static GLint location(const std::vector<GLSLVariable>& variables, const GLchar* name) {
             const auto variable = std::find_if(variables.begin(), variables.end(), [&](const auto& item) { return item.name == name; });
             return variable == variables.end() ? -1 : variable->location;
         }
-        static GLint GLAD_API_PTR uniform_location(
-            GLuint,
-            const GLchar* name
-        ) {
-            return location(active_->uniforms, name);
-        }
-        static GLint GLAD_API_PTR attribute_location(
-            GLuint,
-            const GLchar* name
-        ) {
-            return location(active_->attributes, name);
-        }
-        static void GLAD_API_PTR use(
-            GLuint
-        ) {
-            ++active_->uses;
-        }
-        static void GLAD_API_PTR scalar(
-            GLint location,
-            GLfloat value
-        ) {
-            active_->writes.insert_or_assign(location, value);
-        }
-        static void GLAD_API_PTR integer(
-            GLint location,
-            GLint value
-        ) {
-            active_->writes.insert_or_assign(location, value);
-        }
-        static void GLAD_API_PTR colour(
-            GLint location,
-            GLfloat x,
-            GLfloat y,
-            GLfloat z,
-            GLfloat w
-        ) {
+        static GLint GLAD_API_PTR uniform_location(GLuint, const GLchar* name) { return location(active_->uniforms, name); }
+        static GLint GLAD_API_PTR attribute_location(GLuint, const GLchar* name) { return location(active_->attributes, name); }
+        static void GLAD_API_PTR use(GLuint) { ++active_->uses; }
+        static void GLAD_API_PTR scalar(GLint location, GLfloat value) { active_->writes.insert_or_assign(location, value); }
+        static void GLAD_API_PTR integer(GLint location, GLint value) { active_->writes.insert_or_assign(location, value); }
+        static void GLAD_API_PTR colour(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
             active_->writes.insert_or_assign(location, glm::vec4{x, y, z, w});
         }
-        static void GLAD_API_PTR matrix(
-            GLint location,
-            GLsizei,
-            GLboolean,
-            const GLfloat* values
-        ) {
+        static void GLAD_API_PTR matrix(GLint location, GLsizei, GLboolean, const GLfloat* values) {
             glm::mat4 copied{0.0f};
             for (int column = 0; column < 4; ++column)
                 for (int row = 0; row < 4; ++row)
                     copied[column][row] = values[column * 4 + row];
             active_->writes.insert_or_assign(location, copied);
         }
-        static void generate(
-            GLResourceKind kind,
-            GLsizei count,
-            GLuint* images
-        ) {
+        static void generate(GLResourceKind kind, GLsizei count, GLuint* images) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->generated.emplace_back(kind, images[i] = ++active_->next_id_);
             if (active_->fail_generation == kind)
                 active_->error_ = GL_OUT_OF_MEMORY;
             active_->prepare_registration_failure();
         }
-        static void GLAD_API_PTR generate_images(
-            GLsizei count,
-            GLuint* images
-        ) {
-            generate(GLResourceKind::Texture, count, images);
-        }
-        static void GLAD_API_PTR generate_buffers(
-            GLsizei count,
-            GLuint* images
-        ) {
-            generate(GLResourceKind::Buffer, count, images);
-        }
-        static void GLAD_API_PTR generate_arrays(
-            GLsizei count,
-            GLuint* images
-        ) {
-            generate(GLResourceKind::VertexArray, count, images);
-        }
-        static void delete_ids(
-            GLResourceKind kind,
-            GLsizei count,
-            const GLuint* ids
-        ) {
+        static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) { generate(GLResourceKind::Texture, count, images); }
+        static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) { generate(GLResourceKind::Buffer, count, images); }
+        static void GLAD_API_PTR generate_arrays(GLsizei count, GLuint* images) { generate(GLResourceKind::VertexArray, count, images); }
+        static void delete_ids(GLResourceKind kind, GLsizei count, const GLuint* ids) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->deleted.emplace_back(kind, ids[i]);
         }
-        static void GLAD_API_PTR delete_images(
-            GLsizei count,
-            const GLuint* ids
-        ) {
-            delete_ids(GLResourceKind::Texture, count, ids);
-        }
-        static void GLAD_API_PTR delete_buffers(
-            GLsizei count,
-            const GLuint* ids
-        ) {
-            delete_ids(GLResourceKind::Buffer, count, ids);
-        }
-        static void GLAD_API_PTR delete_arrays(
-            GLsizei count,
-            const GLuint* ids
-        ) {
-            delete_ids(GLResourceKind::VertexArray, count, ids);
-        }
-        static void GLAD_API_PTR delete_program(
-            GLuint id
-        ) {
-            delete_ids(GLResourceKind::Program, 1, &id);
-        }
+        static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Texture, count, ids); }
+        static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
+        static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
+        static void GLAD_API_PTR delete_program(GLuint id) { delete_ids(GLResourceKind::Program, 1, &id); }
         static GLenum GLAD_API_PTR error_query() {
             const auto error = std::exchange(active_->error_, GL_NO_ERROR);
             if (error != GL_NO_ERROR && active_->lose_context_on_error)
                 active_->current_ = false;
             return error;
         }
-        static void GLAD_API_PTR activate_image(
-            GLenum unit
-        ) {
-            active_->active_unit_ = unit - GL_TEXTURE0;
-        }
-        static void GLAD_API_PTR bind_image(
-            GLenum,
-            GLuint image
-        ) {
-            active_->image_binds.emplace_back(active_->active_unit_, image);
-        }
-        static void GLAD_API_PTR integer_query(
-            GLenum parameter,
-            GLint* value
-        ) {
+        static void GLAD_API_PTR activate_image(GLenum unit) { active_->active_unit_ = unit - GL_TEXTURE0; }
+        static void GLAD_API_PTR bind_image(GLenum, GLuint image) { active_->image_binds.emplace_back(active_->active_unit_, image); }
+        static void GLAD_API_PTR integer_query(GLenum parameter, GLint* value) {
             if (active_->fail_integer_query == parameter) {
                 active_->error_ = GL_INVALID_OPERATION;
                 return; // Failed queries deliberately leave the caller's output untouched.
             }
             *value = parameter == GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ? 8 : active_->unpack_alignment;
         }
-        static void GLAD_API_PTR anisotropy_query(
-            GLenum,
-            GLfloat* value
-        ) {
+        static void GLAD_API_PTR anisotropy_query(GLenum, GLfloat* value) {
             if (active_->fail_anisotropy_query) {
                 active_->error_ = GL_INVALID_ENUM;
                 return;
             }
             *value = 16;
         }
-        static void GLAD_API_PTR anisotropy_parameter(
-            GLenum,
-            GLenum,
-            GLfloat
-        ) {
-            ++active_->anisotropy_writes;
-        }
-        static void GLAD_API_PTR image_parameter(
-            GLenum,
-            GLenum,
-            GLint
-        ) {}
-        static void GLAD_API_PTR image_parameters(
-            GLenum,
-            GLenum,
-            const GLint*
-        ) {}
-        static void GLAD_API_PTR pixel_store(
-            GLenum parameter,
-            GLint value
-        ) {
+        static void GLAD_API_PTR anisotropy_parameter(GLenum, GLenum, GLfloat) { ++active_->anisotropy_writes; }
+        static void GLAD_API_PTR image_parameter(GLenum, GLenum, GLint) {}
+        static void GLAD_API_PTR image_parameters(GLenum, GLenum, const GLint*) {}
+        static void GLAD_API_PTR pixel_store(GLenum parameter, GLint value) {
             if (parameter == GL_UNPACK_ALIGNMENT)
                 active_->unpack_alignment = value;
         }
-        static void GLAD_API_PTR upload_image(
-            GLenum,
-            GLint,
-            GLint,
-            GLsizei,
-            GLsizei,
-            GLint,
-            GLenum,
-            GLenum,
-            const void*
-        ) {
+        static void GLAD_API_PTR upload_image(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*) {
             ++active_->image_uploads;
             if (active_->fail_image_upload)
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
-        static void GLAD_API_PTR mipmaps(
-            GLenum
-        ) {
+        static void GLAD_API_PTR mipmaps(GLenum) {
             ++active_->mipmap_calls;
             if (active_->fail_mipmaps)
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
-        static void GLAD_API_PTR enable(
-            GLenum capability
-        ) {
+        static void GLAD_API_PTR enable(GLenum capability) {
             active_->enabled[capability] = true;
             ++active_->state_changes;
             if (active_->fail_startup_operation == "enable")
                 active_->error_ = GL_INVALID_OPERATION;
         }
-        static void GLAD_API_PTR startup_blend(
-            GLenum,
-            GLenum
-        ) {
+        static void GLAD_API_PTR startup_blend(GLenum, GLenum) {
             ++active_->state_changes;
             if (active_->fail_startup_operation == "blend")
                 active_->error_ = GL_INVALID_OPERATION;
         }
-        static void GLAD_API_PTR clear_colour(
-            GLfloat,
-            GLfloat,
-            GLfloat,
-            GLfloat
-        ) {
+        static void GLAD_API_PTR clear_colour(GLfloat, GLfloat, GLfloat, GLfloat) {
             ++active_->state_changes;
             if (active_->fail_startup_operation == "clear")
                 active_->error_ = GL_INVALID_OPERATION;
         }
-        static void GLAD_API_PTR disable(
-            GLenum capability
-        ) {
+        static void GLAD_API_PTR disable(GLenum capability) {
             active_->enabled[capability] = false;
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR blend_equation(
-            GLenum rgb,
-            GLenum alpha
-        ) {
+        static void GLAD_API_PTR blend_equation(GLenum rgb, GLenum alpha) {
             active_->blend_equations = {rgb, alpha};
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR blend_function(
-            GLenum source,
-            GLenum target,
-            GLenum alpha_source,
-            GLenum alpha_target
-        ) {
+        static void GLAD_API_PTR blend_function(GLenum source, GLenum target, GLenum alpha_source, GLenum alpha_target) {
             active_->blend_factors = {source, target, alpha_source, alpha_target};
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR set_depth_function(
-            GLenum function
-        ) {
+        static void GLAD_API_PTR set_depth_function(GLenum function) {
             active_->depth_function = function;
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR depth_mask(
-            GLboolean enabled
-        ) {
+        static void GLAD_API_PTR depth_mask(GLboolean enabled) {
             active_->depth_write = enabled;
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR cull(
-            GLenum face
-        ) {
+        static void GLAD_API_PTR cull(GLenum face) {
             active_->cull_face = face;
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR winding(
-            GLenum face
-        ) {
+        static void GLAD_API_PTR winding(GLenum face) {
             active_->front_face = face;
             ++active_->state_changes;
         }
-        static void GLAD_API_PTR bind_geometry(
-            GLuint
-        ) {
-            ++active_->geometry_binds;
-        }
-        static void GLAD_API_PTR bind_buffer(
-            GLenum,
-            GLuint
-        ) {}
-        static void GLAD_API_PTR upload_buffer(
-            GLenum,
-            GLsizeiptr,
-            const void*,
-            GLenum
-        ) {
+        static void GLAD_API_PTR bind_geometry(GLuint) { ++active_->geometry_binds; }
+        static void GLAD_API_PTR bind_buffer(GLenum, GLuint) {}
+        static void GLAD_API_PTR upload_buffer(GLenum, GLsizeiptr, const void*, GLenum) {
             if (++active_->buffer_uploads == active_->fail_buffer_upload)
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
-        static void GLAD_API_PTR enable_attribute(
-            GLuint
-        ) {
-            ++active_->attributes_enabled;
-        }
-        static void GLAD_API_PTR attribute_pointer(
-            GLuint,
-            GLint,
-            GLenum,
-            GLboolean,
-            GLsizei,
-            const void*
-        ) {}
-        static void GLAD_API_PTR draw_geometry(
-            GLenum,
-            GLint first,
-            GLsizei count
-        ) {
-            active_->draws.emplace_back(first, count);
-        }
+        static void GLAD_API_PTR enable_attribute(GLuint) { ++active_->attributes_enabled; }
+        static void GLAD_API_PTR attribute_pointer(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*) {}
+        static void GLAD_API_PTR draw_geometry(GLenum, GLint first, GLsizei count) { active_->draws.emplace_back(first, count); }
 
     public:
         NativeProgramRecorder() {
@@ -562,22 +351,12 @@ namespace {
                 domain->abandon();
             restore();
         }
-        NativeProgramRecorder(
-            const NativeProgramRecorder&
-        ) = delete;
-        NativeProgramRecorder& operator=(
-            const NativeProgramRecorder&
-        ) = delete;
+        NativeProgramRecorder(const NativeProgramRecorder&) = delete;
+        NativeProgramRecorder& operator=(const NativeProgramRecorder&) = delete;
 
-        void pending_error(
-            GLenum error
-        ) {
-            error_ = error;
-        }
+        void pending_error(GLenum error) { error_ = error; }
         void enable_anisotropy() { replace(GLAD_GL_EXT_texture_filter_anisotropic, 1); }
-        void reject_registration(
-            const int candidate
-        ) {
+        void reject_registration(const int candidate) {
             entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
             lifetime_ = ResourceDetail::LifetimeAccess::create(
                 std::this_thread::get_id(),
@@ -592,11 +371,7 @@ namespace {
         void release_registration_padding() { registration_padding_.clear(); }
         [[nodiscard]] std::size_t rejected_allocations() const { return entry_memory_->rejected.load(); }
         void collect() { lifetime_->collect(); }
-        void set_current(
-            const bool current
-        ) {
-            current_ = current;
-        }
+        void set_current(const bool current) { current_ = current; }
         [[nodiscard]] bool is_current() const { return current_; }
         [[nodiscard]] int current_queries() const { return current_queries_; }
         std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
@@ -604,9 +379,7 @@ namespace {
         std::shared_ptr<GLSLProgram> program() {
             return std::make_shared<GLSLProgram>(OpenGLHandle(lifetime_, GLResourceKind::Program, ++next_id_));
         }
-        std::shared_ptr<Texture> image(
-            bool another_domain = false
-        ) {
+        std::shared_ptr<Texture> image(bool another_domain = false) {
             auto domain = lifetime_;
             if (another_domain) {
                 domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -615,9 +388,7 @@ namespace {
             const unsigned char pixels[]{255, 255, 255, 255};
             return std::make_shared<Texture>(domain, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
         }
-        std::shared_ptr<CE::VAO> geometry(
-            bool another_domain = false
-        ) {
+        std::shared_ptr<CE::VAO> geometry(bool another_domain = false) {
             auto domain = lifetime_;
             if (another_domain) {
                 domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -638,9 +409,7 @@ namespace {
         int releases = 0;
         mutable int queries = 0;
 
-        explicit RecordingContext(
-            NativeProgramRecorder& native
-        )
+        explicit RecordingContext(NativeProgramRecorder& native)
         : native_(native) {}
 
         void make_current() override {
@@ -661,17 +430,13 @@ namespace {
             ++queries;
             return native_.is_current();
         }
-        [[nodiscard]] ProcAddress proc_address(
-            const char*
-        ) const override {
+        [[nodiscard]] ProcAddress proc_address(const char*) const override {
             throw std::logic_error("Recording entries are already installed");
         }
         void present() override {}
     };
 
-    PipelineDefinition time_definition(
-        bool required = true
-    ) {
+    PipelineDefinition time_definition(bool required = true) {
         PipelineDefinition definition;
         definition.program_sources = {"effect.vert", "effect.frag"};
         definition.parameters = {{"time", ParameterType::Float, required}};
@@ -679,10 +444,7 @@ namespace {
     }
 }
 
-TEST(
-    opengl_renderer,
-    startup_failure
-) {
+TEST(opengl_renderer, startup_failure) {
     for (const std::string operation : {"pending", "loader", "enable", "blend", "clear"}) {
         for (const bool release_failure : {false, true}) {
             SCOPED_TRACE(operation);
@@ -726,10 +488,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_renderer,
-    context_loss_ownership
-) {
+TEST(opengl_renderer, context_loss_ownership) {
     for (const bool recover : {false, true}) {
         for (const bool release_failure : {false, true}) {
             SCOPED_TRACE(recover ? "recover" : "abandon");
@@ -778,11 +537,15 @@ TEST(
             EXPECT_THROW(renderer->render(frame), CE::Exceptions::failed_operation);
             EXPECT_EQ(native.state_changes, before_loss);
             EXPECT_TRUE(native.draws.empty());
-            EXPECT_THROW(cache.reload_material(key, *provider,
-                             [&](ResourceProvider& value) {
-                                 return static_cast<OpenGLResourceProvider&>(value).build_material(retained->definition());
-                             }),
-                CE::Exceptions::failed_operation);
+            EXPECT_THROW(
+                cache.reload_material(
+                    key, *provider,
+                    [&](ResourceProvider& value) {
+                        return static_cast<OpenGLResourceProvider&>(value).build_material(retained->definition());
+                    }
+                ),
+                CE::Exceptions::failed_operation
+            );
             EXPECT_EQ(cache.get_asset(key), retained);
             cache.clear_assets();
             provider.reset();
@@ -827,10 +590,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_lifetime,
-    generation_context_loss
-) {
+TEST(opengl_lifetime, generation_context_loss) {
     NativeProgramRecorder native;
     auto retained = native.image();
     native.fail_generation = GLResourceKind::Buffer;
@@ -871,10 +631,7 @@ TEST(
     EXPECT_EQ(native.deleted.size(), after_shutdown);
 }
 
-TEST(
-    opengl_lifetime,
-    upload_context_loss
-) {
+TEST(opengl_lifetime, upload_context_loss) {
     for (const bool geometry : {false, true}) {
         SCOPED_TRACE(geometry ? "geometry" : "image");
         NativeProgramRecorder native;
@@ -907,10 +664,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_pipeline,
-    two_image_effect
-) {
+TEST(opengl_pipeline, two_image_effect) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uColor", GL_FLOAT_VEC4, 1, 6}, {"uCamera", GL_FLOAT_MAT4, 1, 7},
         {"uBase", GL_SAMPLER_2D, 1, 8}, {"uMask", GL_SAMPLER_2D, 1, 9}};
@@ -941,10 +695,7 @@ TEST(
     EXPECT_NE(native.image_binds[0].second, native.image_binds[1].second);
 }
 
-TEST(
-    opengl_pipeline,
-    optional_uniform_reset
-) {
+TEST(opengl_pipeline, optional_uniform_reset) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     const auto program = native.program();
@@ -957,10 +708,7 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<float>(native.writes.at(5)), 0.0f);
 }
 
-TEST(
-    opengl_pipeline,
-    inactive_optional_uniforms
-) {
+TEST(opengl_pipeline, inactive_optional_uniforms) {
     NativeProgramRecorder native;
     GLSLPipeline pipeline(time_definition(false), native.program(), {{{"time", "uTime"}}});
     pipeline.bind_parameters({});
@@ -968,10 +716,7 @@ TEST(
     EXPECT_TRUE(native.writes.empty());
 }
 
-TEST(
-    opengl_pipeline,
-    invalid_uniform_contract
-) {
+TEST(opengl_pipeline, invalid_uniform_contract) {
     NativeProgramRecorder native;
     const auto program = native.program();
     const auto definition = time_definition();
@@ -989,10 +734,7 @@ TEST(
     EXPECT_TRUE(native.writes.empty());
 }
 
-TEST(
-    opengl_pipeline,
-    invalid_program_attributes
-) {
+TEST(opengl_pipeline, invalid_program_attributes) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     const auto program = native.program();
@@ -1004,10 +746,7 @@ TEST(
     EXPECT_EQ(native.uses, 0);
 }
 
-TEST(
-    opengl_pipeline,
-    invalid_sampler_bindings
-) {
+TEST(opengl_pipeline, invalid_sampler_bindings) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uImage", GL_SAMPLER_2D, 1, 6}};
     auto definition = time_definition();
@@ -1024,10 +763,7 @@ TEST(
     EXPECT_TRUE(native.image_binds.empty());
 }
 
-TEST(
-    opengl_pipeline,
-    per_draw_state
-) {
+TEST(opengl_pipeline, per_draw_state) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     auto geometry = native.geometry();
@@ -1058,10 +794,7 @@ TEST(
     EXPECT_EQ(native.draws, (std::vector<std::pair<GLint, GLsizei>>{{0, 6}, {0, 3}}));
 }
 
-TEST(
-    opengl_pipeline,
-    draw_validation
-) {
+TEST(opengl_pipeline, draw_validation) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     GLSLPipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
@@ -1080,10 +813,7 @@ TEST(
     EXPECT_TRUE(native.draws.empty());
 }
 
-TEST(
-    opengl_texture,
-    explicit_unbind_unit
-) {
+TEST(opengl_texture, explicit_unbind_unit) {
     NativeProgramRecorder native;
     auto first = native.image();
     auto second = native.image();
@@ -1094,10 +824,7 @@ TEST(
     EXPECT_EQ(native.image_binds, (std::vector<std::pair<std::uint32_t, GLuint>>{{1, 0}}));
 }
 
-TEST(
-    opengl_upload,
-    buffer_upload_failure
-) {
+TEST(opengl_upload, buffer_upload_failure) {
     NativeProgramRecorder native;
     native.fail_buffer_upload = 1;
     EXPECT_THROW(static_cast<void>(native.geometry()), CE::Exceptions::failed_operation);
@@ -1115,10 +842,7 @@ TEST(
     EXPECT_EQ(native.deleted.size(), 2u);
 }
 
-TEST(
-    opengl_upload,
-    texture_registry_failure
-) {
+TEST(opengl_upload, texture_registry_failure) {
     NativeProgramRecorder native;
     native.reject_registration(1);
     EXPECT_THROW((void)native.image(), std::bad_alloc);
@@ -1130,10 +854,7 @@ TEST(
     EXPECT_EQ(native.deleted.size(), 1u);
 }
 
-TEST(
-    opengl_upload,
-    geometry_registry_failure
-) {
+TEST(opengl_upload, geometry_registry_failure) {
     for (const int registration : {1, 2}) {
         SCOPED_TRACE(registration);
         NativeProgramRecorder native;
@@ -1154,10 +875,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_upload,
-    mesh_registry_failure
-) {
+TEST(opengl_upload, mesh_registry_failure) {
     for (const int registration : {1, 2, 3}) {
         SCOPED_TRACE(registration);
         NativeProgramRecorder native;
@@ -1180,10 +898,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_upload,
-    anisotropy_query_failure
-) {
+TEST(opengl_upload, anisotropy_query_failure) {
     NativeProgramRecorder native;
     native.enable_anisotropy();
     native.fail_anisotropy_query = true;
@@ -1200,18 +915,16 @@ TEST(
     EXPECT_EQ(native.deleted.size(), 1u);
 }
 
-TEST(
-    opengl_upload,
-    texture_query_failure
-) {
+TEST(opengl_upload, texture_query_failure) {
     for (const GLenum parameter : {GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, GL_UNPACK_ALIGNMENT}) {
         SCOPED_TRACE(parameter);
         NativeProgramRecorder native;
         native.fail_integer_query = parameter;
         native.unpack_alignment = 8;
         const unsigned char alpha[]{255};
-        EXPECT_THROW((void)Texture(native.lifetime(), alpha, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RED),
-            CE::Exceptions::failed_operation);
+        EXPECT_THROW(
+            (void)Texture(native.lifetime(), alpha, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RED), CE::Exceptions::failed_operation
+        );
         EXPECT_EQ(native.image_uploads, 0);
         EXPECT_EQ(native.unpack_alignment, 8);
         EXPECT_TRUE(native.deleted.empty());
@@ -1223,10 +936,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_upload,
-    mesh_upload_failure
-) {
+TEST(opengl_upload, mesh_upload_failure) {
     for (const int failed_upload : {1, 2}) {
         NativeProgramRecorder native;
         native.fail_buffer_upload = failed_upload;
@@ -1248,15 +958,13 @@ TEST(
     }
 }
 
-TEST(
-    opengl_upload,
-    atlas_upload_failure
-) {
+TEST(opengl_upload, atlas_upload_failure) {
     NativeProgramRecorder native;
     native.fail_image_upload = true;
     const unsigned char pixels[]{255, 255, 255};
-    EXPECT_THROW(static_cast<void>(Texture(native.lifetime(), pixels, 3, 1, true, false, GL_CLAMP_TO_EDGE, GL_RED)),
-        CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(Texture(native.lifetime(), pixels, 3, 1, true, false, GL_CLAMP_TO_EDGE, GL_RED)), CE::Exceptions::failed_operation
+    );
     EXPECT_EQ(native.unpack_alignment, 4);
     EXPECT_EQ(native.mipmap_calls, 0);
     ASSERT_EQ(native.generated.size(), 1u);
@@ -1267,15 +975,14 @@ TEST(
     EXPECT_EQ(native.deleted.size(), 1u);
 }
 
-TEST(
-    opengl_upload,
-    mipmap_generation_failure
-) {
+TEST(opengl_upload, mipmap_generation_failure) {
     NativeProgramRecorder native;
     native.fail_mipmaps = true;
     const unsigned char pixels[]{255, 255, 255, 255};
-    EXPECT_THROW(static_cast<void>(Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA)),
-        CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA)),
+        CE::Exceptions::failed_operation
+    );
     EXPECT_EQ(native.mipmap_calls, 1);
     EXPECT_TRUE(native.deleted.empty());
     native.collect();
@@ -1283,10 +990,7 @@ TEST(
     EXPECT_EQ(native.deleted, native.generated);
 }
 
-TEST(
-    opengl_upload,
-    pending_creation_errors
-) {
+TEST(opengl_upload, pending_creation_errors) {
     NativeProgramRecorder native;
     native.pending_error(GL_INVALID_OPERATION);
     EXPECT_THROW(static_cast<void>(native.image()), CE::Exceptions::failed_operation);
@@ -1296,10 +1000,7 @@ TEST(
     EXPECT_TRUE(native.deleted.empty());
 }
 
-TEST(
-    opengl_upload,
-    generation_failure_cleanup
-) {
+TEST(opengl_upload, generation_failure_cleanup) {
     for (const auto kind : {GLResourceKind::Texture, GLResourceKind::VertexArray, GLResourceKind::Buffer}) {
         NativeProgramRecorder native;
         native.fail_generation = kind;
@@ -1323,10 +1024,7 @@ TEST(
     }
 }
 
-TEST(
-    opengl_texture,
-    unbind_context_guards
-) {
+TEST(opengl_texture, unbind_context_guards) {
     NativeProgramRecorder native;
     bool current = true;
     int queries = 0;

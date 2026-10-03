@@ -14,9 +14,7 @@
 
 namespace CE::Assets::ProgramDetail {
     namespace {
-        GLenum stage_type(
-            const std::filesystem::path& file
-        ) {
+        GLenum stage_type(const std::filesystem::path& file) {
             const auto extension = file.extension();
             if (extension == ".vert")
                 return GL_VERTEX_SHADER;
@@ -31,9 +29,7 @@ namespace CE::Assets::ProgramDetail {
             throw Exceptions::invalid_args(CE_HERE, "Unknown shader stage: " + file.string());
         }
 
-        std::string shader_log(
-            const GLuint shader
-        ) {
+        std::string shader_log(const GLuint shader) {
             GLint length = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
             RenderAPIs::require_no_gl_error("Could not query shader log length");
@@ -46,9 +42,7 @@ namespace CE::Assets::ProgramDetail {
             return log;
         }
 
-        std::string program_log(
-            const GLuint program
-        ) {
+        std::string program_log(const GLuint program) {
             GLint length = 0;
             glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
             RenderAPIs::require_no_gl_error("Could not query program log length");
@@ -116,8 +110,9 @@ namespace CE::Assets::ProgramDetail {
             glGetShaderiv(shader.id, GL_COMPILE_STATUS, &compiled);
             RenderAPIs::require_no_gl_error("Could not query shader compile status");
             if (compiled != GL_TRUE)
-                throw Exceptions::runtime_exception(CE_HERE,
-                    "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id));
+                throw Exceptions::runtime_exception(
+                    CE_HERE, "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id)
+                );
             glAttachShader(program.id, shader.id);
             RenderAPIs::require_no_gl_error("Could not attach shader stage");
             attached_stages.push_back(shader.id);

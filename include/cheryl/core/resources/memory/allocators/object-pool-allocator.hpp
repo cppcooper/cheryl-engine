@@ -8,14 +8,14 @@ namespace CE::Mem {
      * construction. Standard deallocate receives the original allocation and
      * count; reservation handles return individual slots through that context.
      */
-    template<class T>
-    struct ObjectPoolAllocator final : std::allocator<T> {
+    template <class T> struct ObjectPoolAllocator final : std::allocator<T> {
         using Base = std::allocator<T>;
         using value_type = T;
         using manager_type = Obj::Pool<T>;
         using context_type = typename manager_type::release_context_type;
 
-        ObjectPoolAllocator() : context_(manager_type::get().release_context()) {}
+        ObjectPoolAllocator()
+        : context_(manager_type::get().release_context()) {}
         [[nodiscard]] std::shared_ptr<context_type> context() const { return context_; }
 
         // Override the allocate function
@@ -25,17 +25,14 @@ namespace CE::Mem {
         }
 
         // Override the deallocate function
-        void deallocate(T* ptr, std::size_t N) {
-            context_->return_objects(ptr, N);
-        }
+        void deallocate(T* ptr, std::size_t N) { context_->return_objects(ptr, N); }
 
     private:
         std::shared_ptr<context_type> context_;
     };
 }
 
-template<typename T>
-struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_traits<std::allocator<T>> {
+template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_traits<std::allocator<T>> {
     using allocator_type = CE::Mem::ObjectPoolAllocator<T>;
     using value_type = typename allocator_type::value_type;
     using pointer = value_type*;
@@ -51,9 +48,7 @@ struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_t
     using propagate_on_container_copy_assignment = std::true_type;
 
     // Allocate memory for n objects
-    static pointer allocate(allocator_type& alloc, size_type n) {
-        return alloc.allocate(n);
-    }
+    static pointer allocate(allocator_type& alloc, size_type n) { return alloc.allocate(n); }
 
     // Allocate memory for n objects
     static pointer allocate(size_type n) {
@@ -62,9 +57,7 @@ struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_t
     }
 
     // Deallocate memory for n objects
-    static void deallocate(allocator_type& alloc, pointer p, size_type n) {
-        alloc.deallocate(p, n);
-    }
+    static void deallocate(allocator_type& alloc, pointer p, size_type n) { alloc.deallocate(p, n); }
 
     // Deallocate memory for n objects
     static void deallocate(pointer p, size_type n) {
@@ -73,35 +66,26 @@ struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_t
     }
 
     // Construct N objects of type T at the given location
-    template<typename... Args>
-    static void construct(T* p, std::size_t N, Args&&... args) {
+    template <typename... Args> static void construct(T* p, std::size_t N, Args&&... args) {
         CE::Obj::ObjCtor<T>::construct(p, N, std::forward<Args>(args)...);
     }
 
     // Construct an object of type T at the given location
-    template<typename... Args>
-    static void construct(allocator_type& alloc, T* p, Args&&... args) {
+    template <typename... Args> static void construct(allocator_type& alloc, T* p, Args&&... args) {
         CE::Obj::ObjCtor<T>::construct(p, 1ull, std::forward<Args>(args)...);
     }
 
     // Construct an object of type T at the given location
-    template<typename... Args>
-    static void construct(T* p, Args&&... args) {
+    template <typename... Args> static void construct(T* p, Args&&... args) {
         CE::Obj::ObjCtor<T>::construct(p, 1ull, std::forward<Args>(args)...);
     }
 
     // Destroy an object of type T at the given location
-    static void destroy(T* p, std::size_t N) {
-        CE::Obj::ObjCtor<T>::destroy(p, N);
-    }
+    static void destroy(T* p, std::size_t N) { CE::Obj::ObjCtor<T>::destroy(p, N); }
 
     // Destroy an object of type T at the given location
-    static void destroy(allocator_type& alloc, T* p) {
-        CE::Obj::ObjCtor<T>::destroy(p);
-    }
+    static void destroy(allocator_type& alloc, T* p) { CE::Obj::ObjCtor<T>::destroy(p); }
 
     // Destroy an object of type T at the given location
-    static void destroy(T* p) {
-        CE::Obj::ObjCtor<T>::destroy(p);
-    }
+    static void destroy(T* p) { CE::Obj::ObjCtor<T>::destroy(p); }
 };

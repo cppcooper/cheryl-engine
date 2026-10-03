@@ -15,12 +15,7 @@ namespace {
         CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::TriangleStrip; }
         std::size_t vertex_count() const noexcept override { return 16; }
         void bind() const override { FAIL() << "Frame preparation must not bind geometry"; }
-        void draw(
-            std::size_t,
-            std::size_t
-        ) const override {
-            FAIL() << "Frame preparation must not draw geometry";
-        }
+        void draw(std::size_t, std::size_t) const override { FAIL() << "Frame preparation must not draw geometry"; }
     };
     class FramePipeline final : public CE::Assets::Pipeline {
     public:
@@ -66,10 +61,7 @@ namespace {
     }
 }
 
-TEST(
-    sprite_playback,
-    independent_clocks
-) {
+TEST(sprite_playback, independent_clocks) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto first = sprite->animation("walk");
@@ -88,10 +80,7 @@ TEST(
     EXPECT_EQ(first.definition().frames.size(), 4u);
 }
 
-TEST(
-    sprite_playback,
-    nonlooping_last_frame
-) {
+TEST(sprite_playback, nonlooping_last_frame) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto fall = sprite->animation("fall");
@@ -104,10 +93,7 @@ TEST(
     EXPECT_EQ(fall.cell(), 0u);
 }
 
-TEST(
-    render_frame,
-    immutable_publication
-) {
+TEST(render_frame, immutable_publication) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
     auto playback = sprite->animation("walk");
@@ -135,10 +121,7 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<glm::mat4>(draw.parameters.at("model"))[3][0], 5.0f);
 }
 
-TEST(
-    render_frame,
-    slot_recycling
-) {
+TEST(render_frame, slot_recycling) {
     auto sprite = make_sprite();
     std::weak_ptr<const CE::Assets::Geometry2D> retained = sprite->geometry;
     CE::RenderAPIs::RenderFrame frame;
@@ -183,10 +166,7 @@ TEST(
     EXPECT_FLOAT_EQ(frame.passes()[0].view[3][0], -6.0f);
 }
 
-TEST(
-    render_frame,
-    invalid_draw_group
-) {
+TEST(render_frame, invalid_draw_group) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);
@@ -201,10 +181,7 @@ TEST(
     EXPECT_EQ(frame.passes()[0].draws.size(), 1u);
 }
 
-TEST(
-    render_frame,
-    conflicting_pass_state
-) {
+TEST(render_frame, conflicting_pass_state) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);

@@ -7,12 +7,14 @@
 
 namespace CE::Input {
     TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls)
-    : TickInput(previous,
-        polls,
-        previous ? previous->observed_at() : InputClock::time_point{},
-        !polls.empty() && polls.back() ? polls.back()->observed_at()
-            : previous ? previous->observed_at()
-            : InputClock::time_point{}) {}
+    : TickInput(
+          previous,
+          polls,
+          previous ? previous->observed_at() : InputClock::time_point{},
+          !polls.empty() && polls.back() ? polls.back()->observed_at()
+          : previous                     ? previous->observed_at()
+                                         : InputClock::time_point{}
+      ) {}
 
     TickInput::TickInput(
         std::shared_ptr<const ActionSnapshot> previous,
@@ -85,5 +87,7 @@ namespace CE::Input {
         return {latest.current, baseline.kind == AxisKind::Absolute ? baseline.current : 0.0f, AxisKind::Absolute};
     }
 
-    std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const { return polls_.empty() ? previous_ : polls_.back(); }
+    std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const {
+        return polls_.empty() ? previous_ : polls_.back();
+    }
 }

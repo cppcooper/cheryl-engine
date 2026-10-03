@@ -53,38 +53,25 @@ namespace {
             return {};
         }
 
-        return {
-            std::istreambuf_iterator<char>{file},
-            std::istreambuf_iterator<char>{}
-        };
+        return {std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
     }
 
     void expect_contains(const std::string& text, const std::string& fragment) {
-        EXPECT_NE(text.find(fragment), std::string::npos)
-            << "Expected log output to contain: " << fragment;
+        EXPECT_NE(text.find(fragment), std::string::npos) << "Expected log output to contain: " << fragment;
     }
 
-    template <const char* name>
-    class TestLog final : public Log<name> {
+    template <const char* name> class TestLog final : public Log<name> {
     public:
         explicit TestLog(spdlog::file_event_handlers event_handlers = {})
         : Log<name>(std::move(event_handlers)) {}
 
-        [[nodiscard]] std::shared_ptr<spdlog::logger> retain_logger() const {
-            return this->m_logger.load();
-        }
+        [[nodiscard]] std::shared_ptr<spdlog::logger> retain_logger() const { return this->m_logger.load(); }
 
-        [[nodiscard]] spdlog::level logger_level() const {
-            return this->m_logger.load()->log_level();
-        }
+        [[nodiscard]] spdlog::level logger_level() const { return this->m_logger.load()->log_level(); }
 
-        [[nodiscard]] spdlog::level file_level() const {
-            return this->m_file.load()->log_level();
-        }
+        [[nodiscard]] spdlog::level file_level() const { return this->m_file.load()->log_level(); }
 
-        [[nodiscard]] spdlog::level console_level() const {
-            return this->m_console.load()->log_level();
-        }
+        [[nodiscard]] spdlog::level console_level() const { return this->m_console.load()->log_level(); }
     };
 
     class DefaultLoggerGuard final {
@@ -116,9 +103,7 @@ TEST(logging, close_completes_file) {
 
     std::atomic<int> close_events = 0;
     spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t&) {
-        ++close_events;
-    };
+    handlers.after_close = [&close_events](const spdlog::filename_t&) { ++close_events; };
 
     TestLog<file_barrier_name> log{handlers};
     const auto path = log.get_file_path();
@@ -159,9 +144,7 @@ TEST(logging, destructor_closes_file) {
 
     std::atomic<int> close_events = 0;
     spdlog::file_event_handlers handlers;
-    handlers.after_close = [&close_events](const spdlog::filename_t&) {
-        ++close_events;
-    };
+    handlers.after_close = [&close_events](const spdlog::filename_t&) { ++close_events; };
 
     DefaultLoggerGuard default_guard;
     fs::path path;
@@ -352,9 +335,7 @@ TEST(logging, opening_state) {
 
     // Hold reconstruction inside the file-open callback so the public API can be exercised while
     // the lifecycle is observably Opening without relying on scheduler timing.
-    auto reopening = std::async(std::launch::async, [&] {
-        log.reopen();
-    });
+    auto reopening = std::async(std::launch::async, [&] { log.reopen(); });
     open_entered.wait();
 
     EXPECT_THROW(log.reopen(), Exceptions::bad_request);
@@ -447,17 +428,13 @@ TEST(logging, wrapper_timeout_and_writes) {
     // Both direct wrapper calls and LogLineStream destructor-based macros must remain non-throwing
     // while Closing because they now target the null fallback.
     EXPECT_NO_THROW(Logger<wrapper_name>::warn("discarded-wrapper-write"));
-    EXPECT_NO_THROW({
-        UWARN(wrapper_name) << "discarded-compile-time-write";
-        });
+    EXPECT_NO_THROW({ UWARN(wrapper_name) << "discarded-compile-time-write"; });
 
     retained_logger.reset();
     EXPECT_NO_THROW(Logger<wrapper_name>::close(close_timeout));
 
     // Closed has the same write contract, and the wrapper retains its legacy zero-argument close.
-    EXPECT_NO_THROW({
-        UERROR(wrapper_name) << "discarded-closed-compile-time-write";
-        });
+    EXPECT_NO_THROW({ UERROR(wrapper_name) << "discarded-closed-compile-time-write"; });
     EXPECT_NO_THROW(Logger<wrapper_name>::reopen());
     EXPECT_NO_THROW(Logger<wrapper_name>::close());
 }

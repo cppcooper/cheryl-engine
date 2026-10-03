@@ -17,9 +17,7 @@ namespace CE {
     using namespace VAONumbers;
 
     namespace {
-        RenderAPIs::OpenGLHandle create_vertex_array(
-            const std::shared_ptr<RenderAPIs::OpenGLResourceLifetime>& lifetime
-        ) {
+        RenderAPIs::OpenGLHandle create_vertex_array(const std::shared_ptr<RenderAPIs::OpenGLResourceLifetime>& lifetime) {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL upload needs a resource lifetime");
             lifetime->require_current();
@@ -35,9 +33,7 @@ namespace CE {
             }
         }
 
-        RenderAPIs::OpenGLHandle create_buffer(
-            const std::shared_ptr<RenderAPIs::OpenGLResourceLifetime>& lifetime
-        ) {
+        RenderAPIs::OpenGLHandle create_buffer(const std::shared_ptr<RenderAPIs::OpenGLResourceLifetime>& lifetime) {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL upload needs a resource lifetime");
             lifetime->require_current();
@@ -58,10 +54,7 @@ namespace CE {
         glBindVertexArray(vao_.id());
     }
 
-    void VAO::require_draw(
-        const std::size_t first_vertex,
-        const std::size_t vertex_count
-    ) const {
+    void VAO::require_draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
         (void)vao_.id();
         if (first_vertex > vertex_count_ || vertex_count > vertex_count_ - first_vertex)
             throw Exceptions::invalid_args(CE_HERE, "Draw range exceeds uploaded geometry");
@@ -69,20 +62,14 @@ namespace CE {
             throw Exceptions::invalid_args(CE_HERE, "Indexed meshes cannot be drawn as 2D geometry");
     }
 
-    void VAO::draw(
-        const std::size_t first_vertex,
-        const std::size_t vertex_count
-    ) const {
+    void VAO::draw(const std::size_t first_vertex, const std::size_t vertex_count) const {
         require_draw(first_vertex, vertex_count);
         const GLenum mode = topology_ == Assets::PrimitiveTopology::TriangleStrip ? GL_TRIANGLE_STRIP : GL_TRIANGLES;
         glDrawArrays(mode, static_cast<GLint>(first_vertex), static_cast<GLsizei>(vertex_count));
     }
 
     namespace {
-        std::span<const Vertex2D> vertex_view(
-            const std::shared_ptr<Vertex2D>& vertices,
-            const std::uint32_t count
-        ) {
+        std::span<const Vertex2D> vertex_view(const std::shared_ptr<Vertex2D>& vertices, const std::uint32_t count) {
             if (!vertices || count == 0)
                 throw Exceptions::invalid_args(CE_HERE, "Cannot upload empty geometry");
             return {vertices.get(), count};

@@ -55,8 +55,7 @@
  * alive; head may point into it after a split. length counts T objects (bytes for void).
  * Splitting produces ranges with the same owner without transferring storage.
  */
-template <typename T>
-struct Block {
+template <typename T> struct Block {
     using spointer = std::shared_ptr<T>;
     using OBlock = std::optional<Block>;
     spointer owner = {nullptr};
@@ -77,11 +76,9 @@ struct Block {
     }
 };
 
-template <typename T>
-using OBlock = typename Block<T>::OBlock;
+template <typename T> using OBlock = typename Block<T>::OBlock;
 
-template <typename T>
-typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
+template <typename T> typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
     using namespace CE;
     // Keep the left range in place and give the right range an alias to the
     // same owner; splitting bookkeeping must not free or copy the allocation.
@@ -103,8 +100,7 @@ typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
     return std::make_optional(R);
 }
 
-template <typename T>
-typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
+template <typename T> typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     using namespace CE;
     if constexpr (!std::is_void_v<T>) {
         return split_exactly(idx);
@@ -133,38 +129,36 @@ typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
     }
 }
 
-template <typename T>
-bool Block<T>::contains(void* p) const {
+template <typename T> bool Block<T>::contains(void* p) const {
     using namespace CE;
     constexpr auto element_size = [] {
-        if constexpr (std::is_void_v<T>) return std::size_t{1};
-        else return sizeof(T);
+        if constexpr (std::is_void_v<T>)
+            return std::size_t{1};
+        else
+            return sizeof(T);
     }();
-    return ptr::is_in_range(reinterpret_cast<std::uintptr_t>(head.get()),
-        ptr::offset_address(head.get(), length * element_size),
-        reinterpret_cast<std::uintptr_t>(p));
+    return ptr::is_in_range(
+        reinterpret_cast<std::uintptr_t>(head.get()), ptr::offset_address(head.get(), length * element_size),
+        reinterpret_cast<std::uintptr_t>(p)
+    );
 }
 
-template <typename T, typename U>
-bool operator==(const Block<U>& lhs, const Block<T>& rhs) {
-    return static_cast<void*>(lhs.owner.get()) == static_cast<void*>(rhs.owner.get())
-        && static_cast<void*>(lhs.head.get()) == static_cast<void*>(rhs.head.get())
-        && lhs.alignment == rhs.alignment
-        && lhs.length == rhs.length;
+template <typename T, typename U> bool operator==(const Block<U>& lhs, const Block<T>& rhs) {
+    return static_cast<void*>(lhs.owner.get()) == static_cast<void*>(rhs.owner.get()) &&
+           static_cast<void*>(lhs.head.get()) == static_cast<void*>(rhs.head.get()) && lhs.alignment == rhs.alignment &&
+           lhs.length == rhs.length;
 }
 
 namespace BlockHelpers {
     using namespace CE;
 
-    template <typename T>
-    void swap(Block<T>& A, Block<T>& B) noexcept {
+    template <typename T> void swap(Block<T>& A, Block<T>& B) noexcept {
         const Block<T> C = A;
         A = B;
         B = C;
     }
 
-    template <typename T>
-    bool is_contiguous(Block<T> A, Block<T> B) {
+    template <typename T> bool is_contiguous(Block<T> A, Block<T> B) {
         if (A == B) {
             return false;
         }
@@ -184,8 +178,7 @@ namespace BlockHelpers {
 
 namespace compare {
     // head pointers in ascending order
-    template <typename T>
-    struct HeadOrder {
+    template <typename T> struct HeadOrder {
         bool operator()(const Block<T>& lhs, const Block<T>& rhs) const {
             if (lhs.head.get() != rhs.head.get()) {
                 return lhs.head.get() < rhs.head.get();
@@ -198,8 +191,7 @@ namespace compare {
     };
 
     // sub-block < master-block
-    template <typename T>
-    struct RegistryOrder {
+    template <typename T> struct RegistryOrder {
         bool operator()(const Block<T>& a, const Block<T>& b) const {
             if (a.owner.get() != b.owner.get()) {
                 return a.owner.get() < b.owner.get();
@@ -209,8 +201,7 @@ namespace compare {
     };
 
     // most likely to fill request > least likely to fill request
-    template <typename T>
-    struct PoolOrder {
+    template <typename T> struct PoolOrder {
         bool operator()(const Block<T>& lhs, const Block<T>& rhs) const {
             if (lhs.alignment != rhs.alignment) {
                 return lhs.alignment > rhs.alignment;
@@ -236,8 +227,7 @@ namespace compare {
  * stale timestamps complete free owners; release queues them for culling.
  * A retained State keeps this bookkeeping alive after a manager facade dies.
  */
-template <typename T>
-struct BlockManagement {
+template <typename T> struct BlockManagement {
     using clock = std::chrono::steady_clock;
     using tpoint = std::chrono::time_point<clock>;
 
@@ -268,8 +258,7 @@ protected:
 };
 
 /** Virtual lookup, merge, and culling interface for block managers. */
-template <typename T>
-struct iManage {
+template <typename T> struct iManage {
     friend class Test_iManage;
 
 protected:
@@ -291,7 +280,8 @@ public:
  * shared sets. Derived managers decide how blocks are acquired and returned.
  */
 template <typename T>
-struct AbstractManager : BlockManagement<T>, iManage<T> {
+struct AbstractManager : BlockManagement<T>,
+                         iManage<T> {
     AbstractManager() = default;
     ~AbstractManager() override = default;
     using clock = typename BlockManagement<T>::clock;
@@ -317,9 +307,10 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
     void release_culled() override {
         // Recheck ownership and availability under all bookkeeping locks before dropping
         // the registry/pool references that retain an unused backing allocation.
-        std::scoped_lock lock(std::get<0>(this->registry), std::get<0>(this->sections),
-            std::get<0>(this->pool), std::get<0>(this->stale),
-            std::get<0>(this->release));
+        std::scoped_lock lock(
+            std::get<0>(this->registry), std::get<0>(this->sections), std::get<0>(this->pool), std::get<0>(this->stale),
+            std::get<0>(this->release)
+        );
         auto& registry = std::get<1>(this->registry);
         auto& sections = std::get<1>(this->sections);
         auto& pool = std::get<1>(this->pool);
@@ -330,8 +321,7 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
             // only its exact owner and exact free-pool record can be released.
             const auto owner = registry.find(block);
             const auto available = pool.find(block);
-            if (owner == registry.end() || *owner != block ||
-                available == pool.end() || *available != block) {
+            if (owner == registry.end() || *owner != block || available == pool.end() || *available != block) {
                 continue;
             }
             bool has_active_sections = false;
@@ -353,35 +343,25 @@ struct AbstractManager : BlockManagement<T>, iManage<T> {
     }
 
 protected:
-    template <typename Tuple>
-    static std::shared_mutex& get_mutex(Tuple& tuple) {
-        return std::get<0>(tuple);
-    }
+    template <typename Tuple> static std::shared_mutex& get_mutex(Tuple& tuple) { return std::get<0>(tuple); }
 
-    template <typename... Tuples>
-    static void read_lock(Tuples&... tuples) {
+    template <typename... Tuples> static void read_lock(Tuples&... tuples) {
         // Lambda to lock each shared mutex in shared mode
-        auto lock_shared_mutex = [](auto& tuple) {
-            std::get<0>(tuple).lock_shared();
-        };
+        auto lock_shared_mutex = [](auto& tuple) { std::get<0>(tuple).lock_shared(); };
 
         // Apply the lambda to each tuple
         (lock_shared_mutex(tuples), ...);
     }
 
-    template <typename... Tuples>
-    static void read_unlock(Tuples&... tuples) {
+    template <typename... Tuples> static void read_unlock(Tuples&... tuples) {
         // Lambda to lock each shared mutex in shared mode
-        auto lock_shared_mutex = [](auto& tuple) {
-            std::get<0>(tuple).unlock_shared();
-        };
+        auto lock_shared_mutex = [](auto& tuple) { std::get<0>(tuple).unlock_shared(); };
 
         // Apply the lambda to each tuple
         (lock_shared_mutex(tuples), ...);
     }
 
-    template <typename... Tuples>
-    static void emplace(Block<T> b, Tuples&... tuples) {
+    template <typename... Tuples> static void emplace(Block<T> b, Tuples&... tuples) {
         // Update each bookkeeping set under its own mutex. The sets are not
         // changed as one atomic transaction across these separate locks.
         auto lock_set = [](Block<T> b, auto&& pair) {
@@ -393,8 +373,7 @@ protected:
         (lock_set(b, std::forward<Tuples>(tuples)), ...);
     }
 
-    template <typename... Tuples>
-    static void erase(Block<T> b, Tuples&... tuples) {
+    template <typename... Tuples> static void erase(Block<T> b, Tuples&... tuples) {
         // Erase each selected record under that set's own mutex.
         auto lock_set = [](Block<T> b, auto&& pair) {
             std::unique_lock<std::remove_reference_t<decltype(std::get<0>(pair))>> lock(std::get<0>(pair));
@@ -405,8 +384,7 @@ protected:
         (lock_set(b, std::forward<Tuples>(tuples)), ...);
     }
 
-    template <typename... Tuples>
-    static bool contains(Block<T> b, Tuples&... tuples) {
+    template <typename... Tuples> static bool contains(Block<T> b, Tuples&... tuples) {
         // Require an exact block match: some set comparators equate records
         // with the same address even when their lengths differ.
         auto share_set = [](Block<T> b, auto&& pair) {
@@ -420,8 +398,7 @@ protected:
         return (share_set(b, std::forward<Tuples>(tuples)) && ...);
     }
 
-    template <typename Tuple>
-    OBlock<T> search_right(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> search_right(Block<T> block, Tuple& tuple) {
         // lower_bound can land on this block or another range at its start;
         // advance until the next higher address within the same owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
@@ -445,8 +422,7 @@ protected:
         return {std::nullopt};
     }
 
-    template <typename Tuple>
-    OBlock<T> search_left(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> search_left(Block<T> block, Tuple& tuple) {
         // Walk backward past the lower bound to find an earlier address,
         // stopping when the ordered records belong to a different owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
@@ -456,7 +432,8 @@ protected:
         while (iter != set.begin()) {
             --iter;
             if (iter->head.get() < block.head.get()) {
-                if (block.owner == iter->owner) return {*iter};
+                if (block.owner == iter->owner)
+                    return {*iter};
                 break;
             }
         }
@@ -464,8 +441,7 @@ protected:
         return {std::nullopt};
     }
 
-    template <typename Tuple>
-    OBlock<T> contiguous_right(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> contiguous_right(Block<T> block, Tuple& tuple) {
         MDEBUG() << "Looking for contiguous right..";
         auto ob = search_right(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
@@ -476,8 +452,7 @@ protected:
         return {std::nullopt};
     }
 
-    template <typename Tuple>
-    OBlock<T> contiguous_left(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> contiguous_left(Block<T> block, Tuple& tuple) {
         MDEBUG() << "Looking for contiguous left..";
         auto ob = search_left(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
@@ -488,8 +463,7 @@ protected:
         return {std::nullopt};
     }
 
-    template <typename Tuple>
-    OBlock<T> adjacent_right(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> adjacent_right(Block<T> block, Tuple& tuple) {
         MDEBUG() << "Looking for adjacent right..";
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
@@ -508,8 +482,7 @@ protected:
     }
 
     // Returns the predecessor in the set's ordering, which may differ from address order.
-    template <typename Tuple>
-    OBlock<T> adjacent_left(Block<T> block, Tuple& tuple) {
+    template <typename Tuple> OBlock<T> adjacent_left(Block<T> block, Tuple& tuple) {
         MDEBUG() << "Looking for adjacent left..";
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
@@ -525,9 +498,7 @@ protected:
 
     // iManage interface
     /////////////////////
-    void record_new(Block<T> block) override {
-        emplace(block, this->registry);
-    }
+    void record_new(Block<T> block) override { emplace(block, this->registry); }
 
     void mark_stale(Block<T> block) override {
         if (!contains(block, this->registry)) {
@@ -661,8 +632,7 @@ protected:
 };
 
 namespace std {
-    template <typename T>
-    struct hash<Block<T>> {
+    template <typename T> struct hash<Block<T>> {
         std::size_t operator()(const Block<T>& k) const noexcept {
             constexpr std::hash<std::shared_ptr<T>> hash_ptr;
             constexpr std::hash<std::align_val_t> hash_align;
@@ -675,33 +645,28 @@ namespace std {
         }
     };
 
-    template <typename T>
-    struct formatter<Block<T>> {
-        constexpr auto parse(std::format_parse_context& ctx) {
-            return ctx.begin();
-        }
+    template <typename T> struct formatter<Block<T>> {
+        constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
 
         auto format(const Block<T>& a, std::format_context& ctx) const {
-            return std::format_to(ctx.out(), "{} [alignment: {}, length: {}]",
-                static_cast<void*>(a.head.get()),
-                static_cast<std::size_t>(a.alignment),
-                a.length);
+            return std::format_to(
+                ctx.out(), "{} [alignment: {}, length: {}]", static_cast<void*>(a.head.get()), static_cast<std::size_t>(a.alignment),
+                a.length
+            );
         }
     };
 
-    template <typename S, typename T>
-    S& operator<<(S& os, const Block<T>& block) {
+    template <typename S, typename T> S& operator<<(S& os, const Block<T>& block) {
         //uint32_t owner = std::get<uint32_t>(CE::ptr::pointer_to_hash(block.owner.get(),4));
         auto owner = static_cast<void*>(block.owner.get());
-        os << std::format("{} [alignment: {}, length: {}({}), owner: {}]",
-            static_cast<void*>(block.head.get()),
-            static_cast<std::size_t>(block.alignment),
-            (void*)block.length, block.length, owner);
+        os << std::format(
+            "{} [alignment: {}, length: {}({}), owner: {}]", static_cast<void*>(block.head.get()),
+            static_cast<std::size_t>(block.alignment), (void*)block.length, block.length, owner
+        );
         return os;
     }
 
-    template <typename S>
-    S& operator<<(S& os, const std::align_val_t alignment) {
+    template <typename S> S& operator<<(S& os, const std::align_val_t alignment) {
         os << std::format("{}", static_cast<std::size_t>(alignment));
         return os;
     }

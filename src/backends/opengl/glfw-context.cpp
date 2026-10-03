@@ -28,7 +28,9 @@ namespace CE::RenderAPIs {
         glfwMakeContextCurrent(nullptr);
     }
 
-    bool GlfwOpenGLContext::is_current() const { return glfwGetCurrentContext() == window_.native_handle(); }
+    bool GlfwOpenGLContext::is_current() const {
+        return glfwGetCurrentContext() == window_.native_handle();
+    }
 
     GlfwOpenGLContext::ProcAddress GlfwOpenGLContext::proc_address(const char* name) const {
         if (!name)

@@ -9,10 +9,7 @@
 
 using namespace std::chrono_literals;
 
-TEST(
-    tick_context,
-    observed_and_simulated_time
-) {
+TEST(tick_context, observed_and_simulated_time) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -40,10 +37,7 @@ TEST(
     EXPECT_DOUBLE_EQ(later.button_simulation_seconds(move), 0.0);
 }
 
-TEST(
-    tick_context,
-    zero_observation_interval
-) {
+TEST(tick_context, zero_observation_interval) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -60,10 +54,7 @@ TEST(
     EXPECT_DOUBLE_EQ(tick.button_simulation_seconds(move), 0.020);
 }
 
-TEST(
-    tick_context,
-    input_during_recovery
-) {
+TEST(tick_context, input_during_recovery) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -83,10 +74,7 @@ TEST(
     EXPECT_TRUE(persistent.button(move).held());
 }
 
-TEST(
-    tick_context,
-    invalid_simulation_delta
-) {
+TEST(tick_context, invalid_simulation_delta) {
     CE::Input::InputBindings bindings;
     const CE::Input::TickInput input(bindings.action_snapshot(), {});
     const CE::GFramework::TickContext negative{-1.0, input, {}};
@@ -95,10 +83,7 @@ TEST(
     EXPECT_THROW((void)infinite.button_simulation_seconds(CE::Input::ActionId{1}), CE::Exceptions::invalid_args);
 }
 
-TEST(
-    tick_context,
-    recovery_input_consumption
-) {
+TEST(tick_context, recovery_input_consumption) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::DeviceBind wheel{2, 1};
@@ -114,8 +99,9 @@ TEST(
     bindings.on_delta(wheel, 3.0f);
     auto poll = std::make_shared<CE::Input::PollSnapshot>();
     poll->state = bindings.publish_actions(start + 100ms);
-    poll->records.push_back({1, start + 100ms, 1, CE::Input::DeviceKind::Keyboard,
-        CE::Input::ButtonEvent{32, CE::Input::ButtonPhase::Press}});
+    poll->records.push_back(
+        {1, start + 100ms, 1, CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{32, CE::Input::ButtonPhase::Press}}
+    );
     poll->records.push_back({2, start + 100ms, 1, CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{U'a'}});
 
     CE::GFramework::SimulationTimingOptions options;

@@ -22,42 +22,26 @@ namespace {
         PrimitiveTopology uploaded;
         mutable int native_calls = 0;
 
-        SubmissionGeometry(
-            std::size_t count,
-            PrimitiveTopology topology
-        )
+        SubmissionGeometry(std::size_t count, PrimitiveTopology topology)
         : count(count), uploaded(topology) {}
         VertexLayout2D vertex_layout() const noexcept override { return VertexLayout2D::Position3UV2; }
         PrimitiveTopology topology() const noexcept override { return uploaded; }
         std::size_t vertex_count() const noexcept override { return count; }
         void bind() const override { ++native_calls; }
-        void draw(
-            std::size_t,
-            std::size_t
-        ) const override {
-            ++native_calls;
-        }
+        void draw(std::size_t, std::size_t) const override { ++native_calls; }
     };
     struct SubmissionImage final : Image {
         mutable int native_calls = 0;
         PixelSize pixel_size() const override { return {16, 16}; }
-        void bind(
-            std::uint32_t
-        ) const override {
-            ++native_calls;
-        }
+        void bind(std::uint32_t) const override { ++native_calls; }
     };
     class SubmissionPipeline final : public Pipeline {
     public:
-        explicit SubmissionPipeline(
-            PrimitiveTopology topology
-        )
+        explicit SubmissionPipeline(PrimitiveTopology topology)
         : Pipeline(make_definition(topology)) {}
 
     private:
-        static PipelineDefinition make_definition(
-            PrimitiveTopology topology
-        ) {
+        static PipelineDefinition make_definition(PrimitiveTopology topology) {
             PipelineDefinition definition;
             definition.program_sources = {"submission.vert", "submission.frag"};
             definition.topology = topology;
@@ -68,9 +52,7 @@ namespace {
             return definition;
         }
     };
-    DrawStyle2D make_style(
-        PrimitiveTopology topology
-    ) {
+    DrawStyle2D make_style(PrimitiveTopology topology) {
         DrawStyle2D style;
         style.material = std::make_shared<Material>(MaterialDefinition{std::make_shared<SubmissionPipeline>(topology), {}});
         return style;
@@ -83,10 +65,7 @@ namespace {
     }
 }
 
-TEST(
-    asset_submission,
-    sprite_resource_retention
-) {
+TEST(asset_submission, sprite_resource_retention) {
     auto geometry = std::make_shared<SubmissionGeometry>(8, PrimitiveTopology::TriangleStrip);
     auto image = std::make_shared<SubmissionImage>();
     SpriteDefinition definition;
@@ -114,10 +93,7 @@ TEST(
     EXPECT_EQ(image->native_calls, 0);
 }
 
-TEST(
-    asset_submission,
-    text_layout_and_retention
-) {
+TEST(asset_submission, text_layout_and_retention) {
     auto geometry = std::make_shared<SubmissionGeometry>(font_character_count * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
     std::array<float, font_character_count> advances;
@@ -143,10 +119,7 @@ TEST(
     EXPECT_EQ(image->native_calls, 0);
 }
 
-TEST(
-    font_layout,
-    independent_font_banks
-) {
+TEST(font_layout, independent_font_banks) {
     auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
     std::array<float, num_chars_ffont> widths;
@@ -165,10 +138,7 @@ TEST(
     EXPECT_EQ(image->native_calls, 0);
 }
 
-TEST(
-    asset_submission,
-    legacy_text_transform
-) {
+TEST(asset_submission, legacy_text_transform) {
     auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
     std::array<float, num_chars_ffont> widths;
@@ -213,10 +183,7 @@ TEST(
     EXPECT_EQ(image->native_calls, 0);
 }
 
-TEST(
-    asset_submission,
-    tile_strip_ranges
-) {
+TEST(asset_submission, tile_strip_ranges) {
     using namespace std::chrono_literals;
     auto geometry = std::make_shared<SubmissionGeometry>(16, PrimitiveTopology::TriangleStrip);
     auto image = std::make_shared<SubmissionImage>();

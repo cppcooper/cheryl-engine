@@ -6,9 +6,7 @@
 #include <cmath>
 
 namespace CE::GFramework {
-    double TickContext::button_simulation_seconds(
-        const Input::ActionId action
-    ) const {
+    double TickContext::button_simulation_seconds(const Input::ActionId action) const {
         if (!std::isfinite(delta_seconds) || delta_seconds < 0.0)
             throw Exceptions::invalid_args(CE_HERE, "Input simulation contribution requires a finite nonnegative delta");
         const auto state = input.button(action);

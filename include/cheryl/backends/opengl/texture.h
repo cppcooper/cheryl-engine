@@ -40,17 +40,11 @@ namespace CE::Assets {
         [[nodiscard]] PixelSize pixel_size() const override {
             return {width > 0 ? static_cast<std::uint32_t>(width) : 0, height > 0 ? static_cast<std::uint32_t>(height) : 0};
         }
-        void bind(
-            std::uint32_t unit
-        ) const override;
-        void require_binding(
-            std::uint32_t unit
-        ) const;
+        void bind(std::uint32_t unit) const override;
+        void require_binding(std::uint32_t unit) const;
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return handle_.resource_domain(); }
         // Select the requested unit explicitly and require this texture's live context.
-        void unbind(
-            std::uint32_t unit
-        ) const;
+        void unbind(std::uint32_t unit) const;
     };
 }
 #endif

@@ -13,13 +13,14 @@
  */
 template <typename State, typename Trigger>
     requires std::copy_constructible<State> && std::copy_constructible<Trigger> && std::equality_comparable<State> &&
-    std::equality_comparable<Trigger>
+             std::equality_comparable<Trigger>
 class StateMachine {
 public:
     using Guard = std::function<bool()>;
     using Action = std::function<void()>;
 
-    explicit StateMachine(State initial) : state_(std::move(initial)) {}
+    explicit StateMachine(State initial)
+    : state_(std::move(initial)) {}
 
     void add_transition(State from, Trigger trigger, State to, Guard guard = {}, Action action = {}) {
         transitions_.push_back({std::move(from), std::move(trigger), std::move(to), std::move(guard), std::move(action)});

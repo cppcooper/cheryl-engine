@@ -17,11 +17,8 @@ namespace CE::Assets::FontDetail {
     // Private retry boundary. The production baker supplies stb's status; a
     // fixture can reject a real scoped vector allocation without global hooks.
     template <typename Baker, typename Allocator = std::allocator<unsigned char>>
-    [[nodiscard]] BakedAlphaAtlas<Allocator> bake_font_atlas(
-        const std::filesystem::path& path,
-        Baker&& bake,
-        const Allocator& allocator = Allocator{}
-    ) {
+    [[nodiscard]] BakedAlphaAtlas<Allocator>
+    bake_font_atlas(const std::filesystem::path& path, Baker&& bake, const Allocator& allocator = Allocator{}) {
         BakedAlphaAtlas<Allocator> atlas{std::vector<unsigned char, Allocator>(allocator), 256};
         while (true) {
             // Retry the whole printable range at double resolution; a partial

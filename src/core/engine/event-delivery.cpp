@@ -15,16 +15,11 @@ namespace {
         std::deque<CE::SubSystems::EventBus::Work> pending;
         bool scheduled = false;
 
-        WorkerStream(
-            CE::Engine::WorkerGroup value,
-            CE::Engine::DeliveryDetail::WorkerSubmission submission
-        )
+        WorkerStream(CE::Engine::WorkerGroup value, CE::Engine::DeliveryDetail::WorkerSubmission submission)
         : group(std::move(value)), submit(std::move(submission)) {}
     };
 
-    void abandon_stream(
-        const std::shared_ptr<WorkerStream>& stream
-    ) {
+    void abandon_stream(const std::shared_ptr<WorkerStream>& stream) {
         std::deque<CE::SubSystems::EventBus::Work> cancelled;
         {
             std::lock_guard lock(stream->mutex);
@@ -41,9 +36,7 @@ namespace {
         std::shared_ptr<WorkerStream> stream;
         std::atomic<PumpPhase> phase{PumpPhase::Preparing};
 
-        explicit WorkerPump(
-            std::shared_ptr<WorkerStream> value
-        )
+        explicit WorkerPump(std::shared_ptr<WorkerStream> value)
         : stream(std::move(value)) {}
     };
 
@@ -53,16 +46,10 @@ namespace {
         std::shared_ptr<WorkerPump> pump;
         bool entered = false;
 
-        explicit WorkerPumpJob(
-            std::shared_ptr<WorkerPump> value
-        )
+        explicit WorkerPumpJob(std::shared_ptr<WorkerPump> value)
         : pump(std::move(value)) {}
-        WorkerPumpJob(
-            WorkerPumpJob&&
-        ) noexcept = default;
-        WorkerPumpJob(
-            const WorkerPumpJob&
-        ) = delete;
+        WorkerPumpJob(WorkerPumpJob&&) noexcept = default;
+        WorkerPumpJob(const WorkerPumpJob&) = delete;
         ~WorkerPumpJob() {
             if (!pump || entered)
                 return;
@@ -74,9 +61,7 @@ namespace {
         }
     };
 
-    void drain_stream(
-        const std::shared_ptr<WorkerStream>& stream
-    ) {
+    void drain_stream(const std::shared_ptr<WorkerStream>& stream) {
         try {
             while (true) {
                 CE::SubSystems::EventBus::Work work;
@@ -101,35 +86,26 @@ namespace {
 }
 
 namespace CE::Engine {
-    SubSystems::EventBus::Delivery platform_event_delivery(
-        PlatformDispatcher::Submission endpoint
-    ) {
+    SubSystems::EventBus::Delivery platform_event_delivery(PlatformDispatcher::Submission endpoint) {
         return [endpoint = std::move(endpoint)](SubSystems::EventBus::Work work) {
             (void)endpoint.submit([work = std::move(work)](EngineContext&) mutable { work(); });
             return true;
         };
     }
 
-    SubSystems::EventBus::Delivery simulation_event_delivery(
-        SimulationDispatcher::Submission endpoint
-    ) {
+    SubSystems::EventBus::Delivery simulation_event_delivery(SimulationDispatcher::Submission endpoint) {
         return [endpoint = std::move(endpoint)](SubSystems::EventBus::Work work) {
             (void)endpoint.submit(std::move(work));
             return true;
         };
     }
 
-    SubSystems::EventBus::Delivery worker_event_delivery(
-        WorkerGroup group
-    ) {
+    SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group) {
         auto submit = [group](SubSystems::EventBus::Work work) { (void)group.submit(std::move(work)); };
         return DeliveryDetail::worker_stream_delivery(std::move(group), std::move(submit));
     }
 
-    SubSystems::EventBus::Delivery DeliveryDetail::worker_stream_delivery(
-        WorkerGroup group,
-        DeliveryDetail::WorkerSubmission submit
-    ) {
+    SubSystems::EventBus::Delivery DeliveryDetail::worker_stream_delivery(WorkerGroup group, DeliveryDetail::WorkerSubmission submit) {
         auto stream = std::make_shared<WorkerStream>(std::move(group), std::move(submit));
         return [stream](SubSystems::EventBus::Work work) {
             std::shared_ptr<WorkerPump> pump;

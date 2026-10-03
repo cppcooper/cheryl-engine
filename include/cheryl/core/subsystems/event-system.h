@@ -26,24 +26,9 @@ namespace CE::SubSystems {
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         );
-        void dispatch(
-            const std::string& event,
-            const std::any& payload
-        );
-        bool unregister_listener(
-            const Registration& registration
-        ) {
-            return bus_.unregister_listener(registration);
-        }
-        void wait_for_listener(
-            const Registration& registration
-        ) const {
-            bus_.wait_for_listener(registration);
-        }
-        bool unregister_and_wait(
-            const Registration& registration
-        ) {
-            return bus_.unregister_and_wait(registration);
-        }
+        void dispatch(const std::string& event, const std::any& payload);
+        bool unregister_listener(const Registration& registration) { return bus_.unregister_listener(registration); }
+        void wait_for_listener(const Registration& registration) const { bus_.wait_for_listener(registration); }
+        bool unregister_and_wait(const Registration& registration) { return bus_.unregister_and_wait(registration); }
     };
 }

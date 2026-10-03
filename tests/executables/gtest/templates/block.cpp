@@ -8,7 +8,6 @@
 #include <tuple>
 #include <cstdint>
 
-
 TEST(templates_block, range_splits) {
     auto backing = std::shared_ptr<char>(new char[16], [](char* p) { delete[] p; });
     auto* first_byte = backing.get();
@@ -246,8 +245,9 @@ class Test_iManage {
 public:
     ~Test_iManage() {
         BlockManagement<ManageProbeItem> bm;
-        std::scoped_lock lock(std::get<0>(bm.registry), std::get<0>(bm.sections),
-            std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release));
+        std::scoped_lock lock(
+            std::get<0>(bm.registry), std::get<0>(bm.sections), std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release)
+        );
         std::get<1>(bm.registry).clear();
         std::get<1>(bm.sections).clear();
         std::get<1>(bm.pool).clear();
@@ -268,8 +268,7 @@ public:
 TEST(templates_block, recycling_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
-        auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128],
-            [](ManageProbeItem* p) { delete[] p; });
+        auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128], [](ManageProbeItem* p) { delete[] p; });
         return Block<ManageProbeItem>{memory, memory, CE::ptr::calculate_alignment(memory.get()), 128};
     };
     auto first = make_owner();
@@ -372,7 +371,7 @@ TEST(templates_block, bookkeeping_checks) {
     pool.emplace(b1);
     pool.emplace(b4);
     pool.emplace(b5);
-    lpool.unlock(); // largest blocks contiguous (front of set)
+    lpool.unlock();                                // largest blocks contiguous (front of set)
     ASSERT_FALSE(checkContiguousBlocksInPool(bm)); // (b1,b4,b5)
     lpool.lock();
     pool.erase(b4);
@@ -393,7 +392,7 @@ TEST(templates_block, bookkeeping_checks) {
     lpool.lock();
     pool.erase(b4_2);
     pool.emplace(b2);
-    lpool.unlock(); // smallest blocks contiguous (back of set)
+    lpool.unlock();                                // smallest blocks contiguous (back of set)
     ASSERT_FALSE(checkContiguousBlocksInPool(bm)); // (b1, b2, b5)
 
     // A registry entry must describe the complete allocation. Stale and

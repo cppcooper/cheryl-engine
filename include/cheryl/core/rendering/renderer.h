@@ -19,27 +19,13 @@ namespace CE::RenderAPIs {
         // Platform/context-owner maintenance, even without a new frame. Deferred
         // resource backends collect final-owner retirements here; others may do nothing.
         virtual void maintain_resources() = 0;
-        virtual void render(
-            const RenderFrame& frame
-        ) = 0;
+        virtual void render(const RenderFrame& frame) = 0;
         virtual void clear() = 0;
-        virtual void set_viewport(
-            FramebufferSize size
-        ) = 0;
-        virtual void set_depth_test(
-            bool enabled
-        ) = 0;
-        virtual void set_clear_colour(
-            float r,
-            float g,
-            float b,
-            float a
-        ) = 0;
+        virtual void set_viewport(FramebufferSize size) = 0;
+        virtual void set_depth_test(bool enabled) = 0;
+        virtual void set_clear_colour(float r, float g, float b, float a) = 0;
         // A view supplied for a render pass; camera dimensionality does not set depth policy.
-        virtual void set_camera_matrices(
-            const glm::mat4& projection,
-            const glm::mat4& view
-        ) = 0;
+        virtual void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) = 0;
     };
 }
 

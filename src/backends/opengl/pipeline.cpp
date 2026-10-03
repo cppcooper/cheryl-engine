@@ -12,9 +12,7 @@
 
 namespace CE::Assets {
     namespace {
-        GLenum uniform_type(
-            const ParameterType type
-        ) {
+        GLenum uniform_type(const ParameterType type) {
             switch (type) {
                 case ParameterType::Float:
                     return GL_FLOAT;
@@ -38,20 +36,14 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "Unsupported GLSL parameter type");
         }
 
-        void validate_reset_value(
-            const ParameterDefinition& definition,
-            const ParameterValue& value
-        ) {
+        void validate_reset_value(const ParameterDefinition& definition, const ParameterValue& value) {
             if (definition.required || definition.semantic != ParameterSemantic::Custom || parameter_type(value) != definition.type)
                 throw Exceptions::invalid_args(CE_HERE, "Invalid optional uniform reset: " + definition.key);
             if (const auto* image = std::get_if<ImageBinding>(&value); image && !image->image)
                 throw Exceptions::invalid_args(CE_HERE, "Optional sampler reset needs an image: " + definition.key);
         }
 
-        void upload_parameter(
-            const GLint location,
-            const ParameterValue& value
-        ) {
+        void upload_parameter(const GLint location, const ParameterValue& value) {
             std::visit(
                 [location](const auto& item) {
                     using T = std::decay_t<decltype(item)>;
@@ -81,11 +73,7 @@ namespace CE::Assets {
         }
     }
 
-    GLSLPipeline::GLSLPipeline(
-        PipelineDefinition definition,
-        std::shared_ptr<GLSLProgram> program,
-        const GLSLPipelineBindings& bindings
-    )
+    GLSLPipeline::GLSLPipeline(PipelineDefinition definition, std::shared_ptr<GLSLProgram> program, const GLSLPipelineBindings& bindings)
     : Pipeline(std::move(definition)), program_(std::move(program)) {
         if (!program_)
             throw Exceptions::invalid_args(CE_HERE, "GLSL pipeline needs a linked program");
@@ -148,9 +136,7 @@ namespace CE::Assets {
         }
     }
 
-    void GLSLPipeline::validate_resources(
-        const ParameterSet& values
-    ) const {
+    void GLSLPipeline::validate_resources(const ParameterSet& values) const {
         program_->require_current();
         for (const auto& [key, value] : values) {
             const auto* binding = std::get_if<ImageBinding>(&value);
@@ -163,9 +149,7 @@ namespace CE::Assets {
         }
     }
 
-    ParameterSet GLSLPipeline::prepare_parameters(
-        const ParameterSet& values
-    ) const {
+    ParameterSet GLSLPipeline::prepare_parameters(const ParameterSet& values) const {
         program_->require_current();
         auto effective = values;
         // Fill absent active optional values before validation, so reset samplers
@@ -183,18 +167,14 @@ namespace CE::Assets {
         return effective;
     }
 
-    void GLSLPipeline::apply_parameters(
-        const ParameterSet& values
-    ) const {
+    void GLSLPipeline::apply_parameters(const ParameterSet& values) const {
         // No program/texture state changes occur until the complete request passes.
         program_->use();
         for (const auto& parameter : parameters_)
             upload_parameter(parameter.location, values.at(parameter.key));
     }
 
-    void GLSLPipeline::bind_parameters(
-        const ParameterSet& values
-    ) const {
+    void GLSLPipeline::bind_parameters(const ParameterSet& values) const {
         apply_parameters(prepare_parameters(values));
     }
 

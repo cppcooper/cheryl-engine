@@ -27,13 +27,9 @@ namespace CE::Engine {
      * Runtime initialization makes the
      * context current and attaches input before game initialization.
      */
-    [[nodiscard]] std::unique_ptr<EngineContext> make_glfw_opengl_context(
-        Input::iInputSystem& input,
-        const GlfwOpenGLConfig& config = GlfwOpenGLConfig{}
-    );
+    [[nodiscard]] std::unique_ptr<EngineContext>
+    make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config = GlfwOpenGLConfig{});
 #ifndef CHERYL_SANDBOX_BUILD
-    [[nodiscard]] std::unique_ptr<EngineContext> make_glfw_opengl_context(
-        const GlfwOpenGLConfig& config = GlfwOpenGLConfig{}
-    );
+    [[nodiscard]] std::unique_ptr<EngineContext> make_glfw_opengl_context(const GlfwOpenGLConfig& config = GlfwOpenGLConfig{});
 #endif
 }

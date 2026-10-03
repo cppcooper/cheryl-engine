@@ -6,8 +6,7 @@
 #include <mutex>
 #include <utility>
 
-template <typename T>
-struct VersionedSnapshot {
+template <typename T> struct VersionedSnapshot {
     T value;
     std::uint64_t revision;
 };
@@ -24,7 +23,8 @@ class VersionedVariable {
     std::uint64_t revision_ = 0;
 
 public:
-    explicit VersionedVariable(T initial) : value_(std::move(initial)) {}
+    explicit VersionedVariable(T initial)
+    : value_(std::move(initial)) {}
 
     void set(T next) {
         {

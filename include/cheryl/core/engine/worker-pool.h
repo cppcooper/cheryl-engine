@@ -79,19 +79,11 @@ namespace CE::Engine {
         std::weak_ptr<WorkerDetail::PoolState> pool_;
         std::shared_ptr<WorkerDetail::GroupState> group_;
 
-        WorkerGroup(
-            std::shared_ptr<WorkerDetail::PoolState> pool,
-            std::shared_ptr<WorkerDetail::GroupState> group
-        );
-        void enqueue(
-            WorkerDetail::Job job
-        ) const;
+        WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group);
+        void enqueue(WorkerDetail::Job job) const;
 
     public:
-        template <typename Work>
-        [[nodiscard]] auto submit(
-            Work&& work
-        ) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
+        template <typename Work> [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
             using Result = std::invoke_result_t<std::decay_t<Work>&>;
             auto completion = std::make_shared<std::promise<Result>>();
             auto result = completion->get_future();
@@ -133,26 +125,15 @@ namespace CE::Engine {
         std::vector<std::thread> workers_;
         std::mutex shutdown_mutex_;
 
-        WorkerPool(
-            std::size_t worker_count,
-            WorkerDetail::WorkerNativeAdapter adapter
-        );
+        WorkerPool(std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter);
 
     public:
-        explicit WorkerPool(
-            std::size_t worker_count = 1
-        );
+        explicit WorkerPool(std::size_t worker_count = 1);
         ~WorkerPool();
-        WorkerPool(
-            const WorkerPool&
-        ) = delete;
-        WorkerPool& operator=(
-            const WorkerPool&
-        ) = delete;
+        WorkerPool(const WorkerPool&) = delete;
+        WorkerPool& operator=(const WorkerPool&) = delete;
 
-        [[nodiscard]] WorkerGroup make_group(
-            WorkerGroupOptions options = WorkerGroupOptions{}
-        );
+        [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         [[nodiscard]] WorkerCapabilities capabilities() const;
         void close();

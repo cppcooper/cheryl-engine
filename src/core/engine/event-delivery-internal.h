@@ -10,8 +10,5 @@ namespace CE::Engine::DeliveryDetail {
     // or throw without retaining it; it must never invoke it inline or wait for execution.
     using WorkerSubmission = std::function<void(SubSystems::EventBus::Work)>;
 
-    [[nodiscard]] SubSystems::EventBus::Delivery worker_stream_delivery(
-        WorkerGroup group,
-        WorkerSubmission submit
-    );
+    [[nodiscard]] SubSystems::EventBus::Delivery worker_stream_delivery(WorkerGroup group, WorkerSubmission submit);
 }

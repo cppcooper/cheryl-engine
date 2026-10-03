@@ -21,15 +21,7 @@ namespace CE::Assets {
 
         MaterialMgr() = default;
         ~MaterialMgr() override = default;
-        void load_material(
-            const std::filesystem::path& key,
-            ResourceProvider& provider,
-            const Builder& builder
-        );
-        void reload_material(
-            const std::filesystem::path& key,
-            ResourceProvider& provider,
-            const Builder& builder
-        );
+        void load_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder);
+        void reload_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder);
     };
 }

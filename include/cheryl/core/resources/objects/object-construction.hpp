@@ -7,12 +7,9 @@ namespace CE::Obj {
      * Tracks which raw slots contain live T objects, so cleanup can destroy
      * constructed objects without touching unconstructed storage.
      */
-    template <typename T>
-    struct ObjCtor {
-        template <typename... Args>
-        static void construct(T* p, std::size_t N, Args... args) {
-            static_assert(std::is_constructible_v<T, Args...>,
-                          "A constructor for type T with the arguments provided does not exist.");
+    template <typename T> struct ObjCtor {
+        template <typename... Args> static void construct(T* p, std::size_t N, Args... args) {
+            static_assert(std::is_constructible_v<T, Args...>, "A constructor for type T with the arguments provided does not exist.");
             for (std::size_t i = 0; i < N; ++i) {
                 auto pi = p + i;
                 // Reserve the tracking entry before constructing the object:
@@ -46,6 +43,5 @@ namespace CE::Obj {
         static std::unordered_map<void*, bool> constructed;
     };
 
-    template <typename T>
-    std::unordered_map<void*, bool> ObjCtor<T>::constructed;
+    template <typename T> std::unordered_map<void*, bool> ObjCtor<T>::constructed;
 }

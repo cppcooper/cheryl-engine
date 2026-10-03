@@ -48,7 +48,5 @@ namespace CE::Assets {
         ParameterSet defaults;
     };
 
-    void validate_pipeline_definition(
-        const PipelineDefinition& definition
-    );
+    void validate_pipeline_definition(const PipelineDefinition& definition);
 }

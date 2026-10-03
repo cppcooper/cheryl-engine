@@ -51,9 +51,7 @@ namespace CE::GFramework {
         );
 
         [[nodiscard]] const SimulationTimingOptions& options() const { return options_; }
-        [[nodiscard]] SimulationBatch advance(
-            SimulationClock::time_point now
-        );
+        [[nodiscard]] SimulationBatch advance(SimulationClock::time_point now);
         [[nodiscard]] SimulationClock::time_point next_update_at() const;
     };
 }

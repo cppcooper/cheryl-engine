@@ -39,21 +39,11 @@ namespace CE::Assets {
 
     using ParameterContract = std::vector<ParameterDefinition>;
 
-    [[nodiscard]] ParameterType parameter_type(
-        const ParameterValue& value
-    );
-    void validate_parameter_contract(
-        const ParameterContract& contract
-    );
-    void validate_parameter_values(
-        const ParameterContract& contract,
-        const ParameterSet& values
-    );
+    [[nodiscard]] ParameterType parameter_type(const ParameterValue& value);
+    void validate_parameter_contract(const ParameterContract& contract);
+    void validate_parameter_values(const ParameterContract& contract, const ParameterSet& values);
     // Validate a complete packet, including engine values already resolved by its producer.
-    void validate_resolved_parameters(
-        const ParameterContract& contract,
-        const ParameterSet& values
-    );
+    void validate_resolved_parameters(const ParameterContract& contract, const ParameterSet& values);
 
     // Copies defaults < pass < material < draw. Engine semantics have a single owner
     // and cannot be overridden by a custom-value layer. Optional missing keys are absent.

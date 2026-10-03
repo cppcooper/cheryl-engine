@@ -50,8 +50,8 @@ namespace CE::Input {
         if (std::ranges::any_of(button_bindings_, [action](const auto& binding) { return binding.action == action; }))
             throw Exceptions::invalid_args(CE_HERE, "An action cannot be bound as both a button and an axis");
         if (std::ranges::any_of(axis_bindings_, [action, options](const auto& binding) {
-            return binding.action == action && binding.options.kind != options.kind;
-        }))
+                return binding.action == action && binding.options.kind != options.kind;
+            }))
             throw Exceptions::invalid_args(CE_HERE, "An axis action cannot combine absolute and relative bindings");
         const BindingId id = next_binding_++;
         axis_bindings_.push_back({id, std::move(modifiers), axis, action, options});
@@ -96,8 +96,9 @@ namespace CE::Input {
     }
 
     bool InputBindings::button_active(const ActionId action) const {
-        return std::ranges::any_of(button_bindings_,
-            [this, action](const auto& binding) { return binding.action == action && chord_active(binding.chord); });
+        return std::ranges::any_of(button_bindings_, [this, action](const auto& binding) {
+            return binding.action == action && chord_active(binding.chord);
+        });
     }
 
     std::unordered_map<ActionId, bool> InputBindings::evaluate_buttons() const {
@@ -194,7 +195,8 @@ namespace CE::Input {
             const auto kind = kinds.at(id);
             const auto previous = prior->axis(id);
             next->axes_.emplace(
-                id, AxisActionState{current, kind == AxisKind::Absolute && previous.kind == kind ? previous.current : 0.0f, kind});
+                id, AxisActionState{current, kind == AxisKind::Absolute && previous.kind == kind ? previous.current : 0.0f, kind}
+            );
         }
 
         pending_buttons_.clear();
@@ -204,7 +206,9 @@ namespace CE::Input {
         return completed;
     }
 
-    std::shared_ptr<const ActionSnapshot> InputBindings::action_snapshot() const { return published_.load(std::memory_order_acquire); }
+    std::shared_ptr<const ActionSnapshot> InputBindings::action_snapshot() const {
+        return published_.load(std::memory_order_acquire);
+    }
 
     void InputBindings::on_axis(const DeviceBind binding, const float value) {
         if (!std::isfinite(value))

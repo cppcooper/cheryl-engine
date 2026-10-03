@@ -17,9 +17,7 @@ namespace {
     // live block until the bake returns so an exception can release the whole
     // rasterization attempt, including its current glyph's scratch storage.
     class StbAllocationScope {
-        struct alignas(
-            std::max_align_t
-        ) Block {
+        struct alignas(std::max_align_t) Block {
             StbAllocationScope* owner;
             Block* previous;
             Block* next;
@@ -31,9 +29,7 @@ namespace {
         StbAllocationScope* previous_;
         static thread_local StbAllocationScope* current_;
 
-        void release(
-            Block* block
-        ) noexcept {
+        void release(Block* block) noexcept {
             if (block->previous)
                 block->previous->next = block->next;
             else
@@ -44,9 +40,7 @@ namespace {
         }
 
     public:
-        explicit StbAllocationScope(
-            std::pmr::memory_resource& memory
-        )
+        explicit StbAllocationScope(std::pmr::memory_resource& memory)
         : memory_(memory), previous_(current_) {
             current_ = this;
         }
@@ -55,16 +49,10 @@ namespace {
                 release(head_);
             current_ = previous_;
         }
-        StbAllocationScope(
-            const StbAllocationScope&
-        ) = delete;
-        StbAllocationScope& operator=(
-            const StbAllocationScope&
-        ) = delete;
+        StbAllocationScope(const StbAllocationScope&) = delete;
+        StbAllocationScope& operator=(const StbAllocationScope&) = delete;
 
-        static void* allocate(
-            const std::size_t bytes
-        ) {
+        static void* allocate(const std::size_t bytes) {
             if (!current_)
                 return std::malloc(bytes);
             if (bytes > std::numeric_limits<std::size_t>::max() - sizeof(Block))
@@ -78,9 +66,7 @@ namespace {
             return block + 1;
         }
 
-        static void free(
-            void* pointer
-        ) noexcept {
+        static void free(void* pointer) noexcept {
             if (!pointer)
                 return;
             if (!current_) {
@@ -113,9 +99,7 @@ namespace {
 
 namespace CE::Assets {
     namespace {
-        std::vector<unsigned char> read_font_file(
-            const std::filesystem::path& path
-        ) {
+        std::vector<unsigned char> read_font_file(const std::filesystem::path& path) {
             std::ifstream input(path, std::ios::binary | std::ios::ate);
             if (!input)
                 throw Exceptions::runtime_exception(CE_HERE, "Unable to open font file '" + path.string() + "'");
@@ -131,10 +115,7 @@ namespace CE::Assets {
             return bytes;
         }
 
-        void set_glyph_vertices(
-            Vertex2D* vertices,
-            const stbtt_aligned_quad& quad
-        ) {
+        void set_glyph_vertices(Vertex2D* vertices, const stbtt_aligned_quad& quad) {
             // Flip stb's downward-positive glyph Y into the engine's upward-positive local space;
             // each glyph keeps the standalone quad's two independent triangles.
             const float left = quad.x0;
@@ -166,18 +147,13 @@ namespace CE::Assets {
         return {std::move(geometry), std::move(atlas), advances, line_height};
     }
 
-    STBFont::STBFont(
-        STBFontData data
-    )
+    STBFont::STBFont(STBFontData data)
     : Font({data.geometry, data.texture}), advances_(data.advances), line_height_(data.line_height) {
         if (!geometry || !texture)
             throw Exceptions::invalid_args(CE_HERE, "A font needs glyph geometry and an atlas");
     }
 
-    std::vector<GlyphPlacement2D> STBFont::layout(
-        const std::string_view text,
-        const FontLayoutOptions options
-    ) const {
+    std::vector<GlyphPlacement2D> STBFont::layout(const std::string_view text, const FontLayoutOptions options) const {
         if (options.alternate_bank)
             throw Exceptions::invalid_args(CE_HERE, "STB fonts do not contain an alternate glyph bank");
         std::vector<GlyphPlacement2D> result;
@@ -186,11 +162,7 @@ namespace CE::Assets {
         return result;
     }
 
-    STBFontData STBFont::load_font(
-        const std::filesystem::path& font_path,
-        const int font_size,
-        ResourceProvider& provider
-    ) {
+    STBFontData STBFont::load_font(const std::filesystem::path& font_path, const int font_size, ResourceProvider& provider) {
         return FontDetail::load_font_with_resource(font_path, font_size, provider, *std::pmr::new_delete_resource());
     }
 
@@ -214,8 +186,10 @@ namespace CE::Assets {
         auto atlas = [&] {
             StbAllocationScope allocations(memory);
             return FontDetail::bake_font_atlas(font_path, [&](const std::span<unsigned char> pixels, const int size) {
-                return stbtt_BakeFontBitmap(font_bytes.data(), font_offset, static_cast<float>(font_size), pixels.data(), size, size,
-                    first_font_character, static_cast<int>(font_character_count), baked_characters.data());
+                return stbtt_BakeFontBitmap(
+                    font_bytes.data(), font_offset, static_cast<float>(font_size), pixels.data(), size, size, first_font_character,
+                    static_cast<int>(font_character_count), baked_characters.data()
+                );
             });
         }();
         const int atlas_size = atlas.size;
@@ -245,7 +219,9 @@ namespace CE::Assets {
         const float scale = stbtt_ScaleForPixelHeight(&font_info, static_cast<float>(font_size));
         const float line_height = std::ceil(static_cast<float>(ascent - descent + line_gap) * scale);
         // The provider copies both transient CPU buffers into backend resources before return.
-        return FontDetail::upload_baked_font(provider, std::move(vertices), atlas.pixels,
-            PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)}, advances, line_height);
+        return FontDetail::upload_baked_font(
+            provider, std::move(vertices), atlas.pixels,
+            PixelSize{static_cast<std::uint32_t>(atlas_size), static_cast<std::uint32_t>(atlas_size)}, advances, line_height
+        );
     }
 }

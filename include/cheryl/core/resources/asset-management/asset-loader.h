@@ -21,7 +21,8 @@ namespace CE::Assets {
     // An owned loader has one immutable root. Preparation uses no cache or provider;
     // upload obeys provider affinity and publishes a retained metadata snapshot.
     struct Loader final : Singleton_CTS<Loader> {
-        explicit Loader(const std::filesystem::path& root_path) : root_path_(root_path.lexically_normal()) {}
+        explicit Loader(const std::filesystem::path& root_path)
+        : root_path_(root_path.lexically_normal()) {}
         [[nodiscard]] PreparedAssets prepare() const;
         void upload(PreparedAssets prepared, ResourceProvider& provider);
         void load_assets(ResourceProvider& provider);

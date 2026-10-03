@@ -28,7 +28,8 @@ namespace CE::Assets {
             const auto texture = TextureMgr::get().get_asset(definition.texture);
             if (!texture) {
                 throw Exceptions::runtime_exception(
-                    CE_HERE, "Sprite '" + id + "' references an unloaded texture '" + definition.texture.string() + "'");
+                    CE_HERE, "Sprite '" + id + "' references an unloaded texture '" + definition.texture.string() + "'"
+                );
             }
             const auto texture_size = texture->pixel_size();
             if (texture_size.width == 0 || texture_size.height == 0) {

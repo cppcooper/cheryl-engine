@@ -8,18 +8,17 @@
 #include <format>
 
 namespace CE::Mem {
-    template<double gf_, int32_t gb_>
-    std::string Manager<gf_,gb_>::stats() {
+    template <double gf_, int32_t gb_> std::string Manager<gf_, gb_>::stats() {
         // Read the reusable and registered ranges under shared locks for one bookkeeping snapshot.
         std::shared_lock l1(get_mutex(pool));
         std::shared_lock l2(get_mutex(sections));
         std::shared_lock l3(get_mutex(registry));
         size_t available = 0;
         size_t total = 0;
-        for(const auto& b : std::get<1>(this->pool)) {
+        for (const auto& b : std::get<1>(this->pool)) {
             available += b.length;
         }
-        for(const auto &b : std::get<1>(this->registry)) {
+        for (const auto& b : std::get<1>(this->registry)) {
             total += b.length;
         }
         // TODO: Define a zero-allocation result before dividing by total; an untouched
@@ -33,24 +32,20 @@ namespace CE::Mem {
             "not in use: {:2.1f}%\n"
             "total: {}\n"
             "available: {}\n\n",
-            std::get<1>(this->registry).size(),
-            std::get<1>(this->sections).size(),
-            (available/(double)total)*100,
-            tot, avail);
+            std::get<1>(this->registry).size(), std::get<1>(this->sections).size(), (available / (double)total) * 100, tot, avail
+        );
     }
 
-    template<double gf_, int32_t gb_>
-    std::string Manager<gf_,gb_>::debug_info() {
+    template <double gf_, int32_t gb_> std::string Manager<gf_, gb_>::debug_info() {
         std::stringstream ss;
         std::shared_lock l1(get_mutex(pool));
-        for(const auto& b : std::get<1>(this->pool)) {
+        for (const auto& b : std::get<1>(this->pool)) {
             ss << b << std::endl;
         }
         return ss.str();
     }
 
-    template<double gf_, int32_t gb_>
-    void Manager<gf_,gb_>::return_ptr(void* ptr) {
+    template <double gf_, int32_t gb_> void Manager<gf_, gb_>::return_ptr(void* ptr) {
         // Split owners are tracked by section; whole allocations may still
         // exist only in the registry. Give the narrower section first chance.
         if (auto sec = find_section(ptr); sec.has_value() && sec->contains(ptr)) {
@@ -60,7 +55,7 @@ namespace CE::Mem {
         }
     }
 
-    template<double growth_factor_, int32_t growth_base_>
+    template <double growth_factor_, int32_t growth_base_>
     void Manager<growth_factor_, growth_base_>::return_portion(void* ptr, std::size_t length) {
         // Resolve the active subrange (or whole owner) and reject a return that crosses its end.
         const auto section = find_section(ptr);
@@ -68,8 +63,7 @@ namespace CE::Mem {
         if (!block.has_value() || length == 0 || !block->contains(ptr) || contains(*block, pool)) {
             throw Exceptions::bad_request(CE_HERE, "Cannot return an unknown or already pooled memory portion.");
         }
-        const auto offset = reinterpret_cast<std::uintptr_t>(ptr) -
-                            reinterpret_cast<std::uintptr_t>(block->head.get());
+        const auto offset = reinterpret_cast<std::uintptr_t>(ptr) - reinterpret_cast<std::uintptr_t>(block->head.get());
         if (length > block->length - offset) {
             throw Exceptions::bad_request(CE_HERE, "The returned memory portion exceeds its active block.");
         }
@@ -97,8 +91,7 @@ namespace CE::Mem {
         merge_into_pool(returned);
     }
 
-    template<double gf_, int32_t gb_>
-    void Manager<gf_,gb_>::return_chunk(const Block &returned) {
+    template <double gf_, int32_t gb_> void Manager<gf_, gb_>::return_chunk(const Block& returned) {
         // A whole owner cannot be returned while any of its split sections remain in use.
         const bool in_sections = contains(returned, sections);
         const bool in_registry = contains(returned, registry);
@@ -115,15 +108,15 @@ namespace CE::Mem {
         if ((!in_sections && !in_registry) || contains(returned, pool) || has_active_sections) {
             CELog::critical("Cannot return Block. No such block exists. Block: {}", returned);
             MTRACE() << debug_info();
-            throw Exceptions::failed_operation(CE_HERE,"Memory Manager was returned an unknown block");
+            throw Exceptions::failed_operation(CE_HERE, "Memory Manager was returned an unknown block");
         }
         // merge_into_pool owns the free-range transition: adjacent free
         // sections coalesce and a complete owner becomes eligible for culling.
         merge_into_pool(returned);
     }
 
-    template<double gf_, int32_t gb_>
-    Block Manager<gf_,gb_>::checkout_chunk(size_t length, size_t alignment, Enum::fitType fit, size_t growth_base, double growth_factor) {
+    template <double gf_, int32_t gb_>
+    Block Manager<gf_, gb_>::checkout_chunk(size_t length, size_t alignment, Enum::fitType fit, size_t growth_base, double growth_factor) {
         if (length == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot check out an empty memory block.");
         }
@@ -161,13 +154,13 @@ namespace CE::Mem {
         return *ob;
     }
 
-    template<double gf_, int32_t gb_>
-    void Manager<gf_,gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
+    template <double gf_, int32_t gb_>
+    void Manager<gf_, gb_>::preallocate(size_t blocks, size_t width, size_t gb, double gf, std::align_val_t alignment) {
         // Seed the registry and reusable pool together, then start the stale
         // clock for each untouched allocation so normal culling can reclaim it.
         const auto len = Math::adjust_length(width, Enum::greedy, gb, gf);
         MINFO() << "Pre-allocating " << blocks << " " << width << " byte wide blocks aligned to " << alignment;
-        for(int i = 0; i < blocks; ++i) {
+        for (int i = 0; i < blocks; ++i) {
             const auto a = allocate(len, alignment);
             MTRACE() << "preallocated: " << a;
             emplace(a, registry, pool);

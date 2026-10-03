@@ -6,10 +6,7 @@
 #include <utility>
 
 namespace CE::RenderAPIs {
-    OpenGLResourceLifetime::OpenGLResourceLifetime(
-        const std::thread::id owner,
-        std::function<bool()> is_current
-    )
+    OpenGLResourceLifetime::OpenGLResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
     : OpenGLResourceLifetime(owner, std::move(is_current), {}) {}
 
     OpenGLResourceLifetime::OpenGLResourceLifetime(
@@ -35,16 +32,12 @@ namespace CE::RenderAPIs {
         return std::shared_ptr<OpenGLResourceLifetime>(new OpenGLResourceLifetime(owner, std::move(is_current), std::move(entry_memory)));
     }
 
-    std::size_t ResourceDetail::LifetimeAccess::capacity(
-        const OpenGLResourceLifetime& lifetime
-    ) {
+    std::size_t ResourceDetail::LifetimeAccess::capacity(const OpenGLResourceLifetime& lifetime) {
         const std::lock_guard lock(lifetime.mutex_);
         return lifetime.entries_.capacity();
     }
 
-    std::size_t ResourceDetail::LifetimeAccess::size(
-        const OpenGLResourceLifetime& lifetime
-    ) {
+    std::size_t ResourceDetail::LifetimeAccess::size(const OpenGLResourceLifetime& lifetime) {
         const std::lock_guard lock(lifetime.mutex_);
         return lifetime.entries_.size();
     }
@@ -71,10 +64,7 @@ namespace CE::RenderAPIs {
         require_current_locked();
     }
 
-    void OpenGLResourceLifetime::delete_handle(
-        const GLResourceKind kind,
-        const GLuint id
-    ) noexcept {
+    void OpenGLResourceLifetime::delete_handle(const GLResourceKind kind, const GLuint id) noexcept {
         if (!id)
             return;
         switch (kind) {
@@ -96,10 +86,7 @@ namespace CE::RenderAPIs {
         }
     }
 
-    std::size_t OpenGLResourceLifetime::track(
-        const GLResourceKind kind,
-        const GLuint id
-    ) {
+    std::size_t OpenGLResourceLifetime::track(const GLResourceKind kind, const GLuint id) {
         const std::lock_guard lock(mutex_);
         require_current_locked();
         if (kind != GLResourceKind::Texture && kind != GLResourceKind::Buffer && kind != GLResourceKind::VertexArray &&
@@ -117,9 +104,7 @@ namespace CE::RenderAPIs {
         return entries_.size() - 1;
     }
 
-    void OpenGLResourceLifetime::retire(
-        const std::size_t slot
-    ) noexcept {
+    void OpenGLResourceLifetime::retire(const std::size_t slot) noexcept {
         try {
             const std::lock_guard lock(mutex_);
             if (!active_ || slot >= entries_.size() || entries_[slot].pending || !entries_[slot].id)
@@ -147,10 +132,7 @@ namespace CE::RenderAPIs {
         }
     }
 
-    void OpenGLResourceLifetime::discard_untracked(
-        const GLResourceKind kind,
-        const GLuint id
-    ) noexcept {
+    void OpenGLResourceLifetime::discard_untracked(const GLResourceKind kind, const GLuint id) noexcept {
         if (!id)
             return;
         try {
@@ -186,28 +168,20 @@ namespace CE::RenderAPIs {
         }
     }
 
-    OpenGLHandle::OpenGLHandle(
-        std::shared_ptr<OpenGLResourceLifetime> lifetime,
-        const GLResourceKind kind,
-        const GLuint id
-    )
+    OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, const GLResourceKind kind, const GLuint id)
     : lifetime_(std::move(lifetime)), id_(id), kind_(kind) {
         if (!lifetime_)
             throw Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
         slot_ = lifetime_->track(kind, id);
     }
 
-    OpenGLHandle::OpenGLHandle(
-        OpenGLHandle&& other
-    ) noexcept
+    OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept
     : lifetime_(std::move(other.lifetime_)),
       slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
       id_(std::exchange(other.id_, 0)),
       kind_(other.kind_) {}
 
-    OpenGLHandle& OpenGLHandle::operator=(
-        OpenGLHandle&& other
-    ) noexcept {
+    OpenGLHandle& OpenGLHandle::operator=(OpenGLHandle&& other) noexcept {
         if (this != &other) {
             reset();
             lifetime_ = std::move(other.lifetime_);

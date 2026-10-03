@@ -9,4 +9,4 @@
 #define TYPENAMEOF(val) ctti::detailed_nameof<decltype(val)>().full_name()
 
 #define ISCLASS(type) std::is_class_v<type>
-#define ISDERIVED(base,type) std::is_base_of_v<base, type>
+#define ISDERIVED(base, type) std::is_base_of_v<base, type>

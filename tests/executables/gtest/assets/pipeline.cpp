@@ -17,9 +17,7 @@ namespace {
 
     class RecordingPipeline final : public Pipeline {
     public:
-        explicit RecordingPipeline(
-            PipelineDefinition definition
-        )
+        explicit RecordingPipeline(PipelineDefinition definition)
         : Pipeline(std::move(definition)) {}
     };
 
@@ -27,11 +25,7 @@ namespace {
         mutable std::vector<std::uint32_t> bound_units;
 
         [[nodiscard]] PixelSize pixel_size() const override { return {1, 1}; }
-        void bind(
-            std::uint32_t unit
-        ) const override {
-            bound_units.push_back(unit);
-        }
+        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
     };
 
     struct RecordingGeometry final : Geometry2D {
@@ -44,10 +38,7 @@ namespace {
         [[nodiscard]] PrimitiveTopology topology() const noexcept override { return uploaded_topology; }
         [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
         void bind() const override { ++binds; }
-        void draw(
-            std::size_t,
-            std::size_t
-        ) const override {}
+        void draw(std::size_t, std::size_t) const override {}
     };
 
     PipelineDefinition effect_definition() {
@@ -62,10 +53,7 @@ namespace {
     }
 }
 
-TEST(
-    pipeline_parameters,
-    retained_effect_parameters
-) {
+TEST(pipeline_parameters, retained_effect_parameters) {
     auto definition = effect_definition();
     auto pipeline = std::make_shared<RecordingPipeline>(definition);
     auto image = std::make_shared<RecordingImage>();
@@ -93,10 +81,7 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<float>(material.resolve({}, {}, {{"time", 0.0f}}, {}).at("intensity")), 0.5f);
 }
 
-TEST(
-    pipeline_parameters,
-    invalid_parameter_overrides
-) {
+TEST(pipeline_parameters, invalid_parameter_overrides) {
     const ParameterContract contract{{"weight", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f},
         {"model", ParameterType::Mat4, true, ParameterSemantic::Model}};
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {{"weight", 1}}, {}, {{"weight", 2.0f}})), invalid_args);
@@ -105,10 +90,7 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<float>(resolve_parameters(contract, {}, {}, {}, {}, {}).at("weight")), 1.0f);
 }
 
-TEST(
-    pipeline_parameters,
-    invalid_sampler_bindings
-) {
+TEST(pipeline_parameters, invalid_sampler_bindings) {
     const ParameterContract contract{{"first", ParameterType::Sampler2D}, {"second", ParameterType::Sampler2D}};
     auto image = std::make_shared<RecordingImage>();
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, {}, {})), invalid_args);
@@ -117,20 +99,14 @@ TEST(
     EXPECT_THROW(static_cast<void>(resolve_parameters(contract, {}, {}, {}, bindings, {})), invalid_args);
 }
 
-TEST(
-    pipeline_parameters,
-    invalid_parameter_schema
-) {
+TEST(pipeline_parameters, invalid_parameter_schema) {
     EXPECT_THROW(validate_parameter_contract({{"same", ParameterType::Float}, {"same", ParameterType::Float}}), invalid_args);
     EXPECT_THROW(validate_parameter_contract({{"model", ParameterType::Float, true, ParameterSemantic::Model}}), invalid_args);
     EXPECT_THROW(validate_parameter_contract({{"value", ParameterType::Float, true, ParameterSemantic::Custom, 1}}), invalid_args);
     EXPECT_THROW(static_cast<void>(Material(MaterialDefinition{})), invalid_args);
 }
 
-TEST(
-    pipeline_generations,
-    retained_snapshots
-) {
+TEST(pipeline_generations, retained_snapshots) {
     auto definition = effect_definition();
     auto current = std::make_shared<RecordingPipeline>(definition);
     const auto old = current;
@@ -144,10 +120,7 @@ TEST(
     EXPECT_FLOAT_EQ(std::get<float>(*current->definition().parameters[4].default_value), 8.0f);
 }
 
-TEST(
-    material_resources,
-    shared_image_units
-) {
+TEST(material_resources, shared_image_units) {
     PipelineDefinition definition;
     definition.program_sources = {"sprite.vert", "sprite.frag"};
     definition.parameters = {{"image", ParameterType::Sampler2D}};
@@ -169,10 +142,7 @@ TEST(
     EXPECT_EQ(std::get<ImageBinding>(second.definition().defaults.at("image")).unit, 4u);
 }
 
-TEST(
-    pipeline_geometry,
-    invalid_geometry
-) {
+TEST(pipeline_geometry, invalid_geometry) {
     auto definition = effect_definition();
     RecordingPipeline pipeline(definition);
     RecordingGeometry geometry;
@@ -192,10 +162,7 @@ TEST(
     EXPECT_EQ(geometry.binds, 0u);
 }
 
-TEST(
-    pipeline_state,
-    conflicting_pass_constraints
-) {
+TEST(pipeline_state, conflicting_pass_constraints) {
     auto definition = effect_definition();
     definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};
     RecordingPipeline pipeline(definition);

@@ -10,10 +10,7 @@ namespace CE::Assets {
     using namespace VAONumbers;
     constexpr uint16_t num_vertices = num_chars_ffont * vertices_per_quad;
 
-    std::vector<GlyphPlacement2D> FFont::layout(
-        const std::string_view text,
-        const FontLayoutOptions options
-    ) const {
+    std::vector<GlyphPlacement2D> FFont::layout(const std::string_view text, const FontLayoutOptions options) const {
         std::vector<GlyphPlacement2D> result;
         result.reserve(text.size());
         float x = 0.0f;
@@ -36,9 +33,7 @@ namespace CE::Assets {
         return result;
     }
 
-    void make_vertices(
-        Vertex2D* vertices
-    ) {
+    void make_vertices(Vertex2D* vertices) {
         for (int idx = 0; idx < num_chars_ffont; ++idx) {
             uint16_t x0 = idx % 16;
             uint16_t y0 = idx / 16;
@@ -46,10 +41,7 @@ namespace CE::Assets {
         }
     }
 
-    FFontData FFont::load_ffont(
-        const std::filesystem::path& path,
-        ResourceProvider& provider
-    ) {
+    FFontData FFont::load_ffont(const std::filesystem::path& path, ResourceProvider& provider) {
         std::fstream file(path);
         if (!file.is_open()) {
             // todo: throw

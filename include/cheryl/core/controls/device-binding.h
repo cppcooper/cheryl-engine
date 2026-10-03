@@ -8,16 +8,12 @@ namespace CE::Input {
     struct DeviceBind {
         DeviceId id;
         DeviceButtonId btn;
-        bool operator==(const DeviceBind& o) const {
-            return id == o.id && btn == o.btn;
-        }
-
+        bool operator==(const DeviceBind& o) const { return id == o.id && btn == o.btn; }
     };
 }
 
 namespace std {
-    template <>
-    struct hash<CE::Input::DeviceBind> {
+    template <> struct hash<CE::Input::DeviceBind> {
         std::size_t operator()(const CE::Input::DeviceBind& k) const noexcept {
             std::hash<CE::Input::DeviceButtonId> hash_button;
             std::hash<CE::Input::DeviceId> hash_device;

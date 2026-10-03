@@ -9,8 +9,7 @@ TEST(externlibs, glm_compare) {
             auto changed = original;
             changed[column][row] = 1.0f;
 
-            EXPECT_NE(original, changed)
-                << "Comparison ignored [" << column << "][" << row << "]";
+            EXPECT_NE(original, changed) << "Comparison ignored [" << column << "][" << row << "]";
         }
     }
 }

@@ -26,11 +26,7 @@ namespace CE::GFramework {
         // Do not block here on callbacks/jobs requiring platform dispatch.
         virtual void quiesce() {}
         virtual void deinit() = 0;
-        virtual void update(
-            const TickContext& tick
-        ) = 0;
-        virtual void prepare_render_frame(
-            RenderAPIs::RenderFrameWriter& frame
-        ) const = 0;
+        virtual void update(const TickContext& tick) = 0;
+        virtual void prepare_render_frame(RenderAPIs::RenderFrameWriter& frame) const = 0;
     };
 }

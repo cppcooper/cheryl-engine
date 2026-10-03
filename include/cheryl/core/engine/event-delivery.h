@@ -10,15 +10,9 @@ namespace CE::Engine {
      * dispatch services and remains immediate by default. Accepted task cancellation
      * is reported by EventBus's owned delivery ticket, not a discarded future.
      */
-    [[nodiscard]] SubSystems::EventBus::Delivery platform_event_delivery(
-        PlatformDispatcher::Submission endpoint
-    );
-    [[nodiscard]] SubSystems::EventBus::Delivery simulation_event_delivery(
-        SimulationDispatcher::Submission endpoint
-    );
+    [[nodiscard]] SubSystems::EventBus::Delivery platform_event_delivery(PlatformDispatcher::Submission endpoint);
+    [[nodiscard]] SubSystems::EventBus::Delivery simulation_event_delivery(SimulationDispatcher::Submission endpoint);
     // One serial stream on shared WorkerGroup capacity. Copies of the returned
     // callable share ordering; separate calls create independently concurrent streams.
-    [[nodiscard]] SubSystems::EventBus::Delivery worker_event_delivery(
-        WorkerGroup group
-    );
+    [[nodiscard]] SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group);
 }

@@ -7,7 +7,8 @@ TEST(templates_ovar, observers_and_waiters) {
     std::atomic<int> first_observed{-1};
     std::atomic<int> second_observed{-1};
     ObservedVariable<int, 2> value(
-        0, {[&](const int& changed) { first_observed.store(changed); }, [&](const int& changed) { second_observed.store(changed); }});
+        0, {[&](const int& changed) { first_observed.store(changed); }, [&](const int& changed) { second_observed.store(changed); }}
+    );
 
     // Capture the revision before starting the waiter. It will return even if
     // set() happens before the waiter is scheduled on its own thread.

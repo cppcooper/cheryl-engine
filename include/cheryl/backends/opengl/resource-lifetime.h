@@ -42,25 +42,14 @@ namespace CE::RenderAPIs {
     public:
         // The predicate borrows a context that must outlive this active lifetime.
         // It is queried only on the owner thread, and must not reenter the lifetime.
-        OpenGLResourceLifetime(
-            std::thread::id owner,
-            std::function<bool()> is_current
-        );
+        OpenGLResourceLifetime(std::thread::id owner, std::function<bool()> is_current);
 
-        [[nodiscard]] std::size_t track(
-            GLResourceKind kind,
-            GLuint id
-        );
-        void retire(
-            std::size_t slot
-        ) noexcept;
+        [[nodiscard]] std::size_t track(GLResourceKind kind, GLuint id);
+        void retire(std::size_t slot) noexcept;
         void collect();
         // Only for a native ID not adopted by track(). Failure cleanup must not
         // delete on a foreign/missing context or replace the original exception.
-        void discard_untracked(
-            GLResourceKind kind,
-            GLuint id
-        ) noexcept;
+        void discard_untracked(GLResourceKind kind, GLuint id) noexcept;
         void shutdown();
         // Failure fallback: invalidate handles without issuing calls to an unavailable context.
         // The platform's context destruction releases any remaining native resources.
@@ -75,10 +64,7 @@ namespace CE::RenderAPIs {
             std::function<bool()> is_current,
             std::shared_ptr<std::pmr::memory_resource> entry_memory
         );
-        static void delete_handle(
-            GLResourceKind kind,
-            GLuint id
-        ) noexcept;
+        static void delete_handle(GLResourceKind kind, GLuint id) noexcept;
         void require_owner_locked() const;
         void require_current_locked() const;
     };
@@ -92,25 +78,13 @@ namespace CE::RenderAPIs {
 
     public:
         OpenGLHandle() = default;
-        OpenGLHandle(
-            std::shared_ptr<OpenGLResourceLifetime> lifetime,
-            GLResourceKind kind,
-            GLuint id
-        );
+        OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, GLResourceKind kind, GLuint id);
         ~OpenGLHandle() { reset(); }
 
-        OpenGLHandle(
-            const OpenGLHandle&
-        ) = delete;
-        OpenGLHandle& operator=(
-            const OpenGLHandle&
-        ) = delete;
-        OpenGLHandle(
-            OpenGLHandle&& other
-        ) noexcept;
-        OpenGLHandle& operator=(
-            OpenGLHandle&& other
-        ) noexcept;
+        OpenGLHandle(const OpenGLHandle&) = delete;
+        OpenGLHandle& operator=(const OpenGLHandle&) = delete;
+        OpenGLHandle(OpenGLHandle&& other) noexcept;
+        OpenGLHandle& operator=(OpenGLHandle&& other) noexcept;
 
         [[nodiscard]] GLuint id() const;
         [[nodiscard]] GLResourceKind kind() const noexcept { return kind_; }

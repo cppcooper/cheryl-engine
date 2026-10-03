@@ -53,9 +53,7 @@ namespace {
         }
     };
 
-    CE::Engine::WorkerGroupOptions recording_cpu_policy(
-        CE::Engine::WorkerPolicyStrength strength
-    ) {
+    CE::Engine::WorkerGroupOptions recording_cpu_policy(CE::Engine::WorkerPolicyStrength strength) {
         CE::Engine::WorkerGroupOptions options;
         options.cpu.cpus = {2};
         options.cpu.strength = strength;
@@ -70,10 +68,7 @@ namespace {
         bool released_ = false;
 
     public:
-        HeldWorkerCleanup(
-            CE::Engine::WorkerPool& pool,
-            std::promise<void>& release
-        )
+        HeldWorkerCleanup(CE::Engine::WorkerPool& pool, std::promise<void>& release)
         : pool_(pool), release_(release) {}
         ~HeldWorkerCleanup() { release_and_join(); }
         void release_and_join() {
@@ -103,12 +98,8 @@ namespace {
             }
         }
         RestoreCallingThreadAffinity() = default;
-        RestoreCallingThreadAffinity(
-            const RestoreCallingThreadAffinity&
-        ) = delete;
-        RestoreCallingThreadAffinity& operator=(
-            const RestoreCallingThreadAffinity&
-        ) = delete;
+        RestoreCallingThreadAffinity(const RestoreCallingThreadAffinity&) = delete;
+        RestoreCallingThreadAffinity& operator=(const RestoreCallingThreadAffinity&) = delete;
     };
 
     std::vector<unsigned int> read_worker_cpu_mask() {
@@ -125,10 +116,7 @@ namespace {
 } // namespace
 #endif
 
-TEST(
-    worker_pool,
-    job_results_and_failures
-) {
+TEST(worker_pool, job_results_and_failures) {
     CE::Engine::WorkerPool pool(2);
     auto group = pool.make_group();
     auto value = group.submit([number = std::make_unique<int>(42)] { return *number; });
@@ -142,10 +130,7 @@ TEST(
     EXPECT_EQ(group.status().completed, 3u);
 }
 
-TEST(
-    worker_pool,
-    serial_group_fifo
-) {
+TEST(worker_pool, serial_group_fifo) {
     CE::Engine::WorkerPool pool(3);
     auto serial = pool.make_group({1});
     auto other = pool.make_group();
@@ -163,10 +148,7 @@ TEST(
     EXPECT_TRUE(other.status().accepting);
 }
 
-TEST(
-    worker_pool,
-    parallel_group_cap
-) {
+TEST(worker_pool, parallel_group_cap) {
     CE::Engine::WorkerPool pool(3);
     auto capped = pool.make_group({2});
     auto other = pool.make_group();
@@ -205,10 +187,7 @@ TEST(
     EXPECT_EQ(peak.load(), 2);
 }
 
-TEST(
-    worker_pool,
-    shutdown_drain
-) {
+TEST(worker_pool, shutdown_drain) {
     auto pool = std::make_unique<CE::Engine::WorkerPool>();
     auto group = pool->make_group();
     std::atomic<int> calls{0};
@@ -223,10 +202,7 @@ TEST(
     EXPECT_THROW(static_cast<void>(group.submit([] {})), CE::Exceptions::failed_operation);
 }
 
-TEST(
-    worker_pool,
-    worker_self_wait
-) {
+TEST(worker_pool, worker_self_wait) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
     auto result = group.submit([&] {
@@ -238,10 +214,7 @@ TEST(
     group.drain();
 }
 
-TEST(
-    worker_pool,
-    dropped_group_handle
-) {
+TEST(worker_pool, dropped_group_handle) {
     CE::Engine::WorkerPool pool;
     std::future<int> result;
     {
@@ -252,10 +225,7 @@ TEST(
     EXPECT_EQ(result.get(), 13);
 }
 
-TEST(
-    worker_pool,
-    capture_release_reentry
-) {
+TEST(worker_pool, capture_release_reentry) {
     CE::Engine::WorkerPool pool;
     auto source = pool.make_group();
     auto other = pool.make_group();
@@ -289,10 +259,7 @@ TEST(
     EXPECT_EQ(follow_up.get(), 17);
 }
 
-TEST(
-    worker_pool,
-    unavailable_topology
-) {
+TEST(worker_pool, unavailable_topology) {
     CE::Engine::WorkerPool pool;
     CE::Engine::WorkerGroupOptions options;
     options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
@@ -300,10 +267,7 @@ TEST(
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::failed_operation);
 }
 
-TEST(
-    worker_pool,
-    effective_policy
-) {
+TEST(worker_pool, effective_policy) {
     CE::Engine::WorkerPool pool(2);
     CE::Engine::WorkerGroupOptions options;
     options.max_concurrency = 1;
@@ -319,10 +283,7 @@ TEST(
 }
 
 #if defined(__linux__)
-TEST(
-    worker_pool_native,
-    inherited_cpu_mask
-) {
+TEST(worker_pool_native, inherited_cpu_mask) {
     const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
     const auto inherited = native.query_affinity();
     if (inherited.size() < 2)
@@ -372,10 +333,7 @@ TEST(
     ::testing::Test::RecordProperty("calling_mask_restored", "true");
 }
 
-TEST(
-    worker_pool_native,
-    native_affinity_rejection
-) {
+TEST(worker_pool_native, native_affinity_rejection) {
     if (!std::filesystem::exists("/sys/devices/system/cpu/possible"))
         GTEST_SKIP() << "Kernel rejection acceptance requires an exposed CPU inventory";
     std::optional<unsigned int> absent_cpu;
@@ -422,10 +380,7 @@ TEST(
     ::testing::Test::RecordProperty("kernel_rejection", rejection_message);
 }
 
-TEST(
-    worker_pool,
-    required_cpu_affinity
-) {
+TEST(worker_pool, required_cpu_affinity) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity)
@@ -441,10 +396,7 @@ TEST(
     pinned.drain();
 }
 
-TEST(
-    worker_pool,
-    group_mask_restoration
-) {
+TEST(worker_pool, group_mask_restoration) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -465,10 +417,7 @@ TEST(
     inherited.drain();
 }
 
-TEST(
-    worker_pool,
-    cached_mask_revalidation
-) {
+TEST(worker_pool, cached_mask_revalidation) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -493,10 +442,7 @@ TEST(
     inherited.drain();
 }
 
-TEST(
-    worker_pool,
-    overlapping_cpu_groups
-) {
+TEST(worker_pool, overlapping_cpu_groups) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
@@ -546,10 +492,7 @@ TEST(
 }
 #endif
 
-TEST(
-    worker_pool,
-    weighted_fairness
-) {
+TEST(worker_pool, weighted_fairness) {
     CE::Engine::WorkerPool pool;
     auto gate = pool.make_group();
     std::promise<void> entered;
@@ -580,17 +523,16 @@ TEST(
     EXPECT_EQ(std::count(order.begin(), order.begin() + 8, 'R'), 2);
 }
 
-TEST(
-    worker_pool_faults,
-    discovery_query_failure
-) {
+TEST(worker_pool_faults, discovery_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 1;
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
     EXPECT_FALSE(pool->capabilities().cpu_affinity);
     EXPECT_TRUE(pool->capabilities().available_cpus.empty());
-    EXPECT_THROW(static_cast<void>(pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required))),
-        CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required))),
+        CE::Exceptions::failed_operation
+    );
     auto ordinary = pool->make_group();
     auto result = ordinary.submit([] { return 13; });
     ordinary.close();
@@ -600,10 +542,7 @@ TEST(
     EXPECT_EQ(ordinary.status().completed, 1u);
 }
 
-TEST(
-    worker_pool_faults,
-    required_readback_mismatch
-) {
+TEST(worker_pool_faults, required_readback_mismatch) {
     RecordingWorkerNative native;
     native.ignore_sets = true;
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -619,10 +558,7 @@ TEST(
     EXPECT_EQ(group.status().completed, 1u);
 }
 
-TEST(
-    worker_pool_faults,
-    required_affinity_failure
-) {
+TEST(worker_pool_faults, required_affinity_failure) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -661,10 +597,7 @@ TEST(
     EXPECT_EQ(follow_up.get(), 17);
 }
 
-TEST(
-    worker_pool_faults,
-    preferred_affinity_fallback
-) {
+TEST(worker_pool_faults, preferred_affinity_fallback) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -678,10 +611,7 @@ TEST(
     EXPECT_EQ(group.status().completed, 1u);
 }
 
-TEST(
-    worker_pool_faults,
-    preferred_fallback_failure
-) {
+TEST(worker_pool_faults, preferred_fallback_failure) {
     for (const bool query_failure : {false, true}) {
         RecordingWorkerNative native;
         native.failed_sets = query_failure ? std::vector<int>{1} : std::vector<int>{1, 2};
@@ -710,10 +640,7 @@ TEST(
     }
 }
 
-TEST(
-    worker_pool_faults,
-    post_set_query_failure
-) {
+TEST(worker_pool_faults, post_set_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 2; // The set succeeds, but its readback cannot verify it.
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -733,10 +660,7 @@ TEST(
     EXPECT_EQ(required.status().policy_failures, 1u);
 }
 
-TEST(
-    worker_pool_faults,
-    cached_mask_query_failure
-) {
+TEST(worker_pool_faults, cached_mask_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 2; // Discovery succeeds; the cached required mask read fails.
     auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
@@ -756,10 +680,7 @@ TEST(
     EXPECT_EQ(group.status().completed, 2u);
 }
 
-TEST(
-    worker_pool_faults,
-    partial_thread_start
-) {
+TEST(worker_pool_faults, partial_thread_start) {
     std::promise<void> entered;
     auto started = entered.get_future().share();
     std::atomic<int> exited{0};

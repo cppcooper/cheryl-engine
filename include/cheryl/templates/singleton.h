@@ -12,8 +12,7 @@
  * Concurrent first get(args...) calls with different arguments also make configuration depend on whichever
  * caller wins initialization, so argument-bearing singletons need an explicit initialization contract.
  */
-template<class Type>
-class Singleton_CTS {
+template <class Type> class Singleton_CTS {
     static std::once_flag& construct_flag() {
         static std::once_flag flag;
         return flag;
@@ -22,17 +21,15 @@ class Singleton_CTS {
         static std::unique_ptr<Type> instance;
         return instance;
     }
-    template<typename... Args>
-    static void construct(Args... args) {
+    template <typename... Args> static void construct(Args... args) {
         static_assert(std::is_constructible_v<Type, Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
-        std::call_once(construct_flag(), [&](){ get_impl() = std::make_unique<Type>(std::forward<Args>(args)...);});
+        std::call_once(construct_flag(), [&]() { get_impl() = std::make_unique<Type>(std::forward<Args>(args)...); });
     }
 public:
     // Observe an already constructed singleton during provider shutdown without creating it.
     static Type* get_existing() noexcept { return get_impl().get(); }
 
-    template<typename... Args>
-    static Type& get(Args... args) {
+    template <typename... Args> static Type& get(Args... args) {
         // Construct once for a matching signature. If this call cannot
         // construct Type, it can only retrieve an already created instance.
         if constexpr (std::is_constructible_v<Type, Args...>) {
@@ -61,8 +58,7 @@ public:
  *   // interface
  * };
  */
-template<class Type>
-class Singleton_CTU {
+template <class Type> class Singleton_CTU {
     static std::once_flag& construct_flag() {
         static std::once_flag flag;
         return flag;
@@ -71,16 +67,14 @@ class Singleton_CTU {
         static std::unique_ptr<Type> instance;
         return instance;
     }
-    template<typename... Args>
-    static void construct(Args... args) {
+    template <typename... Args> static void construct(Args... args) {
         static_assert(std::is_constructible_v<Type, Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
-        std::call_once(construct_flag(), [&](){ get_impl() = std::make_unique<Type>(std::forward<Args>(args)...);});
+        std::call_once(construct_flag(), [&]() { get_impl() = std::make_unique<Type>(std::forward<Args>(args)...); });
     }
 protected:
     Singleton_CTU() = default;
 public:
-    template<typename... Args>
-    static Type& get(Args... args) {
+    template <typename... Args> static Type& get(Args... args) {
         // This accessor shares the same one-time construction policy while
         // allowing Type to keep its own constructor nonpublic.
         if constexpr (std::is_constructible_v<Type, Args...>) {

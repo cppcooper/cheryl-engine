@@ -13,9 +13,7 @@
 
 namespace CE::Assets {
     namespace {
-        RenderAPIs::OpenGLHandle create_texture_handle(
-            std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime
-        ) {
+        RenderAPIs::OpenGLHandle create_texture_handle(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime) {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL texture needs a resource lifetime");
             lifetime->require_current();
@@ -41,15 +39,7 @@ namespace CE::Assets {
         }
     }
 
-    void upload(
-        const unsigned char* bits,
-        int width,
-        int height,
-        bool use_mipmaps,
-        bool pixelate,
-        GLint wrap_opt,
-        GLenum fmt
-    ) {
+    void upload(const unsigned char* bits, int width, int height, bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
         std::vector<unsigned char> bottom_up;
         if (fmt == GL_RGBA) {
             // Decoded RGBA rows start at the image's top. Atlas geometry maps
@@ -146,26 +136,20 @@ namespace CE::Assets {
         unbind(0);
     }
 
-    void Texture::require_binding(
-        const std::uint32_t unit
-    ) const {
+    void Texture::require_binding(const std::uint32_t unit) const {
         (void)handle_.id();
         if (unit >= binding_unit_limit_)
             throw Exceptions::invalid_args(CE_HERE, "Texture binding unit exceeds the current context's limit");
     }
 
-    void Texture::bind(
-        const std::uint32_t unit
-    ) const {
+    void Texture::bind(const std::uint32_t unit) const {
         require_binding(unit);
         const auto id = handle_.id();
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, id);
     }
 
-    void Texture::unbind(
-        const std::uint32_t unit
-    ) const {
+    void Texture::unbind(const std::uint32_t unit) const {
         require_binding(unit);
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, 0);

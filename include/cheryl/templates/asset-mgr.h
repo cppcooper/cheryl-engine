@@ -33,23 +33,17 @@ namespace CE::Assets {
         inline static bool releasing_ = false;
 
     public:
-        static void verify_provider(
-            const ResourceProvider& provider
-        ) {
+        static void verify_provider(const ResourceProvider& provider) {
             std::lock_guard lock(provider_mutex_);
             verify_locked(provider);
         }
-        [[nodiscard]] static bool is_bound_to(
-            const ResourceProvider& provider
-        ) noexcept {
+        [[nodiscard]] static bool is_bound_to(const ResourceProvider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             return bound_provider_ == &provider;
         }
 
     protected:
-        static void bind_provider(
-            const ResourceProvider& provider
-        ) {
+        static void bind_provider(const ResourceProvider& provider) {
             std::lock_guard lock(provider_mutex_);
             verify_locked(provider);
             if (!bound_provider_) {
@@ -59,18 +53,14 @@ namespace CE::Assets {
         }
 
     private:
-        static bool begin_provider_release(
-            const ResourceProvider& provider
-        ) noexcept {
+        static bool begin_provider_release(const ResourceProvider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             if (bound_provider_ != &provider)
                 return false;
             releasing_ = true;
             return true;
         }
-        static void release_provider(
-            const ResourceProvider& provider
-        ) noexcept {
+        static void release_provider(const ResourceProvider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             if (bound_provider_ != &provider)
                 return;
@@ -78,9 +68,7 @@ namespace CE::Assets {
             owner_ = {};
             releasing_ = false;
         }
-        static void verify_locked(
-            const ResourceProvider& provider
-        ) {
+        static void verify_locked(const ResourceProvider& provider) {
             if (bound_provider_ && bound_provider_ != &provider)
                 throw Exceptions::failed_operation(CE_HERE, "Asset caches are bound to another resource provider");
             if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
@@ -95,7 +83,8 @@ namespace CE::Assets {
      * Publish complete assets under a unique lock; readers copy retained handles
      * under a shared lock. Construction and final release happen outside the lock.
      */
-    template <typename AssetType,
+    template <
+        typename AssetType,
         typename Key = std::filesystem::path,
         typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
     struct AssetMgr : AssetCacheContext {
@@ -109,18 +98,14 @@ namespace CE::Assets {
     public:
         AssetMgr() = default;
         virtual ~AssetMgr() { clear_assets(); }
-        [[nodiscard]] virtual spointer get_asset(
-            const Key& key
-        ) const {
+        [[nodiscard]] virtual spointer get_asset(const Key& key) const {
             std::shared_lock lock(assets_mutex_);
             if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
                 return asset->second;
             }
             return nullptr;
         }
-        [[nodiscard]] bool contains(
-            const Key& key
-        ) const {
+        [[nodiscard]] bool contains(const Key& key) const {
             std::shared_lock lock(assets_mutex_);
             return loaded_assets.contains(key);
         }
@@ -144,26 +129,16 @@ namespace CE::Assets {
         }
 
     protected:
-        explicit AssetMgr(
-            const Allocator& allocator
-        )
+        explicit AssetMgr(const Allocator& allocator)
         : loaded_assets(allocator) {}
 
-        spointer publish_asset(
-            const Key& key,
-            spointer asset
-        ) {
+        spointer publish_asset(const Key& key, spointer asset) {
             return publish_asset(key, std::move(asset), []() noexcept {});
         }
 
         // A derived cache can commit prepared metadata in the publication lock.
         // The callback must not throw or reenter this cache.
-        template <typename Published>
-        spointer publish_asset(
-            const Key& key,
-            spointer asset,
-            Published&& published
-        ) {
+        template <typename Published> spointer publish_asset(const Key& key, spointer asset, Published&& published) {
             static_assert(std::is_nothrow_invocable_v<Published>);
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
@@ -175,10 +150,7 @@ namespace CE::Assets {
             std::forward<Published>(published)();
             return entry->second;
         }
-        spointer replace_asset(
-            const Key& key,
-            spointer asset
-        ) {
+        spointer replace_asset(const Key& key, spointer asset) {
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
             spointer retired;
@@ -192,19 +164,13 @@ namespace CE::Assets {
             return result;
         }
         /** Reserve raw slots for selective construction with emplace(). */
-        template <typename Derived>
-        auto reserve(
-            const std::size_t N
-        ) {
+        template <typename Derived> auto reserve(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>);
             return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
         }
 
         /** Provide raw object handles for callers that construct slots manually. */
-        template <typename Derived>
-        std::vector<std::shared_ptr<Derived>> allocate(
-            const std::size_t N
-        ) {
+        template <typename Derived> std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>, "The allocated class type must be derived from the managed type.");
             if (N == 0) {
                 return {};

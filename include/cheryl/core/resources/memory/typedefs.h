@@ -13,6 +13,3 @@ namespace CE::Mem {
         using RegistryOrder = ::compare::RegistryOrder<void>;
     }
 }
-
-
-

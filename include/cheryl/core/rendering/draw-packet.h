@@ -29,10 +29,7 @@ namespace CE::RenderAPIs {
         // future batching. Preserve authored order until an explicit policy exists.
     };
 
-    void validate_draw_packet(
-        const DrawPacket2D& packet,
-        const Assets::PassConstraints2D& constraints
-    );
+    void validate_draw_packet(const DrawPacket2D& packet, const Assets::PassConstraints2D& constraints);
     [[nodiscard]] DrawPacket2D resolve_draw_packet(
         std::shared_ptr<const Assets::Geometry2D> geometry,
         std::size_t first_vertex,

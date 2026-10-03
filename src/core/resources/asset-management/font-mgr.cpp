@@ -7,10 +7,7 @@
 #include <utility>
 
 namespace CE::Assets {
-    void FontMgr::load_assets(
-        const std::vector<std::filesystem::path>& files,
-        ResourceProvider& provider
-    ) {
+    void FontMgr::load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider) {
         bind_provider(provider);
         constexpr int default_font_size = 32;
         for (const auto& requested_file : files) {

@@ -43,21 +43,24 @@ namespace CE {
     };
 
     /** Adjacent faces share two vertices; the face winding alternates along the strip. */
-    template <std::size_t TriangleCount>
-    struct TriangleStrip {
+    template <std::size_t TriangleCount> struct TriangleStrip {
         static_assert(TriangleCount > 0);
         std::array<Vertex2D, TriangleCount + 2> vertices;
 
         constexpr TriangleStrip(const Triangle& first, const std::array<Vertex2D, TriangleCount - 1>& remaining)
         : vertices{} {
-            for (std::size_t i = 0; i < first.vertices.size(); ++i) vertices[i] = first.vertices[i];
-            for (std::size_t i = 0; i < remaining.size(); ++i) vertices[i + 3] = remaining[i];
+            for (std::size_t i = 0; i < first.vertices.size(); ++i)
+                vertices[i] = first.vertices[i];
+            for (std::size_t i = 0; i < remaining.size(); ++i)
+                vertices[i + 3] = remaining[i];
         }
 
         [[nodiscard]] constexpr Triangle triangle(const std::size_t index) const {
-            if (index >= TriangleCount) throw std::out_of_range("Triangle lies outside the strip");
+            if (index >= TriangleCount)
+                throw std::out_of_range("Triangle lies outside the strip");
             const auto& tip = vertices[index + 2];
-            if (index % 2 == 0) return {{vertices[index], vertices[index + 1], tip}};
+            if (index % 2 == 0)
+                return {{vertices[index], vertices[index + 1], tip}};
             return {{vertices[index + 1], vertices[index], tip}};
         }
     };

@@ -30,37 +30,26 @@ namespace CE::Engine::WorkerDetail {
 
     thread_local PoolState* current_pool = nullptr;
 
-    bool eligible(
-        const GroupState& group,
-        const PoolState& pool
-    ) {
+    bool eligible(const GroupState& group, const PoolState& pool) {
         const auto cap = group.options.max_concurrency == 0 ? pool.capacity : group.options.max_concurrency;
         return !group.pending.empty() && group.status.running < cap;
     }
 
-    bool has_pending(
-        const PoolState& pool
-    ) {
+    bool has_pending(const PoolState& pool) {
         for (const auto& group : pool.groups)
             if (!group->pending.empty())
                 return true;
         return false;
     }
 
-    bool has_eligible(
-        const PoolState& pool
-    ) {
+    bool has_eligible(const PoolState& pool) {
         for (const auto& group : pool.groups)
             if (eligible(*group, pool))
                 return true;
         return false;
     }
 
-    void run_worker(
-        const std::shared_ptr<PoolState>& pool,
-        const std::size_t worker_index,
-        std::vector<unsigned int> current_mask
-    ) {
+    void run_worker(const std::shared_ptr<PoolState>& pool, const std::size_t worker_index, std::vector<unsigned int> current_mask) {
         bool mask_known = true;
         current_pool = pool.get();
         while (true) {
@@ -144,15 +133,10 @@ namespace CE::Engine::WorkerDetail {
 }
 
 namespace CE::Engine {
-    WorkerGroup::WorkerGroup(
-        std::shared_ptr<WorkerDetail::PoolState> pool,
-        std::shared_ptr<WorkerDetail::GroupState> group
-    )
+    WorkerGroup::WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group)
     : pool_(std::move(pool)), group_(std::move(group)) {}
 
-    void WorkerGroup::enqueue(
-        WorkerDetail::Job job
-    ) const {
+    void WorkerGroup::enqueue(WorkerDetail::Job job) const {
         auto pool = pool_.lock();
         if (!pool)
             throw Exceptions::failed_operation(CE_HERE, "Worker pool no longer exists");
@@ -198,15 +182,10 @@ namespace CE::Engine {
         return group_->status;
     }
 
-    WorkerPool::WorkerPool(
-        const std::size_t worker_count
-    )
+    WorkerPool::WorkerPool(const std::size_t worker_count)
     : WorkerPool(worker_count, WorkerDetail::native_worker_adapter()) {}
 
-    WorkerPool::WorkerPool(
-        const std::size_t worker_count,
-        WorkerDetail::WorkerNativeAdapter adapter
-    )
+    WorkerPool::WorkerPool(const std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter)
     : state_(std::make_shared<WorkerDetail::PoolState>()) {
         if (worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
@@ -232,10 +211,7 @@ namespace CE::Engine {
         shutdown();
     }
 
-    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(
-        const std::size_t worker_count,
-        WorkerNativeAdapter adapter
-    ) {
+    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(const std::size_t worker_count, WorkerNativeAdapter adapter) {
         return std::unique_ptr<WorkerPool>(new WorkerPool(worker_count, std::move(adapter)));
     }
 
@@ -247,9 +223,7 @@ namespace CE::Engine {
         return state_->capabilities; // Inherited capability snapshot; restrictions may later change.
     }
 
-    WorkerGroup WorkerPool::make_group(
-        const WorkerGroupOptions options
-    ) {
+    WorkerGroup WorkerPool::make_group(const WorkerGroupOptions options) {
         if (options.weight == 0 || options.weight > 1024 || options.priority > 7)
             throw Exceptions::invalid_args(CE_HERE, "Worker weight must be 1..1024 and priority 0..7");
         if (options.cpu.strength != WorkerPolicyStrength::Preferred && options.cpu.strength != WorkerPolicyStrength::Required)
@@ -272,8 +246,10 @@ namespace CE::Engine {
             if (std::adjacent_find(requested.begin(), requested.end()) != requested.end())
                 throw Exceptions::invalid_args(CE_HERE, "Worker CPU eligibility contains duplicates");
             std::vector<unsigned int> allowed;
-            std::set_intersection(requested.begin(), requested.end(), capabilities.available_cpus.begin(),
-                capabilities.available_cpus.end(), std::back_inserter(allowed));
+            std::set_intersection(
+                requested.begin(), requested.end(), capabilities.available_cpus.begin(), capabilities.available_cpus.end(),
+                std::back_inserter(allowed)
+            );
             if (hard && allowed != requested)
                 throw Exceptions::invalid_args(CE_HERE, "Required worker CPUs are not in the pool's eligible CPU set");
             if (!allowed.empty())

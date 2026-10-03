@@ -16,10 +16,7 @@ namespace CE::Testing {
         void reject_next() noexcept { reject_request = requests.load() + 1; }
 
     private:
-        void* do_allocate(
-            const std::size_t bytes,
-            const std::size_t alignment
-        ) override {
+        void* do_allocate(const std::size_t bytes, const std::size_t alignment) override {
             const auto request = ++requests;
             if (request == reject_request.load()) {
                 ++rejected;
@@ -30,19 +27,11 @@ namespace CE::Testing {
             return result;
         }
 
-        void do_deallocate(
-            void* pointer,
-            const std::size_t bytes,
-            const std::size_t alignment
-        ) override {
+        void do_deallocate(void* pointer, const std::size_t bytes, const std::size_t alignment) override {
             --outstanding;
             std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
         }
 
-        bool do_is_equal(
-            const std::pmr::memory_resource& other
-        ) const noexcept override {
-            return this == &other;
-        }
+        bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
     };
 }

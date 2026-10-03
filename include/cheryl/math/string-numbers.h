@@ -21,17 +21,19 @@ double parse_floats(const std::string& str) {
 // Using std::variant to return the smallest type possible
 using NumberVariant = std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, double>;
 
-template<bool is_unsigned>
-NumberVariant parse_integers(const std::string& str) {
+template <bool is_unsigned> NumberVariant parse_integers(const std::string& str) {
     if constexpr (is_unsigned) {
         uint64_t value;
         auto result = std::from_chars(str.data(), str.data() + str.size(), value);
         if (result.ec != std::errc())
             throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
-        if (value <= std::numeric_limits<uint8_t>::max()) return static_cast<uint8_t>(value);
-        if (value <= std::numeric_limits<uint16_t>::max()) return static_cast<uint16_t>(value);
-        if (value <= std::numeric_limits<uint32_t>::max()) return static_cast<uint32_t>(value);
+        if (value <= std::numeric_limits<uint8_t>::max())
+            return static_cast<uint8_t>(value);
+        if (value <= std::numeric_limits<uint16_t>::max())
+            return static_cast<uint16_t>(value);
+        if (value <= std::numeric_limits<uint32_t>::max())
+            return static_cast<uint32_t>(value);
         return static_cast<uint64_t>(value);
     } else {
         int64_t value;
@@ -39,18 +41,20 @@ NumberVariant parse_integers(const std::string& str) {
         if (result.ec != std::errc())
             throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
-        if (value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max()) return static_cast<int8_t>(value);
-        if (value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max()) return static_cast<int16_t>(value);
-        if (value >= std::numeric_limits<int32_t>::min() && value <= std::numeric_limits<int32_t>::max()) return static_cast<int32_t>(value);
+        if (value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max())
+            return static_cast<int8_t>(value);
+        if (value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max())
+            return static_cast<int16_t>(value);
+        if (value >= std::numeric_limits<int32_t>::min() && value <= std::numeric_limits<int32_t>::max())
+            return static_cast<int32_t>(value);
         return static_cast<int64_t>(value);
     }
 }
 
-template<bool is_unsigned>
-NumberVariant string_to_number(const std::string& str) {
+template <bool is_unsigned> NumberVariant string_to_number(const std::string& str) {
     // Check if it's a floating-point number
     if (str.find('.') != std::string::npos || str.find('e') != std::string::npos || str.find('E') != std::string::npos) {
-        return parse_floats(str);  // Always return double for floating point numbers
+        return parse_floats(str); // Always return double for floating point numbers
     } else {
         // Parse and return the appropriate integer type
         return parse_integers<is_unsigned>(str);

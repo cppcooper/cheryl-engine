@@ -22,11 +22,7 @@ namespace CE::Assets {
 
     struct Tile final : Asset2D,
                         Frame<Tile> {
-        explicit Tile(
-            std::size_t cell,
-            const shptr<Geometry2D>& geometry,
-            const shptr<Image>& texture
-        )
+        explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture)
         : Asset2D(geometry, texture), Frame(cell, 0, 1) {}
 
         [[nodiscard]] std::size_t cell() const { return offset_; }
@@ -39,11 +35,7 @@ namespace CE::Assets {
         TileAnimationDefinition definition_;
 
     public:
-        explicit TileAnimation(
-            TileAnimationDefinition definition,
-            const shptr<Geometry2D>& geometry,
-            const shptr<Image>& texture
-        );
+        explicit TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture);
 
         [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
@@ -62,28 +54,14 @@ namespace CE::Assets {
         std::unordered_map<CellIndex, std::string> animation_targets_;
 
     public:
-        explicit Tileset(
-            TilesetData data
-        );
+        explicit Tileset(TilesetData data);
 
-        [[nodiscard]] Tile tile(
-            std::size_t cell
-        ) const;
-        [[nodiscard]] TileAnimation animation(
-            const std::string& name
-        ) const;
-        [[nodiscard]] std::optional<TileAnimation> animation_for(
-            std::size_t target
-        ) const;
-        [[nodiscard]] const ViewDefinition& view(
-            const std::string& name
-        ) const;
-        [[nodiscard]] CellIndex orientation(
-            const std::string& name
-        ) const;
-        [[nodiscard]] const AutotileDefinition& autotile(
-            const std::string& name
-        ) const;
+        [[nodiscard]] Tile tile(std::size_t cell) const;
+        [[nodiscard]] TileAnimation animation(const std::string& name) const;
+        [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;
+        [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
+        [[nodiscard]] CellIndex orientation(const std::string& name) const;
+        [[nodiscard]] const AutotileDefinition& autotile(const std::string& name) const;
         [[nodiscard]] const TilesetDefinition& definition() const { return definition_; }
     };
 }

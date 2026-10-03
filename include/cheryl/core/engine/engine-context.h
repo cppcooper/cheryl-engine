@@ -82,12 +82,8 @@ namespace CE::Engine {
         );
         ~EngineContext();
 
-        EngineContext(
-            const EngineContext&
-        ) = delete;
-        EngineContext& operator=(
-            const EngineContext&
-        ) = delete;
+        EngineContext(const EngineContext&) = delete;
+        EngineContext& operator=(const EngineContext&) = delete;
 
         [[nodiscard]] iDisplaySystem& display() const;
         [[nodiscard]] iWindow& window() const;
@@ -98,9 +94,7 @@ namespace CE::Engine {
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
-        [[nodiscard]] WorkerGroup make_worker_group(
-            WorkerGroupOptions options = WorkerGroupOptions{}
-        );
+        [[nodiscard]] WorkerGroup make_worker_group(WorkerGroupOptions options = WorkerGroupOptions{});
 
     private:
         friend class GFramework::GameRuntime;

@@ -79,12 +79,7 @@ namespace CE {
         return {x, y};
     }
 
-    Window* DisplaySystem::create_window(
-        const Monitor& monitor,
-        const Enum::window_mode mode,
-        const int width,
-        const int height
-    ) {
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const int width, const int height) {
         return create_window(monitor, mode, width, height, "");
     }
 
@@ -101,11 +96,7 @@ namespace CE {
         return result;
     }
 
-    Window* DisplaySystem::create_window(
-        const Monitor& monitor,
-        const Enum::window_mode mode,
-        const Resolution resolution
-    ) {
+    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const Resolution resolution) {
         return create_window(monitor, mode, resolution.width, resolution.height);
     }
 
@@ -115,8 +106,7 @@ namespace CE {
 
     void DisplaySystem::activate_window(iWindow& window) {
         // Only display-owned windows may become active, and the current renderer assumes one context.
-        const auto owned =
-            std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
+        const auto owned = std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
         if (!owned)
             throw Exceptions::invalid_args(CE_HERE, "Active window must be owned by DisplaySystem");
         if (active_ && active_ != &window)

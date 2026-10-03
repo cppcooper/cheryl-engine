@@ -45,16 +45,12 @@ namespace CE::Engine {
             friend class SimulationDispatcher;
             std::shared_ptr<State> state_;
 
-            explicit Submission(
-                std::shared_ptr<State> state
-            )
+            explicit Submission(std::shared_ptr<State> state)
             : state_(std::move(state)) {}
 
         public:
             template <typename Work>
-            [[nodiscard]] auto submit(
-                Work&& work
-            ) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
+            [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
                 using Result = std::invoke_result_t<std::decay_t<Work>&>;
                 std::promise<Result> completion;
                 auto result = completion.get_future();
@@ -78,33 +74,19 @@ namespace CE::Engine {
 
         SimulationDispatcher() = default;
         ~SimulationDispatcher();
-        SimulationDispatcher(
-            const SimulationDispatcher&
-        ) = delete;
-        SimulationDispatcher& operator=(
-            const SimulationDispatcher&
-        ) = delete;
+        SimulationDispatcher(const SimulationDispatcher&) = delete;
+        SimulationDispatcher& operator=(const SimulationDispatcher&) = delete;
 
         [[nodiscard]] Submission submission() const { return Submission(state_); }
-        template <typename Work>
-        [[nodiscard]] auto submit(
-            Work&& work
-        ) -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
+        template <typename Work> [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
             return submission().submit(std::forward<Work>(work));
         }
         [[nodiscard]] bool has_pending() const;
 
     private:
-        static void enqueue(
-            const std::shared_ptr<State>& state,
-            Task request
-        );
-        static void require_owner(
-            const State& state
-        );
-        void open(
-            std::function<void()> wake
-        );
+        static void enqueue(const std::shared_ptr<State>& state, Task request);
+        static void require_owner(const State& state);
+        void open(std::function<void()> wake);
         void bind_owner();
         void drain();
         void close();

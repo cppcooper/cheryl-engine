@@ -11,8 +11,7 @@
  * observers on the calling thread, even when the value is unchanged. Waiters wake only for a
  * changed value. Use VersionedVariable directly when callback thread affinity is undesirable.
  */
-template <typename T, std::uint8_t Observers = 1>
-class ObservedVariable {
+template <typename T, std::uint8_t Observers = 1> class ObservedVariable {
 public:
     using Callback = std::function<void(const T&)>;
 
@@ -22,7 +21,7 @@ private:
 
 public:
     explicit ObservedVariable(T value, std::array<Callback, Observers> observers)
-        : value_(std::move(value)), callbacks_(std::move(observers)) {}
+    : value_(std::move(value)), callbacks_(std::move(observers)) {}
 
     ObservedVariable& operator=(T value) {
         set(std::move(value));

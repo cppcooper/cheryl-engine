@@ -11,16 +11,11 @@ namespace CE::Resources {
         namespace fs = std::filesystem;
 
         std::string lowercase(std::string value) {
-            std::ranges::transform(value, value.begin(),
-                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            std::ranges::transform(value, value.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return value;
         }
 
-        void append_environment_path(
-            std::vector<fs::path>& directories,
-            const char* variable,
-            const fs::path& suffix = {}
-        ) {
+        void append_environment_path(std::vector<fs::path>& directories, const char* variable, const fs::path& suffix = {}) {
             if (const char* value = std::getenv(variable); value && *value) {
                 directories.push_back(fs::path(value) / suffix);
             }
@@ -33,12 +28,7 @@ namespace CE::Resources {
     }
 
     std::vector<fs::path> system_font_directories() {
-        std::vector<fs::path> directories{
-            "/usr/share/fonts",
-            "/usr/local/share/fonts",
-            "/Library/Fonts",
-            "/System/Library/Fonts"
-        };
+        std::vector<fs::path> directories{"/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts", "/System/Library/Fonts"};
         append_environment_path(directories, "HOME", ".fonts");
         append_environment_path(directories, "HOME", ".local/share/fonts");
         append_environment_path(directories, "HOME", "Library/Fonts");
@@ -81,24 +71,13 @@ namespace CE::Resources {
     std::optional<fs::path> select_default_system_font(const std::vector<fs::path>& fonts) {
         if (fonts.empty())
             return std::nullopt;
-        constexpr std::string_view preferred_names[]{
-            "arial.ttf",
-            "helvetica.ttc",
-            "dejavusans.ttf",
-            "liberationsans-regular.ttf",
-            "nimbussans-regular.otf",
-            "notosans-regular.ttf",
-            "freesans.ttf",
-            "segoeui.ttf",
-            "roboto-regular.ttf",
-            "calibri.ttf",
-            "consola.ttf",
-            "proggyvector regular.ttf"
-        };
+        constexpr std::string_view preferred_names[]{"arial.ttf", "helvetica.ttc", "dejavusans.ttf", "liberationsans-regular.ttf",
+            "nimbussans-regular.otf", "notosans-regular.ttf", "freesans.ttf", "segoeui.ttf", "roboto-regular.ttf", "calibri.ttf",
+            "consola.ttf", "proggyvector regular.ttf"};
         // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
         for (const auto preferred : preferred_names) {
-            const auto match = std::ranges::find_if(
-                fonts, [preferred](const fs::path& font) { return lowercase(font.filename().string()) == preferred; });
+            const auto match =
+                std::ranges::find_if(fonts, [preferred](const fs::path& font) { return lowercase(font.filename().string()) == preferred; });
             if (match != fonts.end())
                 return *match;
         }

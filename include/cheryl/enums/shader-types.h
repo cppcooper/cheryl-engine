@@ -2,13 +2,7 @@
 #include <string>
 
 namespace CE::Enum {
-    enum ShaderTypes {
-        VERTEX,
-        FRAGMENT,
-        GEOMETRY,
-        TESS_CONTROL,
-        TESS_EVALUATION
-    };
+    enum ShaderTypes { VERTEX, FRAGMENT, GEOMETRY, TESS_CONTROL, TESS_EVALUATION };
 
     inline ShaderTypes get_shader_type(const std::string& extension) {
         if (extension == ".vert") {
@@ -26,6 +20,6 @@ namespace CE::Enum {
         if (extension == ".tese") {
             return TESS_EVALUATION;
         }
-        return FRAGMENT;  // Default case
+        return FRAGMENT; // Default case
     }
 }

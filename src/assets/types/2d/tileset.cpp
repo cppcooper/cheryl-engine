@@ -5,11 +5,7 @@
 #include <utility>
 
 namespace CE::Assets {
-    TileAnimation::TileAnimation(
-        TileAnimationDefinition definition,
-        const shptr<Geometry2D>& geometry,
-        const shptr<Image>& texture
-    )
+    TileAnimation::TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture)
     : Asset2D(geometry, texture),
       Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
       definition_(std::move(definition)) {}
@@ -18,9 +14,7 @@ namespace CE::Assets {
         return definition_.frames.at(index_).duration;
     }
 
-    Tileset::Tileset(
-        TilesetData data
-    )
+    Tileset::Tileset(TilesetData data)
     : Asset2D(std::move(data.geometry), std::move(data.texture)), definition_(std::move(data.definition)) {
         // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
@@ -30,24 +24,18 @@ namespace CE::Assets {
         }
     }
 
-    Tile Tileset::tile(
-        const std::size_t cell
-    ) const {
+    Tile Tileset::tile(const std::size_t cell) const {
         if (cell >= definition_.grid.cell_count()) {
             throw Exceptions::bad_request(CE_HERE, "Tileset cell is outside the grid");
         }
         return Tile(cell, geometry, texture);
     }
 
-    TileAnimation Tileset::animation(
-        const std::string& name
-    ) const {
+    TileAnimation Tileset::animation(const std::string& name) const {
         return TileAnimation(definition_.animations.at(name), geometry, texture);
     }
 
-    std::optional<TileAnimation> Tileset::animation_for(
-        const std::size_t target
-    ) const {
+    std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {
         // Tile maps choose a base cell before animation; this index finds a
         // clip only when that original cell is an animated target.
         const auto animation_name = animation_targets_.find(target);
@@ -57,21 +45,15 @@ namespace CE::Assets {
         return std::nullopt;
     }
 
-    const ViewDefinition& Tileset::view(
-        const std::string& name
-    ) const {
+    const ViewDefinition& Tileset::view(const std::string& name) const {
         return definition_.views.at(name);
     }
 
-    CellIndex Tileset::orientation(
-        const std::string& name
-    ) const {
+    CellIndex Tileset::orientation(const std::string& name) const {
         return definition_.orientations.at(name);
     }
 
-    const AutotileDefinition& Tileset::autotile(
-        const std::string& name
-    ) const {
+    const AutotileDefinition& Tileset::autotile(const std::string& name) const {
         return definition_.autotiles.at(name);
     }
 }

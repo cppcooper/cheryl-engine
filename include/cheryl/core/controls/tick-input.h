@@ -19,8 +19,8 @@ namespace CE::Input {
         bool released_this_tick = false;
         std::uint64_t press_count = 0;
         std::uint64_t release_count = 0;
-        InputDuration held_duration{}; // Age of the active hold, or zero when released.
-        InputDuration down_duration{}; // Observed down-time in this consumption interval.
+        InputDuration held_duration{};              // Age of the active hold, or zero when released.
+        InputDuration down_duration{};              // Observed down-time in this consumption interval.
         std::vector<InputDuration> completed_holds; // Full duration of each hold released in this batch.
 
         [[nodiscard]] bool held() const { return current; }
@@ -47,10 +47,12 @@ namespace CE::Input {
     public:
         // For manual consumers, the interval defaults to the sample timestamps.
         TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls);
-        TickInput(std::shared_ptr<const ActionSnapshot> previous,
-                  std::vector<std::shared_ptr<const ActionSnapshot>> polls,
-                  InputClock::time_point since,
-                  InputClock::time_point until);
+        TickInput(
+            std::shared_ptr<const ActionSnapshot> previous,
+            std::vector<std::shared_ptr<const ActionSnapshot>> polls,
+            InputClock::time_point since,
+            InputClock::time_point until
+        );
 
         [[nodiscard]] ButtonTickState button(ActionId action) const;
         [[nodiscard]] AxisTickState axis(ActionId action) const;
@@ -62,8 +64,8 @@ namespace CE::Input {
         // Routed text and editing controls remain interleaved in observation order.
         [[nodiscard]] auto records_for(const FocusId target, const std::optional<std::uint64_t> epoch = {}) const {
             return records() | std::views::filter([target, epoch](const InputRecord& record) {
-                       return record.target == target && (!epoch || record.focus_epoch == *epoch);
-                   });
+                return record.target == target && (!epoch || record.focus_epoch == *epoch);
+            });
         }
         [[nodiscard]] auto gameplay_events() const {
             return records() | std::views::filter([](const InputRecord& record) { return !record.is_text() && record.to_gameplay; });

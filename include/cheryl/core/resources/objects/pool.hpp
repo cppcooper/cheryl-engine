@@ -5,10 +5,11 @@
 #include "object-construction.hpp"
 
 namespace CE::Obj {
-    template<typename T>
-    template<typename ... Args>
+    template <typename T>
+    template <typename... Args>
     std::vector<std::shared_ptr<T>> PoolState<T>::retrieve_objects(std::size_t N, Args... args) {
-        if (N == 0) return {};
+        if (N == 0)
+            return {};
         auto context = this->shared_from_this();
         std::vector<std::shared_ptr<T>> objects;
         objects.reserve(N);
@@ -41,13 +42,11 @@ namespace CE::Obj {
         return objects;
     }
 
-    template<typename T>
-    void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
+    template <typename T> void PoolState<T>::release_owned(T* p, std::size_t length) noexcept {
         return_objects(p, length);
     }
 
-    template<typename T>
-    Block<T> PoolState<T>::retrieve_block(std::size_t N) {
+    template <typename T> Block<T> PoolState<T>::retrieve_block(std::size_t N) {
         if (N == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
         }
@@ -72,16 +71,15 @@ namespace CE::Obj {
         return *ob;
     }
 
-    template<typename T>
-    void PoolState<T>::return_objects(T* p, std::size_t length) {
+    template <typename T> void PoolState<T>::return_objects(T* p, std::size_t length) {
         if (length == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot return an empty object range.");
         }
         auto FUNC = CE_FUNCTION_;
         // Carve a returned slot/range out of its active section. Preserve unreturned
         // front/back sections, then coalesce only the returned middle with free neighbors.
-        auto ret_chunk = [this,FUNC](OBlock<T> b, T* p, std::size_t length) {
-            if(!b.has_value()) {
+        auto ret_chunk = [this, FUNC](OBlock<T> b, T* p, std::size_t length) {
+            if (!b.has_value()) {
                 std::unreachable();
             }
             const auto original = *b;
@@ -92,21 +90,22 @@ namespace CE::Obj {
                 // Compute the unreturned spans in object units; only the middle
                 // slice may reenter the free pool after the partition changes.
                 bool sec_changed = false;
-                auto remainder_end = (block_end - end) / sizeof(T);  // Remaining objects at the end
-                auto remainder_front = (reinterpret_cast<uintptr_t>(p) - reinterpret_cast<uintptr_t>(b->head.get())) / sizeof(T);  // Remaining objects at the front
+                auto remainder_end = (block_end - end) / sizeof(T); // Remaining objects at the end
+                auto remainder_front = (reinterpret_cast<uintptr_t>(p) - reinterpret_cast<uintptr_t>(b->head.get())) /
+                                       sizeof(T); // Remaining objects at the front
 
                 // Retain a leading active section, then work on the rest.
                 if (remainder_front > 0) {
                     sec_changed = true;
                     auto back_end = b->split_exactly(remainder_front);
-                    this->emplace(*b, this->sections);  // Re-add modified front block to sections
-                    b = back_end;  // Continue with the remaining block
+                    this->emplace(*b, this->sections); // Re-add modified front block to sections
+                    b = back_end;                      // Continue with the remaining block
                 }
                 // Retain the trailing active section after the returned slice.
                 if (remainder_end > 0) {
                     sec_changed = true;
                     auto back_end = b->split_exactly(b->length - remainder_end);
-                    this->emplace(*back_end, this->sections);  // Re-add the split back portion
+                    this->emplace(*back_end, this->sections); // Re-add the split back portion
                 }
                 // Replace the original record with its new partition before
                 // coalescing the returned range with already free neighbors.
@@ -133,12 +132,11 @@ namespace CE::Obj {
             }
             ret_chunk(owner, p, length);
         } else {
-            throw Exceptions::bad_request(CE_HERE,"No matching block found for the given pointer.");
+            throw Exceptions::bad_request(CE_HERE, "No matching block found for the given pointer.");
         }
     }
 
-    template<typename T>
-    void PoolState<T>::return_block(const Block<T> &returned) {
+    template <typename T> void PoolState<T>::return_block(const Block<T>& returned) {
         // Returning a whole owner is valid only when no active sections of that owner remain.
         const bool in_sections = this->contains(returned, this->sections);
         const bool in_registry = this->contains(returned, this->registry);
@@ -158,25 +156,24 @@ namespace CE::Obj {
         this->merge_into_pool(returned);
     }
 
-    template<typename T>
-    Block<T> PoolState<T>::allocate(size_t length) {
+    template <typename T> Block<T> PoolState<T>::allocate(size_t length) {
         // Borrow raw bytes from the typed memory manager. The resulting owner handle
         // destroys any tracked T objects and returns those bytes when its final alias dies.
         auto& manager = Mem::ObjMMgr<T>::get();
-        Mem::HeapBlock b = manager.checkout_chunk(length*sizeof(T), alignof(T), Enum::greedy);
+        Mem::HeapBlock b = manager.checkout_chunk(length * sizeof(T), alignof(T), Enum::greedy);
         auto raw = static_cast<T*>(b.head.get());
 
-        static_assert(!std::is_same_v<T,void>);
+        static_assert(!std::is_same_v<T, void>);
         const std::size_t len = b.length / sizeof(T);
         const auto manager_lifetime = manager.lifetime_token();
         // The owner deleter runs once after every alias to this allocation
         // disappears; the slot map distinguishes constructed from raw storage.
         // TODO: Retain a safe release context for the underlying byte manager. The weak
         // lifetime check does not serialize this deleter with concurrent manager destruction.
-        std::shared_ptr<T> block_root(raw, [b,len,manager_lifetime,manager_ptr = &manager](auto p) {
+        std::shared_ptr<T> block_root(raw, [b, len, manager_lifetime, manager_ptr = &manager](auto p) {
             // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
-            ObjCtor<T>::destroy(p,len);
-            ObjCtor<T>::erase(p,p+len);
+            ObjCtor<T>::destroy(p, len);
+            ObjCtor<T>::erase(p, p + len);
             if (manager_lifetime.lock()) {
                 manager_ptr->return_chunk(b);
             }

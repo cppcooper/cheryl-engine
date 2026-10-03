@@ -38,12 +38,8 @@ namespace CE {
         // manually prepare stack trace
         for (size_t i = 0; i < st.size(); ++i) {
             backward::ResolvedTrace trace = tr.resolve(st[i]);
-            ss << "#" << i
-                << " " << trace.object_function
-                << "[" << trace.addr << "]"
-                << " in " << trace.source.filename
-                << ":" << trace.source.line << ":" << trace.source.col
-                << std::endl;
+            ss << "#" << i << " " << trace.object_function << "[" << trace.addr << "]"
+               << " in " << trace.source.filename << ":" << trace.source.line << ":" << trace.source.col << std::endl;
         }
         ss << '\0'; //null terminate our string, required for repeat executions
         return buffer.data();

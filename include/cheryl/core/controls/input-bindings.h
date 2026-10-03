@@ -20,7 +20,7 @@ namespace CE::Input {
     };
 
     struct AxisOptions {
-        float scale = 1.0f; // A negative scale inverts the input.
+        float scale = 1.0f;     // A negative scale inverts the input.
         float dead_zone = 0.0f; // Values inside the zone become zero; the rest is rescaled.
         AxisKind kind = AxisKind::Absolute;
     };

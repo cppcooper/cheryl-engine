@@ -5,9 +5,7 @@
 #include <utility>
 
 namespace CE::Assets {
-    void validate_pipeline_definition(
-        const PipelineDefinition& definition
-    ) {
+    void validate_pipeline_definition(const PipelineDefinition& definition) {
         if (definition.program_sources.empty())
             throw Exceptions::invalid_args(CE_HERE, "Pipeline requires program sources");
         for (const auto& source : definition.program_sources) {
@@ -26,9 +24,7 @@ namespace CE::Assets {
         validate_parameter_contract(definition.parameters);
     }
 
-    Pipeline::Pipeline(
-        PipelineDefinition definition
-    )
+    Pipeline::Pipeline(PipelineDefinition definition)
     : definition_(std::move(definition)) {
         validate_pipeline_definition(definition_);
     }
@@ -53,9 +49,7 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "Pipeline state conflicts with its pass constraints");
     }
 
-    Material::Material(
-        MaterialDefinition definition
-    )
+    Material::Material(MaterialDefinition definition)
     : definition_(std::move(definition)) {
         if (!definition_.pipeline)
             throw Exceptions::invalid_args(CE_HERE, "Material requires a pipeline generation");
@@ -68,7 +62,8 @@ namespace CE::Assets {
         const ParameterSet& pass_values,
         const ParameterSet& draw_values
     ) const {
-        return resolve_parameters(definition_.pipeline->definition().parameters, pass_semantics, draw_semantics, pass_values,
-            definition_.defaults, draw_values);
+        return resolve_parameters(
+            definition_.pipeline->definition().parameters, pass_semantics, draw_semantics, pass_values, definition_.defaults, draw_values
+        );
     }
 }

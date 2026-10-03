@@ -21,8 +21,9 @@ namespace CE::Engine::WorkerDetail {
         CPU_ZERO(&mask);
         const auto error = pthread_getaffinity_np(pthread_self(), sizeof(mask), &mask);
         if (error != 0)
-            throw Exceptions::failed_operation(CE_HERE,
-                std::format("Reading worker CPU affinity failed: {}", std::error_code(error, std::generic_category()).message()));
+            throw Exceptions::failed_operation(
+                CE_HERE, std::format("Reading worker CPU affinity failed: {}", std::error_code(error, std::generic_category()).message())
+            );
         std::vector<unsigned int> cpus;
         for (unsigned int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
             if (CPU_ISSET(cpu, &mask))
@@ -35,9 +36,7 @@ namespace CE::Engine::WorkerDetail {
 #endif
     }
 
-    WorkerCapabilities discover_capabilities(
-        const WorkerNativeAdapter& adapter
-    ) {
+    WorkerCapabilities discover_capabilities(const WorkerNativeAdapter& adapter) {
         WorkerCapabilities capabilities;
         if (adapter.cpu_affinity) {
             try {
@@ -55,9 +54,7 @@ namespace CE::Engine::WorkerDetail {
         return capabilities;
     }
 
-    void set_native_affinity(
-        const std::vector<unsigned int>& cpus
-    ) {
+    void set_native_affinity(const std::vector<unsigned int>& cpus) {
 #if defined(__linux__)
         cpu_set_t mask;
         CPU_ZERO(&mask);
@@ -70,18 +67,16 @@ namespace CE::Engine::WorkerDetail {
         }
         const auto error = pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask);
         if (error != 0)
-            throw Exceptions::failed_operation(CE_HERE,
-                std::format("Setting worker CPU affinity failed: {}", std::error_code(error, std::generic_category()).message()));
+            throw Exceptions::failed_operation(
+                CE_HERE, std::format("Setting worker CPU affinity failed: {}", std::error_code(error, std::generic_category()).message())
+            );
 #else
         (void)cpus;
         throw Exceptions::failed_operation(CE_HERE, "Native worker affinity is unsupported on this target");
 #endif
     }
 
-    void apply_affinity(
-        const WorkerNativeAdapter& adapter,
-        const std::vector<unsigned int>& cpus
-    ) {
+    void apply_affinity(const WorkerNativeAdapter& adapter, const std::vector<unsigned int>& cpus) {
         adapter.set_affinity(cpus);
         // Linux may silently intersect the request with cpuset restrictions.
         // Verify the effective mask before allowing the requested job to run.

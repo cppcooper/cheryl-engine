@@ -6,7 +6,8 @@
 #include "input-bindings.h"
 
 namespace CE::Input {
-    class InputMapper final : public gainput::InputListener, public InputBindings {
+    class InputMapper final : public gainput::InputListener,
+                              public InputBindings {
         gainput::InputManager& manager_;
         gainput::ListenerId id_;
         std::unordered_set<DeviceId> externally_driven_;

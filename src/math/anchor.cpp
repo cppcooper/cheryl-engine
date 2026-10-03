@@ -10,8 +10,8 @@
 namespace CE::math {
     namespace {
         void validate(const Pivot pivot, const std::uint32_t texture_width, const std::uint32_t texture_height) {
-            if (!std::isfinite(pivot.x) || !std::isfinite(pivot.y) || pivot.x < 0.0f || pivot.x > 1.0f ||
-                pivot.y < 0.0f || pivot.y > 1.0f) {
+            if (!std::isfinite(pivot.x) || !std::isfinite(pivot.y) || pivot.x < 0.0f || pivot.x > 1.0f || pivot.y < 0.0f ||
+                pivot.y > 1.0f) {
                 throw Exceptions::invalid_args(CE_HERE, "A pivot must be normalized to the [0, 1] range");
             }
             if (texture_width == 0 || texture_height == 0) {
@@ -64,11 +64,7 @@ namespace CE::math {
             const float v0 = 1.0f - ((sy + fh) / th);
             const float v1 = 1.0f - (sy / th);
 
-            return {{left, bottom, 0.0f, u0, v0},
-                    {right, bottom, 0.0f, u1, v0},
-                    {right, top, 0.0f, u1, v1},
-                    {left, top, 0.0f, u0, v1}
-            };
+            return {{left, bottom, 0.0f, u0, v0}, {right, bottom, 0.0f, u1, v0}, {right, top, 0.0f, u1, v1}, {left, top, 0.0f, u0, v1}};
         }
     }
 
@@ -208,16 +204,18 @@ namespace CE::math {
         MakePivot(get_pivot(type), vertices, texture_width, texture_height, width, height, x0, y0);
     }
 
-#define CE_ANCHOR_WRAPPER(name, value)                                                                                 \
-    void Anchor::name(Vertex2D* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height,       \
-                      const std::uint32_t width, const std::uint32_t height, const std::uint32_t x0,                   \
-                      const std::uint32_t y0) {                                                                        \
-        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                              \
-    }                                                                                                                  \
-    void Anchor::name(float* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height,          \
-                      const std::uint32_t width, const std::uint32_t height, const std::uint32_t x0,                   \
-                      const std::uint32_t y0) {                                                                        \
-        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                              \
+#define CE_ANCHOR_WRAPPER(name, value)                                                                                                     \
+    void Anchor::name(                                                                                                                     \
+        Vertex2D* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height, const std::uint32_t width,              \
+        const std::uint32_t height, const std::uint32_t x0, const std::uint32_t y0                                                         \
+    ) {                                                                                                                                    \
+        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                                                  \
+    }                                                                                                                                      \
+    void Anchor::name(                                                                                                                     \
+        float* vertices, const std::uint32_t texture_width, const std::uint32_t texture_height, const std::uint32_t width,                 \
+        const std::uint32_t height, const std::uint32_t x0, const std::uint32_t y0                                                         \
+    ) {                                                                                                                                    \
+        MakePivot(value, vertices, texture_width, texture_height, width, height, x0, y0);                                                  \
     }
 
     CE_ANCHOR_WRAPPER(Center, get_pivot(AnchorType::Center))

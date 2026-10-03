@@ -9,7 +9,8 @@ namespace CE::Assets {
     struct ResourceProvider;
 
     /** Cache linked programs by path. Camera/draw state is bound at submission. */
-    struct ShaderMgr final : ShaderAssetMgr, Singleton_CTS<ShaderMgr> {
+    struct ShaderMgr final : ShaderAssetMgr,
+                             Singleton_CTS<ShaderMgr> {
         ShaderMgr() = default;
         ~ShaderMgr() override = default;
         void load_program(const std::filesystem::path& key, const std::vector<std::filesystem::path>& stages, ResourceProvider& provider);

@@ -25,7 +25,8 @@ namespace CE::Input {
     // can be handed to simulation without reading live Gainput state from another thread.
     // Ordered GLFW records are captured before Gainput mapping. The character
     // callback provides OS text independently of physical keyboard State.
-    class InputSystem final : public iInputSystem, public Singleton_CTS<InputSystem> {
+    class InputSystem final : public iInputSystem,
+                              public Singleton_CTS<InputSystem> {
         gainput::InputManager manager_;
         InputMapper bindings_;
         GlfwInputDevice* keyboard_ = nullptr;
@@ -40,14 +41,12 @@ namespace CE::Input {
         std::vector<bool> pad_buttons_;
         std::exception_ptr callback_failure_;
 
-        template <typename Work>
-        void receive(Work&& work) noexcept {
+        template <typename Work> void receive(Work&& work) noexcept {
             if (callback_failure_)
                 return;
             try {
                 std::forward<Work>(work)();
-            }
-            catch (...) {
+            } catch (...) {
                 // Do not unwind through GLFW's C callback stack. update() reports
                 // the first failure on the normal runtime/teardown path instead.
                 callback_failure_ = std::current_exception();

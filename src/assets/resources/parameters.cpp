@@ -9,21 +9,14 @@
 
 namespace CE::Assets {
     namespace {
-        void validate_value(
-            const ParameterDefinition& definition,
-            const ParameterValue& value
-        ) {
+        void validate_value(const ParameterDefinition& definition, const ParameterValue& value) {
             if (parameter_type(value) != definition.type)
                 throw Exceptions::invalid_args(CE_HERE, "Parameter type mismatch: " + definition.key);
             if (const auto* binding = std::get_if<ImageBinding>(&value); binding && !binding->image)
                 throw Exceptions::invalid_args(CE_HERE, "Sampler has no image: " + definition.key);
         }
 
-        ParameterValue semantic_value(
-            const ParameterSemantic semantic,
-            const ShaderPass& pass,
-            const ShaderDraw& draw
-        ) {
+        ParameterValue semantic_value(const ParameterSemantic semantic, const ShaderPass& pass, const ShaderDraw& draw) {
             switch (semantic) {
                 case ParameterSemantic::Projection:
                     return pass.projection;
@@ -41,9 +34,7 @@ namespace CE::Assets {
         }
     }
 
-    ParameterType parameter_type(
-        const ParameterValue& value
-    ) {
+    ParameterType parameter_type(const ParameterValue& value) {
         return std::visit(
             [](const auto& item) {
                 using T = std::decay_t<decltype(item)>;
@@ -70,9 +61,7 @@ namespace CE::Assets {
         );
     }
 
-    void validate_parameter_contract(
-        const ParameterContract& contract
-    ) {
+    void validate_parameter_contract(const ParameterContract& contract) {
         std::set<std::string> keys;
         std::set<ParameterSemantic> semantics;
         for (const auto& definition : contract) {
@@ -90,10 +79,7 @@ namespace CE::Assets {
         }
     }
 
-    void validate_parameter_values(
-        const ParameterContract& contract,
-        const ParameterSet& values
-    ) {
+    void validate_parameter_values(const ParameterContract& contract, const ParameterSet& values) {
         validate_parameter_contract(contract);
         for (const auto& [key, value] : values) {
             const auto definition = std::find_if(contract.begin(), contract.end(), [&](const auto& item) { return item.key == key; });
@@ -105,10 +91,7 @@ namespace CE::Assets {
         }
     }
 
-    void validate_resolved_parameters(
-        const ParameterContract& contract,
-        const ParameterSet& values
-    ) {
+    void validate_resolved_parameters(const ParameterContract& contract, const ParameterSet& values) {
         validate_parameter_contract(contract);
         std::set<std::uint32_t> units;
         for (const auto& [key, value] : values) {

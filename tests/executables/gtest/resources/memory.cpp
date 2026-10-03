@@ -319,7 +319,9 @@ namespace {
         static inline int destroyed = 0;
 
         explicit TrackedAsset(int value)
-        : value_(value) { ++live; }
+        : value_(value) {
+            ++live;
+        }
 
         ~TrackedAsset() override {
             --live;

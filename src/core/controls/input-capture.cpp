@@ -13,7 +13,9 @@ namespace CE::Input {
             counts_->text.fetch_add(1);
     }
 
-    CaptureLease::~CaptureLease() { reset(); }
+    CaptureLease::~CaptureLease() {
+        reset();
+    }
 
     CaptureLease::CaptureLease(CaptureLease&& other) noexcept
     : counts_(std::move(other.counts_)), mode_(other.mode_) {}
@@ -61,15 +63,15 @@ namespace CE::Input {
         if (text && (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF)))
             throw Exceptions::invalid_args(CE_HERE, "Text input requires a Unicode scalar value");
         const bool keyboard = kind == DeviceKind::Keyboard || text;
-        pending_.push_back({
-            next_sequence_++, observed_at, device, kind, std::move(data),
-            keyboard ? focus_.target : 0,
-            keyboard ? focus_.epoch : 0,
-            !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough
-        });
+        pending_.push_back(
+            {next_sequence_++, observed_at, device, kind, std::move(data), keyboard ? focus_.target : 0, keyboard ? focus_.epoch : 0,
+                !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough}
+        );
     }
 
-    std::vector<InputRecord> InputCapture::complete() { return std::exchange(pending_, {}); }
+    std::vector<InputRecord> InputCapture::complete() {
+        return std::exchange(pending_, {});
+    }
 
     void InputCapture::discard_pending() {
         pending_.clear();

@@ -11,17 +11,13 @@ namespace {
     struct CacheKey {
         int number;
         bool reject_hash = false;
-        bool operator==(
-            const CacheKey&
-        ) const = default;
+        bool operator==(const CacheKey&) const = default;
     };
 }
 
 namespace std {
     template <> struct hash<CacheKey> {
-        std::size_t operator()(
-            const CacheKey& key
-        ) const {
+        std::size_t operator()(const CacheKey& key) const {
             if (key.reject_hash)
                 throw CE::Exceptions::failed_operation(CE_HERE, "Controlled cache key rejection");
             return std::hash<int>{}(key.number);
@@ -31,12 +27,7 @@ namespace std {
 
 namespace {
     struct Cache final : CE::Assets::AssetMgr<const int, CacheKey> {
-        spointer publish(
-            const CacheKey& key,
-            spointer candidate
-        ) {
-            return publish_asset(key, std::move(candidate));
-        }
+        spointer publish(const CacheKey& key, spointer candidate) { return publish_asset(key, std::move(candidate)); }
     };
 
     struct AllocationControl {
@@ -55,20 +46,14 @@ namespace {
         FailingCacheAllocator()
         : control(std::make_shared<AllocationControl>()) {}
 
-        explicit FailingCacheAllocator(
-            std::shared_ptr<AllocationControl> control
-        ) noexcept
+        explicit FailingCacheAllocator(std::shared_ptr<AllocationControl> control) noexcept
         : control(std::move(control)) {}
 
         template <typename U>
-        FailingCacheAllocator(
-            const FailingCacheAllocator<U>& other
-        ) noexcept
+        FailingCacheAllocator(const FailingCacheAllocator<U>& other) noexcept
         : control(other.control) {}
 
-        T* allocate(
-            const std::size_t count
-        ) {
+        T* allocate(const std::size_t count) {
             const auto phase = count == 1 ? AllocationControl::Failure::Node : AllocationControl::Failure::Buckets;
             if (control->failure == phase) {
                 ++control->rejected;
@@ -79,53 +64,28 @@ namespace {
             return result;
         }
 
-        void deallocate(
-            T* pointer,
-            const std::size_t count
-        ) noexcept {
+        void deallocate(T* pointer, const std::size_t count) noexcept {
             --control->outstanding;
             std::allocator<T>{}.deallocate(pointer, count);
         }
 
-        template <typename U>
-        bool operator==(
-            const FailingCacheAllocator<U>& other
-        ) const noexcept {
-            return control == other.control;
-        }
+        template <typename U> bool operator==(const FailingCacheAllocator<U>& other) const noexcept { return control == other.control; }
     };
 
     using AllocationCacheBase =
         CE::Assets::AssetMgr<const int, CacheKey, FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>>;
 
     struct AllocationCache final : AllocationCacheBase {
-        explicit AllocationCache(
-            const std::shared_ptr<AllocationControl>& control
-        )
+        explicit AllocationCache(const std::shared_ptr<AllocationControl>& control)
         : AllocationCacheBase(FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>{control}) {}
 
-        spointer publish(
-            const CacheKey& key,
-            spointer candidate
-        ) {
-            return publish_asset(key, std::move(candidate));
-        }
+        spointer publish(const CacheKey& key, spointer candidate) { return publish_asset(key, std::move(candidate)); }
 
-        template <typename Published>
-        spointer publish(
-            const CacheKey& key,
-            spointer candidate,
-            Published&& published
-        ) {
+        template <typename Published> spointer publish(const CacheKey& key, spointer candidate, Published&& published) {
             return publish_asset(key, std::move(candidate), std::forward<Published>(published));
         }
 
-        spointer replace(
-            const CacheKey& key,
-            spointer candidate
-        ) {
-            return replace_asset(key, std::move(candidate));
-        }
+        spointer replace(const CacheKey& key, spointer candidate) { return replace_asset(key, std::move(candidate)); }
 
         void require_growth() {
             std::unique_lock lock(assets_mutex_);
@@ -135,10 +95,7 @@ namespace {
     };
 }
 
-TEST(
-    asset_cache,
-    duplicate_candidate_reentry
-) {
+TEST(asset_cache, duplicate_candidate_reentry) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
     bool released = false;
@@ -155,10 +112,7 @@ TEST(
     EXPECT_EQ(*cache.get_asset({2}), 30);
 }
 
-TEST(
-    asset_cache,
-    rejected_insertion_reentry
-) {
+TEST(asset_cache, rejected_insertion_reentry) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
     bool released = false;
@@ -174,10 +128,7 @@ TEST(
     EXPECT_EQ(cache.get_asset({1}), original);
 }
 
-TEST(
-    asset_cache,
-    allocation_failure_reentry
-) {
+TEST(asset_cache, allocation_failure_reentry) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
         SCOPED_TRACE(static_cast<int>(phase));
@@ -217,10 +168,7 @@ TEST(
     }
 }
 
-TEST(
-    asset_cache,
-    replacement_failure_reentry
-) {
+TEST(asset_cache, replacement_failure_reentry) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
         SCOPED_TRACE(static_cast<int>(phase));
@@ -251,10 +199,7 @@ TEST(
     }
 }
 
-TEST(
-    asset_cache,
-    allocator_clear_reentry
-) {
+TEST(asset_cache, allocator_clear_reentry) {
     auto control = std::make_shared<AllocationControl>();
     {
         AllocationCache cache(control);

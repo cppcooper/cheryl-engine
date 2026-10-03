@@ -10,8 +10,7 @@
 #include <unordered_map>
 
 namespace CE::Assets {
-    template <typename T>
-    using shptr = std::shared_ptr<T>;
+    template <typename T> using shptr = std::shared_ptr<T>;
 
     struct SpriteData {
         shptr<Geometry2D> geometry;
@@ -51,15 +50,13 @@ namespace CE::Assets {
 
         SpriteAnimation operator[](const std::string& animation) const;
         SpriteAnimation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
-        [[nodiscard]] bool has_animation(const std::string& animation,
-                                         std::optional<std::string> facing = std::nullopt) const;
+        [[nodiscard]] bool has_animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
         [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
         [[nodiscard]] CellIndex orientation(const std::string& name) const;
         [[nodiscard]] const SpriteDefinition& definition() const { return *definition_; }
 
     private:
-        [[nodiscard]] static std::string animation_key(const std::string& animation,
-                                                       const std::optional<std::string>& facing);
+        [[nodiscard]] static std::string animation_key(const std::string& animation, const std::optional<std::string>& facing);
 
         std::shared_ptr<const SpriteDefinition> definition_;
         std::unordered_map<std::string, std::size_t> animation_indices_;

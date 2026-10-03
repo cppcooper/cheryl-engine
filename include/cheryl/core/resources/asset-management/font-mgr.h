@@ -9,7 +9,8 @@ using FMgr = CE::Assets::AssetMgr<CE::Assets::Font>;
 namespace CE::Assets {
     struct ResourceProvider;
 
-    struct FontMgr final : FMgr, Singleton_CTS<FontMgr> {
+    struct FontMgr final : FMgr,
+                           Singleton_CTS<FontMgr> {
         FontMgr() = default;
         ~FontMgr() override = default;
         void load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider);

@@ -28,25 +28,20 @@ namespace CE::Assets {
         // Add spacing only between earlier cells, then retain the source
         // frame size for the vertex builder's position/UV conversion.
         return {origin.x + column * (static_cast<std::uint64_t>(frame.width) + spacing.x),
-                origin.y + row * (static_cast<std::uint64_t>(frame.height) + spacing.y),
-                frame.width,
-                frame.height
-        };
+            origin.y + row * (static_cast<std::uint64_t>(frame.height) + spacing.y), frame.width, frame.height};
     }
 
     std::uint64_t GridDefinition::occupied_right() const {
         if (columns == 0) {
             return origin.x;
         }
-        return origin.x + columns * static_cast<std::uint64_t>(frame.width) +
-            (columns - 1) * static_cast<std::uint64_t>(spacing.x);
+        return origin.x + columns * static_cast<std::uint64_t>(frame.width) + (columns - 1) * static_cast<std::uint64_t>(spacing.x);
     }
 
     std::uint64_t GridDefinition::occupied_bottom() const {
         if (rows == 0) {
             return origin.y;
         }
-        return origin.y + rows * static_cast<std::uint64_t>(frame.height) +
-            (rows - 1) * static_cast<std::uint64_t>(spacing.y);
+        return origin.y + rows * static_cast<std::uint64_t>(frame.height) + (rows - 1) * static_cast<std::uint64_t>(spacing.y);
     }
 }

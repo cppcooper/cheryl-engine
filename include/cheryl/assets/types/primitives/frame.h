@@ -7,13 +7,9 @@
 #include <internals/exceptions.h>
 
 namespace CE::Assets {
-    enum class FrameIndexPolicy {
-        Wrap,
-        Clamp
-    };
+    enum class FrameIndexPolicy { Wrap, Clamp };
 
-    template <typename Derived>
-    struct Frame {
+    template <typename Derived> struct Frame {
         [[nodiscard]] std::size_t offset() const noexcept { return offset_; }
         [[nodiscard]] std::size_t index() const noexcept { return index_; }
         [[nodiscard]] std::size_t limit() const noexcept { return limit_; }
@@ -26,9 +22,7 @@ namespace CE::Assets {
         }
 
         void set_frame(const std::size_t frame) noexcept {
-            index_ = index_policy_ == FrameIndexPolicy::Wrap
-                         ? frame % limit_
-                         : std::min(frame, limit_ - 1);
+            index_ = index_policy_ == FrameIndexPolicy::Wrap ? frame % limit_ : std::min(frame, limit_ - 1);
         }
 
     protected:
@@ -38,13 +32,8 @@ namespace CE::Assets {
         FrameIndexPolicy index_policy_;
 
     public:
-        Frame(
-            std::size_t offset,
-            std::size_t index,
-            std::size_t limit,
-            FrameIndexPolicy index_policy = FrameIndexPolicy::Wrap
-        ) :
-            offset_(offset), index_(index), limit_(limit), index_policy_(index_policy) {
+        Frame(std::size_t offset, std::size_t index, std::size_t limit, FrameIndexPolicy index_policy = FrameIndexPolicy::Wrap)
+        : offset_(offset), index_(index), limit_(limit), index_policy_(index_policy) {
             if (limit_ == 0) {
                 throw Exceptions::bad_request(CE_HERE, "Cannot select a frame from an empty sequence");
             }

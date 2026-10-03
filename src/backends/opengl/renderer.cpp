@@ -11,9 +11,7 @@
 
 namespace CE::RenderAPIs {
     namespace {
-        void load_native_functions(
-            iOpenGLContext& context
-        ) {
+        void load_native_functions(iOpenGLContext& context) {
             const auto version = gladLoadGLUserPtr(
                 [](void* user, const char* name) -> GLADapiproc { return static_cast<iOpenGLContext*>(user)->proc_address(name); }, &context
             );
@@ -22,10 +20,7 @@ namespace CE::RenderAPIs {
         }
     }
 
-    void RendererDetail::RendererAccess::set_native_loader(
-        OpenGLRenderer& renderer,
-        std::function<void(iOpenGLContext&)> loader
-    ) {
+    void RendererDetail::RendererAccess::set_native_loader(OpenGLRenderer& renderer, std::function<void(iOpenGLContext&)> loader) {
         if (!loader)
             throw Exceptions::invalid_args(CE_HERE, "Native loader must not be empty");
         if (renderer.initialized_ || renderer.stopped_ || renderer.resources_)
@@ -33,9 +28,7 @@ namespace CE::RenderAPIs {
         renderer.native_loader_ = std::move(loader);
     }
 
-    OpenGLRenderer::OpenGLRenderer(
-        iOpenGLContext& context
-    )
+    OpenGLRenderer::OpenGLRenderer(iOpenGLContext& context)
     : context_(context) {}
 
     OpenGLRenderer::~OpenGLRenderer() {
@@ -76,8 +69,9 @@ namespace CE::RenderAPIs {
             if (!context_.is_current())
                 throw Exceptions::failed_operation(CE_HERE, "OpenGL context was lost during renderer startup");
             // Publish the domain only after loading and default state succeed.
-            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(),
-                [&context = context_] { return context.is_current(); });
+            resources_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [&context = context_] {
+                return context.is_current();
+            });
         } catch (...) {
             // Preserve the initialization failure even if releasing the context also fails.
             try {
@@ -110,9 +104,7 @@ namespace CE::RenderAPIs {
         return resources_;
     }
 
-    void OpenGLRenderer::render(
-        const RenderFrame& frame
-    ) {
+    void OpenGLRenderer::render(const RenderFrame& frame) {
         const auto domain = resources();
         for (const auto& pass : frame.passes()) {
             for (const auto& packet : pass.draws) {
@@ -140,18 +132,14 @@ namespace CE::RenderAPIs {
         domain->collect();
     }
 
-    void OpenGLRenderer::set_viewport(
-        const FramebufferSize size
-    ) {
+    void OpenGLRenderer::set_viewport(const FramebufferSize size) {
         (void)resources();
         if (size.width < 0 || size.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
         glViewport(0, 0, size.width, size.height);
     }
 
-    void OpenGLRenderer::set_depth_test(
-        const bool enabled
-    ) {
+    void OpenGLRenderer::set_depth_test(const bool enabled) {
         (void)resources();
         if (enabled)
             glEnable(GL_DEPTH_TEST);
@@ -159,20 +147,12 @@ namespace CE::RenderAPIs {
             glDisable(GL_DEPTH_TEST);
     }
 
-    void OpenGLRenderer::set_clear_colour(
-        const float r,
-        const float g,
-        const float b,
-        const float a
-    ) {
+    void OpenGLRenderer::set_clear_colour(const float r, const float g, const float b, const float a) {
         (void)resources();
         glClearColor(r, g, b, a);
     }
 
-    void OpenGLRenderer::set_camera_matrices(
-        const glm::mat4& projection,
-        const glm::mat4& view
-    ) {
+    void OpenGLRenderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) {
         (void)resources();
         projection_ = projection;
         view_ = view;

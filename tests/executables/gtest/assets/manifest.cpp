@@ -107,14 +107,8 @@ TEST(asset_grid, image_too_small) {
 
     // A zero width and a width that ends before the tile both fail before
     // producing any geometry.
-    EXPECT_THROW(
-        static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})),
-        CE::Exceptions::runtime_exception
-    );
-    EXPECT_THROW(
-        static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16})),
-        CE::Exceptions::runtime_exception
-    );
+    EXPECT_THROW(static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16})), CE::Exceptions::runtime_exception);
 }
 
 TEST(asset_manifest, checked_in_manifests) {
@@ -142,8 +136,7 @@ TEST(asset_manifest, profile_inheritance) {
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{35});
 
     // Inspect one generated sprite for its full name, inherited pivot, and animations.
-    const auto sprite = std::ranges::find_if(manifest.sprites,
-        [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
+    const auto sprite = std::ranges::find_if(manifest.sprites, [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
     ASSERT_NE(sprite, manifest.sprites.end());
     EXPECT_EQ(sprite->id(), "miniworld:soldier_swordsman_cyan");
     EXPECT_EQ(sprite->pivot, (CE::math::Pivot{0.5f, 1.0f}));
@@ -181,8 +174,9 @@ TEST(asset_manifest, overworld_tileset) {
     EXPECT_EQ(terrain.tiles.size(), std::size_t{168});
     EXPECT_FALSE(terrain.variants.empty());
     const auto terrain_variant_count =
-        std::accumulate(terrain.variants.begin(), terrain.variants.end(), std::size_t{},
-            [](const std::size_t count, const auto& entry) { return count + entry.second.size(); });
+        std::accumulate(terrain.variants.begin(), terrain.variants.end(), std::size_t{}, [](const std::size_t count, const auto& entry) {
+            return count + entry.second.size();
+        });
     EXPECT_EQ(terrain_variant_count, terrain.tiles.size());
 
     // Check the second autotile uses edge-based terrain with its own tile set.

@@ -8,10 +8,7 @@ namespace CE::Engine {
         invalidate();
     }
 
-    void SimulationDispatcher::enqueue(
-        const std::shared_ptr<State>& state,
-        Task request
-    ) {
+    void SimulationDispatcher::enqueue(const std::shared_ptr<State>& state, Task request) {
         std::function<void()> wake;
         {
             std::lock_guard lock(state->mutex);
@@ -32,9 +29,7 @@ namespace CE::Engine {
         return !state_->pending.empty();
     }
 
-    void SimulationDispatcher::open(
-        std::function<void()> wake
-    ) {
+    void SimulationDispatcher::open(std::function<void()> wake) {
         std::lock_guard lock(state_->mutex);
         if (state_->opened)
             throw Exceptions::failed_operation(CE_HERE, "SimulationDispatcher supports only one session");
@@ -50,9 +45,7 @@ namespace CE::Engine {
         state_->owner = std::this_thread::get_id();
     }
 
-    void SimulationDispatcher::require_owner(
-        const State& state
-    ) {
+    void SimulationDispatcher::require_owner(const State& state) {
         if (state.owner != std::this_thread::get_id())
             throw Exceptions::failed_operation(CE_HERE, "Simulation requests must execute on their owner thread");
     }

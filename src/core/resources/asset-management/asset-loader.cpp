@@ -17,38 +17,27 @@ namespace CE::Assets {
     namespace {
         namespace fs = std::filesystem;
 
-        std::string lowercase(
-            std::string value
-        ) {
+        std::string lowercase(std::string value) {
             std::ranges::transform(value, value.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return value;
         }
 
-        void register_id(
-            std::unordered_map<std::string, fs::path>& ids,
-            const std::string& id,
-            const fs::path& source
-        ) {
+        void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id, const fs::path& source) {
             if (const auto previous = ids.find(id); previous != ids.end())
-                throw Exceptions::runtime_exception(CE_HERE,
-                    "Duplicate asset ID '" + id + "' in manifests '" + previous->second.string() + "' and '" + source.string() + "'");
+                throw Exceptions::runtime_exception(
+                    CE_HERE,
+                    "Duplicate asset ID '" + id + "' in manifests '" + previous->second.string() + "' and '" + source.string() + "'"
+                );
             ids.emplace(id, source);
         }
 
-        void validate_grid_bounds(
-            const GridDefinition& grid,
-            const fs::path& texture,
-            const PixelSize dimensions,
-            const std::string& id
-        ) {
+        void validate_grid_bounds(const GridDefinition& grid, const fs::path& texture, const PixelSize dimensions, const std::string& id) {
             if (grid.occupied_right() > dimensions.width || grid.occupied_bottom() > dimensions.height)
                 throw Exceptions::runtime_exception(CE_HERE, "Asset '" + id + "' grid exceeds texture '" + texture.string() + "' bounds");
         }
     }
 
-    Loader& Loader::get(
-        const std::filesystem::path& root_path
-    ) {
+    Loader& Loader::get(const std::filesystem::path& root_path) {
         auto& loader = Singleton_CTS<Loader>::get(root_path);
         if (loader.root_path_ != root_path.lexically_normal())
             throw Exceptions::failed_operation(CE_HERE, "The singleton loader already has another root; construct an owned Loader");
@@ -112,10 +101,7 @@ namespace CE::Assets {
         }
     }
 
-    void Loader::upload(
-        PreparedAssets prepared,
-        ResourceProvider& provider
-    ) {
+    void Loader::upload(PreparedAssets prepared, ResourceProvider& provider) {
         AssetCacheContext::verify_provider(provider);
         for (const auto& image : prepared.images)
             TextureMgr::get().load_asset(image.key, image.pixels, provider);
@@ -127,9 +113,7 @@ namespace CE::Assets {
         manifests_.store(std::make_shared<const std::vector<AssetManifest>>(std::move(prepared.manifests)), std::memory_order_release);
     }
 
-    void Loader::load_assets(
-        ResourceProvider& provider
-    ) {
+    void Loader::load_assets(ResourceProvider& provider) {
         AssetCacheContext::verify_provider(provider);
         upload(prepare(), provider);
     }

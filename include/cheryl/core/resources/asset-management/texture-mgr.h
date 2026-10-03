@@ -10,7 +10,8 @@ namespace CE::Assets {
 
 using TMgr = CE::Assets::AssetMgr<CE::Assets::Image>;
 namespace CE::Assets {
-    struct TextureMgr final : TMgr, Singleton_CTS<TextureMgr> {
+    struct TextureMgr final : TMgr,
+                              Singleton_CTS<TextureMgr> {
         TextureMgr() = default;
         ~TextureMgr() override = default;
         [[nodiscard]] spointer get_asset(const std::filesystem::path& file) const override;
