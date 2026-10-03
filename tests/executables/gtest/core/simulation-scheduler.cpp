@@ -23,7 +23,7 @@ namespace {
 
 TEST(
     simulation_scheduler,
-    variable_pacing_preserves_elapsed_time_across_cycles_with_no_update
+    variable_elapsed_time
 ) {
     SimulationTimingOptions options;
     options.variable_interval = 20ms;
@@ -42,7 +42,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    a_half_second_stall_does_not_demand_thirty_fixed_updates
+    bounded_stall_recovery
 ) {
     SimulationScheduler scheduler(fixed_timing(), Clock::time_point{});
     const auto batch = scheduler.advance(Clock::time_point{} + 500ms);
@@ -55,7 +55,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    dropping_whole_steps_keeps_the_fraction_for_the_next_cycle
+    fixed_step_remainder
 ) {
     auto options = fixed_timing();
     options.fixed_step = 30ms;
@@ -77,7 +77,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    direct_variable_recovery_caps_the_delta_and_discards_the_rest
+    capped_variable_recovery
 ) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
@@ -92,7 +92,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    hybrid_recovery_runs_only_the_configured_fixed_prefix
+    hybrid_fixed_prefix
 ) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
@@ -110,7 +110,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    uncapped_recovery_uses_the_remaining_observed_time
+    uncapped_recovery
 ) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
@@ -126,7 +126,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    normal_fixed_cycles_do_not_use_variable_recovery
+    normal_fixed_steps
 ) {
     auto options = fixed_timing();
     options.recovery = LagRecovery::VariableCatchUp;
@@ -141,7 +141,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    expensive_update_time_enters_the_next_bounded_batch
+    expensive_update_backlog
 ) {
     SimulationScheduler scheduler(fixed_timing(), Clock::time_point{});
     const auto first = scheduler.advance(Clock::time_point{} + 20ms);
@@ -156,7 +156,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    invalid_options_and_backward_clock_inputs_are_rejected
+    invalid_timing_inputs
 ) {
     auto options = fixed_timing();
     options.fixed_step = 0ms;
@@ -179,7 +179,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    deadlines_saturate_and_unrepresentable_clock_spans_are_rejected
+    clock_limits
 ) {
     SimulationScheduler near_end(fixed_timing(), Clock::time_point::max() - 1ms);
     EXPECT_EQ(near_end.next_update_at(), Clock::time_point::max());
@@ -189,7 +189,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    zero_variable_pacing_does_not_use_the_fixed_interval
+    unpaced_variable_updates
 ) {
     SimulationTimingOptions options;
     options.variable_interval = 0ms;
@@ -204,7 +204,7 @@ TEST(
 
 TEST(
     simulation_scheduler,
-    fixed_pacing_does_not_use_the_variable_interval
+    independent_fixed_pacing
 ) {
     auto options = fixed_timing();
     options.variable_interval = 500ms;

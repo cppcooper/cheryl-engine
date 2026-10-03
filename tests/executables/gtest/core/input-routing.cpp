@@ -46,7 +46,7 @@ namespace {
     };
 }
 
-TEST(input_routing, an_old_lease_cannot_clear_a_new_owner_even_with_the_same_target_id) {
+TEST(input_routing, stale_focus_lease) {
     CE::Input::InputRouting routing;
     auto first = routing.focus(1);
     const auto epoch = first.epoch();
@@ -62,7 +62,7 @@ TEST(input_routing, an_old_lease_cannot_clear_a_new_owner_even_with_the_same_tar
     EXPECT_EQ(routing.current()->target, 0u);
 }
 
-TEST(input_routing, exclusive_text_focus_suppresses_keyboard_state_but_keeps_the_pad) {
+TEST(input_routing, exclusive_text_focus) {
     RoutedInput input;
     constexpr CE::Input::ActionId typing_key{1};
     constexpr CE::Input::ActionId shared_action{2};
@@ -97,7 +97,7 @@ TEST(input_routing, exclusive_text_focus_suppresses_keyboard_state_but_keeps_the
     EXPECT_TRUE(input.action_snapshot()->button(shared_action).held());
 }
 
-TEST(input_routing, pending_records_keep_the_old_owner_when_focus_changes_during_collection) {
+TEST(input_routing, focus_change_during_poll) {
     RoutedInput input;
     auto events = input.capture(CE::Input::InputMode::Events);
     auto text = input.capture(CE::Input::InputMode::Text);
@@ -119,7 +119,7 @@ TEST(input_routing, pending_records_keep_the_old_owner_when_focus_changes_during
     EXPECT_EQ(earlier->records[0].target, 10u); // An immutable queued poll is never retargeted.
 }
 
-TEST(input_routing, pass_through_delivers_controls_to_ui_and_gameplay_without_activating_text_capture) {
+TEST(input_routing, pass_through_focus) {
     RoutedInput input;
     constexpr CE::Input::ActionId action{1};
     (void)input.bindings().bind_button({1, 65}, action);
@@ -137,7 +137,7 @@ TEST(input_routing, pass_through_delivers_controls_to_ui_and_gameplay_without_ac
     EXPECT_TRUE(poll->records[0].to_gameplay);
 }
 
-TEST(input_routing, deinitialization_clears_focus_and_pending_records_without_changing_published_handles) {
+TEST(input_routing, focus_cleanup) {
     RoutedInput input;
     auto text = input.capture(CE::Input::InputMode::Text);
     auto focus = input.routing().focus(1);

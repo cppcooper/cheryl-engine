@@ -7,7 +7,7 @@
 #include <thread>
 #include <vector>
 
-TEST(state_tracker, compares_successive_samples) {
+TEST(state_tracker, successive_samples) {
     StateTracker<int> health{10};
     EXPECT_FALSE(health.changed());
 
@@ -19,7 +19,7 @@ TEST(state_tracker, compares_successive_samples) {
     EXPECT_FALSE(health.changed());
 }
 
-TEST(versioned_variable, a_waiter_reads_one_coherent_change) {
+TEST(versioned_variable, coherent_waiter_snapshot) {
     VersionedVariable<int> variable{0};
     const auto start = variable.snapshot();
     variable.set(0);
@@ -45,7 +45,7 @@ namespace {
     enum class PostureTrigger { Crouch, Stand };
 } // namespace
 
-TEST(state_machine, typed_domains_can_coordinate_through_guards) {
+TEST(state_machine, guarded_transitions) {
     StateMachine<Posture, PostureTrigger> posture{Posture::Standing};
     StateMachine<Movement, MoveTrigger> movement{Movement::Grounded};
     std::vector<int> order;

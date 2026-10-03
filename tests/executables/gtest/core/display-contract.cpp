@@ -78,7 +78,7 @@ namespace {
     };
 }
 
-TEST(display_contract, display_without_native_handles) {
+TEST(display_contract, portable_display) {
     // Create and activate a window through interface pointers backed by
     // in-memory implementations, with no native display dependency.
     auto backend = std::make_unique<MemoryDisplay>();

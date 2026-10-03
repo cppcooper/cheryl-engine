@@ -11,7 +11,7 @@ using namespace std::chrono_literals;
 
 TEST(
     tick_context,
-    a_short_tap_in_a_half_second_stall_keeps_observation_and_simulation_time_separate
+    observed_and_simulated_time
 ) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -42,7 +42,7 @@ TEST(
 
 TEST(
     tick_context,
-    a_zero_observation_interval_uses_current_held_state
+    zero_observation_interval
 ) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -62,7 +62,7 @@ TEST(
 
 TEST(
     tick_context,
-    input_arriving_between_recovery_calls_is_consumed_only_by_the_later_update
+    input_during_recovery
 ) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -85,7 +85,7 @@ TEST(
 
 TEST(
     tick_context,
-    manually_supplied_invalid_simulation_deltas_are_rejected
+    invalid_simulation_delta
 ) {
     CE::Input::InputBindings bindings;
     const CE::Input::TickInput input(bindings.action_snapshot(), {});
@@ -97,7 +97,7 @@ TEST(
 
 TEST(
     tick_context,
-    a_recovery_batch_consumes_events_text_and_relative_motion_once
+    recovery_input_consumption
 ) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};

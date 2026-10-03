@@ -65,7 +65,7 @@ TEST(camera, minimized_window) {
     EXPECT_TRUE(std::isfinite(three_d.projection_matrix()[0][0]));
 }
 
-TEST(camera, invalid_camera_settings) {
+TEST(camera, invalid_settings) {
     CE::Camera2D two_d;
     CE::Camera3D three_d;
 
@@ -85,7 +85,7 @@ TEST(viewport, independent_copies) {
     EXPECT_EQ(copy.height, 600);
 }
 
-TEST(camera_2d, every_view_matrix_scalar_advances_the_revision) {
+TEST(camera_2d, view_scalar_revision) {
     for (glm::length_t column = 0; column < 4; ++column) {
         for (glm::length_t row = 0; row < 4; ++row) {
             CE::Camera2D camera;

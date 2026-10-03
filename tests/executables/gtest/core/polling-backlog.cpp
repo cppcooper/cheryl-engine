@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 
 TEST(
     polling_backlog,
-    lockstep_allows_one_completed_poll_until_consumption
+    lockstep_consumption
 ) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog;
@@ -30,7 +30,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    finite_capacity_counts_unchanged_polls_and_hands_off_the_whole_batch
+    finite_capacity
 ) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 3, 0ms});
@@ -52,7 +52,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    spacing_survives_consumption_and_is_measured_after_poll_completion
+    poll_completion_spacing
 ) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 2, 5ms});
@@ -68,7 +68,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    unlimited_keeps_each_completed_poll_without_a_capacity_limit
+    unlimited_capacity
 ) {
     CE::Input::InputBindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
@@ -82,7 +82,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    invalid_capacity_delay_and_duplicate_observations_are_rejected
+    invalid_polling_inputs
 ) {
     const CE::Input::PollingOptions empty{CE::Input::PollingPolicy::Finite, 0, 0ms};
     const CE::Input::PollingOptions negative{CE::Input::PollingPolicy::Finite, 1, -1ms};
@@ -99,7 +99,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    an_unrepresentable_poll_deadline_saturates_without_losing_its_observation
+    deadline_saturation
 ) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;
@@ -117,7 +117,7 @@ TEST(
 
 TEST(
     polling_backlog,
-    maximum_spacing_saturates_and_zero_spacing_accepts_the_clock_limit
+    clock_limit_spacing
 ) {
     using Clock = CE::Input::InputClock;
     CE::Input::InputBindings bindings;

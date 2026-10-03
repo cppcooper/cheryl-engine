@@ -72,7 +72,7 @@ TEST(input_contract, alternate_window) {
     EXPECT_THROW(input->poll(), std::logic_error);
 }
 
-TEST(input_contract, unsupported_capture_and_focus_are_explicit_failures) {
+TEST(input_contract, unsupported_capabilities) {
     BufferedInput input;
     auto state = input.capture(CE::Input::InputMode::State);
     EXPECT_THROW((void)input.capture(CE::Input::InputMode::Events), CE::Exceptions::failed_operation);
@@ -80,7 +80,7 @@ TEST(input_contract, unsupported_capture_and_focus_are_explicit_failures) {
     EXPECT_THROW((void)input.routing(), CE::Exceptions::failed_operation);
 }
 
-TEST(input_contract, an_adapter_cannot_claim_events_and_silently_publish_state_only) {
+TEST(input_contract, missing_event_support) {
     TestWindow window;
     BufferedInput input;
     input.advertises_events = true;

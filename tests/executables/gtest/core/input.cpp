@@ -40,7 +40,7 @@ TEST(input_bindings, device_routing) {
     EXPECT_FLOAT_EQ(active->axis(look).current, 0.75f);
 }
 
-TEST(input_bindings, binding_held_controls_and_clearing) {
+TEST(input_bindings, clear_held_bindings) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{2, 256};
     const CE::Input::ActionId jump{1};
@@ -125,7 +125,7 @@ TEST(input_bindings, alternatives_and_remapping) {
     EXPECT_FALSE(bindings.publish_actions()->button(jump).released());
 }
 
-TEST(input_bindings, scaled_axis_with_a_modifier) {
+TEST(input_bindings, scaled_axis_modifier) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind shift{1, 1};
     const CE::Input::DeviceBind stick{2, 1};
@@ -148,7 +148,7 @@ TEST(input_bindings, scaled_axis_with_a_modifier) {
     EXPECT_FLOAT_EQ(active->axis(look).current, -0.75f);
 }
 
-TEST(input_bindings, unbinding_an_active_axis) {
+TEST(input_bindings, unbind_active_axis) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind stick{2, 1};
     const CE::Input::ActionId look{1};
@@ -169,7 +169,7 @@ TEST(input_bindings, unbinding_an_active_axis) {
     EXPECT_FLOAT_EQ(bindings.publish_actions()->axis(look).delta(), 0.0f);
 }
 
-TEST(tick_input, press_and_release_between_updates) {
+TEST(tick_input, tap_between_updates) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId jump{1};
@@ -199,7 +199,7 @@ TEST(tick_input, press_and_release_between_updates) {
     EXPECT_FALSE(next.button(jump).released());
 }
 
-TEST(tick_input, held_values_without_new_polls) {
+TEST(tick_input, held_values_without_polls) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::DeviceBind stick{2, 1};
@@ -225,7 +225,7 @@ TEST(tick_input, held_values_without_new_polls) {
     EXPECT_FLOAT_EQ(next.axis(look).delta(), 0.0f);
 }
 
-TEST(input_state, a_delayed_update_receives_the_whole_tap_and_its_duration) {
+TEST(input_state, delayed_tap_duration) {
     using namespace std::chrono_literals;
     const CE::Input::DeviceBind key{1, 32};
     const CE::Input::ActionId move{1};
@@ -261,7 +261,7 @@ TEST(input_state, a_delayed_update_receives_the_whole_tap_and_its_duration) {
     EXPECT_DOUBLE_EQ(next.button(move).down_duration.count(), 0.0);
 }
 
-TEST(input_state, a_hold_survives_consumption_and_reports_its_full_age) {
+TEST(input_state, persistent_hold_age) {
     using namespace std::chrono_literals;
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -289,7 +289,7 @@ TEST(input_state, a_hold_survives_consumption_and_reports_its_full_age) {
     EXPECT_NEAR(released.completed_holds[0].count(), 0.160, 1e-9);
 }
 
-TEST(input_state, multiple_holds_keep_their_counts_and_individual_durations) {
+TEST(input_state, multiple_hold_durations) {
     using namespace std::chrono_literals;
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -316,7 +316,7 @@ TEST(input_state, multiple_holds_keep_their_counts_and_individual_durations) {
     EXPECT_NEAR(state.down_duration.count(), 0.050, 1e-9);
 }
 
-TEST(input_state, same_poll_taps_keep_counts_without_inventing_hardware_duration) {
+TEST(input_state, same_poll_taps) {
     using namespace std::chrono_literals;
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -340,7 +340,7 @@ TEST(input_state, same_poll_taps_keep_counts_without_inventing_hardware_duration
     EXPECT_DOUBLE_EQ(state.down_duration.count(), 0.0);
 }
 
-TEST(input_state, separate_polls_at_the_same_timestamp_are_consumed_together) {
+TEST(input_state, same_timestamp_polls) {
     using namespace std::chrono_literals;
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};
@@ -360,7 +360,7 @@ TEST(input_state, separate_polls_at_the_same_timestamp_are_consumed_together) {
     EXPECT_DOUBLE_EQ(input.button(select).down_duration.count(), 0.0);
 }
 
-TEST(input_state, relative_motion_accumulates_once_while_absolute_position_persists) {
+TEST(input_state, relative_motion_consumption) {
     CE::Input::InputBindings bindings;
     const CE::Input::ActionId position{1};
     const CE::Input::ActionId wheel{2};
@@ -381,7 +381,7 @@ TEST(input_state, relative_motion_accumulates_once_while_absolute_position_persi
     EXPECT_FLOAT_EQ(next.axis(wheel).delta(), 0.0f);
 }
 
-TEST(input_state, relative_motion_uses_modifiers_at_arrival_and_survives_unbinding) {
+TEST(input_state, relative_motion_modifiers) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind control{1, 1};
     const CE::Input::DeviceBind wheel{2, 1};
@@ -400,7 +400,7 @@ TEST(input_state, relative_motion_uses_modifiers_at_arrival_and_survives_unbindi
     EXPECT_FLOAT_EQ(CE::Input::TickInput(input.latest_poll(), {}).axis(zoom).delta(), 0.0f);
 }
 
-TEST(input_state, an_axis_can_change_kind_between_consumptions_without_replaying_old_motion) {
+TEST(input_state, axis_kind_change) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind axis{1, 1};
     const CE::Input::ActionId action{1};
@@ -421,7 +421,7 @@ TEST(input_state, an_axis_can_change_kind_between_consumptions_without_replaying
 }
 
 #ifndef CHERYL_SANDBOX_BUILD
-TEST(input_mapper, gainput_notifications_cannot_reorder_an_externally_mapped_cross_device_chord) {
+TEST(input_mapper, cross_device_chord_order) {
     gainput::InputManager manager;
     CE::Input::InputMapper bindings(manager);
     bindings.use_external_state(1);

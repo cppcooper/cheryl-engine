@@ -644,7 +644,7 @@ namespace {
 
 TEST(
     runtime_adapter,
-    sequential_frame_from_completed_input
+    sequential_frame
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -675,7 +675,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    partial_game_initialization_is_cleaned_up_in_both_modes
+    game_init_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -703,7 +703,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    failed_renderer_initialization_does_not_start_the_game
+    renderer_init_failure
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -720,7 +720,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    partial_adapter_failure_settles_context_groups_and_preserves_the_startup_error
+    adapter_init_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         for (const bool fail_input : {false, true}) {
@@ -771,7 +771,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    missing_active_window_closes_workers_without_starting_any_adapter
+    missing_active_window
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -808,7 +808,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    stop_before_start_finishes_groups_and_keeps_mailbox_targets_closed
+    stop_before_start
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -846,7 +846,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    a_stopped_adapter_graph_cannot_be_started_by_another_runtime
+    stopped_graph_restart
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -865,7 +865,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    owned_input_is_destroyed_while_its_window_is_alive
+    input_window_lifetime
 ) {
     bool display_alive = true;
     bool input_destroyed = false;
@@ -887,7 +887,7 @@ TEST(
 
 TEST(
     platform_requests,
-    simulation_transfers_owned_pixels_to_the_platform
+    owned_pixel_transfer
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -924,7 +924,7 @@ TEST(
 
 TEST(
     platform_requests,
-    one_failed_callback_does_not_abort_another_request
+    callback_failure_isolation
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -952,7 +952,7 @@ TEST(
 
 TEST(
     platform_requests,
-    shutdown_cancels_pending_captures_before_game_cleanup
+    shutdown_cancellation
 ) {
     struct CapturedData {
         bool& destroyed;
@@ -992,7 +992,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    concurrent_simulation_presents_on_platform_thread
+    concurrent_frame
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1020,7 +1020,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    sequential_and_concurrent_handoffs_preserve_routed_event_and_text_order
+    routed_event_order
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1067,7 +1067,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    poll_failure_shuts_down_both_runtime_modes_and_active_capture
+    poll_failure_cleanup
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1086,7 +1086,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    closing_before_an_update_still_shuts_down_adapters
+    close_before_update
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1107,7 +1107,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    render_failure_still_shuts_down_adapters
+    render_failure_cleanup
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1125,7 +1125,7 @@ TEST(
 
 TEST(
     runtime_adapter,
-    sprite_cells_share_one_uploaded_grid
+    shared_sprite_grid
 ) {
     MemoryProvider provider;
     const std::filesystem::path texture = "memory-adapter/sprite.png";
@@ -1209,7 +1209,7 @@ TEST(
 
 TEST(
     material_cache,
-    linking_does_not_bind_draw_state_and_reload_preserves_old_handles
+    program_reload_lifetime
 ) {
     MemoryProvider provider;
     auto& shaders = CE::Assets::ShaderMgr::get();
@@ -1235,7 +1235,7 @@ TEST(
 
 TEST(
     asset_cache,
-    readers_keep_complete_handles_while_assets_are_published
+    concurrent_publication
 ) {
     struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
         void publish(
@@ -1271,7 +1271,7 @@ TEST(
 
 TEST(
     asset_cache,
-    final_asset_release_can_inspect_the_cleared_cache
+    clear_deleter_reentry
 ) {
     struct Cache : CE::Assets::AssetMgr<MemoryImage, int> {
         void publish(
@@ -1291,7 +1291,7 @@ TEST(
 
 TEST(
     asset_cache,
-    provider_loads_reject_another_thread_and_teardown_refills
+    provider_load_guards
 ) {
     bool refill_rejected = false;
     auto provider = std::make_unique<MemoryProvider>();
@@ -1325,7 +1325,7 @@ TEST(
 
 TEST(
     asset_preparation,
-    worker_decoding_owns_pixels_that_upload_without_reopening_files
+    prepared_pixel_ownership
 ) {
     TemporaryAssets files;
     files.write_png();
@@ -1349,7 +1349,7 @@ TEST(
 
 TEST(
     asset_preparation,
-    roots_and_metadata_snapshots_remain_independent_across_fresh_scans
+    independent_metadata_scans
 ) {
     TemporaryAssets first;
     TemporaryAssets second;
@@ -1380,7 +1380,7 @@ TEST(
 
 TEST(
     resource_upload,
-    a_legacy_vertex_owner_is_released_after_the_transient_copy
+    legacy_vertex_copy
 ) {
     MemoryProvider provider;
     auto quad = std::make_shared<CE::Quad>();
@@ -1396,7 +1396,7 @@ TEST(
 
 TEST(
     resource_upload,
-    geometry_failure_releases_transient_cpu_and_graphic_image_owners
+    geometry_failure_cleanup
 ) {
     MemoryProvider provider;
     auto quad = std::make_shared<CE::Quad>();
@@ -1424,7 +1424,7 @@ TEST(
 
 TEST(
     asset_preparation,
-    partial_sprite_and_tileset_upload_preserves_metadata_and_retained_resources
+    partial_upload_lifetime
 ) {
     using namespace CE::Assets;
     for (const bool tilesets : {false, true}) {
@@ -1510,7 +1510,7 @@ TEST(
 
 TEST(
     platform_requests,
-    a_saved_submission_endpoint_rejects_after_context_destruction
+    expired_endpoint
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1529,7 +1529,7 @@ TEST(
 
 TEST(
     platform_requests,
-    posting_during_a_drain_defers_work_to_the_next_drain
+    reentrant_post
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1560,7 +1560,7 @@ TEST(
 
 TEST(
     simulation_requests,
-    mailbox_work_precedes_update_on_the_simulation_owner
+    mailbox_before_update
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1598,7 +1598,7 @@ TEST(
 
 TEST(
     simulation_requests,
-    a_reentrant_post_waits_for_the_next_update_boundary
+    reentrant_post
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1637,7 +1637,7 @@ TEST(
 
 TEST(
     simulation_requests,
-    shutdown_cancels_pending_captures_on_the_simulation_owner
+    shutdown_cancellation
 ) {
     struct CapturedData {
         bool& destroyed;
@@ -1676,7 +1676,7 @@ TEST(
 
 TEST(
     simulation_requests,
-    initialization_failure_cancels_before_game_cleanup_without_a_worker
+    init_failure_cancellation
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1699,7 +1699,7 @@ TEST(
 
 TEST(
     simulation_requests,
-    a_saved_endpoint_rejects_after_runtime_destruction
+    expired_endpoint
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -1716,7 +1716,7 @@ TEST(
 
 TEST(
     event_delivery,
-    platform_and_simulation_targets_execute_on_their_runtime_owners
+    runtime_owner_threads
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1748,7 +1748,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    accepted_worker_upload_can_finish_while_the_platform_is_stopping
+    pending_upload_completion
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -1791,7 +1791,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    asset_initialization_failure_preserves_pending_upload_and_simulation_cleanup
+    asset_init_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -1862,7 +1862,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    failed_worker_upload_settles_before_game_cleanup_and_preserves_its_error
+    worker_upload_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -1911,7 +1911,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    policy_failed_preparation_settles_without_upload_or_injected_root_teardown
+    preparation_policy_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -1973,7 +1973,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    owned_root_startup_rollback_settles_queued_callbacks_before_adapter_cleanup
+    owned_root_startup_rollback
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
@@ -2054,7 +2054,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    simulation_thread_start_failure_settles_worker_upload_and_unbound_simulation
+    simulation_thread_failure
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -2131,7 +2131,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    an_injected_root_keeps_unrelated_application_groups_available
+    injected_root_isolation
 ) {
     auto root = std::make_shared<CE::Engine::WorkerPool>(2);
     auto unrelated = root->make_group();
@@ -2157,7 +2157,7 @@ TEST(
 
 TEST(
     execution_shutdown,
-    quiesce_failure_does_not_replace_initialization_failure
+    quiesce_error_precedence
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -2178,7 +2178,7 @@ TEST(
 
 TEST(
     simulation_timing,
-    both_runtime_modes_use_the_configured_fixed_delta
+    configured_fixed_delta
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -2206,7 +2206,7 @@ TEST(
 
 TEST(
     simulation_timing,
-    a_slow_update_triggers_capped_hybrid_recovery_in_both_modes
+    slow_update_recovery
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -2241,7 +2241,7 @@ TEST(
 
 TEST(
     simulation_timing,
-    invalid_timing_is_rejected_before_any_adapter_initializes
+    invalid_timing
 ) {
     MemoryInput input;
     MemoryRenderer* renderer = nullptr;
@@ -2259,7 +2259,7 @@ TEST(
 
 TEST(
     resource_maintenance,
-    both_modes_service_retirement_before_the_first_frame_with_a_full_input_backlog
+    retirement_under_backpressure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -2292,7 +2292,7 @@ TEST(
 
 TEST(
     resource_maintenance,
-    a_maintenance_failure_preserves_its_error_through_cleanup_in_both_modes
+    maintenance_failure
 ) {
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
         MemoryInput input;
@@ -2319,7 +2319,7 @@ TEST(
 
 TEST(
     asset_cache,
-    strong_residency_survives_unused_handles_and_explicit_clear_preserves_external_owners
+    strong_residency
 ) {
     auto& textures = CE::Assets::TextureMgr::get();
     auto first = std::make_unique<MemoryProvider>();
@@ -2357,7 +2357,7 @@ TEST(
 
 TEST(
     material_cache,
-    successful_recipe_reload_retains_old_generations_and_failure_preserves_the_current_one
+    recipe_reload_generations
 ) {
     auto& materials = CE::Assets::MaterialMgr::get();
     auto provider = std::make_unique<MemoryProvider>();
@@ -2404,7 +2404,7 @@ TEST(
 
 TEST(
     material_cache,
-    recipe_reload_rejects_a_foreign_loading_thread_before_invoking_the_builder
+    foreign_recipe_reload
 ) {
     auto& materials = CE::Assets::MaterialMgr::get();
     MemoryProvider provider;
@@ -2424,7 +2424,7 @@ TEST(
 
 TEST(
     frame_lifetime,
-    reload_and_preparation_or_render_failure_release_packet_resources_before_game_cleanup
+    packet_cleanup_order
 ) {
     enum class Failure { None, Preparation, Rendering };
     for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {

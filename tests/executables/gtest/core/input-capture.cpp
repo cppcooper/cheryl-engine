@@ -17,7 +17,7 @@ namespace {
     using CE::Input::TextEvent;
 }
 
-TEST(input_capture, ordered_keys_repeats_and_text_keep_their_shared_order) {
+TEST(input_capture, key_text_order) {
     CE::Input::InputCapture capture;
     auto events = capture.request(InputMode::Events);
     auto text = capture.request(InputMode::Text);
@@ -38,7 +38,7 @@ TEST(input_capture, ordered_keys_repeats_and_text_keep_their_shared_order) {
         EXPECT_LT(records[i - 1].sequence, records[i].sequence);
 }
 
-TEST(input_capture, channel_requests_are_independent_and_take_effect_at_the_next_poll) {
+TEST(input_capture, channel_activation) {
     CE::Input::InputCapture capture;
     auto text = capture.request(InputMode::Text);
     capture.begin_poll();
@@ -62,7 +62,7 @@ TEST(input_capture, channel_requests_are_independent_and_take_effect_at_the_next
     EXPECT_FALSE(last[0].is_text());
 }
 
-TEST(input_capture, moving_and_releasing_one_request_cannot_disable_another) {
+TEST(input_capture, independent_capture_requests) {
     CE::Input::InputCapture capture;
     auto first = capture.request(InputMode::Events);
     auto second = capture.request(InputMode::Events);
@@ -77,7 +77,7 @@ TEST(input_capture, moving_and_releasing_one_request_cannot_disable_another) {
     EXPECT_TRUE(capture.complete().empty());
 }
 
-TEST(input_capture, complete_poll_records_survive_state_aggregation_and_are_consumed_once) {
+TEST(input_capture, poll_record_consumption) {
     using namespace std::chrono_literals;
     CE::Input::InputBindings bindings;
     const CE::Input::ActionId action{1};
@@ -109,7 +109,7 @@ TEST(input_capture, complete_poll_records_survive_state_aggregation_and_are_cons
     EXPECT_FALSE(next.button(action).pressed());
 }
 
-TEST(input_capture, text_accepts_supplementary_scalars_and_rejects_surrogates) {
+TEST(input_capture, unicode_scalars) {
     CE::Input::InputCapture capture;
     auto text = capture.request(InputMode::Text);
     capture.begin_poll();

@@ -127,7 +127,7 @@ namespace {
 
 TEST(
     worker_pool,
-    owned_jobs_return_values_and_failures_without_stopping_other_work
+    job_results_and_failures
 ) {
     CE::Engine::WorkerPool pool(2);
     auto group = pool.make_group();
@@ -144,7 +144,7 @@ TEST(
 
 TEST(
     worker_pool,
-    group_concurrency_one_preserves_fifo_while_groups_share_the_pool
+    serial_group_fifo
 ) {
     CE::Engine::WorkerPool pool(3);
     auto serial = pool.make_group({1});
@@ -165,7 +165,7 @@ TEST(
 
 TEST(
     worker_pool,
-    a_parallel_group_cap_leaves_shared_capacity_for_another_group
+    parallel_group_cap
 ) {
     CE::Engine::WorkerPool pool(3);
     auto capped = pool.make_group({2});
@@ -207,7 +207,7 @@ TEST(
 
 TEST(
     worker_pool,
-    close_drains_accepted_jobs_and_saved_groups_reject_after_destruction
+    shutdown_drain
 ) {
     auto pool = std::make_unique<CE::Engine::WorkerPool>();
     auto group = pool->make_group();
@@ -225,7 +225,7 @@ TEST(
 
 TEST(
     worker_pool,
-    a_worker_cannot_wait_for_its_own_group_or_join_its_pool
+    worker_self_wait
 ) {
     CE::Engine::WorkerPool pool;
     auto group = pool.make_group();
@@ -240,7 +240,7 @@ TEST(
 
 TEST(
     worker_pool,
-    dropping_a_group_handle_does_not_cancel_accepted_work
+    dropped_group_handle
 ) {
     CE::Engine::WorkerPool pool;
     std::future<int> result;
@@ -254,7 +254,7 @@ TEST(
 
 TEST(
     worker_pool,
-    captured_resource_release_can_post_to_another_group_before_drain_returns
+    capture_release_reentry
 ) {
     CE::Engine::WorkerPool pool;
     auto source = pool.make_group();
@@ -291,7 +291,7 @@ TEST(
 
 TEST(
     worker_pool,
-    required_unavailable_topology_rejects_instead_of_silently_falling_back
+    unavailable_topology
 ) {
     CE::Engine::WorkerPool pool;
     CE::Engine::WorkerGroupOptions options;
@@ -302,7 +302,7 @@ TEST(
 
 TEST(
     worker_pool,
-    effective_policy_reports_requested_shares_caps_and_available_cpu_constraints
+    effective_policy
 ) {
     CE::Engine::WorkerPool pool(2);
     CE::Engine::WorkerGroupOptions options;
@@ -321,7 +321,7 @@ TEST(
 #if defined(__linux__)
 TEST(
     worker_pool_native,
-    restricted_inherited_mask_controls_discovery_and_required_preferred_eligibility
+    inherited_cpu_mask
 ) {
     const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
     const auto inherited = native.query_affinity();
@@ -374,7 +374,7 @@ TEST(
 
 TEST(
     worker_pool_native,
-    a_genuine_os_affinity_rejection_settles_a_job_and_keeps_the_shared_worker_usable
+    native_affinity_rejection
 ) {
     if (!std::filesystem::exists("/sys/devices/system/cpu/possible"))
         GTEST_SKIP() << "Kernel rejection acceptance requires an exposed CPU inventory";
@@ -424,7 +424,7 @@ TEST(
 
 TEST(
     worker_pool,
-    a_required_cpu_group_runs_on_its_eligible_cpu
+    required_cpu_affinity
 ) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
@@ -443,7 +443,7 @@ TEST(
 
 TEST(
     worker_pool,
-    switching_groups_restores_the_effective_cpu_mask_on_the_shared_worker
+    group_mask_restoration
 ) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
@@ -467,7 +467,7 @@ TEST(
 
 TEST(
     worker_pool,
-    a_required_job_revalidates_a_cached_mask_changed_by_the_previous_job
+    cached_mask_revalidation
 ) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
@@ -495,7 +495,7 @@ TEST(
 
 TEST(
     worker_pool,
-    overlapping_cpu_groups_keep_their_masks_and_weighted_share_on_one_worker
+    overlapping_cpu_groups
 ) {
     CE::Engine::WorkerPool pool;
     const auto capabilities = pool.capabilities();
@@ -548,7 +548,7 @@ TEST(
 
 TEST(
     worker_pool,
-    weighted_groups_receive_more_service_without_starving_the_other_group
+    weighted_fairness
 ) {
     CE::Engine::WorkerPool pool;
     auto gate = pool.make_group();
@@ -582,7 +582,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    discovery_query_failure_disables_hard_affinity_but_settles_unconstrained_work
+    discovery_query_failure
 ) {
     RecordingWorkerNative native;
     native.failed_query = 1;
@@ -602,7 +602,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    effective_readback_mismatch_rejects_required_work_before_callback_entry
+    required_readback_mismatch
 ) {
     RecordingWorkerNative native;
     native.ignore_sets = true;
@@ -621,7 +621,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    required_set_failure_releases_captures_outside_locks_before_drain_completes
+    required_affinity_failure
 ) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
@@ -663,7 +663,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    preferred_set_failure_runs_only_after_verified_inherited_fallback
+    preferred_affinity_fallback
 ) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
@@ -680,7 +680,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    failed_preferred_fallback_settles_failure_and_the_next_group_reverifies
+    preferred_fallback_failure
 ) {
     for (const bool query_failure : {false, true}) {
         RecordingWorkerNative native;
@@ -712,7 +712,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    post_set_query_failure_rejects_work_and_restores_the_next_groups_mask
+    post_set_query_failure
 ) {
     RecordingWorkerNative native;
     native.failed_query = 2; // The set succeeds, but its readback cannot verify it.
@@ -735,7 +735,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    cached_required_query_failure_skips_work_and_forces_next_job_verification
+    cached_mask_query_failure
 ) {
     RecordingWorkerNative native;
     native.failed_query = 2; // Discovery succeeds; the cached required mask read fails.
@@ -758,7 +758,7 @@ TEST(
 
 TEST(
     worker_pool_faults,
-    partial_thread_start_failure_joins_started_work_and_preserves_the_original_error
+    partial_thread_start
 ) {
     std::promise<void> entered;
     auto started = entered.get_future().share();
