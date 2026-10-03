@@ -21,18 +21,19 @@ namespace CE::Mem {
         for (const auto& b : std::get<1>(this->registry)) {
             total += b.length;
         }
-        // TODO: Define a zero-allocation result before dividing by total; an untouched
-        // manager currently formats 0/0 as the free percentage.
+        // A free percentage is unavailable without a recorded allocation.
+        const auto percentage =
+            total == 0 ? std::string{"n/a (no allocations)"} : std::format("{:2.1f}%", (available / (double)total) * 100);
         auto tot = human_readable(total);
         auto avail = human_readable(available);
         return std::format(
             "Recorded stats regarding allocations from this manager\n"
             "heap allocations: {}\n"
             "heap ranges: {}\n"
-            "not in use: {:2.1f}%\n"
+            "not in use: {}\n"
             "total: {}\n"
             "available: {}\n\n",
-            std::get<1>(this->registry).size(), std::get<1>(this->sections).size(), (available / (double)total) * 100, tot, avail
+            std::get<1>(this->registry).size(), std::get<1>(this->sections).size(), percentage, tot, avail
         );
     }
 

@@ -714,3 +714,22 @@ allocator use:
 These are required U2 subtasks. U2a's completed ownership contract is stable input
 to them; T7 stays open. Independent U3 numeric/statistics corrections can proceed
 without assuming these transactions are complete.
+
+### U3a — byte formatting and empty statistics implemented
+
+human_readable chooses its unit from the integer byte count (including values
+just below a large power that round upward when converted to double), promotes
+exact powers of 1024, includes TiB through YiB, and preserves one-decimal formatting.
+A value just below a unit boundary may round to 1024.0 in the lower unit. Boundary
+regression sources now cover representable adjacent powers and large suffixes;
+the deferred math test TODO is closed.
+
+Memory stats reports `not in use: n/a (no allocations)` when the shared byte domain
+has zero total allocation, avoiding division by zero and an invented utilization
+percentage. Nonempty-domain output keeps its previous percentage format. This
+small diagnostic fix does not assume U2b's transaction audit has been completed.
+
+Validation: source arithmetic/format review, reference and diff checks. Regression
+sources are uncompiled/unexecuted. An isolated empty-domain stats execution check
+is still needed when authorized; ordinary manager instances share global bookkeeping,
+so creating a fresh facade alone does not establish an empty test domain.

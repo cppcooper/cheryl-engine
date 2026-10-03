@@ -32,7 +32,7 @@ namespace CE::Mem {
         [[nodiscard]] std::weak_ptr<void> lifetime_token() const { return lifetime_token_; }
         // Capture while the facade is live; final release may then outlive its destruction.
         [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return release_context_; }
-        // retrieve stats
+        // Shared byte-domain statistics; free percentage is n/a when total bytes are zero.
         [[nodiscard]] std::string stats();
         // retrieve debug info
         [[nodiscard]] std::string debug_info();

@@ -340,14 +340,27 @@ TEST(math_time, duration_conversions) {
 }
 
 TEST(math_bytes, readable_byte_sizes) {
-    // Exercise ordinary values without encoding the known exact-power boundary
-    // behavior as the desired contract.
     EXPECT_EQ(human_readable(0), "0.0 bytes");
     EXPECT_EQ(human_readable(512), "512.0 bytes");
     EXPECT_EQ(human_readable(1536), "1.5KiB");
     EXPECT_EQ(human_readable(std::size_t{1536} * 1024), "1.5MiB");
+}
 
-    // TODO(math-bytes): Add exact powers-of-1024 and TiB-and-larger cases after
-    // deciding/fixing the intended boundary and suffix behavior. The current
-    // implementation uses `> 1024` and skips the TiB suffix.
+TEST(math_bytes, unit_boundaries) {
+    struct Case {
+        std::uint64_t bytes;
+        const char* expected;
+    };
+    constexpr Case cases[]{
+        {1023, "1023.0 bytes"}, {1024, "1.0KiB"}, {1025, "1.0KiB"},
+        {(std::uint64_t{1} << 20) - 1, "1024.0KiB"}, {std::uint64_t{1} << 20, "1.0MiB"},
+        {std::uint64_t{1} << 30, "1.0GiB"}, {(std::uint64_t{1} << 40) - 1, "1024.0GiB"},
+        {std::uint64_t{1} << 40, "1.0TiB"}, {(std::uint64_t{1} << 50) - 1, "1024.0TiB"},
+        {std::uint64_t{1} << 50, "1.0PiB"}, {(std::uint64_t{1} << 60) - 1, "1024.0PiB"},
+        {std::uint64_t{1} << 60, "1.0EiB"}, {std::numeric_limits<std::uint64_t>::max(), "16.0EiB"}
+    };
+    for (const auto& entry : cases) {
+        if (entry.bytes <= std::numeric_limits<std::size_t>::max())
+            EXPECT_EQ(human_readable(static_cast<std::size_t>(entry.bytes)), entry.expected) << entry.bytes;
+    }
 }

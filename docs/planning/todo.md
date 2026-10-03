@@ -16,12 +16,6 @@ Unresolved artwork metadata is tracked separately in
   shared construction map. Safe retained byte-release ownership is implemented;
   the operation transaction contract remains separate. See
   [mem-mgr.h](../../include/cheryl/core/resources/memory/mem-mgr.h).
-- Define the memory statistics result when total allocation is zero before dividing
-  by that total. See [mem-mgr.hpp](../../include/cheryl/core/resources/memory/mem-mgr.hpp).
-- Decide/fix exact-power-of-1024 boundaries and TiB-and-larger suffix behavior in
-  `human_readable`, then add the deferred boundary cases. See
-  [bytes.h](../../include/cheryl/math/bytes.h) and
-  [math.cpp](../../tests/executables/gtest/math/math.cpp).
 - Complete the event-reporting part of shader diagnostics. Structured uniform/
   attribute reflection queries already exist; the printing APIs still write their
   results to standard output. See
