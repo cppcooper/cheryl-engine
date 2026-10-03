@@ -14,6 +14,7 @@ individual systems, development practices, and unfinished work.
 - [Thread dispatch](runtime/thread-dispatch.md)
 - [Event buses and persistent registration](runtime/event-delivery.md)
 - [Worker pools and groups](runtime/worker-execution.md)
+- [Logging configuration and emission](runtime/logging.md)
 
 ## Assets
 

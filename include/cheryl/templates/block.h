@@ -7,8 +7,6 @@
 #define MFATAL() UFATAL(CE::memlog)
 #include <cemath.h>
 #include <internals/compile-time-logging.hpp>
-#undef CTWriteMask
-#define CTWriteMask 0
 #include <core/logging/logger.h>
 #include <functional>
 #include <algorithm>
@@ -92,9 +90,8 @@ template <typename T> typename Block<T>::OBlock Block<T>::split_exactly(std::siz
         p = head.get() + idx;
     }
     auto av = ptr::calculate_alignment(p);
-    if (av == std::align_val_t{1}) {
-        MWARN() << "We are going to have a 1 alignment memory pooling issue. We at least need to resplit";
-    }
+    // Byte alignment is a valid remainder. This operation can run under memory
+    // transaction locks, so diagnostics belong to an unlocked caller snapshot.
     Block R{owner, std::shared_ptr<T>(owner, p), av, length - idx};
     length = idx;
     return std::make_optional(R);
@@ -354,22 +351,13 @@ protected:
         // advance until the next higher address within the same owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
-        MTRACE() << "Searching to the right from " << block;
         auto iter = set.lower_bound(block);
-        if (iter != set.end()) {
-            MTRACE() << "lower_bound: " << *iter;
-        } else {
-            MTRACE() << "lower_bound: end()";
-        }
         while (iter != set.end() && block.owner == iter->owner && iter->head.get() <= block.head.get()) {
             iter = std::next(iter);
-            if (iter != set.end())
-                MTRACE() << "next: " << *iter;
         }
         if (iter != set.end() && block.owner == iter->owner && iter->head.get() > block.head.get()) {
             return {*iter};
         }
-        MWARN() << "search condition not found right, returning nullopt";
         return {std::nullopt};
     }
 
@@ -378,7 +366,6 @@ protected:
         // stopping when the ordered records belong to a different owner.
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
-        MTRACE() << "Searching to the left from " << block;
         auto iter = set.lower_bound(block);
         while (iter != set.begin()) {
             --iter;
@@ -388,34 +375,26 @@ protected:
                 break;
             }
         }
-        MWARN() << "search condition not found left, returning nullopt";
         return {std::nullopt};
     }
 
     template <typename Tuple> OBlock<T> contiguous_right(Block<T> block, Tuple& tuple) {
-        MDEBUG() << "Looking for contiguous right..";
         auto ob = search_right(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
-            MDEBUG() << "contiguous right found: " << *ob;
             return {*ob};
         }
-        MWARN() << "not contiguous, returning nullopt";
         return {std::nullopt};
     }
 
     template <typename Tuple> OBlock<T> contiguous_left(Block<T> block, Tuple& tuple) {
-        MDEBUG() << "Looking for contiguous left..";
         auto ob = search_left(block, tuple);
         if (ob.has_value() && BlockHelpers::is_contiguous(block, *ob)) {
-            MDEBUG() << "contiguous left found: " << *ob;
             return {*ob};
         }
-        MWARN() << "not contiguous, returning nullopt";
         return {std::nullopt};
     }
 
     template <typename Tuple> OBlock<T> adjacent_right(Block<T> block, Tuple& tuple) {
-        MDEBUG() << "Looking for adjacent right..";
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
         auto iter = set.lower_bound(block);
@@ -425,25 +404,20 @@ protected:
             }
         }
         if (iter != set.end()) {
-            MDEBUG() << "adjacent right found: " << *iter;
             return {*iter};
         }
-        MDEBUG() << "no adjacent, returning nullopt";
         return {std::nullopt};
     }
 
     // Returns the predecessor in the set's ordering, which may differ from address order.
     template <typename Tuple> OBlock<T> adjacent_left(Block<T> block, Tuple& tuple) {
-        MDEBUG() << "Looking for adjacent left..";
         std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
         auto& set = std::get<1>(tuple);
         const auto next = set.lower_bound(block);
         if (next == set.begin()) {
-            MDEBUG() << "no adjacent, returning nullopt";
             return {std::nullopt};
         }
         const auto previous = std::prev(next);
-        MDEBUG() << "adjacent left found: " << *previous;
         return {*previous};
     }
 

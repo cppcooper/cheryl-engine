@@ -35,30 +35,58 @@ namespace CE {
 
         static void set_level_stdsink(spdlog::level level) { Singleton_CTS<Log<name>>::get().set_level_stdsink(level); }
 
+        [[nodiscard]] static bool should_log(const spdlog::level level) { return Singleton_CTS<Log<name>>::get().should_log(level); }
+
+        /** Evaluate diagnostics only when compiled and admitted by a destination.
+         * Initialization, argument preparation, and submission failures report
+         * through the emergency path instead of changing the engine operation.
+         * This is ordinary logging: call outside locks and native/noexcept paths.
+         */
+        template <ctlog::LogLevel severity, typename Write> static void write_lazy(Write&& write) noexcept {
+            if constexpr (ctlog::enabled(severity)) {
+                try {
+                    auto& log = Singleton_CTS<Log<name>>::get();
+                    if (log.should_log(ctlog::runtime_level(severity)))
+                        std::forward<Write>(write)(log);
+                } catch (...) {
+                    Diagnostics::report_failure("logging write", std::current_exception());
+                }
+            }
+        }
+
         template <typename... Args> static void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().trace(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::TRACE_))
+                Singleton_CTS<Log<name>>::get().trace(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> static void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().debug(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::DEBUG_))
+                Singleton_CTS<Log<name>>::get().debug(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> static void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().info(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::INFO_))
+                Singleton_CTS<Log<name>>::get().info(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> static void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().warn(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::WARNING_))
+                Singleton_CTS<Log<name>>::get().warn(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> static void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().error(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::ERROR_))
+                Singleton_CTS<Log<name>>::get().error(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> static void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            Singleton_CTS<Log<name>>::get().critical(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::FATAL_))
+                Singleton_CTS<Log<name>>::get().critical(fmt, std::forward<Args>(args)...);
         }
 
-        static void strace(void* addr0 = nullptr) { Singleton_CTS<Log<name>>::get().strace(addr0); }
+        static void strace(void* addr0 = nullptr) {
+            if constexpr (ctlog::enabled(ctlog::TRACE_))
+                Singleton_CTS<Log<name>>::get().strace(addr0);
+        }
     };
 }

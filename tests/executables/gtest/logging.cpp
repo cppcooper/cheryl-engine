@@ -40,6 +40,9 @@ namespace {
     constexpr char default_replaced_name[] = "logging-default-replaced";
     constexpr char alternate_default_name[] = "logging-alternate-default";
     constexpr char wrapper_name[] = "logging-wrapper";
+    constexpr char filtered_args_name[] = "logging-filtered-args";
+    constexpr char compiled_args_name[] = "logging-compiled-args";
+    constexpr char lazy_failure_name[] = "logging-lazy-failure";
 
     void remove_current_log_file(const char* name) {
         std::error_code error;
@@ -58,6 +61,13 @@ namespace {
 
     void expect_contains(const std::string& text, const std::string& fragment) {
         EXPECT_NE(text.find(fragment), std::string::npos) << "Expected log output to contain: " << fragment;
+    }
+
+    void expect_level(const std::string& text, const std::string& fragment, const ctlog::LogLevel level) {
+        if (ctlog::enabled(level))
+            expect_contains(text, fragment);
+        else
+            EXPECT_EQ(text.find(fragment), std::string::npos);
     }
 
     template <const char* name> class TestLog final : public Log<name> {
@@ -127,12 +137,12 @@ TEST(logging, close_completes_file) {
     EXPECT_EQ(close_events.load(), 1);
 
     const auto content = read_file(path);
-    expect_contains(content, "trace-message");
-    expect_contains(content, "debug-message");
-    expect_contains(content, "info-message");
-    expect_contains(content, "warn-message");
-    expect_contains(content, "error-message");
-    expect_contains(content, "critical-message");
+    expect_level(content, "trace-message", ctlog::TRACE_);
+    expect_level(content, "debug-message", ctlog::DEBUG_);
+    expect_level(content, "info-message", ctlog::INFO_);
+    expect_level(content, "warn-message", ctlog::WARNING_);
+    expect_level(content, "error-message", ctlog::ERROR_);
+    expect_level(content, "critical-message", ctlog::FATAL_);
 
     // Closing an already closed logger is idempotent and must not destroy the sink twice.
     EXPECT_NO_THROW(log.close());
@@ -193,9 +203,9 @@ TEST(logging, console_routing) {
     const auto stdout_text = testing::internal::GetCapturedStdout();
     const auto stderr_text = testing::internal::GetCapturedStderr();
 
-    expect_contains(stdout_text, "stdout-info");
-    expect_contains(stdout_text, "stdout-warn");
-    expect_contains(stderr_text, "stderr-error");
+    expect_level(stdout_text, "stdout-info", ctlog::INFO_);
+    expect_level(stdout_text, "stdout-warn", ctlog::WARNING_);
+    expect_level(stderr_text, "stderr-error", ctlog::ERROR_);
     EXPECT_EQ(stdout_text.find("stderr-error"), std::string::npos);
     EXPECT_EQ(stderr_text.find("stdout-info"), std::string::npos);
     EXPECT_EQ(stderr_text.find("stdout-warn"), std::string::npos);
@@ -437,4 +447,96 @@ TEST(logging, wrapper_timeout_and_writes) {
     EXPECT_NO_THROW({ UERROR(wrapper_name) << "discarded-closed-compile-time-write"; });
     EXPECT_NO_THROW(Logger<wrapper_name>::reopen());
     EXPECT_NO_THROW(Logger<wrapper_name>::close());
+}
+
+TEST(logging, filtered_args) {
+    auto& log = Logger<filtered_args_name>::get();
+    const auto path = log.get_file_path();
+    log.set_pattern("%v");
+    log.set_level_logger(spdlog::level::trace);
+    log.set_level_filesink(spdlog::level::off);
+    log.set_level_stdsink(spdlog::level::off);
+    int arguments = 0;
+    int alternatives = 0;
+    EXPECT_FALSE(log.should_log(spdlog::level::warn));
+    CE_LOG_WARN(filtered_args_name, "formatted-{}", ++arguments);
+    UWARN(filtered_args_name) << "streamed-" << ++arguments;
+    if (false)
+        UWARN(filtered_args_name) << ++arguments;
+    else
+        ++alternatives;
+    if (true)
+        UWARN(filtered_args_name) << ++arguments;
+    else
+        ++alternatives;
+    EXPECT_EQ(arguments, 0);
+    EXPECT_EQ(alternatives, 1);
+
+    // Enabling just the file must admit records even with the console off.
+    log.set_level_filesink(spdlog::level::trace);
+    CE_LOG_WARN(filtered_args_name, "formatted-{}", ++arguments);
+    UWARN(filtered_args_name) << "streamed-" << ++arguments;
+    EXPECT_EQ(arguments, ctlog::enabled(ctlog::WARNING_) ? 2 : 0);
+    log.close();
+    const auto content = read_file(path);
+    expect_level(content, "formatted-1", ctlog::WARNING_);
+    expect_level(content, "streamed-2", ctlog::WARNING_);
+}
+
+TEST(logging, compiled_args) {
+    auto& log = Logger<compiled_args_name>::get();
+    log.set_level_logger(spdlog::level::trace);
+    log.set_level_filesink(spdlog::level::trace);
+    log.set_level_stdsink(spdlog::level::off);
+    int arguments = 0;
+    CE_LOG_TRACE(compiled_args_name, "{}", ++arguments);
+    UTRACE(compiled_args_name) << ++arguments;
+    EXPECT_EQ(arguments, ctlog::enabled(ctlog::TRACE_) ? 2 : 0);
+    log.close();
+}
+
+TEST(logging, lazy_failure) {
+    auto& log = Logger<lazy_failure_name>::get();
+    log.set_level_logger(spdlog::level::trace);
+    log.set_level_filesink(spdlog::level::trace);
+    log.set_level_stdsink(spdlog::level::off);
+    int arguments = 0;
+    const auto prepare = [&]() -> int {
+        ++arguments;
+        throw std::runtime_error("injected lazy argument failure");
+    };
+    testing::internal::CaptureStderr();
+    EXPECT_NO_THROW(CE_LOG_WARN(lazy_failure_name, "{}", prepare()));
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(arguments, ctlog::enabled(ctlog::WARNING_) ? 1 : 0);
+    if (ctlog::enabled(ctlog::WARNING_)) {
+        expect_contains(output, "logging write");
+        expect_contains(output, "injected lazy argument failure");
+    } else {
+        EXPECT_TRUE(output.empty());
+    }
+    log.close();
+}
+
+TEST(logging, stream_failure) {
+    testing::internal::CaptureStderr();
+    EXPECT_NO_THROW({
+        ctlog::LogLineStream([](const std::string&) { throw std::runtime_error("injected stream failure"); }) << "message";
+    });
+    const auto output = testing::internal::GetCapturedStderr();
+    expect_contains(output, "stream log emission");
+    expect_contains(output, "injected stream failure");
+}
+
+TEST(logging, partial_stream) {
+    bool emitted = false;
+    EXPECT_THROW(
+        {
+            ctlog::LogLineStream stream([&](const std::string&) { emitted = true; });
+            stream << "partial";
+            throw std::runtime_error("injected argument failure");
+        },
+        std::runtime_error
+    );
+    EXPECT_FALSE(emitted);
 }

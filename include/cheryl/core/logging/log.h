@@ -1,5 +1,6 @@
 #pragma once
 #include "osink.h"
+#include "compile-policy.h"
 #include <templates/singleton.h>
 #include <internals/failure-reporting.h>
 
@@ -9,6 +10,7 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 
 #include <atomic>
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
@@ -96,6 +98,27 @@ namespace CE {
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
 
+        [[nodiscard]] static bool admits(const std::shared_ptr<spdlog::logger>& logger, const spdlog::level level) noexcept {
+            return logger && level != spdlog::level::off && logger->should_log(level) &&
+                   std::any_of(logger->sinks().begin(), logger->sinks().end(),
+                       [level](const auto& sink) { return sink && sink->should_log(level); });
+        }
+
+        template <ctlog::LogLevel severity, typename... Args>
+        void write(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+            if constexpr (ctlog::enabled(severity)) {
+                const auto logger = m_logger.load();
+                constexpr auto level = ctlog::runtime_level(severity);
+                if (!admits(logger, level))
+                    return;
+                if constexpr (severity == ctlog::FATAL_ && ctlog::enabled(ctlog::TRACE_)) {
+                    if (admits(logger, spdlog::level::trace))
+                        logger->log(spdlog::level::trace, "{}", stack_trace());
+                }
+                logger->log(level, fmt, std::forward<Args>(args)...);
+            }
+        }
+
     protected:
         template <typename T>
         [[nodiscard]] std::shared_ptr<T>
@@ -115,6 +138,15 @@ namespace CE {
         void set_level_filesink(spdlog::level level) const;
         void set_level_stdsink(spdlog::level level) const;
 
+        /** A best-effort probe of compile, logger, and actual sink filters. Level
+         * changes/close may race a later write; retaining the published logger
+         * here keeps this probe's sink graph alive. Native sink mutation requires
+         * external quiescence. Probe before evaluating expensive log arguments.
+         */
+        [[nodiscard]] bool should_log(const spdlog::level level) const noexcept {
+            return ctlog::enabled(ctlog::severity_bit(level)) && admits(m_logger.load(), level);
+        }
+
         // Sets the pattern for the logger and propagates it to its current sinks.
         void set_pattern(const char* fmt) const {
             const auto lock = state_controller->lock();
@@ -132,48 +164,34 @@ namespace CE {
         }
 
         void strace(void* addr0 = nullptr) const {
-            if (const auto logger = m_logger.load(); logger && logger->should_log(spdlog::level::trace)) {
-                logger->log(spdlog::level::trace, "{}", stack_trace(addr0));
+            if constexpr (ctlog::enabled(ctlog::TRACE_)) {
+                if (const auto logger = m_logger.load(); admits(logger, spdlog::level::trace))
+                    logger->log(spdlog::level::trace, "{}", stack_trace(addr0));
             }
         }
 
         template <typename... Args> void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                logger->log(spdlog::level::trace, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::TRACE_>(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                logger->log(spdlog::level::debug, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::DEBUG_>(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                logger->log(spdlog::level::info, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::INFO_>(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                logger->log(spdlog::level::warn, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::WARNING_>(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                logger->log(spdlog::level::err, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::ERROR_>(fmt, std::forward<Args>(args)...);
         }
 
         template <typename... Args> void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if (auto logger = m_logger.load()) {
-                if (logger->should_log(spdlog::level::trace)) {
-                    logger->log(spdlog::level::trace, "{}", stack_trace());
-                }
-                logger->log(spdlog::level::critical, fmt, std::forward<Args>(args)...);
-            }
+            write<ctlog::FATAL_>(fmt, std::forward<Args>(args)...);
         }
     };
 }

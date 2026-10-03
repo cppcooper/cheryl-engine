@@ -484,7 +484,7 @@ Prerequisites: U1 initialization contract and U4 fallback contract.
 
 - [ ] Choose category representation, initialization owner, logical correlation IDs,
   supported destination configuration, and file/rotation defaults.
-- [ ] Replace unconditional/global include-order masks with target-consistent
+- [x] Replace unconditional/global include-order masks with target-consistent
   profiles; apply gating to formatted and streaming calls, including expensive args.
 - [ ] Add explicit runtime logger/file/console defaults and overrides; document
   compile-time versus runtime behavior.
@@ -1193,3 +1193,37 @@ must not silently erase required failure reporting. A queue/embedded-host owners
 choice that cannot be justified by the current contracts stops dependent U6 work.
 Subsystem integration must not rely on initialization, ordering, or callback
 behavior that the logger does not actually guarantee.
+
+### U5a — target-consistent compile policy and guarded emission
+
+Added a public logging configuration target with developer/support/release compile
+profiles and an explicit severity-mask override. The engine and source-recompiling
+tests use the same definitions; consumers inherit the engine target's policy.
+The legacy CTWriteMask alias remains supported target-wide. Policy is captured by
+the header once, validated, and not rewritten by block.h.
+
+Removed logging from memory split/neighbor helpers that can execute with collection
+locks held. Their expected misses and byte-aligned remainders retain the same return
+behavior without introducing stream allocation, lazy logger construction, or queue
+waits. Lookup, split, and macro interfaces remain. U6 owns unlocked aggregate memory
+diagnostics rather than warnings for ordinary misses.
+
+Direct logging bodies and stack capture obey compile policy. should_log also checks
+the actual sink gates, so argument preparation can be skipped when all destinations
+reject a record. Existing streaming macros gate before constructing/inserting and
+preserve an enclosing if/else. Guarded formatted macros/write_lazy keep initialization,
+argument preparation, and submission inside a nonthrowing diagnostic boundary.
+Direct function arguments still follow ordinary C++ evaluation rules; streaming
+construction/caller insertion can throw. Stream destruction catches its own failures
+and suppresses a partial record during argument unwinding. Removed the stream move
+constructor's unsupported unconditional noexcept claim.
+
+Added regression sources for compile-filtered/direct severities, filtered argument
+side effects, independent sinks, first-include/mask consistency, lazy failures,
+stream emission failure, partial streams, and macro if/else behavior. Their compile
+and executable profile matrix remains unexecuted. The contract is in
+[logging.md](../runtime/logging.md).
+
+**Boundary retained:** The queue still blocks and runtime defaults are not yet
+explicitly configured. U5b/U5c must settle those contracts before broad U6 logging.
+No compiler/configuration probes, builds, or tests were run for this unit.
