@@ -1436,3 +1436,43 @@ containment, flush acknowledgement, or durability. If sharing the pool prevents 
 safe held-backend acceptance fixture, isolate its ownership without altering the
 production pool contract. Per-category default changes remain part of the U6 error
 ownership audit; saturation assumptions alone do not establish delivery requirements.
+
+### U5–U8 continuation — implementation plan
+
+The owner requested continuation from U5c3 through U8 on
+`engine-foundations-and-consumer-facilities`. The initial working tree is clean.
+Build, compiler/configuration probes, test execution, and remote push remain
+unauthorized under AGENTS.md. Follow these units and commit each independently:
+
+1. **U5c3:** Preserve the retained native file ownership boundary while placing
+   exception guards around the owned backend destinations. Keep actual delegate
+   filtering visible to lazy argument probes. Contain close callbacks individually,
+   preserve startup exceptions, expose cumulative failure/degradation observations,
+   and require completed close/reopen to recover failed destinations. Add focused
+   acceptance sources and review destruction/rotation paths before proceeding.
+2. **U5c4:** Guard shared-category backend/callback emission and lifecycle reentry
+   before singleton or lifecycle locks. Expose suppression/loss observations and
+   bounded summaries outside locks, including final pool accounting. Resolve any
+   native-owner bypass discovered before claiming the boundary complete.
+3. **U5c5:** Prepare isolated fault/reentry/teardown acceptance and the compile
+   profile matrix. Executable acceptance is a prerequisite for U6; request explicit
+   authorization once this work is concrete. Until acceptance passes, U6 stays
+   pending while independent U7/U8 work proceeds.
+4. **U6, after acceptance:** Audit error owners and add runtime/native diagnostics
+   first, then shader records and worker/dispatch/event/asset/input/display and
+   aggregate metrics in separate coherent units. Preserve emergency reporting and
+   avoid ordinary writes inside callbacks, final deleters, or subsystem locks.
+5. **U7:** Audit the real library's public/private dependencies and supported
+   headers; define a stable build-tree consumer target and explicit packaging scope.
+   Add an independent consumer and header/link acceptance sources. Make bootstrap
+   ownership explicit rather than relying on static-library extraction. No broad
+   CMake cleanup or unsupported platform claims.
+6. **U8:** Audit provider/preparation/upload/cache publication and document the
+   one-provider domain, ownership, partial publication, retry, and retirement at
+   declarations. Apply U0's neutral-probe requirements: immutable replacement
+   images and one domain; no automatic residency or speculative mutable resources.
+   Record any correctness prerequisite before consumers depend on it.
+
+Each unit includes source/diff and local documentation-link checks, plus an honest
+record of unexecuted acceptance. Required discoveries revise the remaining plan;
+unrelated findings are recorded for their appropriate later boundary.
