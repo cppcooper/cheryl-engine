@@ -50,115 +50,27 @@ namespace CE::Obj {
         if (N == 0) {
             throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
         }
-        OBlock<T> ob = this->fill_request(N);
-        const bool request_filled = ob.has_value();
-        // Create a new owner only when the reusable pool cannot satisfy this batch.
-        // A reused whole owner must leave the stale/release queues before splitting.
-        if (!request_filled) {
-            ob = allocate(N);
-            this->record_new(*ob);
-        } else if (this->contains(*ob, this->registry)) {
-            // an existing block may still be marked stale
-            this->erase(*ob, this->stale, this->release);
-        }
-        const auto right = ob->split_exactly(N);
-        // Split ranges need section records for both halves; the unused tail returns
-        // immediately to the pool while the caller owns the left portion.
-        if (right.has_value()) {
-            this->emplace(*ob, this->sections);
-            this->emplace(*right, this->sections, this->pool);
-        }
-        return *ob;
+        return BlockTransactions<T>::checkout(this->state_, N, std::align_val_t{alignof(T)}, [=] { return allocate(N); });
     }
 
     template <typename T> void PoolState<T>::return_objects(T* p, std::size_t length) {
-        if (length == 0) {
-            throw Exceptions::bad_request(CE_HERE, "Cannot return an empty object range.");
-        }
-        auto FUNC = CE_FUNCTION_;
-        // Carve a returned slot/range out of its active section. Preserve unreturned
-        // front/back sections, then coalesce only the returned middle with free neighbors.
-        auto ret_chunk = [this, FUNC](OBlock<T> b, T* p, std::size_t length) {
-            if (!b.has_value()) {
-                std::unreachable();
-            }
-            const auto original = *b;
-            auto block_end = ptr::offset_address(b->head.get(), b->length * sizeof(T));
-            auto end = ptr::offset_address(p, length * sizeof(T));
-
-            if (end <= block_end) {
-                // Compute the unreturned spans in object units; only the middle
-                // slice may reenter the free pool after the partition changes.
-                bool sec_changed = false;
-                auto remainder_end = (block_end - end) / sizeof(T); // Remaining objects at the end
-                auto remainder_front = (reinterpret_cast<uintptr_t>(p) - reinterpret_cast<uintptr_t>(b->head.get())) /
-                                       sizeof(T); // Remaining objects at the front
-
-                // Retain a leading active section, then work on the rest.
-                if (remainder_front > 0) {
-                    sec_changed = true;
-                    auto back_end = b->split_exactly(remainder_front);
-                    this->emplace(*b, this->sections); // Re-add modified front block to sections
-                    b = back_end;                      // Continue with the remaining block
-                }
-                // Retain the trailing active section after the returned slice.
-                if (remainder_end > 0) {
-                    sec_changed = true;
-                    auto back_end = b->split_exactly(b->length - remainder_end);
-                    this->emplace(*back_end, this->sections); // Re-add the split back portion
-                }
-                // Replace the original record with its new partition before
-                // coalescing the returned range with already free neighbors.
-                if (sec_changed) {
-                    this->erase(original, this->sections);
-                    this->emplace(*b, this->sections);
-                }
-                this->merge_into_pool(*b);
-            } else {
-                throw Exceptions::bad_request(FUNC, __LINE__, "Invalid portion returned. The length exceeds the available memory block.");
-            }
-        };
-
-        // Whole allocations may have no section record; fall back to the owner lookup
-        // after checking for an interior pointer in the section partition.
-        if (auto sec = this->find_section(p); sec.has_value() && sec->contains(p)) {
-            if (this->contains(*sec, this->pool)) {
-                throw Exceptions::bad_request(CE_HERE, "Object range has already been returned.");
-            }
-            ret_chunk(sec, p, length);
-        } else if (auto owner = this->find_owner(p); owner.has_value() && owner->contains(p)) {
-            if (this->contains(*owner, this->pool)) {
-                throw Exceptions::bad_request(CE_HERE, "Object range has already been returned.");
-            }
-            ret_chunk(owner, p, length);
-        } else {
-            throw Exceptions::bad_request(CE_HERE, "No matching block found for the given pointer.");
+        if (!BlockTransactions<T>::return_range(this->state_, p, length)) {
+            throw Exceptions::bad_request(CE_HERE, "Cannot return an unknown, pooled, or out-of-bounds object range.");
         }
     }
 
     template <typename T> void PoolState<T>::return_block(const Block<T>& returned) {
-        // Returning a whole owner is valid only when no active sections of that owner remain.
-        const bool in_sections = this->contains(returned, this->sections);
-        const bool in_registry = this->contains(returned, this->registry);
-        bool has_active_sections = false;
-        if (in_registry) {
-            std::shared_lock lock(std::get<0>(this->sections));
-            for (const auto& section : std::get<1>(this->sections)) {
-                if (section.owner.get() == returned.owner.get()) {
-                    has_active_sections = true;
-                    break;
-                }
-            }
-        }
-        if ((!in_sections && !in_registry) || this->contains(returned, this->pool) || has_active_sections) {
+        if (!BlockTransactions<T>::return_block(this->state_, returned)) {
             throw Exceptions::failed_operation(CE_HERE, "Object pool was returned an unknown or active block.");
         }
-        this->merge_into_pool(returned);
     }
 
     template <typename T> Block<T> PoolState<T>::allocate(size_t length) {
         // Borrow raw bytes from the typed memory manager. The resulting owner handle
         // destroys any tracked T objects and returns those bytes when its final alias dies.
+        if (length > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw Exceptions::bad_request(CE_HERE, "The requested object storage length cannot be represented.");
+        }
         auto& manager = Mem::ObjMMgr<T>::get();
         Mem::HeapBlock b = manager.checkout_chunk(length * sizeof(T), alignof(T), Enum::greedy);
         auto raw = static_cast<T*>(b.head.get());

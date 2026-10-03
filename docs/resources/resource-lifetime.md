@@ -16,11 +16,31 @@ Public returns report invalid blocks with exceptions; trusted final releases are
 noexcept and terminate on a broken invariant or a failure to complete the return.
 Creating a handle or acquiring its context still requires a live manager facade.
 
-This fixes the final-release dependency on facade lifetime, not arbitrary concurrent
-checkout/return/cull. Cross-container transactions and ObjCtor's shared slot tracking
-still require an operation synchronization contract; that audit remains in
-[todo.md](../planning/todo.md). `lifetime_token()` remains a compatibility liveness
-observation and must not be used to authorize raw-manager access during teardown.
+Byte and typed block checkout/return serialize registry, sections, pool, stale, and
+release transitions with `BlockTransactions<T>`. Each backing owner is either one
+unsplit registry range or a complete, nonoverlapping section partition. A free
+range appears in the pool and exactly one of those locations. Only complete free
+owners carry stale timestamps or pending release records. Checkout cancels those
+markers in the same transaction that claims and partitions the range. Returns
+retain active front/back ranges and coalesce only free neighbors of the same owner.
+
+Replacement set nodes and any required hash capacity are prepared before live
+records change. Failed preparation leaves the logical partition unchanged;
+successful commit transfers nodes without allocating. Preallocation commits each
+owner independently. A later failure preserves earlier completed preallocations.
+Backing allocation happens outside collection locks and is rechecked against the
+pool before publication. Culling detaches retired owner references before releasing
+them, so backing frees and user destructors can reenter other memory operations.
+Statistics copy one synchronized snapshot before formatting it.
+
+The legacy protected lookup/fill methods remain single operations; custom derived
+managers must use the transaction path for compound partition changes. Raw static
+collection access requires external quiescence and preservation of these invariants.
+Live bytes/objects remain the caller's responsibility. Destroying a facade requires
+its own callers to finish; previously retained contexts can continue releasing
+ranges independently. `lifetime_token()` remains a compatibility observation and
+must not authorize raw-manager access during teardown. ObjCtor's slot synchronization
+and shutdown lifetime remain the next U2 boundary in [the plan](../planning/develop-review-and-development-plan.md#u2-resolve-memory-transactions-and-final-release-lifetime--t4-t6-t7).
 
 The protected legacy `AssetMgr::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders now use reservations and create handles only for entries they actually construct. `Pool<T>::retrieve_objects` retains pool state in its element deleters; it no longer looks up a singleton when those handles die.
 

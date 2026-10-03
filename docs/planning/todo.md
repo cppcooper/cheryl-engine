@@ -17,11 +17,10 @@ source changes remain distinct from unexecuted acceptance checks.
   constructing the font. The loader still has explicit placeholders and reads a
   fixed array without checking the read result. See
   [ffont.cpp](../../src/assets/types/2d/ffont.cpp).
-- Audit multi-container BlockManagement transitions before promising concurrent
-  memory-manager use, including synchronization and shutdown lifetime of ObjCtor's
-  shared construction map. Safe retained byte-release ownership is implemented;
-  the operation transaction contract remains separate. See
-  [mem-mgr.h](../../include/cheryl/core/resources/memory/mem-mgr.h).
+- Finish synchronization and shutdown lifetime of ObjCtor's shared construction
+  tracking. Byte and typed block transactions and retained byte release are now
+  implemented; executable concurrency/sanitizer acceptance remains pending. See
+  [object-construction.hpp](../../include/cheryl/core/resources/objects/object-construction.hpp).
 - Complete the event-reporting part of shader diagnostics. Structured uniform/
   attribute reflection queries already exist; the printing APIs still write their
   results to standard output. See

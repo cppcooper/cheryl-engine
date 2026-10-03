@@ -7,11 +7,12 @@
 #include <bit>
 
 namespace CE::Mem {
-    // TODO: Audit multi-container BlockManagement transitions before promising concurrent Manager use.
-    // Individual registries/pools have mutexes, but operations can inspect one collection and mutate another
-    // later; cross-container invariants need an explicit transaction/lock-order policy under contention.
     /** Recycles byte ranges, aligning/growing a request before checkout and tracking owners,
-     * sections, and pooled remainders through AbstractManager<void>.
+     * sections, and pooled remainders through AbstractManager<void>. Public operations
+     * serialize bookkeeping transitions across all collections; backing allocation,
+     * final frees, and reporting run outside those locks. Concurrent operations require
+     * a live facade or a previously retained release context. This does not synchronize
+     * user access to checked-out bytes or make raw collection edits safe.
      */
     template <double growth_factor_ = 1.6, int32_t growth_base_ = 256>
     struct Manager : AbstractManager<void>,

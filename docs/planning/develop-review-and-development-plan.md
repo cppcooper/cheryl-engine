@@ -903,3 +903,39 @@ The remaining implementation is ordered as follows:
 
 Each coherent change is committed separately. No compiler/configuration probes,
 product tests, or remote pushes are performed without the requested authorization.
+
+### U2b — atomic block transitions and cull retirement
+
+Implemented the shared transaction path for byte and typed checkout, whole and
+partial returns, and inherited merge/fill/cull methods. Transactions acquire all
+five collection locks with the deadlock-avoiding standard locking algorithm.
+Replacement nodes and hash capacity are prepared before live records change;
+commit transfers nodes without allocating. Allocation failure during preparation
+therefore preserves the logical partition. Preallocation commits individual owners.
+Backing allocation, final retired-owner destruction, and diagnostic formatting run
+outside collection locks. Statistics now copy one jointly locked snapshot.
+
+Protected lookup/fill and raw static collection interfaces remain available. They
+retain their individual operation purpose; custom derived compound operations must
+use the transaction mechanism or externally quiesce the domain. Facade destruction
+requires its direct callers to finish; already captured release contexts operate
+without touching it. Synchronization does not authorize concurrent access to the
+same checked-out bytes or objects.
+
+The transition audit also exposed overflowing growth/alignments and typed
+length-times-size multiplication. Added representability checks required before
+allocation/splitting. This is required request validation within U2, rather than an
+extension of the allocator interfaces. Greedy growth conservatively rejects a
+scaled value at the maximum size boundary before floating-to-integer conversion.
+
+Added source cases for concurrent split/return/cull/statistics, unrepresentable
+requests, and a final backing deleter that reacquires the same collection locks.
+Existing seeded partition, cull cancellation, duplicate return, typed reservation,
+and constructor-failure cases remain applicable. No compilation or tests were run.
+The missing isolated allocation-failure fixture must still exercise set-node/hash
+capacity preparation when executable acceptance is authorized; the structural
+prepare-before-commit audit does not substitute for that acceptance case.
+
+**Next boundary:** ObjCtor still shares an unsynchronized static map and can retain
+an iterator across reentrant user construction. That required repair remains U2c;
+block transactions alone do not complete U2's object lifetime contract.

@@ -179,7 +179,7 @@ namespace BlockHelpers {
 namespace compare {
     // head pointers in ascending order
     template <typename T> struct HeadOrder {
-        bool operator()(const Block<T>& lhs, const Block<T>& rhs) const {
+        bool operator()(const Block<T>& lhs, const Block<T>& rhs) const noexcept {
             if (lhs.head.get() != rhs.head.get()) {
                 return lhs.head.get() < rhs.head.get();
             }
@@ -192,7 +192,7 @@ namespace compare {
 
     // sub-block < master-block
     template <typename T> struct RegistryOrder {
-        bool operator()(const Block<T>& a, const Block<T>& b) const {
+        bool operator()(const Block<T>& a, const Block<T>& b) const noexcept {
             if (a.owner.get() != b.owner.get()) {
                 return a.owner.get() < b.owner.get();
             }
@@ -202,7 +202,7 @@ namespace compare {
 
     // most likely to fill request > least likely to fill request
     template <typename T> struct PoolOrder {
-        bool operator()(const Block<T>& lhs, const Block<T>& rhs) const {
+        bool operator()(const Block<T>& lhs, const Block<T>& rhs) const noexcept {
             if (lhs.alignment != rhs.alignment) {
                 return lhs.alignment > rhs.alignment;
             }
@@ -275,6 +275,8 @@ public:
     virtual void release_culled() = 0;
 };
 
+template <typename T> struct BlockTransactions;
+
 /**
  * Implements block lookup, merging, and culling over BlockManagement<T>'s
  * shared sets. Derived managers decide how blocks are acquired and returned.
@@ -287,60 +289,9 @@ struct AbstractManager : BlockManagement<T>,
     using clock = typename BlockManagement<T>::clock;
     using tpoint = typename BlockManagement<T>::tpoint;
 
-    void cull(std::chrono::minutes age) override {
-        // Mark whole free owners old enough to release; actual removal is deferred to
-        // release_culled() so recently reused owners can cancel pending culls.
-        const auto now = clock::now();
-        std::scoped_lock lock(std::get<0>(this->stale), std::get<0>(this->release));
-        auto& stale_memory = std::get<1>(this->stale);
-        auto& pending = std::get<1>(this->release);
-        for (auto it = stale_memory.begin(); it != stale_memory.end();) {
-            if (now - it->second >= age) {
-                pending.emplace(it->first);
-                it = stale_memory.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
+    void cull(std::chrono::minutes age) override { BlockTransactions<T>::cull(this->state_, age); }
 
-    void release_culled() override {
-        // Recheck ownership and availability under all bookkeeping locks before dropping
-        // the registry/pool references that retain an unused backing allocation.
-        std::scoped_lock lock(
-            std::get<0>(this->registry), std::get<0>(this->sections), std::get<0>(this->pool), std::get<0>(this->stale),
-            std::get<0>(this->release)
-        );
-        auto& registry = std::get<1>(this->registry);
-        auto& sections = std::get<1>(this->sections);
-        auto& pool = std::get<1>(this->pool);
-        auto& stale = std::get<1>(this->stale);
-        auto& pending = std::get<1>(this->release);
-        for (const auto& block : pending) {
-            // A queued range may have been checked out again since cull();
-            // only its exact owner and exact free-pool record can be released.
-            const auto owner = registry.find(block);
-            const auto available = pool.find(block);
-            if (owner == registry.end() || *owner != block || available == pool.end() || *available != block) {
-                continue;
-            }
-            bool has_active_sections = false;
-            for (const auto& section : sections) {
-                if (section.owner.get() == block.owner.get()) {
-                    has_active_sections = true;
-                    break;
-                }
-            }
-            // Other active ranges from this backing owner veto reclaiming
-            // the whole allocation as though all its sections were free.
-            if (!has_active_sections) {
-                pool.erase(available);
-                registry.erase(owner);
-                stale.erase(block);
-            }
-        }
-        pending.clear();
-    }
+    void release_culled() override { BlockTransactions<T>::release_culled(this->state_); }
 
 protected:
     template <typename Tuple> static std::shared_mutex& get_mutex(Tuple& tuple) { return std::get<0>(tuple); }
@@ -498,136 +449,26 @@ protected:
 
     // iManage interface
     /////////////////////
-    void record_new(Block<T> block) override { emplace(block, this->registry); }
+    void record_new(Block<T> block) override { BlockTransactions<T>::record_new(this->state_, block); }
 
-    void mark_stale(Block<T> block) override {
-        if (!contains(block, this->registry)) {
-            return;
-        }
-        auto now = clock::now();
-        std::unique_lock<std::shared_mutex> lock(std::get<0>(this->stale));
-        std::get<1>(this->stale).emplace(block, now);
-    }
+    void mark_stale(Block<T> block) override { BlockTransactions<T>::mark_stale(this->state_, block); }
 
-    OBlock<T> merge_into_pool(Block<T> block) override {
-        MTRACE() << "Merging " << block << " into pool.";
-        const auto og = block;
-        // Coalesce only free neighbors from the same owner; active adjacent sections
-        // stay separate even if they happen to be physically contiguous.
-        auto left = contiguous_left(block, this->sections);
-        if (left.has_value()) {
-            if (contains(*left, this->pool)) {
-                erase(*left, this->pool, this->sections);
-            } else {
-                left = {std::nullopt};
-            }
-        }
-        auto right = contiguous_right(block, this->sections);
-        if (right.has_value()) {
-            if (contains(*right, this->pool)) {
-                erase(*right, this->pool, this->sections);
-            } else {
-                right = {std::nullopt};
-            }
-        }
-        // merge properties
-        if (left.has_value()) {
-            block.head = left->head;
-            block.alignment = left->alignment;
-            block.length += left->length;
-            MINFO() << "contiguous left merged.";
-        }
-        if (right.has_value()) {
-            block.length += right->length;
-            MINFO() << "contiguous right merged.";
-        }
+    OBlock<T> merge_into_pool(Block<T> block) override { return BlockTransactions<T>::return_block(this->state_, block); }
 
-        // A complete free allocation needs only the registry and pool records;
-        // a smaller free range remains a section so future splits can find it.
-        // RegistryOrder identifies an allocation by owner and head, so find()
-        // also matches a shorter section at the allocation's starting address.
-        // Only the complete owner block may leave sections and become stale.
-        bool is_owner_block = false;
-        {
-            std::shared_lock lock(std::get<0>(this->registry));
-            const auto& reg = std::get<1>(this->registry);
-            const auto owner = reg.find(block);
-            is_owner_block = owner != reg.end() && *owner == block;
-        }
-        if (is_owner_block) {
-            erase(og, this->sections);
-            MTRACE() << "Merged block is in the registry. Marking stale.";
-            mark_stale(block);
-            emplace(block, this->pool);
-        } else if (og != block) {
-            erase(og, this->sections);
-            emplace(block, this->pool, this->sections);
-        } else {
-            emplace(block, this->pool);
-        }
-        MDEBUG() << "Merged " << block << " into pool.";
-        return {block};
-    }
+    OBlock<T> find_section(T* ptr) override { return BlockTransactions<T>::find_section(this->state_, ptr); }
 
-    OBlock<T> find_section(T* ptr) override {
-        // A pointer inside a section may lie after its start. Probe the preceding ordered
-        // range before the lower-bound candidate to include interior pointers.
-        const auto av = CE::ptr::calculate_alignment(ptr);
-        Block<T> faux_block{nullptr, std::shared_ptr<T>(ptr, [](const T* p) {}), av, 0};
-        if (auto left = adjacent_left(faux_block, this->sections); left.has_value() && left->contains(ptr)) {
-            return left;
-        }
-        // The synthetic key may also land on a section beginning at ptr;
-        // verify the next record before declaring the pointer unowned.
-        std::shared_lock<std::shared_mutex> lock(std::get<0>(this->sections));
-        auto& sec = std::get<1>(this->sections);
-        const auto next = sec.lower_bound(faux_block);
-        if (next != sec.end() && next->contains(ptr)) {
-            return *next;
-        }
-        return {std::nullopt};
-    }
-
-    OBlock<T> find_owner(T* ptr) override {
-        // Probe the predecessor of a synthetic registry key built from ptr;
-        // set ordering alone is insufficient, so check the candidate's range.
-        std::shared_lock<std::shared_mutex> lock(std::get<0>(this->registry));
-        auto fake = std::shared_ptr<T>(ptr, [](const T* p) {});
-        Block<T> faux_block{fake, fake, {}, 0};
-        auto& reg = std::get<1>(this->registry);
-        auto next = reg.upper_bound(faux_block);
-        if (next != reg.begin()) {
-            const auto owner = std::prev(next);
-            if (owner->contains(ptr)) {
-                return *owner;
-            }
-        }
-        return {std::nullopt};
-    }
+    OBlock<T> find_owner(T* ptr) override { return BlockTransactions<T>::find_owner(this->state_, ptr); }
 
     OBlock<T> fill_request(std::size_t N, std::align_val_t minimum_alignment = std::align_val_t{0}) override {
-        std::unique_lock lock(std::get<0>(this->pool));
-        auto av = []() {
-            if constexpr (std::is_same_v<T, void>) {
+        constexpr auto alignment = [] {
+            if constexpr (std::is_void_v<T>)
                 return std::align_val_t{64};
-            } else {
+            else
                 return std::align_val_t{alignof(T)};
-            }
-        };
-        const auto Talignval = std::max(av(), minimum_alignment);
-        auto& pool_set = std::get<1>(this->pool);
-        MINFO() << "Pool received a request for " << N << " slices(" << ctti::nameof<T>() << ") of " << Talignval << " aligned memory.";
-        // PoolOrder sorts alignment and length descending; stop once alignment becomes
-        // insufficient, accepting the first range large enough to satisfy this request.
-        for (auto iter = pool_set.begin(); iter != pool_set.end() && iter->alignment >= Talignval; ++iter) {
-            if (iter->length >= N) {
-                OBlock<T> ob{*iter};
-                pool_set.erase(iter);
-                MTRACE() << "result: " << ob.value();
-                return ob;
-            }
-        }
-        return {std::nullopt};
+        }();
+        // This interface claims one existing range. Compound checkout/splitting
+        // uses checkout() instead so a partial partition is never published.
+        return BlockTransactions<T>::fill_request(this->state_, N, std::max(alignment, minimum_alignment));
     }
 };
 
@@ -671,3 +512,5 @@ namespace std {
         return os;
     }
 }
+
+#include "block-transactions.h"

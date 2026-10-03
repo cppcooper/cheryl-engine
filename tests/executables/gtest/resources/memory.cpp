@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <barrier>
 #include <core/resources/memory.h>
 #include <core/resources/memory/managed-block.hpp>
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <gtest/gtest.h>
 #include <internals/macros/int-literals.h>
+#include <limits>
 #include <random>
 #include <set>
 #include <thread>
@@ -489,4 +491,60 @@ TEST(memory, invalid_pool_returns) {
     EXPECT_THROW(pool.return_block(raw), CE::Exceptions::failed_operation);
     EXPECT_THROW(pool.return_objects(raw.head.get(), 1), CE::Exceptions::bad_request);
     EXPECT_THROW(pool.return_objects(raw.head.get(), 0), CE::Exceptions::bad_request);
+}
+
+TEST(memory, concurrent_transactions) {
+    CE::Mem::ExactMMgr manager;
+    std::barrier start(4);
+    std::atomic<bool> valid{true};
+    std::vector<std::jthread> workers;
+    for (int worker = 0; worker < 3; ++worker) {
+        workers.emplace_back([&, worker] {
+            start.arrive_and_wait();
+            try {
+                for (int iteration = 0; iteration < 80; ++iteration) {
+                    const auto block = manager.checkout_chunk(256, 64);
+                    auto* bytes = static_cast<unsigned char*>(block.head.get());
+                    const auto pattern = static_cast<unsigned char>(worker + 17);
+                    std::memset(bytes, pattern, block.length);
+                    manager.return_portion(bytes + 32, 64);
+                    for (std::size_t index = 0; index < block.length; ++index) {
+                        if ((index < 32 || index >= 96) && bytes[index] != pattern)
+                            valid = false;
+                    }
+                    manager.return_ptr(bytes);
+                    manager.return_ptr(bytes + 96);
+                }
+            } catch (...) {
+                valid = false;
+            }
+        });
+    }
+    workers.emplace_back([&] {
+        start.arrive_and_wait();
+        try {
+            for (int iteration = 0; iteration < 80; ++iteration) {
+                manager.cull(std::chrono::minutes{0});
+                manager.release_culled();
+                const auto snapshot = manager.stats();
+                if (snapshot.find("nan") != std::string::npos || snapshot.find("inf") != std::string::npos)
+                    valid = false;
+            }
+        } catch (...) {
+            valid = false;
+        }
+    });
+    workers.clear();
+    EXPECT_TRUE(valid);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, request_limits) {
+    CE::Mem::ExactMMgr manager;
+    const auto maximum = std::numeric_limits<std::size_t>::max();
+    EXPECT_THROW(manager.checkout_chunk(1, maximum), CE::Exceptions::bad_request);
+    EXPECT_THROW(manager.checkout_chunk(maximum, 64, CE::Enum::larger, 1), CE::Exceptions::bad_request);
+    EXPECT_THROW(manager.checkout_chunk(8, 64, CE::Enum::greedy, 0, std::numeric_limits<double>::infinity()),
+                 CE::Exceptions::bad_request);
+    EXPECT_TRUE(valid_partition({}));
 }

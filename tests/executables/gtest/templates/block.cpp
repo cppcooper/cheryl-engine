@@ -490,3 +490,30 @@ TEST(templates_block, bookkeeping_checks) {
     release.erase(b0);
     lrelease.unlock();
 }
+
+namespace {
+    struct ReentrantOwner {
+        char value;
+    };
+}
+
+TEST(templates_block, release_outside_locks) {
+    auto state = std::make_shared<BlockManagement<ReentrantOwner>::State>();
+    bool released = false;
+    auto owner = std::shared_ptr<ReentrantOwner>(new ReentrantOwner, [state, &released](ReentrantOwner* item) {
+        // A final owner may inspect the same domain or return backing bytes.
+        // Reacquiring these locks would deadlock if release_culled held them.
+        std::scoped_lock lock(std::get<0>(state->pool), std::get<0>(state->sections), std::get<0>(state->registry),
+                              std::get<0>(state->stale), std::get<0>(state->release));
+        released = true;
+        delete item;
+    });
+    Block<ReentrantOwner> block{owner, owner, CE::ptr::calculate_alignment(owner.get()), 1};
+    BlockTransactions<ReentrantOwner>::register_free(state, block);
+    block = {};
+    owner.reset();
+    BlockTransactions<ReentrantOwner>::cull(state, std::chrono::minutes{0});
+    BlockTransactions<ReentrantOwner>::release_culled(state);
+    EXPECT_TRUE(released);
+    EXPECT_TRUE(std::get<1>(state->registry).empty());
+}
