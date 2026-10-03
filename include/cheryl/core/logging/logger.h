@@ -13,37 +13,53 @@ namespace CE {
     template <const char* name> class Logger : public Singleton_CTS<Log<name>> {
     protected:
         explicit Logger(const spdlog::file_event_handlers& event_handlers = {}, LogConfig config = LogConfig::for_logger(name)) {
-            Singleton_CTS<Log<name>>::get(event_handlers, std::move(config));
+            get(event_handlers, std::move(config));
         }
 
     public:
-        static void set_pattern(const char* fmt) { Singleton_CTS<Log<name>>::get().set_pattern(fmt); }
-
-        [[nodiscard]] static std::filesystem::path get_file_path() { return Singleton_CTS<Log<name>>::get().get_file_path(); }
-
-        [[nodiscard]] static const LogConfig& initial_configuration() { return Singleton_CTS<Log<name>>::get().initial_configuration(); }
-
-        [[nodiscard]] static LogQueueStats shared_queue_stats() { return Singleton_CTS<Log<name>>::get().shared_queue_stats(); }
-
-        [[nodiscard]] static LogBackendStats backend_stats() { return Singleton_CTS<Log<name>>::get().backend_stats(); }
-
-        static void flush() { Singleton_CTS<Log<name>>::get().flush(); }
-
-        static void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {
-            Singleton_CTS<Log<name>>::get().close(timeout);
+        template <typename... Args> static Log<name>& get(Args&&... args) {
+            LogDetail::reject_backend_reentry("acquire a logger");
+            return Singleton_CTS<Log<name>>::get(std::forward<Args>(args)...);
         }
 
-        static void reopen() { Singleton_CTS<Log<name>>::get().reopen(); }
+        template <typename... Args> static Log<name>& initialize(Args&&... args) {
+            LogDetail::reject_backend_reentry("initialize a logger");
+            return Singleton_CTS<Log<name>>::initialize(std::forward<Args>(args)...);
+        }
 
-        static void make_default() { Singleton_CTS<Log<name>>::get().make_default(); }
+        static void set_pattern(const char* fmt) { get().set_pattern(fmt); }
 
-        static void set_level_logger(spdlog::level level) { Singleton_CTS<Log<name>>::get().set_level_logger(level); }
+        [[nodiscard]] static std::filesystem::path get_file_path() { return get().get_file_path(); }
 
-        static void set_level_filesink(spdlog::level level) { Singleton_CTS<Log<name>>::get().set_level_filesink(level); }
+        [[nodiscard]] static const LogConfig& initial_configuration() { return get().initial_configuration(); }
 
-        static void set_level_stdsink(spdlog::level level) { Singleton_CTS<Log<name>>::get().set_level_stdsink(level); }
+        [[nodiscard]] static LogQueueStats shared_queue_stats() { return get().shared_queue_stats(); }
 
-        [[nodiscard]] static bool should_log(const spdlog::level level) { return Singleton_CTS<Log<name>>::get().should_log(level); }
+        [[nodiscard]] static LogBackendStats backend_stats() { return get().backend_stats(); }
+
+        static void report_diagnostics() { get().report_diagnostics(); }
+
+        static void flush() { get().flush(); }
+
+        static void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {
+            get().close(timeout);
+        }
+
+        static void reopen() { get().reopen(); }
+
+        static void make_default() { get().make_default(); }
+
+        static void set_level_logger(spdlog::level level) { get().set_level_logger(level); }
+
+        static void set_level_filesink(spdlog::level level) { get().set_level_filesink(level); }
+
+        static void set_level_stdsink(spdlog::level level) { get().set_level_stdsink(level); }
+
+        [[nodiscard]] static bool should_log(const spdlog::level level) {
+            if (LogDetail::suppress_backend_emission())
+                return false;
+            return get().should_log(level);
+        }
 
         /** Evaluate diagnostics only when compiled and admitted by a destination.
          * Initialization, argument preparation, and submission failures report
@@ -52,8 +68,10 @@ namespace CE {
          */
         template <ctlog::LogLevel severity, typename Write> static void write_lazy(Write&& write) noexcept {
             if constexpr (ctlog::enabled(severity)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
                 try {
-                    auto& log = Singleton_CTS<Log<name>>::get();
+                    auto& log = get();
                     if (log.should_log(ctlog::runtime_level(severity)))
                         std::forward<Write>(write)(log);
                 } catch (...) {
@@ -63,38 +81,59 @@ namespace CE {
         }
 
         template <typename... Args> static void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::TRACE_))
-                Singleton_CTS<Log<name>>::get().trace(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::TRACE_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().trace(fmt, std::forward<Args>(args)...);
+            }
         }
 
         template <typename... Args> static void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::DEBUG_))
-                Singleton_CTS<Log<name>>::get().debug(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::DEBUG_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().debug(fmt, std::forward<Args>(args)...);
+            }
         }
 
         template <typename... Args> static void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::INFO_))
-                Singleton_CTS<Log<name>>::get().info(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::INFO_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().info(fmt, std::forward<Args>(args)...);
+            }
         }
 
         template <typename... Args> static void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::WARNING_))
-                Singleton_CTS<Log<name>>::get().warn(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::WARNING_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().warn(fmt, std::forward<Args>(args)...);
+            }
         }
 
         template <typename... Args> static void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::ERROR_))
-                Singleton_CTS<Log<name>>::get().error(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::ERROR_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().error(fmt, std::forward<Args>(args)...);
+            }
         }
 
         template <typename... Args> static void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
-            if constexpr (ctlog::enabled(ctlog::FATAL_))
-                Singleton_CTS<Log<name>>::get().critical(fmt, std::forward<Args>(args)...);
+            if constexpr (ctlog::enabled(ctlog::FATAL_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().critical(fmt, std::forward<Args>(args)...);
+            }
         }
 
         static void strace(void* addr0 = nullptr) {
-            if constexpr (ctlog::enabled(ctlog::TRACE_))
-                Singleton_CTS<Log<name>>::get().strace(addr0);
+            if constexpr (ctlog::enabled(ctlog::TRACE_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
+                get().strace(addr0);
+            }
         }
     };
 }

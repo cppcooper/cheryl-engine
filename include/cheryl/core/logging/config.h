@@ -1,5 +1,6 @@
 #pragma once
 #include "compile-policy.h"
+#include "backend-guard.h"
 #include <internals/exceptions.h>
 
 #include <cstddef>
@@ -67,6 +68,7 @@ namespace CE {
 
 namespace CE::LogDetail {
     [[nodiscard]] inline LogConfig prepare_configuration(LogConfig config, const char* name) {
+        reject_backend_reentry("initialize a logger");
         const std::string_view logger_name = name ? name : "";
         if (logger_name.empty() || logger_name.find_first_of("/\\") != std::string_view::npos)
             throw Exceptions::invalid_args(CE_HERE, "A logger name must be a nonempty filename component");

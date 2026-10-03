@@ -4,7 +4,8 @@ Cheryl keeps the existing cheryl, engine, and memory logger names. A subsystem o
 operation belongs in the record; it does not automatically create another file.
 Configure a logger on its owner before starting writers. Lazy default access remains
 available, and explicit singleton initialization rejects a second configuration.
-Initialization/file callbacks must not recursively construct the logger being opened.
+Backend/file callbacks suppress recursive ordinary writes and reject logger
+acquisition, initialization, and lifecycle reentry before entering locks.
 
 ## Compile policy
 
@@ -111,7 +112,9 @@ actual sink admits the level. A file DEBUG threshold can therefore remain useful
 while the console is WARN. The logger gate must admit the least severe destination
 record required. A concurrent close or level change can race the later write;
 filtering is a best-effort probe, not a transaction with configuration changes.
-Mutating the native spdlog sink vector requires external quiescence.
+The native sink vector is fixed. Replacement/addition/removal is unsupported and
+submission rejects a changed graph. Use the Log's level/pattern operations; custom
+destination graphs require a separate ownership/completion design.
 
 UTRACE/UDEBUG/UINFO/UWARN/UERROR/UFATAL preserve streaming syntax. Their compile
 and runtime guards run before stream construction and argument evaluation, and
@@ -173,8 +176,40 @@ survive close/reopen; fields are independent observations, not a completion barr
 The logger's owned graph uses forwarding guards, whose actual delegate gates and
 degradation participate in should_log. File/console level restoration still uses
 the actual destinations. Retained native file owners still delay completed close.
-Direct delegate log/flush bypasses these guards and is unsupported. Reentrancy and
-native submission ownership are the next U5 unit; broad integration stays gated.
+Direct delegate log/flush bypasses these guards and is unsupported.
+
+Published spdlog owners now retain a guarded frontend and a private asynchronous
+backend with the same guarded destinations. The backend borrows the shared pool;
+no queued owner acquires a strong pool reference. Native submissions and clones
+preserve queue/retained-file ownership and pass through the recursion check.
+Changing their concrete type to spdlog::async_logger is unsupported. Native setters
+must not replace error handlers or the fixed sink graph. Pattern/formatter setters
+on guarded destinations reject callback reentry before delegate locks.
+
+A shared thread-local backend scope covers both destination operations and file
+callbacks, including startup on the logging owner. Recursive writes through owned,
+facade, stream, guarded formatted, and published native paths are suppressed and
+counted on the active callback's Log. Guarded argument expressions are not evaluated
+and unopened categories are not initialized. Lifecycle, native flush/clone, and
+singleton acquisition/initialization reject with bad_request before waiting.
+Callbacks must not synchronously wait for work on another thread that itself needs
+the logging backend: a thread-local guard cannot resolve application wait cycles.
+
+The final release of an owned Log, published native logger, or file destination
+must occur outside backend/file callbacks. Destruction cannot return a rejection
+or preserve already-destroyed storage; violating this contract terminates through
+an emergency report before a worker can wait/join itself. Isolated acceptance
+sources must exercise this fatal contract. Raw native delegates and explicit casts
+to the singleton base are outside the guarded API.
+
+backend_stats also exposes recursive_submissions and rejected_reentry. report_diagnostics
+emits bounded coalesced cumulative counters through stdio outside lifecycle locks;
+completed close calls it after callback completion. Shared capacity losses are
+reported once per newly observed range across categories, including flush loss.
+The final pool deleter drains/joins accepted work and reports any outstanding loss
+range, without ordinary logger use or queued pool ownership. flush releases its
+lifecycle lock before a potentially blocking queue submission.
+Executable U5 acceptance remains the gate for broad subsystem integration.
 The remaining contract and ordered tasks are recorded in the
 [development plan](../planning/develop-review-and-development-plan.md#remaining-u5-work--queue-behavior-and-backend-containment).
 Stop producers before closing. A close timeout bounds the sink-completion wait,

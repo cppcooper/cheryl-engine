@@ -37,6 +37,8 @@
 
 namespace ctlog {
     template <const char* name> [[nodiscard]] CE::Log<name>* acquire_logger(const LogLevel level) noexcept {
+        if (CE::LogDetail::suppress_backend_emission())
+            return nullptr;
         try {
             auto& log = CE::Logger<name>::get();
             return log.should_log(runtime_level(level)) ? &log : nullptr;

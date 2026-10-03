@@ -97,6 +97,7 @@ namespace CE {
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
         const LogConfig configuration_;
         const std::shared_ptr<spdlog::details::thread_pool> thread_pool_;
+        const std::shared_ptr<LogDetail::QueueReports> queue_reports_;
         const std::shared_ptr<LogDetail::BackendCounters> backend_counters_ = std::make_shared<LogDetail::BackendCounters>();
         atomic_shared_ptr<LogDetail::BackendGeneration> backend_generation_{nullptr};
         std::shared_ptr<spdlog::logger> m_fallback_logger;
@@ -114,6 +115,8 @@ namespace CE {
         template <ctlog::LogLevel severity, typename... Args>
         void write(spdlog::format_string_t<Args...> fmt, Args&&... args) {
             if constexpr (ctlog::enabled(severity)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
                 const auto logger = m_logger.load();
                 constexpr auto level = ctlog::runtime_level(severity);
                 if (!admits(logger, level))
@@ -151,7 +154,17 @@ namespace CE {
             return {backend_counters_->failed_operations.load(std::memory_order_relaxed),
                 backend_counters_->callback_failures.load(std::memory_order_relaxed),
                 backend_counters_->suppressed_operations.load(std::memory_order_relaxed),
-                generation && generation->file->degraded(), generation && generation->console->degraded()};
+                generation && generation->file->degraded(), generation && generation->console->degraded(),
+                backend_counters_->recursive_submissions.load(std::memory_order_relaxed),
+                backend_counters_->rejected_reentry.load(std::memory_order_relaxed)};
+        }
+        /** Emit coalesced loss/failure counters through bounded stdio outside
+         * lifecycle locks. Available while closed; also called by completed close.
+         */
+        void report_diagnostics() const {
+            LogDetail::reject_backend_reentry("report logging diagnostics");
+            LogDetail::report_backend_summary(name, backend_counters_);
+            LogDetail::report_queue_loss(queue_reports_, thread_pool_->discard_counter());
         }
         [[nodiscard]] std::filesystem::path get_file_path() const;
         // Legacy wrapping 16-bit serial; do not use it as a session/domain ID.
@@ -171,31 +184,38 @@ namespace CE {
 
         /** A best-effort probe of compile, logger, and actual sink filters. Level
          * changes/close may race a later write; retaining the published logger
-         * here keeps this probe's sink graph alive. Native sink mutation requires
-         * external quiescence. Probe before evaluating expensive log arguments.
+         * here keeps this probe's sink graph alive. The native graph is fixed.
+         * Probe before evaluating expensive log arguments.
          */
         [[nodiscard]] bool should_log(const spdlog::level level) const noexcept {
+            if (LogDetail::suppress_backend_emission())
+                return false;
             return ctlog::enabled(ctlog::severity_bit(level)) && admits(m_logger.load(), level);
         }
 
         // Sets the pattern for the logger and propagates it to its current sinks.
         void set_pattern(const char* fmt) const {
+            LogDetail::reject_backend_reentry("set a logging pattern");
             const auto lock = state_controller->lock();
             acquire_open_resource(lock, m_logger, "set the pattern for")->set_pattern(fmt);
         }
 
         void set_pattern_filesink(const char* fmt) const {
+            LogDetail::reject_backend_reentry("set a file logging pattern");
             const auto lock = state_controller->lock();
             acquire_open_resource(lock, m_file, "set the file pattern for")->set_pattern(fmt);
         }
 
         void set_pattern_stdsink(const char* fmt) const {
+            LogDetail::reject_backend_reentry("set a console logging pattern");
             const auto lock = state_controller->lock();
             acquire_open_resource(lock, m_console, "set the console pattern for")->set_pattern(fmt);
         }
 
         void strace(void* addr0 = nullptr) const {
             if constexpr (ctlog::enabled(ctlog::TRACE_)) {
+                if (LogDetail::suppress_backend_emission())
+                    return;
                 if (const auto logger = m_logger.load(); admits(logger, spdlog::level::trace))
                     logger->log(spdlog::level::trace, "{}", stack_trace(addr0));
             }
@@ -229,6 +249,7 @@ namespace CE {
 
 namespace spdlog::CE {
     struct TPInit : Singleton_CTS<TPInit> {
+        const std::shared_ptr<::CE::LogDetail::QueueReports> queue_reports = std::make_shared<::CE::LogDetail::QueueReports>();
         std::shared_ptr<details::thread_pool> tp;
 
         // This queue belongs to Cheryl, not spdlog's process-global registry.
@@ -236,13 +257,14 @@ namespace spdlog::CE {
         // One worker avoids the bundled pool's unsafe partial multi-worker
         // construction and concurrent backend reordering; no throughput is promised.
         TPInit()
-        : tp(std::make_shared<details::thread_pool>(8192, 1)) {}
+        : tp(::CE::LogDetail::make_owned_pool(queue_reports)) {}
     };
 }
 
 // template definitions - methods
 namespace CE {
     template <const char* name> void Log<name>::construct_log() {
+        LogDetail::reject_backend_reentry("construct a logger");
         auto generation = std::make_shared<LogDetail::BackendGeneration>();
         generation->file = std::make_shared<LogDetail::DestinationState>(backend_counters_, true);
         generation->console = std::make_shared<LogDetail::DestinationState>(backend_counters_, false);
@@ -274,6 +296,10 @@ namespace CE {
                     LogDetail::guard_file_handlers(event_handlers, generation->file)
                 ),
                 [controller, state = generation->file](spdlog::sinks::rotating_file_sink_mt* sink) noexcept {
+                    if (LogDetail::in_backend()) {
+                        Diagnostics::report_failure("final file sink release from a backend callback", {});
+                        std::terminate();
+                    }
                     delete sink;
                     state->report_close_failures();
                     controller->complete_close();
@@ -287,8 +313,8 @@ namespace CE {
             const auto overflow = configuration_.overflow_policy == LogOverflowPolicy::Block
                                     ? spdlog::async_overflow_policy::block
                                     : spdlog::async_overflow_policy::discard_new;
-            auto logger = std::make_shared<spdlog::async_logger>(
-                std::format("{}", name), sinks.begin(), sinks.end(), thread_pool_, overflow
+            auto logger = std::make_shared<LogDetail::OwnedLogger>(
+                std::format("{}", name), sinks, thread_pool_, overflow, backend_counters_
             );
 
             // Reapply the configuration captured by close() while the replacement resources
@@ -345,6 +371,7 @@ namespace CE {
     : event_handlers(std::move(event_handlers)),
       configuration_(LogDetail::prepare_configuration(std::move(configuration), name)),
       thread_pool_(spdlog::CE::TPInit::get().tp),
+      queue_reports_(spdlog::CE::TPInit::get().queue_reports),
       m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
         if (!thread_pool_)
             throw Exceptions::failed_operation(CE_HERE, "The logging thread pool is unavailable");
@@ -354,6 +381,12 @@ namespace CE {
     }
 
     template <const char* name> Log<name>::~Log() noexcept {
+        if (LogDetail::in_backend()) {
+            // Destruction cannot reject by throwing or defer the ownership of
+            // this object's storage. Fail before a worker can join/wait on itself.
+            Diagnostics::report_failure("logger destruction from a backend callback", {});
+            std::terminate();
+        }
         // Ordinary destruction attempts the same strong close boundary exposed by close(): under
         // normal ownership, the file sink is destroyed before shutdown completes. External spdlog
         // owners can extend that lifetime, so destruction waits at most one minute.
@@ -387,6 +420,7 @@ namespace CE {
     }
 
     template <const char* name> std::filesystem::path Log<name>::get_file_path() const {
+        LogDetail::reject_backend_reentry("read a logging file path");
         const auto lock = state_controller->lock();
         return std::filesystem::absolute(acquire_open_resource(lock, m_file, "get the file path for")->filename());
     }
@@ -396,11 +430,15 @@ namespace CE {
     }
 
     template <const char* name> void Log<name>::flush() const {
-        const auto lock = state_controller->lock();
-        acquire_open_resource(lock, m_logger, "flush")->flush();
+        LogDetail::reject_backend_reentry("flush a logger");
+        auto lock = state_controller->lock();
+        const auto logger = acquire_open_resource(lock, m_logger, "flush");
+        lock.unlock();
+        logger->flush();
     }
 
     template <const char* name> void Log<name>::close(std::chrono::milliseconds timeout) {
+        LogDetail::reject_backend_reentry("close a logger");
         auto lock = state_controller->lock();
         state_controller->require_state(
             lock, name, "close",
@@ -411,6 +449,8 @@ namespace CE {
         );
 
         if (state_controller->is_closed(lock)) {
+            lock.unlock();
+            report_diagnostics();
             return;
         }
 
@@ -446,9 +486,12 @@ namespace CE {
             const auto message = std::format("Timed out while closing the '{}' logger.", name);
             throw Exceptions::failed_operation(CE_HERE, message);
         }
+        lock.unlock();
+        report_diagnostics();
     }
 
     template <const char* name> void Log<name>::reopen() {
+        LogDetail::reject_backend_reentry("reopen a logger");
         auto lock = state_controller->lock();
         state_controller->require_state(
             lock, name, "reopen",
@@ -468,6 +511,7 @@ namespace CE {
     }
 
     template <const char* name> void Log<name>::make_default() const {
+        LogDetail::reject_backend_reentry("make a logger default");
         const auto lock = state_controller->lock();
         const auto logger = acquire_open_resource(lock, m_logger, "make default");
         const std::lock_guard default_lock(LogDetail::default_logger_mutex);
@@ -475,16 +519,19 @@ namespace CE {
     }
 
     template <const char* name> void Log<name>::set_level_logger(spdlog::level level) const {
+        LogDetail::reject_backend_reentry("set a logger level");
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_logger, "set the log level for")->set_level(level);
     }
 
     template <const char* name> void Log<name>::set_level_filesink(spdlog::level level) const {
+        LogDetail::reject_backend_reentry("set a file logging level");
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_file, "set the file log level for")->set_level(level);
     }
 
     template <const char* name> void Log<name>::set_level_stdsink(spdlog::level level) const {
+        LogDetail::reject_backend_reentry("set a console logging level");
         const auto lock = state_controller->lock();
         acquire_open_resource(lock, m_console, "set the console log level for")->set_level(level);
     }

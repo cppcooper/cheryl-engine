@@ -11,6 +11,7 @@
 #include <format>
 #include <fstream>
 #include <future>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <latch>
@@ -55,6 +56,11 @@ namespace {
     constexpr char startup_failure_name[] = "logging-startup-failure";
     constexpr char formatter_failure_name[] = "logging-formatter-failure";
     constexpr char console_failure_name[] = "logging-console-failure";
+    constexpr char reentry_name[] = "logging-reentry";
+    constexpr char reentry_target_name[] = "logging-reentry-target";
+    constexpr char untouched_name[] = "logging-untouched";
+    constexpr char open_reentry_name[] = "logging-open-reentry";
+    constexpr char graph_name[] = "logging-graph";
     constexpr std::size_t queue_capacity = 8192;
 
     struct LogDirectory {
@@ -135,25 +141,43 @@ namespace {
         ~BackendRelease() { gate->unblock(); }
     };
 
-    class HeldSink final : public spdlog::sinks::sink {
+    class HeldFormatter final : public spdlog::formatter {
         std::shared_ptr<BackendGate> gate;
         bool first = true;
 
     public:
-        explicit HeldSink(std::shared_ptr<BackendGate> gate)
+        explicit HeldFormatter(std::shared_ptr<BackendGate> gate)
         : gate(std::move(gate)) {}
 
-        void log(const spdlog::details::log_msg&) override {
+        void format(const spdlog::details::log_msg& message, spdlog::memory_buf_t& output) override {
             if (first) {
                 first = false;
                 gate->entered.set_value();
                 gate->released.wait();
             }
+            output.append(message.payload.begin(), message.payload.end());
+            output.push_back('\n');
         }
 
-        void flush() override {}
-        void set_pattern(const std::string&) override {}
-        void set_formatter(std::unique_ptr<spdlog::formatter>) override {}
+        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<HeldFormatter>(gate); }
+    };
+
+    class CallbackFormatter final : public spdlog::formatter {
+        const std::function<void()> callback;
+        bool first = true;
+
+    public:
+        explicit CallbackFormatter(std::function<void()> callback)
+        : callback(std::move(callback)) {}
+
+        void format(const spdlog::details::log_msg& message, spdlog::memory_buf_t& output) override {
+            if (std::exchange(first, false))
+                callback();
+            output.append(message.payload.begin(), message.payload.end());
+            output.push_back('\n');
+        }
+
+        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<CallbackFormatter>(callback); }
     };
 
     class FailingFormatter final : public spdlog::formatter {
@@ -597,6 +621,85 @@ TEST(logging, console_failure) {
     expect_contains(read_file(path), "file-survives-console-failure");
 }
 
+TEST(logging, backend_reentry) {
+    LogDirectory directory;
+    TestLog<reentry_name> log{{}, queue_config(reentry_name, directory.path)};
+    TestLog<reentry_target_name> target{{}, queue_config(reentry_target_name, directory.path)};
+    int prepared = 0;
+    int rejected = 0;
+    const auto callback = [&] {
+        spdlog::get(reentry_target_name)->warn("native-recursive");
+        log.warn("owned-recursive");
+        CE_LOG_WARN(untouched_name, "{}", ++prepared);
+        UWARN(untouched_name) << ++prepared;
+        const auto reject = [&](auto operation) {
+            try {
+                operation();
+            } catch (const Exceptions::bad_request&) {
+                ++rejected;
+            }
+        };
+        reject([&] { log.close(close_timeout); });
+        reject([&] { log.flush(); });
+        reject([&] { spdlog::get(reentry_target_name)->flush(); });
+        reject([&] { spdlog::get(reentry_name)->set_pattern("%v"); });
+        reject([&] { (void)Logger<untouched_name>::get(); });
+    };
+    {
+        auto native = log.retain_logger();
+        native->sinks()[1]->set_formatter(std::make_unique<CallbackFormatter>(callback));
+        native->warn("outer-record");
+    }
+    log.close(close_timeout);
+    target.close(close_timeout);
+    EXPECT_EQ(prepared, 0);
+    EXPECT_EQ(rejected, 5);
+    EXPECT_EQ(log.backend_stats().rejected_reentry, 5u);
+    EXPECT_GE(log.backend_stats().recursive_submissions, 1u);
+    EXPECT_EQ(Logger<untouched_name>::get_existing(), nullptr);
+    EXPECT_EQ(read_file(directory.path / std::format("{}.log", reentry_target_name)).find("native-recursive"), std::string::npos);
+}
+
+TEST(logging, open_reentry) {
+    LogDirectory directory;
+    int rejected = 0;
+    spdlog::file_event_handlers handlers;
+    handlers.before_open = [&](const spdlog::filename_t&) {
+        try {
+            (void)Logger<open_reentry_name>::get();
+        } catch (const Exceptions::bad_request&) {
+            ++rejected;
+        }
+        CE_LOG_WARN(open_reentry_name, "recursive-open");
+    };
+    auto& log = Logger<open_reentry_name>::initialize(handlers, queue_config(open_reentry_name, directory.path));
+    log.close(close_timeout);
+    EXPECT_EQ(rejected, 1);
+    EXPECT_EQ(log.backend_stats().rejected_reentry, 1u);
+}
+
+TEST(logging, fixed_graph) {
+    LogDirectory directory;
+    TestLog<graph_name> log{{}, queue_config(graph_name, directory.path)};
+    const auto path = log.get_file_path();
+    {
+        auto native = log.retain_logger();
+        const auto graph = native->sinks();
+        native->sinks().push_back(std::make_shared<spdlog::sinks::null_sink_mt>());
+        native->warn("rejected-graph-record");
+        native->sinks() = graph;
+        native->warn("restored-graph-record");
+        auto clone = native->clone("logging-clone");
+        clone->warn("clone-record");
+    }
+    log.close(close_timeout);
+    EXPECT_EQ(log.backend_stats().failed_operations, 1u);
+    const auto content = read_file(path);
+    EXPECT_EQ(content.find("rejected-graph-record"), std::string::npos);
+    expect_contains(content, "restored-graph-record");
+    expect_contains(content, "clone-record");
+}
+
 TEST(logging, default_after_reopen) {
     remove_current_log_file(default_restore_name);
     TestLog<default_restore_name> log;
@@ -878,9 +981,8 @@ TEST(logging, discard_queue) {
         log.set_pattern("%v");
         const auto gate = std::make_shared<BackendGate>();
         auto native = holder.retain_logger();
-        // No producer has used this generation's logger yet. Attach the test sink
-        // while its sink graph is quiescent, before starting any writes.
-        native->sinks().push_back(std::make_shared<HeldSink>(gate));
+        // Hold the owned file formatter; the guarded destination graph stays fixed.
+        native->sinks()[1]->set_formatter(std::make_unique<HeldFormatter>(gate));
         std::promise<void> completed;
         auto completion = completed.get_future();
         std::jthread producer;
@@ -945,7 +1047,7 @@ TEST(logging, blocking_queue) {
     log.set_pattern("%v");
     const auto gate = std::make_shared<BackendGate>();
     auto native = holder.retain_logger();
-    native->sinks().push_back(std::make_shared<HeldSink>(gate));
+    native->sinks()[1]->set_formatter(std::make_unique<HeldFormatter>(gate));
     std::promise<void> started;
     auto starting = started.get_future();
     std::promise<void> completed;

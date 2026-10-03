@@ -488,9 +488,9 @@ Prerequisites: U1 initialization contract and U4 fallback contract.
   profiles; apply gating to formatted and streaming calls, including expensive args.
 - [x] Add explicit runtime logger/file/console defaults and overrides; document
   compile-time versus runtime behavior.
-- [ ] Decide blocking versus bounded/drop behavior for queues and separate critical
+- [x] Decide blocking versus bounded/drop behavior for queues and separate critical
   fallback reporting from ordinary async delivery. Count/report dropped diagnostics.
-- [ ] Define startup failure and close/flush ordering after all producers stop;
+- [x] Define startup failure and close/flush ordering after all producers stop;
   preserve existing reopen and retained-resource semantics.
 - [ ] Plan acceptance for each compile profile, disabled side-effect expressions,
   include-order consistency, per-sink levels, saturation, sink failure, and shutdown.
@@ -1499,3 +1499,29 @@ shared queue. Resolve the published native submission path before U6. Arbitrary
 replacement of the owned sink vector also bypasses both containment and actual
 filtering. U5c4 must make this ownership restriction explicit and update acceptance
 fixtures to hold owned formatters rather than inject unsupported destinations.
+
+### U5c4 — guarded native submission and reentry/loss accounting
+
+The native-owner discovery is resolved by publishing an spdlog-compatible guarded
+frontend backed by a private async logger. Both retain the same guarded file and
+console destinations; queued work still borrows the pool. Native submission and
+cloning cannot bypass the shared-category callback check. The owned sink graph is
+now fixed; unsupported graph changes reject submission. Acceptance fixtures hold
+the owned file formatter instead of adding destinations. Native async_logger casts,
+error-handler replacement, raw delegate emission, and singleton-base casts are not
+part of the supported guarded interface.
+
+Backend/file callbacks share a thread-local scope. Ordinary recursive writes are
+suppressed/counted before facade initialization or argument preparation. Native and
+facade flush/close/reopen/acquisition/initialization and guarded destination setters
+reject before lifecycle/delegate locks. Final owned/native/file release inside a
+callback is an explicitly fatal ownership violation; destruction cannot throw a
+rejection or keep destroyed storage alive. Cross-thread user wait cycles remain
+caller-owned and cannot be inferred from thread-local context.
+
+Cumulative reentry/failure summaries and shared queue-loss ranges use bounded stdio
+outside lifecycle locks; completed close and final pool release perform accounting.
+flush retains its logger then releases the lifecycle lock before queue submission.
+Sources cover native/facade recursion, disabled preparation, unopened categories,
+startup reentry, fixed graphs, and guarded clones. Diff/source checks passed;
+executable acceptance, isolated fatal cases, and compile profiles remain U5c5.
