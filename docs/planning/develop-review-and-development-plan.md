@@ -1152,3 +1152,44 @@ compatible caller-supplied metrics/artwork, and its runtime behavior is unchange
 decision. Collection-face selection, size-aware caching, and Unicode shaping remain
 with the font/resource consumer units; they do not require reconstructing FFont.
 All U1–U4 executable acceptance remains pending authorization.
+
+### U5 continuation — configuration before subsystem integration
+
+The unattended work session continues with logging foundations. Earlier U1–U4
+source work is retained; its unexecuted checks are not passing evidence. Builds,
+compiler/configuration probes, tests, and remote pushes remain unauthorized.
+
+The audit found a required ordering constraint: removing block.h's include-order
+mask would activate stream construction and blocking logging in locked memory
+lookups. That prerequisite must be repaired together with the mask policy.
+
+1. U5a: establish one target-consistent compile profile, preserving the existing
+   severity bits and explicit application overrides. Remove the block.h override
+   and logging from memory leaf operations that can run under collection locks.
+   Keep their lookup/split interfaces and expected-miss behavior. Add runtime
+   filtering before stream/format argument evaluation, a guarded formatted entry
+   point, and nonthrowing stream emission. Direct function arguments retain C++'s
+   ordinary evaluation rules; document that distinction rather than promise that
+   a function can prevent evaluation of its already supplied arguments.
+2. U5b: specify runtime logger/file/console defaults and explicit configuration
+   before publication. Preserve independent sink gates, reopen restoration, and
+   the retained-file close boundary. Choose category records within the existing
+   cheryl/engine/memory loggers; new subsystem fields do not imply more files.
+3. U5c: establish Cheryl-owned async queue lifetime without replacing the host's
+   global spdlog pool. Resolve saturation, drop counters, backend error reporting,
+   and shutdown/reentrancy before using ordinary logging at engine boundaries.
+   Native callbacks, memory locks, and noexcept cleanup retain U4's emergency path.
+4. U6: integrate a bounded first slice only after the preceding contracts are
+   stable. Prefer runtime/native ownership records and shader diagnostics from
+   existing reflection data; do not duplicate caller-owned future failures.
+
+Each completed subunit is committed independently with its acceptance sources
+and static review recorded. Existing global includes and source-recompiling tests
+remain U7 work; only compile-policy propagation needed by U5 is changed here.
+
+**Discovery boundaries:** Optional destinations require a sound close-completion
+contract before adding null sinks to the existing retained-file model. Queue loss
+must not silently erase required failure reporting. A queue/embedded-host ownership
+choice that cannot be justified by the current contracts stops dependent U6 work.
+Subsystem integration must not rely on initialization, ordering, or callback
+behavior that the logger does not actually guarantee.
