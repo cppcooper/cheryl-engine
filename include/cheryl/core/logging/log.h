@@ -2,6 +2,7 @@
 #include "osink.h"
 #include "compile-policy.h"
 #include "config.h"
+#include "backend-guard.h"
 #include <templates/singleton.h>
 #include <internals/failure-reporting.h>
 
@@ -96,6 +97,8 @@ namespace CE {
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
         const LogConfig configuration_;
         const std::shared_ptr<spdlog::details::thread_pool> thread_pool_;
+        const std::shared_ptr<LogDetail::BackendCounters> backend_counters_ = std::make_shared<LogDetail::BackendCounters>();
+        atomic_shared_ptr<LogDetail::BackendGeneration> backend_generation_{nullptr};
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
 
@@ -105,7 +108,7 @@ namespace CE {
         [[nodiscard]] static bool admits(const std::shared_ptr<spdlog::logger>& logger, const spdlog::level level) noexcept {
             return logger && level != spdlog::level::off && logger->should_log(level) &&
                    std::any_of(logger->sinks().begin(), logger->sinks().end(),
-                       [level](const auto& sink) { return sink && sink->should_log(level); });
+                       [level](const auto& sink) { return LogDetail::sink_admits(sink, level); });
         }
 
         template <ctlog::LogLevel severity, typename... Args>
@@ -142,6 +145,13 @@ namespace CE {
          */
         [[nodiscard]] LogQueueStats shared_queue_stats() const {
             return {thread_pool_->queue_size(), thread_pool_->discard_counter()};
+        }
+        [[nodiscard]] LogBackendStats backend_stats() const noexcept {
+            const auto generation = backend_generation_.load();
+            return {backend_counters_->failed_operations.load(std::memory_order_relaxed),
+                backend_counters_->callback_failures.load(std::memory_order_relaxed),
+                backend_counters_->suppressed_operations.load(std::memory_order_relaxed),
+                generation && generation->file->degraded(), generation && generation->console->degraded()};
         }
         [[nodiscard]] std::filesystem::path get_file_path() const;
         // Legacy wrapping 16-bit serial; do not use it as a session/domain ID.
@@ -233,6 +243,9 @@ namespace spdlog::CE {
 // template definitions - methods
 namespace CE {
     template <const char* name> void Log<name>::construct_log() {
+        auto generation = std::make_shared<LogDetail::BackendGeneration>();
+        generation->file = std::make_shared<LogDetail::DestinationState>(backend_counters_, true);
+        generation->console = std::make_shared<LogDetail::DestinationState>(backend_counters_, false);
         // Reserve the closed logger for construction and capture any state that must be
         // restored before releasing lifecycle synchronization.
         auto lock = state_controller->lock();
@@ -257,15 +270,20 @@ namespace CE {
             const auto file_path = (configuration_.directory / std::format("{}.log", name)).string();
             auto file = std::shared_ptr<spdlog::sinks::rotating_file_sink_mt>(
                 new spdlog::sinks::rotating_file_sink_mt(
-                    file_path, configuration_.rotation_bytes, configuration_.retained_files, configuration_.rotate_on_open, event_handlers
+                    file_path, configuration_.rotation_bytes, configuration_.retained_files, configuration_.rotate_on_open,
+                    LogDetail::guard_file_handlers(event_handlers, generation->file)
                 ),
-                [controller](spdlog::sinks::rotating_file_sink_mt* sink) {
+                [controller, state = generation->file](spdlog::sinks::rotating_file_sink_mt* sink) noexcept {
                     delete sink;
+                    state->report_close_failures();
                     controller->complete_close();
                 }
             );
 
-            std::vector<spdlog::sink_ptr> sinks{console, file};
+            generation->file->report_close_failures();
+            std::vector<spdlog::sink_ptr> sinks{
+                std::make_shared<LogDetail::GuardedSink>(console, generation->console),
+                std::make_shared<LogDetail::GuardedSink>(file, generation->file)};
             const auto overflow = configuration_.overflow_policy == LogOverflowPolicy::Block
                                     ? spdlog::async_overflow_policy::block
                                     : spdlog::async_overflow_policy::discard_new;
@@ -302,6 +320,7 @@ namespace CE {
             m_file.store(std::move(file));
             m_console.store(std::move(console));
             m_logger.store(std::move(logger));
+            backend_generation_.store(std::move(generation));
             reopen_state.reset();
             state_controller->set_state(lock, LogState::Open);
         } catch (...) {
@@ -311,6 +330,7 @@ namespace CE {
             if (lock.owns_lock()) {
                 lock.unlock();
             }
+            generation->file->report_close_failures();
             if (registered) {
                 spdlog::drop(name);
             }

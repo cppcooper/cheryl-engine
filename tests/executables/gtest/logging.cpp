@@ -51,6 +51,10 @@ namespace {
     constexpr char queue_hold_name[] = "logging-queue-hold";
     constexpr char discard_name[] = "logging-discard";
     constexpr char blocking_name[] = "logging-blocking";
+    constexpr char callback_failure_name[] = "logging-callback-failure";
+    constexpr char startup_failure_name[] = "logging-startup-failure";
+    constexpr char formatter_failure_name[] = "logging-formatter-failure";
+    constexpr char console_failure_name[] = "logging-console-failure";
     constexpr std::size_t queue_capacity = 8192;
 
     struct LogDirectory {
@@ -150,6 +154,22 @@ namespace {
         void flush() override {}
         void set_pattern(const std::string&) override {}
         void set_formatter(std::unique_ptr<spdlog::formatter>) override {}
+    };
+
+    class FailingFormatter final : public spdlog::formatter {
+        const bool nonstandard;
+
+    public:
+        explicit FailingFormatter(bool nonstandard)
+        : nonstandard(nonstandard) {}
+
+        void format(const spdlog::details::log_msg&, spdlog::memory_buf_t&) override {
+            if (nonstandard)
+                throw 42;
+            throw std::runtime_error("injected formatter failure");
+        }
+
+        std::unique_ptr<spdlog::formatter> clone() const override { return std::make_unique<FailingFormatter>(nonstandard); }
     };
 
     LogConfig queue_config(const char* name, const fs::path& directory) {
@@ -468,6 +488,113 @@ TEST(logging, failed_reopen) {
     // The same object remains recoverable; no separate Failed state is required for this path.
     EXPECT_NO_THROW(log.reopen());
     EXPECT_NE(spdlog::get(failed_reopen_name), nullptr);
+}
+
+TEST(logging, close_failures) {
+    LogDirectory directory;
+    std::atomic<int> before = 0;
+    std::atomic<int> after = 0;
+    spdlog::file_event_handlers handlers;
+    handlers.before_close = [&](const spdlog::filename_t&, std::FILE*) {
+        ++before;
+        throw 42;
+    };
+    handlers.after_close = [&](const spdlog::filename_t&) {
+        ++after;
+        throw std::runtime_error("injected after_close failure");
+    };
+    TestLog<callback_failure_name> log{handlers, queue_config(callback_failure_name, directory.path)};
+    testing::internal::CaptureStderr();
+    EXPECT_NO_THROW(log.close(close_timeout));
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(before.load(), 1);
+    EXPECT_EQ(after.load(), 1);
+    EXPECT_EQ(log.backend_stats().callback_failures, 2u);
+    EXPECT_TRUE(log.backend_stats().file_degraded);
+    expect_contains(output, "before_close callback");
+    expect_contains(output, "after_close callback");
+}
+
+TEST(logging, startup_failure) {
+    LogDirectory directory;
+    bool fail = true;
+    int closed = 0;
+    spdlog::file_event_handlers handlers;
+    handlers.after_open = [&](const spdlog::filename_t&, std::FILE*) {
+        if (fail)
+            throw std::runtime_error("original startup failure");
+    };
+    handlers.before_close = [&](const spdlog::filename_t&, std::FILE*) {
+        if (fail)
+            throw 42;
+    };
+    handlers.after_close = [&](const spdlog::filename_t&) { ++closed; };
+    const auto config = queue_config(startup_failure_name, directory.path);
+    testing::internal::CaptureStderr();
+    try {
+        TestLog<startup_failure_name> log{handlers, config};
+        ADD_FAILURE() << "Expected startup failure";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "original startup failure");
+    }
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(closed, 1);
+    EXPECT_EQ(spdlog::get(startup_failure_name), nullptr);
+    expect_contains(output, "before_close callback");
+    fail = false;
+    TestLog<startup_failure_name> retry{handlers, config};
+    EXPECT_NO_THROW(retry.close(close_timeout));
+    EXPECT_EQ(closed, 2);
+}
+
+TEST(logging, degraded_reopen) {
+    LogDirectory directory;
+    TestLog<formatter_failure_name> log{{}, queue_config(formatter_failure_name, directory.path)};
+    const auto path = log.get_file_path();
+    testing::internal::CaptureStderr();
+    {
+        auto native = log.retain_logger();
+        native->sinks()[1]->set_formatter(std::make_unique<FailingFormatter>(true));
+        // Native writes exercise the backend even in the explicitly disabled profile.
+        native->warn("failed-record");
+        native->warn("queued-after-failure");
+    }
+    EXPECT_NO_THROW(log.close(close_timeout));
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.backend_stats().failed_operations, 1u);
+    EXPECT_GE(log.backend_stats().suppressed_operations, 1u);
+    EXPECT_TRUE(log.backend_stats().file_degraded);
+    expect_contains(output, "logging file write");
+    expect_contains(output, "non-standard exception");
+
+    EXPECT_NO_THROW(log.reopen());
+    EXPECT_FALSE(log.backend_stats().file_degraded);
+    log.set_pattern("%v");
+    { log.retain_logger()->warn("recovered-record"); }
+    log.close(close_timeout);
+    EXPECT_EQ(log.backend_stats().failed_operations, 1u);
+    expect_contains(read_file(path), "recovered-record");
+}
+
+TEST(logging, console_failure) {
+    LogDirectory directory;
+    auto config = queue_config(console_failure_name, directory.path);
+    config.console_level = spdlog::level::warn;
+    TestLog<console_failure_name> log{{}, config};
+    const auto path = log.get_file_path();
+    testing::internal::CaptureStderr();
+    {
+        auto native = log.retain_logger();
+        native->sinks()[0]->set_formatter(std::make_unique<FailingFormatter>(false));
+        native->warn("file-survives-console-failure");
+    }
+    log.close(close_timeout);
+    const auto output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(log.backend_stats().console_degraded);
+    EXPECT_FALSE(log.backend_stats().file_degraded);
+    EXPECT_EQ(log.backend_stats().failed_operations, 1u);
+    expect_contains(output, "logging console write");
+    expect_contains(read_file(path), "file-survives-console-failure");
 }
 
 TEST(logging, default_after_reopen) {

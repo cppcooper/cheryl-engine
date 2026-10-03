@@ -1476,3 +1476,26 @@ unauthorized under AGENTS.md. Follow these units and commit each independently:
 Each unit includes source/diff and local documentation-link checks, plus an honest
 record of unexecuted acceptance. Required discoveries revise the remaining plan;
 unrelated findings are recorded for their appropriate later boundary.
+
+### U5c3 — owned destination and close-callback containment
+
+Implemented forwarding guards around the owned file/console destinations without
+changing the retained native file completion signal. Actual destination gates and
+degradation participate in argument-admission probes. All delegate log/flush
+exceptions are contained after delegate locks unwind; a failed destination stops
+receiving queued operations until completed close/reopen creates a new generation.
+The healthy destination continues. Cumulative observations survive reopening.
+
+Close callbacks are individually guarded, counted, and reported from bounded
+slots after operations/destruction. Repeated same-slot failures before reporting
+are coalesced. Physical close and both callback opportunities remain reachable;
+opening exceptions retain their original type/value during failed construction.
+Sources cover these contracts and standard/non-standard formatter failures.
+Source/diff checks passed; no compilation or test execution was performed.
+
+**Required U5c4 discovery:** Facade-only reentry guards cannot protect callers
+holding a native spdlog logger: recursive submission can still fill/block the
+shared queue. Resolve the published native submission path before U6. Arbitrary
+replacement of the owned sink vector also bypasses both containment and actual
+filtering. U5c4 must make this ownership restriction explicit and update acceptance
+fixtures to hold owned formatters rather than inject unsupported destinations.

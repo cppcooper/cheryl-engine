@@ -149,14 +149,34 @@ logger/sinks; those loggers borrow the pool. Do not make sinks/queued loggers re
 the pool, which can create a queue-owner cycle and final destruction on a worker.
 
 The per-Log saturation policy is configurable; blocking remains the default.
-Backend failure containment and reentrancy are the remaining U5 units; broad
-subsystem integration remains gated on them.
+Owned file and console operations now pass through guards. Every exception from
+delegate log/flush, including non-standard formatter/rotation failures, is caught
+after its delegate lock unwinds. The failed destination is marked degraded and
+reports once for that failed operation through the emergency path. Already queued
+operations subsequently skip that destination; the other destination continues.
+This prevents writes/flushes into a file that a failed rotation may have closed.
+Ordinary reopen while Open is still a no-op: recovery requires completed close
+followed by reopen, creating new destination states and formatters.
+
+Each before_close/after_close handler has its own nonthrowing guard, so one failing
+handler cannot prevent physical close, the other handler, or Cheryl's completion
+signal. Failures are collected in bounded slots and reported after delegate locks
+unwind or file destruction finishes. Repeated failures in the same callback slot
+before reporting are counted and coalesced. Opening handlers retain their throwing
+contract; constructor/rotation errors remain the primary failure, even if cleanup
+handlers also fail. Startup cleanup does not replace the original exception.
+
+Log::backend_stats exposes cumulative failed_operations, callback_failures, and
+suppressed_operations for that Log, including failed openings. Its degradation
+flags describe the last published generation, including while Closed. Counts
+survive close/reopen; fields are independent observations, not a completion barrier.
+The logger's owned graph uses forwarding guards, whose actual delegate gates and
+degradation participate in should_log. File/console level restoration still uses
+the actual destinations. Retained native file owners still delay completed close.
+Direct delegate log/flush bypasses these guards and is unsupported. Reentrancy and
+native submission ownership are the next U5 unit; broad integration stays gated.
 The remaining contract and ordered tasks are recorded in the
 [development plan](../planning/develop-review-and-development-plan.md#remaining-u5-work--queue-behavior-and-backend-containment).
-Current caller-side guards do not contain every async backend exception: the bundled
-worker can rethrow a non-standard sink exception, and file-close handlers can throw
-during destruction. Callback containment and an observable degraded-file state are
-required remaining work.
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
 External native owners must not continue producing after facade teardown.
@@ -181,6 +201,10 @@ waiting for capacity. Invalid policy values reject before file/registry effects.
 The held-backend release guard runs before producer joins and logger cleanup on
 assertion failure. The blocking case includes a bounded scheduling observation;
 isolated timeout/fault-injection acceptance remains separate work.
+Additional sources cover independently throwing close handlers, startup exceptions
+with failing cleanup, non-standard file formatters, standard console formatters,
+continued healthy-destination output, cumulative failure counts, and close/reopen
+recovery. These sources have not been compiled or run.
 Compile/link execution and the profile matrix remain unexecuted; no compilation
 or tests were authorized. Executable saturation, sink failures, and shutdown require
 separate acceptance as the remaining lifecycle units land.
