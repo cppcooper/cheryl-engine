@@ -32,7 +32,7 @@ git clang-format <base-revision>
 - Types and enum values use `PascalCase`. Functions, methods, and local variables use `snake_case`.
 - Private data members introduced in modernized code use a trailing underscore, such as `root_path_`. Preserve established public APIs and legacy subsystem names rather than renaming them only for style.
 - Mark converting constructors `explicit`, and use `override` or `final` where the relationship is known.
-- Put data declarations above methods. Break declaration/definition parameters as a block and put constructor initializers on the following line, as specified by the root formatter configuration.
+- Put data declarations above methods. Keep declaration and definition signatures on one line when they fit within 140 columns; wrap longer parameter lists as a block. Put constructor initializers on the following line, as specified by the root formatter configuration.
 - Add `[[nodiscard]]` to query or factory functions when silently discarding the result is probably a mistake.
 - Include what a file uses instead of relying on transitive includes.
 - Keep comments focused on invariants, ownership, coordinate systems, or other non-obvious intent. Avoid narrating code that is already clear.

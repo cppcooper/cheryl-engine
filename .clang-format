@@ -46,22 +46,21 @@ SortIncludes: Never
 IncludeBlocks: Preserve
 
 # Function declarations / definitions.
-# Break parameters as a block for declarations/definitions, but do not apply
-# the same rule to ordinary function calls.
-BreakFunctionDeclarationParameters: true
-BreakFunctionDefinitionParameters: true
+# Keep short signatures on one line. If a parameter list exceeds the column
+# limit, wrap it as a block with one parameter per line.
+BreakFunctionDeclarationParameters: false
+BreakFunctionDefinitionParameters: false
 PackParameters:
   BinPack: OnePerLine
 AllowAllParametersOfDeclarationOnNextLine: false
 AlignAfterOpenBracket: false
 
-# Cheryl places the closing ')' of multiline declarations/definitions on its
-# own line. clang-format applies this setting to multiline calls as well; this
-# is the closest available match to CLion's declaration-only rule.
+# Lists that exceed the column limit break after '(' and before ')'. These
+# conditional rules apply to declarations, definitions, and function calls.
 BreakBeforeCloseBracketFunction: true
-BreakAfterOpenBracketFunction: false
+BreakAfterOpenBracketFunction: true
 
-# Function calls stay dense when they need to wrap.
+# Function calls can pack multiple arguments per line inside a wrapped block.
 PackArguments:
   BinPack: BinPack
 AllowAllArgumentsOnNextLine: true

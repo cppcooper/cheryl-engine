@@ -35,30 +35,18 @@ namespace CE::Assets {
         float line_height_{};
 
     public:
-        explicit STBFont(
-            STBFontData data
-        );
+        explicit STBFont(STBFontData data);
         ~STBFont() override = default;
-        [[nodiscard]] std::vector<GlyphPlacement2D> layout(
-            std::string_view text,
-            FontLayoutOptions options = FontLayoutOptions{}
-        ) const override;
-        [[nodiscard]] static STBFontData load_font(
-            const std::filesystem::path& font_path,
-            int font_size,
-            ResourceProvider& provider
-        );
+        [[nodiscard]] std::vector<GlyphPlacement2D>
+        layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
+        [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size, ResourceProvider& provider);
 
         [[nodiscard]] const Geometry2D& glyph_geometry() const { return *geometry; }
         [[nodiscard]] const Image& glyph_atlas() const { return *texture; }
 
         // Emit a baked glyph index and its local pen offset without storing the
         // message or changing the font. The caller supplies its own draw policy.
-        template <typename SubmitGlyph>
-        void for_each_glyph(
-            std::string_view text,
-            SubmitGlyph&& submit
-        ) const {
+        template <typename SubmitGlyph> void for_each_glyph(std::string_view text, SubmitGlyph&& submit) const {
             float cursor_x = 0.0f;
             float cursor_y = 0.0f;
             constexpr auto fallback = static_cast<unsigned char>('?');
