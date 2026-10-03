@@ -5,6 +5,12 @@ are documented in [runtime-architecture.md](../runtime/runtime-architecture.md).
 Unresolved artwork metadata is tracked separately in
 [asset-manifest-todo.md](asset-manifest-todo.md).
 
+The source review's classification, accepted initial consumers/platforms, and
+ordered work are in [the develop plan's U0](develop-review-and-development-plan.md#u0-establish-scope-and-acceptance-baselines).
+That plan also tracks findings without TODO comments, including numeric-header,
+native callback, exception-reporting, logging, and library-consumer work. Completed
+source changes remain distinct from unexecuted acceptance checks.
+
 ## Resource and utility fixes
 
 - Validate FFont widths-file opening, complete reads, and expected format before

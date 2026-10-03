@@ -592,6 +592,36 @@ Its presence should not affect the player-facing UI choice.
 
 # 13. Development Task List
 
+## Existing Engine Foundation and Remaining Acceptance
+
+The 3 October 2026 U0 reconciliation uses the current source and the recorded
+architecture validation as the baseline. These engine contracts already exist;
+the UI milestone checklist below retains adapter/consumer acceptance work rather
+than scheduling their reimplementation. The overall milestones remain open until
+the required missing facilities and a representative UI consumer are established.
+
+| UI task | Established engine foundation | Remaining task boundary |
+| --- | --- | --- |
+| 1 — integration contract | This strategy defines the optional dependency direction and separation from widgets/layout. | Prove enforcement through the U7 module/consumer targets and the eventual adapter; no universal widget API is required. |
+| 2 — render submission | RenderFrame/ordered retained packets, transforms, textured Position3UV2 geometry, material generations, and alpha/depth/cull state. Simulation does not issue native draws. | Neutral vertex color/layout, rectangular clipping, consumer-required indexing/effects, and world/UI layer-order proof. No batching or arbitrary sorting is implied. |
+| 3 — resources | ResourceProvider creates images/font atlases and uploads transient vertex spans on the backend owner. Frames retain handles; native resources retire through the renderer lifetime. | Decide updates, atlas replacement, and adapter font ownership before exposing mutable resources. Existing single-provider/partial-upload limits remain explicit. |
+| 4 — input | State, ordered physical Events, committed Unicode Text, scoped capture, pointer/scroll/button/key/repeat/modifier records, and immutable tick views. | Translate to the selected library and validate ordering/device fidelity. Composition/preedit and Unicode rendering are separate capabilities. |
+| 5 — routing | Keyboard FocusLease, request epochs, poll-latched routing, exclusive/pass-through gameplay gating, and non-destructive per-target record views. | Pointer capture, modal/priority/propagation/controller ownership, and coexistence proof with heterogeneous consumers. |
+| 6 — platform services | Window logical/framebuffer sizes, cursor visibility, monitor content scale, monotonic clocks, and abstract window/display access. | Clipboard, cursor shapes, per-window scale/change reporting, and explicit text-input/IME capabilities where required. No generic GLFW handle exposure. |
+| 7 — modules | UI libraries are not currently required by the engine. | Target dependency propagation, independent downstream consumer, optional integration targets, and package scope (U7). |
+| 8–14 — adapters, multiple consumers, migration, and final extension docs | Current runtime supports sequential/concurrent retained frame and input delivery; this strategy states the intended adapter architecture. | Actual adapters, representative widgets, second-library proof, and integration guidance remain unimplemented. |
+
+The first new engine-boundary consumer is the library-neutral panel/scroll/image/
+ASCII-label/focus probe specified in
+[the develop plan's U0](develop-review-and-development-plan.md#u0-establish-scope-and-acceptance-baselines).
+It uses one provider/window, immutable image replacement, and rectangular clipping;
+complex effects, multi-domain resources, shaping, and IME are not assumed.
+TGUI remains the likely first widget adapter from this strategy, with the concrete
+library/version and requirements settled before adapter-specific implementation.
+The first native acceptance environment is Linux/GLFW/X11/OpenGL; recording-adapter
+contracts remain portable. No new executable acceptance or broader platform support
+is claimed by this reconciliation.
+
 - [ ] **1. Define the UI integration contract**
   - [ ] Document the architectural rule: `cheryl-engine` must not depend on TGUI, RmlUi, ImGui, or another widget library.
   - [ ] Define the desired dependency direction:

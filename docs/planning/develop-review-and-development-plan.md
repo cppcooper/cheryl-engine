@@ -260,19 +260,135 @@ compilation, test execution, and remote pushes remain unauthorized.
 
 ### U0. Establish scope and acceptance baselines
 
-- [ ] Classify each finding as a confirmed defect, contract audit, required consumer
+- [x] Classify each finding as a confirmed defect, contract audit, required consumer
   facility, or optional extension; retain the source evidence above.
-- [ ] Reconcile this plan with todo.md and the existing UI integration plan. Mark
+- [x] Reconcile this plan with todo.md and the existing UI integration plan. Mark
   already implemented frame/input/resource foundations as established, while
   retaining their consumer acceptance checks.
-- [ ] Select first concrete consumers and supported platforms. Keep audio, network,
+- [x] Select first concrete consumers and supported platforms. Keep audio, network,
   physics/world, 3D, topology, and automatic residency optional unless required.
-- [ ] Define future check configurations and permissions; retain historical results
+- [x] Define future check configurations and permissions; retain historical results
   as historical rather than reopening completed architecture work.
 
-**Discovery boundary:** If a consumer requires multiple provider domains, mutable
-images, complex clipping, or IME, expose that constraint now. It changes U8/U9/U11
-and must precede an adapter implementation.
+The decisions and classification below complete this planning unit. A checked
+planning/implementation subtask records its deliverable; it does not imply its
+future executable acceptance checks have run. U1/U2a/U3a remain source-only changes
+with execution evidence pending.
+
+#### Finding classification
+
+A confirmed defect here means the failure mechanism is established by source;
+it does not imply a fresh execution reproduced it. Contract audits identify a
+missing guarantee or unresolved design. A required consumer facility is necessary
+for a named consumer in this plan. Optional extensions are not prerequisites to
+current engine use. Documentation corrections are tracked with their contract
+audits unless they merely describe an already established implementation.
+
+| Review entry | Classification | Scope and owning unit |
+| --- | --- | --- |
+| T1 singleton | Confirmed publication/access defect plus initialization contract audit | U1 implements synchronized publication, usable CTU construction, and explicit configuration. Legacy compatibility and Type operation ownership are stated rather than inferred. |
+| T2 FFont | Confirmed unchecked-read defect plus file-format contract audit | U3 must validate input before upload; format/endian/atlas decisions require authoritative legacy evidence. |
+| T3 reflection diagnostics | Required consumer facility | Engine diagnostic consumers need records rather than direct stdout. Queries already exist; event delivery is a consumer choice in U6. |
+| T4/T6 byte handle release | Confirmed lifetime defect | U2a removes raw-facade dereferences; it does not close operation concurrency. |
+| T5 empty stats | Confirmed arithmetic defect | U3a reports an unavailable percentage for zero allocation. Shared-domain snapshot acceptance remains with U2b. |
+| T7 memory transitions | Contract audit with concrete race/rollback hazards | U2b must cover shared-domain transactions, detached destruction, failure rollback, and construction tracking before promising concurrency. |
+| T8 typed channels | Optional extension with a representative engine-event consumer | U13 preserves existing named/any, registration, and delivery contracts. |
+| T9 batching/order keys | Optional measured optimization | U12 requires order-safe regions and workload evidence; current authored order remains valid. |
+| T10 tile selection | Required facility for a tile-map consumer | U10 uses a neutral neighbor sampler and deterministic selection; no world/entity framework is implied. |
+| T11 timing advisor | Optional measured optimization | U12 provides suggestions without replacing explicit timing/input contracts. |
+| T12 Unicode layout | Required facility for Unicode-rendering consumers | U11 is separate from current committed-scalar input and the ASCII demo. No shaping-library dependency is selected yet. |
+| T13 byte boundaries | Confirmed arithmetic/unit defect with deferred regression work | U3a corrects boundaries/suffixes and supplies regression sources. |
+| Finding 1 numeric header/parser | Confirmed inclusion/linkage defects plus parse-syntax contract audit | U3 must fix the unmatched endif and header definition, then specify complete-consumption/range behavior. Still open. |
+| Finding 2 resize callback | Confirmed exception-containment gap | U4 defines native callback capture and normal platform reporting, including explicit resize calls. |
+| Finding 3 exception/trace failure | Confirmed allocating-noexcept hazard plus bounded-formatting contract audit | U4 must resolve failure reporting, truncation, and stream reset. The stale comment is independently removed. |
+| Finding 4 CMake consumer contract | Required facility for an independent downstream engine consumer | U7 must propagate dependencies and test the actual library; install/export scope is an explicit packaging decision. |
+| Finding 5 logging masks/integration | Confirmed configuration defect plus required diagnostic facility | U5 resolves masks/gating/lifecycle before U6 adds logs. Proposed profiles are design defaults, not measured performance claims. |
+| Finding 6 secondary/suppressed failures | Required diagnostic facility around an intentional error-ownership contract | U4–U6 retain the first exception while making distinct cleanup/fallback outcomes observable. |
+| ASCII atlas and committed-text limits | Declared capability limit | Current demo remains a valid baseline. Unicode shaping/editing/IME work is required only for the corresponding U9/U11 consumer scope. |
+| Single provider and partial upload publication | Declared capability limit plus resource contract audit | U8 documents retry/publication and decides required changes before UI/resource consumers depend on them. |
+| Missing UI mesh/clipping/platform/routing facilities | Required facilities for the scoped UI boundary probe below | U8/U9 add the missing neutral contracts, reusing current render/input foundations. Advanced effects remain conditional. |
+| Missing 3D implementation, topology adapters, audio/network/world/physics, additional backends, automatic residency | Optional extensions | U14 keeps these separate; an actual application requirement can promote a prerequisite at a discovery gate. |
+| Imported portability/dependency internals | Outside this first-party review | No independent third-party audit or replacement is proposed. |
+| In-file documentation inventory | Contract audits and documentation tasks | Singleton, memory, exception, font, numeric, display, file/font discovery, logging, and bootstrap/placeholder comments follow U1–U5/U9/U14/U15 as mapped in the documentation table. |
+| Sanitizers, physical GPU/compositor, complete Wayland, other OS/font/device behavior | Acceptance-evidence gaps | Add targeted evidence when authorized; absence of coverage does not itself prove an incomplete implementation. |
+| Asset-manifest metadata gaps | External data/authoring dependencies | asset-manifest-todo.md remains authoritative; neither generic engine code nor matching sheet dimensions supply missing artwork semantics. |
+
+#### First consumers and platform scope
+
+The initial correctness and diagnostic consumers are concrete existing code:
+
+1. [demo.cpp](../../tests/executables/demo.cpp), in sequential and concurrent modes,
+   exercises input/focus, font/geometry storage, material reload, presentation,
+   and shutdown. It is the first native application acceptance consumer.
+2. [runtime-adapter.cpp](../../tests/executables/gtest/core/runtime-adapter.cpp)
+   provides the controlled in-memory game/display/input/provider/renderer graph.
+   It is the first portable contract consumer; failures, dispatch, publication,
+   and retained generations can be checked without assuming a driver result.
+3. The planned independent U7 application must link the actual exported library
+   target, without compiling LIB_SOURCES or repeating the demo's dependencies.
+   It establishes downstream usability independently of the aggregate tests.
+
+The first new UI-boundary consumer is a **library-neutral submission/input probe**
+extending the recording graph: overlapping translucent panels, a scrollable region,
+a textured image, an ASCII label, and a keyboard-focused editing target while
+controller gameplay continues. This selects required contracts before committing
+a widget-library-specific adapter. The existing UI strategy still proposes TGUI
+as the likely first concrete adapter; that tentative choice is retained, not turned
+into a dependency or an assertion that a TGUI integration has been accepted.
+Toolkit/version and representative widget requirements must be settled before
+adapter-specific U9 work; neutral correctness work does not require that choice.
+
+For the first probe, the discovery decisions are explicit:
+
+| Question | Initial decision | Dependency consequence |
+| --- | --- | --- |
+| Multiple resource domains/windows? | One active provider/rendering window, matching the current supported contract. | No multi-domain cache redesign is a prerequisite. A later adapter requirement reopens U8 first. |
+| Mutable textures or dynamic atlas growth? | Create owned CPU image data and immutable backend images; publish replacement handles for changed images. Use the existing ASCII atlas for the first probe. | Dynamic image creation already exists. Mutation/update ordering and atlas growth remain U8/U11 decisions; no in-flight handle is changed implicitly. |
+| Complex clipping/effects? | Rectangular clipping with explicit logical-to-framebuffer coordinates is required for the scrolling region. No stencil, filters, or offscreen render targets in this first proof. | Scissor is a real U9 gap. Advanced operations are conditional extensions, not baseline repairs. |
+| Vertex colors/indexed geometry? | Colored/translucent geometry needs an explicit neutral color representation. Do not require indexed storage for correctness if expanded triangles suffice. | Resolve color/layout and retained geometry contracts in U9; evaluate indexing with the selected adapter rather than assuming it is necessary. |
+| Routing? | Reuse current keyboard focus and immutable record views. Check pointer overlap/capture and modal ownership as distinct missing contracts. | Preserve State/Events/Text; any routing expansion precedes consumer dependence. |
+| Unicode/IME? | Existing committed scalars and ASCII presentation are the baseline. Composition/preedit, grapheme-aware editing, bidi, and shaping are not claimed. | No IME interface or shaping dependency is required for the first probe; those requirements trigger U9/U11 before a Unicode editor. |
+| Clipboard/cursor/DPI? | The later native widget proof must explicitly request capabilities; unavailable operations must be reported as unavailable. The recording probe can provide deterministic capability responses. | Neutral platform service and per-window scale requirements remain U9; monitor content scale is not a substitute for a per-window scale-change contract. |
+
+The primary native acceptance target for this implementation sequence is **Linux
+with GLFW/X11 and OpenGL**, matching the recorded environment. Normal and sandbox
+Linux configurations both remain in scope; the latter retains portable engine
+contracts but excludes the Gainput/windowed demo paths. The renderer's advertised
+baseline remains OpenGL 3.3; the recorded native run used Mesa llvmpipe core 4.5 and
+does not establish minimum-version, physical GPU, or compositor coverage.
+
+The in-memory contract tests should remain portable C++23. Existing platform
+branches and unsupported-capability reporting must be preserved. Windows, macOS,
+a complete Wayland-only configuration, physical GPU/device behavior, and topology
+extensions are later acceptance targets with no fresh support claim from this
+work. This specifies where the current work is to be accepted; it does not remove
+or redefine the repository's other platform interfaces.
+
+#### Acceptance configurations and permissions
+
+| Future check | Configuration and purpose | Current status |
+| --- | --- | --- |
+| Focused correctness regressions | Singleton publication/retry/access; late byte release; numeric boundaries; isolated zero-total stats; memory transaction/rollback/construction tracking once U2b is implemented. | Added sources where noted; nothing compiled or executed. Empty stats requires a genuinely isolated domain/process, not merely a fresh facade. |
+| Normal aggregate | Existing Linux normal Release recipe in architecture-validation.md, including the actual demo and aggregate. | Future authorization required; prior 349-case result belongs to the earlier recorded snapshot. |
+| Sandbox aggregate | Existing Linux CHERYL_SANDBOX_BUILD Release recipe; generic runtime/provider/input contracts without the windowed demo/Gainput adapter. | Future authorization required; prior 335-case result belongs to the earlier recorded snapshot. |
+| Native acceptance | Usable GLFW/X11 display; CHERYL_NATIVE_GL_TESTS opt-in; repeat both demo modes, resize/focus/reload/close, and targeted native failure cleanup. | Future authorization and environment required; missing opt-ins/fixtures are not acceptance passes. |
+| Real-font failures | Explicit usable TTF and CFF fixtures for the existing allocation-failure cases. | Future authorization and fixture paths required; skip/failure distinctions remain as documented. |
+| Memory sanitizers | Existing Debug ASan/UBSan setup; a separate TSan configuration for concurrency, avoiding incompatible sanitizer combinations. | Not run. TSan configuration is an explicit U2b prerequisite, not an assumption about current CMake. |
+| Actual library consumer/header checks | Independent U7 executable and relevant header/multiple-translation-unit cases linked against the library contract. | Not yet implemented; an aggregate that recompiles sources cannot replace it. |
+| Logging acceptance | Compile-time profile exclusion, runtime/sink gating, saturation/fallback, producer shutdown, and normal-session noise checks after U5/U6. | Not yet implemented; runtime filtering cannot restore stripped calls. |
+| Documentation/source checks | Source references, local links, git diff --check, reviewed ownership/contract changes, and remote-baseline versus current TODO inventory. | Permitted without compilation; used for this sequence. |
+
+No build, compiler invocation (including configure-time compiler probes), test
+execution, or remote push is authorized. Adding regression sources and static
+checks is permitted. Historical results remain unchanged in architecture-validation.md;
+new changes need their own recorded execution before acceptance is claimed.
+
+**Discovery boundary:** A new consumer requiring multiple domains, image mutation,
+complex clipping, or IME must revise U8/U9/U11 before its implementation or dependent
+application work begins. If a source audit reveals a correctness prerequisite, add
+it at the earlier unit boundary, as done for shared-domain transactions and ObjCtor
+tracking in U2b. Optional extension work does not bypass incomplete correctness
+contracts.
 
 ### U1. Define singleton initialization and ownership contracts — T1
 
@@ -619,7 +735,8 @@ fixes may follow. UI, shaping, multiple resource domains, and topology remain
 consumer-scoping decisions at their existing boundaries. No GUI dependency or
 additional supported platform is selected by this slice.
 
-1. Record the reviewed plan and current execution constraints (U0).
+1. Record the reviewed plan and current execution constraints (preparation for U0;
+   the full U0 checklist was not completed in this first slice).
 2. Trace and remove the stale exception comment independently; keep allocation,
    noexcept, and trace-overflow work in U4.
 3. Resolve singleton publication, private-constructor access, explicit configuration
@@ -733,3 +850,20 @@ Validation: source arithmetic/format review, reference and diff checks. Regressi
 sources are uncompiled/unexecuted. An isolated empty-domain stats execution check
 is still needed when authorized; ordinary manager instances share global bookkeeping,
 so creating a fresh facade alone does not establish an empty test domain.
+
+### U0 — planning baseline completed after sequencing correction
+
+The initial plan-recording commit was incorrectly treated as sufficient for U0;
+it did not complete U0's classification, roadmap reconciliation, or concrete
+consumer/platform scope before U1 implementation. This correction completes those
+planning deliverables in the U0 section and records the existing UI foundations in
+the UI strategy. The first consumers are the current native demo, portable recording
+graph, independent library-link consumer, and a scoped neutral UI boundary probe.
+Widget toolkit/version selection remains an explicit boundary before adapter-specific
+work, with TGUI retained as the existing strategy's tentative first adapter.
+
+U0's four checklist entries are now checked for the actual planning work delivered,
+not for future builds/tests or full UI implementation. Historical validation is
+unchanged. This correction changes planning documents only; local references,
+links/anchors, checklist completeness, and diffs are statically checked. No build,
+compilation, test execution, or new implementation work is performed in this unit.
