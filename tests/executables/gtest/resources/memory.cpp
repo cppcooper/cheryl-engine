@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <array>
+#include <barrier>
 #include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
 #include <core/resources/objects/object-construction.hpp>
 #include <cstdint>
 #include <cstring>
@@ -8,6 +10,7 @@
 #include <internals/macros/int-literals.h>
 #include <random>
 #include <set>
+#include <thread>
 #include <templates/asset-mgr.h>
 #include <testing/block.h>
 
@@ -16,6 +19,17 @@ namespace {
         CE::Mem::Block block;
         unsigned char pattern;
     };
+
+    bool pooled_range(const CE::Mem::HeapBlock& block) {
+        BlockManagement<void> bookkeeping;
+        std::shared_lock lock(std::get<0>(bookkeeping.pool));
+        auto* last = static_cast<unsigned char*>(block.head.get()) + block.length - 1;
+        for (const auto& free : std::get<1>(bookkeeping.pool)) {
+            if (free.contains(block.head.get()) && free.contains(last))
+                return true;
+        }
+        return false;
+    }
 
     /**
      * Check each owner's complete address partition independently of the
@@ -230,6 +244,60 @@ TEST(memory, alignment_on_reuse) {
 TEST(memory, empty_checkouts) {
     auto& manager = CE::Mem::ExactMMgr::get();
     EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
+}
+
+TEST(memory, late_byte_release) {
+    std::weak_ptr<CE::Mem::ByteReleaseContext> weak;
+    std::shared_ptr<std::uint64_t> retained;
+    CE::Mem::HeapBlock block;
+    {
+        CE::Mem::ExactMMgr facade;
+        weak = facade.release_context();
+        block = facade.checkout_chunk(256, alignof(std::uint64_t));
+        retained = CE::Mem::make_managed_block<std::uint64_t>(facade, block);
+        *retained = 43;
+    }
+    EXPECT_FALSE(weak.expired());
+    EXPECT_EQ(*retained, 43);
+    EXPECT_FALSE(pooled_range(block));
+    retained.reset();
+    EXPECT_TRUE(weak.expired());
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, retained_byte_context) {
+    std::shared_ptr<CE::Mem::ByteReleaseContext> context;
+    CE::Mem::HeapBlock block;
+    {
+        CE::Mem::ExactMMgr facade;
+        context = facade.release_context();
+        block = facade.checkout_chunk(256);
+    }
+    context->return_chunk(block);
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_THROW(context->return_chunk(block), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, release_during_teardown) {
+    // Only facade teardown overlaps a single return. Concurrent checkout/cull
+    // transactions remain a separate contract; this exercises the lifetime boundary.
+    auto facade = std::make_unique<CE::Mem::ExactMMgr>();
+    auto block = facade->checkout_chunk(256);
+    auto retained = CE::Mem::make_managed_block<unsigned char>(*facade, block);
+    std::weak_ptr<CE::Mem::ByteReleaseContext> weak = facade->release_context();
+    std::barrier start(2);
+    std::thread release([handle = std::move(retained), &start]() mutable {
+        start.arrive_and_wait();
+        handle.reset();
+    });
+    start.arrive_and_wait();
+    facade.reset();
+    release.join();
+    EXPECT_TRUE(weak.expired());
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_TRUE(valid_partition({}));
 }
 
 TEST(memory, preallocation) {

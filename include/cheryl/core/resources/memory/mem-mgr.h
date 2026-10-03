@@ -1,5 +1,6 @@
 #pragma once
 #include "typedefs.h"
+#include "release-context.h"
 #include <enums.h>
 #include <templates/singleton.h>
 #include <chrono>
@@ -18,9 +19,19 @@ namespace CE::Mem {
         static_assert(growth_base_ >= 0, "The base growth should be a positive integer.");
         static_assert(growth_factor_ > 0, "The growth factor cannot be 0.");
 
+    private:
+        std::shared_ptr<void> lifetime_token_ = std::make_shared<int>(0);
+        const std::shared_ptr<ByteReleaseContext> release_context_ = std::make_shared<ByteReleaseContext>();
+
+    public:
+        using release_context_type = ByteReleaseContext;
+
         Manager() = default;
         ~Manager() override { lifetime_token_.reset(); }
+        // Legacy liveness observation only; it neither pins the facade nor synchronizes teardown.
         [[nodiscard]] std::weak_ptr<void> lifetime_token() const { return lifetime_token_; }
+        // Capture while the facade is live; final release may then outlive its destruction.
+        [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return release_context_; }
         // retrieve stats
         [[nodiscard]] std::string stats();
         // retrieve debug info
@@ -41,7 +52,6 @@ namespace CE::Mem {
         );
 
     private:
-        std::shared_ptr<void> lifetime_token_ = std::make_shared<int>(0);
         // retrieve an allocation with the given length - returns a section of an allocation at least big enough to fill the request
         [[nodiscard]] static HeapBlock allocate(size_t length, std::align_val_t alignment) {
             alignment = static_cast<std::align_val_t>(std::bit_ceil(static_cast<std::size_t>(alignment)));

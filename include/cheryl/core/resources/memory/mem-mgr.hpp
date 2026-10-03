@@ -92,27 +92,7 @@ namespace CE::Mem {
     }
 
     template <double gf_, int32_t gb_> void Manager<gf_, gb_>::return_chunk(const Block& returned) {
-        // A whole owner cannot be returned while any of its split sections remain in use.
-        const bool in_sections = contains(returned, sections);
-        const bool in_registry = contains(returned, registry);
-        bool has_active_sections = false;
-        if (in_registry) {
-            std::shared_lock lock(std::get<0>(sections));
-            for (const auto& section : std::get<1>(sections)) {
-                if (section.owner.get() == returned.owner.get()) {
-                    has_active_sections = true;
-                    break;
-                }
-            }
-        }
-        if ((!in_sections && !in_registry) || contains(returned, pool) || has_active_sections) {
-            CELog::critical("Cannot return Block. No such block exists. Block: {}", returned);
-            MTRACE() << debug_info();
-            throw Exceptions::failed_operation(CE_HERE, "Memory Manager was returned an unknown block");
-        }
-        // merge_into_pool owns the free-range transition: adjacent free
-        // sections coalesce and a complete owner becomes eligible for culling.
-        merge_into_pool(returned);
+        release_context_->return_chunk(returned);
     }
 
     template <double gf_, int32_t gb_>

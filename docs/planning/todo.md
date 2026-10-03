@@ -11,13 +11,10 @@ Unresolved artwork metadata is tracked separately in
   constructing the font. The loader still has explicit placeholders and reads a
   fixed array without checking the read result. See
   [ffont.cpp](../../src/assets/types/2d/ffont.cpp).
-- Retain a safe byte-manager release context when a final backing handle can race
-  manager destruction. The weak lifetime token checks liveness but does not
-  serialize raw-manager access. Both
-  [managed-block.hpp](../../include/cheryl/core/resources/memory/managed-block.hpp) and
-  [pool.hpp](../../include/cheryl/core/resources/objects/pool.hpp) retain this TODO.
 - Audit multi-container BlockManagement transitions before promising concurrent
-  memory-manager use. See
+  memory-manager use, including synchronization and shutdown lifetime of ObjCtor's
+  shared construction map. Safe retained byte-release ownership is implemented;
+  the operation transaction contract remains separate. See
   [mem-mgr.h](../../include/cheryl/core/resources/memory/mem-mgr.h).
 - Define the memory statistics result when total allocation is zero before dividing
   by that total. See [mem-mgr.hpp](../../include/cheryl/core/resources/memory/mem-mgr.hpp).

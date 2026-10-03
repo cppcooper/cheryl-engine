@@ -165,18 +165,14 @@ namespace CE::Obj {
 
         static_assert(!std::is_same_v<T, void>);
         const std::size_t len = b.length / sizeof(T);
-        const auto manager_lifetime = manager.lifetime_token();
+        auto byte_context = manager.release_context();
         // The owner deleter runs once after every alias to this allocation
         // disappears; the slot map distinguishes constructed from raw storage.
-        // TODO: Retain a safe release context for the underlying byte manager. The weak
-        // lifetime check does not serialize this deleter with concurrent manager destruction.
-        std::shared_ptr<T> block_root(raw, [b, len, manager_lifetime, manager_ptr = &manager](auto p) {
+        std::shared_ptr<T> block_root(raw, [b, len, byte_context = std::move(byte_context)](auto p) noexcept {
             // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
             ObjCtor<T>::destroy(p, len);
             ObjCtor<T>::erase(p, p + len);
-            if (manager_lifetime.lock()) {
-                manager_ptr->return_chunk(b);
-            }
+            byte_context->release_owned(b);
         });
 
         return {block_root, block_root, b.alignment, len};

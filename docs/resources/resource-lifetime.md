@@ -6,7 +6,21 @@
 
 A reservation stores only unclaimed `Block<T>` ranges. `emplace(index, args...)` prepares split blocks and the handle before constructing the object, then transfers the one slot to the handle. If construction throws, the reservation still owns that slot. At destruction it returns the remaining contiguous ranges, while claimed object handles can outlive it. Trusted release methods used by destructors are `noexcept`: an internal invariant violation terminates rather than throwing from a deleter. Public return methods continue to report invalid calls with exceptions.
 
-Underlying `Mem::ObjMMgr<T>` instances can die before the pool's last backing owner. The existing lifetime token causes that owner's callback to skip reuse bookkeeping; its captured `HeapBlock` still owns and frees the bytes. Grid and STB font geometry handles follow the same rule through `make_managed_block`. This supports ordered teardown, but the weak token does not serialize a final handle release with concurrent manager destruction. Retaining a safe byte-manager release context remains unfinished in [todo.md](../planning/todo.md).
+Underlying `Mem::ObjMMgr<T>` instances can die before the pool's last backing owner.
+Object backing owners and grid/STB geometry handles created by `make_managed_block`
+retain a `ByteReleaseContext`, which holds the shared void bookkeeping independently
+of the manager facade. Final release returns the captured HeapBlock through that
+context without a raw manager pointer, singleton lookup, or weak-token liveness
+check. Returned bytes remain reusable while the shared bookkeeping is retained.
+Public returns report invalid blocks with exceptions; trusted final releases are
+noexcept and terminate on a broken invariant or a failure to complete the return.
+Creating a handle or acquiring its context still requires a live manager facade.
+
+This fixes the final-release dependency on facade lifetime, not arbitrary concurrent
+checkout/return/cull. Cross-container transactions and ObjCtor's shared slot tracking
+still require an operation synchronization contract; that audit remains in
+[todo.md](../planning/todo.md). `lifetime_token()` remains a compatibility liveness
+observation and must not be used to authorize raw-manager access during teardown.
 
 The protected legacy `AssetMgr::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders now use reservations and create handles only for entries they actually construct. `Pool<T>::retrieve_objects` retains pool state in its element deleters; it no longer looks up a singleton when those handles die.
 

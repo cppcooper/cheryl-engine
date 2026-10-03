@@ -671,3 +671,46 @@ publication, failed-constructor retry, private/default CTU constructors, and mov
 arguments. Source/diff review only; compilation, regression execution, and sanitizer
 checks are pending authorization. U4 remains responsible for exception construction
 failure safety; U5 remains responsible for complete logger bootstrap/lifecycle.
+
+### U2a — retained byte release implemented; execution checks pending
+
+Manager now supplies a retained ByteReleaseContext over the existing shared void
+bookkeeping. Public return_chunk delegates to it; managed-block and object backing
+deleters capture that context instead of a weak token plus raw manager pointer.
+Known-owned final releases are noexcept; invalid bookkeeping or an allocation
+failure during return terminates, consistent with the existing trusted object
+release contract. The legacy lifetime_token interface remains a liveness observation
+and does not authorize manager access during destruction.
+
+This removes T4/T6's raw-facade lifetime dependency without claiming general
+concurrent manager operation. Regression sources cover a retained context after
+facade destruction, duplicate public return, handle release after destruction,
+and a single release overlapping facade teardown. Checks performed: source ownership
+trace, absence of raw-manager captures in both deleters, and diff checks. Build,
+regression execution, and sanitizer evidence remain pending.
+
+### U2b — required transaction and construction-state work discovered
+
+The audit confirms these prerequisites before any concurrency promise or expanded
+allocator use:
+
+- All Manager growth-policy specializations share BlockManagement<void>::State.
+  A per-facade mutex cannot serialize the byte domain. Define the operation gate
+  on the shared domain and preserve read-snapshot consistency across collections.
+- Checkout, partial return, whole return, merge, and stale/cull operations inspect
+  and edit multiple separately locked collections. Define transaction invariants,
+  failure rollback, and reentrant operation rules before replacing these paths.
+- release_culled clears final owner records while collection locks are held. Object
+  backing cleanup can invoke T destructors and then byte release. Detach retired
+  owners under locks and destroy them outside both typed and byte operation gates;
+  define lock order and prevent reverse acquisition through callbacks.
+- ObjCtor<T>::constructed is a shared unsynchronized unordered_map. Its lifetime
+  and construction/destruction synchronization must outlive backing-handle cleanup.
+  User constructors/destructors must not run under its metadata lock.
+- Allocation failures during multi-container insertion can leave a partially
+  transitioned partition. Transaction work must include rollback or prepared
+  node ownership, not merely an outer mutex.
+
+These are required U2 subtasks. U2a's completed ownership contract is stable input
+to them; T7 stays open. Independent U3 numeric/statistics corrections can proceed
+without assuming these transactions are complete.
