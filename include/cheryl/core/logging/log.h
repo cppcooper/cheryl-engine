@@ -95,6 +95,7 @@ namespace CE {
 
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
         const LogConfig configuration_;
+        const std::shared_ptr<spdlog::details::thread_pool> thread_pool_;
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
 
@@ -208,10 +209,12 @@ namespace spdlog::CE {
     struct TPInit : Singleton_CTS<TPInit> {
         std::shared_ptr<details::thread_pool> tp;
 
-        TPInit() {
-            init_thread_pool(8192, 3);
-            tp = thread_pool();
-        }
+        // This queue belongs to Cheryl, not spdlog's process-global registry.
+        // Each Log retains it independently of this compatibility singleton.
+        // One worker avoids the bundled pool's unsafe partial multi-worker
+        // construction and concurrent backend reordering; no throughput is promised.
+        TPInit()
+        : tp(std::make_shared<details::thread_pool>(8192, 1)) {}
     };
 }
 
@@ -252,7 +255,7 @@ namespace CE {
 
             std::vector<spdlog::sink_ptr> sinks{console, file};
             auto logger = std::make_shared<spdlog::async_logger>(
-                std::format("{}", name), sinks.begin(), sinks.end(), spdlog::CE::TPInit::get().tp, spdlog::async_overflow_policy::block
+                std::format("{}", name), sinks.begin(), sinks.end(), thread_pool_, spdlog::async_overflow_policy::block
             );
 
             // Reapply the configuration captured by close() while the replacement resources
@@ -306,7 +309,10 @@ namespace CE {
     Log<name>::Log(spdlog::file_event_handlers event_handlers, LogConfig configuration)
     : event_handlers(std::move(event_handlers)),
       configuration_(LogDetail::prepare_configuration(std::move(configuration), name)),
+      thread_pool_(spdlog::CE::TPInit::get().tp),
       m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
+        if (!thread_pool_)
+            throw Exceptions::failed_operation(CE_HERE, "The logging thread pool is unavailable");
         m_fallback_logger->set_level(spdlog::level::off);
         construct_log();
         log_id = LogDetail::next_log_id();

@@ -651,3 +651,16 @@ TEST(logging, invalid_config) {
     EXPECT_EQ(spdlog::get(bad_config_name), nullptr);
     EXPECT_EQ(spdlog::get(bad_path_name), nullptr);
 }
+
+TEST(logging, host_pool) {
+    // Construct directly even when the compatibility singleton was already used.
+    // The old constructor replaced this global pool on every construction.
+    const auto original = spdlog::thread_pool();
+    {
+        const spdlog::CE::TPInit owned;
+        ASSERT_NE(owned.tp, nullptr);
+        EXPECT_NE(owned.tp, original);
+        EXPECT_EQ(spdlog::thread_pool(), original);
+    }
+    EXPECT_EQ(spdlog::thread_pool(), original);
+}

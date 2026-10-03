@@ -1254,3 +1254,38 @@ its startup effects. Console-only/custom sinks remain a separate ownership/compl
 unit. Pattern overrides remain generation-local, while levels preserve their existing
 restoration contract. Queue ownership, saturation, and backend failure containment
 still gate dependent U6 integration.
+
+### U5c1 — isolate and retain Cheryl's async pool
+
+TPInit now constructs a private spdlog thread_pool with an 8192-item,
+single-worker default instead of calling init_thread_pool and replacing the host's
+global spdlog pool. Each Log retains that pool until its destructor's close/registry
+work finishes. This removes the compatibility singleton's static-destruction order
+as the pool lifetime relied on by live facades.
+
+The bundled pool's constructor starts threads in a loop without joining previously
+started workers if a later thread/vector allocation fails. Unwinding those joinable
+thread objects can terminate before the logger's initialization guard can report
+the failure. Selecting one worker avoids that partial-construction path and
+parallel backend reordering. It does not claim measured throughput or impose order
+on producers before submission. Multi-worker support requires exception-safe pool
+construction and independent acceptance before configuration exposes it.
+
+Native async loggers retain the pool weakly; accepted queue entries retain their
+logger/sinks. Do not add a strong pool reference to a sink/queued logger: that can
+cycle the queue owner and release its final ownership on a worker that would then
+join itself. External logger owners extend sink lifetime but must stop producing
+before facade teardown. A close timeout is not a bound on native I/O/user callbacks
+or final pool thread joins.
+Final facade destruction belongs outside the async backend; callbacks must not close,
+destroy, or wait for their own logger/pool. Missing pool state rejects startup before
+any file is opened rather than publishing an unusable logger.
+
+Added a host-pool source case constructing TPInit directly, so it detects global
+replacement even when the normal singleton was initialized by earlier cases.
+Existing close/reopen/retained-owner cases remain relevant; isolated process/static
+teardown and fault-injection acceptance are still unexecuted. Static checks only;
+no compiler/configuration probes, builds, or tests were run.
+
+**Boundary:** Queue overflow remains blocking. Saturation and backend callback/sink
+failure policy must be settled before U6 adds ordinary logging to engine boundaries.

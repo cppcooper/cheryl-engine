@@ -102,10 +102,24 @@ described in [failure-reporting.md](failure-reporting.md). Split/neighbor memory
 leaf operations are quiet, including normal misses and byte-aligned remainders;
 future aggregate diagnostics must use a copied snapshot after releasing locks.
 
-The existing async queue is still blocking at this stage. Cheryl-owned queue lifetime,
-saturation/drop reporting, and backend failure handling are the following U5 unit.
-Broad subsystem integration remains gated on those contracts. Existing close/reopen
-and retained file-sink semantics are preserved.
+The shared async pool belongs to Cheryl and does not replace spdlog's process-global
+pool. Each Log retains it through its own destruction, independently of the
+compatibility TPInit singleton's destruction order. The current default remains
+8192 queued items and one worker. The bundled pool creates threads in a loop
+without unwinding already-started threads if a later thread creation fails. The
+single-worker default avoids that partial-startup path and parallel backend
+reordering; it does not order producer work before submission or establish a
+throughput claim. Accepted queue entries retain their native
+logger/sinks; those loggers borrow the pool. Do not make sinks/queued loggers retain
+the pool, which can create a queue-owner cycle and final destruction on a worker.
+
+The queue is still blocking. Saturation/drop policy and backend failure containment
+are the following U5 unit; broad subsystem integration remains gated on them.
+Stop producers before closing. A close timeout bounds the sink-completion wait,
+not arbitrary user callbacks, native I/O, or the final pool's thread joins.
+External native owners must not continue producing after facade teardown.
+Final facade destruction belongs to the logging owner, outside the async backend;
+sink/file callbacks must not close, destroy, or wait for their logger/pool.
 
 ## Acceptance boundaries
 
@@ -116,6 +130,8 @@ A first-include translation unit preserves the mask across block.h inclusion.
 Runtime configuration sources cover published defaults, independent memory presets,
 custom append/rotation settings, level restoration, relative-path stability after a
 scoped working-directory change, and invalid settings with zero file-open side effects.
+The host-pool source case constructs a separate pool owner even if the singleton
+already exists, catching the previous replacement of the host's global pool.
 Compile/link execution and the profile matrix remain unexecuted; no compilation
 or tests were authorized. Queue saturation, sink failures, and shutdown require
 separate acceptance as the remaining lifecycle units land.
