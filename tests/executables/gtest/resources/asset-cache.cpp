@@ -137,7 +137,7 @@ namespace {
 
 TEST(
     asset_cache,
-    a_duplicate_candidate_can_release_and_publish_another_key_after_lookup
+    duplicate_candidate_reentry
 ) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
@@ -157,7 +157,7 @@ TEST(
 
 TEST(
     asset_cache,
-    a_rejected_insertion_releases_its_candidate_after_the_write_lock_unwinds
+    rejected_insertion_reentry
 ) {
     Cache cache;
     auto original = cache.publish({1}, std::make_shared<const int>(10));
@@ -176,7 +176,7 @@ TEST(
 
 TEST(
     asset_cache,
-    node_and_rehash_failures_release_candidates_after_unlock_and_do_not_commit_metadata
+    allocation_failure_reentry
 ) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
@@ -219,7 +219,7 @@ TEST(
 
 TEST(
     asset_cache,
-    failed_replacement_insertion_preserves_existing_generation_and_allows_deleter_reentry
+    replacement_failure_reentry
 ) {
     using Failure = AllocationControl::Failure;
     for (const auto phase : {Failure::Node, Failure::Buckets}) {
@@ -253,7 +253,7 @@ TEST(
 
 TEST(
     asset_cache,
-    stateful_allocator_clear_releases_values_outside_the_lock_and_keeps_allocator_identity
+    allocator_clear_reentry
 ) {
     auto control = std::make_shared<AllocationControl>();
     {

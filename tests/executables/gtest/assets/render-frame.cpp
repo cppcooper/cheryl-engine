@@ -68,7 +68,7 @@ namespace {
 
 TEST(
     sprite_playback,
-    two_entities_share_frames_but_keep_separate_clocks
+    independent_clocks
 ) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
@@ -90,7 +90,7 @@ TEST(
 
 TEST(
     sprite_playback,
-    nonlooping_clip_stays_on_its_last_frame
+    nonlooping_last_frame
 ) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
@@ -106,7 +106,7 @@ TEST(
 
 TEST(
     render_frame,
-    published_values_do_not_follow_simulation_changes
+    immutable_publication
 ) {
     using namespace std::chrono_literals;
     auto sprite = make_sprite();
@@ -137,7 +137,7 @@ TEST(
 
 TEST(
     render_frame,
-    recycled_slot_keeps_storage_and_releases_old_assets
+    slot_recycling
 ) {
     auto sprite = make_sprite();
     std::weak_ptr<const CE::Assets::Geometry2D> retained = sprite->geometry;
@@ -185,7 +185,7 @@ TEST(
 
 TEST(
     render_frame,
-    invalid_group_does_not_publish_a_partial_sequence
+    invalid_draw_group
 ) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;
@@ -203,7 +203,7 @@ TEST(
 
 TEST(
     render_frame,
-    pass_constraints_reject_conflicting_pipeline_state
+    conflicting_pass_state
 ) {
     const auto sprite = make_sprite();
     CE::RenderAPIs::RenderFrame frame;

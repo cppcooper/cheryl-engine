@@ -681,7 +681,7 @@ namespace {
 
 TEST(
     opengl_renderer,
-    startup_errors_reject_before_domain_publication_and_preserve_the_first_failure
+    startup_failure
 ) {
     for (const std::string operation : {"pending", "loader", "enable", "blend", "clear"}) {
         for (const bool release_failure : {false, true}) {
@@ -728,7 +728,7 @@ TEST(
 
 TEST(
     opengl_renderer,
-    cache_and_frame_owners_survive_context_loss_and_release_after_recovery_or_abandonment
+    context_loss_ownership
 ) {
     for (const bool recover : {false, true}) {
         for (const bool release_failure : {false, true}) {
@@ -829,7 +829,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    generation_failure_with_missing_context_recovers_only_adopted_resources
+    generation_context_loss
 ) {
     NativeProgramRecorder native;
     auto retained = native.image();
@@ -873,7 +873,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    upload_failure_with_missing_context_abandons_retained_and_partial_resources
+    upload_context_loss
 ) {
     for (const bool geometry : {false, true}) {
         SCOPED_TRACE(geometry ? "geometry" : "image");
@@ -909,7 +909,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    effect_binds_two_images_and_copied_time_colour_and_camera
+    two_image_effect
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uColor", GL_FLOAT_VEC4, 1, 6}, {"uCamera", GL_FLOAT_MAT4, 1, 7},
@@ -943,7 +943,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    an_omitted_active_optional_uniform_resets_after_the_previous_draw
+    optional_uniform_reset
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
@@ -959,7 +959,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    inactive_optional_uniforms_do_not_force_sprite_roles
+    inactive_optional_uniforms
 ) {
     NativeProgramRecorder native;
     GLSLPipeline pipeline(time_definition(false), native.program(), {{{"time", "uTime"}}});
@@ -970,7 +970,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    bad_required_types_arrays_and_unmapped_uniforms_fail_before_use
+    invalid_uniform_contract
 ) {
     NativeProgramRecorder native;
     const auto program = native.program();
@@ -991,7 +991,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    attribute_locations_and_unlinked_programs_are_rejected
+    invalid_program_attributes
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
@@ -1006,7 +1006,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    bad_sampler_domains_and_units_do_not_partially_bind_a_draw
+    invalid_sampler_bindings
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uImage", GL_SAMPLER_2D, 1, 6}};
@@ -1026,7 +1026,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    adjacent_draws_reapply_blend_depth_and_cull_state
+    per_draw_state
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
@@ -1060,7 +1060,7 @@ TEST(
 
 TEST(
     opengl_pipeline,
-    invalid_geometry_parameters_and_pass_constraints_leave_native_state_untouched
+    draw_validation
 ) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
@@ -1082,7 +1082,7 @@ TEST(
 
 TEST(
     opengl_texture,
-    unbinding_selects_an_explicit_unit_instead_of_inheriting_the_last_active_one
+    explicit_unbind_unit
 ) {
     NativeProgramRecorder native;
     auto first = native.image();
@@ -1096,7 +1096,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    a_rejected_2d_buffer_retires_both_handles_before_attribute_setup
+    buffer_upload_failure
 ) {
     NativeProgramRecorder native;
     native.fail_buffer_upload = 1;
@@ -1117,7 +1117,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    texture_registry_failure_discards_the_untracked_id_without_uploading
+    texture_registry_failure
 ) {
     NativeProgramRecorder native;
     native.reject_registration(1);
@@ -1132,7 +1132,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    either_flat_geometry_registration_failure_releases_each_generated_id_once
+    geometry_registry_failure
 ) {
     for (const int registration : {1, 2}) {
         SCOPED_TRACE(registration);
@@ -1156,7 +1156,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    every_legacy_mesh_registration_failure_preserves_one_owner_per_id
+    mesh_registry_failure
 ) {
     for (const int registration : {1, 2, 3}) {
         SCOPED_TRACE(registration);
@@ -1182,7 +1182,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    failed_anisotropy_query_stops_before_parameter_use_or_image_upload
+    anisotropy_query_failure
 ) {
     NativeProgramRecorder native;
     native.enable_anisotropy();
@@ -1202,7 +1202,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    failed_texture_integer_queries_preserve_alignment_and_retire_the_handle
+    texture_query_failure
 ) {
     for (const GLenum parameter : {GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, GL_UNPACK_ALIGNMENT}) {
         SCOPED_TRACE(parameter);
@@ -1225,7 +1225,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    either_legacy_mesh_upload_failure_retires_all_three_handles
+    mesh_upload_failure
 ) {
     for (const int failed_upload : {1, 2}) {
         NativeProgramRecorder native;
@@ -1250,7 +1250,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    a_rejected_atlas_upload_restores_alignment_and_skips_mipmaps
+    atlas_upload_failure
 ) {
     NativeProgramRecorder native;
     native.fail_image_upload = true;
@@ -1269,7 +1269,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    a_rejected_mipmap_generation_does_not_publish_the_texture
+    mipmap_generation_failure
 ) {
     NativeProgramRecorder native;
     native.fail_mipmaps = true;
@@ -1285,7 +1285,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    pending_errors_reject_creation_before_generating_native_ids
+    pending_creation_errors
 ) {
     NativeProgramRecorder native;
     native.pending_error(GL_INVALID_OPERATION);
@@ -1298,7 +1298,7 @@ TEST(
 
 TEST(
     opengl_upload,
-    a_generation_error_discards_only_the_untracked_id_before_collecting_prior_handles
+    generation_failure_cleanup
 ) {
     for (const auto kind : {GLResourceKind::Texture, GLResourceKind::VertexArray, GLResourceKind::Buffer}) {
         NativeProgramRecorder native;
@@ -1325,7 +1325,7 @@ TEST(
 
 TEST(
     opengl_texture,
-    unbinding_rejects_foreign_missing_and_closed_contexts_before_any_native_bind
+    unbind_context_guards
 ) {
     NativeProgramRecorder native;
     bool current = true;

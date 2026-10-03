@@ -137,7 +137,7 @@ namespace {
 
 TEST(
     opengl_renderer,
-    initial_context_acquisition_failure_attempts_release_and_preserves_its_error
+    context_acquisition_failure
 ) {
     for (const bool become_current : {false, true}) {
         for (const bool fail_release : {false, true}) {
@@ -169,7 +169,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    the_owner_thread_also_needs_the_correct_current_context
+    owner_context_validation
 ) {
     bool current = false;
     int queries = 0;
@@ -189,7 +189,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    failed_entry_growth_preserves_live_and_pending_registrations_and_reuses_free_slots
+    registry_growth_failure
 ) {
     DeletionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
@@ -228,7 +228,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    entry_allocator_outlives_abandonment_and_the_last_retained_handle
+    retained_allocator_lifetime
 ) {
     DeletionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
@@ -246,7 +246,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    foreign_threads_and_closed_lifetimes_never_query_a_borrowed_context
+    borrowed_context_guards
 ) {
     std::atomic<int> queries = 0;
     bool context_alive = true;
@@ -276,7 +276,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    failed_context_recovery_invalidates_retained_handles_without_gl_calls
+    failed_context_recovery
 ) {
     bool current = true;
     int queries = 0;
@@ -296,7 +296,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    last_owner_release_on_a_worker_is_deleted_once_by_owner_maintenance
+    worker_release_retirement
 ) {
     DeletionRecorder native;
     auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -315,7 +315,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    shutdown_deletes_a_retained_resource_and_later_release_does_not_delete_again
+    retained_shutdown
 ) {
     DeletionRecorder native;
     auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -329,7 +329,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    moved_handles_and_reused_registration_slots_keep_distinct_ownership
+    handle_move_and_slot_reuse
 ) {
     DeletionRecorder native;
     auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -353,7 +353,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    untracked_failure_cleanup_requires_the_owner_and_its_actual_context
+    untracked_cleanup_context
 ) {
     DeletionRecorder native;
     bool current = false;
@@ -374,7 +374,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    maintenance_with_a_different_current_context_does_not_delete_pending_ids
+    foreign_context_maintenance
 ) {
     DeletionRecorder native;
     bool current = true;
@@ -391,7 +391,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    a_failed_shutdown_preserves_pending_and_retained_resources_for_context_recovery
+    shutdown_context_recovery
 ) {
     DeletionRecorder native;
     bool current = true;
@@ -425,7 +425,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    abandonment_after_failed_shutdown_invalidates_all_kinds_before_late_worker_release
+    failed_shutdown_abandonment
 ) {
     DeletionRecorder native;
     bool current = true;
@@ -461,7 +461,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    logical_program_adoption_rejects_a_texture_without_losing_its_retirement_owner
+    invalid_program_adoption
 ) {
     DeletionRecorder native;
     auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
@@ -477,7 +477,7 @@ TEST(
 
 TEST(
     opengl_lifetime,
-    invalid_native_registrations_do_not_enter_the_shutdown_sweep
+    invalid_registrations
 ) {
     DeletionRecorder native;
     OpenGLResourceLifetime lifetime(std::this_thread::get_id(), [] { return true; });

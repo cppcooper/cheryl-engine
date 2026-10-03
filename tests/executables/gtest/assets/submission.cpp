@@ -85,7 +85,7 @@ namespace {
 
 TEST(
     asset_submission,
-    a_sprite_cell_retains_only_resolved_resources_and_copied_values
+    sprite_resource_retention
 ) {
     auto geometry = std::make_shared<SubmissionGeometry>(8, PrimitiveTopology::TriangleStrip);
     auto image = std::make_shared<SubmissionImage>();
@@ -116,7 +116,7 @@ TEST(
 
 TEST(
     asset_submission,
-    text_is_laid_out_before_publication_with_ascii_fallback_and_retained_glyph_resources
+    text_layout_and_retention
 ) {
     auto geometry = std::make_shared<SubmissionGeometry>(font_character_count * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
@@ -145,7 +145,7 @@ TEST(
 
 TEST(
     font_layout,
-    legacy_fancy_selection_is_typed_and_does_not_mutate_another_layout
+    independent_font_banks
 ) {
     auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
@@ -167,7 +167,7 @@ TEST(
 
 TEST(
     asset_submission,
-    legacy_font_widths_lines_and_safe_fallback_use_one_caller_transform
+    legacy_text_transform
 ) {
     auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();
@@ -215,7 +215,7 @@ TEST(
 
 TEST(
     asset_submission,
-    static_tiles_and_animation_select_owned_strip_ranges_without_native_work
+    tile_strip_ranges
 ) {
     using namespace std::chrono_literals;
     auto geometry = std::make_shared<SubmissionGeometry>(16, PrimitiveTopology::TriangleStrip);

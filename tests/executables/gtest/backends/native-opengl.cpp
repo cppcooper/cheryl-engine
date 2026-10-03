@@ -343,7 +343,7 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
 
 TEST(
     native_opengl,
-    foreign_release_waits_for_owner_maintenance_without_drawing
+    deferred_worker_release
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -367,7 +367,7 @@ TEST(
 
 TEST(
     native_opengl,
-    another_current_context_rejects_use_and_shutdown_restores_the_owner
+    shutdown_context_restoration
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -404,7 +404,7 @@ TEST(
 
 TEST(
     native_opengl,
-    retained_frames_survive_reload_and_cache_clear_until_owner_recycling
+    retained_frame_reload
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -472,7 +472,7 @@ TEST(
 
 TEST(
     native_opengl,
-    failed_reload_preserves_draws_and_deletes_partial_or_retired_candidates
+    failed_reload_cleanup
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -531,7 +531,7 @@ TEST(
 
 TEST(
     native_opengl,
-    shutdown_deletes_bound_frame_resources_before_late_foreign_release
+    shutdown_before_late_release
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -590,7 +590,7 @@ TEST(
 
 TEST(
     native_opengl,
-    rotated_legacy_font_banks_widths_lines_and_retained_resources_match_pixels
+    rotated_legacy_text
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -698,7 +698,7 @@ TEST(
 
 TEST(
     native_opengl,
-    rgba_file_and_provider_rows_flip_while_stb_alpha_rows_keep_their_order
+    texture_row_order
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1029,7 +1029,7 @@ namespace {
 
 TEST(
     native_opengl,
-    runtime_failure_settles_native_dependencies_and_recovers_cleanup_context_in_both_modes
+    runtime_failure_cleanup
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1093,7 +1093,7 @@ TEST(
 
 TEST(
     native_opengl,
-    real_runtime_recovers_from_slow_updates_in_both_modes
+    slow_update_recovery
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1161,7 +1161,7 @@ TEST(
 
 TEST(
     native_opengl,
-    real_runtime_keeps_simulation_advancing_during_slow_presentation
+    slow_presentation
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1232,7 +1232,7 @@ TEST(
 
 TEST(
     native_opengl,
-    full_native_poll_batches_pause_input_but_keep_presenting_and_dispatching
+    polling_backpressure
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1317,7 +1317,7 @@ namespace {
 
 TEST(
     native_opengl,
-    x11_ordered_events_text_and_focus_survive_full_backlog_and_recovery
+    x11_input_recovery
 ) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real X11 GLFW display to run native acceptance";

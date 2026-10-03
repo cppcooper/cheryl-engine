@@ -294,7 +294,7 @@ TEST(
 
 TEST(
     font_bake,
-    real_nested_bakes_restore_the_outer_allocation_scope
+    real_nested_allocation_scope
 ) {
     const auto* ttf = std::getenv("CHERYL_STB_ALLOCATION_TTF");
     const auto* cff = std::getenv("CHERYL_STB_ALLOCATION_CFF");
@@ -337,7 +337,7 @@ TEST(
 
 TEST(
     font_bake,
-    real_truetype_allocation_failures_release_scratch_and_precede_upload
+    real_truetype_alloc_failure
 ) {
     const auto* path = std::getenv("CHERYL_STB_ALLOCATION_TTF");
     if (!path || !*path)
@@ -347,7 +347,7 @@ TEST(
 
 TEST(
     font_bake,
-    real_cff_allocation_failures_release_scratch_and_precede_upload
+    real_cff_alloc_failure
 ) {
     const auto* path = std::getenv("CHERYL_STB_ALLOCATION_CFF");
     if (!path || !*path)
@@ -357,7 +357,7 @@ TEST(
 
 TEST(
     font_bake,
-    incomplete_bakes_retry_a_cleared_larger_atlas_and_keep_the_successful_pixels
+    atlas_growth_retry
 ) {
     for (const int incomplete : {0, -3}) {
         SCOPED_TRACE(incomplete);
@@ -388,7 +388,7 @@ TEST(
 
 TEST(
     font_bake,
-    reaching_the_atlas_limit_rejects_partial_data_and_releases_storage
+    atlas_size_limit
 ) {
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     std::vector<int> sizes;
@@ -405,7 +405,7 @@ TEST(
 
 TEST(
     font_bake,
-    rejected_cpu_allocation_precedes_the_baker_and_releases_no_unowned_storage
+    cpu_allocation_failure
 ) {
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
     memory->reject_next();
@@ -423,7 +423,7 @@ TEST(
 
 TEST(
     font_upload,
-    invalid_size_and_missing_or_empty_files_never_start_resource_uploads
+    invalid_font_inputs
 ) {
     const TemporaryDirectory directory;
     const auto empty = directory.path / "empty.ttf";
@@ -438,7 +438,7 @@ TEST(
 
 TEST(
     font_upload,
-    rejected_geometry_releases_cpu_storage_without_starting_the_atlas
+    geometry_failure_cleanup
 ) {
     FontUploadProvider provider;
     provider.reject_geometry = true;
@@ -455,7 +455,7 @@ TEST(
 
 TEST(
     font_upload,
-    atlas_throw_or_null_releases_the_completed_glyph_geometry
+    atlas_failure_cleanup
 ) {
     for (const auto outcome : {FontUploadProvider::AtlasResult::Throw, FontUploadProvider::AtlasResult::Null}) {
         SCOPED_TRACE(outcome == FontUploadProvider::AtlasResult::Throw ? "atlas throws" : "atlas returns null");
@@ -481,7 +481,7 @@ TEST(
 
 TEST(
     font_upload,
-    success_retains_backend_copies_and_metrics_after_cpu_release
+    retained_backend_resources
 ) {
     FontUploadProvider provider;
     auto vertices = glyph_vertices(provider);

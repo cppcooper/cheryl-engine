@@ -42,7 +42,7 @@ namespace {
 
 TEST(
     draw_contract,
-    material_without_glsl_resolves_owned_semantics_without_native_calls
+    material_resolution
 ) {
     CE::RenderAPIs::DrawStyle2D style;
     style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<ContractPipeline>(), {}});

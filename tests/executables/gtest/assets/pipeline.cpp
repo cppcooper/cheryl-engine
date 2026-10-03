@@ -64,7 +64,7 @@ namespace {
 
 TEST(
     pipeline_parameters,
-    two_image_effect_copies_values_and_retains_images
+    retained_effect_parameters
 ) {
     auto definition = effect_definition();
     auto pipeline = std::make_shared<RecordingPipeline>(definition);
@@ -95,7 +95,7 @@ TEST(
 
 TEST(
     pipeline_parameters,
-    invalid_hidden_values_and_engine_overrides_are_rejected
+    invalid_parameter_overrides
 ) {
     const ParameterContract contract{{"weight", ParameterType::Float, true, ParameterSemantic::Custom, 1.0f},
         {"model", ParameterType::Mat4, true, ParameterSemantic::Model}};
@@ -107,7 +107,7 @@ TEST(
 
 TEST(
     pipeline_parameters,
-    required_missing_null_and_colliding_samplers_are_rejected
+    invalid_sampler_bindings
 ) {
     const ParameterContract contract{{"first", ParameterType::Sampler2D}, {"second", ParameterType::Sampler2D}};
     auto image = std::make_shared<RecordingImage>();
@@ -119,7 +119,7 @@ TEST(
 
 TEST(
     pipeline_parameters,
-    invalid_schema_is_rejected_before_material_publication
+    invalid_parameter_schema
 ) {
     EXPECT_THROW(validate_parameter_contract({{"same", ParameterType::Float}, {"same", ParameterType::Float}}), invalid_args);
     EXPECT_THROW(validate_parameter_contract({{"model", ParameterType::Float, true, ParameterSemantic::Model}}), invalid_args);
@@ -129,7 +129,7 @@ TEST(
 
 TEST(
     pipeline_generations,
-    caller_mutations_and_replacement_preserve_retained_snapshots
+    retained_snapshots
 ) {
     auto definition = effect_definition();
     auto current = std::make_shared<RecordingPipeline>(definition);
@@ -146,7 +146,7 @@ TEST(
 
 TEST(
     material_resources,
-    one_image_can_be_selected_on_distinct_units_without_geometry_rebinding
+    shared_image_units
 ) {
     PipelineDefinition definition;
     definition.program_sources = {"sprite.vert", "sprite.frag"};
@@ -171,7 +171,7 @@ TEST(
 
 TEST(
     pipeline_geometry,
-    validation_rejects_layout_topology_and_incomplete_or_outside_ranges_without_binding
+    invalid_geometry
 ) {
     auto definition = effect_definition();
     RecordingPipeline pipeline(definition);
@@ -194,7 +194,7 @@ TEST(
 
 TEST(
     pipeline_state,
-    pass_constraints_reject_conflicts_without_overriding_the_pipeline
+    conflicting_pass_constraints
 ) {
     auto definition = effect_definition();
     definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};

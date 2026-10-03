@@ -289,7 +289,7 @@ namespace {
 
 TEST(
     opengl_program_builder,
-    native_construction_errors_reject_and_release_all_created_objects
+    native_construction_failure
 ) {
     const auto stages = ProgramConstructionRecorder::stages();
     for (const std::string operation :
@@ -307,7 +307,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    registry_allocation_failure_discards_the_untracked_program_once
+    registry_allocation_failure
 ) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
@@ -322,7 +322,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    logical_allocation_failure_retires_the_adopted_program_without_duplicate_discard
+    logical_allocation_failure
 ) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
@@ -340,7 +340,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    logical_allocator_survives_strong_release_until_the_last_weak_control_owner
+    weak_owner_allocator_lifetime
 ) {
     ProgramConstructionRecorder native;
     auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
@@ -359,7 +359,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    logical_compile_and_link_failure_release_attached_marked_stages
+    compile_and_link_failure
 ) {
     const auto stages = ProgramConstructionRecorder::stages();
     for (const bool fail_compile : {true, false}) {
@@ -375,7 +375,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    unreadable_later_stage_releases_the_already_attached_stage
+    unreadable_shader_stage
 ) {
     ProgramConstructionRecorder native;
     auto stages = ProgramConstructionRecorder::stages();
@@ -387,7 +387,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    existing_error_or_missing_current_context_reject_before_creation
+    creation_preconditions
 ) {
     ProgramConstructionRecorder native;
     const auto stages = ProgramConstructionRecorder::stages();
@@ -401,7 +401,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    successful_program_drops_stages_but_retained_owner_delays_program_retirement
+    retained_program_retirement
 ) {
     ProgramConstructionRecorder native;
     auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
@@ -424,7 +424,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    lost_current_context_preserves_construction_failure_and_skips_native_cleanup
+    construction_context_loss
 ) {
     ProgramConstructionRecorder native;
     native.fail_operation = "compile";
@@ -447,7 +447,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    failed_reflection_rejects_pipeline_and_preserves_retained_program
+    reflection_failure
 ) {
     for (const std::string operation :
         {"link status", "reflection count", "reflection length", "reflection entry", "reflection location"}) {
@@ -477,7 +477,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    diagnostic_printing_uses_checked_reflection_before_emitting_results
+    diagnostic_reflection_failure
 ) {
     for (const std::string operation :
         {"reflection count", "reflection length", "reflection entry", "reflection location", "attribute count"}) {
@@ -499,7 +499,7 @@ TEST(
 
 TEST(
     opengl_program_builder,
-    failed_legacy_location_queries_do_not_publish_cache_entries
+    legacy_location_failure
 ) {
     ProgramConstructionRecorder native;
     auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());

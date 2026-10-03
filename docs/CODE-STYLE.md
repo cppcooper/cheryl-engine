@@ -39,4 +39,6 @@ git clang-format <base-revision>
 
 ## Scope and tests
 
-The repository contains older code written under several conventions. Apply the current style to new code and to lines materially changed by a task; avoid drive-by formatting of unrelated files. Do not reformat vendored code under `extern/` or generated build output. Tests should follow the production subsystem they cover and use descriptive `snake_case` suite and test names.
+The repository contains older code written under several conventions. Apply the current style to new code and to lines materially changed by a task; avoid drive-by formatting of unrelated files. Do not reformat vendored code under `extern/` or generated build output.
+
+Tests should follow the production subsystem they cover and use short, intuitive `snake_case` suite and test names. Let the suite identify the subsystem and name each case for its main scenario, usually in two to four words: `input_routing.stale_focus_lease`, `opengl_upload.atlas_upload_failure`. Keep detailed behavior in the test body instead of writing sentence-length names.

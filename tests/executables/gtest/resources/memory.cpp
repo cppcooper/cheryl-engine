@@ -261,7 +261,7 @@ TEST(memory, preallocation) {
     EXPECT_TRUE(valid_partition({}));
 }
 
-TEST(memory, typed_allocator_releases_full_block) {
+TEST(memory, typed_full_block_return) {
     CE::Mem::DefaultAllocator<std::uint64_t> allocator;
     constexpr std::size_t count = 5;
     auto* ptr = allocator.allocate(count);
