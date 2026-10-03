@@ -143,6 +143,10 @@ else()
 endif()
 gtest_discover_tests(${TEST_TARGET})
 
+# Isolated timeout/fault/static-teardown cases are driven by tests/acceptance/logging.py.
+add_executable(cheryl-logging-acceptance tests/executables/logging-acceptance.cpp)
+target_link_libraries(cheryl-logging-acceptance PRIVATE ${LIB_TARGET} spdlog Backward::Object)
+
 add_executable(backward-cpp tests/executables/backward.cpp)
 target_link_libraries(backward-cpp PUBLIC Backward::Backward)
 

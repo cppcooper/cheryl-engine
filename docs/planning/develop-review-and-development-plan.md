@@ -492,7 +492,7 @@ Prerequisites: U1 initialization contract and U4 fallback contract.
   fallback reporting from ordinary async delivery. Count/report dropped diagnostics.
 - [x] Define startup failure and close/flush ordering after all producers stop;
   preserve existing reopen and retained-resource semantics.
-- [ ] Plan acceptance for each compile profile, disabled side-effect expressions,
+- [x] Plan acceptance for each compile profile, disabled side-effect expressions,
   include-order consistency, per-sink levels, saturation, sink failure, and shutdown.
 
 **Acceptance:** Configuration is independent of include order, required failures
@@ -1525,3 +1525,25 @@ flush retains its logger then releases the lifecycle lock before queue submissio
 Sources cover native/facade recursion, disabled preparation, unopened categories,
 startup reentry, fixed graphs, and guarded clones. Diff/source checks passed;
 executable acceptance, isolated fatal cases, and compile profiles remain U5c5.
+
+### U5c5 — isolated acceptance sources; execution gate pending
+
+Prepared a standalone acceptance target and Python driver for previously built
+binaries. Each fault/rotation/saturation/reentry/retention/static/fatal scenario
+runs in its own process with a 30-second timeout. The driver also runs logging.*
+regressions, checks surviving record order, verifies record/flush loss summaries,
+and inspects the final static-teardown record. The disabled profile still exercises
+native queue/backend behavior independently of compiled-out facade calls.
+The normal/sandbox five-row compile-profile matrix is documented in
+[logging-acceptance.md](../development/logging-acceptance.md).
+
+**Required discovery repaired:** Registry initialization inside a singleton Log's
+constructor can order registry destruction before the facade storage. Facade get
+and initialize now establish registry lifetime before entering singleton storage;
+supported static teardown closes logs before registry destruction. Explicit base
+casts and external owners surviving the facade teardown remain unsupported.
+
+Diff, Python syntax/static source, and local documentation-link checks are the
+only permitted checks performed so far. U5 executable acceptance is **pending**;
+U6 must not acquire a dependency on unaccepted logging containment. Continue U7
+and U8 independently while requesting explicit execution authorization.

@@ -192,6 +192,8 @@ facade, stream, guarded formatted, and published native paths are suppressed and
 counted on the active callback's Log. Guarded argument expressions are not evaluated
 and unopened categories are not initialized. Lifecycle, native flush/clone, and
 singleton acquisition/initialization reject with bad_request before waiting.
+Facade acquisition initializes the native registry before its singleton storage,
+so supported static teardown closes facade logs before destroying that registry.
 Callbacks must not synchronously wait for work on another thread that itself needs
 the logging backend: a thread-local guard cannot resolve application wait cycles.
 
@@ -243,3 +245,14 @@ recovery. These sources have not been compiled or run.
 Compile/link execution and the profile matrix remain unexecuted; no compilation
 or tests were authorized. Executable saturation, sink failures, and shutdown require
 separate acceptance as the remaining lifecycle units land.
+
+The standalone cheryl-logging-acceptance target and
+[logging.py](../../tests/acceptance/logging.py) run fault, failed rotation, full-queue
+native reentry, discarded record/flush, retained clone, static teardown, and fatal
+callback destruction scenarios in independent processes with a 30-second timeout.
+The runner uses already-built binaries, runs logging.* regressions serially in
+temporary working directories, verifies final file content/order and loss reports,
+and expects the defined fatal ownership case to exit 86 through a test terminate
+handler. It performs no configuration/build. See
+[logging-acceptance.md](../development/logging-acceptance.md) for the profile matrix
+and the authorization gate. Preparing sources is not executed acceptance.

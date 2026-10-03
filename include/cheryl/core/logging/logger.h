@@ -19,11 +19,15 @@ namespace CE {
     public:
         template <typename... Args> static Log<name>& get(Args&&... args) {
             LogDetail::reject_backend_reentry("acquire a logger");
+            // Initialize the registry before singleton storage so it outlives
+            // facade teardown, rather than first using it inside Log construction.
+            (void)spdlog::default_logger();
             return Singleton_CTS<Log<name>>::get(std::forward<Args>(args)...);
         }
 
         template <typename... Args> static Log<name>& initialize(Args&&... args) {
             LogDetail::reject_backend_reentry("initialize a logger");
+            (void)spdlog::default_logger();
             return Singleton_CTS<Log<name>>::initialize(std::forward<Args>(args)...);
         }
 
