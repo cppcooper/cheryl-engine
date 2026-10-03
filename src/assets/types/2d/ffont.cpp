@@ -44,7 +44,8 @@ namespace CE::Assets {
     FFontData FFont::load_ffont(const std::filesystem::path& path, ResourceProvider& provider) {
         std::fstream file(path);
         if (!file.is_open()) {
-            // todo: throw
+            throw Exceptions::failed_operation(CE_HERE,
+                std::format("Cannot open file '{}'", path));
         }
         // todo: make sure we have the file we want
         std::array<short, num_chars_ffont> buffer{};
