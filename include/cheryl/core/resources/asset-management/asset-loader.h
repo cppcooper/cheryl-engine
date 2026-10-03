@@ -2,9 +2,11 @@
 #include <assets/definitions/manifest.h>
 #include <assets/resources/decoded-image.h>
 #include <templates/singleton.h>
+#include <core/diagnostics.h>
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace CE::Assets {
@@ -17,6 +19,17 @@ namespace CE::Assets {
     struct PreparedAssets {
         std::vector<AssetManifest> manifests;
         std::vector<PreparedImage> images;
+        Diagnostics::DomainId batch = Diagnostics::next_domain_id();
+    };
+
+    struct UploadStats {
+        Diagnostics::DomainId batch = 0;
+        Diagnostics::DomainId provider = 0;
+        std::uint64_t images_completed = 0;
+        std::uint64_t manifests_completed = 0;
+        std::uint64_t publications = 0;
+        bool publication_count_available = true;
+        bool completed = false;
     };
 
     /** One immutable root; owned loaders can share the one supported cache domain.
@@ -26,6 +39,13 @@ namespace CE::Assets {
      * This loader does not create a separate provider domain or atomic hot reload.
      */
     struct Loader final : Singleton_CTS<Loader> {
+    private:
+        const std::filesystem::path root_path_;
+        std::atomic<std::shared_ptr<const std::vector<AssetManifest>>> manifests_{std::make_shared<const std::vector<AssetManifest>>()};
+        mutable std::mutex observations_mutex_;
+        UploadStats last_upload_;
+
+    public:
         explicit Loader(const std::filesystem::path& root_path)
         : root_path_(root_path.lexically_normal()) {}
         // Rescans/decodes owned data and validates its definitions before upload.
@@ -42,6 +62,9 @@ namespace CE::Assets {
          */
         void upload(PreparedAssets prepared, ResourceProvider& provider);
         void load_assets(ResourceProvider& provider);
+        // Last upload attempt, including partial publication. Observation only;
+        // no upload/rollback ordering guarantee beyond the loading-owner contract.
+        [[nodiscard]] UploadStats diagnostics() const;
         // Last successfully submitted definitions, not an atomic snapshot of the
         // global caches. Readers retain this metadata after later upload/destruction.
         [[nodiscard]] std::shared_ptr<const std::vector<AssetManifest>> manifests() const {
@@ -53,8 +76,5 @@ namespace CE::Assets {
         static Loader& get(const std::filesystem::path& root_path);
         static Loader& get();
 
-    private:
-        const std::filesystem::path root_path_;
-        std::atomic<std::shared_ptr<const std::vector<AssetManifest>>> manifests_{std::make_shared<const std::vector<AssetManifest>>()};
     };
 }

@@ -316,7 +316,14 @@ TEST(memory, preallocation) {
     }
     // Grow 32 bytes by a factor of two, then add 16: one new 80-byte owner
     // should satisfy the requested 128-byte alignment.
+    const auto stats_before = manager.diagnostics();
     manager.preallocate(1, 32, 16, 2.0, std::align_val_t{128});
+    const auto stats_after = manager.diagnostics();
+    EXPECT_EQ(stats_after.domain, stats_before.domain);
+    EXPECT_NE(stats_after.domain, 0u);
+    EXPECT_EQ(stats_after.total_bytes, stats_before.total_bytes + 80);
+    EXPECT_EQ(stats_after.available_bytes, stats_before.available_bytes + 80);
+    EXPECT_EQ(stats_after.owners, stats_before.owners + 1);
     std::vector<CE::Mem::Block> added;
     {
         std::shared_lock lock(std::get<0>(bm.registry));

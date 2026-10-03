@@ -38,6 +38,7 @@ namespace CE::Assets {
         GLSLMaterialBindings material_bindings_;
         std::map<std::string, int> uniforms_;
         std::map<std::string, int> attributes_;
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
 
     public:
         explicit GLSLProgram(RenderAPIs::OpenGLHandle program);
@@ -61,7 +62,8 @@ namespace CE::Assets {
         void set_uniform_value(const char* name, bool value) override { set_uniform_value<bool>(name, value); }
         void set_uniform_matrix(const char* name, const glm::mat4& value) override { set_uniform_matrix<4>(name, value); }
 
-        // todo: convert the code from both methods into parsers that register events
+        // Explicit reflection diagnostics: DEBUG summary, TRACE variable records.
+        // Queries retain their normal error contract; no stdout/event transport.
         void print_active_uniforms() const;
         void print_active_attribs() const;
 

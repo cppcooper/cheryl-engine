@@ -1,7 +1,7 @@
 #include <backends/opengl/glslprogram.h>
 #include "upload-check.h"
 #include <internals/exceptions.h>
-#include <iostream>
+#include <internals/compile-time-logging.hpp>
 #include <utility>
 
 namespace CE::Assets {
@@ -100,18 +100,18 @@ namespace CE::Assets {
 
     void GLSLProgram::print_active_uniforms() const {
         const auto variables = active_uniforms();
-        std::cout << " Location | Name\n";
-        std::cout << "------------------------------------------------\n";
+        CE_LOG_DEBUG(CE::enginelog, "subsystem=shader domain={} operation=reflection kind=uniforms count={}", domain_, variables.size());
         for (const auto& variable : variables)
-            std::cout << variable.location << " | " << variable.name << "\n";
+            CE_LOG_TRACE(CE::enginelog, "subsystem=shader domain={} operation=uniform name={} location={} type={} size={}",
+                         domain_, variable.name, variable.location, variable.type, variable.size);
     }
 
     void GLSLProgram::print_active_attribs() const {
         const auto variables = active_attributes();
-        std::cout << " Index | Name\n";
-        std::cout << "------------------------------------------------\n";
+        CE_LOG_DEBUG(CE::enginelog, "subsystem=shader domain={} operation=reflection kind=attributes count={}", domain_, variables.size());
         for (const auto& variable : variables)
-            std::cout << variable.location << " | " << variable.name << "\n";
+            CE_LOG_TRACE(CE::enginelog, "subsystem=shader domain={} operation=attribute name={} location={} type={} size={}",
+                         domain_, variable.name, variable.location, variable.type, variable.size);
     }
 
     int GLSLProgram::get_uniform_location(const char* name) {

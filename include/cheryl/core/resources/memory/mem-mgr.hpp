@@ -8,23 +8,37 @@
 #include <format>
 
 namespace CE::Mem {
+    template <double gf_, int32_t gb_> MemoryStats Manager<gf_, gb_>::diagnostics() const {
+        MemoryStats result{this->state_->domain};
+        std::shared_lock l1(get_mutex(pool), std::defer_lock);
+        std::shared_lock l2(get_mutex(sections), std::defer_lock);
+        std::shared_lock l3(get_mutex(registry), std::defer_lock);
+        std::shared_lock l4(get_mutex(release), std::defer_lock);
+        std::lock(l1, l2, l3, l4);
+        for (const auto& b : std::get<1>(this->pool))
+            result.available_bytes += b.length;
+        for (const auto& b : std::get<1>(this->registry))
+            result.total_bytes += b.length;
+        result.owners = std::get<1>(this->registry).size();
+        result.ranges = std::get<1>(this->sections).size();
+        result.pending_release = std::get<1>(this->release).size();
+        return result;
+    }
+
+    template <double gf_, int32_t gb_> void Manager<gf_, gb_>::report_diagnostics() const noexcept {
+        CE::Logger<CE::memlog>::template write_lazy<ctlog::DEBUG_>([&](auto& log) {
+            const auto observed = diagnostics();
+            log.debug("subsystem=memory domain={} operation=summary total_bytes={} available_bytes={} owners={} ranges={} pending_release={}",
+                      observed.domain, observed.total_bytes, observed.available_bytes, observed.owners, observed.ranges, observed.pending_release);
+        });
+    }
+
     template <double gf_, int32_t gb_> std::string Manager<gf_, gb_>::stats() {
-        size_t available = 0;
-        size_t total = 0;
-        size_t owners = 0;
-        size_t ranges = 0;
-        {
-            std::shared_lock l1(get_mutex(pool), std::defer_lock);
-            std::shared_lock l2(get_mutex(sections), std::defer_lock);
-            std::shared_lock l3(get_mutex(registry), std::defer_lock);
-            std::lock(l1, l2, l3);
-            for (const auto& b : std::get<1>(this->pool))
-                available += b.length;
-            for (const auto& b : std::get<1>(this->registry))
-                total += b.length;
-            owners = std::get<1>(this->registry).size();
-            ranges = std::get<1>(this->sections).size();
-        }
+        const auto observed = diagnostics();
+        const auto available = observed.available_bytes;
+        const auto total = observed.total_bytes;
+        const auto owners = observed.owners;
+        const auto ranges = observed.ranges;
         // A free percentage is unavailable without a recorded allocation.
         const auto percentage =
             total == 0 ? std::string{"n/a (no allocations)"} : std::format("{:2.1f}%", (available / (double)total) * 100);
@@ -96,9 +110,18 @@ namespace CE::Mem {
             throw Exceptions::bad_request(CE_HERE, "Preallocation growth cannot reduce the requested width.");
         // Each owner is a complete transaction; a failed later allocation leaves
         // earlier preallocations available and eligible for normal culling.
-        for (std::size_t i = 0; i < blocks; ++i) {
-            const auto block = allocate(len, alignment);
-            BlockTransactions<void>::register_free(this->state_, block);
+        std::size_t completed = 0;
+        try {
+            for (; completed < blocks; ++completed) {
+                const auto block = allocate(len, alignment);
+                BlockTransactions<void>::register_free(this->state_, block);
+            }
+        } catch (...) {
+            CE_LOG_ERROR(CE::memlog, "subsystem=memory domain={} operation=preallocate outcome=partial completed={} requested={} bytes_per_block={}",
+                         this->state_->domain, completed, blocks, len);
+            throw;
         }
+        CE_LOG_INFO(CE::memlog, "subsystem=memory domain={} operation=preallocate outcome=completed blocks={} bytes_per_block={}",
+                    this->state_->domain, completed, len);
     }
 }

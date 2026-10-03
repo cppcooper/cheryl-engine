@@ -5,6 +5,9 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
+#include <chrono>
+#include <optional>
 
 #include <algorithm>
 #include <cctype>
@@ -52,10 +55,16 @@ namespace CE::Assets {
     }
 
     PreparedAssets Loader::prepare() const {
+        PreparedAssets result;
+        const auto started = std::chrono::steady_clock::now();
+        CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} operation=prepare_begin", result.batch);
+        const auto failed = [&] {
+            Diagnostics::report_outcome("assets", result.batch, "prepare", "failed");
+            CE_LOG_ERROR(CE::enginelog, "subsystem=assets domain={} operation=prepare outcome=failed", result.batch);
+        };
         try {
             if (!fs::is_directory(root_path_))
                 throw Exceptions::runtime_exception(CE_HERE, "Asset root is not a directory: " + root_path_.string());
-            PreparedAssets result;
             std::vector<fs::path> documents;
             // A fresh scan sees added files; schema files below the root are not manifests.
             for (const auto& entry : fs::directory_iterator(root_path_))
@@ -95,22 +104,93 @@ namespace CE::Assets {
                 for (const auto& tileset : manifest.tilesets)
                     validate_grid_bounds(tileset.grid, tileset.texture, dimensions.at(tileset.texture), tileset.id());
             }
+            CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} operation=prepare_end manifests={} images={} duration_us={}",
+                        result.batch, result.manifests.size(), result.images.size(),
+                        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
             return result;
         } catch (const fs::filesystem_error& error) {
+            failed();
             throw Exceptions::runtime_exception(CE_HERE, error.what());
+        } catch (...) {
+            failed();
+            throw;
         }
     }
 
+    UploadStats Loader::diagnostics() const {
+        std::lock_guard lock(observations_mutex_);
+        return last_upload_;
+    }
+
     void Loader::upload(PreparedAssets prepared, ResourceProvider& provider) {
-        AssetCacheContext::verify_provider(provider);
-        for (const auto& image : prepared.images)
-            TextureMgr::get().load_asset(image.key, image.pixels, provider);
-        for (const auto& manifest : prepared.manifests) {
-            SpriteMgr::get().load_assets(manifest.sprites, provider);
-            TilesetMgr::get().load_assets(manifest.tilesets, provider);
+        UploadStats observed{prepared.batch, provider.diagnostic_id()};
+        const auto started = std::chrono::steady_clock::now();
+        const auto publications = []() noexcept -> std::optional<std::uint64_t> {
+            try {
+                std::uint64_t result = 0;
+                if (const auto* cache = TextureMgr::get_existing())
+                    result += cache->diagnostics().publications;
+                if (const auto* cache = SpriteMgr::get_existing())
+                    result += cache->diagnostics().publications;
+                if (const auto* cache = TilesetMgr::get_existing())
+                    result += cache->diagnostics().publications;
+                return result;
+            } catch (...) {
+                Diagnostics::report_failure("asset publication counters", std::current_exception());
+                return std::nullopt;
+            }
+        };
+        std::optional<std::uint64_t> before;
+        bool verified = false;
+        const auto finish = [&](const bool completed) noexcept {
+            observed.completed = completed;
+            if (verified) {
+                const auto after = publications();
+                if (before && after && *after >= *before)
+                    observed.publications = *after - *before;
+                else
+                    observed.publication_count_available = false;
+            }
+            try {
+                std::lock_guard lock(observations_mutex_);
+                last_upload_ = observed;
+            } catch (...) {
+                Diagnostics::report_failure("asset publication observation", std::current_exception());
+            }
+            if (completed) {
+                CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload_end images={} manifests={} publications={} duration_us={}",
+                            observed.batch, observed.provider, observed.images_completed, observed.manifests_completed, observed.publications,
+                            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
+            } else {
+                const auto outcome = !observed.publication_count_available ? "publication_unknown" : observed.publications ? "partial" : "failed";
+                Diagnostics::report_outcome("assets", observed.batch, "upload", outcome, observed.publications);
+                CE_LOG_ERROR(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload outcome={} images={} manifests={} publications={} count_available={}",
+                             observed.batch, observed.provider, outcome, observed.images_completed,
+                             observed.manifests_completed, observed.publications, observed.publication_count_available);
+            }
+        };
+        CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload_begin images={} manifests={}",
+                    observed.batch, observed.provider, prepared.images.size(), prepared.manifests.size());
+        try {
+            AssetCacheContext::verify_provider(provider);
+            before = publications();
+            verified = true;
+            for (const auto& image : prepared.images) {
+                TextureMgr::get().load_asset(image.key, image.pixels, provider);
+                ++observed.images_completed;
+            }
+            for (const auto& manifest : prepared.manifests) {
+                SpriteMgr::get().load_assets(manifest.sprites, provider);
+                TilesetMgr::get().load_assets(manifest.tilesets, provider);
+                ++observed.manifests_completed;
+            }
+            // Upload failure can leave completed cache entries, but never publishes partial metadata.
+            manifests_.store(std::make_shared<const std::vector<AssetManifest>>(std::move(prepared.manifests)), std::memory_order_release);
+        } catch (...) {
+            finish(false);
+            throw;
         }
-        // Upload failure can leave completed cache entries, but never publishes partial metadata.
-        manifests_.store(std::make_shared<const std::vector<AssetManifest>>(std::move(prepared.manifests)), std::memory_order_release);
+        finish(true);
     }
 
     void Loader::load_assets(ResourceProvider& provider) {

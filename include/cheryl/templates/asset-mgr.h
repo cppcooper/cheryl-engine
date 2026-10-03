@@ -1,4 +1,5 @@
 #pragma once
+#include <core/diagnostics.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
 #include <internals/exceptions.h>
@@ -19,6 +20,12 @@
 
 namespace CE::Assets {
     struct ResourceProvider;
+    struct AssetCacheStats {
+        Diagnostics::DomainId domain = 0;
+        std::uint64_t entries = 0;
+        std::uint64_t publications = 0;
+        std::uint64_t replacements = 0;
+    };
 
     /** Guards the single active provider/loading-owner domain shared by all caches.
      * This is publication/teardown context, not an eviction or residency manager.
@@ -97,6 +104,9 @@ namespace CE::Assets {
     protected:
         mutable std::shared_mutex assets_mutex_;
         std::unordered_map<Key, spointer, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        std::uint64_t publications_ = 0;
+        std::uint64_t replacements_ = 0;
 
     public:
         AssetMgr() = default;
@@ -115,6 +125,10 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t size() const {
             std::shared_lock lock(assets_mutex_);
             return loaded_assets.size();
+        }
+        [[nodiscard]] AssetCacheStats diagnostics() const {
+            std::shared_lock lock(assets_mutex_);
+            return {domain_, loaded_assets.size(), publications_, replacements_};
         }
         virtual void clear_assets() noexcept {
             // Preserve allocator identity: swapping maps with unequal, nonpropagating
@@ -149,7 +163,9 @@ namespace CE::Assets {
             // Keep this local owner until the lock has unwound. Node/rehash
             // failure may destroy an insertion candidate while still inside
             // try_emplace; that must not run its final deleter under this lock.
-            const auto entry = loaded_assets.try_emplace(key, asset).first;
+            const auto [entry, inserted] = loaded_assets.try_emplace(key, asset);
+            if (inserted)
+                ++publications_;
             std::forward<Published>(published)();
             return entry->second;
         }
@@ -160,7 +176,11 @@ namespace CE::Assets {
             spointer result;
             {
                 std::unique_lock lock(assets_mutex_);
-                auto entry = loaded_assets.try_emplace(key, spointer{}).first;
+                const auto [entry, inserted] = loaded_assets.try_emplace(key, spointer{});
+                if (inserted)
+                    ++publications_;
+                else
+                    ++replacements_;
                 retired = std::exchange(entry->second, std::move(asset));
                 result = entry->second;
             }

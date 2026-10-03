@@ -4,6 +4,7 @@
 
 #include <backends/opengl/glslprogram.h>
 #include <internals/exceptions.h>
+#include <internals/compile-time-logging.hpp>
 
 #include <fstream>
 #include <iterator>
@@ -113,6 +114,12 @@ namespace CE::Assets::ProgramDetail {
                 throw Exceptions::runtime_exception(
                     CE_HERE, "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id)
                 );
+            CE::Logger<CE::enginelog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
+                const auto diagnostic = shader_log(shader.id);
+                if (!diagnostic.empty())
+                    log.warn("subsystem=shader domain={} operation=compile outcome=diagnostics type={} bytes={}",
+                             lifetime->diagnostics().domain, kind, diagnostic.size());
+            });
             glAttachShader(program.id, shader.id);
             RenderAPIs::require_no_gl_error("Could not attach shader stage");
             attached_stages.push_back(shader.id);
@@ -130,6 +137,12 @@ namespace CE::Assets::ProgramDetail {
         RenderAPIs::require_no_gl_error("Could not query program link status");
         if (linked != GL_TRUE)
             throw Exceptions::runtime_exception(CE_HERE, "Shader program failed to link: " + program_log(program.id));
+        CE::Logger<CE::enginelog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
+            const auto diagnostic = program_log(program.id);
+            if (!diagnostic.empty())
+                log.warn("subsystem=shader domain={} operation=link outcome=diagnostics bytes={}",
+                         lifetime->diagnostics().domain, diagnostic.size());
+        });
 
         // Adopt once before any later logical-program allocations can fail.
         // From here on, only the tracked handle owns retirement of this ID.

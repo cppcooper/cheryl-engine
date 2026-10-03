@@ -6,6 +6,7 @@
 #include "shader.h"
 
 #include <assets/types/primitives/vertex.h>
+#include <core/diagnostics.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -27,7 +28,17 @@ namespace CE::Assets {
      * retirement; it is not a promise of immediate native deletion.
      */
     struct ResourceProvider {
+    private:
+        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+
+    public:
+        ResourceProvider() = default;
+        // Copying adapter configuration creates another diagnostic identity;
+        // assignment retains the destination's identity.
+        ResourceProvider(const ResourceProvider&) noexcept {}
+        ResourceProvider& operator=(const ResourceProvider&) noexcept { return *this; }
         virtual ~ResourceProvider();
+        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // decode_image() is CPU-only; create_image() and other uploads obey backend thread affinity.
         [[nodiscard]] virtual std::shared_ptr<Image> load_image(const std::filesystem::path& file);
         // Creates a fresh immutable image from owned top-to-bottom RGBA pixels.

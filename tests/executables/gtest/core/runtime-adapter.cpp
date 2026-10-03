@@ -1317,6 +1317,14 @@ TEST(asset_preparation, partial_upload_lifetime) {
         auto retained = geometry_for("kept");
         ASSERT_TRUE(retained);
         EXPECT_THROW(loader.upload(make_prepared({"complete", "failed"}), provider), CE::Exceptions::bad_alloc);
+        const auto observed = loader.diagnostics();
+        EXPECT_NE(observed.batch, 0u);
+        EXPECT_EQ(observed.provider, provider.diagnostic_id());
+        EXPECT_EQ(observed.images_completed, 1u);
+        EXPECT_EQ(observed.manifests_completed, 0u);
+        EXPECT_EQ(observed.publications, 1u);
+        EXPECT_TRUE(observed.publication_count_available);
+        EXPECT_FALSE(observed.completed);
         EXPECT_EQ(loader.manifests(), previous);
         EXPECT_EQ(geometry_for("kept"), retained);
         EXPECT_TRUE(geometry_for("complete"));

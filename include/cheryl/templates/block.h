@@ -230,6 +230,7 @@ template <typename T> struct BlockManagement {
 
     /** All pool, partition, and culling records retained for one T specialization. */
     struct State {
+        const CE::Diagnostics::DomainId domain = CE::Diagnostics::next_domain_id();
         std::tuple<std::shared_mutex, std::set<Block<T>, compare::PoolOrder<T>>> pool;
         std::tuple<std::shared_mutex, std::set<Block<T>, compare::HeadOrder<T>>> sections;
         std::tuple<std::shared_mutex, std::set<Block<T>, compare::RegistryOrder<T>>> registry;

@@ -1687,3 +1687,25 @@ platform/simulation request, and execution shutdown cases passed. Additional
 assertions verify independent domains, callback versus policy failure counts,
 unregister discard without duplicate errors, detached completion, and cancellation.
 No scheduling, capacity, FIFO, or error-propagation policy changed.
+
+### U6c — resource batches, shader reflection, and memory observations
+
+Added batch/provider/cache domains and cumulative cache publication/replacement
+counts. Preparation/upload records include elapsed time and consumed/reused entry
+counts. Last-upload observations report publication even when a manifest fails
+partway, without interpreting successful metadata as an atomic cache snapshot.
+Sampling failures remain best effort and cannot replace asset errors. Per-key reload
+records retain existing generations on failure. Reflection keeps existing queries
+and error semantics while replacing stdout tables with DEBUG/TRACE records; no
+extra event transport is required by the selected consumer. Successful compiler
+diagnostics report presence/size without shader source or driver text.
+
+U2 already removed ordinary memory miss/split/merge/return logging from transaction
+paths. Added numeric shared-byte-domain snapshots, explicit preallocation summaries,
+and a host-triggered DEBUG observer; no logger write holds collection locks.
+
+**Acceptance:** 53 focused preparation/upload/cache/material, recorded shader
+construction/reflection and memory cases passed, including partial publication
+counts, shared byte-domain accounting, existing failure propagation, and concurrent
+memory transactions. Static diff checks passed. Native debug/display/input coverage
+remains the final U6 slice.

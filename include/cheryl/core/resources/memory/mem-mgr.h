@@ -7,6 +7,14 @@
 #include <bit>
 
 namespace CE::Mem {
+    struct MemoryStats {
+        Diagnostics::DomainId domain = 0;
+        std::size_t total_bytes = 0;
+        std::size_t available_bytes = 0;
+        std::size_t owners = 0;
+        std::size_t ranges = 0;
+        std::size_t pending_release = 0;
+    };
     /** Recycles byte ranges, aligning/growing a request before checkout and tracking owners,
      * sections, and pooled remainders through AbstractManager<void>. Public operations
      * serialize bookkeeping transitions across all collections; backing allocation,
@@ -35,6 +43,10 @@ namespace CE::Mem {
         [[nodiscard]] std::shared_ptr<release_context_type> release_context() const { return release_context_; }
         // Shared byte-domain statistics; free percentage is n/a when total bytes are zero.
         [[nodiscard]] std::string stats();
+        // Shared byte-domain snapshot; no formatting/logging while collections lock.
+        [[nodiscard]] MemoryStats diagnostics() const;
+        // Explicit unlocked observer; the host chooses its sampling interval.
+        void report_diagnostics() const noexcept;
         // retrieve debug info
         [[nodiscard]] std::string debug_info();
         // return all ownership of a section containing ptr
