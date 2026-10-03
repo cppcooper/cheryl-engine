@@ -30,6 +30,8 @@ namespace CE::Assets {
             return manifests_.load(std::memory_order_acquire);
         }
         // Legacy singleton access checks its root instead of silently reusing another root.
+        // Configure on the loading owner before producers start; prefer owned Loader instances
+        // when separate roots/lifetimes are needed. get() rejects unpublished initialization.
         static Loader& get(const std::filesystem::path& root_path);
         static Loader& get();
 

@@ -646,3 +646,28 @@ removed. The available history does not establish that a removed prototype was
 its original referent. This does not close U4's allocation/noexcept or bounded
 trace-formatting work. Validation: history/source inspection and diff checks;
 no build or tests were needed for the comment removal.
+
+### U1 — implemented; execution checks pending
+
+Singleton_CTS and Singleton_CTU now publish completed construction through an
+acquire/release atomic pointer. Nonconstructing get/get_existing calls no longer
+read a unique_ptr concurrently with construction; they reject/return null until
+publication. Explicit initialize(args...) accepts one successful configuration and
+rejects repeats, including competing calls. Constructors that throw permit retry.
+CTU checks and constructs in its befriended context, so private constructors work;
+argument forwarding also accepts move-only configuration.
+
+Compatibility get(args...) still selects the first successful constructor and
+ignores later arguments. Its documented restriction is to configure argument-bearing
+instances on their owner before starting producers, using initialize when repeated
+configuration should reject. Loader retains its existing root-validation wrapper
+and owned instances; FFont and logger declarations describe explicit setup. Default
+cache/memory/pool/EventSystem/input/logger construction remains lazy. Later Type
+operations and static teardown need their own ownership/quiescence contract; an
+atomic published pointer is not a teardown lifetime pin.
+
+Added regression sources for explicit/repeated/competing initialization, pending
+publication, failed-constructor retry, private/default CTU constructors, and move-only
+arguments. Source/diff review only; compilation, regression execution, and sanitizer
+checks are pending authorization. U4 remains responsible for exception construction
+failure safety; U5 remains responsible for complete logger bootstrap/lifecycle.

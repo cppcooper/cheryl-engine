@@ -23,7 +23,8 @@ namespace CE::Assets {
         const std::array<float, num_chars_ffont> widths;
 
     public:
-        // call FFont::get(load_ffont(widths_file)) for construction
+        // Configure once with initialize(load_ffont(widths_file, provider)) before
+        // readers start. get() retrieves the published font without creating it.
         explicit FFont(const FFontData& data)
         : Font({std::get<1>(data), std::get<2>(data)}), widths(std::get<0>(data)) {}
         ~FFont() override = default;

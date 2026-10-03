@@ -21,10 +21,6 @@ Unresolved artwork metadata is tracked separately in
   [mem-mgr.h](../../include/cheryl/core/resources/memory/mem-mgr.h).
 - Define the memory statistics result when total allocation is zero before dividing
   by that total. See [mem-mgr.hpp](../../include/cheryl/core/resources/memory/mem-mgr.hpp).
-- Define initialization/operation contracts for argument-bearing singletons;
-  `std::call_once` only serializes construction, and competing first arguments
-  currently select whichever caller wins. See
-  [singleton.h](../../include/cheryl/templates/singleton.h).
 - Decide/fix exact-power-of-1024 boundaries and TiB-and-larger suffix behavior in
   `human_readable`, then add the deferred boundary cases. See
   [bytes.h](../../include/cheryl/math/bytes.h) and

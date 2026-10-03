@@ -1,54 +1,83 @@
 #pragma once
 #include <internals/exceptions.h>
 #include <ctti/detailed_nameof.hpp>
+#include <atomic>
 #include <memory>
 #include <mutex>
+#include <type_traits>
+#include <utility>
 
 /* Singleton_CTS (Compile Time Safe)
  * For simple singleton creation.
  * You can keep inheriting these all you want, it will always be the same instance they point to.
  * Uses static_assert verifying constructibility - requires public constructor(s)
- * TODO: std::call_once serializes construction only; it does not make Type's later operations thread-safe.
- * Concurrent first get(args...) calls with different arguments also make configuration depend on whichever
- * caller wins initialization, so argument-bearing singletons need an explicit initialization contract.
+ * initialize(args...) accepts exactly one successful explicit initialization; repeated calls reject.
+ * Configure argument-bearing instances on their owner thread before starting producers. get(args...)
+ * remains a compatibility accessor: the first successful construction wins and later arguments are ignored.
+ * get() constructs a default-constructible Type, otherwise it only retrieves a published instance.
+ * A failed constructor publishes nothing and permits retry. Nonconstructing reads never wait for construction.
+ * Construction/publication is synchronized; Type's later operations require its own thread-safety contract.
+ * Returned pointers/references borrow process-lifetime storage, not ownership. Quiesce all callers before
+ * static destruction; neither get_existing() nor a successful read pins an instance against teardown.
  */
 template <class Type> class Singleton_CTS {
-    static std::once_flag& construct_flag() {
-        static std::once_flag flag;
-        return flag;
-    };
-    static std::unique_ptr<Type>& get_impl() {
-        static std::unique_ptr<Type> instance;
-        return instance;
-    }
-    template <typename... Args> static void construct(Args... args) {
-        static_assert(std::is_constructible_v<Type, Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
-        std::call_once(construct_flag(), [&]() { get_impl() = std::make_unique<Type>(std::forward<Args>(args)...); });
-    }
-public:
-    // Observe an already constructed singleton during provider shutdown without creating it.
-    static Type* get_existing() noexcept { return get_impl().get(); }
+    struct Storage {
+        std::once_flag construct_flag;
+        std::unique_ptr<Type> owner;
+        std::atomic<Type*> published{nullptr};
 
-    template <typename... Args> static Type& get(Args... args) {
-        // Construct once for a matching signature. If this call cannot
-        // construct Type, it can only retrieve an already created instance.
+        ~Storage() { published.store(nullptr, std::memory_order_release); }
+    };
+
+    static Storage& storage() {
+        static Storage value;
+        return value;
+    }
+
+    template <typename... Args> static bool construct(Args&&... args) {
+        static_assert(std::is_constructible_v<Type, Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
+        auto& value = storage();
+        bool initialized = false;
+        std::call_once(value.construct_flag, [&]() {
+            value.owner = std::make_unique<Type>(std::forward<Args>(args)...);
+            value.published.store(value.owner.get(), std::memory_order_release);
+            initialized = true;
+        });
+        return initialized;
+    }
+
+public:
+    // Observe publication without creating or waiting. Null also means construction is still in progress.
+    [[nodiscard]] static Type* get_existing() noexcept { return storage().published.load(std::memory_order_acquire); }
+
+    template <typename... Args> static Type& initialize(Args&&... args) {
+        if (!construct(std::forward<Args>(args)...)) {
+            throw CE::Exceptions::bad_request(
+                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::detailed_nameof<Type>().full_name().str())
+            );
+        }
+        return *get_existing();
+    }
+
+    // Constructors must not recursively initialize/get this same singleton.
+    template <typename... Args> static Type& get(Args&&... args) {
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
         }
-        auto& up = get_impl();
-        if (!up) {
-            const std::string info = std::format("Construction of Singleton<{}> failed.", ctti::detailed_nameof<Type>().full_name().str());
-            throw CE::Exceptions::failed_operation(CE_HERE, info.c_str());
+        if (auto* instance = get_existing()) {
+            return *instance;
         }
-        return *up;
+        throw CE::Exceptions::failed_operation(
+            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::detailed_nameof<Type>().full_name().str())
+        );
     }
 };
 
 /* Singleton_CTU (Compile Time Unsafe)
- * Access Safe // Inheritance Safe
- * You can be sure that your singleton isn't being reused in new classes.
- *
  * For true singleton creation. i.e. instantiation is private/protected
+ * Type must friend Singleton_CTU<Type> so construction is accessible in this template's context.
+ * Deletion by std::unique_ptr still requires an accessible destructor. The initialization,
+ * publication, retry, borrowed-lifetime, and operation contracts are the same as Singleton_CTS.
  *
  * Example usage:
  * class Foo : public Singleton_CTU<Foo> {
@@ -59,32 +88,60 @@ public:
  * };
  */
 template <class Type> class Singleton_CTU {
-    static std::once_flag& construct_flag() {
-        static std::once_flag flag;
-        return flag;
+    struct Storage {
+        std::once_flag construct_flag;
+        std::unique_ptr<Type> owner;
+        std::atomic<Type*> published{nullptr};
+
+        ~Storage() { published.store(nullptr, std::memory_order_release); }
     };
-    static std::unique_ptr<Type>& get_impl() {
-        static std::unique_ptr<Type> instance;
-        return instance;
+
+    static Storage& storage() {
+        static Storage value;
+        return value;
     }
-    template <typename... Args> static void construct(Args... args) {
-        static_assert(std::is_constructible_v<Type, Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
-        std::call_once(construct_flag(), [&]() { get_impl() = std::make_unique<Type>(std::forward<Args>(args)...); });
+
+    // std::is_constructible/make_unique check access in their own context, not the befriended class.
+    template <typename... Args> static constexpr bool can_construct = requires(Args&&... args) {
+        new Type(std::forward<Args>(args)...);
+    };
+
+    template <typename... Args> static bool construct(Args&&... args) {
+        static_assert(can_construct<Args...>, "A constructor doesn't exist for your Type in Singleton<Type>");
+        auto& value = storage();
+        bool initialized = false;
+        std::call_once(value.construct_flag, [&]() {
+            value.owner.reset(new Type(std::forward<Args>(args)...));
+            value.published.store(value.owner.get(), std::memory_order_release);
+            initialized = true;
+        });
+        return initialized;
     }
+
 protected:
     Singleton_CTU() = default;
+
 public:
-    template <typename... Args> static Type& get(Args... args) {
-        // This accessor shares the same one-time construction policy while
-        // allowing Type to keep its own constructor nonpublic.
-        if constexpr (std::is_constructible_v<Type, Args...>) {
+    [[nodiscard]] static Type* get_existing() noexcept { return storage().published.load(std::memory_order_acquire); }
+
+    template <typename... Args> static Type& initialize(Args&&... args) {
+        if (!construct(std::forward<Args>(args)...)) {
+            throw CE::Exceptions::bad_request(
+                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::detailed_nameof<Type>().full_name().str())
+            );
+        }
+        return *get_existing();
+    }
+
+    template <typename... Args> static Type& get(Args&&... args) {
+        if constexpr (can_construct<Args...>) {
             construct(std::forward<Args>(args)...);
         }
-        auto& up = get_impl();
-        if (!up) {
-            const std::string info = std::format("Construction of Singleton<{}> failed.", ctti::detailed_nameof<Type>().full_name().str());
-            throw CE::Exceptions::failed_operation(CE_HERE, info.c_str());
+        if (auto* instance = get_existing()) {
+            return *instance;
         }
-        return *up;
+        throw CE::Exceptions::failed_operation(
+            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::detailed_nameof<Type>().full_name().str())
+        );
     }
 };

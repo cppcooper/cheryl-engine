@@ -6,6 +6,10 @@
 #include <utility>
 
 namespace CE {
+    // Default access lazily creates Log<name>. Configure custom file handlers with
+    // initialize(handlers) on the logging owner before any writer/default access;
+    // repeated explicit initialization rejects. This compatibility constructor's
+    // handlers apply only if it performs the first successful construction.
     template <const char* name> class Logger : public Singleton_CTS<Log<name>> {
     protected:
         explicit Logger(const spdlog::file_event_handlers& event_handlers = {}) { Singleton_CTS<Log<name>>::get(event_handlers); }
