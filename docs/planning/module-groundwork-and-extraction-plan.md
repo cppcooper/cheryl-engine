@@ -325,6 +325,10 @@ renderer redesign and SDK API hiding do not belong in this commit.
 
 The current bounded execution sequence is in
 [module-validation-plan.md](module-validation-plan.md).
+Its preparation includes an Engine-linked signal consumer/manual POSIX driver,
+source and dependency audits, and explicit assembly/standalone validation recipes.
+The owner selected preparation and static checks only; no executable G5 result is
+claimed by that checkpoint.
 
 Run focused checks after explicit authorization, recording each selection separately:
 

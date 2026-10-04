@@ -581,6 +581,10 @@ component extraction is not a prerequisite for UI.
   extraction, preserving the shared engine and selected owner tests.
 - [ ] Complete G5 isolation acceptance before relying on the extracted assembly's
   executable behavior.
+- [x] Prepare the Engine-linked signal acceptance check and
+  [bounded G5 validation selections](module-validation-plan.md), with source/syntax
+  audits and standalone host requirements. Builds and executable acceptance remain
+  pending; the owner selected static checks only for this pass.
 - [x] Establish optional-module selection and a standalone convention, with native/
   whole OpenGL owners and owner-local tests. Executable extraction acceptance remains
   tracked by G5.
