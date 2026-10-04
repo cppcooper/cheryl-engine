@@ -6,6 +6,33 @@ tests require the explicit request specified by AGENTS.md; preparation and stati
 checks can proceed independently. The owner selected preparation and static checks
 only for this pass; no configuration, compilation or executable tests are authorized.
 
+## Owner aggregate follow-up
+
+The owner reports that the extracted `all-tests` target compiled and ran with 393
+passing cases and 17 ignored/skipped cases. This accounts for the 410 named cases;
+the configuration, skip identities and native opt-ins were not supplied. Record
+this as owner-reported aggregate evidence without inferring the remaining G5 results.
+
+The owner requests separate complete runners for each project and a cross-project
+test owner under `projects/tests/`. Implement this as a coherent follow-up:
+
+1. Give Engine, Native GLFW and OpenGL their own aggregate under each owner's
+   `tests/all-tests/`: `engine-all-tests`, `platform-module_native-glfw-all-tests`,
+   and `graphics-module_opengl-all-tests`. Keep existing focused and manual runners.
+2. Compile each focused suite's cases as a reusable object library with its own
+   private hooks, definitions and dependencies. Separate shared test support from
+   the runner entry point so an aggregate has exactly one main. Link the same cases
+   directly into focused, owner and cross-project runners without archive extraction
+   losing test registration or duplicate case compilation.
+3. Create combined `all-tests` only in `projects/tests/`, after selected owners have
+   registered their case objects. Move the cross-project diagnostics driver there.
+   Keep the executable name/output and existing selection options; propagate native
+   acceptance dependencies through its case target, including conditional X11.
+4. Statically verify case ownership, exact before/after names and source bytes,
+   private hook scoping, conditional selections, one runner entry point and repaired
+   paths/docs. Record the new runner layout and owner-reported execution separately.
+   Do not configure, compile or run tests in this follow-up without an explicit request.
+
 ## Sequence
 
 1. Prepare a small Engine-only signal-acceptance consumer and isolated-process driver.
