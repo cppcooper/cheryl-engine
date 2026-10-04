@@ -588,6 +588,10 @@ component extraction is not a prerequisite for UI.
 - [x] Establish optional-module selection and a standalone convention, with native/
   whole OpenGL owners and owner-local tests. Executable extraction acceptance remains
   tracked by G5.
+- [x] Give each tested owner a complete aggregate and place combined `all-tests`
+  under `projects/tests/`, reusing suite objects and preserving private hooks.
+  The owner reports 393 passes and 17 ignored/skipped cases before this follow-up;
+  the revised aggregate layout has static verification only.
 - [ ] Prove the first adapter against the engine facilities it actually needs.
 - [ ] Build a requirements matrix for the selected first adapter against current
   render/resource/input/platform contracts. No dependency/library choice is made

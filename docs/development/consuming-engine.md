@@ -78,7 +78,10 @@ Normal Native GLFW consumption selects no Cheryl OpenGL/GLAD dependency; the
 OpenGL consumer selects both integration owners. CMake 4 hosts may need
 `CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned legacy dependency projects. Standalone
 module entry points and explicit null-platform selection are documented separately
-in the module guide. No executable acceptance of this graph has yet been run.
+in the module guide. The owner reports a combined `all-tests` build/run with 393
+passing cases and 17 ignored/skipped cases before the owner-aggregate follow-up.
+Separate consumer/standalone acceptance and execution of the new owner aggregates
+remain pending; [architecture validation](architecture-validation.md) records the scope.
 
 ## Standard headers in an existing build
 

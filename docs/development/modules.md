@@ -105,11 +105,29 @@ default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still n
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
 existing explicit opt-ins. Dummy engine checks do not establish module conformance.
 
-`all-tests` remains an explicitly buildable assembly of every selected owner's
-cases. `CHERYL_BUILD_ALL_TESTS=ON` includes it in the default build and CTest discovery.
-Source-specific private include/definition properties preserve each owner's test
-hooks without giving engine consumers module include paths. Focused runners have
-distinct CTest prefixes. Output executables and archives remain at the build root.
+Each owner also provides a complete GoogleTest runner under its `tests/all-tests/`:
+
+| Target | Cases |
+| --- | --- |
+| `engine-all-tests` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
+| `platform-module_native-glfw-all-tests` | Native GLFW diagnostics and, when selected, native input mapping cases. |
+| `graphics-module_opengl-all-tests` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
+| `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
+
+These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes
+owner aggregates and the combined runner in the default build and CTest discovery.
+Focused and aggregate runners have distinct CTest prefixes; select the intended
+prefix to avoid executing the same cases through multiple runners. Native/font
+opt-ins apply to owner aggregates as well as the combined runner. Manual logging
+and fatal-signal drivers remain separate from GoogleTest aggregation.
+
+Each focused suite compiles its cases into one reusable object target. Focused,
+owner and combined runners link those objects directly, preserving test registration
+and avoiding duplicate case compilation within a configuration. Private test includes
+and definitions remain on the case target; one shared runner entry point supplies
+each executable's main. No engine consumer receives module test hooks. Output
+executables and archives remain at the build root. Standalone modules provide their
+own owner aggregate without enabling other owners' test suites.
 
 `CHERYL_BUILD_CONSUMER_TESTS=ON` adds the independent Engine, selected Native GLFW
 and selected OpenGL consumers, with owner-specific first-include header probes.

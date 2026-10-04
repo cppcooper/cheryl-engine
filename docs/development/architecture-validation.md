@@ -15,9 +15,15 @@ live with their implementing owners. The owner-committed memory test file is
 unchanged. Engine headers/sources contain no GLFW/GLAD/Gainput includes or module
 imports, and common dependency discovery contains no native/graphics SDKs.
 
-These are static checks. No configure/compiler probes, builds or tests were run
-for this extracted graph. G5 executable acceptance and measured unit build/run
-cost remain pending explicit authorization. Required selections are Engine alone,
+These inventories are static checks. The initial extraction checkpoint had no
+agent-run configuration/compiler probes, builds or tests for this graph. The owner
+subsequently reported that `all-tests` compiled and ran with **393 passing cases
+and 17 ignored/skipped cases**, accounting for the 410 named cases. The configuration,
+skip identities and native opt-ins were not supplied; this is owner-reported evidence
+for the combined runner before the owner-aggregate follow-up, not an agent rerun.
+
+Remaining G5 isolation checks and measured unit build/run cost are still pending.
+Required selections are Engine alone,
 Engine + Native GLFW, and Engine + Native GLFW + OpenGL, plus standalone module
 reuse/bootstrap, owner consumer/header checks and original logging/diagnostics
 acceptance. The automatic Debug bootstrap also requires isolated native crash
@@ -36,7 +42,8 @@ records the remaining executable sequence.
 The native backpressure case now waits for a replacement native poll and a subsequent
 platform drain before asserting the next input batch. This replaces the previous
 host-scheduling assumption while retaining the full-backlog/presentation guarantee.
-It has not yet been executed in the extracted assembly.
+An opt-in execution of this case in the extracted assembly has not been recorded;
+the owner-reported aggregate result does not identify its native opt-ins or skips.
 
 The contract-role organization follow-up groups Native GLFW under
 `projects/modules/platform/` and OpenGL under `projects/modules/graphics/`.
@@ -44,6 +51,18 @@ The contract-role organization follow-up groups Native GLFW under
 their engine interfaces. The whole-owner moves preserve production headers,
 sources, tests and fixture bytes; root selection and standalone helper lookup use
 the new locations. This layout change adds no executable validation evidence.
+
+The owner-aggregate follow-up adds complete Engine, Native GLFW and OpenGL runners
+under their own `tests/all-tests/` directories and moves combined `all-tests` ownership
+to `projects/tests/`. Focused suites provide reusable case objects with private hooks
+and conditional dependencies; each runner links those objects and one shared main.
+The combined diagnostics driver moves with its cross-project owner. C++ source and
+fixture bytes, named cases, focused/manual runners and executable output locations
+are preserved. Verification of this follow-up is static only; the owner-reported run
+above predates this CMake change. The full source-selection inventory is 333 Engine,
+four Native GLFW and 73 OpenGL cases, totaling 410. Every suite source/helper remains
+declared once, and all 310 recorded headers, sources, fixtures and drivers retain
+their bytes, including the relocated diagnostics driver.
 
 ## Projects layout migration — 4 October 2026
 
@@ -167,8 +186,10 @@ nice -n 19 cmake --build build-sandbox --parallel 1
 
 These commands describe the current selected-owner assembly and require explicit
 build/test authorization. `PRE_TEST` defers GoogleTest discovery until execution.
-`CHERYL_BUILD_ALL_TESTS=ON` selects the aggregate in addition to the focused owner
-runners. Build and run one selection at a time because some cases share files;
+`CHERYL_BUILD_ALL_TESTS=ON` selects owner aggregates and the combined runner in
+addition to focused runners. Case objects are shared; choose the intended runner
+or CTest prefix to avoid duplicate executions. Build and run one selection at a time
+because some cases share files;
 avoid consecutive full builds when an existing build can supply the needed targets.
 With a usable GLFW display, enable native acceptance in the normal aggregate:
 

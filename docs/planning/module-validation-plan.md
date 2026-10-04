@@ -33,6 +33,12 @@ test owner under `projects/tests/`. Implement this as a coherent follow-up:
    paths/docs. Record the new runner layout and owner-reported execution separately.
    Do not configure, compile or run tests in this follow-up without an explicit request.
 
+Implementation and static review are complete: the full source-selection inventory
+is 333 Engine, four Native GLFW and 73 OpenGL cases, totaling 410. Original suite
+source/helper manifests and all recorded C++/fixture/driver bytes are preserved;
+the diagnostics driver moves to `projects/tests/`. The new aggregate layout has not
+been configured, built or executed by the agent.
+
 ## Sequence
 
 1. Prepare a small Engine-only signal-acceptance consumer and isolated-process driver.
@@ -123,7 +129,7 @@ separate build invocations.
 | --- | --- | --- | --- |
 | Engine only | Initial configuration above. | Targets above. | Engine consumer; focused Engine cases; logging driver; signal driver with `--release-build`. |
 | Add Native GLFW | Native ON, OpenGL OFF; native input ON, null platform OFF; GLFW X11 ON and Wayland OFF. | `cheryl-native-glfw-consumer`, `cheryl-native-glfw-tests`. | Native consumer and focused native cases; no GLAD/OpenGL selection. |
-| Add OpenGL | OpenGL ON; demo ON; aggregate ON; retain the native choices. | `cheryl-opengl-consumer`, `cheryl-opengl-tests`, `cheryl-opengl-acceptance`, `all-tests`, `demo`. | OpenGL consumer; selected aggregate with native opt-in on a usable display; diagnostics driver; finite demo runs. |
+| Add OpenGL | OpenGL ON; demo ON; aggregates ON; retain the native choices. | `cheryl-opengl-consumer`, `cheryl-opengl-tests`, `cheryl-opengl-acceptance`, `engine-all-tests`, `platform-module_native-glfw-all-tests`, `graphics-module_opengl-all-tests`, `all-tests`, `demo`. | OpenGL consumer; selected aggregate with native opt-in on a usable display; owner runner registration; diagnostics driver; finite demo runs. |
 
 Select focused Engine/native cases through their distinct CTest prefixes and run
 serially. The logging driver already runs the focused logging cases. In the full
@@ -138,7 +144,7 @@ The manual drivers consume previously built outputs:
 ```sh
 python3 projects/engine/tests/logging-acceptance/logging.py build-validation-release
 python3 projects/engine/tests/signal-acceptance/signals.py --release-build build-validation-release
-python3 projects/engine/tests/all-tests/diagnostics.py build-validation-release
+python3 projects/tests/diagnostics.py build-validation-release
 ```
 
 Run diagnostics only after the full aggregate is available; its shader-reflection
@@ -156,7 +162,9 @@ signal driver's `--debug-build` option. No display or module is needed.
 Standalone Native GLFW and OpenGL entry points are documented in
 [the module guide](../development/modules.md#standalone-modules). Enable module-local
 tests and consumers explicitly. For Native, build its consumer and focused runner;
-for OpenGL, build its consumer and focused mock runner. Each should have one Engine
+for OpenGL, build its consumer and focused mock runner. Include each standalone
+owner's complete aggregate in that combined build invocation to verify its link
+and case registration. Each should have one Engine
 target, no Engine test runners, and only its own selected tests/consumer probes.
 OpenGL's Native dependency bootstrap must not add Native tests/consumers recursively.
 
@@ -184,7 +192,7 @@ add_subdirectory("${CHERYL_NATIVE_GLFW_SOURCE}" native-glfw)
 add_subdirectory("${CHERYL_OPENGL_SOURCE}" opengl)
 ```
 
-Build the two module consumers and focused unit runners together. Verify that both
+Build the two module consumers, focused unit runners and owner aggregates together. Verify that both
 modules reuse the supplied Engine, OpenGL reuses the supplied Native GLFW, and no
 additional engine/native bootstrap directory or duplicate target is introduced.
 Record module-local CTest registration and actual consumer links. This source-target

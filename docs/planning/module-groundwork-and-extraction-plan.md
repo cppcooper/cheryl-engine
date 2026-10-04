@@ -221,7 +221,10 @@ production helper library is required just to reorganize tests.
 
 Keep costly stress, real-time and isolated-process acceptance outside the cheap
 default unit suite, still with the implementation owner. `all-tests` remains the
-broader selected assembly. If implementation ownership changes later, its tests
+broader selected assembly under `projects/tests/`; Engine, Native GLFW and OpenGL
+also have complete owner aggregates under their own `tests/all-tests/`. Runners
+reuse suite object targets, which retain their private hooks and dependencies.
+If implementation ownership changes later, its tests
 follow it; changing test dependencies alone does not transfer that responsibility.
 
 ### G1 — Freeze ownership and the migration contract
@@ -279,7 +282,8 @@ module must never compile a private copy of engine sources.
   This engine still contains native/backend code until G4.
 - Give existing test targets child directories under their owner. Update fixture,
   acceptance-script, consumer-bootstrap and documentation paths in the same units.
-  Owner CMake supplies test sources and scoped private include access to `all-tests`.
+  Owner CMake registers suite case objects for owner and cross-project aggregates;
+  private include access and definitions stay on the suite object target.
 - Preserve current cases during directory migration. Split mixed neutral/native
   input cases and separate contract assertions from implementation/integration
   checks at G4, where their ownership boundary changes. Rewrite affected fixtures

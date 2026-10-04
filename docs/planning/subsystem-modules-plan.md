@@ -76,10 +76,11 @@ cheryl-engine/
         all-tests/
         logging-tests/
         logging-acceptance/
+        signal-acceptance/
         consumer/
         include/               # Owned test helpers
         fixtures/
-        support/               # Shared test runner entry point
+        support/               # Shared test support and runner entry point
       support/
         signal-handlers/
         logging-config/
@@ -101,6 +102,7 @@ cheryl-engine/
           tests/
     apps/demo/
     dependency-checks/backward-cpp/  # Standalone external-library check
+    tests/                     # Cross-project all-tests and diagnostics driver
   cmake/                       # Shared helpers
   docs/
   extern/
@@ -109,8 +111,12 @@ cheryl-engine/
 Tests live with the library or module they exercise. Engine tests, logging checks
 and engine consumer/header probes belong under `engine/tests/`; OpenGL tests belong
 under `modules/graphics/opengl/tests/`. Each test target can own a child directory there.
-The `all-tests` runner can combine suites across owners without making the engine
-library depend on its modules.
+Each tested owner provides its own complete runner under `tests/all-tests/`:
+`engine-all-tests`, `platform-module_native-glfw-all-tests`, and
+`graphics-module_opengl-all-tests`. The combined `all-tests` belongs to
+`projects/tests/` and links the selected owners' reusable test case objects without
+making the engine library depend on its modules. Focused runners use the same
+objects; private hooks and conditional dependencies stay with their suite.
 
 Each owner publishes its public include roots with `target_include_directories`
 using paths relative to its own CMake directory. Consumers obtain those paths by
