@@ -99,9 +99,9 @@ scenario covers input-to-frame transfer, presentation, teardown and session reje
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
 Each module owns its real implementation tests: `cheryl-native-glfw-tests` and
-`cheryl-opengl-tests`. `cheryl-engine-acceptance`, `cheryl-opengl-acceptance` and
-`cheryl-logging-acceptance` are excluded from the default build unless
-`CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
+`cheryl-opengl-tests`. `cheryl-engine-acceptance`, `cheryl-opengl-acceptance`,
+`cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
+default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
 existing explicit opt-ins. Dummy engine checks do not establish module conformance.
 
@@ -124,6 +124,27 @@ silently dropping an unreferenced initializer from a static archive. The legacy
 `Cheryl::SignalHandlers` target remains available, and ordinary Engine consumers need
 no extra bootstrap link. Exception/explicit stack capture uses its existing bounded
 capture and fallback code in every build, independently of signal installation.
+
+`cheryl-signal-acceptance` links only Engine and references no engine entry point.
+Its manual POSIX driver checks the consumer's actual `NDEBUG` definition, then
+raises `SIGABRT` in a child with a 15-second timeout and core files disabled.
+The Debug case requires Backward's trace header and a stack frame; the `NDEBUG`
+case requires ordinary signal termination without that header. Sanitizer output
+alone does not satisfy the Debug check. This is separate from the standalone
+Backward dependency check and from exception/explicit trace tests.
+
+After explicit build and test authorization, build the target in the selected
+Debug and Release Engine-only directories and run:
+
+```sh
+python3 projects/engine/tests/signal-acceptance/signals.py \
+  --debug-build build-validation-debug --release-build build-validation-release
+```
+
+Either build argument can be supplied alone. The driver never configures or builds;
+it executes previously built consumers and is not registered with CTest. Windows
+crash-hook behavior requires separate acceptance. This check is prepared but has
+not been built or executed for the extracted graph.
 
 Extraction implementation and static evidence are recorded in
 [architecture validation](architecture-validation.md). Historical directory-migration

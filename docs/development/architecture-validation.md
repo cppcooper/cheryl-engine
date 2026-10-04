@@ -23,6 +23,16 @@ reuse/bootstrap, owner consumer/header checks and original logging/diagnostics
 acceptance. The automatic Debug bootstrap also requires isolated native crash
 acceptance; exception traces retain their separate existing checks.
 
+G5 preparation adds an Engine-only `cheryl-signal-acceptance` target and manual
+POSIX driver. The consumer deliberately references no engine entry point, so its
+Debug crash trace must come from Engine's transitive bootstrap object. The driver
+compares actual `NDEBUG` scope, uses timeout-bounded child processes with core files
+disabled, and distinguishes Backward output from sanitizer output. Source review
+and Python syntax inspection are preparation evidence only; neither the target nor
+its driver has been executed. The owner selected preparation and static checks only
+for this G5 pass. [The validation plan](../planning/module-validation-plan.md)
+records the remaining executable sequence.
+
 The native backpressure case now waits for a replacement native poll and a subsequent
 platform drain before asserting the next input batch. This replaces the previous
 host-scheduling assumption while retaining the full-backlog/presentation guarantee.

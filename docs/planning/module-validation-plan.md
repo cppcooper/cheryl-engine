@@ -8,11 +8,14 @@ only for this pass; no configuration, compilation or executable tests are author
 
 ## Sequence
 
-1. Add a small Engine-only signal-acceptance consumer and isolated-process driver.
+1. Prepare a small Engine-only signal-acceptance consumer and isolated-process driver.
    Its fatal-signal case links only `Cheryl::Engine` and calls no engine function,
    proving automatic bootstrap delivery despite static archive extraction. Compare
    builds with and without `NDEBUG`; exception/explicit trace checks remain separate.
    Do not use the standalone Backward dependency check as evidence for Engine.
+   Implementation: [consumer](../../projects/engine/tests/signal-acceptance/src/main.cpp)
+   and [manual POSIX driver](../../projects/engine/tests/signal-acceptance/signals.py).
+   Source and syntax review completed; build and execution remain pending.
 2. Use a fresh Release validation directory with developer logging and one
    low-priority build job. Preserve the existing CLion profiles, whose caches refer
    to another checkout path. Enable the assemblies in order in this one directory
