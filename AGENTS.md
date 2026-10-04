@@ -4,7 +4,11 @@
 
 - Do not push commits or branches to any remote unless explicitly requested.
 - Do not build or compile the project unless explicitly requested.
+- When building is permitted, make an attempt to avoid running consecutive builds.
 - Do not run tests unless explicitly requested.
+- When testing is permitted, make an attempt to avoid running consecutive tests.
+- Instead of consecutive builds and tests, make efforts to achieve the same end result in as few steps as possible.
+- If consecutive builds must be used, then reduce the process priority and or thread count involved to avoid melting the CPU.
 - Static analysis and other checks that do not require compilation are permitted.
 - Do not perform opportunistic refactoring, cleanup, formatting, or API changes merely because they are convenient while working nearby.
 - If the task reveals additional work that is related but not required for the current development unit, record it as discovered work and incorporate it into the remaining task plan at an appropriate boundary.
