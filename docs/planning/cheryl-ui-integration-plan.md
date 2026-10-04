@@ -427,6 +427,13 @@ optional UI integrations
 
 These can initially live in the Cheryl repository as optional modules and later move into separate companion repositories/packages if that becomes useful.
 
+The broader [subsystem module plan](subsystem-modules-plan.md) defines the proposed
+core-component/provider split, standalone CMake convention, Steam/input boundaries
+and extraction/test gates. This UI strategy describes toolkit adapters; the module
+plan also covers native graphics/platform providers and neutral engine facilities.
+Its architecture review precedes the skeleton. The existing Engine target remains
+the current consumer contract until the proposed Core/components are implemented.
+
 Candidate CMake targets:
 
 ```text

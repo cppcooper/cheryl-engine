@@ -566,6 +566,17 @@ Avoid extending singleton caches as the foundation for multiple domains.
 Prerequisites: U4–U8 as applicable; use the existing
 [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md) for adapter milestones.
 
+The owner requested broader subsystem modularity before creating the UI module
+skeleton. Follow [subsystem-modules-plan.md](subsystem-modules-plan.md) for the
+reviewed Core/provider/facility boundaries, Steam/input requirements, component
+test strategy and ordered M0–M10 units. M0 documents the design; M1 is the next
+build-skeleton unit. A skeleton alone does not establish a neutral Core or smaller
+test dependency closure. Generic U9 work can proceed at its stable boundaries;
+not every proposed subsystem extraction is a prerequisite for UI.
+
+- [ ] Establish the module build/standalone/compatibility convention through M1,
+  then complete the Core/provider and input boundary gates required by the selected
+  adapter before making it depend on those contracts.
 - [ ] Build a requirements matrix for the selected first adapter against current
   render/resource/input/platform contracts. No dependency/library choice is made
   by this review.
@@ -1836,3 +1847,33 @@ matrix and native GPU evidence retain their original scope. Shared queue capacit
 and per-category shutdown remain existing host contracts. Normal rotation and
 retention continue, and the migration does not relocate old files. U5–U8 remain
 complete, with the next development unit still U9. No remote push is performed.
+
+### Subsystem modules — architecture review before the skeleton
+
+The owner broadened the proposed UI module setup to Steamworks/Steam Input,
+graphics backends and other independently owned subsystems, then requested a
+thorough review and documented plan before implementation. The working tree was
+clean at the start of this review. No CMake/source/skeleton changes, configuration,
+builds or executable tests form part of this planning unit.
+
+[subsystem-modules-plan.md](subsystem-modules-plan.md) records the proposed linked
+library model, optional provider/facility modules, independent CMake consumption,
+compatibility facade boundary and extraction/testing sequence. Source inventory
+identifies 69 production implementation files excluding signal bootstrap: 52
+generic files and 17 in OpenGL, GLFW/context bridge and native input slices. The
+current 42-source aggregate and mixed test translation units explain why runtime
+filters alone cannot reduce compilation or dependency discovery.
+
+Required discovered boundaries are scheduled explicitly: provider destruction
+clears global asset managers; Memory's umbrella include reaches geometry types;
+GLFW pumping currently belongs to input polling; native assembly combines default
+Gainput input with the borrowed-input path; legacy umbrella/key identities expose
+native choices; input publication has one binding owner; and general Steam callback
+progress must not depend on admitted input polling. Existing retained-resource,
+thread-affinity, single-domain, failure and teardown contracts stay authoritative.
+
+M0 is this documented architecture review. Continue with M1 after reviewing the
+design, then validate Core-only and complete compatibility configurations before
+dependent module implementations accumulate. UI toolkit choice, Steam SDK version,
+application identity, raw-archive compatibility and the stronger ownership APIs
+remain implementation checkpoints, not capabilities claimed by a skeleton.
