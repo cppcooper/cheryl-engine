@@ -1791,3 +1791,48 @@ it is not a record destination. Keep explicit application make_default support,
 but never use global/default write shortcuts inside engine operations. Existing
 log archives remain untouched. Per-category filtering/rotation continue to use the
 existing logger configuration contract; unused categories remain lazily created.
+
+### Named log destinations — completion and acceptance
+
+The destination/compatibility foundation is committed as 970024d. Subsystem routing
+now selects the five approved categories explicitly. The 13 affected subsystem
+sources preserve their original tokens except the 36 logger-name replacements;
+messages, severities, error ownership and queue behavior are unchanged. Runtime
+input records move to os-platform, renderer/shader/native-resource records to
+rendering, and asset preparation/publication/reload records to assets. Explicit
+unknown byte returns use memory; impossible final-deleter failures use bounded
+emergency reporting. Engine-owned operations no longer use the legacy cheryl log.
+
+Static review found no production spdlog global/default write shortcuts. Named
+access retains the registry-lifetime bootstrap, and explicit application
+make_default remains supported. Isolated acceptance makes engine the default,
+replaces it with a game/native application logger, and verifies formatted, stream,
+direct and representative event records still reach their named files. It also
+checks lazy/explicit initialization, independent filtering, closed/reopened
+destinations, and the absence of cross-category or application-file leakage.
+
+Authorized focused validation passed with GCC 16.2.1, CMake 4.4.3, Ninja 1.13.2
+and Python 3.14.7:
+
+- Normal developer, sandbox developer and sandbox disabled: logging regressions
+  and all eight isolated logging scenarios pass. Disabled logging retains its
+  intentional facade queue skips while isolated native queue cases still run.
+- The same three configurations pass all 198 related integration checks. Quiet
+  session inspection verifies separate engine/input files, correlated domains,
+  bounded INFO, and input privacy. Separate resource processes verify actual
+  asset operations, shader print methods, and invalid-return memory routing,
+  including positive file assertions under their compiled severity policies.
+- Debug sandbox ASan/UBSan: focused logging regressions and all eight isolated
+  scenarios pass. LeakSanitizer execution uses the permitted environment outside
+  the sandbox, whose thread inspection restrictions prevent that check.
+- Both independent normal/sandbox consumers rebuild their actual engine archive,
+  verify exported logger-name identities/values, and exit zero. The public names
+  header adds one first-include probe, for 12 normal and 11 sandbox probes.
+- Python syntax, local documentation links, production default-write audit,
+  source token comparison and git diff whitespace checks pass.
+
+These are focused continuation checks; the previously recorded full U5 profile
+matrix and native GPU evidence retain their original scope. Shared queue capacity
+and per-category shutdown remain existing host contracts. Normal rotation and
+retention continue, and the migration does not relocate old files. U5–U8 remain
+complete, with the next development unit still U9. No remote push is performed.

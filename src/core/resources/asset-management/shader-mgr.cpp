@@ -30,11 +30,14 @@ namespace CE::Assets {
             replace_asset(key, std::move(program));
         } catch (...) {
             Diagnostics::report_outcome("assets", attempt, "program_reload", "preserved_previous");
-            CE_LOG_ERROR(CE::enginelog, "subsystem=assets domain={} cache={} operation=program_reload outcome=preserved_previous",
-                         attempt, domain_);
+            CE_LOG_ERROR(
+                CE::assetlog, "subsystem=assets domain={} cache={} operation=program_reload outcome=preserved_previous", attempt, domain_
+            );
             throw;
         }
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=assets domain={} cache={} operation=program_reload outcome=published publications={} replacements={}",
-                     attempt, domain_, diagnostics().publications, diagnostics().replacements);
+        CE_LOG_DEBUG(
+            CE::assetlog, "subsystem=assets domain={} cache={} operation=program_reload outcome=published publications={} replacements={}",
+            attempt, domain_, diagnostics().publications, diagnostics().replacements
+        );
     }
 }

@@ -46,7 +46,7 @@ namespace CE {
         glfwSetWindowSizeCallback(glfw_window_, on_window_size);
         glfwSetFramebufferSizeCallback(glfw_window_, on_framebuffer_size);
         CE_LOG_INFO(
-            CE::enginelog,
+            CE::platformlog,
             "subsystem=window domain={} operation=create mode={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
             domain_, static_cast<int>(window_mode_), logical_size_.width, logical_size_.height, framebuffer_size_.width,
             framebuffer_size_.height
@@ -107,7 +107,7 @@ namespace CE {
             const auto count = std::exchange(resize_observations_, 0);
             next_diagnostic_ = now + std::chrono::seconds{2};
             CE_LOG_DEBUG(
-                CE::enginelog,
+                CE::platformlog,
                 "subsystem=window domain={} operation=resize observations={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
                 domain_, count, logical_size_.width, logical_size_.height, framebuffer_size_.width, framebuffer_size_.height
             );
@@ -162,7 +162,7 @@ namespace CE {
         }
         window_mode_ = mode;
         if (!DisplayDetail::NativeCallbackScope::active())
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=window domain={} operation=mode value={}", domain_, static_cast<int>(mode));
+            CE_LOG_DEBUG(CE::platformlog, "subsystem=window domain={} operation=mode value={}", domain_, static_cast<int>(mode));
         // Windowed and borderless use a detached monitor; fullscreen attaches
         // the selected monitor at its video mode and refresh rate.
         switch (mode) {

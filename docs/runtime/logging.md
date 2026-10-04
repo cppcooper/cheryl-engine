@@ -1,9 +1,39 @@
 # Logging configuration and emission
 
-Cheryl keeps the existing cheryl, engine, and memory logger names. A subsystem or
-operation belongs in the record; it does not automatically create another file.
-Configure a logger on its owner before starting writers. Lazy default access remains
-available, and explicit singleton initialization rejects a second configuration.
+Cheryl groups engine records into five explicitly named destinations. Their public
+names are declared in
+[log-names.h](../../include/cheryl/core/logging/log-names.h), also included by
+core/logging.h. Default paths are relative to the configured log directory:
+
+| Name | Default file | Records |
+| --- | --- | --- |
+| CE::enginelog | logs/engine.log | Runtime lifecycle/timing, workers, dispatchers and events |
+| CE::platformlog | logs/os-platform.log | OS display/window/input services, GLFW and context selection |
+| CE::renderlog | logs/rendering.log | Renderer/shader records and native graphics resource/debug observations |
+| CE::assetlog | logs/assets.log | Asset preparation/upload, cache publication and reload |
+| CE::memlog | logs/memory.log | Allocator bookkeeping, preallocation and ownership errors |
+
+Each file retains subsystem/operation/domain fields for finer correlation. Runtime
+input capability/focus records go to os-platform, while session records stay in
+engine. engine.log is the runtime/execution timeline; other categories contain
+their own subsystem details, with no automatic aggregate mirror.
+
+Every engine write selects its category explicitly. Changing spdlog's default
+logger, including through an application's Log::make_default(), does not redirect
+engine records. Logger::get/initialize reads default_logger solely to establish
+registry lifetime before singleton storage; emission uses its own named resource.
+Required native/noexcept/logger failures use bounded stderr independently of any
+default or file destination.
+
+The existing enginelog, memlog and ce_log_name symbols retain their identities and
+values. CELog/Logger<CE::ce_log_name> remains an explicit legacy cheryl destination
+for source compatibility. Engine-owned operations no longer create cheryl.log;
+an application that explicitly uses the legacy destination still creates it.
+The destination migration does not move, merge, delete or rename existing files
+and backups. Normal configured rotation and retention still apply.
+
+Configure each used logger on its owner before starting writers. Lazy named access
+remains available, and explicit singleton initialization rejects a second configuration.
 Backend/file callbacks suppress recursive ordinary writes and reject logger
 acquisition, initialization, and lifecycle reentry before entering locks.
 
@@ -54,6 +84,26 @@ be a nonempty filename component. Invalid levels/rotation limits are rejected
 before file/registry side effects. Relative directories, including an empty path
 for the working directory, resolve once to an absolute normalized path; reopening
 keeps that destination if the application changes its working directory.
+
+Configuration is per category. Settings previously applied only to enginelog do
+not configure the new OS-platform, rendering or asset destinations. Configure
+them explicitly before first use when selecting a shared directory or overrides:
+
+```cpp
+#include <cheryl/core/logging.h>
+
+auto config = CE::LogConfig::for_logger(CE::platformlog);
+config.directory = "logs";
+CE::Logger<CE::platformlog>::initialize(spdlog::file_event_handlers{}, config);
+```
+
+Use the corresponding name for engine, rendering, assets and memory, allowing
+each category to retain its own preset or overrides. Categories open lazily;
+unused categories need not create files, while explicitly initializing an off
+category still opens its file. Stop all producers, then close every used category
+on the host's logging owner. Completed close and retained-resource behavior are
+unchanged. Additional categories share the same pool/worker and can delay one
+another; separate files do not isolate queue saturation or slow destinations.
 
 Owned logs accept Log(handlers, config). Singleton users can call
 Logger<name>::initialize(spdlog::file_event_handlers{}, config) before starting
@@ -211,9 +261,9 @@ reported once per newly observed range across categories, including flush loss.
 The final pool deleter drains/joins accepted work and reports any outstanding loss
 range, without ordinary logger use or queued pool ownership. flush releases its
 lifecycle lock before a potentially blocking queue submission.
-Executable U5 acceptance remains the gate for broad subsystem integration.
-The remaining contract and ordered tasks are recorded in the
-[development plan](../planning/develop-review-and-development-plan.md#remaining-u5-work--queue-behavior-and-backend-containment).
+Executable U5 acceptance passed before broad subsystem integration.
+The contract and execution evidence are recorded in the
+[development plan](../planning/develop-review-and-development-plan.md#u5-executable-gate-and-u6-implementation-boundaries).
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
 External native owners must not continue producing after facade teardown.
@@ -237,22 +287,25 @@ record ordering, mixed per-Log policies, retained selection after reopen, and Bl
 waiting for capacity. Invalid policy values reject before file/registry effects.
 The held-backend release guard runs before producer joins and logger cleanup on
 assertion failure. The blocking case includes a bounded scheduling observation;
-isolated timeout/fault-injection acceptance remains separate work.
+isolated processes provide the timeout and fault-injection acceptance boundary.
 Additional sources cover independently throwing close handlers, startup exceptions
 with failing cleanup, non-standard file formatters, standard console formatters,
 continued healthy-destination output, cumulative failure counts, and close/reopen
-recovery. These sources have not been compiled or run.
-Compile/link execution and the profile matrix remain unexecuted; no compilation
-or tests were authorized. Executable saturation, sink failures, and shutdown require
-separate acceptance as the remaining lifecycle units land.
+recovery. The authorized U5 normal/sandbox profile matrix and supplementary
+ASan/UBSan checks passed; the [development plan](../planning/develop-review-and-development-plan.md#u5-executable-gate-and-u6-implementation-boundaries)
+records the execution evidence and limits. Further build/test runs require the
+authorization specified by AGENTS.md.
 
 The standalone cheryl-logging-acceptance target and
 [logging.py](../../tests/acceptance/logging.py) run fault, failed rotation, full-queue
-native reentry, discarded record/flush, retained clone, static teardown, and fatal
+native reentry, discarded record/flush, retained clone, named category routing,
+static teardown, and fatal
 callback destruction scenarios in independent processes with a 30-second timeout.
 The runner uses already-built binaries, runs logging.* regressions serially in
 temporary working directories, verifies final file content/order and loss reports,
 and expects the defined fatal ownership case to exit 86 through a test terminate
 handler. It performs no configuration/build. See
 [logging-acceptance.md](../development/logging-acceptance.md) for the profile matrix
-and the authorization gate. Preparing sources is not executed acceptance.
+and the authorization gate. Named-routing acceptance replaces the application's
+default logger, verifies formatted/stream/direct engine writes stay in their own
+files, and checks independent filtering and closed/reopened category behavior.

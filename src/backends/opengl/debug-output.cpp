@@ -88,12 +88,12 @@ namespace CE::RenderAPIs::RendererDetail {
         next_report_ = now + std::chrono::seconds{2};
         if (stats_.high > reported_high_)
             CE_LOG_ERROR(
-                CE::enginelog, "subsystem=native_debug domain={} operation=summary high={} new={} last_id={} source={} type={}",
+                CE::renderlog, "subsystem=native_debug domain={} operation=summary high={} new={} last_id={} source={} type={}",
                 stats_.domain, stats_.high, stats_.high - reported_high_, stats_.last_id, stats_.last_source, stats_.last_type
             );
         if (stats_.medium > reported_medium_)
             CE_LOG_WARN(
-                CE::enginelog, "subsystem=native_debug domain={} operation=summary medium={} new={} filtered={}", stats_.domain,
+                CE::renderlog, "subsystem=native_debug domain={} operation=summary medium={} new={} filtered={}", stats_.domain,
                 stats_.medium, stats_.medium - reported_medium_, stats_.filtered
             );
         reported_high_ = stats_.high;

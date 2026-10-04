@@ -114,7 +114,7 @@ namespace CE::Assets::ProgramDetail {
                 throw Exceptions::runtime_exception(
                     CE_HERE, "Shader stage failed to compile (" + file.string() + "): " + shader_log(shader.id)
                 );
-            CE::Logger<CE::enginelog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
+            CE::Logger<CE::renderlog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
                 const auto diagnostic = shader_log(shader.id);
                 if (!diagnostic.empty())
                     log.warn("subsystem=shader domain={} operation=compile outcome=diagnostics type={} bytes={}",
@@ -137,7 +137,7 @@ namespace CE::Assets::ProgramDetail {
         RenderAPIs::require_no_gl_error("Could not query program link status");
         if (linked != GL_TRUE)
             throw Exceptions::runtime_exception(CE_HERE, "Shader program failed to link: " + program_log(program.id));
-        CE::Logger<CE::enginelog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
+        CE::Logger<CE::renderlog>::write_lazy<ctlog::WARNING_>([&](auto& log) {
             const auto diagnostic = program_log(program.id);
             if (!diagnostic.empty())
                 log.warn("subsystem=shader domain={} operation=link outcome=diagnostics bytes={}",

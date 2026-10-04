@@ -42,6 +42,10 @@ Independent processes exercise standard/non-standard sink log/flush failures,
 failed rotation leaving a closed file, saturated recursive native submission,
 Block and DiscardNew loss behavior, discarded flush requests, retained clones,
 static singleton/pool teardown, and fatal final owner destruction from a callback.
+Named-routing acceptance separately checks the five engine files, formatted/stream/
+direct named writes, category filtering and closed/reopened behavior after the
+application replaces its default logger. Category creation must not replace that
+default, and engine records must never appear in the application destinations.
 The runner enforces a 30-second timeout, checks surviving record order/content,
 checks shared loss output, and verifies the fatal case's deliberate exit code.
 Timeouts and nonzero results are failures, not accepted limitations. Native GPU or

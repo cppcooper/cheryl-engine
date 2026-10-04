@@ -225,7 +225,7 @@ namespace CE::Input {
         glfwSetScrollCallback(handle, on_scroll);
         observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
         CE_LOG_DEBUG(
-            CE::enginelog, "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", domain_,
+            CE::platformlog, "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", domain_,
             window_->diagnostic_id(), keyboard_id_, mouse_id_, gamepad_id_, observed_window_focus_
         );
     }
@@ -241,7 +241,7 @@ namespace CE::Input {
         const auto focused = glfwGetWindowAttrib(window_->native_handle(), GLFW_FOCUSED) == GLFW_TRUE;
         if (focused != observed_window_focus_) {
             observed_window_focus_ = focused;
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=input domain={} operation=window_focus focused={}", domain_, focused);
+            CE_LOG_DEBUG(CE::platformlog, "subsystem=input domain={} operation=window_focus focused={}", domain_, focused);
         }
         const auto size = window_->logical_size();
         const auto width = std::max(size.width, 1);
@@ -264,7 +264,7 @@ namespace CE::Input {
         if (available != observed_gamepad_available_) {
             observed_gamepad_available_ = available;
             CE_LOG_DEBUG(
-                CE::enginelog, "subsystem=input domain={} operation=device_availability device={} available={}", domain_, gamepad_id_,
+                CE::platformlog, "subsystem=input domain={} operation=device_availability device={} available={}", domain_, gamepad_id_,
                 available
             );
         }

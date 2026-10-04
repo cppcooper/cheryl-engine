@@ -42,7 +42,7 @@ namespace CE {
             throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW");
         if (initialized)
             CE_LOG_INFO(
-                CE::enginelog, "subsystem=glfw domain={} operation=initialize outcome=ready platform={}",
+                CE::platformlog, "subsystem=glfw domain={} operation=initialize outcome=ready platform={}",
                 DisplayDetail::glfw_diagnostics().domain, glfwGetPlatform()
             );
     }
@@ -89,7 +89,7 @@ namespace CE {
             }
         }
         CE_LOG_INFO(
-            CE::enginelog, "subsystem=display domain={} operation=monitor_snapshot count={}", DisplayDetail::glfw_diagnostics().domain,
+            CE::platformlog, "subsystem=display domain={} operation=monitor_snapshot count={}", DisplayDetail::glfw_diagnostics().domain,
             monitors_.size()
         );
     }

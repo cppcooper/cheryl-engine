@@ -1,7 +1,10 @@
 # Subsystem diagnostics
 
-Engine operational records use the existing engine category and target-consistent
-logging profile. The application owns early explicit configuration, producer stop,
+Engine operational records use the named engine, os-platform, rendering, assets,
+and memory destinations described in [logging.md](logging.md), with the existing
+target-consistent logging profile. All writes name their destination explicitly;
+the application's default logger cannot redirect them. The application owns early
+explicit configuration of each used category, producer stop,
 and final logger close. Closed/degraded sinks and stripped levels do not change
 engine exceptions or futures. Required failure context uses bounded emergency
 output independently of logging.
@@ -18,6 +21,8 @@ supersession, skipped publication, dropped timing batches/duration, peak polling
 backlog, and resize observations. Normal ticks/frames emit no INFO records. Session
 start/capabilities/end and one final DEBUG summary are bounded by session lifecycle;
 input observations count records and focus epochs without retaining their payloads.
+Input capability/focus records reside in os-platform.log; lifecycle/timing/frame
+summaries reside in engine.log.
 Each runtime owner emits its own DEBUG summary at most every two seconds, outside
 the scheduler lock. Repeated lag drops and polling capacity held for at least
 100 milliseconds produce coalesced WARN records at that cadence; recovery produces
@@ -120,8 +125,10 @@ callback has no captured owner and ignores commands after its scope disappears,
 including after renderer destruction. This avoids a dangling renderer pointer
 without taking ownership of host callback state.
 
-The quiet-session acceptance runner checks bounded INFO records, matching runtime
-domains, no normal WARN/ERROR output, and absence of input payloads:
+The diagnostics acceptance runner checks bounded INFO records in engine/os-platform,
+matching runtime/input domains, no normal WARN/ERROR output, and absence of input
+payloads. A separate process verifies actual asset, shader reflection and memory
+ownership records use their named files, without initializing the legacy destination:
 
 ```sh
 python3 tests/acceptance/diagnostics.py path/to/developer-build

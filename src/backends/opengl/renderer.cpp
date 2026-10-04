@@ -120,9 +120,9 @@ namespace CE::RenderAPIs {
                 debug_output_->start(resources_->diagnostics().domain);
                 const auto stats = debug_output_->diagnostics();
                 if (!stats.supported)
-                    CE_LOG_WARN(CE::enginelog, "subsystem=native_debug domain={} operation=enable outcome=unsupported", stats.domain);
+                    CE_LOG_WARN(CE::renderlog, "subsystem=native_debug domain={} operation=enable outcome=unsupported", stats.domain);
                 CE_LOG_INFO(
-                    CE::enginelog, "subsystem=native_debug domain={} operation=capabilities supported={} installed={} host_owned={}",
+                    CE::renderlog, "subsystem=native_debug domain={} operation=capabilities supported={} installed={} host_owned={}",
                     stats.domain, stats.supported, stats.installed, stats.host_owned
                 );
             } catch (...) {
@@ -130,7 +130,7 @@ namespace CE::RenderAPIs {
             }
         }
         CE_LOG_INFO(
-            CE::enginelog, "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
+            CE::renderlog, "subsystem=renderer domain={} operation=initialize outcome=ready backend=opengl major={} minor={} baseline=3.3",
             resources_->diagnostics().domain, native_major_, native_minor_
         );
     }
@@ -154,10 +154,14 @@ namespace CE::RenderAPIs {
         if (!destroying_) {
             if (debug_output_)
                 debug_output_->report(true);
-            CE_LOG_INFO(CE::enginelog, "subsystem=renderer domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain);
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=native_resources domain={} operation=shutdown tracked={} deleted={} abandoned={}",
-                         resources_->diagnostics().domain, resources_->diagnostics().tracked,
-                         resources_->diagnostics().deleted, resources_->diagnostics().abandoned);
+            CE_LOG_INFO(
+                CE::renderlog, "subsystem=renderer domain={} operation=shutdown outcome=completed", resources_->diagnostics().domain
+            );
+            CE_LOG_DEBUG(
+                CE::renderlog, "subsystem=native_resources domain={} operation=shutdown tracked={} deleted={} abandoned={}",
+                resources_->diagnostics().domain, resources_->diagnostics().tracked, resources_->diagnostics().deleted,
+                resources_->diagnostics().abandoned
+            );
         }
     }
 

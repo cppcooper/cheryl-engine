@@ -122,7 +122,7 @@ namespace CE::GFramework {
                 observed_focus_epoch_ = focus->epoch;
                 ++diagnostics_.focus_changes;
                 CE_LOG_DEBUG(
-                    CE::enginelog, "subsystem=input domain={} operation=focus target={} epoch={} routing={}", diagnostics_.domain,
+                    CE::platformlog, "subsystem=input domain={} operation=focus target={} epoch={} routing={}", diagnostics_.domain,
                     focus->target, focus->epoch, static_cast<int>(focus->routing)
                 );
             }
@@ -228,9 +228,11 @@ namespace CE::GFramework {
             input_started = true;
             phase_ = "input_initialize";
             input.initialize(window);
-            CE_LOG_INFO(CE::enginelog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
-                        diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
-                        input.supports(Input::InputMode::Text), input.supports_focus());
+            CE_LOG_INFO(
+                CE::platformlog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
+                diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
+                input.supports(Input::InputMode::Text), input.supports_focus()
+            );
             game_started = true;
             phase_ = "game_init";
             game_.init();
@@ -413,9 +415,11 @@ namespace CE::GFramework {
             input_started = true;
             phase_ = "input_initialize";
             input.initialize(window);
-            CE_LOG_INFO(CE::enginelog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
-                        diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
-                        input.supports(Input::InputMode::Text), input.supports_focus());
+            CE_LOG_INFO(
+                CE::platformlog, "subsystem=input domain={} operation=capabilities state={} events={} text={} focus={}",
+                diagnostics_.domain, input.supports(Input::InputMode::State), input.supports(Input::InputMode::Events),
+                input.supports(Input::InputMode::Text), input.supports_focus()
+            );
             game_started = true;
             phase_ = "game_init";
             game_.init();

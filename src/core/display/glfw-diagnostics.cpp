@@ -75,7 +75,7 @@ namespace CE::DisplayDetail {
                 Diagnostics::report_outcome("glfw", snapshot.domain, operation, "native_error", snapshot.last_code);
             else
                 CE_LOG_ERROR(
-                    CE::enginelog, "subsystem=glfw domain={} operation={} outcome=native_error code={} errors={} new={}", snapshot.domain,
+                    CE::platformlog, "subsystem=glfw domain={} operation={} outcome=native_error code={} errors={} new={}", snapshot.domain,
                     operation, snapshot.last_code, snapshot.errors, snapshot.errors - prior
                 );
         }

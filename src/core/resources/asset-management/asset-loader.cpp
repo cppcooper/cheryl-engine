@@ -57,10 +57,10 @@ namespace CE::Assets {
     PreparedAssets Loader::prepare() const {
         PreparedAssets result;
         const auto started = std::chrono::steady_clock::now();
-        CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} operation=prepare_begin", result.batch);
+        CE_LOG_INFO(CE::assetlog, "subsystem=assets domain={} operation=prepare_begin", result.batch);
         const auto failed = [&] {
             Diagnostics::report_outcome("assets", result.batch, "prepare", "failed");
-            CE_LOG_ERROR(CE::enginelog, "subsystem=assets domain={} operation=prepare outcome=failed", result.batch);
+            CE_LOG_ERROR(CE::assetlog, "subsystem=assets domain={} operation=prepare outcome=failed", result.batch);
         };
         try {
             if (!fs::is_directory(root_path_))
@@ -104,9 +104,11 @@ namespace CE::Assets {
                 for (const auto& tileset : manifest.tilesets)
                     validate_grid_bounds(tileset.grid, tileset.texture, dimensions.at(tileset.texture), tileset.id());
             }
-            CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} operation=prepare_end manifests={} images={} duration_us={}",
-                        result.batch, result.manifests.size(), result.images.size(),
-                        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
+            CE_LOG_INFO(
+                CE::assetlog, "subsystem=assets domain={} operation=prepare_end manifests={} images={} duration_us={}", result.batch,
+                result.manifests.size(), result.images.size(),
+                std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count()
+            );
             return result;
         } catch (const fs::filesystem_error& error) {
             failed();
@@ -158,19 +160,27 @@ namespace CE::Assets {
                 Diagnostics::report_failure("asset publication observation", std::current_exception());
             }
             if (completed) {
-                CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload_end images={} manifests={} publications={} duration_us={}",
-                            observed.batch, observed.provider, observed.images_completed, observed.manifests_completed, observed.publications,
-                            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count());
+                CE_LOG_INFO(
+                    CE::assetlog,
+                    "subsystem=assets domain={} provider={} operation=upload_end images={} manifests={} publications={} duration_us={}",
+                    observed.batch, observed.provider, observed.images_completed, observed.manifests_completed, observed.publications,
+                    std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count()
+                );
             } else {
                 const auto outcome = !observed.publication_count_available ? "publication_unknown" : observed.publications ? "partial" : "failed";
                 Diagnostics::report_outcome("assets", observed.batch, "upload", outcome, observed.publications);
-                CE_LOG_ERROR(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload outcome={} images={} manifests={} publications={} count_available={}",
-                             observed.batch, observed.provider, outcome, observed.images_completed,
-                             observed.manifests_completed, observed.publications, observed.publication_count_available);
+                CE_LOG_ERROR(
+                    CE::assetlog,
+                    "subsystem=assets domain={} provider={} operation=upload outcome={} images={} manifests={} publications={} count_available={}",
+                    observed.batch, observed.provider, outcome, observed.images_completed, observed.manifests_completed,
+                    observed.publications, observed.publication_count_available
+                );
             }
         };
-        CE_LOG_INFO(CE::enginelog, "subsystem=assets domain={} provider={} operation=upload_begin images={} manifests={}",
-                    observed.batch, observed.provider, prepared.images.size(), prepared.manifests.size());
+        CE_LOG_INFO(
+            CE::assetlog, "subsystem=assets domain={} provider={} operation=upload_begin images={} manifests={}", observed.batch,
+            observed.provider, prepared.images.size(), prepared.manifests.size()
+        );
         try {
             AssetCacheContext::verify_provider(provider);
             before = publications();

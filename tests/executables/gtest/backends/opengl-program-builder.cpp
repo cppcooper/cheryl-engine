@@ -4,11 +4,15 @@
 #include <testing/failing-memory-resource.h>
 
 #include <gtest/gtest.h>
+#include <core/logging.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -402,6 +406,36 @@ TEST(opengl_program_builder, diagnostic_reflection_failure) {
         native.lifetime->collect();
         native.expect_all_destroyed_once();
     }
+}
+
+TEST(opengl_program_builder, reflection_output) {
+    auto& log = CE::Logger<CE::renderlog>::get();
+    const auto configuration = log.initial_configuration();
+    const auto path = log.get_file_path();
+    EXPECT_EQ(path.filename(), "rendering.log");
+    log.set_level_logger(spdlog::level::debug);
+    log.set_level_filesink(spdlog::level::debug);
+    ProgramConstructionRecorder native;
+    auto program = ProgramDetail::link_program(native.lifetime, ProgramConstructionRecorder::stages());
+    EXPECT_NO_THROW(program->print_active_uniforms());
+    EXPECT_NO_THROW(program->print_active_attribs());
+    program.reset();
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
+
+    log.close(std::chrono::seconds{2});
+    std::ifstream file(path);
+    const std::string records{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+    for (const auto* marker : {"operation=reflection kind=uniforms count=1", "operation=reflection kind=attributes count=0"}) {
+        if constexpr (ctlog::enabled(ctlog::DEBUG_))
+            EXPECT_NE(records.find(marker), std::string::npos);
+        else
+            EXPECT_EQ(records.find(marker), std::string::npos);
+    }
+    file.close();
+    log.reopen();
+    log.set_level_logger(configuration.logger_level);
+    log.set_level_filesink(configuration.file_level);
 }
 
 TEST(opengl_program_builder, legacy_location_failure) {

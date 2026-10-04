@@ -16,7 +16,7 @@ namespace CE::RenderAPIs {
         if (swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
         CE_LOG_DEBUG(
-            CE::enginelog, "subsystem=context domain={} operation=selection swap_interval={}", window_.diagnostic_id(), swap_interval_
+            CE::platformlog, "subsystem=context domain={} operation=selection swap_interval={}", window_.diagnostic_id(), swap_interval_
         );
     }
 
