@@ -1,6 +1,7 @@
 #pragma once
 #include "typedefs.h"
 #include <internals/celog.h>
+#include <internals/compile-time-logging.hpp>
 #include <internals/failure-reporting.h>
 
 #include <exception>
@@ -16,7 +17,7 @@ namespace CE::Mem {
         void return_chunk(const HeapBlock& returned) {
             if (!BlockTransactions<void>::return_block(this->state_, returned)) {
                 // Reporting is outside the bookkeeping locks.
-                CELog::critical("Cannot return Block. No such block exists. Block: {}", returned);
+                CE_LOG_CRITICAL(CE::memlog, "Cannot return Block. No such block exists. Block: {}", returned);
                 throw Exceptions::failed_operation(CE_HERE, "Memory Manager was returned an unknown block");
             }
         }

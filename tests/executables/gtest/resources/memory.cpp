@@ -2,13 +2,17 @@
 #include <array>
 #include <atomic>
 #include <barrier>
+#include <chrono>
+#include <core/logging.h>
 #include <core/resources/memory.h>
 #include <core/resources/memory/managed-block.hpp>
 #include <core/resources/objects/object-construction.hpp>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <internals/macros/int-literals.h>
+#include <iterator>
 #include <limits>
 #include <random>
 #include <set>
@@ -224,10 +228,28 @@ TEST(memory, partial_returns) {
 TEST(memory, duplicate_returns) {
     // Once a checkout has been returned, a second return of the same block fails.
     using namespace CE;
+    auto& log = Logger<memlog>::get();
+    const auto configuration = log.initial_configuration();
+    const auto path = log.get_file_path();
+    EXPECT_EQ(path.filename(), "memory.log");
+    log.set_level_logger(spdlog::level::critical);
+    log.set_level_filesink(spdlog::level::critical);
     auto& manager = Mem::ExactMMgr::get();
     const auto block = manager.checkout_chunk(64, 64);
     manager.return_chunk(block);
     EXPECT_THROW(manager.return_chunk(block), Exceptions::failed_operation);
+
+    log.close(std::chrono::seconds{2});
+    std::ifstream file(path);
+    const std::string records{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+    if constexpr (ctlog::enabled(ctlog::FATAL_))
+        EXPECT_NE(records.find("Cannot return Block. No such block exists."), std::string::npos);
+    else
+        EXPECT_EQ(records.find("Cannot return Block. No such block exists."), std::string::npos);
+    file.close();
+    log.reopen();
+    log.set_level_logger(configuration.logger_level);
+    log.set_level_filesink(configuration.file_level);
 }
 
 TEST(memory, alignment_on_reuse) {

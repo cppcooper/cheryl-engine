@@ -1,5 +1,6 @@
 #pragma once
 #include "celog.h"
+#include "failure-reporting.h"
 #include <math/pointers.h>
 
 namespace CE::ptr {
@@ -17,7 +18,8 @@ namespace CE::ptr {
             if (p.get()) {
                 d(ptr);
             } else {
-                CELog::critical("We've made it to unreachable code.");
+                // Final deleters cannot initialize or block on an ordinary log.
+                Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
                 std::unreachable();
             }
         });
@@ -28,7 +30,8 @@ namespace CE::ptr {
             if (p.get()) {
                 d(ptr);
             } else {
-                CELog::critical("We've made it to unreachable code.");
+                // Final deleters cannot initialize or block on an ordinary log.
+                Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
                 std::unreachable();
             }
         });

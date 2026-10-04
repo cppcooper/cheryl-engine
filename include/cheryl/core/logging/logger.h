@@ -6,8 +6,9 @@
 #include <utility>
 
 namespace CE {
-    // Default access lazily creates Log<name>. Configure with initialize(handlers,
-    // config) on the logging owner before any writer/default access;
+    // Named access lazily creates Log<name>; writes never resolve the host's default
+    // logger. Configure with initialize(handlers, config) on the logging owner
+    // before any writer/lazy access;
     // repeated explicit initialization rejects. This compatibility constructor's
     // handlers/config apply only if it performs the first successful construction.
     template <const char* name> class Logger : public Singleton_CTS<Log<name>> {
@@ -21,6 +22,7 @@ namespace CE {
             LogDetail::reject_backend_reentry("acquire a logger");
             // Initialize the registry before singleton storage so it outlives
             // facade teardown, rather than first using it inside Log construction.
+            // This establishes registry lifetime only; it does not select a write destination.
             (void)spdlog::default_logger();
             return Singleton_CTS<Log<name>>::get(std::forward<Args>(args)...);
         }

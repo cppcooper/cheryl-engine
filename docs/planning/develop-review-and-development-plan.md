@@ -1761,3 +1761,33 @@ consumer contracts. Installed package/export, TSan configuration, and additional
 platform validation remain explicit later work; Linux/X11 and ASan/UBSan evidence
 does not establish those capabilities. The individual implementation commits remain
 intact and no remote push is part of this continuation.
+
+### Named log destinations — implementation plan
+
+The owner approved five destinations: engine.log for runtime/execution/events,
+os-platform.log for OS display/window/input services, rendering.log for graphics,
+shaders and native graphics lifetimes, assets.log for preparation/publication/reload,
+and memory.log for allocator bookkeeping and ownership. All production writes must
+select a named logger explicitly; changing the application's default must never
+redirect engine records. The initial working tree is clean.
+
+1. Publish the existing and new stable logger names through a public logging
+   header, retaining existing symbol identities and the explicit legacy CELog/
+   cheryl destination for source compatibility. Engine-owned writes stop using
+   that legacy destination. Required pointer-deleter failures use bounded emergency
+   reporting; explicit invalid byte returns report through memory after unlock.
+2. Move existing subsystem records to their named destinations without changing
+   messages, thresholds, error ownership, queue policy, or lifecycle. Runtime input
+   records belong to os-platform while runtime/execution/event records remain in
+   engine. These files share the current queue; no aggregate mirror is introduced.
+3. Add isolated routing/default-replacement/closed-destination acceptance, update
+   quiet-session inspection for the split files, and verify actual asset/render
+   output. Document host configuration and closing every used category. Run the
+   authorized focused normal/sandbox and stripped-profile logging/integration
+   checks, then commit the coherent destination/compatibility and routing units.
+
+Registry initialization's default_logger() call establishes safe static lifetime;
+it is not a record destination. Keep explicit application make_default support,
+but never use global/default write shortcuts inside engine operations. Existing
+log archives remain untouched. Per-category filtering/rotation continue to use the
+existing logger configuration contract; unused categories remain lazily created.

@@ -18,6 +18,7 @@ set(consumer_headers
     cheryl/core/display/display-system-interface.h
     cheryl/core/rendering/render-frame.h
     cheryl/core/game-framework/game-runtime.h
+    cheryl/core/logging/log-names.h
     cheryl/core/logging/logger.h
     cheryl/core/resources/asset-management/asset-loader.h
     cheryl/assets/resources/resource-provider.h

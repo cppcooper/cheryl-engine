@@ -1,7 +1,13 @@
 #include <core/logging/logger.h>
+#include <core/logging/log-names.h>
+#include <core/subsystems/event-bus.h>
+#include <internals/compile-time-logging.hpp>
 #include <internals/failure-reporting.h>
 
+#include <spdlog/sinks/basic_file_sink.h>
+
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
@@ -17,6 +23,7 @@ namespace {
     constexpr char owner_name[] = "isolated-owner";
     constexpr char target_name[] = "isolated-target";
     constexpr char static_name[] = "isolated-static";
+    constexpr char game_name[] = "app-game";
 
     void require(const bool condition, const char* message) {
         if (!condition)
@@ -31,6 +38,146 @@ namespace {
         result.console_level = spdlog::level::off;
         result.overflow_policy = discard ? CE::LogOverflowPolicy::DiscardNew : CE::LogOverflowPolicy::Block;
         return result;
+    }
+
+    struct RestoreDefault {
+        const std::shared_ptr<spdlog::logger> original = spdlog::default_logger();
+
+        ~RestoreDefault() {
+            try {
+                spdlog::set_default_logger(original);
+            } catch (...) {
+                CE::Diagnostics::report_failure("isolated default restoration", std::current_exception());
+            }
+        }
+    };
+
+    struct RestoreDirectory {
+        const std::filesystem::path original = std::filesystem::current_path();
+
+        ~RestoreDirectory() {
+            std::error_code ignored;
+            std::filesystem::current_path(original, ignored);
+        }
+    };
+
+    template <const char* name> void named_writes(const std::string_view phase) {
+        CE_LOG_WARN(name, "named-formatted category={} phase={}", name, phase);
+        UWARN(name) << "named-stream category=" << name << " phase=" << phase;
+        CE::Logger<name>::warn("named-direct category={} phase={}", name, phase);
+    }
+
+    template <const char* name> void prepare_named(const std::filesystem::path& directory) {
+        CE::Logger<name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
+        CE::Logger<name>::set_pattern("[%n] [%l] %v");
+    }
+
+    template <const char* name> void acquire_named() {
+        // First ordinary acquisition retains the normal default directory/profile.
+        auto& log = CE::Logger<name>::get();
+        require(log.initial_configuration().directory == std::filesystem::current_path() / "logs", "lazy category changed directory");
+        log.set_level_logger(spdlog::level::warn);
+        log.set_level_filesink(spdlog::level::warn);
+        log.set_level_stdsink(spdlog::level::off);
+        log.set_pattern("[%n] [%l] %v");
+    }
+
+    void observe_events() {
+        CE::Logger<CE::enginelog>::set_level_logger(spdlog::level::debug);
+        CE::Logger<CE::enginelog>::set_level_filesink(spdlog::level::debug);
+        CE::SubSystems::EventBus bus;
+        int calls = 0;
+        const auto registration = bus.register_listener("isolated-secret-event", [&](std::any) { ++calls; });
+        bus.dispatch("isolated-secret-event", "isolated-secret-payload");
+        require(calls == 1, "representative engine event did not run");
+        bus.report_diagnostics();
+        require(bus.unregister_and_wait(registration), "representative listener did not unregister");
+    }
+
+    void named_routing(const std::filesystem::path& supplied_directory) {
+        RestoreDirectory restore_directory;
+        RestoreDefault restore_default;
+        const auto directory = std::filesystem::absolute(supplied_directory);
+        std::filesystem::current_path(directory);
+        const auto engine_directory = directory / "logs";
+        CE::Log<game_name> game{{}, configuration(directory)};
+        game.set_pattern("[%n] [%l] %v");
+        game.make_default();
+        const auto* game_default = spdlog::default_logger().get();
+        spdlog::warn("host-game-marker");
+
+        prepare_named<CE::enginelog>(engine_directory);
+        require(spdlog::default_logger().get() == game_default, "explicit engine initialization replaced game default");
+        bool repeated = false;
+        try {
+            CE::Logger<CE::enginelog>::initialize(spdlog::file_event_handlers{}, configuration(engine_directory));
+        } catch (const CE::Exceptions::bad_request&) {
+            repeated = true;
+        }
+        require(repeated, "repeated category initialization did not reject");
+        acquire_named<CE::platformlog>();
+        require(spdlog::default_logger().get() == game_default, "lazy platform initialization replaced game default");
+        prepare_named<CE::assetlog>(engine_directory);
+        require(spdlog::default_logger().get() == game_default, "asset initialization replaced game default");
+        named_writes<CE::enginelog>("game-default");
+        named_writes<CE::platformlog>("game-default");
+        named_writes<CE::assetlog>("game-default");
+        observe_events();
+        require(spdlog::default_logger().get() == game_default, "engine observer replaced game default");
+
+        CE::Logger<CE::enginelog>::make_default();
+        require(spdlog::default_logger()->name() == CE::enginelog, "engine category did not become explicit default");
+        auto native_host = std::make_shared<spdlog::logger>(
+            "app-native", std::make_shared<spdlog::sinks::basic_file_sink_mt>((directory / "app-native.log").string(), true)
+        );
+        native_host->set_level(spdlog::level::warn);
+        native_host->set_pattern("[%n] [%l] %v");
+        spdlog::set_default_logger(native_host);
+        spdlog::warn("host-native-marker");
+        prepare_named<CE::renderlog>(engine_directory);
+        require(spdlog::default_logger() == native_host, "render initialization replaced native host default");
+        acquire_named<CE::memlog>();
+        require(spdlog::default_logger() == native_host, "lazy memory initialization replaced native host default");
+        named_writes<CE::enginelog>("native-default");
+        named_writes<CE::platformlog>("native-default");
+        named_writes<CE::renderlog>("native-default");
+        named_writes<CE::assetlog>("native-default");
+        named_writes<CE::memlog>("native-default");
+        observe_events();
+
+        // Finish earlier accepted writes before narrowing the async destination gate.
+        CE::Logger<CE::assetlog>::close(2s);
+        CE::Logger<CE::assetlog>::reopen();
+        CE::Logger<CE::assetlog>::set_pattern("[%n] [%l] %v");
+        CE::Logger<CE::assetlog>::set_level_filesink(spdlog::level::err);
+        int prepared = 0;
+        CE_LOG_WARN(CE::assetlog, "filtered-asset-formatted {}", ++prepared);
+        UWARN(CE::assetlog) << "filtered-asset-stream " << ++prepared;
+        CE::Logger<CE::assetlog>::warn("filtered-asset-direct");
+        CE_LOG_ERROR(CE::assetlog, "admitted-asset-error");
+        require(prepared == 0, "filtered named arguments were evaluated");
+        named_writes<CE::renderlog>("independent-filter");
+
+        CE::Logger<CE::enginelog>::close(2s);
+        require(spdlog::default_logger() == native_host, "closing engine category replaced host default");
+        named_writes<CE::enginelog>("closed-category");
+        CE::Logger<CE::enginelog>::reopen();
+        require(spdlog::default_logger() == native_host, "reopening engine category replaced host default");
+        CE::Logger<CE::enginelog>::set_pattern("[%n] [%l] %v");
+        named_writes<CE::enginelog>("reopened-category");
+        CE::Logger<CE::enginelog>::close(2s);
+        CE::Logger<CE::platformlog>::close(2s);
+        CE::Logger<CE::renderlog>::close(2s);
+        CE::Logger<CE::assetlog>::close(2s);
+        CE::Logger<CE::memlog>::close(2s);
+        require(spdlog::default_logger() == native_host, "category shutdown replaced host default");
+        require(!std::filesystem::exists(engine_directory / "cheryl.log"), "engine routing initialized legacy log");
+        native_host->flush();
+        game.close(2s);
+        std::printf(
+            "named-routing compiled-warn=%d compiled-error=%d compiled-debug=%d\n", ctlog::enabled(ctlog::WARNING_),
+            ctlog::enabled(ctlog::ERROR_), ctlog::enabled(ctlog::DEBUG_)
+        );
     }
 
     class CallbackFormatter final : public spdlog::formatter {
@@ -219,6 +366,8 @@ int main(const int argc, const char* const* argv) {
             full_reentry(directory, true);
         else if (scenario == "retained")
             retained(directory);
+        else if (scenario == "named-routing")
+            named_routing(directory);
         else if (scenario == "fatal-destruction")
             fatal_destruction(directory);
         else if (scenario == "static") {
