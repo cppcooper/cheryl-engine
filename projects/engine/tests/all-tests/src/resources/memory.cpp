@@ -571,9 +571,15 @@ TEST(memory, concurrent_transactions) {
 TEST(memory, request_limits) {
     CE::Mem::ExactMMgr manager;
     const auto maximum = std::numeric_limits<std::size_t>::max();
-    EXPECT_THROW(manager.checkout_chunk(1, maximum), CE::Exceptions::bad_request);
-    EXPECT_THROW(manager.checkout_chunk(maximum, 64, CE::Enum::larger, 1), CE::Exceptions::bad_request);
-    EXPECT_THROW(manager.checkout_chunk(8, 64, CE::Enum::greedy, 0, std::numeric_limits<double>::infinity()),
-                 CE::Exceptions::bad_request);
+    EXPECT_THROW(
+        static_cast<void>(manager.checkout_chunk(1, maximum)),
+        CE::Exceptions::bad_request);
+    EXPECT_THROW(
+        static_cast<void>(manager.checkout_chunk(maximum, 64, CE::Enum::larger, 1)),
+        CE::Exceptions::bad_request);
+    EXPECT_THROW(
+        static_cast<void>(manager.checkout_chunk(8, 64, CE::Enum::greedy,
+            0, std::numeric_limits<double>::infinity())),
+        CE::Exceptions::bad_request);
     EXPECT_TRUE(valid_partition({}));
 }
