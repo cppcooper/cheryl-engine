@@ -174,8 +174,6 @@ if(CHERYL_BUILD_TESTS)
 
     add_executable(backward-cpp tests/executables/backward.cpp)
     target_link_libraries(backward-cpp PUBLIC Backward::Backward)
-
-    add_executable(cpp-testing tests/executables/cpp-testing.cpp)
 endif()
 
 if(CHERYL_BUILD_DEMO AND NOT CHERYL_SANDBOX_BUILD)
