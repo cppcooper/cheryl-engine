@@ -20,10 +20,17 @@ Separate them later only if an actual consumer or measured build problem warrant
 | OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
 | UI adapter | Enable a toolkit only in applications that use it; test its translation into engine facilities separately. | Engine input, retained drawing and resource contracts; U9 adds capabilities the chosen toolkit actually needs. |
 | Steam integration | Games without Steam avoid its SDK and session requirements; policy tests can use a fake SDK driver. | New application-owned integration, with Steam Input as one responsibility inside it. |
-| Input provider | Choose native or Steam-supported devices while retaining the engine's action/snapshot model. | [iInputSystem](../../include/cheryl/core/controls/input-interface.h); combining sources still needs an explicit coordinator. |
+| Input provider | Choose one provider by default; optionally combine specialized controller support with native keyboard/mouse input. | [iInputSystem](../../include/cheryl/core/controls/input-interface.h); combining sources still needs an explicit coordinator. |
 
 These are candidates, not a required target list. Steam services and Steam Input
 can initially share one module. Further modules need the same concrete justification.
+
+Composition is optional for a specific benefit, such as native keyboard/mouse with
+Steam-managed controllers. SDK-specific collection belongs to the module owning
+that SDK; selected sources feed one engine input coordinator and one published
+snapshot. Assign each controller one collection path to avoid duplicate input.
+Prove both ordinary single-provider use and the chosen composition with fakes
+before adding real SDK transport.
 
 ## One OpenGL module
 
@@ -83,8 +90,8 @@ and runtime test filters cannot provide it.
    checks and an explicit default-build compatibility decision. Do not claim a
    native-free engine while GLFW/Gainput remain in it.
 3. **UI/Steam integrations:** implement actual consumer requirements. Keep generic
-   U9 repairs in the engine. Prototype Steam session policy and combined input with
-   fakes before SDK transport; callbacks must progress even when input polling pauses.
+   U9 repairs in the engine. Prototype Steam session policy and optional input
+   composition with fakes before SDK transport; callbacks must progress when polling pauses.
 4. **Further extraction:** require a demonstrated replacement, dependency or testing
    benefit. Another graphics API must prove that the engine's contracts fit it.
 
