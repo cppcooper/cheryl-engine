@@ -39,7 +39,9 @@ root CMake selects and composes them. Link `Cheryl::Engine` to inherit public he
 paths and dependencies; existing C++ include spellings remain supported.
 
 Native GLFW/Gainput and the whole OpenGL backend have separate optional owners under
-`projects/modules/`. The root selects the default native/OpenGL assembly. Disable
+`projects/modules/platform/` and `projects/modules/graphics/`. The
+[module index](projects/modules/README.md) maps each owner to its engine contracts.
+The root selects the default native/OpenGL assembly. Disable
 `CHERYL_BUILD_NATIVE_GLFW` and `CHERYL_BUILD_OPENGL` for Engine alone; link the selected
 `Cheryl::NativeGLFW` and `Cheryl::OpenGL` targets for native graphics applications.
 See [module composition and test selection](docs/development/modules.md).

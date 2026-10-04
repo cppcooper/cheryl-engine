@@ -58,8 +58,8 @@ Engine and exercises multiple translation units, events, workers and CPU resourc
 Its 13 first-include probes now include the neutral umbrellas and reject GL/GLFW
 header leakage. Standalone bootstrapping selects Engine only in a local scope.
 
-[Native GLFW consumer](../../projects/modules/native-glfw/tests/consumer/CMakeLists.txt)
-and [OpenGL consumer](../../projects/modules/opengl/tests/consumer/CMakeLists.txt)
+[Native GLFW consumer](../../projects/modules/platform/native-glfw/tests/consumer/CMakeLists.txt)
+and [OpenGL consumer](../../projects/modules/graphics/opengl/tests/consumer/CMakeLists.txt)
 link their actual module with seven/twelve first-include probes respectively. They
 reference real implementation symbols without requiring a display at execution.
 `CHERYL_BUILD_CONSUMER_TESTS=ON` adds consumers for the selected root assembly.

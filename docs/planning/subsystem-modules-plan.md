@@ -20,7 +20,7 @@ Separate them later only if an actual consumer or measured build problem warrant
 
 | Candidate | What separation buys us | Existing boundary |
 | --- | --- | --- |
-| OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../projects/modules/opengl/include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
+| OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../projects/modules/graphics/opengl/include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
 | Native GLFW integration | Omit the coupled window/display and native input implementation, including GLFW/Gainput/native platform requirements. | Existing neutral display/window/input interfaces; keep the concrete implementations together because InputSystem requires Window. |
 | UI adapter | Enable a toolkit only in applications that use it; test its translation into engine facilities separately. | Engine input, retained drawing and resource contracts; U9 adds capabilities the chosen toolkit actually needs. |
 | Steam integration | Games without Steam avoid its SDK and session requirements; policy tests can use a fake SDK driver. | New application-owned integration, with Steam Input as one responsibility inside it. |
@@ -83,15 +83,22 @@ cheryl-engine/
       support/
         signal-handlers/
         logging-config/
-    modules/                   # Selected integration owners
-      opengl/                  # Whole backend
-        CMakeLists.txt
-        include/
-        src/
-        tests/
-          <test-target>/
-      native-glfw/             # CMakeLists.txt, include/, src/, tests/
-      <selected-integration>/
+    modules/                   # Owners grouped by engine role
+      README.md                # Engine contract index
+      platform/
+        native-glfw/           # Display/window/input owner
+          CMakeLists.txt
+          README.md            # Concrete implementation-to-contract map
+          include/
+          src/
+          tests/
+      graphics/
+        opengl/                # Whole rendering/presentation/resource owner
+          CMakeLists.txt
+          README.md
+          include/
+          src/
+          tests/
     apps/demo/
     tools/backward-cpp/
   cmake/                       # Shared helpers
@@ -101,7 +108,7 @@ cheryl-engine/
 
 Tests live with the library or module they exercise. Engine tests, logging checks
 and engine consumer/header probes belong under `engine/tests/`; OpenGL tests belong
-under `modules/opengl/tests/`. Each test target can own a child directory there.
+under `modules/graphics/opengl/tests/`. Each test target can own a child directory there.
 The `all-tests` runner can combine suites across owners without making the engine
 library depend on its modules.
 

@@ -28,6 +28,13 @@ platform drain before asserting the next input batch. This replaces the previous
 host-scheduling assumption while retaining the full-backlog/presentation guarantee.
 It has not yet been executed in the extracted assembly.
 
+The contract-role organization follow-up groups Native GLFW under
+`projects/modules/platform/` and OpenGL under `projects/modules/graphics/`.
+[The module index](../../projects/modules/README.md) and owner-local maps identify
+their engine interfaces. The whole-owner moves preserve production headers,
+sources, tests and fixture bytes; root selection and standalone helper lookup use
+the new locations. This layout change adds no executable validation evidence.
+
 ## Projects layout migration — 4 October 2026
 
 The directory migration retains the combined `cherylGL` / `Cheryl::Engine` library,
@@ -110,7 +117,7 @@ real-font opt-in cases were enabled for the reported complete runs.
   retained-frame shader reload, failed construction/link/reflection cleanup, rotated
   FFont packets, RGBA/alpha row conventions, forced timing/presentation workloads,
   State backpressure, ordered X11 Events/Text, and composed runtime failure cleanup.
-  Sources: [native-opengl.cpp](../../projects/modules/opengl/tests/acceptance/src/native-opengl.cpp).
+  Sources: [native-opengl.cpp](../../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp).
 - Native runtime cleanup covers initialization, partial-frame, and presentation failure
   in both modes. Accepted CPU/platform uploads settle before game cleanup; a later
   deinit error preserves the original failure. Driver queries observe native deletion

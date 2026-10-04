@@ -4,11 +4,16 @@ Cheryl uses one shared engine library and independently selected integration
 libraries. Each owner defines its sources, public includes, dependencies and tests.
 The repository root selects the assembly; it does not own implementation inventories.
 
+Module owners are grouped by contract role: `platform/` contains display/window/input
+implementations and `graphics/` contains rendering/presentation/resource implementations.
+[The module index](../../projects/modules/README.md) maps those roles to engine
+interfaces; each owner's README maps its concrete types to the contracts it fulfills.
+
 | Target | Owner | Dependencies selected by that owner |
 | --- | --- | --- |
 | `Cheryl::Engine` (`cherylGL`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
-| `Cheryl::NativeGLFW` | `projects/modules/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
-| `Cheryl::OpenGL` | `projects/modules/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
+| `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
+| `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
 
 ```mermaid
 flowchart LR
@@ -66,11 +71,11 @@ foreign/imported targets without it need the explicit source checkout for helper
 After explicit build authorization, standalone entry points are:
 
 ```sh
-cmake -S projects/modules/native-glfw -B build-native-module \
+cmake -S projects/modules/platform/native-glfw -B build-native-module \
   -DCHERYL_ENGINE_SOURCE=/path/to/cheryl-engine
-cmake -S projects/modules/opengl -B build-opengl-module \
+cmake -S projects/modules/graphics/opengl -B build-opengl-module \
   -DCHERYL_ENGINE_SOURCE=/path/to/cheryl-engine \
-  -DCHERYL_NATIVE_GLFW_SOURCE=/path/to/cheryl-engine/projects/modules/native-glfw
+  -DCHERYL_NATIVE_GLFW_SOURCE=/path/to/cheryl-engine/projects/modules/platform/native-glfw
 ```
 
 Dependency bootstrapping suppresses root module/demo/test selection in a local

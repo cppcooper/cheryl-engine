@@ -84,7 +84,7 @@ on whether current tests happen to include them.
    trailing characters, whitespace, signs, non-finite values, and overflow are
    accepted (U3). A successful aggregate build need not exercise this header.
 2. **Resize delivery can throw through a native callback.**
-   [window.cpp](../../projects/modules/native-glfw/src/core/display/window.cpp) calls EventSystem dispatch from
+   [window.cpp](../../projects/modules/platform/native-glfw/src/core/display/window.cpp) calls EventSystem dispatch from
    `on_framebuffer_size`; immediate EventBus callbacks may throw. Allocation can
    also fail during dispatch. The input adapter already captures callback failures
    and rethrows from update. Establish a corresponding safe window/platform failure
@@ -125,7 +125,7 @@ U identifiers are development units defined later.
 | --- | --- | --- |
 | T1 | [singleton.h:11](../../projects/engine/include/cheryl/templates/singleton.h) | call_once protects construction only. First differing argument sets select a race winner; get_existing is not a construction synchronization mechanism. Audit both CTS/CTU access paths and all argument-bearing consumers; define explicit initialization/retrieval and operation ownership without removing architecturally useful interfaces (U1). |
 | T2 | [ffont.cpp:50](../../projects/engine/src/assets/types/2d/ffont.cpp) | Opening is already checked. U3 repairs binary/input-only reading and complete-read rejection. The subsequent scope decision deprecates FFont in favor of supplied font files through STBFont; preserve legacy behavior without inventing the missing atlas or a new widths format. |
-| T3 | [glslprogram.h:64](../../projects/modules/opengl/include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
+| T3 | [glslprogram.h:64](../../projects/modules/graphics/opengl/include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
 | T4 | [pool.hpp:171](../../projects/engine/include/cheryl/core/resources/objects/pool.hpp) | Object handles retain PoolState, but its backing-byte deleter still captures a raw manager with a weak token. Solve the underlying release ownership once, and adopt it here (U2). |
 | T5 | [mem-mgr.hpp:24](../../projects/engine/include/cheryl/core/resources/memory/mem-mgr.hpp) | Define zero-allocation stats deliberately, preferably zero counts with an unavailable utilization percentage or explicitly documented zero. No NaN/inf output (U3). |
 | T6 | [managed-block.hpp:13](../../projects/engine/include/cheryl/core/resources/memory/managed-block.hpp) | A locked token cannot keep the Manager object alive or stop teardown. Retain shared release/bookkeeping state; define closing behavior and noexcept final release (U2). |
@@ -154,7 +154,7 @@ headers. Prioritize callers' decisions and failure boundaries.
 | `math/bytes.h`, `math/string-numbers.h` | Unit boundaries, rounding, accepted syntax, full consumption, and failure behavior are not specified. | U3 gives a concise contract and examples. |
 | `core/resources/fileio/file-mgr.h/.cpp` | Header explains the independent index; source incorrectly mentions discovery “by the asset loader,” which now performs its own scan. Incremental indexing, missing roots, ordering, and borrowed lookup lifetime need clarity. | U15 documents current behavior; decide refresh support only if a consumer needs it. |
 | `core/resources/fileio/fonts-system.h`, `projects/engine/src/core/resources/fileio/fonts-list.cpp` | Public declarations lack skipped-root/error, preference, enumeration, and collection-face selection semantics. | U15 documents discovery versus default selection and checks what FontMgr actually supports. |
-| `core/display/window-interface.h`, `display-system-interface.h`, `projects/modules/native-glfw/src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
+| `core/display/window-interface.h`, `display-system-interface.h`, `projects/modules/platform/native-glfw/src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
 | `assets/types/3d/mesh.h`, `projects/engine/support/signal-handlers/src/main.cpp` | Placeholder and global signal/trace bootstrap have little statement of purpose or scope. | U14 records the placeholder contract; U5/U7 explain bootstrap ownership and static-library linkage implications. |
 
 U15 includes an inventory pass over the remaining exported asset definition,
