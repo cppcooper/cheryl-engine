@@ -1,4 +1,4 @@
-# The engine remains one combined library until the coordinated module extraction.
+# Native and graphics implementations belong to their selected modules.
 set(CHERYL_ENGINE_SOURCES
     src/assets/definitions/grid.cpp
     src/assets/definitions/manifest.cpp
@@ -15,31 +15,14 @@ set(CHERYL_ENGINE_SOURCES
     src/assets/types/2d/sprite.cpp
     src/assets/types/2d/stbfont.cpp
     src/assets/types/2d/tileset.cpp
-    src/backends/opengl/debug-output.cpp
-    src/backends/opengl/glfw-backend.cpp
-    src/backends/opengl/glfw-context.cpp
-    src/backends/opengl/glslprogram.cpp
-    src/backends/opengl/pipeline.cpp
-    src/backends/opengl/program-builder.cpp
-    src/backends/opengl/renderer.cpp
-    src/backends/opengl/resource-lifetime.cpp
-    src/backends/opengl/resource-provider.cpp
-    src/backends/opengl/texture.cpp
-    src/backends/opengl/vertex-array-object.cpp
-    src/core/controls/glfw-bindings.cpp
     src/core/controls/input-accumulator.cpp
     src/core/controls/input-bindings.cpp
     src/core/controls/input-capture.cpp
     src/core/controls/input-interface.cpp
-    src/core/controls/input-mapper.cpp
     src/core/controls/input-routing.cpp
-    src/core/controls/input-system.cpp
     src/core/controls/polling-backlog.cpp
     src/core/controls/tick-input.cpp
-    src/core/display/display-system.cpp
-    src/core/display/glfw-diagnostics.cpp
     src/core/display/monitor.cpp
-    src/core/display/window.cpp
     src/core/engine/engine-context.cpp
     src/core/engine/event-delivery.cpp
     src/core/engine/platform-dispatcher.cpp
@@ -69,20 +52,14 @@ set(CHERYL_ENGINE_SOURCES
     src/internal/exceptions.cpp
     src/internal/internal-logs.cpp
     src/math/anchor.cpp)
-if(CHERYL_SANDBOX_BUILD)
-    list(REMOVE_ITEM CHERYL_ENGINE_SOURCES
-        src/core/controls/glfw-bindings.cpp
-        src/core/controls/input-mapper.cpp
-        src/core/controls/input-system.cpp)
-endif()
-
 add_subdirectory(support/logging-config)
-add_subdirectory(support/gl46)
 add_subdirectory(support/signal-handlers)
 
 add_library(cherylGL STATIC ${CHERYL_ENGINE_SOURCES})
 add_library(Cheryl::Engine ALIAS cherylGL)
-set_target_properties(cherylGL PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+set_target_properties(cherylGL PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}"
+    CHERYL_REPOSITORY_ROOT "${CHERYL_REPOSITORY_ROOT}")
 target_compile_features(cherylGL PUBLIC cxx_std_23)
 target_include_directories(cherylGL PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -93,22 +70,16 @@ target_include_directories(cherylGL PRIVATE
     "${CHERYL_REPOSITORY_ROOT}/extern/stb"
     "${CHERYL_REPOSITORY_ROOT}/extern/json/single_include")
 target_link_libraries(cherylGL
-    PUBLIC Threads::Threads cheryl_logging_config ctti spdlog::spdlog glm::glm-header-only Backward::Interface gl46
-    PRIVATE glfw OpenGL::GL)
-if(NOT CHERYL_SANDBOX_BUILD)
-    # Gainput's target does not publish its public include directory. Its types
-    # appear in the native InputSystem/InputMapper headers, so this is public.
-    target_include_directories(cherylGL SYSTEM PUBLIC
-        "$<BUILD_INTERFACE:${CHERYL_REPOSITORY_ROOT}/extern/gainput/lib/include>")
-    target_link_libraries(cherylGL PUBLIC gainputstatic)
-    if(UNIX AND NOT APPLE)
-        target_link_libraries(cherylGL PRIVATE X11::X11)
-    endif()
+    PUBLIC Threads::Threads cheryl_logging_config ctti spdlog::spdlog glm::glm-header-only Backward::Interface)
+# Forward the bootstrap object to final consumers; an unreferenced archive member
+# would not reliably install the original Debug crash handlers.
+target_link_libraries(cherylGL INTERFACE "$<TARGET_OBJECTS:cheryl_signal_handlers>")
+add_dependencies(cherylGL cheryl_signal_handlers)
+if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Root Debug compilation is instrumented; standalone consumers also need
+    # the sanitizer runtime even when their own directory is outside that root.
+    target_link_options(cherylGL INTERFACE -fsanitize=address,undefined)
 endif()
-if(CHERYL_SANDBOX_BUILD)
-    target_compile_definitions(cherylGL PUBLIC CHERYL_SANDBOX_BUILD=1)
-endif()
-add_dependencies(cherylGL gl46)
 
 if(CHERYL_BUILD_TESTS)
     add_subdirectory(tests)

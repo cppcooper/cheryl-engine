@@ -1,0 +1,5 @@
+add_library(cheryl_test_support INTERFACE)
+target_sources(cheryl_test_support INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/gtest-main.cpp")
+target_include_directories(cheryl_test_support INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_compile_definitions(cheryl_test_support INTERFACE CHERYL_SOURCE_DIR="${CHERYL_REPOSITORY_ROOT}")
+target_link_libraries(cheryl_test_support INTERFACE Cheryl::Engine gtest)

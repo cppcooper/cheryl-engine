@@ -12,7 +12,7 @@ notes/
 *.tar.gz
 *.log
 *.png
-!/projects/engine/tests/fixtures/rgba-two-rows.png
+!/projects/modules/opengl/tests/fixtures/rgba-two-rows.png
 assets/**/*.txt
 assets/**/*.xcf
 assets/**/*.docx

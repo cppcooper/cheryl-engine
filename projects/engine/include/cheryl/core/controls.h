@@ -6,7 +6,6 @@
 #include "controls/input-interface.h"
 #include "controls/input-record.h"
 #include "controls/input-routing.h"
-#include "controls/input-system.h"
 #include "controls/poll-snapshot.h"
 #include "controls/polling-backlog.h"
 #include "controls/tick-input.h"

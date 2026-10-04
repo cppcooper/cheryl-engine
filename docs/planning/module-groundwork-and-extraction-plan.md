@@ -1,23 +1,22 @@
 # Groundwork and module extraction plan
 
-2026-10-04. The `projects/` migration implements current-target directory ownership
-while preserving the combined engine. Migration acceptance is recorded in
+2026-10-04. The directory migration established current-target ownership;
+the remaining implementation now extracts Native GLFW and the whole OpenGL backend.
+The original directory-migration acceptance is recorded in
 [architecture validation](../development/architecture-validation.md); one native
-timing case required a targeted retry. Native/OpenGL extraction and SDK isolation
-remain planned. The agreed boundaries and
+timing case required a targeted retry. Executable acceptance for the extracted graph
+is pending authorization. The agreed boundaries and
 `projects/` layout are in [subsystem-modules-plan.md](subsystem-modules-plan.md).
 
 G1–G5 establish ownership, CMake, layout, extraction and isolation. UI then resumes
 through U9; input composition and Steam follow when selected as actual consumers.
 
-Today's scoped sequence is: inventory current owners and preserve compatibility;
+The original directory-migration sequence was: inventory current owners and preserve compatibility;
 move files with owner CMake definitions; repair fixture, consumer, script and document
 paths; verify normal/sandbox consumers and selected focused/aggregate checks; commit
-the completed migration locally. It covers the directory portion of G1–G3. The
-standalone module convention/template and optional module selection in G2 remain
-future work. Test boundary rewrites, implementing-module test ownership and proof of
-cheap engine-only tests follow the actual extraction; relocation preserves today's
-cases and guarantees.
+the completed migration locally. It covers the directory portion of G1–G3. At that boundary the standalone convention, module selection and test-ownership
+changes remained future work. The implementation below now supplies them; executable
+isolation and measured default-suite cost still require acceptance.
 
 ## Remaining structure implementation — 4 October 2026
 
@@ -47,6 +46,16 @@ Implement and commit these coherent units in order:
    engine SDK isolation and the target graph, and record outstanding executable
    checks without claiming historical runs validate the extraction.
 
+Standalone initialization and module-local test support share the same CMake owner
+initialization. Implementation units 2–3 therefore land in one coordinated cutover,
+followed by the separate documentation/static-acceptance unit.
+
+The owner also identified a prior U7 change that made the original crash bootstrap
+optional. Restore automatic delivery through `Cheryl::Engine`, retaining the
+owner-selected original `NDEBUG` scope. Forward the object to final consumers so
+static archive extraction cannot silently omit its initializers. Ordinary exception
+trace capture remains independent of signal handling.
+
 The development boundaries are the native/OpenGL cycle (both move together),
 unchanged user work (preserve the committed memory edit), and standalone reuse
 (never build a second private copy of the engine or mutate the host's cached choices).
@@ -60,7 +69,7 @@ unchanged user work (preserve the committed memory edit), and standalone reuse
 | Two native cases at the end of `core/input.cpp` | Native GLFW; split into a module-owned file. Retain all neutral mapping/tick/state cases in Engine. |
 | Dummy-backed display/input/draw/frame contract checks | Engine; exercise real engine-owned logic without native modules. |
 | Runtime, workers, memory/construction stress, font fixtures and external-library acceptance | Engine; retain broader implementation acceptance separately from the cheap default suite. User-modified memory source stays at its current engine-owned path. |
-| Logging runners, consumer, signal handlers and Backward tool | Existing owners; keep runner/output names, named destinations and explicit bootstrap. Split backend header probes into their modules. |
+| Logging runners, consumer, signal handlers and Backward tool | Existing owners; keep runner/output names, named destinations and the restored Debug crash bootstrap. Split backend header probes into their modules. |
 
 `Cheryl::Engine` will contain only the shared engine. Full native graphics consumers
 must link `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`; raw archive users
@@ -97,18 +106,19 @@ families. Input composition and Steam service scheduling are later, separate wor
 
 ## Decisions and current evidence
 
-Use the agreed `projects/` parent. The directory migration leaves `cherylGL`,
-`Cheryl::Engine`, public header spellings and root build outputs intact. The
-`libcherylGL.a` archive still contains the current native/OpenGL implementations.
+Use the agreed `projects/` parent. The initial directory migration preserved the
+combined archive. The implemented extraction retains `cherylGL`, `Cheryl::Engine`,
+granular header spellings and build-root outputs, while moving the native/OpenGL
+implementations to their selected module archives.
 
-The proposed public targets are `Cheryl::Engine`, `Cheryl::OpenGL`, and
-`Cheryl::NativeGLFW`. These are roles, not implemented target additions. Keep the
-current real engine target name `cherylGL` initially to avoid a simultaneous rename.
-After extraction, its archive contains the shared engine implementation. Applications
+The implemented public targets are `Cheryl::Engine`, `Cheryl::OpenGL`, and
+`Cheryl::NativeGLFW`. The real engine target remains `cherylGL`; its archive contains
+the shared engine implementation. The crash bootstrap is forwarded to final target
+consumers as described above. Applications
 select integrations explicitly; the normal root build/demo selects today's native
 and OpenGL facilities. The actual engine never links back to either module.
 
-The later extraction deliberately changes the full-backend `Cheryl::Engine` link contract.
+The extraction deliberately changes the full-backend `Cheryl::Engine` link contract.
 Backend consumers must add the appropriate module links; raw `libcherylGL.a`
 consumers must migrate too. Preserve granular header spellings through their new
 owner's include roots. Engine umbrellas become neutral; callers requiring their
@@ -116,7 +126,7 @@ former native imports add explicit native headers. G1 records this migration bef
 implementation. A compatibility facade or combined archive requires an identified
 consumer need; it is not assumed by this plan.
 
-Planned native/OpenGL consumer composition:
+Native/OpenGL consumer composition:
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::NativeGLFW Cheryl::OpenGL)
@@ -125,20 +135,18 @@ target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::NativeGLFW Cheryl::Ope
 | Final owner | Existing code and reason |
 | --- | --- |
 | Engine | Neutral runtime/display/input/render/resource contracts, asset preparation, bindings/routing/snapshots, logging, memory, workers, events and utilities. [EngineContext](../../projects/engine/include/cheryl/core/engine/engine-context.h) already accepts interfaces. No new general runtime facade is needed. |
-| Native GLFW | Concrete `Window`/`DisplaySystem`, GLFW diagnostics, `InputSystem`/`InputMapper`/GLFW bindings. [InputSystem](../../projects/engine/src/core/controls/input-system.cpp) requires concrete `Window` and owns native callbacks/polling; splitting them first adds a reverse dependency. Own GLFW, Gainput and their native platform requirements here. |
-| OpenGL | All `projects/engine/include/cheryl/backends/opengl*` and `projects/engine/src/backends/opengl/`, including context, GLFW context binding, factories, resources and diagnostics. Own OpenGL discovery and GLAD generation here. Public GL types require public GLAD usage. |
+| Native GLFW | Concrete `Window`/`DisplaySystem`, GLFW diagnostics, `InputSystem`/`InputMapper`/GLFW bindings. [InputSystem](../../projects/modules/native-glfw/src/core/controls/input-system.cpp) requires concrete `Window` and owns native callbacks/polling; splitting them first adds a reverse dependency. Own GLFW, Gainput and their native platform requirements here. |
+| OpenGL | All `projects/modules/opengl/include/cheryl/backends/opengl*` and `projects/modules/opengl/src/backends/opengl/`, including context, GLFW context binding, factories, resources and diagnostics. Own OpenGL discovery and GLAD generation here. Public GL types require public GLAD usage. |
 | Test owners | Engine tests and consumer probes under engine; backend tests under OpenGL; native input/GLFW tests under Native GLFW. [input.cpp](../../projects/engine/tests/all-tests/src/core/input.cpp) mixes neutral and native cases and must be split. |
 
-Two concrete seams need attention: [glfw-context.cpp](../../projects/engine/src/backends/opengl/glfw-context.cpp)
-includes a private display header by relative path, while
-[controls.h](../../projects/engine/include/cheryl/core/controls.h) and
-[display.h](../../projects/engine/include/cheryl/core/display.h) import native implementations.
-The generic rendering/resource implementation has no equivalent OpenGL dependency.
+The cutover resolves two concrete seams: the GLFW context now includes a small
+native-owned reporting declaration instead of a private display header; the engine
+controls/display umbrellas expose neutral contracts instead of concrete native
+implementations. Generic rendering/resource implementation remains engine-owned.
 
-Extract the native and OpenGL owners in one coordinated cutover after preparation.
-Moving native alone first would give Engine (OpenGL factory/context) → Native →
-Engine. One cutover avoids that intermediate cycle and a temporary engine-owned
-SDK API. It produces two cohesive modules, not one combined graphics/input module:
+The native and OpenGL owners move together. Moving native alone would have left
+Engine (OpenGL factory/context) → Native → Engine; the coordinated cutover avoids
+that cycle. The implemented graph is:
 
 ```mermaid
 flowchart LR
@@ -169,7 +177,7 @@ engine behavior rather than merely checking the dummy's predetermined result.
 
 For example, [runtime-adapter.cpp](../../projects/engine/tests/all-tests/src/core/runtime-adapter.cpp)
 contains both public lifetime expectations and engine implementation fault injection;
-[native-opengl.cpp](../../projects/engine/tests/all-tests/src/backends/native-opengl.cpp) proves
+[native-opengl.cpp](../../projects/modules/opengl/tests/acceptance/src/native-opengl.cpp) proves
 real native runtime integration. They do not provide interchangeable evidence.
 Rewrite or split mixed tests when needed, preserving the intended guarantee rather
 than incidental internal call sequences. Reuse contract scenarios across real
@@ -356,5 +364,6 @@ in [consuming-engine.md](../development/consuming-engine.md).
 For each implementation unit, inspect shared-tree changes, preserve user work, run
 only authorized checks, and commit that coherent unit separately. Stop at an unfinished
 user-work boundary or revise the plan when an assumption fails. The original plan
-was produced through source/document review. Current directory migration is scoped
-above; SDK acquisition and module extraction remain separate implementation work.
+was produced through source/document review. The extraction and standalone/test composition are implemented as scoped above;
+executable acceptance is still pending. SDK acquisition and UI/Steam features remain
+separate work.
