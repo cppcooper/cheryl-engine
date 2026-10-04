@@ -125,6 +125,14 @@ cases. That reduces test translation units without creating a library for every
 internal facility; the existing cheryl-logging-tests already uses this pattern.
 Module tests then link their actual implementation and fake only
 its external boundary. Keep integration tests for startup, threads and shutdown.
+Classify tests by the guarantee they prove: engine contract, specific implementation,
+or composed integration. Separation can require splitting/rewriting tests and fixtures,
+not just moving files. Engine runtime contract checks use real engine code with
+controlled dependencies; native implementation checks exercise the selected module.
+Keep the engine's default unit suite cheap with small dummy contract implementations.
+Each implementing module owns checks of its real behavior and contract compliance;
+dummy-backed engine checks are not substitutes for those. Costly acceptance stays
+with its implementation owner and is selected separately from the cheap unit suite.
 Removing native dependency discovery requires a real extraction; folder changes
 and runtime test filters cannot provide it.
 

@@ -17,6 +17,9 @@ through U9; input composition and Steam follow when selected as actual consumers
   public header access through target dependencies, preserving include spellings.
 - Inspect actual source, SDK, header, test, startup and shutdown dependencies.
   Separate extraction requirements from later capabilities and speculative cleanup.
+- Classify tests by the contract or implementation they prove. Plan necessary
+  rewrites and coverage replacement as well as directory moves. Keep engine unit
+  checks inexpensive; implementing modules own implementation/conformance checks.
 - Resolve compatibility and dependency cycles before moves. Sequence coherent
   commits with affected code, acceptance and a discovery boundary for each unit.
   Detail the initial extraction; outline UI/Steam until their consumers are chosen.
@@ -86,6 +89,36 @@ flowchart LR
 
 ## Ordered implementation units
 
+Test migration follows responsibility, not the current filename:
+
+The engine's default unit suite should be inexpensive to build and run: no native
+module discovery, display, devices or integration SDKs. Use small dummy implementations
+of input/display/render/resource contracts to supply predictable behavior and observe
+how real engine code uses those contracts. Dummies implement only the behavior needed
+by each scenario; their behavior supplies test conditions. Assertions must exercise
+engine behavior rather than merely checking the dummy's predetermined result.
+
+| Test responsibility | What it proves and where it belongs |
+| --- | --- |
+| Engine contract | Exercise engine-owned API/base/value logic and real runtime/context behavior through public interfaces using small dummy dependencies. Check promised lifecycle, publication and failure behavior; these checks remain engine-owned and independent of implementing modules. |
+| Specific implementation | The implementing module owns tests of its real implementation, including fulfillment of engine contracts and SDK-specific behavior. Logic still implemented in the engine, such as scheduler/workers, keeps its checks there. Private test hooks remain scoped to the implementation owner. |
+| Composed integration | Exercise the actual selected implementations together, including factory wiring and native startup/shutdown. Keep these with the owning factory/application composition and link the selected modules explicitly. |
+
+For example, [runtime-adapter.cpp](../../tests/executables/gtest/core/runtime-adapter.cpp)
+contains both public lifetime expectations and engine implementation fault injection;
+[native-opengl.cpp](../../tests/executables/gtest/backends/native-opengl.cpp) proves
+real native runtime integration. They do not provide interchangeable evidence.
+Rewrite or split mixed tests when needed, preserving the intended guarantee rather
+than incidental internal call sequences. Reuse contract scenarios across real
+implementations when useful, accounting for advertised capabilities; passing with
+a fake does not establish a module's conformance. No new runtime abstraction or
+production helper library is required just to reorganize tests.
+
+Keep costly stress, real-time and isolated-process acceptance outside the cheap
+default unit suite, still with the implementation owner. `all-tests` remains the
+broader selected assembly. If implementation ownership changes later, its tests
+follow it; changing test dependencies alone does not transfer that responsibility.
+
 ### G1 — Freeze ownership and the migration contract
 
 - Inventory every current production/test source, public/private header, target,
@@ -93,6 +126,9 @@ flowchart LR
   Include `gl46`, logging policy, signal-handler objects, demo, Backward tool,
   logging acceptance, consumer and generated header-probe targets. Aliases share
   their real target's directory; vendored projects retain their upstream layout.
+- Classify test assertions using the responsibilities above. Record each case's
+  retain/move/split/rewrite action, implementation owner, cheap-unit versus broader
+  acceptance role, and replacement coverage before changing it.
 - Record the target/header migration above and the chosen parent spelling. Keep
   `all-tests` as a build/executable entry point composed from selected owner suites;
   suite sources remain with their owners. Focused module runners need no new
@@ -101,8 +137,8 @@ flowchart LR
   `CHERYL_SOURCE_DIR`; the consumer assumes `../..`; Python acceptance expects
   executables at the build root. Inventory those assumptions explicitly.
 
-**Acceptance:** Every existing source/target is accounted for; the final graph is
-acyclic; each changed consumer contract has a concrete migration example.
+**Acceptance:** Every existing source/target and test guarantee is accounted for;
+the final graph is acyclic; each changed consumer contract has a migration example.
 **Boundary:** A required external consumer's archive/link contract may change the
 compatibility choice. Settle it here before dependent CMake work.
 
@@ -138,8 +174,10 @@ module must never compile a private copy of engine sources.
 - Give existing test targets child directories under their owner. Update fixture,
   acceptance-script, consumer-bootstrap and documentation paths in the same units.
   Owner CMake supplies test sources and scoped private include access to `all-tests`.
-- Split mixed neutral/native input cases and classify backend/consumer probes for
-  G4. Each move and its CMake/path repairs form one commit; do not reformat moved code.
+- Split mixed neutral/native input cases and separate contract assertions from
+  implementation/integration checks. Rewrite affected fixtures/assertions at the
+  unit changing their boundary, including G4; retain internal hooks only for their
+  implementation owner. Each move and its CMake/path repairs form one commit.
 
 **Acceptance:** Before/after inventories match, public includes retain their
 spellings, and no source depends on the old root path accidentally. Authorized
@@ -152,8 +190,9 @@ do not treat physical relocation as proof of SDK isolation.
 - Move the six coupled native `.cpp` files, their concrete headers and GLFW
   diagnostic implementation into Native GLFW. Leave neutral monitor/window/input
   contracts and binding/publication logic in the engine.
-- Move all eleven OpenGL `.cpp` files, private/public headers, umbrella, five
-  backend test files and their fixtures into the single OpenGL module. The GLFW
+- Move all eleven OpenGL `.cpp` files, private/public headers, umbrella and the
+  module-owned cases from the five backend test files into the single OpenGL module.
+  Apply G1's split/rewrite decisions to tests and fixtures in the same cutover. The GLFW
   context and both factory overloads remain there; no bridge/context target is added.
 - Replace the private diagnostics reach-through with a small Native GLFW reporting
   declaration. Keep callback installation/restoration and bounded error capture in
@@ -167,6 +206,8 @@ do not treat physical relocation as proof of SDK isolation.
 
 **Acceptance:** The three selections below work without a target cycle, duplicated
 production implementations, global module includes or copied callback managers.
+Rewritten tests cover the recorded guarantees; file/count preservation alone is
+insufficient, and fake contract checks do not replace native implementation evidence.
 **Boundary:** Keep this ownership cutover coherent. Input-composition features,
 renderer redesign and SDK API hiding do not belong in this commit.
 
@@ -176,13 +217,18 @@ Run focused checks after explicit authorization, recording each selection separa
 
 | Selection | Required evidence |
 | --- | --- |
-| Engine only, ordinary configuration | No OpenGL/GLAD/GLFW/Gainput/native X11 discovery or compilation from disabled modules. Consumer links Engine alone with no handwritten includes/dependencies; first-include checks include neutral umbrellas. Fake runtime/CPU-resource/input and logging checks run without a display. |
+| Engine only, ordinary configuration | No OpenGL/GLAD/GLFW/Gainput/native X11 discovery or compilation from disabled modules. Consumer links Engine alone with no handwritten includes/dependencies; first-include checks include neutral umbrellas. Small dummy-backed engine unit checks run without a display or module implementations; record their build/run cost. Broader engine-owned acceptance remains separately selectable. |
 | Engine + Native GLFW | No Cheryl OpenGL backend, GLAD generation or explicit OpenGL package requirement. Upstream GLFW retains its own context machinery. Native public headers inherit Gainput requirements correctly; mappings, callback failures, ordering and teardown remain covered. A window-only runtime is not promised by this configuration. |
 | Engine + Native GLFW + OpenGL | Module-owned mock GL lifetime/pipeline/program/debug checks, full selected `all-tests`, standalone module composition, and default demo link/run. Native GL checks remain opt-in and are recorded separately from mock checks. |
 
 Preserve the existing logging profile/isolated-process acceptance and native
-startup-failure/concurrent-shutdown coverage. [Existing acceptance records](../development/architecture-validation.md)
-are a baseline, not evidence for the new graph. Change sandbox to a documented
+startup-failure/concurrent-shutdown coverage.
+Module suites exercise real implementations against required contract expectations;
+engine dummy checks cannot establish their compliance. Keep both evidence sets.
+[Existing acceptance records](../development/architecture-validation.md) are a
+baseline, not evidence for the new graph.
+
+Change sandbox to a documented
 deprecated selection only after ordinary module selection replaces its dependency-light
 tests and native omissions. Remove it in a later cleanup unit once its users migrate.
 If mock OpenGL checks still need GLFW-null without Gainput, preserve that choice
