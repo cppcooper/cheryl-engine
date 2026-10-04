@@ -93,3 +93,20 @@ To reuse an existing root build, configure it with `CHERYL_BUILD_CONSUMER_TESTS=
 then build `cheryl-consumer` with `--parallel 1` and run it from that build directory.
 This opt-in adds the same consumer and header probes after `Cheryl::Engine` exists;
 it reuses the engine archive and does not require the aggregate test suite.
+
+## Standard headers in an existing build
+
+An existing CLion profile can retain failed C++ compiler ABI discovery. In the
+reported configuration, CMake's generated `CMakeCXXCompiler.cmake` recorded
+`CMAKE_CXX_ABI_COMPILED FALSE` and empty implicit include directories. This caused
+the X11 dependency's `/usr/include` to become an explicit `-isystem` argument;
+GCC 16 then failed to resolve `math.h` or `stdlib.h` through `#include_next` in its
+C++ standard headers.
+
+Refresh compiler discovery and regenerate the build files while preserving the
+profile/toolchain settings. CMake normally filters its
+[detected implicit include directories](https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_IMPLICIT_INCLUDE_DIRECTORIES.html)
+from explicit compiler arguments. Reload CMake in CLion after repairing an existing
+build externally. The recorded recovery refreshed only generated C++ compiler
+metadata, preserving cache options and compiled objects; a full cache reset must
+retain the intended configuration options too.

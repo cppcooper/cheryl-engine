@@ -31,6 +31,29 @@ After the initial builds, consumer verification used existing build directories,
 --target cheryl-consumer`, with a compilation break between selections. No fresh
 engine build or logging-profile matrix was added for this final verification.
 
+## Existing CLion profiles — 4 October 2026
+
+A subsequent `cherylGL` build reported missing `math.h` through GLM and GCC's
+`cmath`; the same profile reproduced missing `stdlib.h` through `cstdlib`.
+All five existing CLion profiles had cached failed C++ ABI discovery and empty
+implicit include directories. Their resulting `-isystem /usr/include` argument
+broke the standard headers' `#include_next` lookup. The original failed probes
+recorded no diagnostic explaining their failure.
+
+A fresh minimal probe with the same CLion CMake 3.28.6 detected the compiler
+correctly. Refreshing only the generated C++ compiler metadata and ABI result
+restored discovery in Default, Debug, Release, RelWithDebInfo and MinSizeRel,
+preserving profile options and existing objects. The redundant system include
+argument disappeared from all five profiles. Both previously failing source
+dependency scans passed, and Debug `cherylGL` compiled and linked successfully
+with GCC 16.2.1, X11 and Wayland enabled, using one low-priority build job.
+The other profiles received configuration checks; test suites were not repeated.
+Recovery guidance is in [consuming the engine](consuming-engine.md#standard-headers-in-an-existing-build).
+
+The follow-up also repairs tracking of the relocated 78-byte PNG fixture. The
+initial migration had left it locally present but ignored by the general PNG
+rule; its exact path is now exempted and tracked, with original bytes preserved.
+
 ## Recorded results
 
 The earlier recorded validation on 1–2 October 2026 covers the completed runtime,
