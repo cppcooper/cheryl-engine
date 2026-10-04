@@ -2,6 +2,7 @@
 
 Revised 2026-10-04 after owner review. Keep OpenGL-dependent code together in
 one module. This is a proposal; the skeleton and extractions are not implemented.
+The ordered work is in [the groundwork and extraction plan](module-groundwork-and-extraction-plan.md).
 
 ## What earns a module
 
@@ -18,6 +19,7 @@ Separate them later only if an actual consumer or measured build problem warrant
 | Candidate | What separation buys us | Existing boundary |
 | --- | --- | --- |
 | OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
+| Native GLFW integration | Omit the coupled window/display and native input implementation, including GLFW/Gainput/native platform requirements. | Existing neutral display/window/input interfaces; keep the concrete implementations together because InputSystem requires Window. |
 | UI adapter | Enable a toolkit only in applications that use it; test its translation into engine facilities separately. | Engine input, retained drawing and resource contracts; U9 adds capabilities the chosen toolkit actually needs. |
 | Steam integration | Games without Steam avoid its SDK and session requirements; policy tests can use a fake SDK driver. | New application-owned integration, with Steam Input as one responsibility inside it. |
 | Input provider | Choose one provider by default; optionally combine specialized controller support with native keyboard/mouse input. | [iInputSystem](../../include/cheryl/core/controls/input-interface.h); combining sources still needs an explicit coordinator. |
@@ -43,26 +45,68 @@ integration supply context operations without rewriting the renderer. That seam
 can support multiple implementations within one library. Splitting any OpenGL piece
 later requires an explicit benefit and justification.
 
-Generic rendering/presentation/resource contracts stay in the engine. GLFW-only
-window/display support and Gainput input can stay there initially too; moving them
-is a separate decision. The OpenGL module then depends on that shared engine, with
-no reverse dependency. This still retains GLFW/Gainput dependencies. Preserve
-window/context/resource lifetimes and explicitly settle compatibility for consumers
-that currently receive the backend through Cheryl::Engine.
+Generic rendering/presentation/resource contracts stay in the engine. Put GLFW
+window/display and Gainput input together in their native module. OpenGL depends
+on that module and the engine; neither integration is an engine dependency. Perform
+both ownership changes together after preparation to avoid an intermediate cycle.
+Preserve window/context/resource lifetimes and explicitly settle compatibility for
+consumers that currently receive the backend through Cheryl::Engine.
 
-## Small build structure
+## Target-centric build structure
+
+Every project-owned target gets an owning directory, including the shared engine,
+executables, tests, and existing object/interface build-support targets. Each owner
+defines its CMake target, sources, headers and dependencies. Aliases share their
+underlying target's home; upstream dependencies retain their upstream layout.
+Internal engine folders remain organization within one library.
+
+The common parent name is provisional; `projects/` is the current suggestion:
 
 ```text
 cheryl-engine/
-  CMakeLists.txt
-  include/ and src/             # Shared engine, existing paths
-  modules/
-    CMakeLists.txt              # Select optional modules
-    <actual-module>/
+  CMakeLists.txt                # Select and compose targets
+  projects/
+    engine/
       CMakeLists.txt
-      include/ and src/
+      include/                 # Public headers, preserving include spellings
+      src/
       tests/
+        <test-target>/         # Each owned test target has its own directory
+      support/
+        signal-handlers/
+        logging-config/
+    modules/
+      opengl/                  # Whole backend
+        CMakeLists.txt
+        include/
+        src/
+        tests/
+          <test-target>/
+      native-glfw/             # CMakeLists.txt, include/, src/, tests/
+      <selected-integration>/
+    apps/demo/
+    tools/backward-cpp/
+  cmake/                       # Shared helpers
+  docs/
+  extern/
 ```
+
+Tests live with the library or module they exercise. Engine tests, logging checks
+and engine consumer/header probes belong under `engine/tests/`; OpenGL tests belong
+under `modules/opengl/tests/`. Each test target can own a child directory there.
+The `all-tests` runner can combine suites across owners without making the engine
+library depend on its modules.
+
+Each owner publishes its public include roots with `target_include_directories`
+using paths relative to its own CMake directory. Consumers obtain those paths by
+linking the target with `target_link_libraries`, rather than naming another owner's
+folders. A dependency is PUBLIC when exported headers require it and PRIVATE when
+only implementation uses it. Preserve current include spellings during migration,
+including the engine's `include/cheryl` root; keep private source paths private.
+
+Inventory existing targets and assign homes before moving files. This layout
+does not require new libraries for internal folders. Move one coherent unit with
+its CMake changes after resolving its dependency/compatibility boundary.
 
 Begin in this repository. A module's standalone CMake entry point reuses supplied
 engine targets or accepts an explicit engine checkout path. It must not assume a
@@ -84,11 +128,14 @@ its external boundary. Keep integration tests for startup, threads and shutdown.
 Removing native dependency discovery requires a real extraction; folder changes
 and runtime test filters cannot provide it.
 
-1. **Skeleton:** add optional-module selection, a reusable standalone convention
-   and one template. Establish the pattern without creating all candidate modules.
-2. **OpenGL module:** extract the whole backend together, with consumer/backend
-   checks and an explicit default-build compatibility decision. Do not claim a
-   native-free engine while GLFW/Gainput remain in it.
+1. **Groundwork/layout:** map current targets to owning directories, settle shared
+   engine/default-build compatibility, then establish the target-centric layout,
+   optional-module selection, standalone convention and one template in coherent
+   units. Include the core engine's own directory, colocated tests and public target
+   usage requirements; do not move everything at once.
+2. **Native/OpenGL extraction:** establish the two cohesive owners in one cutover,
+   including the whole OpenGL backend, with consumer/backend checks and an explicit
+   default-build compatibility decision. Prove engine-only SDK isolation separately.
 3. **UI/Steam integrations:** implement actual consumer requirements. Keep generic
    U9 repairs in the engine. Prototype Steam session policy and optional input
    composition with fakes before SDK transport; callbacks must progress when polling pauses.

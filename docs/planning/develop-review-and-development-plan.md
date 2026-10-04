@@ -568,10 +568,16 @@ Prerequisites: U4–U8 as applicable; use the existing
 
 The owner requested a module skeleton and review of useful system boundaries.
 Follow [subsystem-modules-plan.md](subsystem-modules-plan.md) for the concise
-proposal: one shared engine library, optional integrations with their own CMake,
-and concrete benefits required before extracting another library. Broad component
-extraction is not a prerequisite for UI.
+proposal: one shared engine library, target-owned directories including that engine,
+tests colocated with their owning library/module, optional integrations with their
+own CMake, and concrete benefits required before extracting another library. Broad
+component extraction is not a prerequisite for UI.
 
+- [x] Record [groundwork and extraction planning](module-groundwork-and-extraction-plan.md)
+  for target ownership/layout, coupling repairs, colocated tests, public include
+  usage requirements and acceptance. Implementation and migration remain pending.
+- [ ] Complete that plan's G1–G5 ownership, CMake/layout, coordinated native/OpenGL
+  extraction and isolation acceptance before relying on the new module structure.
 - [ ] Establish optional-module selection and a standalone convention, then prove
   the first adapter against the engine facilities it actually needs.
 - [ ] Build a requirements matrix for the selected first adapter against current
