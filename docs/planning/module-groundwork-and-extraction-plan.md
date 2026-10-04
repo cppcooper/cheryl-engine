@@ -323,6 +323,9 @@ renderer redesign and SDK API hiding do not belong in this commit.
 
 ### G5 — Prove isolation and replace sandbox's remaining purpose
 
+The current bounded execution sequence is in
+[module-validation-plan.md](module-validation-plan.md).
+
 Run focused checks after explicit authorization, recording each selection separately:
 
 | Selection | Required evidence |
