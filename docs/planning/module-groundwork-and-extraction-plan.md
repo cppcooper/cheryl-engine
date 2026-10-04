@@ -19,6 +19,56 @@ future work. Test boundary rewrites, implementing-module test ownership and proo
 cheap engine-only tests follow the actual extraction; relocation preserves today's
 cases and guarantees.
 
+## Remaining structure implementation — 4 October 2026
+
+The owner requested completion of the module structure today. This resumes the
+remaining G1–G5 implementation; UI, Steam and input-composition features remain
+later consumers. Builds, compiler/configuration probes and tests require a separate
+explicit request. Until then, acceptance is static and executable evidence remains
+pending. The owner committed the previously observed edit in engine
+`resources/memory.cpp` as `0a72f5c`; preserve that content unchanged.
+
+Implement and commit these coherent units in order:
+
+1. **Ownership and compatibility:** record the production/test inventory below,
+   settle selected-module links and the engine-only header contract, and preserve
+   the existing engine target name and output locations.
+2. **Coordinated extraction:** move Native GLFW and the whole OpenGL implementation,
+   move their tests/fixture, split mixed input cases, replace the private diagnostic
+   include with a native-owned reporting declaration, and move SDK discovery with
+   each owner. Neutral engine umbrellas exclude concrete native classes. The demo
+   explicitly links both modules. Preserve existing native/runtime lifetimes.
+3. **Composition and test assembly:** supply independent optional selections,
+   standalone module entry points and a small reusable convention/template. Keep
+   default engine unit cases separate from broader acceptance, assemble `all-tests`
+   from the selected owners, and give each module its own consumer/header probes.
+4. **Reconciliation and static acceptance:** repair moved references, document the
+   link migration and selections, inventory each source and test guarantee, audit
+   engine SDK isolation and the target graph, and record outstanding executable
+   checks without claiming historical runs validate the extraction.
+
+The development boundaries are the native/OpenGL cycle (both move together),
+unchanged user work (preserve the committed memory edit), and standalone reuse
+(never build a second private copy of the engine or mutate the host's cached choices).
+
+| Inventory | Final owner and action |
+| --- | --- |
+| Eleven `src/backends/opengl/*.cpp`, all their public/private headers and GLAD support | OpenGL; move together, including GLFW context and both factory overloads. |
+| `glfw-bindings.cpp`, `input-mapper.cpp`, `input-system.cpp`, `display-system.cpp`, `window.cpp`, `glfw-diagnostics.cpp` and concrete headers | Native GLFW; move together. Keep monitor values, display/window/input interfaces and neutral binding/publication/routing in Engine. |
+| Five backend test files and the PNG row-order fixture | OpenGL; mock cases are module unit checks, `native-opengl.cpp` is opt-in composed acceptance. |
+| `core/glfw-diagnostics.cpp` test | Native GLFW; preserve callback ownership/containment checks. |
+| Two native cases at the end of `core/input.cpp` | Native GLFW; split into a module-owned file. Retain all neutral mapping/tick/state cases in Engine. |
+| Dummy-backed display/input/draw/frame contract checks | Engine; exercise real engine-owned logic without native modules. |
+| Runtime, workers, memory/construction stress, font fixtures and external-library acceptance | Engine; retain broader implementation acceptance separately from the cheap default suite. User-modified memory source stays at its current engine-owned path. |
+| Logging runners, consumer, signal handlers and Backward tool | Existing owners; keep runner/output names, named destinations and explicit bootstrap. Split backend header probes into their modules. |
+
+`Cheryl::Engine` will contain only the shared engine. Full native graphics consumers
+must link `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`; raw archive users
+must add the module archives/dependencies. Preserve granular include spellings using
+each owner's published roots. Native/OpenGL module selection is explicit and disabled
+owners do not discover their SDKs. Keep sandbox compatibility as a deprecated native
+selection until its remaining GLFW-null/mock use has a documented replacement.
+
 ## Instructions used for this plan
 
 - Plan the minimum changes needed for useful subsystem boundaries. Keep one engine
