@@ -45,7 +45,7 @@ individual systems, development practices, and unfinished work.
 ## Planning
 
 - [Develop review and development plan](planning/develop-review-and-development-plan.md)
-- [Subsystem libraries and optional modules](planning/subsystem-modules-plan.md)
+- [Module boundaries and initial setup](planning/subsystem-modules-plan.md)
 - [Unfinished engine work](planning/todo.md)
 - [Unresolved asset-manifest metadata](planning/asset-manifest-todo.md)
 
