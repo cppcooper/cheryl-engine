@@ -84,7 +84,7 @@ on whether current tests happen to include them.
    trailing characters, whitespace, signs, non-finite values, and overflow are
    accepted (U3). A successful aggregate build need not exercise this header.
 2. **Resize delivery can throw through a native callback.**
-   [window.cpp](../../projects/engine/src/core/display/window.cpp) calls EventSystem dispatch from
+   [window.cpp](../../projects/modules/native-glfw/src/core/display/window.cpp) calls EventSystem dispatch from
    `on_framebuffer_size`; immediate EventBus callbacks may throw. Allocation can
    also fail during dispatch. The input adapter already captures callback failures
    and rethrows from update. Establish a corresponding safe window/platform failure
@@ -125,7 +125,7 @@ U identifiers are development units defined later.
 | --- | --- | --- |
 | T1 | [singleton.h:11](../../projects/engine/include/cheryl/templates/singleton.h) | call_once protects construction only. First differing argument sets select a race winner; get_existing is not a construction synchronization mechanism. Audit both CTS/CTU access paths and all argument-bearing consumers; define explicit initialization/retrieval and operation ownership without removing architecturally useful interfaces (U1). |
 | T2 | [ffont.cpp:50](../../projects/engine/src/assets/types/2d/ffont.cpp) | Opening is already checked. U3 repairs binary/input-only reading and complete-read rejection. The subsequent scope decision deprecates FFont in favor of supplied font files through STBFont; preserve legacy behavior without inventing the missing atlas or a new widths format. |
-| T3 | [glslprogram.h:64](../../projects/engine/include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
+| T3 | [glslprogram.h:64](../../projects/modules/opengl/include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
 | T4 | [pool.hpp:171](../../projects/engine/include/cheryl/core/resources/objects/pool.hpp) | Object handles retain PoolState, but its backing-byte deleter still captures a raw manager with a weak token. Solve the underlying release ownership once, and adopt it here (U2). |
 | T5 | [mem-mgr.hpp:24](../../projects/engine/include/cheryl/core/resources/memory/mem-mgr.hpp) | Define zero-allocation stats deliberately, preferably zero counts with an unavailable utilization percentage or explicitly documented zero. No NaN/inf output (U3). |
 | T6 | [managed-block.hpp:13](../../projects/engine/include/cheryl/core/resources/memory/managed-block.hpp) | A locked token cannot keep the Manager object alive or stop teardown. Retain shared release/bookkeeping state; define closing behavior and noexcept final release (U2). |
@@ -154,7 +154,7 @@ headers. Prioritize callers' decisions and failure boundaries.
 | `math/bytes.h`, `math/string-numbers.h` | Unit boundaries, rounding, accepted syntax, full consumption, and failure behavior are not specified. | U3 gives a concise contract and examples. |
 | `core/resources/fileio/file-mgr.h/.cpp` | Header explains the independent index; source incorrectly mentions discovery “by the asset loader,” which now performs its own scan. Incremental indexing, missing roots, ordering, and borrowed lookup lifetime need clarity. | U15 documents current behavior; decide refresh support only if a consumer needs it. |
 | `core/resources/fileio/fonts-system.h`, `projects/engine/src/core/resources/fileio/fonts-list.cpp` | Public declarations lack skipped-root/error, preference, enumeration, and collection-face selection semantics. | U15 documents discovery versus default selection and checks what FontMgr actually supports. |
-| `core/display/window-interface.h`, `display-system-interface.h`, `projects/engine/src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
+| `core/display/window-interface.h`, `display-system-interface.h`, `projects/modules/native-glfw/src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
 | `assets/types/3d/mesh.h`, `projects/engine/support/signal-handlers/src/main.cpp` | Placeholder and global signal/trace bootstrap have little statement of purpose or scope. | U14 records the placeholder contract; U5/U7 explain bootstrap ownership and static-library linkage implications. |
 
 U15 includes an inventory pass over the remaining exported asset definition,
@@ -575,12 +575,16 @@ component extraction is not a prerequisite for UI.
 
 - [x] Record [groundwork and extraction planning](module-groundwork-and-extraction-plan.md)
   for target ownership/layout, coupling repairs, colocated tests, public include
-  usage requirements and acceptance. The directory portion preserves the current
-  combined engine; module extraction and isolation remain pending.
-- [ ] Complete that plan's G1–G5 ownership, CMake/layout, coordinated native/OpenGL
-  extraction and isolation acceptance before relying on the new module structure.
-- [ ] Establish optional-module selection and a standalone convention, then prove
-  the first adapter against the engine facilities it actually needs.
+  usage requirements and acceptance. The initial directory portion preserved the
+  combined engine; extraction implementation and isolation acceptance are tracked below.
+- [x] Implement that plan's ownership, CMake/layout and coordinated native/OpenGL
+  extraction, preserving the shared engine and selected owner tests.
+- [ ] Complete G5 isolation acceptance before relying on the extracted assembly's
+  executable behavior.
+- [x] Establish optional-module selection and a standalone convention, with native/
+  whole OpenGL owners and owner-local tests. Executable extraction acceptance remains
+  tracked by G5.
+- [ ] Prove the first adapter against the engine facilities it actually needs.
 - [ ] Build a requirements matrix for the selected first adapter against current
   render/resource/input/platform contracts. No dependency/library choice is made
   by this review.
@@ -1875,3 +1879,31 @@ the earlier detailed findings remain in commit 6868aef if later extraction needs
 Next is the small module convention, then cohesive backend/integration work, with
 further extraction justified by a concrete consumer. These planning revisions change no source/CMake
 and run no builds or executable tests.
+
+### Module extraction — implementation and static boundary
+
+The owner requested completion of the new structure on 4 October 2026. Native GLFW
+and the entire OpenGL backend now own their implementation, SDK discovery, tests,
+consumer/header probes and standalone entry points. Engine contains neutral runtime,
+display/input/render/resource contracts plus its shared implementations. Public
+include spellings remain; native graphics consumers add the selected module links.
+The root chooses integrations rather than defining their sources.
+
+The old crash bootstrap was made optional during U7. The owner identified that
+behavior change and selected restoration of its original Debug/NDEBUG scope.
+`Cheryl::Engine` now forwards the bootstrap object to final consumers automatically;
+ordinary exception trace capture remains independent. Earlier U7 bootstrap statements
+above describe the historical implementation and are superseded by this decision.
+
+All 408 existing named cases remain, including the owner-committed memory change.
+Two small runtime contract cases supplement the cheap engine unit runner; broader
+runtime/fault/font/memory acceptance remains separately selectable. Native/OpenGL
+tests and fixture follow their implementation owners. The timing-sensitive native
+backpressure case now uses explicit poll/publication progress instead of assuming
+the next platform poll precedes a simulation deadline.
+
+[Module composition](../development/modules.md) is the current contract.
+[Architecture validation](../development/architecture-validation.md) records static
+inventory/header isolation checks; configure/build/test acceptance for this graph
+remains pending authorization. G5 is therefore not marked accepted. UI U9 remains
+the next consumer work after the requested structure and its acceptance boundary.

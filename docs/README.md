@@ -40,6 +40,7 @@ individual systems, development practices, and unfinished work.
 - [Recorded validation and repeatable commands](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)
 - [Consuming the engine](development/consuming-engine.md)
+- [Engine and integration modules](development/modules.md)
 - [Desktop smoke checks](development/native-desktop-checks.md)
 
 ## Planning

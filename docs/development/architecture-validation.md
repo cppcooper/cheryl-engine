@@ -1,5 +1,33 @@
 # Architecture validation
 
+## Extracted module structure — 4 October 2026
+
+The implemented assembly has neutral Engine, Native GLFW and whole OpenGL owners;
+[the module guide](modules.md) records target selection, compatibility, standalone
+composition, tests and the restored automatic Debug crash bootstrap. Implementation
+commit `cfa286d` contains the coordinated extraction and composition cutover.
+
+Static source checks account for the original 69 production translation units:
+52 Engine, six Native GLFW and eleven OpenGL. The existing 408 named test cases are
+preserved, with two new small real-runtime contract cases in the default engine
+suite. The mixed input file is split; backend/native cases and the PNG fixture now
+live with their implementing owners. The owner-committed memory test file is
+unchanged. Engine headers/sources contain no GLFW/GLAD/Gainput includes or module
+imports, and common dependency discovery contains no native/graphics SDKs.
+
+These are static checks. No configure/compiler probes, builds or tests were run
+for this extracted graph. G5 executable acceptance and measured unit build/run
+cost remain pending explicit authorization. Required selections are Engine alone,
+Engine + Native GLFW, and Engine + Native GLFW + OpenGL, plus standalone module
+reuse/bootstrap, owner consumer/header checks and original logging/diagnostics
+acceptance. The automatic Debug bootstrap also requires isolated native crash
+acceptance; exception traces retain their separate existing checks.
+
+The native backpressure case now waits for a replacement native poll and a subsequent
+platform drain before asserting the next input batch. This replaces the previous
+host-scheduling assumption while retaining the full-backlog/presentation guarantee.
+It has not yet been executed in the extracted assembly.
+
 ## Projects layout migration — 4 October 2026
 
 The directory migration retains the combined `cherylGL` / `Cheryl::Engine` library,
@@ -82,7 +110,7 @@ real-font opt-in cases were enabled for the reported complete runs.
   retained-frame shader reload, failed construction/link/reflection cleanup, rotated
   FFont packets, RGBA/alpha row conventions, forced timing/presentation workloads,
   State backpressure, ordered X11 Events/Text, and composed runtime failure cleanup.
-  Sources: [native-opengl.cpp](../../projects/engine/tests/all-tests/src/backends/native-opengl.cpp).
+  Sources: [native-opengl.cpp](../../projects/modules/opengl/tests/acceptance/src/native-opengl.cpp).
 - Native runtime cleanup covers initialization, partial-frame, and presentation failure
   in both modes. Accepted CPU/platform uploads settle before game cleanup; a later
   deinit error preserves the original failure. Driver queries observe native deletion
@@ -109,18 +137,23 @@ and GLFW platform development dependencies. Configure separate build directories
 
 ```sh
 cmake -S . -B build-normal -DCMAKE_BUILD_TYPE=Release \
+  -DCHERYL_BUILD_ALL_TESTS=ON \
   -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
   -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF
 cmake -S . -B build-sandbox -DCMAKE_BUILD_TYPE=Release \
+  -DCHERYL_BUILD_ALL_TESTS=ON \
   -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
   -DCHERYL_SANDBOX_BUILD=ON
-cmake --build build-normal --parallel 3
-cmake --build build-sandbox --parallel 3
+nice -n 19 cmake --build build-normal --parallel 1
+nice -n 19 cmake --build build-sandbox --parallel 1
 ```
 
-`PRE_TEST` defers GoogleTest discovery until test execution. Both configurations use
-one aggregate `all-tests` target. Run them serially because some cases share test
-files. With a usable GLFW display, enable native acceptance in the normal build:
+These commands describe the current selected-owner assembly and require explicit
+build/test authorization. `PRE_TEST` defers GoogleTest discovery until execution.
+`CHERYL_BUILD_ALL_TESTS=ON` selects the aggregate in addition to the focused owner
+runners. Build and run one selection at a time because some cases share files;
+avoid consecutive full builds when an existing build can supply the needed targets.
+With a usable GLFW display, enable native acceptance in the normal aggregate:
 
 ```sh
 CHERYL_NATIVE_GL_TESTS=1 ./build-normal/all-tests --gtest_output=xml:normal-tests.xml

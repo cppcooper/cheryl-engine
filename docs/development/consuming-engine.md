@@ -1,98 +1,84 @@
 # Consuming the engine
 
-The supported U7 packaging boundary is **build-tree composition from this checkout**.
-Add Cheryl as a subdirectory and link Cheryl::Engine. The original cherylGL target
-remains available. C++23, public header directories, logging policy, and transitive
-dependencies belong to the target; applications do not compile engine sources or
-repeat the demo's dependency list.
-
-The repository root remains the CMake entry point. `projects/engine/CMakeLists.txt`
-defines the engine and publishes its public include roots from
-`projects/engine/include/`; consumers obtain them through the target. The directory
-migration preserves the combined engine's native/OpenGL link contract. The later
-module extraction has its own migration gate in the
-[groundwork plan](../planning/module-groundwork-and-extraction-plan.md).
+The supported packaging boundary is build-tree composition from a Cheryl checkout.
+`projects/engine/` owns the neutral `Cheryl::Engine` target (the existing real name
+`cherylGL` remains). Applications link selected integration targets explicitly;
+[the module guide](modules.md) describes ownership, standalone composition and tests.
 
 ```cmake
-set(CHERYL_BUILD_TESTS OFF CACHE BOOL "Build Cheryl tests")
-set(CHERYL_BUILD_DEMO OFF CACHE BOOL "Build Cheryl demo")
+set(CHERYL_BUILD_TESTS OFF)
+set(CHERYL_BUILD_DEMO OFF)
+set(CHERYL_BUILD_NATIVE_GLFW OFF)
+set(CHERYL_BUILD_OPENGL OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 add_executable(application main.cpp)
 target_link_libraries(application PRIVATE Cheryl::Engine)
 ```
 
-Select CHERYL_SANDBOX_BUILD and target-wide logging settings before adding Cheryl.
-Normal builds include the GLFW/Gainput native input adapter. Sandbox builds exclude
-it and its X11/Gainput requirements; generic input/runtime contracts and the GLFW
-null platform remain. Sandbox is not a backend-free SDK. GLFW, GLAD and OpenGL remain
-part of the current engine target. No UI toolkit dependency is selected.
+For native graphics, enable both modules and link `Cheryl::Engine`,
+`Cheryl::NativeGLFW` and `Cheryl::OpenGL`. This is the migration from the former
+combined engine archive. Consumers obtain C++23, includes, logging policy and SDK
+usage requirements through those targets; they do not compile engine sources or
+repeat another owner's include/dependency list.
 
 | Requirement | Target scope and reason |
 | --- | --- |
-| C++23, Threads, logging configuration | Public: templates and runtime consumers use these contracts. |
-| spdlog, CTTI, GLM | Public: exported logging/singleton/render/resource headers contain their types/includes. The existing glm.hpp spelling is supported. |
-| Backward::Interface | Public: diagnostic headers need its include/configuration and resolver libraries. It does not add a signal-handling object. |
-| GLAD | Public: explicitly selected OpenGL headers expose generated types; generic headers remain free of GL/GLFW includes. |
-| GLFW and OpenGL::GL | Private implementation dependencies; static consumers receive required final link dependencies. |
-| Gainput, normal configuration | Public: InputSystem/InputMapper expose its types. Its missing include propagation is supplied by Cheryl. |
-| X11, normal Unix/Linux configuration | Private native link requirement, excluded in sandbox. |
-| STB and JSON | Private implementation include directories. |
-| GoogleTest | Test-only; excluded when CHERYL_BUILD_TESTS is OFF. |
+| C++23, Threads, logging configuration | Engine public requirements used by templates/runtime consumers. |
+| spdlog, CTTI, GLM | Engine public requirements; legacy `glm.hpp` spelling remains supported. |
+| Backward::Interface | Engine public trace/resolver requirements; its own global signal-handler object is not linked. |
+| STB and JSON | Engine private implementation include directories. |
+| GLFW | Native GLFW private implementation requirement, also used privately by the OpenGL context binding. |
+| Gainput | Native GLFW public requirement when `CHERYL_NATIVE_INPUT` is enabled; its types occur in that owner's headers. |
+| X11 | Native input's Linux dependency; OpenGL acceptance also uses it for explicitly selected X11 scenarios. |
+| GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
+| GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
 
-Prefer granular headers such as cheryl/core/engine/engine-context.h,
-cheryl/core/controls/input-interface.h, cheryl/core/rendering/render-frame.h, and
-cheryl/assets/resources/resource-provider.h for backend-neutral consumers. Native
-InputSystem and backends/opengl headers deliberately select native dependencies.
-The core.h umbrella includes the normal native input adapter and is not a guarantee
-of a backend-neutral header surface. Both root-qualified cheryl/... includes and
-the repository's legacy core/.../assets/... spelling are propagated.
+The Engine umbrellas and granular contracts are neutral. Concrete window/input
+headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
+`cheryl/...` and legacy `core/...`/`assets/...` include spellings are preserved through
+each target's public roots. Installed/exported `find_package` distribution remains
+separate work. The old normal/sandbox results remain evidence for their recorded
+combined graph; extraction has its own acceptance gate.
 
-No install/export/find_package distribution is promised by this unit. Vendored
-dependency exports, the legacy public include spelling, backend selection, and
-redistribution need a separate packaging unit before an installed package is
-advertised. Linux normal/sandbox acceptance does not establish Windows/macOS or
-full Wayland support; their native dependency/link paths need separate evidence.
+## Crash and exception traces
 
-## Application bootstrap
+The original automatic crash bootstrap is restored through `Cheryl::Engine`.
+Final consumers receive its object directly, so a static linker cannot omit an
+unreferenced archive initializer. The owner selected the original `NDEBUG` scope:
+Debug-style builds install `backward::SignalHandling`; `NDEBUG` builds do not.
+Exception and explicit stack capture remain available through the existing bounded
+capture/fallback implementation in all builds. The legacy global trace resolver and
+`Cheryl::SignalHandlers` target remain available; the demo needs only the selected
+engine/module targets. See [the module guide](modules.md#crash-and-exception-traces).
 
-The engine archive has no automatic process signal-handler bootstrap. Stack
-capture resolves local traces through Backward::Interface. Backward's Object and
-Backward library targets contain a global signal handler and are not linked into
-the engine target merely to resolve traces.
+## Independent consumers and header probes
 
-An application that explicitly wants the repository's legacy global sh/tr objects
-may link Cheryl::SignalHandlers. That object installs backward::SignalHandling
-before main; the demo opts in. Embedded hosts should own any signal policy directly
-and may create their own scoped Backward handlers. Do not combine independent
-global handler owners without an application-level ordering policy.
+[Engine consumer](../../projects/engine/tests/consumer/CMakeLists.txt) links only
+Engine and exercises multiple translation units, events, workers and CPU resources.
+Its 13 first-include probes now include the neutral umbrellas and reject GL/GLFW
+header leakage. Standalone bootstrapping selects Engine only in a local scope.
 
-## Independent acceptance
+[Native GLFW consumer](../../projects/modules/native-glfw/tests/consumer/CMakeLists.txt)
+and [OpenGL consumer](../../projects/modules/opengl/tests/consumer/CMakeLists.txt)
+link their actual module with seven/twelve first-include probes respectively. They
+reference real implementation symbols without requiring a display at execution.
+`CHERYL_BUILD_CONSUMER_TESTS=ON` adds consumers for the selected root assembly.
 
-[engine consumer](../../projects/engine/tests/consumer/CMakeLists.txt) is a separate CMake application.
-It links only Cheryl::Engine, uses multiple translation units, exercises event,
-worker and CPU-backed provider symbols, and compiles selected public headers as
-first includes. It does not set include directories or a language standard and
-does not require a window/display at execution. Its generic translation units
-reject accidental OpenGL/GLFW header exposure.
-
-After focused build/test authorization:
+After explicit build/test authorization, the engine-only consumer entry point is:
 
 ```sh
-cmake -S projects/engine/tests/consumer -B build-consumer-sandbox \
-  -DCMAKE_BUILD_TYPE=Release -DCHERYL_SANDBOX_BUILD=ON
-cmake --build build-consumer-sandbox --target cheryl-consumer --parallel 3
-./build-consumer-sandbox/cheryl-consumer
+cmake -S projects/engine/tests/consumer -B build-consumer-engine \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build-consumer-engine --target cheryl-consumer --parallel 1
+./build-consumer-engine/cheryl-consumer
 ```
 
-Repeat normal Linux with GLFW_BUILD_X11=ON and GLFW_BUILD_WAYLAND=OFF. CMake 4 hosts
-may need CMAKE_POLICY_VERSION_MINIMUM=3.5 for the pinned legacy dependency projects;
-this compatibility setting does not upgrade their policy declarations. Executable
-consumer/header results must be recorded separately from aggregate tests.
-
-To reuse an existing root build, configure it with `CHERYL_BUILD_CONSUMER_TESTS=ON`,
-then build `cheryl-consumer` with `--parallel 1` and run it from that build directory.
-This opt-in adds the same consumer and header probes after `Cheryl::Engine` exists;
-it reuses the engine archive and does not require the aggregate test suite.
+Module consumer entry points accept `CHERYL_ENGINE_SOURCE=/path/to/cheryl-engine`.
+Normal Native GLFW consumption selects no Cheryl OpenGL/GLAD dependency; the
+OpenGL consumer selects both integration owners. CMake 4 hosts may need
+`CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned legacy dependency projects. Standalone
+module entry points and explicit null-platform selection are documented separately
+in the module guide. No executable acceptance of this graph has yet been run.
 
 ## Standard headers in an existing build
 

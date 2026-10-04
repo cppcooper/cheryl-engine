@@ -21,8 +21,8 @@ required work. Existing interfaces and complete-read rejection remain; see
 - Complete the event-reporting part of shader diagnostics. Structured uniform/
   attribute reflection queries already exist; the printing APIs still write their
   results to standard output. See
-  [glslprogram.h](../../projects/engine/include/cheryl/backends/opengl/glslprogram.h) and
-  [glslprogram.cpp](../../projects/engine/src/backends/opengl/glslprogram.cpp).
+  [glslprogram.h](../../projects/modules/opengl/include/cheryl/backends/opengl/glslprogram.h) and
+  [glslprogram.cpp](../../projects/modules/opengl/src/backends/opengl/glslprogram.cpp).
 
 ## Gameplay and execution extensions
 

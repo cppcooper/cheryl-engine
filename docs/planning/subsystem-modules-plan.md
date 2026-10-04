@@ -1,8 +1,9 @@
 # Module boundaries and initial setup
 
 Revised 2026-10-04 after owner review. Keep OpenGL-dependent code together in
-one module. The `projects/` directory migration preserves the current combined
-engine; native/OpenGL extraction and optional-module composition remain planned.
+one module. Native GLFW and the whole OpenGL backend now have optional targets
+under `projects/modules/`; standalone composition and owner-local tests are implemented.
+Executable isolation/conformance acceptance remains pending authorization.
 The ordered work is in [the groundwork and extraction plan](module-groundwork-and-extraction-plan.md).
 
 ## What earns a module
@@ -19,7 +20,7 @@ Separate them later only if an actual consumer or measured build problem warrant
 
 | Candidate | What separation buys us | Existing boundary |
 | --- | --- | --- |
-| OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../projects/engine/include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
+| OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../projects/modules/opengl/include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
 | Native GLFW integration | Omit the coupled window/display and native input implementation, including GLFW/Gainput/native platform requirements. | Existing neutral display/window/input interfaces; keep the concrete implementations together because InputSystem requires Window. |
 | UI adapter | Enable a toolkit only in applications that use it; test its translation into engine facilities separately. | Engine input, retained drawing and resource contracts; U9 adds capabilities the chosen toolkit actually needs. |
 | Steam integration | Games without Steam avoid its SDK and session requirements; policy tests can use a fake SDK driver. | New application-owned integration, with Steam Input as one responsibility inside it. |
@@ -82,8 +83,7 @@ cheryl-engine/
       support/
         signal-handlers/
         logging-config/
-        gl46/                  # Generated OpenGL loader, until extraction
-    modules/                   # Planned; not yet extracted
+    modules/                   # Selected integration owners
       opengl/                  # Whole backend
         CMakeLists.txt
         include/
@@ -112,10 +112,10 @@ folders. A dependency is PUBLIC when exported headers require it and PRIVATE whe
 only implementation uses it. Preserve current include spellings during migration,
 including the engine's `include/cheryl` root; keep private source paths private.
 
-The directory migration keeps the current targets and include spellings. It does
-not create new libraries for internal folders or transfer backend implementation
-ownership. Later extraction moves each implementation and its tests together,
-after resolving its dependency/compatibility boundary.
+The initial directory migration preserved the combined archive. The subsequent
+coordinated extraction moves native/OpenGL implementations and their tests to the
+selected owners. Granular include spellings remain; consumers explicitly select
+module links. See [the implemented composition contract](../development/modules.md).
 
 Begin in this repository. A module's standalone CMake entry point reuses supplied
 engine targets or accepts an explicit engine checkout path. It must not assume a
@@ -125,8 +125,8 @@ twice. This leaves a later companion repository possible without requiring one n
 New module dependencies are discovered only when enabled. Standalone bootstrap
 suppresses the engine's module catalog locally to prevent recursion. Applications
 or the default assembly select the engine and modules; the shared engine must not
-link back to a module that depends on it. These composition rules are future work;
-today's directory migration keeps the combined engine contract intact.
+link back to a module that depends on it. These composition rules are implemented;
+their executable acceptance is recorded separately from the directory migration.
 
 ## Testing and the next work
 

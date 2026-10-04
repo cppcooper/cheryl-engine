@@ -1,7 +1,7 @@
 # Groundwork and module extraction plan
 
 2026-10-04. The directory migration established current-target ownership;
-the remaining implementation now extracts Native GLFW and the whole OpenGL backend.
+Native GLFW and the whole OpenGL backend are now extracted into optional owners.
 The original directory-migration acceptance is recorded in
 [architecture validation](../development/architecture-validation.md); one native
 timing case required a targeted retry. Executable acceptance for the extracted graph
@@ -71,7 +71,7 @@ unchanged user work (preserve the committed memory edit), and standalone reuse
 | Runtime, workers, memory/construction stress, font fixtures and external-library acceptance | Engine; retain broader implementation acceptance separately from the cheap default suite. User-modified memory source stays at its current engine-owned path. |
 | Logging runners, consumer, signal handlers and Backward tool | Existing owners; keep runner/output names, named destinations and the restored Debug crash bootstrap. Split backend header probes into their modules. |
 
-`Cheryl::Engine` will contain only the shared engine. Full native graphics consumers
+`Cheryl::Engine` contains only the shared engine. Full native graphics consumers
 must link `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`; raw archive users
 must add the module archives/dependencies. Preserve granular include spellings using
 each owner's published roots. Native/OpenGL module selection is explicit and disabled
@@ -137,7 +137,7 @@ target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::NativeGLFW Cheryl::Ope
 | Engine | Neutral runtime/display/input/render/resource contracts, asset preparation, bindings/routing/snapshots, logging, memory, workers, events and utilities. [EngineContext](../../projects/engine/include/cheryl/core/engine/engine-context.h) already accepts interfaces. No new general runtime facade is needed. |
 | Native GLFW | Concrete `Window`/`DisplaySystem`, GLFW diagnostics, `InputSystem`/`InputMapper`/GLFW bindings. [InputSystem](../../projects/modules/native-glfw/src/core/controls/input-system.cpp) requires concrete `Window` and owns native callbacks/polling; splitting them first adds a reverse dependency. Own GLFW, Gainput and their native platform requirements here. |
 | OpenGL | All `projects/modules/opengl/include/cheryl/backends/opengl*` and `projects/modules/opengl/src/backends/opengl/`, including context, GLFW context binding, factories, resources and diagnostics. Own OpenGL discovery and GLAD generation here. Public GL types require public GLAD usage. |
-| Test owners | Engine tests and consumer probes under engine; backend tests under OpenGL; native input/GLFW tests under Native GLFW. [input.cpp](../../projects/engine/tests/all-tests/src/core/input.cpp) mixes neutral and native cases and must be split. |
+| Test owners | Engine tests and consumer probes under engine; backend tests under OpenGL; native input/GLFW tests under Native GLFW. [input.cpp](../../projects/engine/tests/all-tests/src/core/input.cpp) retains neutral cases; its two native cases moved into Native GLFW. |
 
 The cutover resolves two concrete seams: the GLFW context now includes a small
 native-owned reporting declaration instead of a private display header; the engine
