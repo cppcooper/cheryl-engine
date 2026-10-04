@@ -45,8 +45,8 @@ sandbox, matching the previous selection.
 
 | Selection | Executed result |
 | --- | --- |
-| Normal Release, developer logging profile, GLFW/X11 | Engine, aggregate tests, logging runners, demo and Backward tool built. Aggregate: 391 passed, 17 opt-in skips, zero failures. |
-| Sandbox Release, developer logging profile, GLFW null platform | Engine, aggregate tests, logging runners and Backward tool built. Aggregate: 389 passed, 3 font-fixture skips, zero failures. |
+| Normal Release, developer logging profile, GLFW/X11 | Engine, aggregate tests, logging runners, demo and Backward library check built. Aggregate: 391 passed, 17 opt-in skips, zero failures. |
+| Sandbox Release, developer logging profile, GLFW null platform | Engine, aggregate tests, logging runners and Backward library check built. Aggregate: 389 passed, 3 font-fixture skips, zero failures. |
 | Normal and sandbox consumers | `cheryl-consumer` and the 12/11 first-include header probes built against their existing engine targets; both consumers ran successfully. |
 | Independent consumer bootstrap | Separate normal configuration succeeded, including with the root consumer option enabled in the cache; no duplicate targets. This acceptance reused the existing engines for consumer compilation. |
 | Relocated logging and diagnostics scripts | Both scripts passed in normal and sandbox builds; logging included all eight isolated scenarios. |

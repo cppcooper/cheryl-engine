@@ -100,7 +100,7 @@ cheryl-engine/
           src/
           tests/
     apps/demo/
-    tools/backward-cpp/
+    dependency-checks/backward-cpp/  # Standalone external-library check
   cmake/                       # Shared helpers
   docs/
   extern/

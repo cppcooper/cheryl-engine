@@ -69,7 +69,7 @@ unchanged user work (preserve the committed memory edit), and standalone reuse
 | Two native cases at the end of `core/input.cpp` | Native GLFW; split into a module-owned file. Retain all neutral mapping/tick/state cases in Engine. |
 | Dummy-backed display/input/draw/frame contract checks | Engine; exercise real engine-owned logic without native modules. |
 | Runtime, workers, memory/construction stress, font fixtures and external-library acceptance | Engine; retain broader implementation acceptance separately from the cheap default suite. User-modified memory source stays at its current engine-owned path. |
-| Logging runners, consumer, signal handlers and Backward tool | Existing owners; keep runner/output names, named destinations and the restored Debug crash bootstrap. Split backend header probes into their modules. |
+| Logging runners, consumer, signal handlers and Backward library check | Existing owners; keep runner/output names, named destinations and the restored Debug crash bootstrap. Split backend header probes into their modules. The standalone external-library check lives under `projects/dependency-checks/`. |
 
 `Cheryl::Engine` contains only the shared engine. Full native graphics consumers
 must link `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`; raw archive users
@@ -228,7 +228,7 @@ follow it; changing test dependencies alone does not transfer that responsibilit
 
 - Inventory every current production/test source, public/private header, target,
   dependency and fixture. Assign exactly one owner before changing source globs.
-  Include `gl46`, logging policy, signal-handler objects, demo, Backward tool,
+  Include `gl46`, logging policy, signal-handler objects, demo, Backward library check,
   logging acceptance, consumer and generated header-probe targets. Aliases share
   their real target's directory; vendored projects retain their upstream layout.
 - Classify test assertions using the responsibilities above. Record each case's
@@ -275,7 +275,7 @@ module must never compile a private copy of engine sources.
 ### G3 — Move the existing owners without changing subsystem behavior
 
 - Move the current engine into `projects/engine/{include,src,tests}` with its own
-  CMakeLists. Move demo/tool/support targets to their recorded directories.
+  CMakeLists. Move demo/dependency-check/support targets to their recorded directories.
   This engine still contains native/backend code until G4.
 - Give existing test targets child directories under their owner. Update fixture,
   acceptance-script, consumer-bootstrap and documentation paths in the same units.

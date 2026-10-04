@@ -33,8 +33,8 @@ OpenGL development/link dependencies.
 ## Project layout
 
 `projects/engine/` owns the engine's `include/`, `src/`, `tests/` and supporting
-targets. The demo lives in `projects/apps/demo/`; the Backward diagnostic tool lives
-in `projects/tools/backward-cpp/`. Each target is defined in its owning directory;
+targets. The demo lives in `projects/apps/demo/`; the standalone Backward library check
+lives in `projects/dependency-checks/backward-cpp/`. Each target is defined in its owning directory;
 root CMake selects and composes them. Link `Cheryl::Engine` to inherit public header
 paths and dependencies; existing C++ include spellings remain supported.
 
