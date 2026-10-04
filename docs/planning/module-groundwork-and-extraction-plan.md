@@ -78,6 +78,32 @@ each owner's published roots. Native/OpenGL module selection is explicit and dis
 owners do not discover their SDKs. Keep sandbox compatibility as a deprecated native
 selection until its remaining GLFW-null/mock use has a documented replacement.
 
+## Contract-role organization — 4 October 2026
+
+After the extraction, the owner requested clearer directory organization showing
+the engine contracts each module implements. Native source folders already reflect
+display and controls; the flat module-owner list exposes dependency names rather
+than their roles. Complete this follow-up as one layout/documentation unit:
+
+1. Inventory the actual engine interfaces and concrete implementations. Native GLFW
+   implements display, window and input contracts; OpenGL implements rendering,
+   presentation and graphics-resource contracts. Keep these multi-contract owners
+   cohesive and retain their existing target/header contracts.
+2. Group owners under `projects/modules/platform/native-glfw/` and
+   `projects/modules/graphics/opengl/`. Role directories organize modules; each
+   concrete module still owns its CMake, includes, sources and tests. Add a module
+   index and owner-local contract maps with links to the engine interfaces.
+3. Move each whole owner, repairing root selection, standalone helper lookup,
+   fixture tracking and current source/document references in the same unit.
+   Preserve public include spellings and internal source/test contents.
+4. Statically compare file bytes, source inventories and named cases, verify
+   relative paths and documentation links, and commit the coherent result.
+   G5 executable validation remains pending the separately required explicit request.
+
+The boundary is an owner fulfilling several contracts: directory grouping must not
+divide Native GLFW's coupled display/input lifetime or the whole OpenGL backend
+into additional libraries. Future role groups wait for an implemented owner.
+
 ## Instructions used for this plan
 
 - Plan the minimum changes needed for useful subsystem boundaries. Keep one engine
