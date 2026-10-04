@@ -1,15 +1,3 @@
-cmake_minimum_required(VERSION 3.28)
-project(cheryl_consumer LANGUAGES CXX)
-
-set(CHERYL_ENGINE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/../.." CACHE PATH "Cheryl source checkout")
-set(CHERYL_BUILD_TESTS OFF CACHE BOOL "Build Cheryl's tests and acceptance tools")
-set(CHERYL_BUILD_DEMO OFF CACHE BOOL "Build the windowed demonstration application")
-add_subdirectory("${CHERYL_ENGINE_SOURCE}" engine EXCLUDE_FROM_ALL)
-
-# No dependency list, include directories, language standard or engine sources.
-add_executable(cheryl-consumer main.cpp resources.cpp)
-target_link_libraries(cheryl-consumer PRIVATE Cheryl::Engine)
-
 # Each translation unit includes its header first, with no umbrella/prefix header.
 set(consumer_headers
     cheryl/core/engine/engine-context.h
@@ -29,10 +17,9 @@ endif()
 set(header_sources)
 foreach(header IN LISTS consumer_headers)
     string(MAKE_C_IDENTIFIER "${header}" identifier)
-    set(source "${CMAKE_CURRENT_BINARY_DIR}/headers/${identifier}.cpp")
+    set(source "${CMAKE_CURRENT_BINARY_DIR}/${identifier}.cpp")
     file(WRITE "${source}" "#include <${header}>\n")
     list(APPEND header_sources "${source}")
 endforeach()
 add_library(cheryl-consumer-headers OBJECT ${header_sources})
 target_link_libraries(cheryl-consumer-headers PRIVATE Cheryl::Engine)
-add_dependencies(cheryl-consumer cheryl-consumer-headers)

@@ -1,8 +1,39 @@
 # Architecture validation
 
+## Projects layout migration — 4 October 2026
+
+The directory migration retains the combined `cherylGL` / `Cheryl::Engine` library,
+existing target names, public include spellings and root build outputs. Production
+source contents are unchanged; the native PNG fixture now resolves through its test
+owner. Source inventories contain 69 engine translation units normally and 66 in
+sandbox, matching the previous selection.
+
+| Selection | Executed result |
+| --- | --- |
+| Normal Release, developer logging profile, GLFW/X11 | Engine, aggregate tests, logging runners, demo and Backward tool built. Aggregate: 391 passed, 17 opt-in skips, zero failures. |
+| Sandbox Release, developer logging profile, GLFW null platform | Engine, aggregate tests, logging runners and Backward tool built. Aggregate: 389 passed, 3 font-fixture skips, zero failures. |
+| Normal and sandbox consumers | `cheryl-consumer` and the 12/11 first-include header probes built against their existing engine targets; both consumers ran successfully. |
+| Independent consumer bootstrap | Separate normal configuration succeeded, including with the root consumer option enabled in the cache; no duplicate targets. This acceptance reused the existing engines for consumer compilation. |
+| Relocated logging and diagnostics scripts | Both scripts passed in normal and sandbox builds; logging included all eight isolated scenarios. |
+| Opt-in native OpenGL/X11 | 13 of 14 cases passed together. `polling_backpressure` failed a timing assertion during concurrent compilation and passed its single targeted retry with compilation stopped. The moved PNG fixture passed. |
+
+These runs used CMake 4.4.3 and GCC 16.2.1 on Linux, with
+`CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned dependency compatibility. Normal used
+`GLFW_BUILD_X11=ON`, `GLFW_BUILD_WAYLAND=OFF` and the existing desktop display.
+Aggregate runs did not enable real-font fixtures; normal native coverage was run
+separately with `CHERYL_NATIVE_GL_TESTS=1`. CTest discovery retains the build root as
+the working directory. This is migration evidence, not proof of future SDK isolation
+or of a clean single-run native suite. Revisit the timing-sensitive case when its
+module-owned tests are separated.
+
+After the initial builds, consumer verification used existing build directories,
+`CHERYL_BUILD_CONSUMER_TESTS=ON`, and `nice -n 19 cmake --build <build> --parallel 1
+--target cheryl-consumer`, with a compilation break between selections. No fresh
+engine build or logging-profile matrix was added for this final verification.
+
 ## Recorded results
 
-The latest recorded validation on 1–2 October 2026 covers the completed runtime,
+The earlier recorded validation on 1–2 October 2026 covers the completed runtime,
 rendering, input, worker, and resource architecture. The validated C++ snapshot was
 `d07d1a0f98599f46b41aee20cb507a0ef7379f2c`; its changes are integrated into
 [PR #9](https://github.com/cppcooper/cheryl-engine/pull/9), merged into `develop`.
@@ -28,7 +59,7 @@ real-font opt-in cases were enabled for the reported complete runs.
   retained-frame shader reload, failed construction/link/reflection cleanup, rotated
   FFont packets, RGBA/alpha row conventions, forced timing/presentation workloads,
   State backpressure, ordered X11 Events/Text, and composed runtime failure cleanup.
-  Sources: [native-opengl.cpp](../../tests/executables/gtest/backends/native-opengl.cpp).
+  Sources: [native-opengl.cpp](../../projects/engine/tests/all-tests/src/backends/native-opengl.cpp).
 - Native runtime cleanup covers initialization, partial-frame, and presentation failure
   in both modes. Accepted CPU/platform uploads settle before game cleanup; a later
   deinit error preserves the original failure. Driver queries observe native deletion
@@ -36,11 +67,11 @@ real-font opt-in cases were enabled for the reported complete runs.
 - Three real-font cases sweep all 793 TrueType and 727 CFF scratch allocation requests
   in two concrete ASCII bake traces, plus nested failures. Rejected allocations raise
   `bad_alloc`, release outstanding scratch, and prevent provider upload. Sources:
-  [fonts.cpp](../../tests/executables/gtest/resources/fonts.cpp).
+  [fonts.cpp](../../projects/engine/tests/all-tests/src/resources/fonts.cpp).
 - Linux worker cases exercise actual inherited-mask discovery/restoration, required/
   preferred eligibility, native kernel rejection, and recovery. Controlled adapters
   separately cover failure before callback entry and partial thread-start rollback.
-  Sources: [worker-pool.cpp](../../tests/executables/gtest/core/worker-pool.cpp).
+  Sources: [worker-pool.cpp](../../projects/engine/tests/all-tests/src/core/worker-pool.cpp).
 - Finite real-demo runs complete in both modes with normal font bake/upload/render
   and cleanup. Desktop camera/mouse input, text focus, resize, successful/failed/
   recovered F5 reload, and normal close were reported as passing on 1 October.

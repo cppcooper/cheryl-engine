@@ -2,7 +2,7 @@
 
 Cheryl groups engine records into five explicitly named destinations. Their public
 names are declared in
-[log-names.h](../../include/cheryl/core/logging/log-names.h), also included by
+[log-names.h](../../projects/engine/include/cheryl/core/logging/log-names.h), also included by
 core/logging.h. Default paths are relative to the configured log directory:
 
 | Name | Default file | Records |
@@ -297,7 +297,7 @@ records the execution evidence and limits. Further build/test runs require the
 authorization specified by AGENTS.md.
 
 The standalone cheryl-logging-acceptance target and
-[logging.py](../../tests/acceptance/logging.py) run fault, failed rotation, full-queue
+[logging.py](../../projects/engine/tests/logging-acceptance/logging.py) run fault, failed rotation, full-queue
 native reentry, discarded record/flush, retained clone, named category routing,
 static teardown, and fatal
 callback destruction scenarios in independent processes with a 30-second timeout.

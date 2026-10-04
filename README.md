@@ -30,6 +30,18 @@ platform, omits the Gainput-backed input adapter and windowed demo, and keeps th
 engine and aggregate test targets available. Sandbox OpenGL sources still need
 OpenGL development/link dependencies.
 
+## Project layout
+
+`projects/engine/` owns the engine's `include/`, `src/`, `tests/` and supporting
+targets. The demo lives in `projects/apps/demo/`; the Backward diagnostic tool lives
+in `projects/tools/backward-cpp/`. Each target is defined in its owning directory;
+root CMake selects and composes them. Link `Cheryl::Engine` to inherit public header
+paths and dependencies; existing C++ include spellings remain supported.
+
+The engine still includes the native GLFW/Gainput and OpenGL implementations.
+Their module extraction and independent test ownership follow the
+[groundwork and extraction plan](docs/planning/module-groundwork-and-extraction-plan.md).
+
 ## Documentation
 
 The [documentation index](docs/README.md) groups the engine docs by runtime,

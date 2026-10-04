@@ -1,0 +1,32 @@
+# The current engine still contains the native and OpenGL implementations.
+# Dependency selection moves with those owners during the later extraction.
+if(CHERYL_SANDBOX_BUILD AND UNIX AND NOT APPLE)
+    set(GLFW_BUILD_X11 OFF)
+    set(GLFW_BUILD_WAYLAND OFF)
+endif()
+if(NOT CHERYL_SANDBOX_BUILD AND UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+endif()
+
+find_package(Threads REQUIRED)
+find_package(OpenGL REQUIRED)
+set(BACKWARD_SHARED STATIC)
+set(SPDLOG_USE_STD_FORMAT ON)
+set(GLM_ENABLE_EXPERIMENTAL ON)
+
+if(CHERYL_BUILD_TESTS)
+    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/googletest" extern/googletest EXCLUDE_FROM_ALL)
+endif()
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/ctti" extern/ctti EXCLUDE_FROM_ALL)
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/backward-cpp" extern/backward-cpp EXCLUDE_FROM_ALL)
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/spdlog" extern/spdlog EXCLUDE_FROM_ALL)
+if(NOT CHERYL_SANDBOX_BUILD)
+    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/gainput" extern/gainput EXCLUDE_FROM_ALL)
+endif()
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/glad/cmake" extern/glad/cmake)
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/glm" extern/glm EXCLUDE_FROM_ALL)
+add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/glfw" extern/glfw EXCLUDE_FROM_ALL)
+
+if(NOT CHERYL_SANDBOX_BUILD AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(gainputstatic PRIVATE -Wno-implicit-fallthrough -Wno-unused-parameter)
+endif()

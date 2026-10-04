@@ -1,0 +1,7 @@
+set(CHERYL_ENGINE_TEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+get_filename_component(CHERYL_ENGINE_PRIVATE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../src" ABSOLUTE)
+
+include(GoogleTest)
+add_subdirectory(all-tests)
+add_subdirectory(logging-tests)
+add_subdirectory(logging-acceptance)

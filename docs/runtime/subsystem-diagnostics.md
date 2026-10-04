@@ -131,8 +131,8 @@ payloads. A separate process verifies actual asset, shader reflection and memory
 ownership records use their named files, without initializing the legacy destination:
 
 ```sh
-python3 tests/acceptance/diagnostics.py path/to/developer-build
-python3 tests/acceptance/diagnostics.py path/to/off-build --info-stripped
+python3 projects/engine/tests/all-tests/diagnostics.py path/to/developer-build
+python3 projects/engine/tests/all-tests/diagnostics.py path/to/off-build --info-stripped
 ```
 
 It uses previously built tests and requires explicit test authorization under

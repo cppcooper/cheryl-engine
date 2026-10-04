@@ -687,7 +687,7 @@ TEST(native_opengl, texture_row_order) {
     auto engine = CE::Engine::make_glfw_opengl_context(small_window());
     auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
     renderer.initialize();
-    const auto path = std::filesystem::path(CHERYL_SOURCE_DIR) / "tests/fixtures/rgba-two-rows.png";
+    const auto path = std::filesystem::path(CHERYL_TEST_FIXTURE_DIR) / "rgba-two-rows.png";
     const auto decoded = decode_image(path);
     const std::array<unsigned char, 24> top_down{
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255};

@@ -27,7 +27,7 @@ cmake -S . -B build-log-sandbox-developer -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_SANDBOX_BUILD=ON -DCHERYL_LOG_PROFILE=developer
 cmake --build build-log-sandbox-developer --parallel 3 \
   --target cheryl-logging-tests cheryl-logging-acceptance
-python3 tests/acceptance/logging.py build-log-sandbox-developer
+python3 projects/engine/tests/logging-acceptance/logging.py build-log-sandbox-developer
 ```
 
 The runner accepts multiple build directories and runs them serially. It neither

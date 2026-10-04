@@ -77,25 +77,25 @@ These are source findings or explicit audit questions; their severity is not bas
 on whether current tests happen to include them.
 
 1. **Numeric utility header is malformed.**
-   [string-numbers.h](../../include/cheryl/math/string-numbers.h) ends with an
+   [string-numbers.h](../../projects/engine/include/cheryl/math/string-numbers.h) ends with an
    unmatched `#endif`. It also defines non-inline `parse_floats` in a header;
    integer parsing checks `ec` but not complete consumption, and `stod` does not
    check the parsed end position. Correct inclusion/linkage and define whether
    trailing characters, whitespace, signs, non-finite values, and overflow are
    accepted (U3). A successful aggregate build need not exercise this header.
 2. **Resize delivery can throw through a native callback.**
-   [window.cpp](../../src/core/display/window.cpp) calls EventSystem dispatch from
+   [window.cpp](../../projects/engine/src/core/display/window.cpp) calls EventSystem dispatch from
    `on_framebuffer_size`; immediate EventBus callbacks may throw. Allocation can
    also fail during dispatch. The input adapter already captures callback failures
    and rethrows from update. Establish a corresponding safe window/platform failure
    boundary, including synchronous resize callers (U4).
 3. **Exception construction promises more than it can safely provide.**
-   [exceptions.cpp](../../src/internal/exceptions.cpp) marks stack capture,
+   [exceptions.cpp](../../projects/engine/src/internal/exceptions.cpp) marks stack capture,
    formatting, and exception constructors noexcept although string construction,
    formatting, and trace resolution can allocate. Failures can terminate while
    trying to report another failure. Fixed trace streams also need explicit
    overflow/reset handling; the same review applies to
-   [log.cpp](../../src/core/logging/log.cpp). Treat this as a failure-path audit,
+   [log.cpp](../../projects/engine/src/core/logging/log.cpp). Treat this as a failure-path audit,
    not a claim that every ordinary exception fails (U4).
 4. **Build target does not express its dependency contract.**
    [CMakeLists.txt](../../CMakeLists.txt) gives `cherylGL` only Threads as a linked
@@ -104,8 +104,8 @@ on whether current tests happen to include them.
    global. No install/export package is defined. A downstream consumer needs a
    separate acceptance case; the aggregate cannot establish package usability (U7).
 5. **Logging configuration is inconsistent and integration is sparse.**
-   [compile-time-logging.hpp](../../include/internals/compile-time-logging.hpp)
-   defines CTWriteMask unconditionally; [block.h](../../include/cheryl/templates/block.h)
+   [compile-time-logging.hpp](../../projects/engine/include/internals/compile-time-logging.hpp)
+   defines CTWriteMask unconditionally; [block.h](../../projects/engine/include/cheryl/templates/block.h)
    then redefines it to zero. This disables its memory macro logs and can affect
    later macro expansion in that translation unit. Direct CELog calls bypass that
    mask. Runtime, input, asset publication, workers, and native teardown mostly
@@ -123,19 +123,19 @@ U identifiers are development units defined later.
 
 | ID | Source location | Analysis and resolution |
 | --- | --- | --- |
-| T1 | [singleton.h:11](../../include/cheryl/templates/singleton.h) | call_once protects construction only. First differing argument sets select a race winner; get_existing is not a construction synchronization mechanism. Audit both CTS/CTU access paths and all argument-bearing consumers; define explicit initialization/retrieval and operation ownership without removing architecturally useful interfaces (U1). |
-| T2 | [ffont.cpp:50](../../src/assets/types/2d/ffont.cpp) | Opening is already checked. U3 repairs binary/input-only reading and complete-read rejection. The subsequent scope decision deprecates FFont in favor of supplied font files through STBFont; preserve legacy behavior without inventing the missing atlas or a new widths format. |
-| T3 | [glslprogram.h:64](../../include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
-| T4 | [pool.hpp:171](../../include/cheryl/core/resources/objects/pool.hpp) | Object handles retain PoolState, but its backing-byte deleter still captures a raw manager with a weak token. Solve the underlying release ownership once, and adopt it here (U2). |
-| T5 | [mem-mgr.hpp:24](../../include/cheryl/core/resources/memory/mem-mgr.hpp) | Define zero-allocation stats deliberately, preferably zero counts with an unavailable utilization percentage or explicitly documented zero. No NaN/inf output (U3). |
-| T6 | [managed-block.hpp:13](../../include/cheryl/core/resources/memory/managed-block.hpp) | A locked token cannot keep the Manager object alive or stop teardown. Retain shared release/bookkeeping state; define closing behavior and noexcept final release (U2). |
-| T7 | [mem-mgr.h:9](../../include/cheryl/core/resources/memory/mem-mgr.h) | Enumerate cross-container invariants and lock order before promising concurrency. Include inherited BlockManagement and object-pool transitions, not just Manager methods (U2). |
-| T8 | [event-bus.h:20](../../include/cheryl/core/subsystems/event-bus.h) | String/any channels leave payload agreement to callers. Add typed channel identity and constrained payload submission while preserving bus-qualified registration, invalidation, delivery, and error contracts (U13). |
-| T9 | [draw-packet.h:28](../../include/cheryl/core/rendering/draw-packet.h) | Retained generation, geometry range, parameters/images, topology, and pipeline state determine compatibility. Define reorder-safe regions/barriers first; never sort transparent or UI packets merely by material (U12). |
-| T10 | [tileset.h:45](../../include/cheryl/assets/types/2d/tileset.h) | Provide neutral neighbor sampling, signature computation, seeded weighted choice, missing-rule behavior, and simulation-time animation substitution. Avoid embedding a world implementation into asset metadata (U10). |
-| T11 | [simulation-scheduler.h:15](../../include/cheryl/core/game-framework/simulation-scheduler.h) | Scheduler already has explicit bounded timing policies. Collect workload data before offering suggestions; never silently change fixed-step, input retention, or recovery semantics (U12). |
-| T12 | [stbfont.h:26](../../include/cheryl/assets/types/2d/stbfont.h) | Decode scalar input, then shape/map glyph runs with fallback and cluster information. Expanding an ASCII array cannot supply shaping, bidi, graphemes, or dynamic atlas residency (U11). |
-| T13 | [math.cpp:350](../../tests/executables/gtest/math/math.cpp) | Deferred byte-format tests belong with the production boundary/suffix fix. Correct the 1024 comparison and missing TiB entry; cover zero, adjacent boundaries, and representable larger values (U3). |
+| T1 | [singleton.h:11](../../projects/engine/include/cheryl/templates/singleton.h) | call_once protects construction only. First differing argument sets select a race winner; get_existing is not a construction synchronization mechanism. Audit both CTS/CTU access paths and all argument-bearing consumers; define explicit initialization/retrieval and operation ownership without removing architecturally useful interfaces (U1). |
+| T2 | [ffont.cpp:50](../../projects/engine/src/assets/types/2d/ffont.cpp) | Opening is already checked. U3 repairs binary/input-only reading and complete-read rejection. The subsequent scope decision deprecates FFont in favor of supplied font files through STBFont; preserve legacy behavior without inventing the missing atlas or a new widths format. |
+| T3 | [glslprogram.h:64](../../projects/engine/include/cheryl/backends/opengl/glslprogram.h) | Reflection data already exists. Decide whether “register events” means an event consumer actually needs records; use an explicit diagnostic sink/record boundary and keep optional event delivery separate from graphics querying (U6). |
+| T4 | [pool.hpp:171](../../projects/engine/include/cheryl/core/resources/objects/pool.hpp) | Object handles retain PoolState, but its backing-byte deleter still captures a raw manager with a weak token. Solve the underlying release ownership once, and adopt it here (U2). |
+| T5 | [mem-mgr.hpp:24](../../projects/engine/include/cheryl/core/resources/memory/mem-mgr.hpp) | Define zero-allocation stats deliberately, preferably zero counts with an unavailable utilization percentage or explicitly documented zero. No NaN/inf output (U3). |
+| T6 | [managed-block.hpp:13](../../projects/engine/include/cheryl/core/resources/memory/managed-block.hpp) | A locked token cannot keep the Manager object alive or stop teardown. Retain shared release/bookkeeping state; define closing behavior and noexcept final release (U2). |
+| T7 | [mem-mgr.h:9](../../projects/engine/include/cheryl/core/resources/memory/mem-mgr.h) | Enumerate cross-container invariants and lock order before promising concurrency. Include inherited BlockManagement and object-pool transitions, not just Manager methods (U2). |
+| T8 | [event-bus.h:20](../../projects/engine/include/cheryl/core/subsystems/event-bus.h) | String/any channels leave payload agreement to callers. Add typed channel identity and constrained payload submission while preserving bus-qualified registration, invalidation, delivery, and error contracts (U13). |
+| T9 | [draw-packet.h:28](../../projects/engine/include/cheryl/core/rendering/draw-packet.h) | Retained generation, geometry range, parameters/images, topology, and pipeline state determine compatibility. Define reorder-safe regions/barriers first; never sort transparent or UI packets merely by material (U12). |
+| T10 | [tileset.h:45](../../projects/engine/include/cheryl/assets/types/2d/tileset.h) | Provide neutral neighbor sampling, signature computation, seeded weighted choice, missing-rule behavior, and simulation-time animation substitution. Avoid embedding a world implementation into asset metadata (U10). |
+| T11 | [simulation-scheduler.h:15](../../projects/engine/include/cheryl/core/game-framework/simulation-scheduler.h) | Scheduler already has explicit bounded timing policies. Collect workload data before offering suggestions; never silently change fixed-step, input retention, or recovery semantics (U12). |
+| T12 | [stbfont.h:26](../../projects/engine/include/cheryl/assets/types/2d/stbfont.h) | Decode scalar input, then shape/map glyph runs with fallback and cluster information. Expanding an ASCII array cannot supply shaping, bidi, graphemes, or dynamic atlas residency (U11). |
+| T13 | [math.cpp:350](../../projects/engine/tests/all-tests/src/math/math.cpp) | Deferred byte-format tests belong with the production boundary/suffix fix. Correct the 1024 comparison and missing TiB entry; cover zero, adjacent boundaries, and representable larger values (U3). |
 
 ## In-file documentation work
 
@@ -147,15 +147,15 @@ headers. Prioritize callers' decisions and failure boundaries.
 | Files | Missing or misleading in-file explanation | Planned action |
 | --- | --- | --- |
 | `core/logging/log.h`, `logger.h`, `internals/compile-time-logging.hpp`, `internal-logs.h` | No unified contract for lazy construction, directory/rotation defaults, sink versus logger filtering, blocking async queue, close timeout, fallback/off state, or compile mask scope. | U5 documents configuration and lifecycle with a minimal example, including behavior before init and after close. |
-| `internals/exceptions.h`, `src/internal/exceptions.cpp`, `core/logging/log.cpp` | “single threaded … UB” comment conflicts with thread-local storage; truncation, allocation failure, and noexcept guarantees are unclear. | U4 documents actual guarantees and trace limitations alongside the repair. |
+| `internals/exceptions.h`, `projects/engine/src/internal/exceptions.cpp`, `core/logging/log.cpp` | “single threaded … UB” comment conflicts with thread-local storage; truncation, allocation failure, and noexcept guarantees are unclear. | U4 documents actual guarantees and trace limitations alongside the repair. |
 | `templates/block.h`, `memory/mem-mgr.h/.hpp`, `managed-block.hpp`, `objects/pool.h/.hpp` | Existing comments explain local bookkeeping but do not establish the whole-operation concurrency and destruction contract. | U2 adds invariant/lock-order and handle-release documentation before exposing concurrency claims. |
 | `templates/singleton.h` | CTS/CTU names and examples do not clearly distinguish constructor accessibility, initialization races, later thread safety, and shutdown ordering. | U1 documents the supported contract for both variants. |
-| `assets/types/2d/ffont.h`, `src/assets/types/2d/ffont.cpp`, `stbfont.h` | Constructor example omits the provider; width encoding, bank layout, atlas dependency, and fallback behavior are insufficiently specified. | U3 documents FFont's deprecation and preserved legacy limitations, and STBFont's caller-supplied font-file contract. |
+| `assets/types/2d/ffont.h`, `projects/engine/src/assets/types/2d/ffont.cpp`, `stbfont.h` | Constructor example omits the provider; width encoding, bank layout, atlas dependency, and fallback behavior are insufficiently specified. | U3 documents FFont's deprecation and preserved legacy limitations, and STBFont's caller-supplied font-file contract. |
 | `math/bytes.h`, `math/string-numbers.h` | Unit boundaries, rounding, accepted syntax, full consumption, and failure behavior are not specified. | U3 gives a concise contract and examples. |
 | `core/resources/fileio/file-mgr.h/.cpp` | Header explains the independent index; source incorrectly mentions discovery “by the asset loader,” which now performs its own scan. Incremental indexing, missing roots, ordering, and borrowed lookup lifetime need clarity. | U15 documents current behavior; decide refresh support only if a consumer needs it. |
-| `core/resources/fileio/fonts-system.h`, `src/core/resources/fileio/fonts-list.cpp` | Public declarations lack skipped-root/error, preference, enumeration, and collection-face selection semantics. | U15 documents discovery versus default selection and checks what FontMgr actually supports. |
-| `core/display/window-interface.h`, `display-system-interface.h`, `src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
-| `assets/types/3d/mesh.h`, `src/main.cpp` | Placeholder and global signal/trace bootstrap have little statement of purpose or scope. | U14 records the placeholder contract; U5/U7 explain bootstrap ownership and static-library linkage implications. |
+| `core/resources/fileio/fonts-system.h`, `projects/engine/src/core/resources/fileio/fonts-list.cpp` | Public declarations lack skipped-root/error, preference, enumeration, and collection-face selection semantics. | U15 documents discovery versus default selection and checks what FontMgr actually supports. |
+| `core/display/window-interface.h`, `display-system-interface.h`, `projects/engine/src/core/display/window.cpp` | Ownership is stated, but platform affinity, monitor snapshot freshness, resize event delivery/failure, scale changes, and borrowed window lifetime need local contracts. | U4/U9 document current guarantees and capability additions. |
+| `assets/types/3d/mesh.h`, `projects/engine/support/signal-handlers/src/main.cpp` | Placeholder and global signal/trace bootstrap have little statement of purpose or scope. | U14 records the placeholder contract; U5/U7 explain bootstrap ownership and static-library linkage implications. |
 
 U15 includes an inventory pass over the remaining exported asset definition,
 submission, parameter, camera, input, dispatch, and utility declarations. Add
@@ -317,10 +317,10 @@ audits unless they merely describe an already established implementation.
 
 The initial correctness and diagnostic consumers are concrete existing code:
 
-1. [demo.cpp](../../tests/executables/demo.cpp), in sequential and concurrent modes,
+1. [demo main.cpp](../../projects/apps/demo/src/main.cpp), in sequential and concurrent modes,
    exercises input/focus, font/geometry storage, material reload, presentation,
    and shutdown. It is the first native application acceptance consumer.
-2. [runtime-adapter.cpp](../../tests/executables/gtest/core/runtime-adapter.cpp)
+2. [runtime-adapter.cpp](../../projects/engine/tests/all-tests/src/core/runtime-adapter.cpp)
    provides the controlled in-memory game/display/input/provider/renderer graph.
    It is the first portable contract consumer; failures, dispatch, publication,
    and retained generations can be checked without assuming a driver result.
@@ -533,7 +533,7 @@ not permission to refactor unrelated scheduling or resource interfaces.
   target name and choose install/export/package scope.
 - [x] Add an independent consumer that links the actual library rather than
   recompiling its sources; plan header self-containment checks.
-- [x] Review signal/trace bootstrap ownership in src/main.cpp and static-library
+- [x] Review signal/trace bootstrap ownership in projects/engine/support/signal-handlers/src/main.cpp and static-library
   inclusion behavior; opt-in tooling should not depend on incidental linkage.
 - [x] Keep optional backend/input/UI dependencies separate where the selected
   packaging boundary requires it.
@@ -575,7 +575,8 @@ component extraction is not a prerequisite for UI.
 
 - [x] Record [groundwork and extraction planning](module-groundwork-and-extraction-plan.md)
   for target ownership/layout, coupling repairs, colocated tests, public include
-  usage requirements and acceptance. Implementation and migration remain pending.
+  usage requirements and acceptance. The directory portion preserves the current
+  combined engine; module extraction and isolation remain pending.
 - [ ] Complete that plan's G1–G5 ownership, CMake/layout, coordinated native/OpenGL
   extraction and isolation acceptance before relying on the new module structure.
 - [ ] Establish optional-module selection and a standalone convention, then prove
@@ -1593,7 +1594,7 @@ and demo targets are optional; Gainput/X11 remain normal-build requirements. Gen
 entry points remain distinct from explicit native/umbrella headers. An installed
 find_package distribution and unsupported platform combinations remain later work.
 
-The archive excludes src/main.cpp. Cheryl::SignalHandlers explicitly owns the
+The archive excludes projects/engine/support/signal-handlers/src/main.cpp. Cheryl::SignalHandlers explicitly owns the
 legacy process bootstrap; only the demo opts in. Backward::Interface supplies stack
 capture/resolver requirements without automatically linking a signal-handler object.
 

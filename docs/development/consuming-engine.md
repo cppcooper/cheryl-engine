@@ -6,6 +6,13 @@ remains available. C++23, public header directories, logging policy, and transit
 dependencies belong to the target; applications do not compile engine sources or
 repeat the demo's dependency list.
 
+The repository root remains the CMake entry point. `projects/engine/CMakeLists.txt`
+defines the engine and publishes its public include roots from
+`projects/engine/include/`; consumers obtain them through the target. The directory
+migration preserves the combined engine's native/OpenGL link contract. The later
+module extraction has its own migration gate in the
+[groundwork plan](../planning/module-groundwork-and-extraction-plan.md).
+
 ```cmake
 set(CHERYL_BUILD_TESTS OFF CACHE BOOL "Build Cheryl tests")
 set(CHERYL_BUILD_DEMO OFF CACHE BOOL "Build Cheryl demo")
@@ -61,7 +68,7 @@ global handler owners without an application-level ordering policy.
 
 ## Independent acceptance
 
-[tests/consumer](../../tests/consumer/CMakeLists.txt) is a separate CMake application.
+[engine consumer](../../projects/engine/tests/consumer/CMakeLists.txt) is a separate CMake application.
 It links only Cheryl::Engine, uses multiple translation units, exercises event,
 worker and CPU-backed provider symbols, and compiles selected public headers as
 first includes. It does not set include directories or a language standard and
@@ -71,7 +78,7 @@ reject accidental OpenGL/GLFW header exposure.
 After focused build/test authorization:
 
 ```sh
-cmake -S tests/consumer -B build-consumer-sandbox \
+cmake -S projects/engine/tests/consumer -B build-consumer-sandbox \
   -DCMAKE_BUILD_TYPE=Release -DCHERYL_SANDBOX_BUILD=ON
 cmake --build build-consumer-sandbox --target cheryl-consumer --parallel 3
 ./build-consumer-sandbox/cheryl-consumer
@@ -81,3 +88,8 @@ Repeat normal Linux with GLFW_BUILD_X11=ON and GLFW_BUILD_WAYLAND=OFF. CMake 4 h
 may need CMAKE_POLICY_VERSION_MINIMUM=3.5 for the pinned legacy dependency projects;
 this compatibility setting does not upgrade their policy declarations. Executable
 consumer/header results must be recorded separately from aggregate tests.
+
+To reuse an existing root build, configure it with `CHERYL_BUILD_CONSUMER_TESTS=ON`,
+then build `cheryl-consumer` with `--parallel 1` and run it from that build directory.
+This opt-in adds the same consumer and header probes after `Cheryl::Engine` exists;
+it reuses the engine archive and does not require the aggregate test suite.
