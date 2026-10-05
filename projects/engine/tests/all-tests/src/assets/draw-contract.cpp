@@ -1,4 +1,5 @@
 #include <core/rendering/draw-packet.h>
+#include <internals/exceptions.h>
 #include <gtest/gtest.h>
 
 #include <memory>
