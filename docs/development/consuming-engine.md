@@ -33,6 +33,12 @@ repeat another owner's include/dependency list.
 | GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
 | GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
 
+Engine type introspection uses CTTI 1.1's `name_of` and `type_id_of` APIs.
+Singleton diagnostics and `TYPENAME`/`TYPENAMEOF` keep fully qualified names as
+`std::string_view`; the expression-name macro preserves `decltype` qualifiers and
+does not evaluate its argument. Value type IDs apply decay; explicit type IDs
+preserve the supplied type.
+
 The Engine umbrellas and granular contracts are neutral. Concrete window/input
 headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
 `cheryl/...` and legacy `core/...`/`assets/...` include spellings are preserved through

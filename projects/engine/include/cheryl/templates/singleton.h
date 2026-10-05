@@ -1,6 +1,6 @@
 #pragma once
 #include <internals/exceptions.h>
-#include <ctti/detailed_nameof.hpp>
+#include <ctti/name.hpp>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -52,9 +52,7 @@ public:
 
     template <typename... Args> static Type& initialize(Args&&... args) {
         if (!construct(std::forward<Args>(args)...)) {
-            throw CE::Exceptions::bad_request(
-                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::detailed_nameof<Type>().full_name().str())
-            );
+            throw CE::Exceptions::bad_request(CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::name_of<Type>()));
         }
         return *get_existing();
     }
@@ -67,9 +65,7 @@ public:
         if (auto* instance = get_existing()) {
             return *instance;
         }
-        throw CE::Exceptions::failed_operation(
-            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::detailed_nameof<Type>().full_name().str())
-        );
+        throw CE::Exceptions::failed_operation(CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::name_of<Type>()));
     }
 };
 
@@ -126,9 +122,7 @@ public:
 
     template <typename... Args> static Type& initialize(Args&&... args) {
         if (!construct(std::forward<Args>(args)...)) {
-            throw CE::Exceptions::bad_request(
-                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::detailed_nameof<Type>().full_name().str())
-            );
+            throw CE::Exceptions::bad_request(CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::name_of<Type>()));
         }
         return *get_existing();
     }
@@ -140,8 +134,6 @@ public:
         if (auto* instance = get_existing()) {
             return *instance;
         }
-        throw CE::Exceptions::failed_operation(
-            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::detailed_nameof<Type>().full_name().str())
-        );
+        throw CE::Exceptions::failed_operation(CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::name_of<Type>()));
     }
 };

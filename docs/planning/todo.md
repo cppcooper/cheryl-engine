@@ -9,11 +9,10 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Adapt Engine type-name helpers and the CTTI cases before accepting the updated
-  CTTI fork for compilation. That fork removes `ctti/detailed_nameof.hpp`; the
-  singleton diagnostics, type-name macros and dependency cases still use its API.
-  Preserve their diagnostic naming contract while adopting the fork's replacement
-  name interface. This is separate from Gainput's CMake target compatibility.
+- Align the tracked CTTI submodule revision with the selected 1.1 checkout when
+  committing the dependency upgrades. Engine helpers use the 1.1 API; the older
+  recorded gitlink does not provide it. See
+  [the consumer requirements](../development/consuming-engine.md).
 - Complete executable acceptance of the library-neutral recording-graph UI probe,
   then select and prove
   the first optional adapter against its concrete toolkit/version requirements.
