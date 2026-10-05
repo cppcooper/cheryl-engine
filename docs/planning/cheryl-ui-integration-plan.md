@@ -132,7 +132,8 @@ rather than a gameplay rewrite.
 The [main development plan's U9](develop-review-and-development-plan.md#u9--prove-generic-ui-facing-facilities-with-a-real-adapter)
 owns prerequisites and ordering with the module acceptance work. The
 [neutral probe](../development/ui-probe.md) establishes the rendering, resource and
-input baseline. A concrete toolkit adapter has not been implemented.
+input baseline. The [TGUI module](../../projects/modules/ui/tgui/README.md) owns the
+adapter's current source contracts; session and executable acceptance remain below.
 
 Follow these steps in order and update their status while U9 remains active.
 
@@ -186,18 +187,24 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Complete repository composition: pin the toolkit under `extern/tgui`,
     select the UI owner in the root's normal assembly and retain explicit opt-out
     and supplied-target/source/package composition. Do not fetch during CMake.
-  - [ ] Implement owned CPU texture generations and indexed-triangle recording,
+  - [x] Implement owned CPU texture generations and indexed-triangle recording,
     followed by complete platform upload and retained scene adoption. Resolve
     sampling support before textures are exposed.
-    - [ ] Fix the initial sampling/texture-bound contract; copy RGBA generations
+    - [x] Fix the initial sampling/texture-bound contract; copy RGBA generations
       before toolkit storage changes and reject unsupported smoothing changes.
-    - [ ] Expand indexed draws into owned colored triangles with transformed
+    - [x] Expand indexed draws into owned colored triangles with transformed
       positions, corrected UV orientation and copied logical clips/view mapping.
-    - [ ] Upload a complete recording through the platform submission endpoint;
+    - [x] Upload a complete recording through the platform submission endpoint;
       retain the previous scene until a new result is ready, and preserve it on
       upload failure/cancellation. Add owner-local recording/resource checks.
+    These bridges and checks are source-complete; actual queued runtime execution,
+    FreeType glyph growth and native appearance remain executable acceptance.
   - [ ] Implement the simulation-owned toolkit session and GUI lifecycle, focus
     leases, modifier snapshots, explicit timing/view updates and capabilities.
+    Configure toolkit view/input in logical units and supply copied framebuffer
+    ratios for pixel rounding. Enforce the smoothed-only policy before FreeType's
+    `setSmooth` changes its own state; its base implementation mutates before
+    delegating to a texture. Limit each GUI to one outstanding scene replacement.
   - [ ] Run the focused portable/native input and module acceptance once the
     executable gate blocks dependent work; keep source completion separate from
     that acceptance and reuse the already accepted rendering baseline.

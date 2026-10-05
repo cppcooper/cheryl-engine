@@ -15,7 +15,7 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 | `Cheryl::Engine` (`cherylGL`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
 | `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
-| `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Event translation is implemented; widget rendering/lifecycle remains U9 work. |
+| `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges; session/widget acceptance remains U9 work. |
 
 ```mermaid
 flowchart LR
@@ -122,8 +122,9 @@ scenario covers input-to-frame transfer, presentation, teardown and session reje
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
 Each module owns its real implementation tests: `native-glfw-tests` and
-`opengl-tests`, plus `ui-tgui-tests` when selected. The TGUI input cases need no
-native platform, graphics context or font file. `engine-acceptance`, `opengl-acceptance`,
+`opengl-tests`, plus `ui-tgui-tests` when selected. The TGUI input, CPU recording
+and controlled-provider scene cases need no native platform, graphics context or
+font file. `engine-acceptance`, `opengl-acceptance`,
 `cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
 default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
@@ -136,7 +137,7 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `engine-all` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
 | `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
 | `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
-| `ui-tgui-all` | The selected TGUI module's input translation cases; widget/lifetime acceptance remains U9 work. |
+| `ui-tgui-all` | The selected TGUI module's input, recording and scene cases; real-widget/runtime acceptance remains U9 work. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

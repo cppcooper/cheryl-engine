@@ -28,7 +28,7 @@ if(NOT TARGET TGUI::TGUI)
     endif()
 endif()
 
-add_library(cheryl_ui_tgui STATIC src/input.cpp)
+add_library(cheryl_ui_tgui STATIC src/input.cpp src/rendering.cpp src/scene.cpp)
 add_library(Cheryl::UI::TGUI ALIAS cheryl_ui_tgui)
 set_target_properties(cheryl_ui_tgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
 target_include_directories(cheryl_ui_tgui PUBLIC

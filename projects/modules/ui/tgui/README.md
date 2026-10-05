@@ -1,10 +1,11 @@
 # TGUI UI integration
 
-`Cheryl::UI::TGUI` is an optional UI owner. Its current implementation translates
-selected Cheryl input records into TGUI events. The retained render/resource bridge
-and toolkit-session/GUI lifecycle remain in the
+`Cheryl::UI::TGUI` is an optional UI owner. It translates selected Cheryl input
+records and records/uploads toolkit draws as retained Cheryl scenes. The
+toolkit-session/GUI lifecycle and real-widget acceptance remain in the
 [U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
-This target does not yet provide a usable widget-rendering backend.
+The bridge is source-complete; executable acceptance remains pending. A complete
+widget integration still needs the session/GUI owner.
 
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
 and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
@@ -60,12 +61,72 @@ Fractional vertical wheel offsets are preserved; TGUI has no horizontal-wheel
 event, so the original Cheryl record remains the source for another consumer.
 Invalid Unicode scalars or nonfinite/unrepresentable wheel offsets reject explicitly.
 
+## Recording and publication
+
+`Renderer(maximum_size)` creates CPU-only `Texture` objects. The configured limit
+is an application-supported bound, not a hardware query. Each texture load copies
+top-to-bottom RGBA pixels into a fresh immutable snapshot, including the transient
+FreeType atlas path. Old recordings retain their original snapshot. Base toolkit
+image loading also retains its pixels for transparent-pixel hit testing.
+
+The initial policy requires the application's provider to create smoothed,
+clamp-to-edge RGBA images through `create_image`. Cheryl OpenGL's default satisfies
+this policy, including its mipmap filtering. Nearest sampling and
+`setSmooth(false)` reject before changing an adapter texture. Supporting another
+policy requires a neutral provider contract; silently accepting an unsupported
+toolkit setting would change appearance.
+
+`RenderTarget` receives a view, viewport and target extent in logical window units.
+Supply copied framebuffer/logical ratios through `set_pixel_scale` for toolkit
+pixel rounding. The target bakes transforms and view mapping into copied colored
+triangles, flips textured V coordinates to Cheryl's image convention, and retains
+intersected logical clips in draw order. Arbitrary rotated clipping rejects;
+rectangular/right-angle clipping follows the pinned toolkit's supported algorithm.
+Zero-sized views and empty clips record no draws. Changing a view/scale during
+recording or finishing unmatched clip layers rejects explicitly.
+
+Use `begin_recording`/`finish_recording` for direct drawing. `drawGui(root)` starts
+a recording and discards it if a widget throws; call `finish_recording` after it
+succeeds. `discard_recording` releases incomplete data and clip state. Platform
+clearing remains with the application; TGUI's `mainLoop`/clear functions are not
+part of this bridge.
+
+Construct `SceneUploader(provider)` on the platform owner during initialization,
+then copy its handle to simulation. The application supplies `Materials` with
+colored-triangle pipelines, straight alpha, disabled depth/write/culling and
+Cheryl's projection semantic. A textured material declares the named custom
+`Sampler2D`; its shader multiplies sampled RGBA by vertex RGBA. Other custom values
+come from material defaults or a copied pass layer accepted by each used pipeline.
+Backend-specific pipeline construction stays in the application/graphics module.
+
+`submit(platform_submission, recording, materials)` transfers owned data through
+the existing dispatcher and returns a future. Uploads require the original provider
+domain and platform thread. The uploader reuses a live uploaded image for the same
+CPU generation; its weak cache does not retain abandoned CPU images or GPU handles.
+Changed pixels always produce another image. Geometry remains separately uploaded
+per draw; the adapter introduces no sorting or batching policy.
+
+During update, `adopt_scene(future, current)` checks readiness without waiting.
+It replaces `current` only with a complete successful scene; an upload error or
+cancelled dispatcher future propagates while `current` remains usable. Keep at
+most one outstanding replacement per GUI in the initial integration and continue
+writing the current scene while it is pending. `current.write(frame_writer)` adds
+a UI pass at the caller's chosen point in pass order. Packets own uploaded images,
+geometry, materials, parameters and clips, independent of subsequent widget changes
+or adapter destruction; native playback still requires the original live domain.
+
 ## Focused checks
 
 The module owns `ui-tgui-tests`, the `ui-tgui-all` aggregate and
 `cheryl-ui-tgui-consumer`. Its cases join `all-tests` only when this module is
-selected. These input checks require no window, graphics context, font file or
-installed toolkit-global backend; widget/native acceptance belongs to later U9 work.
+selected. Input/recording checks and controlled-provider scene checks require no
+window, graphics context, font file or installed toolkit-global backend. They cover
+index expansion, transforms, clips, immutable texture generations, resource reuse,
+retained frames, failed/cancelled adoption and owner/domain rejection. The independent
+consumer exercises event translation and direct rectangle recording. Actual
+FreeType glyph growth, widgets, queued runtime/concurrent handoff and native pixels
+belong to the remaining U9 acceptance; promise-based adoption checks do not prove
+those paths.
 
 After explicit build/test authorization, a standalone source composition is:
 
