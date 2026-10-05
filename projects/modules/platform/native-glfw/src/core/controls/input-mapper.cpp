@@ -9,6 +9,7 @@ namespace CE::Input {
     }
 
     bool InputMapper::OnDeviceButtonFloat(
+        const float /*delta_time*/, // Current axis state is independent of elapsed time.
         const gainput::DeviceId device,
         const gainput::DeviceButtonId input,
         const float,

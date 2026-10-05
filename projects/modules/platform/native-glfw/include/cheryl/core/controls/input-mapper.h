@@ -21,7 +21,7 @@ namespace CE::Input {
         // notifications must not replay/reorder the already mapped transitions.
         void use_external_state(DeviceId device) { externally_driven_.insert(device); }
 
-        bool OnDeviceButtonFloat(gainput::DeviceId device, gainput::DeviceButtonId input, float old_value, float new_value) override;
+        bool OnDeviceButtonFloat(float deltaTime, DeviceId device, DeviceButtonId deviceButton, float oldValue, float newValue) override;
         bool OnDeviceButtonBool(gainput::DeviceId device, gainput::DeviceButtonId input, bool old_value, bool new_value) override;
         [[nodiscard]] int GetPriority() const override { return 0; }
     };
