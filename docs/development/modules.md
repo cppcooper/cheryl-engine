@@ -91,15 +91,20 @@ still requires an actual selection, replacement or dependency-isolation benefit.
 
 ## Test ownership and selection
 
-`CHERYL_BUILD_TESTS=ON` builds the inexpensive `cheryl-engine-tests`, the logging
-unit runner and selected module unit runners. Engine unit cases exercise real
+GoogleTest runners use `*-tests` for normal focused tests, `*-acceptance` for broader
+or environment-dependent acceptance tests, and `*-all` for all GoogleTests owned by
+a subsystem/module. `all-tests` contains all GoogleTests in the selected Cheryl
+assembly.
+
+`CHERYL_BUILD_TESTS=ON` builds the inexpensive `engine-tests`, `logging-tests`
+and selected module unit runners. Engine unit cases exercise real
 engine-owned bindings, frames and runtime code with controlled contract adapters.
 They have no native module link or display/device requirement. The new small runtime
 scenario covers input-to-frame transfer, presentation, teardown and session rejection;
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
-Each module owns its real implementation tests: `cheryl-native-glfw-tests` and
-`cheryl-opengl-tests`. `cheryl-engine-acceptance`, `cheryl-opengl-acceptance`,
+Each module owns its real implementation tests: `native-glfw-tests` and
+`opengl-tests`. `engine-acceptance`, `opengl-acceptance`,
 `cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
 default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
@@ -109,9 +114,9 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 
 | Target | Cases |
 | --- | --- |
-| `engine-all-tests` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
-| `platform-module_native-glfw-all-tests` | Native GLFW diagnostics and, when selected, native input mapping cases. |
-| `graphics-module_opengl-all-tests` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
+| `engine-all` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
+| `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
+| `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

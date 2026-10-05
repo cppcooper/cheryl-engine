@@ -1,4 +1,4 @@
-cheryl_add_test_suite(cheryl-opengl-tests
+cheryl_add_test_suite(opengl-tests
     SOURCES
         src/opengl-debug.cpp
         src/opengl-lifetime.cpp

@@ -69,7 +69,7 @@ def main():
     for supplied in args.build_dirs:
         build = supplied.resolve()
         executable = build / "cheryl-logging-acceptance"
-        aggregate = build / "cheryl-logging-tests"
+        aggregate = build / "logging-tests"
         with tempfile.TemporaryDirectory(prefix="cheryl-logging-acceptance-") as temporary:
             root = Path(temporary)
             run([str(aggregate), "--gtest_filter=logging.*"], root)

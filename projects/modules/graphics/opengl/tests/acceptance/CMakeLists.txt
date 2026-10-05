@@ -7,7 +7,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11)
     list(APPEND native_test_definitions CHERYL_NATIVE_X11_TESTS=1)
     list(APPEND native_test_libraries X11::X11)
 endif()
-cheryl_add_test_suite(cheryl-opengl-acceptance ACCEPTANCE
+cheryl_add_test_suite(opengl-acceptance ACCEPTANCE
     SOURCES src/native-opengl.cpp
     LIBRARIES ${native_test_libraries}
     PRIVATE_INCLUDES "${CHERYL_OPENGL_PRIVATE_SOURCE_DIR}"

@@ -4,7 +4,7 @@ get_filename_component(CHERYL_ENGINE_PRIVATE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_
 include(GoogleTest)
 include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylTests.cmake")
 add_subdirectory(support)
-set(CHERYL_TEST_AGGREGATE engine-all-tests)
+set(CHERYL_TEST_AGGREGATE engine-all)
 add_subdirectory(all-tests)
 add_subdirectory(unit)
 add_subdirectory(acceptance)

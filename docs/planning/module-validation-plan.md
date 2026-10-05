@@ -62,7 +62,7 @@ cmake -S . -B build-validation-release -G Ninja \
   -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
 
 nice -n 19 cmake --build build-validation-release --parallel 1 --target \
-  cheryl-consumer cheryl-engine-tests cheryl-logging-tests \
+  cheryl-consumer engine-tests logging-tests \
   cheryl-logging-acceptance cheryl-signal-acceptance
 ```
 
@@ -79,8 +79,8 @@ and `GLFW_BUILD_WAYLAND=OFF`. Build these targets together:
 
 ```text
 cheryl-native-glfw-consumer
-cheryl-native-glfw-tests
-platform-module_native-glfw-all-tests
+native-glfw-tests
+native-glfw-all
 ```
 
 Run the native consumer and focused native cases. Verify no Cheryl OpenGL backend,
@@ -92,11 +92,11 @@ Then set `CHERYL_BUILD_OPENGL=ON`, `CHERYL_BUILD_DEMO=ON` and
 
 ```text
 cheryl-opengl-consumer
-cheryl-opengl-tests
-cheryl-opengl-acceptance
-engine-all-tests
-platform-module_native-glfw-all-tests
-graphics-module_opengl-all-tests
+opengl-tests
+opengl-acceptance
+engine-all
+native-glfw-all
+opengl-all
 all-tests
 demo
 ```

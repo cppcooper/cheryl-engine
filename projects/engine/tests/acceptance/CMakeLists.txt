@@ -1,4 +1,4 @@
-cheryl_add_test_suite(cheryl-engine-acceptance ACCEPTANCE
+cheryl_add_test_suite(engine-acceptance ACCEPTANCE
     SOURCES
         ../all-tests/src/core/event-bus.cpp
         ../all-tests/src/core/runtime-adapter.cpp
@@ -17,5 +17,5 @@ cheryl_add_test_suite(cheryl-engine-acceptance ACCEPTANCE
     LIBRARIES Cheryl::Engine
     PRIVATE_INCLUDES "${CHERYL_ENGINE_PRIVATE_SOURCE_DIR}")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_link_options(cheryl-engine-acceptance PRIVATE -rdynamic)
+    target_link_options(engine-acceptance PRIVATE -rdynamic)
 endif()

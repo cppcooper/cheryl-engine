@@ -1,4 +1,4 @@
-cheryl_add_test_suite(cheryl-engine-tests
+cheryl_add_test_suite(engine-tests
     SOURCES
         src/runtime-contract.cpp
         ../all-tests/src/assets/draw-contract.cpp
