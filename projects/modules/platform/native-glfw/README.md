@@ -25,5 +25,14 @@ presentation. GLFW/OpenGL context selection, buffer swapping and the native grap
 factory live in the OpenGL module. A different graphics implementation can use the
 platform window/input facilities with its own API-specific setup.
 
+With native input enabled, the owner reuses a supplied `gainput::gainput`,
+`gainputstatic` or `gainput` target, in that order, or adds the selected
+`extern/gainput` source. Gainput's public headers propagate through that target;
+the owner supplies the missing usage requirement for an owned legacy source build.
+Supplied dependency targets keep their host's settings. Owned source composition
+suppresses Gainput samples/tests locally, including cached `ON` choices, without
+rewriting the host cache. The selected fork's `GAINPUT_ENABLE_HID` setting remains
+available; its HID support brings hidapi and the platform's HID development libraries.
+
 Target selection, standalone paths and validation status are in
 [the module guide](../../../../docs/development/modules.md).
