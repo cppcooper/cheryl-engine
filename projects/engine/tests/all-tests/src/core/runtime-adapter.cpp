@@ -551,10 +551,10 @@ namespace {
             controller_held = controller_held || tick.input.button(controller_action).held();
             keyboard_blocked = keyboard_blocked && !tick.input.button(keyboard_action).held();
             received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
-            for (const auto& record : tick.input.text_for(field)) {
-                const auto codepoint = std::get<CE::Input::TextEvent>(record.data).codepoint;
-                if (codepoint >= ' ' && codepoint <= '~')
-                    edited_text.push_back(static_cast<char>(codepoint));
+            for (const auto& record : tick.input.records_for(field, focus_.epoch())) {
+                const auto* text = std::get_if<CE::Input::TextEvent>(&record.data);
+                if (text && text->codepoint >= ' ' && text->codepoint <= '~')
+                    edited_text.push_back(static_cast<char>(text->codepoint));
             }
             if (replace_image.load(std::memory_order_acquire) && !replacement_requested_) {
                 replacement_requested_ = true;
