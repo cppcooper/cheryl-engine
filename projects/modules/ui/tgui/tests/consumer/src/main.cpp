@@ -1,6 +1,26 @@
 #include <cheryl/ui/tgui/input.h>
 #include <cheryl/ui/tgui/rendering.h>
 #include <cheryl/ui/tgui/scene.h>
+#include <cheryl/ui/tgui/session.h>
+
+#include <TGUI/Widgets/Label.hpp>
+
+namespace {
+    class Input final : public CE::Input::iInputSystem {
+        CE::Input::InputBindings bindings_;
+
+    public:
+        void initialize(CE::iWindow&) override {}
+        void poll() override {}
+        void deinitialize() override {}
+        CE::Input::InputBindings& bindings() override { return bindings_; }
+        CE::Input::DeviceId keyboard_id() const override { return 1; }
+        CE::Input::DeviceId mouse_id() const override { return 2; }
+        CE::Input::DeviceId gamepad_id() const override { return 3; }
+        bool supports(CE::Input::InputMode) const override { return true; }
+        bool supports_focus() const override { return true; }
+    };
+}
 
 int main() {
     const CE::Input::InputRecord record{1, CE::Input::InputClock::now(), 7, CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{U'A'}};
@@ -13,8 +33,14 @@ int main() {
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);
     CE::UI::TGUI::Scene{}.write(writer);
+    Input input;
+    CE::UI::TGUI::Session session(input, 1);
+    session.set_view({320, 240}, {640, 480});
+    session.gui().add(tgui::Label::create("Independent consumer"));
+    session.update_time(0.01);
+    const auto widgets = session.record();
     return event && event->type == tgui::Event::Type::TextEntered && event->text.unicode == U'A' && scene.draws().size() == 1 &&
-                   scene.draws()[0].vertices.size() == 6 && frame.passes().empty()
+                   scene.draws()[0].vertices.size() == 6 && frame.passes().empty() && !widgets.draws().empty()
                ? 0
                : 1;
 }

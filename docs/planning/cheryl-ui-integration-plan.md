@@ -207,7 +207,7 @@ Follow these steps in order and update their status while U9 remains active.
     delegating to a texture. Limit each GUI to one outstanding scene replacement.
     - [x] Copy logical window dimensions into the runtime tick beside framebuffer
       dimensions, with controlled-window checks for sequential/concurrent delivery.
-    - [ ] Add one explicit session with the custom GUI/backend, guarded FreeType
+    - [x] Add one explicit session with the custom GUI/backend, guarded FreeType
       sampling, routed input/modifier state and capture/focus leases. Toolkit calls
       stay on one UI owner; final destruction may transfer to the platform owner
       only after simulation has stopped and external widget references are released.
