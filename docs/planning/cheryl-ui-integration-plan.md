@@ -130,8 +130,9 @@ rather than a gameplay rewrite.
 ## Remaining development sequence
 
 The [main development plan's U9](develop-review-and-development-plan.md#u9--prove-generic-ui-facing-facilities-with-a-real-adapter)
-owns prerequisites and ordering with the module acceptance work. Neither the neutral
-probe nor a concrete toolkit adapter is implemented yet.
+owns prerequisites and ordering with the module acceptance work. The
+[neutral probe](../development/ui-probe.md) is implemented; its executable acceptance
+remains open below. A concrete toolkit adapter has not been selected or implemented.
 
 Follow these steps in order and update their status while U9 remains active.
 
@@ -151,7 +152,7 @@ Follow these steps in order and update their status while U9 remains active.
     Retain authored order, validate before native state changes, reset scissor for
     unclipped draws/full clears, and add checks for scaling, empty clips, layout validation,
     shader attribute mapping and native color/alpha/scissor behavior.
-  - [ ] Extend the existing portable runtime recording graph with the probe in both
+  - [x] Extend the existing portable runtime recording graph with the probe in both
     execution modes. Exercise owned vertex/image/ASCII-atlas data, clipped panels,
     focused text with controller State, immutable image replacement and retained
     old packets without introducing a widget API or another engine target.
@@ -162,6 +163,11 @@ Follow these steps in order and update their status while U9 remains active.
   toolkit/version and build a requirements matrix against Cheryl's
   render/resource/input/routing/platform contracts before adapter-specific changes.
   Set font ownership and identify any new lifetime, routing or platform prerequisite.
+  Resolve pipeline/atlas bootstrap before adapter code depends on it: the provider
+  uploads resources, while current typed OpenGL pipeline construction belongs to
+  that module. Choose application-supplied materials or the smallest neutral
+  construction seam; the recording pipeline and synthetic atlas do not prove a
+  toolkit's rendering/font implementation.
   Unavailable clipboard/cursor/scale/IME services must receive honest capability
   responses; monitor scale does not establish per-window scale changes.
 - [ ] **3. Implement the first adapter.** Resolve the smallest required generic seam

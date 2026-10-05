@@ -9,7 +9,8 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Prove the selected library-neutral recording-graph UI probe, then select and prove
+- Complete executable acceptance of the library-neutral recording-graph UI probe,
+  then select and prove
   the first optional adapter against its concrete toolkit/version requirements.
   See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
 - Complete the remaining public-contract documentation, especially FileMgr indexing/
@@ -29,7 +30,8 @@ Unresolved artwork metadata is tracked separately in
 - Complete UI-required neutral rendering/routing/platform facilities demonstrated by
   the probe and selected adapter. The probe requires rectangular clipping and explicit
   color/layout support; pointer/modal routing or platform services require an explicit
-  consumer contract. See the UI strategy for scope and discovery gates.
+  consumer contract. The clipping/color source contracts and recording probe are
+  in place; see the UI strategy for remaining acceptance and discovery gates.
 
 ## Optional and measured extensions
 

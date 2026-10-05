@@ -220,6 +220,16 @@ namespace CE::Assets {
         const std::size_t first_vertex,
         const std::size_t vertex_count,
         const ParameterSet& values,
+        const PassConstraints2D& constraints
+    ) const {
+        draw(geometry, first_vertex, vertex_count, values, constraints, {}, {0, 0});
+    }
+
+    void GLSLPipeline::draw(
+        const Geometry2D& geometry,
+        const std::size_t first_vertex,
+        const std::size_t vertex_count,
+        const ParameterSet& values,
         const PassConstraints2D& constraints,
         const std::optional<RenderAPIs::ClipRegion2D>& clip,
         const FramebufferSize framebuffer

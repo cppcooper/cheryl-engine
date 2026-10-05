@@ -2,6 +2,8 @@
 
 #include <assets/resources/resource-provider.h>
 #include <assets/types/2d/graphic.h>
+#include <assets/types/2d/stbfont.h>
+#include <ext/matrix_clip_space.hpp>
 #include <core/controls/input-interface.h>
 #include <core/display/display-system-interface.h>
 #include <core/display/window-interface.h>
@@ -292,15 +294,17 @@ namespace {
 
     class MemoryImage final : public CE::Assets::Image {
         CE::Assets::PixelSize size_;
+        std::vector<unsigned char> pixels_;
 
     public:
         mutable std::vector<std::uint32_t> bound_units;
 
-        explicit MemoryImage(CE::Assets::PixelSize size)
-        : size_(size) {}
+        explicit MemoryImage(CE::Assets::PixelSize size, std::vector<unsigned char> pixels = {})
+        : size_(size), pixels_(std::move(pixels)) {}
 
         [[nodiscard]] CE::Assets::PixelSize pixel_size() const override { return size_; }
         void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
+        [[nodiscard]] const std::vector<unsigned char>& pixels() const { return pixels_; }
     };
 
     /** Records independent geometry binding and draw ranges instead of GPU commands. */
@@ -312,9 +316,11 @@ namespace {
         mutable std::size_t drawn_vertices = 0;
         CE::Assets::PrimitiveTopology uploaded_topology = CE::Assets::PrimitiveTopology::Triangles;
         std::size_t uploaded_vertices = 0;
+        CE::Assets::VertexLayout2D layout = CE::Assets::VertexLayout2D::Position3UV2;
+        std::vector<CE::Vertex2DColor> colors;
 
         [[nodiscard]] CE::Assets::VertexLayout2D vertex_layout() const noexcept override {
-            return CE::Assets::VertexLayout2D::Position3UV2;
+            return layout;
         }
         [[nodiscard]] CE::Assets::PrimitiveTopology topology() const noexcept override { return uploaded_topology; }
         [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
@@ -396,15 +402,16 @@ namespace {
         }
 
         [[nodiscard]] std::shared_ptr<CE::Assets::Image>
-        create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize size) override {
+        create_font_atlas(std::span<const unsigned char> alpha, CE::Assets::PixelSize size) override {
             resource_thread = std::this_thread::get_id();
             ++atlas_uploads;
-            return std::make_shared<MemoryImage>(size);
+            return std::make_shared<MemoryImage>(size, std::vector<unsigned char>(alpha.begin(), alpha.end()));
         }
 
         [[nodiscard]] std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& image) override {
             ++created_images;
-            return std::make_shared<MemoryImage>(image.size);
+            resource_thread = std::this_thread::get_id();
+            return std::make_shared<MemoryImage>(image.size, image.rgba);
         }
 
         using ResourceProvider::upload_geometry;
@@ -425,6 +432,191 @@ namespace {
         [[nodiscard]] std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
             ++linked_programs;
             return shader;
+        }
+
+        [[nodiscard]] std::shared_ptr<CE::Assets::Geometry2D>
+        upload_geometry(std::span<const CE::Vertex2DColor> vertices, CE::Assets::PrimitiveTopology topology) override {
+            resource_thread = std::this_thread::get_id();
+            geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = vertices.size();
+            geometry->uploaded_topology = topology;
+            geometry->layout = CE::Assets::VertexLayout2D::Position3UV2Color4;
+            geometry->colors.assign(vertices.begin(), vertices.end());
+            return geometry;
+        }
+    };
+
+    class UiPipeline final : public CE::Assets::Pipeline {
+    public:
+        explicit UiPipeline(CE::Assets::VertexLayout2D layout, bool image)
+        : Pipeline(make_definition(layout, image)) {}
+
+    private:
+        static CE::Assets::PipelineDefinition make_definition(CE::Assets::VertexLayout2D layout, bool image) {
+            using namespace CE::Assets;
+            PipelineDefinition definition;
+            definition.program_sources = {"record-ui.vert", "record-ui.frag"};
+            definition.vertex_layout = layout;
+            definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
+                {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+                {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha}};
+            if (image)
+                definition.parameters.push_back({"image", ParameterType::Sampler2D});
+            return definition;
+        }
+    };
+
+    // Test-only consumer: records ordinary engine data, without widget/toolkit APIs.
+    class UiProbeGame final : public CE::GFramework::AbstractGame {
+        static constexpr CE::Input::FocusId field = 73;
+        static constexpr CE::Input::ActionId keyboard_action{74};
+        static constexpr CE::Input::ActionId controller_action{75};
+        CE::Engine::EngineContext& engine_;
+        MemoryInput& input_;
+        CE::Input::CaptureLease events_;
+        CE::Input::CaptureLease text_;
+        CE::Input::FocusLease focus_;
+        std::shared_ptr<CE::Assets::Geometry2D> panels_;
+        std::shared_ptr<CE::Assets::Geometry2D> image_geometry_;
+        std::shared_ptr<const CE::Assets::Material> panel_material_;
+        std::shared_ptr<const CE::Assets::Material> image_material_;
+        std::shared_ptr<const CE::Assets::Material> font_material_;
+        std::unique_ptr<CE::Assets::STBFont> font_;
+        std::future<std::shared_ptr<CE::Assets::Image>> replacement_;
+        bool replacement_requested_ = false;
+
+    public:
+        std::atomic<bool> replace_image{false};
+        std::string edited_text;
+        bool controller_held = false;
+        bool keyboard_blocked = true;
+        bool replaced = false;
+        int shutdowns = 0;
+        std::vector<CE::Input::InputRecord> received_records;
+        std::thread::id update_thread;
+        mutable std::thread::id prepare_thread;
+
+        UiProbeGame(CE::Engine::EngineContext& engine, MemoryInput& input)
+        : engine_(engine), input_(input) {}
+
+        void init() override {
+            using namespace CE::Assets;
+            (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, keyboard_action);
+            (void)input_.bindings().bind_button({input_.gamepad_id(), test_button}, controller_action);
+            events_ = input_.capture(CE::Input::InputMode::Events);
+            text_ = input_.capture(CE::Input::InputMode::Text);
+            focus_ = input_.routing().focus(field);
+            auto& resources = engine_.resources();
+            panel_material_ = std::make_shared<Material>(MaterialDefinition{
+                std::make_shared<UiPipeline>(VertexLayout2D::Position3UV2Color4, false), {}});
+            std::vector<CE::Vertex2DColor> panels;
+            const auto panel = [&](float left, float top, float right, float bottom, glm::vec4 color) {
+                for (const auto& point : quad(left, top, right, bottom))
+                    panels.push_back({point.x, point.y, point.z, point.u, point.v, color.r, color.g, color.b, color.a});
+            };
+            panel(8, 8, 180, 130, {1, 0, 0, 0.5f});
+            panel(80, 40, 260, 180, {0, 0, 1, 0.5f});
+            panel(20, 15, 100, 160, {0, 1, 0, 0.8f}); // Content extends beyond its scrolling clip.
+            panel(20, 185, 210, 215, {0, 0.25f, 0.25f, 0.75f}); // Focused editing target.
+            panels_ = resources.upload_geometry(panels, PrimitiveTopology::Triangles);
+            panels.front().r = 0; // Transient CPU data is independent after upload.
+            image_geometry_ = resources.upload_geometry(quad(215, 20, 255, 60), PrimitiveTopology::Triangles);
+            DecodedImage pixels{{1, 1}, {255, 0, 0, 255}};
+            const auto image = resources.create_image(pixels);
+            pixels.rgba.assign(4, 0);
+            image_material_ = image_material(image);
+
+            // Deterministic synthetic ASCII bake data exercises the real immutable
+            // STBFont layout/submission contract without a host font fixture.
+            STBFontData font;
+            std::vector<CE::Vertex2D> glyphs;
+            for (std::size_t i = 0; i < font_character_count; ++i) {
+                auto vertices = quad(0, 0, 5, 8);
+                for (auto& vertex : vertices)
+                    vertex.u = (static_cast<float>(i) + vertex.u) / font_character_count;
+                glyphs.insert(glyphs.end(), vertices.begin(), vertices.end());
+            }
+            font.geometry = resources.upload_geometry(glyphs, PrimitiveTopology::Triangles);
+            std::vector<unsigned char> alpha(font_character_count, 255);
+            font.texture = resources.create_font_atlas(alpha, {static_cast<std::uint32_t>(font_character_count), 1});
+            alpha.clear();
+            font.advances.fill(6);
+            font.line_height = 10;
+            font_material_ = image_material(font.texture);
+            font_ = std::make_unique<STBFont>(std::move(font));
+        }
+
+        void update(const CE::GFramework::TickContext& tick) override {
+            update_thread = std::this_thread::get_id();
+            controller_held = controller_held || tick.input.button(controller_action).held();
+            keyboard_blocked = keyboard_blocked && !tick.input.button(keyboard_action).held();
+            received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
+            for (const auto& record : tick.input.text_for(field)) {
+                const auto codepoint = std::get<CE::Input::TextEvent>(record.data).codepoint;
+                if (codepoint >= ' ' && codepoint <= '~')
+                    edited_text.push_back(static_cast<char>(codepoint));
+            }
+            if (replace_image.load(std::memory_order_acquire) && !replacement_requested_) {
+                replacement_requested_ = true;
+                replacement_ = engine_.platform_dispatcher().submit(
+                    [pixels = CE::Assets::DecodedImage{{1, 1}, {0, 0, 255, 255}}](CE::Engine::EngineContext& platform) {
+                        return platform.resources().create_image(pixels);
+                    }
+                );
+            }
+            if (replacement_.valid() && replacement_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                image_material_ = image_material(replacement_.get());
+                replaced = true;
+            }
+        }
+
+        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+            using namespace CE::RenderAPIs;
+            prepare_thread = std::this_thread::get_id();
+            auto pass = frame.begin_pass(glm::ortho(0.0f, 320.0f, 240.0f, 0.0f), glm::mat4{1});
+            DrawStyle2D style;
+            style.material = panel_material_;
+            for (std::size_t panel = 0; panel < 4; ++panel) {
+                style.clip.reset();
+                if (panel == 2)
+                    style.clip = ClipRegion2D{intersect_clip_rects({8, 8, 260, 180}, {20, 20, 120, 80}), 320, 240};
+                pass.add(resolve_draw_packet(panels_, panel * 6, 6, style, pass.semantics(), pass.parameters(), pass.constraints()));
+            }
+            style.clip.reset();
+            style.material = image_material_;
+            pass.add(resolve_draw_packet(image_geometry_, 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints()));
+            style.material = font_material_;
+            style.model_matrix[3][0] = 20;
+            style.model_matrix[3][1] = 195;
+            CE::Assets::SubmissionContext2D context;
+            context.pass = pass.semantics();
+            pass.add(CE::Assets::resolve_text(*font_, "UI:" + edited_text, style, context));
+        }
+
+        void deinit() override {
+            ++shutdowns;
+            focus_.reset();
+            text_.reset();
+            events_.reset();
+            input_.bindings().clear();
+            font_.reset();
+            font_material_.reset();
+            image_material_.reset();
+            panel_material_.reset();
+            image_geometry_.reset();
+            panels_.reset();
+        }
+
+    private:
+        static std::array<CE::Vertex2D, 6> quad(float left, float top, float right, float bottom) {
+            return {{{left, top, 0, 0, 0}, {right, top, 0, 1, 0}, {right, bottom, 0, 1, 1},
+                {left, top, 0, 0, 0}, {right, bottom, 0, 1, 1}, {left, bottom, 0, 0, 1}}};
+        }
+
+        static std::shared_ptr<const CE::Assets::Material> image_material(std::shared_ptr<CE::Assets::Image> image) {
+            using namespace CE::Assets;
+            return std::make_shared<Material>(MaterialDefinition{std::make_shared<UiPipeline>(VertexLayout2D::Position3UV2, true),
+                {{"image", ImageBinding{std::move(image), 0}}}});
         }
     };
 
@@ -563,6 +755,120 @@ TEST(runtime_adapter, sequential_frame) {
     EXPECT_EQ(stats.published, 1u);
     EXPECT_EQ(stats.rendered, 1u);
     EXPECT_EQ(stats.resizes, 1u);
+}
+
+TEST(ui_probe, retained_scene) {
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    for (const auto mode : {CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::GFramework::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        input.default_press = false;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        UiProbeGame game(*engine, input);
+        const CE::Input::PollingOptions polling{CE::Input::PollingPolicy::Finite, 3, std::chrono::milliseconds{1}};
+        CE::GFramework::GameRuntime runtime(*engine, game, mode, polling);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        bool emitted = false;
+        bool replaced = false;
+        std::vector<DrawPacket2D> retained;
+        std::weak_ptr<const Image> old_image;
+        input.on_poll = [&] {
+            if (std::chrono::steady_clock::now() > deadline) {
+                ADD_FAILURE() << "UI probe did not publish its replacement within the bounded session";
+                runtime.stop();
+                return;
+            }
+            if (std::exchange(emitted, true))
+                return;
+            engine->window().resize(640, 480);
+            input.bindings().on_button({input.gamepad_id(), test_button}, true);
+            input.key(CE::Input::ButtonPhase::Press);
+            input.text(U'H');
+            input.text(U'i');
+            input.key(CE::Input::ButtonPhase::Release);
+        };
+        renderer->on_frame = [&](const RenderFrame& frame) {
+            if (std::chrono::steady_clock::now() > deadline) {
+                ADD_FAILURE() << "UI probe did not publish its replacement within the bounded session";
+                runtime.stop();
+                return;
+            }
+            ASSERT_EQ(frame.passes().size(), 1u);
+            const auto& pass = frame.passes().front();
+            ASSERT_EQ(pass.draws.size(), 10u); // Four panels, image, and five ASCII glyphs.
+            for (std::size_t i = 0; i < pass.draws.size(); ++i) {
+                EXPECT_EQ(pass.draws[i].authored_order, i);
+                validate_draw_packet(pass.draws[i], pass.constraints);
+            }
+            const auto panels = std::dynamic_pointer_cast<const MemoryGeometry>(pass.draws[0].geometry);
+            ASSERT_TRUE(panels);
+            EXPECT_EQ(panels->layout, VertexLayout2D::Position3UV2Color4);
+            ASSERT_EQ(panels->colors.size(), 24u);
+            EXPECT_FLOAT_EQ(panels->colors[0].r, 1); // Caller changed its CPU buffer after upload.
+            EXPECT_FLOAT_EQ(panels->colors[0].a, 0.5f);
+            EXPECT_FLOAT_EQ(panels->colors[6].b, 1);
+            EXPECT_FLOAT_EQ(panels->colors[6].a, 0.5f);
+            EXPECT_EQ(panels->bind_count(), 0u);
+            ASSERT_TRUE(pass.draws[2].clip);
+            EXPECT_EQ(resolve_clip_region(*pass.draws[2].clip, renderer->viewport), (PixelClipRect2D{40, 40, 240, 160}));
+            EXPECT_FALSE(pass.draws[3].clip);
+            EXPECT_EQ(pass.draws[0].material->definition().pipeline->definition().state.blend, BlendMode::StraightAlpha);
+            const auto& image = std::get<ImageBinding>(pass.draws[4].parameters.at("image")).image;
+            const auto recorded = std::dynamic_pointer_cast<const MemoryImage>(image);
+            ASSERT_TRUE(recorded);
+            const auto& atlas = std::get<ImageBinding>(pass.draws[5].parameters.at("image")).image;
+            const auto recorded_atlas = std::dynamic_pointer_cast<const MemoryImage>(atlas);
+            ASSERT_TRUE(recorded_atlas);
+            ASSERT_EQ(recorded_atlas->pixels().size(), font_character_count);
+            EXPECT_EQ(pass.draws[5].first_vertex, ('U' - first_font_character) * 6u);
+            EXPECT_EQ(pass.draws[9].first_vertex, ('i' - first_font_character) * 6u);
+            EXPECT_FLOAT_EQ(std::get<glm::mat4>(pass.draws[6].parameters.at("model"))[3][0], 26);
+            if (retained.empty()) {
+                EXPECT_EQ(recorded->pixels(), (std::vector<unsigned char>{255, 0, 0, 255}));
+                retained = pass.draws;
+                old_image = image;
+                game.replace_image.store(true, std::memory_order_release);
+            } else if (recorded->pixels() == std::vector<unsigned char>{0, 0, 255, 255}) {
+                EXPECT_NE(image, old_image.lock());
+                const auto& original = std::get<ImageBinding>(retained[4].parameters.at("image")).image;
+                EXPECT_EQ(std::dynamic_pointer_cast<const MemoryImage>(original)->pixels(),
+                    (std::vector<unsigned char>{255, 0, 0, 255}));
+                replaced = true;
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        EXPECT_TRUE(replaced);
+        EXPECT_TRUE(game.replaced);
+        EXPECT_EQ(game.edited_text, "Hi");
+        EXPECT_TRUE(game.controller_held);
+        EXPECT_TRUE(game.keyboard_blocked);
+        ASSERT_EQ(game.received_records.size(), 4u);
+        EXPECT_EQ(std::get<CE::Input::ButtonEvent>(game.received_records.front().data).phase, CE::Input::ButtonPhase::Press);
+        EXPECT_EQ(std::get<CE::Input::TextEvent>(game.received_records[1].data).codepoint, U'H');
+        EXPECT_EQ(std::get<CE::Input::TextEvent>(game.received_records[2].data).codepoint, U'i');
+        for (const auto& record : game.received_records) {
+            EXPECT_EQ(record.target, 73u);
+            EXPECT_NE(record.focus_epoch, 0u);
+            EXPECT_FALSE(record.to_gameplay);
+        }
+        EXPECT_EQ(game.prepare_thread, game.update_thread);
+        EXPECT_EQ(renderer->render_thread, std::this_thread::get_id());
+        if (mode == CE::GFramework::RunMode::Concurrent)
+            EXPECT_NE(game.update_thread, renderer->render_thread);
+        EXPECT_EQ(static_cast<MemoryProvider&>(engine->resources()).resource_thread, renderer->render_thread);
+        EXPECT_EQ(static_cast<MemoryProvider&>(engine->resources()).created_images, 2);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_FALSE(old_image.expired());
+        retained.clear(); // Runtime/game owners have already released their original generation.
+        EXPECT_TRUE(old_image.expired());
+    }
 }
 
 TEST(runtime_adapter, optional_focus) {

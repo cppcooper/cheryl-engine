@@ -49,9 +49,17 @@ namespace CE::Assets {
             std::size_t first_vertex,
             std::size_t vertex_count,
             const ParameterSet& values,
+            const PassConstraints2D& constraints
+        ) const;
+        // A clipped draw supplies its playback extent explicitly.
+        void draw(
+            const Geometry2D& geometry,
+            std::size_t first_vertex,
+            std::size_t vertex_count,
+            const ParameterSet& values,
             const PassConstraints2D& constraints,
-            const std::optional<RenderAPIs::ClipRegion2D>& clip = {},
-            FramebufferSize framebuffer = {}
+            const std::optional<RenderAPIs::ClipRegion2D>& clip,
+            FramebufferSize framebuffer
         ) const;
 
     private:

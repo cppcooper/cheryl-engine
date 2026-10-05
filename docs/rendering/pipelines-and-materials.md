@@ -97,6 +97,7 @@ OpenGL converts top-left pixel edges to its bottom-left scissor box after valida
 the complete draw. Empty clips issue no draw; absent clips disable scissor. Full
 frame clears also disable scissor, so a preceding clipped packet cannot restrict
 the next clear. The renderer viewport supplies the framebuffer extent.
+Direct clipped `GLSLPipeline::draw` calls also supply that extent explicitly.
 
 ShaderMgr publishes Shader handles for explicit program access; DrawStyle2D stores
 an immutable Material handle.
