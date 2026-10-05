@@ -24,12 +24,16 @@ namespace CE::Input {
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
     // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
     // can be handed to simulation without reading live Gainput state from another thread.
+    // Gainput initializes on the first attachment and exits at adapter destruction.
+    // Detachment retains devices; Update receives elapsed seconds between attached polls.
     // Ordered GLFW records are captured before Gainput mapping. The character
     // callback provides OS text independently of physical keyboard State.
     class InputSystem final : public iInputSystem,
                               public Singleton_CTS<InputSystem> {
         gainput::InputManager manager_;
         InputMapper bindings_;
+        bool manager_initialized_ = false;
+        InputClock::time_point last_update_{};
         GlfwInputDevice* keyboard_ = nullptr;
         GlfwInputDevice* mouse_ = nullptr;
         gainput::DeviceId keyboard_id_ = gainput::InvalidDeviceId;
@@ -76,7 +80,7 @@ namespace CE::Input {
         void deinitialize() override;
 
         [[nodiscard]] InputBindings& bindings() override { return bindings_; }
-        // Access the backend for extra Gainput devices and configuration.
+        // Access the backend for extra Gainput devices and configuration after initialize().
         [[nodiscard]] gainput::InputManager& manager() { return manager_; }
         [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
         [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }

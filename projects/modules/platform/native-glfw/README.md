@@ -34,5 +34,21 @@ suppresses Gainput samples/tests locally, including cached `ON` choices, without
 rewriting the host cache. The selected fork's `GAINPUT_ENABLE_HID` setting remains
 available; its HID support brings hidapi and the platform's HID development libraries.
 
+The adapter calls Gainput `Init` before creating devices on its first window
+attachment, and `Exit` at adapter destruction. Windows initialization receives the
+GLFW window's native HWND; other platforms initialize the HID backend without a
+window handle. Detachment clears window state while retaining devices for
+reattachment. Each `Update` receives elapsed steady-clock seconds between attached
+polls; time spent detached does not enter that interval.
+
+Gainput's HID state is process-global. Coordination between simultaneous initialized
+native adapters and notification rebinding to a different Windows window remains
+[unresolved work](../../../../docs/planning/todo.md).
+
+The input mapper uses Gainput's five-argument `OnDeviceButtonFloat` callback.
+It forwards `newValue` as the current axis state; the elapsed-time argument does
+not scale that value. Externally driven devices retain their callback-order state
+without replaying Gainput notifications.
+
 Target selection, standalone paths and validation status are in
 [the module guide](../../../../docs/development/modules.md).

@@ -14,8 +14,16 @@
 #define GLFW_INCLUDE_NONE
 #endif
 #include <GLFW/glfw3.h>
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
 
 #include <algorithm>
+#include <chrono>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -178,6 +186,10 @@ namespace CE::Input {
         } catch (...) {
             Diagnostics::report_failure("input destruction", std::current_exception());
         }
+        // Gainput's explicit Exit owns the delta buffer, HID support and devices.
+        // Window detachment retains them for a later attachment to this adapter.
+        if (manager_initialized_)
+            manager_.Exit();
     }
 
     void InputSystem::initialize(iWindow& window) {
@@ -189,6 +201,20 @@ namespace CE::Input {
             throw Exceptions::failed_operation(CE_HERE, "Input is already attached to another window");
         if (window_)
             return;
+
+        auto* handle = glfw_window->native_handle();
+        if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
+            throw Exceptions::failed_operation(CE_HERE, "The window already has an input adapter");
+        if (!manager_initialized_) {
+#if defined(_WIN32)
+            manager_.Init(glfwGetWin32Window(handle));
+#else
+            // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
+            // initialization does not consume a native window handle.
+            manager_.Init(nullptr);
+#endif
+            manager_initialized_ = true;
+        }
 
         // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
         if (!keyboard_) {
@@ -206,9 +232,6 @@ namespace CE::Input {
         bindings_.use_external_state(keyboard_id_);
         bindings_.use_external_state(mouse_id_);
 
-        auto* handle = glfw_window->native_handle();
-        if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
-            throw Exceptions::failed_operation(CE_HERE, "The window already has an input adapter");
         attached_inputs.emplace(handle, this);
         window_ = glfw_window;
         pad_axes_.assign(gainput::PadButtonMax_, 0.0f);
@@ -223,6 +246,7 @@ namespace CE::Input {
         glfwSetKeyCallback(handle, on_key);
         glfwSetMouseButtonCallback(handle, on_mouse_button);
         glfwSetScrollCallback(handle, on_scroll);
+        last_update_ = InputClock::now();
         observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
         CE_LOG_DEBUG(
             CE::platformlog, "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", domain_,
@@ -256,7 +280,10 @@ namespace CE::Input {
         mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / height));
         bindings_.on_axis({mouse_id_, gainput::MouseAxisX}, static_cast<float>(x / width));
         bindings_.on_axis({mouse_id_, gainput::MouseAxisY}, static_cast<float>(y / height));
-        manager_.Update();
+        const auto updated_at = InputClock::now();
+        const auto delta_time = std::chrono::duration<float>(updated_at - last_update_).count();
+        last_update_ = updated_at;
+        manager_.Update(delta_time);
         // Gainput only notifies changes. Reconcile the pad's full state so a held button
         // survives reattachment and a disconnected pad cannot leave an action stuck.
         const auto* pad = manager_.GetDevice(gamepad_id_);

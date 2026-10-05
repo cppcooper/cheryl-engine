@@ -1522,6 +1522,40 @@ TEST(native_opengl, x11_input_recovery) {
 }
 #endif
 
+TEST(native_opengl, input_reattach) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    auto& window = engine->window();
+    EXPECT_THROW(input.poll(), CE::Exceptions::failed_operation);
+    input.initialize(window);
+    input.initialize(window); // Repeated attachment must not initialize Gainput twice.
+    const auto keyboard = input.keyboard_id();
+    const auto mouse = input.mouse_id();
+    const auto gamepad = input.gamepad_id();
+    auto* keyboard_device = input.manager().GetDevice(keyboard);
+    ASSERT_NE(keyboard_device, nullptr);
+    ASSERT_NE(input.manager().GetDevice(mouse), nullptr);
+    ASSERT_NE(input.manager().GetDevice(gamepad), nullptr);
+    EXPECT_NO_THROW(input.poll());
+    const auto gainput_time = input.manager().GetTime();
+    std::this_thread::sleep_for(std::chrono::milliseconds{2});
+    EXPECT_NO_THROW(input.poll());
+    EXPECT_GT(input.manager().GetTime(), gainput_time);
+    input.deinitialize();
+    input.deinitialize();
+    EXPECT_THROW(input.poll(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    input.initialize(window);
+    EXPECT_EQ(input.keyboard_id(), keyboard);
+    EXPECT_EQ(input.mouse_id(), mouse);
+    EXPECT_EQ(input.gamepad_id(), gamepad);
+    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    EXPECT_NO_THROW(input.poll());
+    // Context destruction detaches from the live window and releases Gainput once.
+}
+
 namespace {
     struct ResizeRegistration {
         CE::SubSystems::EventSystem& events;
