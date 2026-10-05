@@ -14,17 +14,24 @@ materials, font ownership, upload/lifetime and platform decisions for the adapte
 
 ## Selection and dependency
 
-At the repository root, select `CHERYL_BUILD_UI_TGUI=ON`. It defaults to `OFF` and
-is independent of native/graphics selection. Link the application to
+At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently of
+native/graphics selection. Set it to `OFF` to omit the target and its toolkit/font
+dependencies. Link the application to
 `Cheryl::UI::TGUI`; its Engine and toolkit requirements propagate through the target.
 
 The module reuses an existing `TGUI::TGUI` target. Otherwise it uses an explicit
-`CHERYL_TGUI_SOURCE` pointing to a TGUI 1.13.0 checkout, or finds that exact version's
-CMake package. No dependency is downloaded. Source composition selects only the
+`CHERYL_TGUI_SOURCE`, an explicit package location in `TGUI_DIR`, the pinned
+`extern/tgui` submodule, or that exact version's discovered CMake package, in that
+order. Initialize the bundled dependency with
+`git submodule update --init extern/tgui`; CMake never downloads it. Source
+composition requires FreeType development files and selects only the
 custom/FreeType backend and excludes upstream tools, examples and tests. Conflicting
 backend settings fail explicitly; supplied targets/settings are not rewritten.
 Compiled version/feature checks also reject a supplied package/target with an
 unreviewed version or native toolkit backend.
+
+Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
+to `ON` and reload CMake to expose `cheryl_ui_tgui` and its selected test targets.
 
 For a standalone module, supply `Cheryl::Engine` or `CHERYL_ENGINE_SOURCE`. Engine
 bootstrap suppresses UI/native/graphics/demo/test selection in its local scope.

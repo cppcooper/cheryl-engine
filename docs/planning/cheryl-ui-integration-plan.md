@@ -183,9 +183,19 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Translate selected immutable input records through portable identities,
     preserving repeat/text semantics and observation-time pointer positions. Do
     not synthesize characters or consume another reader's records.
+  - [x] Complete repository composition: pin the toolkit under `extern/tgui`,
+    select the UI owner in the root's normal assembly and retain explicit opt-out
+    and supplied-target/source/package composition. Do not fetch during CMake.
   - [ ] Implement owned CPU texture generations and indexed-triangle recording,
     followed by complete platform upload and retained scene adoption. Resolve
     sampling support before textures are exposed.
+    - [ ] Fix the initial sampling/texture-bound contract; copy RGBA generations
+      before toolkit storage changes and reject unsupported smoothing changes.
+    - [ ] Expand indexed draws into owned colored triangles with transformed
+      positions, corrected UV orientation and copied logical clips/view mapping.
+    - [ ] Upload a complete recording through the platform submission endpoint;
+      retain the previous scene until a new result is ready, and preserve it on
+      upload failure/cancellation. Add owner-local recording/resource checks.
   - [ ] Implement the simulation-owned toolkit session and GUI lifecycle, focus
     leases, modifier snapshots, explicit timing/view updates and capabilities.
   - [ ] Run the focused portable/native input and module acceptance once the

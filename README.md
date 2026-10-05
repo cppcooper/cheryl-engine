@@ -13,7 +13,8 @@ interpreter selected by CMake. Install it there, or set
 
 Build with `cmake -S . -B build` and `cmake --build build --target demo`, then run
 `./build/demo` from the repository root. Normal Linux builds require the X11/OpenGL
-and GLFW platform development dependencies. The demo uses a system font and the
+and GLFW platform development dependencies. The selected TGUI module requires
+FreeType development files. The demo uses a system font and the
 checked-in 2D shader without needing sprite textures. WASD pans the camera; R resets
 it. Mouse movement/clicks, scrolling, and gamepad A update the input display. F2 opens
 text focus, Enter/Esc releases it, and F5 reloads the material recipe. Add
@@ -41,8 +42,9 @@ paths and dependencies; existing C++ include spellings remain supported.
 Native GLFW/Gainput and the whole OpenGL backend have separate optional owners under
 `projects/modules/platform/` and `projects/modules/graphics/`. The
 [module index](projects/modules/README.md) maps each owner to its engine contracts.
-The root selects the default native/OpenGL assembly. Disable
-`CHERYL_BUILD_NATIVE_GLFW` and `CHERYL_BUILD_OPENGL` for Engine alone; link the selected
+The root selects Native GLFW, OpenGL and the optional TGUI UI module. Disable
+`CHERYL_BUILD_NATIVE_GLFW`, `CHERYL_BUILD_OPENGL` and `CHERYL_BUILD_UI_TGUI` for
+Engine alone; link the selected
 `Cheryl::NativeGLFW` and `Cheryl::OpenGL` targets for native graphics applications.
 See [module composition and test selection](docs/development/modules.md).
 

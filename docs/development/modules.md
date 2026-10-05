@@ -35,15 +35,16 @@ follow the same optional owner model; Steam remains a future integration.
 
 ## Select an assembly
 
-The root defaults to today's native/OpenGL assembly. Set both
-`CHERYL_BUILD_NATIVE_GLFW=OFF` and `CHERYL_BUILD_OPENGL=OFF` for Engine alone.
+The root selects Native GLFW, OpenGL and TGUI by default. Set
+`CHERYL_BUILD_NATIVE_GLFW=OFF`, `CHERYL_BUILD_OPENGL=OFF` and
+`CHERYL_BUILD_UI_TGUI=OFF` for Engine alone.
 Select Native GLFW with `CHERYL_BUILD_NATIVE_GLFW=ON` and
 `CHERYL_BUILD_OPENGL=OFF`; no Cheryl OpenGL/GLAD discovery occurs in that assembly.
 OpenGL requires Native GLFW. The demo is selected only with OpenGL and native input.
 
-`CHERYL_BUILD_UI_TGUI=ON` independently selects the optional TGUI owner; it defaults
-to `OFF`. The owner reuses `TGUI::TGUI`, accepts `CHERYL_TGUI_SOURCE` or finds an exact
-TGUI 1.13.0 package without downloading. See its
+`CHERYL_BUILD_UI_TGUI` independently selects the optional TGUI owner. The owner
+reuses `TGUI::TGUI`, accepts `CHERYL_TGUI_SOURCE`, uses the pinned `extern/tgui`
+submodule or finds an exact TGUI 1.13.0 package without downloading. See its
 [module guide](../../projects/modules/ui/tgui/README.md) for the custom/FreeType
 dependency contract and current scope. Neither Engine nor another module selects
 or links the toolkit implicitly.

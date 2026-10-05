@@ -46,8 +46,9 @@ optional adapter owner and event translation, followed by CPU texture/render
 recording, platform upload and toolkit-session lifetime. Add the actual menu and
 retained/concurrent acceptance after those foundations are stable.
 
-Reuse supplied `TGUI::TGUI` targets or an explicitly selected dependency source or
-package at the pinned version; do not download during configuration. A dependency
+Reuse supplied `TGUI::TGUI` targets, an explicitly selected dependency source, the
+pinned `extern/tgui` submodule or a package at the pinned version; do not download
+during configuration. A dependency
 source build selects only its custom backend plus FreeType and suppresses upstream
 examples, tools and tests. Validate supplied dependency features without rewriting
 the host's target or cache. Standalone module composition and an independent
