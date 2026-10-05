@@ -10,12 +10,15 @@ modules/
     native-glfw/    # Display, windows and input
   graphics/
     opengl/         # Rendering, presentation and graphics resources
+  ui/
+    tgui/           # Optional toolkit integration
 ```
 
 | Owner | Target | Engine contracts |
 | --- | --- | --- |
 | [platform/native-glfw](platform/native-glfw/README.md) | `Cheryl::NativeGLFW` | [`core/display`](../engine/include/cheryl/core/display): `iDisplaySystem`, `iWindow`; [`core/controls`](../engine/include/cheryl/core/controls): `iInputSystem`. |
 | [graphics/opengl](graphics/opengl/README.md) | `Cheryl::OpenGL` | [`core/rendering`](../engine/include/cheryl/core/rendering): `iRenderer`, `iPresentationSurface`; [`assets/resources`](../engine/include/cheryl/assets/resources): `ResourceProvider`, `Image`, `Geometry2D`, `Shader`, `Pipeline`. |
+| [ui/tgui](ui/tgui/README.md) | `Cheryl::UI::TGUI` | Consumes Engine input records through TGUI event translation. Retained rendering/resources and GUI lifetime are remaining U9 work; this module does not implement an Engine widget interface. |
 
 An owner can fulfill several related contracts. Native GLFW couples display and
 input lifetimes; OpenGL couples rendering and resource ownership with its context.

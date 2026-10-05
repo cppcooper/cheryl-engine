@@ -5,7 +5,8 @@ libraries. Each owner defines its sources, public includes, dependencies and tes
 The repository root selects the assembly; it does not own implementation inventories.
 
 Module owners are grouped by contract role: `platform/` contains display/window/input
-implementations and `graphics/` contains rendering/presentation/resource implementations.
+implementations, `graphics/` contains rendering/presentation/resource implementations
+and `ui/` contains optional toolkit consumers.
 [The module index](../../projects/modules/README.md) maps those roles to engine
 interfaces; each owner's README maps its concrete types to the contracts it fulfills.
 
@@ -14,6 +15,7 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 | `Cheryl::Engine` (`cherylGL`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
 | `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
+| `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Event translation is implemented; widget rendering/lifecycle remains U9 work. |
 
 ```mermaid
 flowchart LR
@@ -23,11 +25,13 @@ flowchart LR
     OpenGL --> NativeGLFW
     OpenGL --> Engine
     NativeGLFW --> Engine
+    Application --> TGUIAdapter[TGUI adapter]
+    TGUIAdapter --> Engine
 ```
 
 Engine has no reverse link to a module. Logging, memory, workers, events, assets
-and utilities remain organization within that one engine library. Future UI/Steam
-integrations use the same optional owner convention when their consumers are selected.
+and utilities remain organization within that one engine library. UI consumers
+follow the same optional owner model; Steam remains a future integration.
 
 ## Select an assembly
 
@@ -36,6 +40,13 @@ The root defaults to today's native/OpenGL assembly. Set both
 Select Native GLFW with `CHERYL_BUILD_NATIVE_GLFW=ON` and
 `CHERYL_BUILD_OPENGL=OFF`; no Cheryl OpenGL/GLAD discovery occurs in that assembly.
 OpenGL requires Native GLFW. The demo is selected only with OpenGL and native input.
+
+`CHERYL_BUILD_UI_TGUI=ON` independently selects the optional TGUI owner; it defaults
+to `OFF`. The owner reuses `TGUI::TGUI`, accepts `CHERYL_TGUI_SOURCE` or finds an exact
+TGUI 1.13.0 package without downloading. See its
+[module guide](../../projects/modules/ui/tgui/README.md) for the custom/FreeType
+dependency contract and current scope. Neither Engine nor another module selects
+or links the toolkit implicitly.
 
 An Engine-only consumer links `Cheryl::Engine`. Native graphics applications use:
 
@@ -110,7 +121,8 @@ scenario covers input-to-frame transfer, presentation, teardown and session reje
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
 Each module owns its real implementation tests: `native-glfw-tests` and
-`opengl-tests`. `engine-acceptance`, `opengl-acceptance`,
+`opengl-tests`, plus `ui-tgui-tests` when selected. The TGUI input cases need no
+native platform, graphics context or font file. `engine-acceptance`, `opengl-acceptance`,
 `cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
 default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
@@ -123,6 +135,7 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `engine-all` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
 | `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
 | `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
+| `ui-tgui-all` | The selected TGUI module's input translation cases; widget/lifetime acceptance remains U9 work. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

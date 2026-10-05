@@ -177,6 +177,20 @@ Follow these steps in order and update their status while U9 remains active.
   before dependent adapter code grows, then implement the toolkit-specific bridges
   as an optional owner. Every proposed OpenGL/GLFW/Gainput bypass is an engine-boundary
   finding. Generalize only reusable requirements, not toolkit-specific concepts.
+  - [x] Add the optional TGUI owner, pinned dependency contract, module tests and
+    independent consumer. Reuse a supplied toolkit target or package without
+    changing host dependency settings; suppress UI selection during Engine bootstrap.
+  - [x] Translate selected immutable input records through portable identities,
+    preserving repeat/text semantics and observation-time pointer positions. Do
+    not synthesize characters or consume another reader's records.
+  - [ ] Implement owned CPU texture generations and indexed-triangle recording,
+    followed by complete platform upload and retained scene adoption. Resolve
+    sampling support before textures are exposed.
+  - [ ] Implement the simulation-owned toolkit session and GUI lifecycle, focus
+    leases, modifier snapshots, explicit timing/view updates and capabilities.
+  - [ ] Run the focused portable/native input and module acceptance once the
+    executable gate blocks dependent work; keep source completion separate from
+    that acceptance and reuse the already accepted rendering baseline.
 - [ ] **4. Prove representative widget behavior.** Exercise a menu with
   nested/overlapping translucent panels, dynamic labels, a tooltip near viewport
   edges, a text field, scrolling and an image. Verify focus/routing and resize/DPI
