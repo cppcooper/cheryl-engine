@@ -57,9 +57,9 @@ atomic batch reload and automatic residency are outside that scope; reopen the
 
 The current selected architecture has one neutral `Cheryl::Engine`, optional Native
 GLFW and whole OpenGL modules, owner-local tests, and cross-project aggregate tests.
-The extraction is implemented. Its remaining executable isolation/standalone proof
-is G5 and is tracked in [module-validation-plan.md](module-validation-plan.md).
-Installed/imported package support remains separate packaging work.
+Reuse the [isolation and composition procedures](../development/architecture-validation.md)
+when changing those boundaries. Installed/imported package support remains separate
+packaging work.
 
 The first native acceptance platform remains Linux with GLFW/X11 and OpenGL; normal
 and sandbox engine configurations remain in scope. The advertised OpenGL 3.3 baseline,
@@ -74,18 +74,14 @@ that cannot safely be inferred from the assets is tracked in
 
 ### U9 — Prove generic UI-facing facilities with a real adapter
 
-Prerequisites are the current failure, logging, consumption and resource contracts
-plus G5 acceptance where executable module isolation matters. Use
-[the U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence) for
-subtask progress, neutral probe scope and adapter acceptance. G5 progress is tracked
-separately in [its checklist](module-validation-plan.md#current-task--g5); its
-executable checks require explicit build/test authorization.
+Prerequisites are the current failure, logging, consumption, resource and module
+contracts. Use [the U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence) for
+subtask progress, neutral probe scope and adapter acceptance.
 
 Prove the neutral recording probe, then select the concrete toolkit/version and its
 requirements before adding adapter-specific facilities. TGUI is the likely first
 adapter. Add pointer/modal/controller routing or platform services only for an
-explicit consumer need with a capability/failure contract. Static requirements work
-can proceed while G5 execution is pending.
+explicit consumer need with a capability/failure contract.
 
 The neutral probe uses one provider/window, immutable image replacement and the
 existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas
@@ -180,10 +176,9 @@ Complete the still-open public-contract inventory alongside each implementation 
   declarations: missing ownership, valid thread, preconditions, failure/publication
   guarantees and units. Correct stale examples without uniform boilerplate or cosmetic
   reformatting.
-- At the next affected documentation unit, compact accumulated chronology/inventories
-  in [architecture-validation.md](../development/architecture-validation.md) and
-  reconcile stale U5/U8 status/evidence referrals in subject documents. Preserve useful
-  procedures, current contracts and coverage limits without relocating routine reports.
+- Reconcile stale U5/U8 status/evidence referrals when affecting their subject documents.
+  Preserve useful procedures, current contracts and coverage limits without relocating
+  routine reports.
 
 **Acceptance:** callers can determine supported behavior from public declarations and
 focused links. If documentation cannot state a guarantee, classify the missing
@@ -194,10 +189,9 @@ superseded alternatives and resolved planning detail.
 
 ## Sequencing and evidence
 
-The dependent order is G5 acceptance -> neutral U9 probe -> selected adapter
-requirements -> consumer-required engine changes -> adapter proof. Static requirements
-and independent neutral design work need not wait for G5 execution. U10 and U13 may
-proceed on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
+The dependent order is neutral U9 probe -> selected adapter requirements ->
+consumer-required engine changes -> adapter proof. U10 and U13 may proceed on their
+stable prerequisites. U11 follows an actual Unicode/layout consumer;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven
 and U15 accompanies each unit.
 

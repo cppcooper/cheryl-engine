@@ -4,9 +4,9 @@
 
 The initial module extraction is implemented. The authoritative current composition,
 target names, dependency direction, standalone convention and test ownership are in
-[modules.md](../development/modules.md). Executable extraction acceptance is still G5
-in [module-validation-plan.md](module-validation-plan.md). This file defines selection
-criteria and future candidates; their sequence is in
+[modules.md](../development/modules.md); reusable checks and coverage limits are in
+[architecture-validation.md](../development/architecture-validation.md). This file
+defines selection criteria and future candidates; their sequence is in
 [module-groundwork-and-extraction-plan.md](module-groundwork-and-extraction-plan.md).
 
 Cheryl keeps one shared `Cheryl::Engine`. A separate module is justified when it gives

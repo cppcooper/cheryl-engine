@@ -57,7 +57,13 @@ policy by linking targets rather than listing another owner's directories.
 that dependency. A supplied GLFW target retains its host-selected configuration.
 The old `CHERYL_SANDBOX_BUILD=ON` remains a deprecated shorthand for those two
 choices; use the explicit native options for new configurations. Engine-only
-selection needs neither shorthand nor native platform omissions.
+selection needs neither shorthand nor native platform omissions. Retain the shorthand
+until its consumers migrate; mock OpenGL consumers can still need GLFW-null without
+Gainput.
+
+Selection preserves owner lifetimes: input detaches while its window is live, GL
+resources retire or abandon before context destruction, and runtime worker/frame
+shutdown keeps its established ordering.
 
 ## Standalone modules
 
@@ -166,9 +172,7 @@ python3 projects/engine/tests/signal-acceptance/signals.py \
 
 Either build argument can be supplied alone. The driver never configures or builds;
 it executes previously built consumers and is not registered with CTest. Windows
-crash-hook behavior requires separate acceptance. This check is prepared but has
-not been built or executed for the extracted graph.
+crash-hook behavior requires separate acceptance.
 
-Extraction implementation and static evidence are recorded in
-[architecture validation](architecture-validation.md). Historical directory-migration
-runs validate their recorded combined graph, not this extracted assembly.
+Reusable isolation, composition and manual-check procedures, with environment and
+coverage limits, are in [architecture validation](architecture-validation.md).

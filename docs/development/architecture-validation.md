@@ -1,225 +1,213 @@
 # Architecture validation
 
-## Extracted module structure — 4 October 2026
+This guide describes reusable checks for the selected Engine, Native GLFW and
+OpenGL assembly. [The module guide](modules.md) defines target ownership, public
+usage requirements, selection options and test runners. Use these procedures when
+changes affect isolation, composition or consumer contracts; coverage limits remain
+separate from source completion.
 
-The implemented assembly has neutral Engine, Native GLFW and whole OpenGL owners;
-[the module guide](modules.md) records target selection, compatibility, standalone
-composition, tests and the restored automatic Debug crash bootstrap. Implementation
-commit `cfa286d` contains the coordinated extraction and composition cutover.
+## Coverage and selection
 
-Static source checks account for the original 69 production translation units:
-52 Engine, six Native GLFW and eleven OpenGL. The existing 408 named test cases are
-preserved, with two new small real-runtime contract cases in the default engine
-suite. The mixed input file is split; backend/native cases and the PNG fixture now
-live with their implementing owners. The owner-committed memory test file is
-unchanged. Engine headers/sources contain no GLFW/GLAD/Gainput includes or module
-imports, and common dependency discovery contains no native/graphics SDKs.
-
-These inventories are static checks. The initial extraction checkpoint had no
-agent-run configuration/compiler probes, builds or tests for this graph. The owner
-subsequently reported that `all-tests` compiled and ran with **393 passing cases
-and 17 ignored/skipped cases**, accounting for the 410 named cases. The configuration,
-skip identities and native opt-ins were not supplied; this is owner-reported evidence
-for the combined runner before the owner-aggregate follow-up, not an agent rerun.
-
-Remaining G5 isolation checks and measured unit build/run cost are still pending.
-Required selections are Engine alone,
-Engine + Native GLFW, and Engine + Native GLFW + OpenGL, plus standalone module
-reuse/bootstrap, owner consumer/header checks and original logging/diagnostics
-acceptance. The automatic Debug bootstrap also requires isolated native crash
-acceptance; exception traces retain their separate existing checks.
-
-G5 preparation adds an Engine-only `cheryl-signal-acceptance` target and manual
-POSIX driver. The consumer deliberately references no engine entry point, so its
-Debug crash trace must come from Engine's transitive bootstrap object. The driver
-compares actual `NDEBUG` scope, uses timeout-bounded child processes with core files
-disabled, and distinguishes Backward output from sanitizer output. Source review
-and Python syntax inspection are preparation evidence only; neither the target nor
-its driver has been executed. The owner selected preparation and static checks only
-for this G5 pass. [The validation plan](../planning/module-validation-plan.md)
-records the remaining executable sequence.
-
-The native backpressure case now waits for a replacement native poll and a subsequent
-platform drain before asserting the next input batch. This replaces the previous
-host-scheduling assumption while retaining the full-backlog/presentation guarantee.
-An opt-in execution of this case in the extracted assembly has not been recorded;
-the owner-reported aggregate result does not identify its native opt-ins or skips.
-
-The contract-role organization follow-up groups Native GLFW under
-`projects/modules/platform/` and OpenGL under `projects/modules/graphics/`.
-[The module index](../../projects/modules/README.md) and owner-local maps identify
-their engine interfaces. The whole-owner moves preserve production headers,
-sources, tests and fixture bytes; root selection and standalone helper lookup use
-the new locations. This layout change adds no executable validation evidence.
-
-The owner-aggregate follow-up adds complete Engine, Native GLFW and OpenGL runners
-under their own `tests/all-tests/` directories and moves combined `all-tests` ownership
-to `projects/tests/`. Focused suites provide reusable case objects with private hooks
-and conditional dependencies; each runner links those objects and one shared main.
-The combined diagnostics driver moves with its cross-project owner. C++ source and
-fixture bytes, named cases, focused/manual runners and executable output locations
-are preserved. Verification of this follow-up is static only; the owner-reported run
-above predates this CMake change. The full source-selection inventory is 333 Engine,
-four Native GLFW and 73 OpenGL cases, totaling 410. Every suite source/helper remains
-declared once, and all 310 recorded headers, sources, fixtures and drivers retain
-their bytes, including the relocated diagnostics driver.
-
-## Projects layout migration — 4 October 2026
-
-The directory migration retains the combined `cherylGL` / `Cheryl::Engine` library,
-existing target names, public include spellings and root build outputs. Production
-source contents are unchanged; the native PNG fixture now resolves through its test
-owner. Source inventories contain 69 engine translation units normally and 66 in
-sandbox, matching the previous selection.
-
-| Selection | Executed result |
+| Selection | Required checks |
 | --- | --- |
-| Normal Release, developer logging profile, GLFW/X11 | Engine, aggregate tests, logging runners, demo and Backward library check built. Aggregate: 391 passed, 17 opt-in skips, zero failures. |
-| Sandbox Release, developer logging profile, GLFW null platform | Engine, aggregate tests, logging runners and Backward library check built. Aggregate: 389 passed, 3 font-fixture skips, zero failures. |
-| Normal and sandbox consumers | `cheryl-consumer` and the 12/11 first-include header probes built against their existing engine targets; both consumers ran successfully. |
-| Independent consumer bootstrap | Separate normal configuration succeeded, including with the root consumer option enabled in the cache; no duplicate targets. This acceptance reused the existing engines for consumer compilation. |
-| Relocated logging and diagnostics scripts | Both scripts passed in normal and sandbox builds; logging included all eight isolated scenarios. |
-| Opt-in native OpenGL/X11 | 13 of 14 cases passed together. `polling_backpressure` failed a timing assertion during concurrent compilation and passed its single targeted retry with compilation stopped. The moved PNG fixture passed. |
+| Engine only | No Cheryl OpenGL/GLAD/GLFW/Gainput/native X11 discovery, compilation or linkage. The Engine consumer and neutral first-include probes inherit public requirements without handwritten paths. Unit tests use real Engine code with small contract adapters, without native modules, displays or devices. Measure their build/run cost separately from broader acceptance. |
+| Engine + Native GLFW | Native consumer/probes and implementation cases link the selected owner. No Cheryl OpenGL backend, GLAD generation or explicit OpenGL package requirement is selected; upstream GLFW retains its context machinery. Native-only selection does not promise a window-only runtime. |
+| Engine + Native GLFW + OpenGL | OpenGL consumer/probes, module implementation cases and selected owner/combined runner registration are correct. Native startup, presentation, retained-resource cleanup, input backpressure and concurrent shutdown require their explicit opt-ins. |
+| Standalone and supplied targets | Each module reuses one Engine; OpenGL reuses one Native GLFW. Dependency bootstrapping does not recursively enable root modules, tests or demo. Consumers link their actual owners and CTest discovers module-local cases. |
+| Crash bootstrap | An Engine-only consumer referencing no Engine entry point receives the automatic bootstrap object. Check the consumer's actual `NDEBUG` scope independently of exception/explicit traces or standalone Backward tests. |
 
-These runs used CMake 4.4.3 and GCC 16.2.1 on Linux, with
-`CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned dependency compatibility. Normal used
-`GLFW_BUILD_X11=ON`, `GLFW_BUILD_WAYLAND=OFF` and the existing desktop display.
-Aggregate runs did not enable real-font fixtures; normal native coverage was run
-separately with `CHERYL_NATIVE_GL_TESTS=1`. CTest discovery retains the build root as
-the working directory. This is migration evidence, not proof of future SDK isolation
-or of a clean single-run native suite. Revisit the timing-sensitive case when its
-module-owned tests are separated.
-
-After the initial builds, consumer verification used existing build directories,
-`CHERYL_BUILD_CONSUMER_TESTS=ON`, and `nice -n 19 cmake --build <build> --parallel 1
---target cheryl-consumer`, with a compilation break between selections. No fresh
-engine build or logging-profile matrix was added for this final verification.
-
-## Existing CLion profiles — 4 October 2026
-
-A subsequent `cherylGL` build reported missing `math.h` through GLM and GCC's
-`cmath`; the same profile reproduced missing `stdlib.h` through `cstdlib`.
-All five existing CLion profiles had cached failed C++ ABI discovery and empty
-implicit include directories. Their resulting `-isystem /usr/include` argument
-broke the standard headers' `#include_next` lookup. The original failed probes
-recorded no diagnostic explaining their failure.
-
-A fresh minimal probe with the same CLion CMake 3.28.6 detected the compiler
-correctly. Refreshing only the generated C++ compiler metadata and ABI result
-restored discovery in Default, Debug, Release, RelWithDebInfo and MinSizeRel,
-preserving profile options and existing objects. The redundant system include
-argument disappeared from all five profiles. Both previously failing source
-dependency scans passed, and Debug `cherylGL` compiled and linked successfully
-with GCC 16.2.1, X11 and Wayland enabled, using one low-priority build job.
-The other profiles received configuration checks; test suites were not repeated.
-Recovery guidance is in [consuming the engine](consuming-engine.md#standard-headers-in-an-existing-build).
-
-The follow-up also repairs tracking of the relocated 78-byte PNG fixture. The
-initial migration had left it locally present but ignored by the general PNG
-rule; its exact path is now exempted and tracked, with original bytes preserved.
-
-## Recorded results
-
-The earlier recorded validation on 1–2 October 2026 covers the completed runtime,
-rendering, input, worker, and resource architecture. The validated C++ snapshot was
-`d07d1a0f98599f46b41aee20cb507a0ef7379f2c`; its changes are integrated into
-[PR #9](https://github.com/cppcooper/cheryl-engine/pull/9), merged into `develop`.
-These are recorded execution results, not a fresh run of the current checkout.
-
-| Configuration | Build | Aggregate results |
-| --- | --- | --- |
-| Normal Release | All default targets, including `demo`, compiled and linked. | 349 passed; zero failures, errors, disabled cases, or skips. |
-| Sandbox Release | All default targets compiled and linked; the windowed demo is excluded. | 335 passed; zero failures, errors, disabled cases, or skips. |
-
-The recorded toolchain was GCC 13.3.0, C++23, CMake 3.31.10, Python 3.12.14, and
-Jinja2 3.1.6 on Linux with the pinned submodules. Normal execution used GLFW/X11
-and Mesa 25.2.8 llvmpipe (LLVM 20.1.2), OpenGL core 4.5, under Xvfb. Native and
-real-font opt-in cases were enabled for the reported complete runs.
-
-## Executed coverage
-
-- Aggregate regressions exercise dispatcher lifetime/cancellation, event invalidation
-  and serial delivery, worker caps/shares/policies, timing/input recovery, cache
-  publication, retained packets/material generations, and startup/shutdown failures.
-  Recording adapters establish their controlled scenarios independently of a driver.
-- Twelve real-context cases exercise resource retirement, selected-context restoration,
-  retained-frame shader reload, failed construction/link/reflection cleanup, rotated
-  FFont packets, RGBA/alpha row conventions, forced timing/presentation workloads,
-  State backpressure, ordered X11 Events/Text, and composed runtime failure cleanup.
-  Sources: [native-opengl.cpp](../../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp).
-- Native runtime cleanup covers initialization, partial-frame, and presentation failure
-  in both modes. Accepted CPU/platform uploads settle before game cleanup; a later
-  deinit error preserves the original failure. Driver queries observe native deletion
-  while the borrowed window is still alive.
-- Three real-font cases sweep all 793 TrueType and 727 CFF scratch allocation requests
-  in two concrete ASCII bake traces, plus nested failures. Rejected allocations raise
-  `bad_alloc`, release outstanding scratch, and prevent provider upload. Sources:
-  [fonts.cpp](../../projects/engine/tests/all-tests/src/resources/fonts.cpp).
-- Linux worker cases exercise actual inherited-mask discovery/restoration, required/
-  preferred eligibility, native kernel rejection, and recovery. Controlled adapters
-  separately cover failure before callback entry and partial thread-start rollback.
-  Sources: [worker-pool.cpp](../../projects/engine/tests/all-tests/src/core/worker-pool.cpp).
-- Finite real-demo runs complete in both modes with normal font bake/upload/render
-  and cleanup. Desktop camera/mouse input, text focus, resize, successful/failed/
-  recovered F5 reload, and normal close were reported as passing on 1 October.
-  The repeatable sequence is in [native-desktop-checks.md](native-desktop-checks.md).
+Controlled Engine tests establish runtime, publication and failure behavior against
+predictable dependencies. Implementing modules own checks of their actual behavior
+and contract compliance; passing with a dummy does not establish module conformance.
+Broader Engine cases cover dispatch/cancellation, events, workers, timing, caches,
+retained frames and failure paths. Owner runners and the combined runner reuse case
+objects, so choose one runner or CTest prefix for each scenario rather than executing
+the same cases through every aggregate.
 
 ## Repeating validation
 
-Initialize the pinned dependencies with `git submodule update --init --recursive`.
-Install Jinja2 in the Python interpreter selected for GLAD; set `Python_EXECUTABLE`
-if a different interpreter supplies it. Normal Linux builds need the X11/OpenGL
-and GLFW platform development dependencies. Configure separate build directories:
+Builds and tests require explicit authorization under `AGENTS.md`. Initialize pinned
+dependencies with `git submodule update --init --recursive`. OpenGL's GLAD generator
+needs Jinja2 in the Python interpreter selected by CMake; set `Python_EXECUTABLE` if
+another interpreter supplies it. Native Linux checks need the selected GLFW/X11
+platform dependencies; OpenGL checks additionally need OpenGL development libraries.
+CMake 4 hosts can require `CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned dependencies.
+Compiler-discovery recovery is documented in
+[consuming the engine](consuming-engine.md#standard-headers-in-an-existing-build).
+
+Reuse current execution evidence and compiled targets when their source, options
+and link closure still match the required selection. An existing combined build
+cannot prove Engine-only isolation. Use fresh directories when an independent graph
+is needed, and inspect target dependencies, compilation inventories and final link
+commands before execution. A stale source inventory, unselected check or missing
+prerequisite is not executable acceptance.
+
+Combine needed build targets into as few invocations as practical. Use low priority
+and one job when further builds are necessary, with breaks between them. Run tests
+sharing files/logs serially in isolated working directories. A compiler cache can
+reuse identical compilation across selections. `CMAKE_CXX_SCAN_FOR_MODULES=OFF`
+avoids unnecessary language-module scanning: Cheryl's integration modules are
+ordinary libraries. Keep GoogleTest discovery at `PRE_TEST` so building a runner
+does not execute its cases. Do not repeat passing checks unless a relevant change
+or failure invalidates their evidence.
+
+### Engine only
+
+A fresh Release configuration provides a neutral graph without sandbox mode:
 
 ```sh
-cmake -S . -B build-normal -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_BUILD_ALL_TESTS=ON \
+cmake -S . -B build-validation-release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
   -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF
-cmake -S . -B build-sandbox -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_BUILD_ALL_TESTS=ON \
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DCHERYL_SANDBOX_BUILD=ON
-nice -n 19 cmake --build build-normal --parallel 1
-nice -n 19 cmake --build build-sandbox --parallel 1
+  -DCHERYL_LOG_PROFILE=developer \
+  -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+  -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
+nice -n 19 cmake --build build-validation-release --parallel 1 --target \
+  cheryl-consumer engine-tests logging-tests \
+  cheryl-logging-acceptance cheryl-signal-acceptance
+./build-validation-release/cheryl-consumer
+./build-validation-release/engine-tests
 ```
 
-These commands describe the current selected-owner assembly and require explicit
-build/test authorization. `PRE_TEST` defers GoogleTest discovery until execution.
-`CHERYL_BUILD_ALL_TESTS=ON` selects owner aggregates and the combined runner in
-addition to focused runners. Case objects are shared; choose the intended runner
-or CTest prefix to avoid duplicate executions. Build and run one selection at a time
-because some cases share files;
-avoid consecutive full builds when an existing build can supply the needed targets.
-With a usable GLFW display, enable native acceptance in the normal aggregate:
+Consumers depend on their first-include probes; no separate probe build is needed.
+Use the logging and Release signal drivers below. The logging driver also executes
+focused logging cases, so they need no additional unit run.
+
+### Native, OpenGL and standalone composition
+
+The [standalone entry points](modules.md#standalone-modules) can prove both the
+selected dependency graphs and module bootstrap without building each assembly
+twice. Use the same Release, logging and discovery settings as above. Enable
+`CHERYL_BUILD_TESTS`, `CHERYL_BUILD_CONSUMER_TESTS` and `CHERYL_BUILD_ALL_TESTS`
+for the selected module. Build its targets together:
+
+| Entry point | Targets |
+| --- | --- |
+| `projects/modules/platform/native-glfw/` | `cheryl-native-glfw-consumer`, `native-glfw-tests`, `native-glfw-all` |
+| `projects/modules/graphics/opengl/` | `cheryl-opengl-consumer`, `opengl-tests`, `opengl-acceptance`, `opengl-all` |
+
+Supply `CHERYL_ENGINE_SOURCE` explicitly; OpenGL also accepts
+`CHERYL_NATIVE_GLFW_SOURCE`. For Linux/X11 native input, select
+`CHERYL_NATIVE_INPUT=ON`, `CHERYL_NATIVE_NULL_PLATFORM=OFF`, `GLFW_BUILD_X11=ON`
+and `GLFW_BUILD_WAYLAND=OFF`. Bootstrapped Engine tests remain disabled; OpenGL's
+Native bootstrap must not select Native tests/consumers. Run each selected consumer
+and its needed cases, and inspect module-local CTest registration with `ctest -N`.
+
+For supplied-target reuse, an independent host can compose the owners directly:
+
+```cmake
+cmake_minimum_required(VERSION 3.28)
+set(CMAKE_CXX_STANDARD 23)
+project(cheryl_module_reuse LANGUAGES C CXX)
+enable_testing()
+
+set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
+block(SCOPE_FOR VARIABLES)
+    set(CHERYL_BUILD_NATIVE_GLFW OFF)
+    set(CHERYL_BUILD_OPENGL OFF)
+    set(CHERYL_BUILD_TESTS OFF)
+    set(CHERYL_BUILD_CONSUMER_TESTS OFF)
+    set(CHERYL_BUILD_DEMO OFF)
+    add_subdirectory("${CHERYL_ENGINE_SOURCE}" engine EXCLUDE_FROM_ALL)
+endblock()
+
+set(CHERYL_BUILD_TESTS ON)
+set(CHERYL_BUILD_CONSUMER_TESTS ON)
+set(CHERYL_BUILD_ALL_TESTS ON)
+add_subdirectory("${CHERYL_NATIVE_GLFW_SOURCE}" native-glfw)
+add_subdirectory("${CHERYL_OPENGL_SOURCE}" opengl)
+```
+
+Use explicit source paths and the same compiler/Release/logging settings. The host
+owns root `enable_testing()` policy. Verify actual consumer links, local CTest
+registration, one target per owner and no duplicate dependency bootstrap directories.
+Source-target composition does not prove installed/imported package support.
+
+When combined-assembly evidence is missing, select `CHERYL_BUILD_ALL_TESTS=ON`
+in the root build and use its `all-tests` runner. Current combined/demo evidence
+can supply that coverage; run only missing owner, native or fixture checks rather
+than rebuilding the full assembly solely to repeat it.
+
+## Native and fixture checks
+
+Native OpenGL cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display:
 
 ```sh
-CHERYL_NATIVE_GL_TESTS=1 ./build-normal/all-tests --gtest_output=xml:normal-tests.xml
-./build-sandbox/all-tests --gtest_output=xml:sandbox-tests.xml
+CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/opengl-all \
+  --gtest_filter=native_opengl.*
 ```
 
-Real-font allocation cases additionally require `CHERYL_STB_ALLOCATION_TTF` and
-`CHERYL_STB_ALLOCATION_CFF` to name suitable TrueType and CFF OpenType faces, each
-with a glyph wider than 64 pixels at size 128. The recorded fixtures were
-DejaVuSans.ttf and NimbusSans-Regular.otf. Export both paths before either full
-run; `--gtest_filter=font_bake.real_*` selects only these cases. Missing fixture
-paths skip; unusable supplied paths fail.
+[Native cases](../../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp)
+cover resource retirement, context restoration, retained-frame reload, failed
+construction/reflection cleanup, texture row conventions, timing/backpressure and
+composed runtime failure cleanup. Include the replacement-poll/platform-drain
+backpressure check and startup/shutdown failures. Accepted uploads settle before game
+cleanup, and a later deinit error must preserve the original failure. Resource
+retirement or abandonment precedes context destruction; driver deletion queries run
+while the borrowed window is still alive.
+Do not infer these guarantees from mock tests or an aggregate whose opt-ins are unknown.
 
-Native cases skip unless requested. A requested unusable display does not count
-as a pass. The ordered X11 case additionally needs a Linux/X11 build and session;
-CMake enables its private source guard only when that backend is built. Linux
-affinity cases can skip when the necessary CPUs/capabilities are unavailable.
-Record the configuration, driver, opt-ins, and skipped cases alongside results;
-ordinary or unsupported-host runs need not match the zero-skip counts above.
+The ordered X11 input case additionally needs a Linux/X11 build and session. Native
+cases skip unless requested; a requested unusable display does not count as a pass.
+If current demo evidence is unavailable, run finite sequential/concurrent sessions
+with `--max-updates`; interactive checks are in
+[native-desktop-checks.md](native-desktop-checks.md).
+
+[Real-font allocation checks](../../projects/engine/tests/all-tests/src/resources/fonts.cpp)
+need `CHERYL_STB_ALLOCATION_TTF` and `CHERYL_STB_ALLOCATION_CFF` to name suitable
+TrueType and CFF OpenType faces, each with a glyph wider than 64 pixels at size 128.
+DejaVuSans.ttf and NimbusSans-Regular.otf are example fixtures. Export both paths
+and select `--gtest_filter=font_bake.real_*` on an Engine acceptance/aggregate or
+combined runner. These cases sweep bake scratch allocation failures and nested
+scopes, requiring released scratch and no provider upload on failure. Missing
+fixture paths skip; unusable supplied paths fail.
+
+[Linux worker checks](../../projects/engine/tests/all-tests/src/core/worker-pool.cpp)
+exercise inherited-mask discovery/restoration and native kernel rejection. They can
+skip when required CPUs/capabilities are unavailable; controlled policy/thread-start
+faults provide different coverage. Identify configuration, opt-ins and skips when
+assessing acceptance instead of treating a partial aggregate as complete coverage.
+
+## Manual acceptance drivers
+
+Drivers execute previously built targets and never configure or build:
+
+```sh
+python3 projects/engine/tests/logging-acceptance/logging.py build-validation-release
+python3 projects/engine/tests/signal-acceptance/signals.py \
+  --release-build build-validation-release --debug-build build-validation-debug
+python3 projects/tests/diagnostics.py build-combined
+```
+
+The logging procedure and compile-profile matrix are in
+[logging-acceptance.md](logging-acceptance.md). Diagnostics require the combined
+runner because shader reflection belongs to OpenGL; use the developer logging
+profile unless explicitly checking stripped diagnostics. Neither driver needs a
+fresh full-aggregate run.
+
+For the Debug signal check, build only `cheryl-signal-acceptance` against a current
+neutral Debug Engine archive and verify its final link excludes native/OpenGL owners.
+Configure an Engine-only Debug directory if no suitable archive exists. The POSIX
+driver accepts either build argument alone, checks actual `NDEBUG` scope and bounds
+children to 15 seconds with core files disabled. Debug requires Backward's trace
+header and a stack frame; `NDEBUG` requires ordinary signal termination without
+that header. Sanitizer output alone is insufficient. This proves automatic Engine
+bootstrap delivery, separately from exception traces or standalone Backward tests;
+Windows crash-hook acceptance requires separate checks.
 
 ## Evidence limits
 
 Software-driver acceptance does not establish physical GPU/compositor behavior,
-hardware reset recovery, physical-device fidelity, arbitrary OS layouts/IME,
-every font/transform, or exhaustive interleavings. Controlled native-policy failures
-and actual kernel rejection have distinct coverage. Sanitizer execution, privileged
-live policy changes, and a complete Wayland-only build were not recorded; the native
-translation unit was separately compiled with its X11 test guard disabled.
+hardware reset recovery, physical-device fidelity, arbitrary OS layouts/IME, every
+font/transform or exhaustive interleavings. OpenGL 3.3 baseline, full Wayland and
+other operating-system support need their own acceptance. Live privileged policy
+changes and actual kernel rejection differ from controlled failure injection.
+Sanitizers supplement selected checks; TSan requires a configuration without the
+Debug ASan/UBSan combination and cannot be inferred from those runs.
 
-These limits are coverage boundaries, not reopened completed tasks. Existing feature
-and resource TODOs are listed in [todo.md](../planning/todo.md).
+Keep source completion distinct from executable acceptance and unavailable-host
+coverage. Existing feature/resource work remains in [todo.md](../planning/todo.md);
+this guide is a reusable procedure, not an execution journal.

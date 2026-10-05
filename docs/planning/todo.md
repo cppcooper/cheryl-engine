@@ -9,9 +9,6 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Complete G5 executable isolation/standalone acceptance for the extracted Engine,
-  Native GLFW and OpenGL graph. See
-  [module-validation-plan.md](module-validation-plan.md).
 - Prove the selected library-neutral recording-graph UI probe, then select and prove
   the first optional adapter against its concrete toolkit/version requirements.
   See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).

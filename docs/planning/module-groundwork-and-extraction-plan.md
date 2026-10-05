@@ -1,39 +1,15 @@
-# Module groundwork and extraction plan
+# Remaining module integration work
 
-## Status
+## Foundation
 
-G1–G4 are implemented: target ownership/layout, optional Native GLFW and whole OpenGL
-owners, standalone composition conventions, module-local tests/consumers and the
-coordinated native/OpenGL extraction. The resulting contract is authoritative in
-[modules.md](../development/modules.md). G5 establishes executable isolation before
-UI, input composition or Steam consumers rely on the new graph.
-
-## G5 — executable isolation and composition acceptance
-
-G5 remains open. Source/static preparation is complete; executable isolation,
-composition acceptance and the measured Engine unit build/run cost remain pending.
-Maintain its progress checklist in
-[module-validation-plan.md](module-validation-plan.md), which owns the ordered
-selections, bounded commands and required evidence. Execution requires explicit
-build/test authorization.
-
-Implementation-owned checks remain distinct from dummy-backed Engine contract
-checks. Record unavailable native/display opt-ins as coverage limits. Native-only
-selection does not promise a window-only runtime.
-
-The coverage boundaries in [architecture-validation.md](../development/architecture-validation.md)
-remain useful context. Earlier directory-migration runs do not prove this graph;
-the reported extracted aggregate run predates the owner-runner composition changes
-and does not identify native opt-ins or skips.
-
-Keep the deprecated sandbox shorthand until its consumers migrate to explicit
-`CHERYL_NATIVE_NULL_PLATFORM`/`CHERYL_NATIVE_INPUT` choices. Engine-only selection
-does not need sandbox mode; mock OpenGL consumers can still require GLFW-null
-without Gainput.
+Use the current ownership, lifetime, selection and standalone contracts in
+[modules.md](../development/modules.md). Reusable isolation/composition procedures
+and native/fixture coverage limits are in
+[architecture-validation.md](../development/architecture-validation.md).
 
 ## G6 — UI adapter
 
-After the relevant G5 gate, resume U9 with a selected UI consumer. Add only generic
+Prove U9's neutral probe before selecting a concrete UI consumer. Add only generic
 render/resource/input/routing/platform capabilities that the adapter actually needs.
 The adapter is an optional owner and does not select OpenGL or own the native event
 pump. See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
@@ -74,13 +50,9 @@ seam exists is not.
 
 ## Development boundary
 
-Module work must preserve owner lifetimes and dependency direction:
-
-No Engine target links back to a module. OpenGL depends on Engine and Native GLFW;
-Native GLFW depends on Engine. A future owner may use neutral Engine contracts;
-Engine must not acquire that integration as a dependency. Preserve reverse teardown:
-input detaches from a live window, GL resources retire or abandon before context
-destruction, and runtime worker/frame shutdown retains its existing ordering.
+Module work preserves the owner lifetimes and dependency direction in the module
+guide. A future owner uses neutral Engine contracts; Engine must not acquire that
+integration as a dependency.
 
 Build/configuration/compiler/test execution follows `AGENTS.md` and requires explicit
 authorization. Planning/source inspection does not imply executable acceptance.

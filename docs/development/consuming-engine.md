@@ -37,15 +37,15 @@ The Engine umbrellas and granular contracts are neutral. Concrete window/input
 headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
 `cheryl/...` and legacy `core/...`/`assets/...` include spellings are preserved through
 each target's public roots. Installed/exported `find_package` distribution remains
-separate work. The old normal/sandbox results remain evidence for their recorded
-combined graph; extraction has its own acceptance gate.
+separate work.
 
 ## Crash and exception traces
 
-The original automatic crash bootstrap is restored through `Cheryl::Engine`.
+`Cheryl::Engine` delivers the automatic crash bootstrap.
 Final consumers receive its object directly, so a static linker cannot omit an
-unreferenced archive initializer. The owner selected the original `NDEBUG` scope:
-Debug-style builds install `backward::SignalHandling`; `NDEBUG` builds do not.
+unreferenced archive initializer. Installation follows the bootstrap object's
+`NDEBUG` scope in the engine build: Debug-style builds install
+`backward::SignalHandling`; `NDEBUG` builds do not.
 Exception and explicit stack capture remain available through the existing bounded
 capture/fallback implementation in all builds. The legacy global trace resolver and
 `Cheryl::SignalHandlers` target remain available; the demo needs only the selected
@@ -78,10 +78,8 @@ Normal Native GLFW consumption selects no Cheryl OpenGL/GLAD dependency; the
 OpenGL consumer selects both integration owners. CMake 4 hosts may need
 `CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned legacy dependency projects. Standalone
 module entry points and explicit null-platform selection are documented separately
-in the module guide. The owner reports a combined `all-tests` build/run with 393
-passing cases and 17 ignored/skipped cases before the owner-aggregate follow-up.
-Separate consumer/standalone acceptance and execution of the new owner aggregates
-remain pending; [architecture validation](architecture-validation.md) records the scope.
+in the module guide. [Architecture validation](architecture-validation.md) describes
+independent graph, consumer and runner checks and their coverage limits.
 
 ## Standard headers in an existing build
 
