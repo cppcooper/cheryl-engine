@@ -1,44 +1,47 @@
 # Unfinished engine work
 
-These items remain unresolved in the current source. Runtime and backend contracts
-are documented in [runtime-architecture.md](../runtime/runtime-architecture.md).
+This is the concise list of unresolved engine facilities. Completed implementation
+history belongs in Git and durable contracts belong in their subject documents.
+Current roadmap sequencing is in
+[develop-review-and-development-plan.md](develop-review-and-development-plan.md).
 Unresolved artwork metadata is tracked separately in
 [asset-manifest-todo.md](asset-manifest-todo.md).
 
-The source review's classification, accepted initial consumers/platforms, and
-ordered work are in [the develop plan's U0](develop-review-and-development-plan.md#u0-establish-scope-and-acceptance-baselines).
-That plan also tracks findings without TODO comments, including numeric-header,
-native callback, exception-reporting, logging, and library-consumer work. Completed
-source changes remain distinct from unexecuted acceptance checks.
+## Validation and integration
 
-## Resource and utility fixes
+- Complete G5 executable isolation/standalone acceptance for the extracted Engine,
+  Native GLFW and OpenGL graph. See
+  [module-validation-plan.md](module-validation-plan.md).
+- Prove the selected library-neutral recording-graph UI probe, then select and prove
+  the first optional adapter against its concrete toolkit/version requirements.
+  See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
+- Complete the remaining public-contract documentation, especially FileMgr indexing/
+  borrowed lookups, system-font discovery/selection and display/window lifetime/
+  capability semantics. See [U15](develop-review-and-development-plan.md#u15--documentation-and-roadmap-reconciliation).
 
-FFont is deprecated in favor of STBFont with a system or bundled font file. The
-original atlas is unavailable, so recovering the legacy widths format is no longer
-required work. Existing interfaces and complete-read rejection remain; see
-[the deprecation decision](../resources/legacy-ffont.md).
-
-- Complete the event-reporting part of shader diagnostics. Structured uniform/
-  attribute reflection queries already exist; the printing APIs still write their
-  results to standard output. See
-  [glslprogram.h](../../projects/modules/graphics/opengl/include/cheryl/backends/opengl/glslprogram.h) and
-  [glslprogram.cpp](../../projects/modules/graphics/opengl/src/backends/opengl/glslprogram.cpp).
-
-## Gameplay and execution extensions
+## Gameplay and presentation facilities
 
 - Add a tile-map selection layer: derive neighbor signatures/masks, choose weighted
-  candidates, then apply animated-target substitution using simulation-owned time.
-  The current Tileset APIs expose metadata without selecting world neighbors. See
-  [tileset.h](../../projects/engine/include/cheryl/assets/types/2d/tileset.h).
-- Derive render compatibility keys and an explicit ordering policy before batching
-  or sorting. Packet playback currently preserves authored order. See
-  [draw-packet.h](../../projects/engine/include/cheryl/core/rendering/draw-packet.h).
-- Add a profiling-based timing configurer that suggests pacing/recovery limits
-  without replacing explicit timing/input policy. See
-  [simulation-scheduler.h](../../projects/engine/include/cheryl/core/game-framework/simulation-scheduler.h).
-- Add typed event channels separately from registration lifetime and delivery.
-  The current bus uses string channels and `std::any` payloads. See
-  [event-bus.h](../../projects/engine/include/cheryl/core/subsystems/event-bus.h).
-- Introduce Unicode decoding and glyph-run shaping before expanding the fonts'
-  ASCII range. Committed input text does not supply font shaping. See
-  [stbfont.h](../../projects/engine/include/cheryl/assets/types/2d/stbfont.h).
+  candidates deterministically from an explicit seed, and apply animated-target
+  substitution using simulation-owned time. Current Tileset APIs expose metadata but
+  do not select world neighbors.
+- Add Unicode text layout/glyph runs before treating committed Unicode input as fully
+  renderable text. Define decoding, fallback, shaping/bidi/line-breaking scope and
+  retained atlas ownership before choosing dependencies. IME/editing is a separate
+  consumer requirement unless selected UI work needs it.
+- Complete UI-required neutral rendering/routing/platform facilities demonstrated by
+  the probe and selected adapter. The probe requires rectangular clipping and explicit
+  color/layout support; pointer/modal routing or platform services require an explicit
+  consumer contract. See the UI strategy for scope and discovery gates.
+
+## Optional and measured extensions
+
+- Derive complete render compatibility keys and explicit reorder-safe regions before
+  batching or sorting. Authored packet order remains the baseline.
+- Add a profiling-based timing adviser only from measured workload data; it must not
+  silently replace explicit fixed-step, input-retention or recovery policy.
+- Add typed event channels while preserving existing registration/delivery/lifetime
+  ownership and the current named/`std::any` interface contract.
+- Treat 3D, topology/NUMA adapters, audio, networking, world/entity/physics,
+  serialization, additional graphics backends and broader platform/device support as
+  separate consumer-driven roadmaps.

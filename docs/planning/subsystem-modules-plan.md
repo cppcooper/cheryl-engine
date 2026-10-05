@@ -1,183 +1,76 @@
-# Module boundaries and initial setup
+# Subsystem module planning
 
-Revised 2026-10-04 after owner review. Keep OpenGL-dependent code together in
-one module. Native GLFW and the whole OpenGL backend now have optional targets
-under `projects/modules/`; standalone composition and owner-local tests are implemented.
-Executable isolation/conformance acceptance remains pending authorization.
-The ordered work is in [the groundwork and extraction plan](module-groundwork-and-extraction-plan.md).
+## Current boundary
 
-## What earns a module
+The initial module extraction is implemented. The authoritative current composition,
+target names, dependency direction, standalone convention and test ownership are in
+[modules.md](../development/modules.md). Executable extraction acceptance is still G5
+in [module-validation-plan.md](module-validation-plan.md). This file defines selection
+criteria and future candidates; their sequence is in
+[module-groundwork-and-extraction-plan.md](module-groundwork-and-extraction-plan.md).
 
-Keep one shared engine library. Add a module where an application gains a useful
-choice: an optional facility, an alternative implementation, or an external
-dependency it can leave out. Each selected module gets its own CMakeLists.
+Cheryl keeps one shared `Cheryl::Engine`. A separate module is justified when it gives
+an application a concrete choice or isolation benefit: the ability to omit a dependency,
+select an alternative implementation, or test an external integration independently.
+A directory, internal interface or small caller count does not by itself justify a
+library boundary.
 
-A directory or an internal interface does not by itself justify another library.
-Internals, logging, memory, workers, events and general utilities stay in the engine.
-Separate them later only if an actual consumer or measured build problem warrants it.
+The current selected optional owners are Native GLFW and the whole OpenGL backend.
+Keep each cohesive owner intact unless a later consumer demonstrates a real benefit
+from another boundary. Native input depends on a live window; dividing display and
+input would split that coupled lifetime. OpenGL's context interface permits another
+window integration within its owner and does not itself justify context/bridge
+libraries.
 
-## The useful candidates
+## Future candidates
 
-| Candidate | What separation buys us | Existing boundary |
-| --- | --- | --- |
-| OpenGL backend | Select or omit the whole graphics implementation and its OpenGL/GLAD requirements; test backend behavior separately. | Rendering/resource interfaces connect it to the engine; [iOpenGLContext](../../projects/modules/graphics/opengl/include/cheryl/backends/opengl/context.h) supports different context implementations within the module. |
-| Native GLFW integration | Omit the coupled window/display and native input implementation, including GLFW/Gainput/native platform requirements. | Existing neutral display/window/input interfaces; keep the concrete implementations together because InputSystem requires Window. |
-| UI adapter | Enable a toolkit only in applications that use it; test its translation into engine facilities separately. | Engine input, retained drawing and resource contracts; U9 adds capabilities the chosen toolkit actually needs. |
-| Steam integration | Games without Steam avoid its SDK and session requirements; policy tests can use a fake SDK driver. | New application-owned integration, with Steam Input as one responsibility inside it. |
-| Input provider | Choose one provider by default; optionally combine specialized controller support with native keyboard/mouse input. | [iInputSystem](../../projects/engine/include/cheryl/core/controls/input-interface.h); combining sources still needs an explicit coordinator. |
+### UI adapters
 
-These are candidates, not a required target list. Steam services and Steam Input
-can initially share one module. Further modules need the same concrete justification.
+Each toolkit is independently selectable and depends on neutral engine contracts.
+Toolkit code must not become an engine dependency. The first concrete work is U9;
+see [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
 
-Composition is optional for a specific benefit, such as native keyboard/mouse with
-Steam-managed controllers. SDK-specific collection belongs to the module owning
-that SDK; selected sources feed one engine input coordinator and one published
-snapshot. Assign each controller one collection path to avoid duplicate input.
-Prove both ordinary single-provider use and the chosen composition with fakes
-before adding real SDK transport.
+### Steam integration
 
-## One OpenGL module
+Steam services and Steam Input may initially share one application-facing module.
+Before SDK transport, prove application/session lifetime, callback progress and any
+input-composition policy with SDK-free fakes. Steam callbacks must continue to
+progress when ordinary input publication pauses or backpressures.
 
-Put all OpenGL-dependent implementation and headers together: renderer, resources,
-shaders, textures, OpenGL diagnostics, context contract, GLFW binding and factories.
-There is no demonstrated need for separate context or bridge targets.
+SDK/version/application requirements are selected before transport work. SDK-native
+types and discovery remain inside the owning module.
 
-The context interface is still useful inside that module. It lets another window
-integration supply context operations without rewriting the renderer. That seam
-can support multiple implementations within one library. Splitting any OpenGL piece
-later requires an explicit benefit and justification.
+### Input providers and composition
 
-Generic rendering/presentation/resource contracts stay in the engine. Put GLFW
-window/display and Gainput input together in their native module. OpenGL depends
-on that module and the engine; neither integration is an engine dependency. Perform
-both ownership changes together after preparation to avoid an intermediate cycle.
-Preserve window/context/resource lifetimes and explicitly settle compatibility for
-consumers that currently receive the backend through Cheryl::Engine.
+One provider remains the default. Add composition only for a demonstrated case such
+as native keyboard/mouse combined with Steam-managed controllers.
 
-## Target-centric build structure
+Selected sources feed one engine-owned coordinator and one published input snapshot.
+Each effective controller has one collection path. Compose source contributions
+before publication rather than concatenating complete provider snapshots; G7 defines
+the merge and fake-acceptance gates. SDK collection belongs to its owning module.
 
-Every project-owned target gets an owning directory, including the shared engine,
-executables, tests, and existing object/interface build-support targets. Each owner
-defines its CMake target, sources, headers and dependencies. Aliases share their
-underlying target's home; upstream dependencies retain their upstream layout.
-Internal engine folders remain organization within one library.
+### Additional graphics backends
 
-The agreed common parent is `projects/`. Current target homes and later module homes:
+A new backend is useful both as an implementation and as a proof that neutral render/
+resource contracts support another API. It owns its SDK/API dependency
+and implementation tests. Do not split existing internal engine facilities in
+anticipation of an unselected backend.
 
-```text
-cheryl-engine/
-  CMakeLists.txt                # Select and compose targets
-  projects/
-    engine/
-      CMakeLists.txt
-      include/                 # Public headers, preserving include spellings
-      src/
-      tests/
-        all-tests/
-        logging-tests/
-        logging-acceptance/
-        signal-acceptance/
-        consumer/
-        include/               # Owned test helpers
-        fixtures/
-        support/               # Shared test support and runner entry point
-      support/
-        signal-handlers/
-        logging-config/
-    modules/                   # Owners grouped by engine role
-      README.md                # Engine contract index
-      platform/
-        native-glfw/           # Display/window/input owner
-          CMakeLists.txt
-          README.md            # Concrete implementation-to-contract map
-          include/
-          src/
-          tests/
-      graphics/
-        opengl/                # Whole rendering/presentation/resource owner
-          CMakeLists.txt
-          README.md
-          include/
-          src/
-          tests/
-    apps/demo/
-    dependency-checks/backward-cpp/  # Standalone external-library check
-    tests/                     # Cross-project all-tests and diagnostics driver
-  cmake/                       # Shared helpers
-  docs/
-  extern/
-```
+## Extraction rule
 
-Tests live with the library or module they exercise. Engine tests, logging checks
-and engine consumer/header probes belong under `engine/tests/`; OpenGL tests belong
-under `modules/graphics/opengl/tests/`. Each test target can own a child directory there.
-Each tested owner provides its own complete runner under `tests/all-tests/`:
-`engine-all-tests`, `platform-module_native-glfw-all-tests`, and
-`graphics-module_opengl-all-tests`. The combined `all-tests` belongs to
-`projects/tests/` and links the selected owners' reusable test case objects without
-making the engine library depend on its modules. Focused runners use the same
-objects; private hooks and conditional dependencies stay with their suite.
+Before introducing another library target, record:
 
-Each owner publishes its public include roots with `target_include_directories`
-using paths relative to its own CMake directory. Consumers obtain those paths by
-linking the target with `target_link_libraries`, rather than naming another owner's
-folders. A dependency is PUBLIC when exported headers require it and PRIVATE when
-only implementation uses it. Preserve current include spellings during migration,
-including the engine's `include/cheryl` root; keep private source paths private.
+1. the concrete omit/replace/test benefit;
+2. the engine contract the owner implements;
+3. dependencies that become optional or isolated;
+4. lifetime/dependency direction and how cycles are avoided;
+5. test ownership and the smallest independent consumer proving the boundary;
+6. compatibility consequences for current consumers.
 
-The initial directory migration preserved the combined archive. The subsequent
-coordinated extraction moves native/OpenGL implementations and their tests to the
-selected owners. Granular include spellings remain; consumers explicitly select
-module links. See [the implemented composition contract](../development/modules.md).
+If those points do not identify a real benefit, keep the code inside the existing
+owner. Logging, memory, workers, events, general utilities and similar internal
+facilities remain engine organization unless a future consumer demonstrates otherwise.
 
-Begin in this repository. A module's standalone CMake entry point reuses supplied
-engine targets or accepts an explicit engine checkout path. It must not assume a
-particular parent directory, compile copies of engine sources, or add the engine
-twice. This leaves a later companion repository possible without requiring one now.
-
-New module dependencies are discovered only when enabled. Standalone bootstrap
-suppresses the engine's module catalog locally to prevent recursion. Applications
-or the default assembly select the engine and modules; the shared engine must not
-link back to a module that depends on it. These composition rules are implemented;
-their executable acceptance is recorded separately from the directory migration.
-
-## Testing and the next work
-
-Smaller test executables can link the existing engine and compile only the relevant
-cases. That reduces test translation units without creating a library for every
-internal facility; the existing cheryl-logging-tests already uses this pattern.
-Module tests then link their actual implementation and fake only
-its external boundary. Keep integration tests for startup, threads and shutdown.
-Classify tests by the guarantee they prove: engine contract, specific implementation,
-or composed integration. Separation can require splitting/rewriting tests and fixtures,
-not just moving files. Engine runtime contract checks use real engine code with
-controlled dependencies; native implementation checks exercise the selected module.
-Keep the engine's default unit suite cheap with small dummy contract implementations.
-Each implementing module owns checks of its real behavior and contract compliance;
-dummy-backed engine checks are not substitutes for those. Costly acceptance stays
-with its implementation owner and is selected separately from the cheap unit suite.
-Removing native dependency discovery requires a real extraction; folder changes
-and runtime test filters cannot provide it.
-
-1. **Groundwork/layout:** map current targets to owning directories, settle shared
-   engine/default-build compatibility, then establish the target-centric layout,
-   optional-module selection, standalone convention and one template in coherent
-   units. Include the core engine's own directory, colocated tests and public target
-   usage requirements; do not move everything at once.
-2. **Native/OpenGL extraction:** establish the two cohesive owners in one cutover,
-   including the whole OpenGL backend, with consumer/backend checks and an explicit
-   default-build compatibility decision. Prove engine-only SDK isolation separately.
-3. **UI/Steam integrations:** implement actual consumer requirements. Keep generic
-   U9 repairs in the engine. Prototype Steam session policy and optional input
-   composition with fakes before SDK transport; callbacks must progress when polling pauses.
-4. **Further extraction:** require a demonstrated replacement, dependency or testing
-   benefit. Another graphics API must prove that the engine's contracts fit it.
-
-Steam callback/session ownership follows the
-[Steamworks API contract](https://partner.steamgames.com/doc/sdk/api); concrete
-SDK/version/application choices belong to its implementation unit.
-
-This revision replaces the broad target-family and M0–M10 roadmap. The earlier
-research remains in Git history; it is not a prerequisite list for the skeleton.
-The original architecture review used source and document checks. Directory-migration
-acceptance is recorded separately; it does not prove the later module isolation.
+Future extraction must preserve architectural interfaces because of their contract,
+not delete them merely because they currently have few callers.

@@ -55,6 +55,23 @@ Once the plan is established, follow it unless implementation reveals informatio
 
 Complete and commit coherent development units independently so the commit history reflects the progression of the implementation and preserves completed work as later development proceeds.
 
+## Documentation discipline
+
+Documentation should help a reader understand the current system or complete future work. Keep context proportional to the task: start with the relevant roadmap or subject document and follow related links as needed rather than loading the entire planning folder.
+
+Apply these rules to affected documents across `docs/`:
+
+- Describe current contracts in the present tense. Keep plans focused on the target state, unresolved work, prerequisites, ownership/dependency constraints, ordered steps, discovery boundaries and acceptance criteria.
+- Keep one concise progress checklist for each active macro task in the plan that owns its details. Update subtask checkboxes as work finishes, retaining checked subtasks while the macro task remains open. Keep future macro tasks at roadmap detail until they become active; link to the owning checklist instead of maintaining duplicate progress lists.
+- Remove completed macro-task narratives and superseded alternatives. Document resulting durable behavior in its authoritative subject document, and link to it instead of duplicating contracts or source inventories.
+- Preserve unique requirements, decisions and rationale that still guide implementation. Before shortening or deleting a plan, verify that each remains available in the surviving text or a linked authoritative document. Do not replace relevant detail with a vague summary or a pointer to Git alone.
+- Git commits and diffs hold implementation history. A brief decision/history summary with specific Git references is useful when it explains the current direction or saves a future reader substantial reconstruction; do not reproduce the task-by-task journal.
+- Do not append routine successful build/test/check reports, pass counts, transcripts or toolchain snapshots unless explicitly requested. Retain reusable validation procedures and meaningful coverage limits. Distinguish source completion from executable acceptance; a successful exit with skipped or unselected checks does not establish the missing coverage.
+- Record unresolved failures, unavailable prerequisites and environment/compatibility limits only to the extent they affect future work, with the required next action. Remove resolved blockers unless they describe an enduring constraint.
+- After each coherent unit, reconcile affected plans and current-state docs. When a macro task completes, remove its task section and checklist after preserving any reusable procedure, durable contract or still-relevant decision rationale and repairing inbound links. Delete a one-purpose plan when no unresolved work remains. Do not move its execution log elsewhere merely to empty the plan.
+
+Keep a paragraph when it explains how something works, how it should work, how to get there, or a decision/constraint needed to do so correctly. Concision must preserve that information.
+
 ## Git
 
 For commits created by the agent, use:

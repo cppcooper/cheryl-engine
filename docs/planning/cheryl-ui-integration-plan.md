@@ -1,915 +1,191 @@
-# Cheryl Engine UI Integration Strategy and Development Plan
+# Cheryl Engine UI integration strategy
 
 ## Purpose
 
-This document defines a development strategy for making Cheryl Engine capable of supporting multiple GUI/widget libraries without coupling the engine core to any particular UI framework.
+Cheryl should support player-facing and developer UI libraries without coupling
+`Cheryl::Engine` to any widget toolkit. A game selects an optional adapter; the
+adapter translates the toolkit's rendering, resources, input and platform needs into
+Cheryl contracts.
 
-The immediate motivation is practical:
-
-- Cheryl needs a usable game HUD/menu/widget system.
-- RmlUi is architecturally attractive and capable of producing highly polished interfaces, but its RML/RCSS authoring model inherits many of the complexities of HTML/CSS.
-- For a solo developer who is much stronger in C++ than web UI design, a C++-first toolkit such as TGUI may be substantially easier to use during early development.
-- If the project later becomes financially successful, RmlUi becomes especially attractive because a dedicated CSS/RML UI specialist could build sophisticated production interfaces without requiring Cheryl to change its engine architecture.
-- Dear ImGui may also be useful later for engine/debug/developer tooling, but it should remain a separate concern from player-facing UI.
-
-The goal is therefore **not to choose one GUI library for Cheryl Engine**. The goal is to make Cheryl expose the correct generic facilities so that UI libraries can be integrated as optional modules.
-
----
-
-# 1. Strategic Direction
-
-## 1.1 Core principle
-
-`cheryl-engine` should not depend on TGUI, RmlUi, Dear ImGui, CEGUI, Nuklear, or any other GUI/widget library.
-
-Instead, the intended dependency direction is:
+The intended dependency direction is:
 
 ```text
-                         Game
-                          |
-              +-----------+-----------+
-              |                       |
-        Cheryl::UI::TGUI        Cheryl::UI::RmlUi
-              |                       |
-              +-----------+-----------+
-                          |
-                    Cheryl Engine
-                 +--------+--------+
-                 |        |        |
-               Input   Rendering  Platform
-                         Resources
-```
-
-A dependent game chooses which UI integration modules it needs.
-
-For example:
-
-```cmake
-target_link_libraries(my_game PRIVATE
-    Cheryl::Engine
-    Cheryl::UI::TGUI
-)
-```
-
-A later game could instead use:
-
-```cmake
-target_link_libraries(my_game PRIVATE
-    Cheryl::Engine
-    Cheryl::UI::RmlUi
-)
-```
-
-A project could deliberately link both during a migration or because different libraries serve different purposes.
-
-The important rule is:
-
-```text
-game -> UI adapter/module -> cheryl-engine
+game -> UI adapter -> Cheryl::Engine
 ```
 
 Never:
 
 ```text
-cheryl-engine -> GUI library
+Cheryl::Engine -> TGUI / RmlUi / ImGui / another widget library
 ```
 
----
+TGUI remains the likely first player-facing adapter because its C++ authoring model
+fits current development needs. RmlUi remains attractive for a later highly styled
+production UI. Dear ImGui is primarily a developer/debug tooling candidate. These are
+roles, not dependencies selected by this plan.
 
-# 2. Why Multiple UI Libraries Should Be Supported
+## Abstraction boundary
 
-## 2.1 RmlUi
+Cheryl abstracts facilities consumed by UI libraries, not widgets themselves.
 
-RmlUi is a particularly strong long-term option because it is designed to integrate into an existing engine rather than replace its windowing, rendering, or event loop.
+Engine-level responsibilities:
 
-Its strengths include:
+- backend-neutral render submission;
+- resource creation/publication/lifetime;
+- physical input records and committed text;
+- focus/routing infrastructure;
+- platform/window services and capability reporting;
+- lifecycle/threading rules.
 
-- retained-mode UI
-- sophisticated layout
-- CSS-like styling
-- animations and transitions
-- flexbox
-- templates
-- localization
-- data binding
-- custom elements
-- game-focused integration
-- renderer abstraction
-- platform abstraction
-- proven use in polished applications and games
+Toolkit responsibilities:
 
-Its main disadvantage for the current development context is authoring complexity.
+- widget hierarchy and layout;
+- styling and animation semantics;
+- toolkit event model;
+- toolkit-specific public APIs.
 
-RML/RCSS gives substantial expressive power, but robust CSS layout can become difficult around cases such as:
+Do not introduce `Cheryl::Button`, `Cheryl::Panel`, a universal widget hierarchy, or
+a common `iUiSystem` merely because adapters have similarly named internal tasks. A
+shared runtime abstraction requires evidence from actual implementations.
 
-- tooltips near viewport boundaries
-- dynamically sized popovers
-- context menus
-- dropdowns
-- constrained text wrapping
-- responsive HUD placement
-- nested flex layouts
-- dynamic sizing and overflow
-- floating UI anchored to moving objects
+## Rendering and resources
 
-These are solvable, but solving them well can require real web-layout expertise.
+A UI adapter records neutral rendering data; it does not issue OpenGL/Vulkan calls.
+The graphics/backend owner remains the only code that performs backend API work.
 
-For a solo C++ developer, that is a meaningful development cost.
+Use [the render contract](../rendering/pipelines-and-materials.md) and
+[the frame/lifecycle contract](../runtime/runtime-frame-boundary.md) as the current
+foundation. Rectangular clipping and explicit neutral vertex color/layout are missing
+facilities needed by the first probe. Resolve:
 
-## 2.2 TGUI
+- rectangular clipping/scissor;
+- explicit vertex color/layout;
+- logical-to-framebuffer clipping coordinates, including resize/content scale;
+- world/HUD/overlay/developer ordering without changing authored draw order.
 
-A C++-first toolkit such as TGUI is potentially a better initial UI implementation because its widget creation and positioning model maps more directly onto C++ reasoning.
+Expanded triangles suffice for the neutral probe. Require indexing only if the
+selected toolkit demonstrates a need; UI integration does not imply batching or
+arbitrary packet sorting.
 
-The likely near-term role is:
+Stencil/mask clipping, render targets, filters and custom effects are not baseline
+requirements. Add them only when a real adapter requires them.
+
+UI-generated images/font atlases use the engine resource boundary. The selected
+baseline is one provider/cache domain with owned CPU preparation and immutable
+replacement handles. Mutable texture updates, multiple resource domains and dynamic
+atlas policy require explicit lifetime/publication design before exposure. Decide
+whether the toolkit or Cheryl rasterizes fonts before designing its bridge; toolkit
+rasterization still publishes textures through Cheryl. See
+[consumer-resource-contract.md](../resources/consumer-resource-contract.md).
+
+## Input, routing and platform services
+
+Adapters consume Cheryl input, never GLFW/Gainput directly. Preserve the distinction
+between state-oriented input, ordered physical events and semantic committed text.
+The physical record remains immutable; routing decides which consumer may react.
+Capture leases, ordered device/modifier/repeat records, focus epochs and poll-latched
+delivery are specified in [input-state-model.md](../runtime/input-state-model.md).
+
+Current keyboard focus is a foundation, not the entire UI routing model. Add pointer
+capture, modal priority/propagation and controller-navigation ownership only as the
+selected adapter requires them. Multiple UI systems must not need direct knowledge
+of each other. Consumer priority/focus must change without reconfiguring physical
+collection. Acceptance cases include focused text while controller gameplay
+continues, modal gameplay suppression and an overlay capturing only while active.
+
+Potential platform services include clipboard, cursor shape/visibility, window and
+framebuffer dimensions, per-window content scale, monotonic time and text-input/IME
+lifecycle. Generic APIs must report unavailable capabilities explicitly and must not
+expose GLFW handles.
+
+## Module contract
+
+UI integrations follow the optional-owner model documented in
+[modules.md](../development/modules.md). Representative targets are:
 
 ```text
-TGUI
-    first production-capable player UI
-    C++ authored
-    practical for solo development
-```
-
-The likely later role for RmlUi is:
-
-```text
-RmlUi
-    polished production UI
-    sophisticated visual design
-    potentially authored by a dedicated UI/CSS specialist
-```
-
-This should not be treated as a hard replacement path. Both integrations can remain available.
-
-## 2.3 Dear ImGui
-
-Dear ImGui should be treated separately.
-
-Its natural role is:
-
-```text
-engine/debug UI
-profilers
-resource inspectors
-render inspectors
-developer consoles
-editor panels
-diagnostic overlays
-```
-
-It should not define Cheryl's player-facing GUI architecture.
-
----
-
-# 3. What Cheryl Should Abstract
-
-Cheryl should abstract the facilities a UI library consumes.
-
-It should **not** abstract the widgets themselves.
-
-Good abstraction boundaries include:
-
-- render submission
-- textures/resources
-- input events
-- text input
-- focus and routing
-- platform services
-- clipboard
-- cursor control
-- DPI/content scaling
-- lifecycle and threading
-
-Bad abstraction boundaries include:
-
-```cpp
-Cheryl::Button
-Cheryl::Panel
-Cheryl::Dropdown
-Cheryl::TextBox
-Cheryl::TreeView
-```
-
-Creating a universal Cheryl widget API would make Cheryl itself into a UI toolkit and would force fundamentally different libraries toward a lowest-common-denominator interface.
-
-TGUI users should be able to use TGUI's normal API.
-
-RmlUi users should be able to use RML/RCSS and RmlUi's C++ API.
-
-Dear ImGui users should be able to use ImGui directly.
-
-The commonality belongs **below the widget layer**.
-
----
-
-# 4. Rendering Strategy
-
-UI libraries must not issue OpenGL, Vulkan, or other backend API commands directly.
-
-Instead:
-
-```text
-UI library
-    |
-library-specific render adapter
-    |
-Cheryl render commands / RenderFrame
-    |
-Renderer
-    |
-OpenGL / Vulkan / future backend
-```
-
-For example, an RmlUi integration would implement `Rml::RenderInterface`, but that implementation should translate RmlUi draw requests into Cheryl render-frame data rather than issuing OpenGL calls.
-
-Likewise, a TGUI integration should translate TGUI rendering into Cheryl's renderer-facing primitives.
-
-The generic UI rendering facilities will likely need to support:
-
-- indexed geometry
-- vertex colors
-- textured geometry
-- transforms
-- rectangular clipping/scissor
-- ordered rendering
-- alpha blending
-
-More advanced libraries may eventually require:
-
-- stencil/mask clipping
-- render-to-texture
-- custom shader/effect requests
-- filters
-- offscreen surfaces
-
-These should be added when a real integration demonstrates that they are needed rather than being guessed in advance.
-
-The graphics/backend thread should remain the only place where graphics API calls are performed.
-
-This preserves Cheryl's concurrent render model:
-
-```text
-simulation / UI preparation
-          |
-      RenderFrame
-          |
-graphics/backend thread
-          |
-OpenGL / Vulkan
-```
-
----
-
-# 5. Resource Strategy
-
-A UI integration should not create backend graphics resources directly.
-
-It should request resources through Cheryl.
-
-The desired flow is:
-
-```text
-RmlUi / TGUI
-      |
-UI resource adapter
-      |
-Cheryl resource system
-      |
-renderer/backend
-```
-
-This matters for:
-
-- textures
-- dynamically generated textures
-- texture updates
-- font atlases
-- render targets
-- destruction/lifetime
-- concurrent frame ownership
-
-RmlUi may perform its own font rasterization while still handing generated texture data to Cheryl.
-
-TGUI may have different expectations.
-
-The engine should support both approaches without exposing the graphics backend to the UI library.
-
----
-
-# 6. Input Strategy
-
-Cheryl's input model should remain independent of UI frameworks.
-
-The useful distinction is between:
-
-```text
-state-oriented input
-ordered physical events
-semantic text input
-```
-
-UI libraries generally need event-style input rather than only frame state.
-
-The engine therefore needs enough generic information for adapters to translate:
-
-```text
-Cheryl key event
-    -> RmlUi / TGUI key event
-
-Cheryl text input
-    -> RmlUi / TGUI text input
-
-Cheryl pointer movement
-    -> RmlUi / TGUI mouse movement
-
-Cheryl button event
-    -> RmlUi / TGUI button event
-
-Cheryl wheel event
-    -> RmlUi / TGUI scrolling
-```
-
-A UI adapter should never need to read GLFW or Gainput directly.
-
----
-
-# 7. Input Routing and Focus
-
-Supporting multiple UI systems is primarily an **input-routing problem**, not a rendering problem.
-
-The engine may eventually have several consumers:
-
-```text
-gameplay
-game UI
-modal UI
-console
-developer UI
-debug overlay
-```
-
-The input system records what physically happened.
-
-A separate routing/focus layer determines who is allowed to react.
-
-That routing layer needs concepts such as:
-
-- keyboard focus
-- text-input focus
-- pointer capture
-- modal interception
-- event propagation
-- event consumption
-- controller-navigation ownership
-- priority/order between consumers
-
-One UI library should never need direct knowledge of another UI library.
-
-For example:
-
-```text
-RmlUi textbox:
-    consumes keyboard and text input
-
-Gameplay:
-    may still receive controller state
-
-Modal pause menu:
-    suppresses gameplay actions
-
-ImGui debug overlay:
-    receives mouse/keyboard only while actively capturing them
-```
-
-This separation also makes coexistence between TGUI and RmlUi practical.
-
----
-
-# 8. Platform Services
-
-UI libraries commonly need platform facilities beyond rendering and input.
-
-Cheryl should expose library-neutral access to services such as:
-
-- monotonic time
-- clipboard read/write
-- cursor visibility
-- cursor shape
-- window dimensions
-- framebuffer dimensions
-- DPI/content scale
-- text-input lifecycle
-- IME support where available
-
-The generic UI integration path should not require GLFW handles or GLFW headers.
-
-If some platform capability is not available, Cheryl should make that limitation explicit rather than silently implementing incomplete behavior.
-
----
-
-# 9. Module and Dependency Structure
-
-The likely organization is:
-
-```text
-cheryl-engine
-    core/
-    rendering/
-    input/
-    resources/
-    platform/
-    ...
-
-optional UI integrations
-    ui/tgui/
-    ui/rmlui/
-    ui/imgui/
-```
-
-These can initially live in the Cheryl repository as optional modules and later move into separate companion repositories/packages if that becomes useful.
-
-The [module plan](subsystem-modules-plan.md) explains the concrete module candidates
-and initial CMake convention. It keeps one shared engine library and gives optional
-integrations their own targets; it does not require a target for every internal
-facility. The first UI adapter can establish the pattern without a broad engine split.
-
-Candidate CMake targets:
-
-```text
-Cheryl::Engine
 Cheryl::UI::TGUI
 Cheryl::UI::RmlUi
 Cheryl::UI::ImGui
 ```
 
-Requirements:
-
-- `Cheryl::Engine` links none of the UI libraries.
-- Each adapter pulls only its own dependency graph.
-- Each adapter can be enabled independently.
-- Installing/building Cheryl without GUI support requires no GUI dependencies.
-- A game can deliberately link more than one adapter.
-
-This prevents a TGUI-based game from automatically inheriting RmlUi and its dependencies, or vice versa.
-
----
-
-# 10. Adapter Pattern
-
-Each GUI integration will probably contain roughly the same categories of adapter code:
-
-```text
-platform bridge
-input translator
-render translator
-resource translator
-lifecycle wrapper
-```
-
-The implementations remain completely library-specific.
-
-For example:
-
-```text
-RmlUi module
-    RmlRenderInterface
-    RmlSystemInterface
-    RmlInputAdapter
-    RmlResourceBridge
-
-TGUI module
-    TguiRendererBridge
-    TguiInputAdapter
-    TguiPlatformBridge
-    TguiResourceBridge
-```
-
-The existence of similar responsibilities does **not** automatically justify introducing a shared `iUiSystem`.
-
-A common runtime abstraction should only be introduced if actual implementations demonstrate a meaningful common contract.
-
----
-
-# 11. Application Architecture for Future Migration
-
-The application should keep gameplay/domain state separate from widget implementations.
-
-Prefer:
-
-```cpp
-struct InventoryModel;
-struct HudState;
-struct DialogueState;
-struct SettingsModel;
-```
-
-Then a TGUI implementation can bind to those models:
-
-```cpp
-class TguiInventoryView;
-```
-
-A later RmlUi implementation can bind to the same state:
-
-```cpp
-class RmlInventoryView;
-```
-
-Avoid placing concrete widget types directly inside gameplay/domain objects:
-
-```cpp
-tgui::Button
-Rml::Element
-```
-
-This makes a later transition from TGUI to RmlUi a presentation-layer replacement rather than a gameplay-system rewrite.
-
----
-
-# 12. Likely Development Path
-
-## Phase A — Engine capability
-
-Do not start by integrating a UI library.
-
-First ensure Cheryl has the generic facilities required by an unknown UI library:
-
-```text
-render submission
-resource ownership
-input events
-semantic text input
-input routing/focus
-platform services
-optional module packaging
-```
-
-## Phase B — First practical UI
-
-Integrate the first C++-friendly player-facing library, likely TGUI.
-
-Use it to validate the engine boundaries.
-
-Any place where the adapter must bypass Cheryl and reach directly into GLFW/OpenGL/etc. should be treated as an architectural defect worth reviewing.
-
-## Phase C — Backend-independence proof
-
-Verify that the integration:
-
-- exposes no OpenGL types publicly
-- exposes no GLFW types publicly
-- performs no graphics calls from simulation/UI code
-- produces data compatible with the `RenderFrame` pipeline
-- would remain structurally valid if Cheryl later gained a Vulkan renderer
-
-## Phase D — RmlUi
-
-When useful, implement RmlUi independently.
-
-This becomes both:
-
-- a production-quality UI option
-- a proof that Cheryl actually supports multiple UI libraries
-
-RmlUi should use Cheryl adapters rather than its built-in GLFW/OpenGL backend.
-
-## Phase E — Specialist-authored production UI
-
-If a Cheryl-based game later generates enough revenue to justify specialist UI work, a developer/designer with strong CSS/RML expertise can build the polished player-facing interface in RmlUi.
-
-At that point, the engine should already have all required integration support.
-
-The specialist works primarily at the presentation layer rather than modifying Cheryl's platform/rendering architecture.
-
-## Phase F — Developer tooling
-
-Optionally integrate Dear ImGui for:
-
-- debugging
-- profiling
-- asset inspection
-- console tooling
-- renderer inspection
-- editor functionality
-
-Its presence should not affect the player-facing UI choice.
-
----
-
-# 13. Development Task List
-
-## Existing Engine Foundation and Remaining Acceptance
-
-The 3 October 2026 U0 reconciliation uses the current source and the recorded
-architecture validation as the baseline. These engine contracts already exist;
-the UI milestone checklist below retains adapter/consumer acceptance work rather
-than scheduling their reimplementation. The overall milestones remain open until
-the required missing facilities and a representative UI consumer are established.
-
-| UI task | Established engine foundation | Remaining task boundary |
-| --- | --- | --- |
-| 1 — integration contract | This strategy defines the optional dependency direction and separation from widgets/layout. | Prove enforcement through the U7 module/consumer targets and the eventual adapter; no universal widget API is required. |
-| 2 — render submission | RenderFrame/ordered retained packets, transforms, textured Position3UV2 geometry, material generations, and alpha/depth/cull state. Simulation does not issue native draws. | Neutral vertex color/layout, rectangular clipping, consumer-required indexing/effects, and world/UI layer-order proof. No batching or arbitrary sorting is implied. |
-| 3 — resources | ResourceProvider creates images/font atlases and uploads transient vertex spans on the backend owner. Frames retain handles; native resources retire through the renderer lifetime. | Decide updates, atlas replacement, and adapter font ownership before exposing mutable resources. Existing single-provider/partial-upload limits remain explicit. |
-| 4 — input | State, ordered physical Events, committed Unicode Text, scoped capture, pointer/scroll/button/key/repeat/modifier records, and immutable tick views. | Translate to the selected library and validate ordering/device fidelity. Composition/preedit and Unicode rendering are separate capabilities. |
-| 5 — routing | Keyboard FocusLease, request epochs, poll-latched routing, exclusive/pass-through gameplay gating, and non-destructive per-target record views. | Pointer capture, modal/priority/propagation/controller ownership, and coexistence proof with heterogeneous consumers. |
-| 6 — platform services | Window logical/framebuffer sizes, cursor visibility, monitor content scale, monotonic clocks, and abstract window/display access. | Clipboard, cursor shapes, per-window scale/change reporting, and explicit text-input/IME capabilities where required. No generic GLFW handle exposure. |
-| 7 — modules | UI libraries are not currently required by the engine. | Target dependency propagation, independent downstream consumer, optional integration targets, and package scope (U7). |
-| 8–14 — adapters, multiple consumers, migration, and final extension docs | Current runtime supports sequential/concurrent retained frame and input delivery; this strategy states the intended adapter architecture. | Actual adapters, representative widgets, second-library proof, and integration guidance remain unimplemented. |
-
-The first new engine-boundary consumer is the library-neutral panel/scroll/image/
-ASCII-label/focus probe specified in
-[the develop plan's U0](develop-review-and-development-plan.md#u0-establish-scope-and-acceptance-baselines).
-It uses one provider/window, immutable image replacement, and rectangular clipping;
-complex effects, multi-domain resources, shaping, and IME are not assumed.
-TGUI remains the likely first widget adapter from this strategy, with the concrete
-library/version and requirements settled before adapter-specific implementation.
-The first native acceptance environment is Linux/GLFW/X11/OpenGL; recording-adapter
-contracts remain portable. No new executable acceptance or broader platform support
-is claimed by this reconciliation.
-
-- [ ] **1. Define the UI integration contract**
-  - [ ] Document the architectural rule: `cheryl-engine` must not depend on TGUI, RmlUi, ImGui, or another widget library.
-  - [ ] Define the desired dependency direction:
-    - [ ] `game -> cheryl-ui-<library> -> cheryl-engine`
-    - [ ] Never `cheryl-engine -> UI library`.
-  - [ ] Define which responsibilities belong to Cheryl:
-    - [ ] render-command submission
-    - [ ] input collection
-    - [ ] input routing/focus infrastructure
-    - [ ] GPU/resource creation
-    - [ ] platform/window services
-    - [ ] lifecycle/threading rules
-  - [ ] Define which responsibilities remain library-specific:
-    - [ ] widget hierarchy
-    - [ ] layout
-    - [ ] styling
-    - [ ] library event model
-    - [ ] library-specific widget APIs
-  - [ ] Explicitly reject a universal Cheryl widget abstraction such as `Cheryl::Button`, `Cheryl::Panel`, etc.
-  - [ ] Do not introduce an `iUiSystem` or `UiLayer` abstraction unless implementation work exposes a genuine common runtime contract.
-
-- [ ] **2. Finish the generic render-submission boundary**
-  - [ ] Ensure UI code can contribute rendering without calling OpenGL or another graphics API directly.
-  - [ ] Define the render primitives needed by generic UI integrations.
-    - [ ] indexed geometry
-    - [ ] vertex colors
-    - [ ] textured geometry
-    - [ ] transforms
-    - [ ] rectangular clipping/scissor
-    - [ ] ordered rendering
-    - [ ] alpha blending
-  - [ ] Determine how advanced features are represented when required.
-    - [ ] stencil/mask clipping
-    - [ ] render-to-texture
-    - [ ] shader/effect requests
-    - [ ] filters
-  - [ ] Ensure UI rendering can be recorded into `RenderFrame`.
-  - [ ] Ensure the graphics/backend thread remains the only code issuing backend API calls.
-  - [ ] Define ordering relative to other rendering.
-    - [ ] world
-    - [ ] HUD/UI
-    - [ ] overlays
-    - [ ] developer/debug UI
-  - [ ] Verify that adding multiple UI systems does not require modifying the renderer for each library.
-  - [ ] Acceptance criterion: an unknown subsystem can submit everything needed for a basic 2D GUI using only Cheryl render facilities.
-
-- [ ] **3. Complete the UI-relevant resource boundary**
-  - [ ] Ensure UI integrations can request textures without direct GPU API access.
-  - [ ] Define appropriate resource ownership/lifetime semantics for UI-created resources.
-  - [ ] Support dynamic texture creation where a UI library requires it.
-  - [ ] Support texture updates if required.
-  - [ ] Determine how fonts interact with Cheryl resources.
-    - [ ] library-managed font rasterization
-    - [ ] Cheryl-managed font resources
-    - [ ] both, where appropriate
-  - [ ] Ensure destruction occurs while the appropriate graphics context/device is valid.
-  - [ ] Ensure UI resources can safely cross the simulation/render-frame boundary.
-  - [ ] Acceptance criterion: a UI adapter can create and use images/fonts without knowing which rendering backend Cheryl uses.
-
-- [ ] **4. Finish the generic input model required by UI consumers**
-  - [ ] Preserve Cheryl's separation between:
-    - [ ] state-oriented input
-    - [ ] ordered physical events
-    - [ ] semantic text input
-  - [ ] Ensure UI consumers can receive mouse/pointer information.
-    - [ ] absolute position
-    - [ ] relative movement where useful
-    - [ ] button transitions
-    - [ ] wheel/scroll
-  - [ ] Ensure UI consumers can receive keyboard information.
-    - [ ] physical key transitions
-    - [ ] modifiers
-    - [ ] key repeat where appropriate
-  - [ ] Ensure UI consumers can receive semantic text independently of physical key state.
-  - [ ] Preserve event ordering where the active capture contract requires it.
-  - [ ] Ensure consuming UI input does not alter the underlying physical-input record.
-  - [ ] Acceptance criterion: an adapter can translate Cheryl input into another library's input/event API without consulting GLFW/Gainput directly.
-
-- [ ] **5. Design input routing and focus independently from input collection**
-  - [ ] Define how multiple consumers can coexist.
-    - [ ] gameplay
-    - [ ] game UI
-    - [ ] modal UI
-    - [ ] console
-    - [ ] developer/debug UI
-  - [ ] Define keyboard focus semantics.
-  - [ ] Define pointer/mouse capture semantics.
-  - [ ] Define modal interception.
-  - [ ] Define propagation/consumption semantics.
-  - [ ] Define controller-navigation ownership.
-  - [ ] Ensure one UI library never needs awareness of another UI library.
-  - [ ] Support cases such as:
-    - [ ] RmlUi textbox owns keyboard/text input while controller gameplay continues
-    - [ ] modal menu suppresses gameplay actions
-    - [ ] developer UI overlays the game UI
-    - [ ] two independently integrated UI systems coexist
-  - [ ] Keep routing policy above the low-level input backend.
-  - [ ] Acceptance criterion: consumer priority/focus can change without reconfiguring physical input collection.
-
-- [ ] **6. Expose library-neutral platform services**
-  - [ ] Identify services UI libraries commonly require.
-    - [ ] monotonic time
-    - [ ] clipboard read/write
-    - [ ] cursor visibility
-    - [ ] cursor shape
-    - [ ] framebuffer/window dimensions
-    - [ ] DPI/content scale
-    - [ ] text-input/IME lifecycle where supported
-  - [ ] Place each service under the appropriate Cheryl platform/display abstraction.
-  - [ ] Avoid exposing GLFW handles through the generic API.
-  - [ ] Make unavailable capabilities explicit rather than silently emulating them incorrectly.
-  - [ ] Acceptance criterion: a UI library's platform/system interface can be implemented without including GLFW headers.
-
-- [ ] **7. Define the optional module/package boundary**
-  - [ ] Choose the physical organization for integrations.
-    - [ ] in-tree optional modules initially, or
-    - [ ] separate companion repositories/packages later
-  - [ ] Establish target naming such as:
-    - [ ] `Cheryl::UI::TGUI`
-    - [ ] `Cheryl::UI::RmlUi`
-    - [ ] `Cheryl::UI::ImGui`
-  - [ ] Ensure `Cheryl::Engine` links none of them.
-  - [ ] Ensure each integration brings only its own dependency graph.
-  - [ ] Make UI integrations independently enableable in CMake.
-  - [ ] Ensure installing/building Cheryl without GUI support requires no GUI dependencies.
-  - [ ] Allow a dependent game to link more than one integration deliberately.
-  - [ ] Acceptance criterion: a game using only TGUI does not fetch/build/link RmlUi, and vice versa.
-
-- [ ] **8. Define a common adapter pattern without defining a common widget API**
-  - [ ] Establish the responsibilities every integration is likely to implement.
-    - [ ] engine/platform bridge
-    - [ ] input translator
-    - [ ] render translator
-    - [ ] resource translator
-    - [ ] lifecycle wrapper
-  - [ ] Keep those implementations library-specific.
-  - [ ] Avoid forcing identical public APIs across UI libraries.
-  - [ ] Allow TGUI users to use TGUI's native C++ API.
-  - [ ] Allow RmlUi users to use RML/RCSS and RmlUi's native C++ API.
-  - [ ] Allow ImGui users to use ImGui directly.
-  - [ ] Document which Cheryl facilities adapter authors should consume.
-  - [ ] Acceptance criterion: adding another UI library requires a new module, not changes to Cheryl core.
-
-- [ ] **9. Implement the first integration as the architectural proof**
-  - [ ] Use the UI library selected for initial development—likely TGUI if C++ authoring remains the priority.
-  - [ ] Implement its platform bridge.
-  - [ ] Implement Cheryl-to-library input translation.
-  - [ ] Implement library-to-`RenderFrame` translation.
-  - [ ] Implement its texture/resource bridge.
-  - [ ] Implement resize/DPI handling.
-  - [ ] Implement focus/input-routing participation.
-  - [ ] Build a representative UI rather than merely a button demo.
-    - [ ] menu
-    - [ ] nested panels
-    - [ ] dynamic labels
-    - [ ] tooltip near viewport boundaries
-    - [ ] text field
-    - [ ] scrolling
-    - [ ] image/texture
-  - [ ] Identify any places where the integration has to bypass Cheryl abstractions.
-  - [ ] Treat every such bypass as an engine-boundary defect to review.
-  - [ ] Do not generalize first-integration quirks into Cheryl core unless they represent genuinely generic requirements.
-
-- [ ] **10. Prove backend independence**
-  - [ ] Audit the first adapter for graphics-backend leakage.
-  - [ ] Ensure no OpenGL types appear in its public interface.
-  - [ ] Ensure no GLFW types appear in its public interface.
-  - [ ] Ensure no direct graphics calls occur from simulation/UI-update code.
-  - [ ] Verify its generated data can survive the concurrent `RenderFrame` pipeline.
-  - [ ] Document any requirements that would affect a future Vulkan renderer.
-  - [ ] Acceptance criterion: replacing `OpenGLRenderer` should not require redesigning the UI adapter's public architecture.
-
-- [ ] **11. Implement a second integration as the extensibility proof**
-  - [ ] Once useful, integrate RmlUi independently.
-  - [ ] Implement `Rml::RenderInterface` against Cheryl rather than RmlUi's OpenGL backend.
-  - [ ] Implement `Rml::SystemInterface` against Cheryl platform services.
-  - [ ] Translate Cheryl event/text input into RmlUi context input.
-  - [ ] Route RmlUi-generated textures/resources through Cheryl where appropriate.
-  - [ ] Record RmlUi rendering into `RenderFrame`.
-  - [ ] Do not make the TGUI adapter a dependency of the RmlUi adapter.
-  - [ ] Run both systems in the same application as an architectural exercise.
-  - [ ] Verify focus/input ordering between them.
-  - [ ] Acceptance criterion: both libraries coexist while `cheryl-engine` remains unaware of either library.
-
-- [ ] **12. Add optional developer-tool UI support later**
-  - [ ] Evaluate Dear ImGui separately from player-facing UI.
-  - [ ] Reuse the same generic rendering/input/platform infrastructure.
-  - [ ] Keep developer overlays independently enableable.
-  - [ ] Verify an ImGui overlay can sit above TGUI or RmlUi without interfering with normal focus unless explicitly active.
-  - [ ] Use this as another test that the routing system handles heterogeneous consumers rather than special-casing game UI.
-
-- [ ] **13. Establish application-side migration practices**
-  - [ ] Keep gameplay/domain state separate from concrete widget objects.
-  - [ ] Prefer models such as:
-    - [ ] `HudState`
-    - [ ] `InventoryModel`
-    - [ ] `SettingsModel`
-    - [ ] `DialogueState`
-  - [ ] Let each presentation implementation bind to those models independently.
-  - [ ] Avoid storing `tgui::*`, `Rml::*`, etc. inside gameplay/domain objects.
-  - [ ] Keep library-specific callbacks at the presentation/controller boundary.
-  - [ ] Document this as the recommended pattern for games that may migrate UI implementations later.
-  - [ ] Acceptance criterion: rebuilding a screen in RmlUi replaces its presentation layer, not the gameplay system behind it.
-
-- [ ] **14. Document the final extension contract**
-  - [ ] Add an architecture document explaining that Cheryl is GUI-library agnostic.
-  - [ ] Document dependency direction.
-  - [ ] Document threading rules.
-  - [ ] Document render submission.
-  - [ ] Document input/event/text routing.
-  - [ ] Document platform-service access.
-  - [ ] Document resource ownership.
-  - [ ] Provide a minimal "integrating another UI library" guide.
-  - [ ] Include one complete adapter diagram.
-  - [ ] Record deliberate non-goals:
-    - [ ] no universal widget hierarchy
-    - [ ] no mandatory UI dependency
-    - [ ] no GUI-library types in Cheryl core
-    - [ ] no direct backend API access from UI modules
-    - [ ] no assumption that only one UI consumer exists
-
----
-
-# 14. Milestone Interpretation
-
-The most important sequencing rule is:
-
-```text
-1–7:
-    establish generic Cheryl boundaries
-
-9:
-    prove those boundaries with the first UI integration
-
-11:
-    prove the architecture is genuinely multi-library
-```
-
-The UI work should therefore be folded into the existing renderer/input/runtime architecture work rather than treated as an independent GUI refactor.
-
-Much of what UI support requires is already desirable for Cheryl on its own:
-
-- backend-neutral render submission
-- safe resource lifetime
-- semantic text input
-- ordered input events
-- focus/routing
-- platform abstraction
-- graphics-thread ownership
-
-UI integration should act as a strong consumer-driven test of those systems.
-
----
-
-# 15. Final Architectural Target
-
-The target architecture is:
-
-```text
-                              Game
-                               |
-          +--------------------+--------------------+
-          |                    |                    |
-   Cheryl::UI::TGUI     Cheryl::UI::RmlUi    Cheryl::UI::ImGui
-          |                    |                    |
-          +--------------------+--------------------+
-                               |
-                         Cheryl Engine
-       +-----------------------+-----------------------+
-       |                       |                       |
-     Input                 Rendering                Platform
-       |                       |                       |
-       +------------------- Resources ----------------+
-                               |
-                         Backend layer
-                               |
-                    OpenGL / future Vulkan
-```
-
-The core architectural test is:
-
-> Could a completely unknown future UI library be integrated by implementing adapters against Cheryl's existing rendering, resource, input, routing, and platform APIs without modifying Cheryl core?
-
-If the answer is yes, Cheryl supports multiple UI libraries correctly.
-
-If integrating a new library requires adding that library's concepts or types to `cheryl-engine`, the abstraction boundary is in the wrong place.
+Each adapter owns its dependency graph and can be selected independently. Building
+or consuming the engine without a UI adapter must not discover or link UI toolkit
+dependencies. A game may deliberately select more than one adapter.
+The first adapter must establish its owner/selection target and an independent
+downstream consumer; installed package/export support remains separate work.
+
+An adapter will normally contain toolkit-specific render/resource/input/platform and
+lifecycle bridges. Similar responsibilities do not require identical public APIs.
+Users should continue to use each toolkit's native widget API.
+
+## Application-side separation
+
+Gameplay/domain state should not store concrete toolkit widgets. Keep presentation
+state in toolkit-neutral models such as `HudState`, `InventoryModel`,
+`DialogueState` or `SettingsModel`, then bind a toolkit-specific view/controller to
+those models. This makes a future UI migration a presentation-layer replacement
+rather than a gameplay rewrite.
+
+## Remaining development sequence
+
+The [main development plan's U9](develop-review-and-development-plan.md#u9--prove-generic-ui-facing-facilities-with-a-real-adapter)
+owns prerequisites and ordering with the module acceptance work. Neither the neutral
+probe nor a concrete toolkit adapter is implemented yet.
+
+Follow these steps in order and update their status while U9 remains active.
+
+- [ ] **1. Establish the neutral consumer probe.** Extend the portable recording
+  graph with the library-neutral consumer selected for resource work: overlapping
+  translucent panels, a rectangularly clipped scroll region, an image, an ASCII
+  label and a focused editing target while controller gameplay continues. Reuse
+  current render/input/resource contracts, add the missing neutral clipping/color
+  facilities and verify alpha blending. This probe needs one provider/window,
+  immutable image replacement and committed text, without IME or shaping.
+- [ ] **2. Select the toolkit and resolve requirements.** Select the concrete
+  toolkit/version and build a requirements matrix against Cheryl's
+  render/resource/input/routing/platform contracts before adapter-specific changes.
+  Set font ownership and identify any new lifetime, routing or platform prerequisite.
+  Unavailable clipboard/cursor/scale/IME services must receive honest capability
+  responses; monitor scale does not establish per-window scale changes.
+- [ ] **3. Implement the first adapter.** Resolve the smallest required generic seam
+  before dependent adapter code grows, then implement the toolkit-specific bridges
+  as an optional owner. Every proposed OpenGL/GLFW/Gainput bypass is an engine-boundary
+  finding. Generalize only reusable requirements, not toolkit-specific concepts.
+- [ ] **4. Prove representative widget behavior.** Exercise a menu with
+  nested/overlapping translucent panels, dynamic labels, a tooltip near viewport
+  edges, a text field, scrolling and an image. Verify focus/routing and resize/DPI
+  behavior as well as appearance.
+- [ ] **5. Establish lifetime acceptance and document the adapter contract.**
+  Establish retained/concurrent frame and resource-teardown acceptance, then write
+  the adapter-author guide in current-state documentation. Cover lifecycle/affinity,
+  resources, rendering, routed input, platform capabilities and module selection.
+
+The probe's ASCII atlas does not dictate the toolkit's font implementation.
+Composition/preedit, Unicode shaping, grapheme-aware editing, stencil/filter effects,
+offscreen targets, mutable updates and multiple domains remain separate requirements;
+reopen the relevant resource/text contract before a consumer depends on them.
+
+**Acceptance:** the toolkit uses only Cheryl facilities, with no OpenGL/GLFW types in
+its public interface or native calls from simulation/UI code. Physical input is
+collected once and routed without destructive mutation. Published frames own their
+data/resources through replacement, concurrent playback and teardown. Replacing the
+render backend must not require redesigning the adapter's public architecture.
+
+The portable recording probe establishes contract behavior, not native driver or
+toolkit conformance. The initial native proof is Linux/GLFW/X11/OpenGL; other
+platforms, IME and device coverage need separately scoped acceptance.
+
+## Later proofs
+
+A second independent player-facing adapter, likely RmlUi if useful, is the strongest
+proof that the boundary is genuinely multi-library. It must implement its own Cheryl
+bridges rather than depend on the first adapter. Coexistence then validates routing
+between heterogeneous consumers.
+
+Dear ImGui can later reuse the same neutral facilities for diagnostics/tooling while
+remaining independently selectable and without defining player-facing architecture.
+
+The core architectural test remains simple: an unknown future UI library should be
+integratable by adding an adapter module, not by introducing that library's concepts
+or types into `Cheryl::Engine`.
