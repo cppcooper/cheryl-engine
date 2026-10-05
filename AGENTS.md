@@ -4,6 +4,7 @@
 
 - Do not push commits or branches to any remote unless explicitly requested.
 - Do not build or compile the project unless explicitly requested.
+- Avoid requesting permission to build or test until reaching a blocking point.
 - When building is permitted, make an attempt to avoid running consecutive builds.
 - Do not run tests unless explicitly requested.
 - When testing is permitted, make an attempt to avoid running consecutive tests.
