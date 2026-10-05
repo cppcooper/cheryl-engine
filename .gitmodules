@@ -3,7 +3,7 @@
 	url = https://github.com/google/googletest.git
 [submodule "extern/ctti"]
 	path = extern/ctti
-	url = https://github.com/Manu343726/ctti.git
+	url = https://github.com/RexarX/ctti.git
 [submodule "extern/backward-cpp"]
 	path = extern/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
