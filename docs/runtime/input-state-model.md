@@ -52,6 +52,25 @@ Each `PollSnapshot` contains its `ActionSnapshot` and an independent ordered vec
 
 An `InputRecord` has a shared sequence number, observation timestamp, device ID/kind, and a variant payload: `ButtonEvent`, `AxisEvent`, `PointerEvent`, `ScrollEvent`, or `TextEvent`. Sequence spans physical and text records, preserving their relative order. Buttons retain press/release/repeat, modifier flags, and backend key/scancode information where available. Pointer records use logical coordinates and wheel records preserve fractional X/Y offsets. GLFW callbacks are recorded before Gainput mapping; unknown key tokens still retain native/scancode information. Gamepad events describe changes between actual samples, in sample-processing order; they cannot recover intermediate physical transitions the gamepad backend did not report. Callback/sample timestamps are observation times, not hardware timestamps.
 
+`ButtonEvent::key` and `mouse_button` identify known keyboard and mouse controls
+through Engine-owned `KeyboardKey` and `MouseButton` enums. UI/tool consumers can
+recognize editing keys, shortcuts and pointer buttons without interpreting GLFW or
+Gainput constants. Letter/punctuation names refer to US keyboard positions, not
+localized characters. `TextEvent` remains the sole committed-character source.
+`button` remains an opaque per-device State binding ID; portable identity does not
+change existing bindings or imply that a binding token exists. For example, GLFW
+F20 has portable identity even though the current Gainput mapping has no token.
+Adapters leave unrecognized/inapplicable identities `Unknown` and retain available
+native/scancode diagnostics. Older aggregate construction defaults the added fields
+to `Unknown`; numeric enum values are not a persisted or native-code interchange.
+
+Mouse button and scroll records carry optional observation-time logical `position`.
+Native GLFW captures it in the corresponding callback, so a first click after
+capture activation and a click followed by movement retain the correct location.
+Sources without that information leave it absent. Consumers requiring a click/wheel
+position must reject that unsupported input or arrange an explicit source contract;
+they must not substitute a later cursor sample or assume a move preceded the event.
+
 GLFW's Unicode character callback supplies `TextEvent::codepoint` (one valid Unicode scalar). Characters follow OS keyboard layout and include whatever repeated committed characters the OS delivers. They are never reconstructed from physical key codes. Physical repeats remain `ButtonPhase::Repeat` without creating repeated State presses. Text and editing controls share stream order: Backspace, Delete, arrows, Home/End, and shortcuts arrive as physical control events, not inferred characters. This backend provides committed text only; it does not expose composition/preedit, candidate selection, grapheme segmentation, clipboard editing, or a complete editor/IME contract.
 
 The GLFW adapter also reports relative State axes under `MouseControl::DeltaX`, `DeltaY`, `ScrollX`, and `ScrollY`. Bind these with `AxisKind::Relative` and read `delta()` once per update. Relative movement is scaled and gated by the modifiers active when it arrives, then accumulated until publication; releasing a modifier or unbinding afterwards does not erase already mapped movement. A newly installed relative binding receives subsequent movement. Absolute axes still use the final sampled value and modifier state. Changing an action's axis kind requires a consumption boundary; mixing kinds in one State batch is rejected explicitly. Existing wheel-button pulse bindings remain available, while fractional/repeated wheel movement uses the relative axis or ordered scroll records.

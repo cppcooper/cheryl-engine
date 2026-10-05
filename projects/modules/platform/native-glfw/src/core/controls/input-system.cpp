@@ -351,7 +351,8 @@ namespace CE::Input {
                 const auto button = gainput_key(key);
                 // Preserve delivered callbacks before State ignores repeats or condenses transitions.
                 input->capture_buffer().record(
-                    input->keyboard_id_, DeviceKind::Keyboard, ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode}
+                    input->keyboard_id_, DeviceKind::Keyboard,
+                    ButtonEvent{button, phase, input_modifiers(modifiers), key, scancode, keyboard_key(key)}
                 );
                 if (action != GLFW_REPEAT && button != gainput::InvalidDeviceButtonId) {
                     input->bindings_.on_button({input->keyboard_id_, button}, action == GLFW_PRESS);
@@ -364,10 +365,14 @@ namespace CE::Input {
         if (auto* input = attached(handle))
             input->receive([&] {
                 const auto control = gainput_mouse_button(button);
+                double x = 0.0;
+                double y = 0.0;
+                glfwGetCursorPos(handle, &x, &y);
                 input->capture_buffer().record(
                     input->mouse_id_, DeviceKind::Mouse,
                     ButtonEvent{
-                        control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release, input_modifiers(modifiers), button}
+                        control, action == GLFW_PRESS ? ButtonPhase::Press : ButtonPhase::Release, input_modifiers(modifiers),
+                        button, -1, KeyboardKey::Unknown, mouse_button(button), PointerEvent{x, y}}
                 );
                 input->mouse_->queue_button(control, action == GLFW_PRESS);
                 input->bindings_.on_button({input->mouse_id_, control}, action == GLFW_PRESS);
@@ -377,7 +382,10 @@ namespace CE::Input {
     void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) noexcept {
         if (auto* input = attached(handle))
             input->receive([&] {
-                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, ScrollEvent{x, y});
+                double pointer_x = 0.0;
+                double pointer_y = 0.0;
+                glfwGetCursorPos(handle, &pointer_x, &pointer_y);
+                input->capture_buffer().record(input->mouse_id_, DeviceKind::Mouse, ScrollEvent{x, y, PointerEvent{pointer_x, pointer_y}});
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollX}, static_cast<float>(x));
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollY}, static_cast<float>(y));
                 if (y != 0.0) {

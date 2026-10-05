@@ -6,6 +6,8 @@ set(consumer_headers
     cheryl/core/engine/engine-context.h
     cheryl/core/engine/worker-pool.h
     cheryl/core/controls/input-interface.h
+    cheryl/core/controls/button-codes.h
+    cheryl/core/controls/input-record.h
     cheryl/core/display/display-system-interface.h
     cheryl/core/rendering/render-frame.h
     cheryl/core/rendering/clip-region.h

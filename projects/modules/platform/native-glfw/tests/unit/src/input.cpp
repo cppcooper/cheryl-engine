@@ -53,3 +53,40 @@ TEST(glfw_bindings, key_and_mouse_mapping) {
     EXPECT_EQ(CE::Input::gainput_mouse_button(GLFW_MOUSE_BUTTON_4), gainput::MouseButton5);
     EXPECT_EQ(CE::Input::gainput_mouse_button(-1), gainput::InvalidDeviceButtonId);
 }
+
+TEST(glfw_bindings, portable_keys) {
+    using CE::Input::KeyboardKey;
+    // Check range boundaries as well as editing, shortcuts and keypad identity.
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_A), KeyboardKey::A);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_Z), KeyboardKey::Z);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_0), KeyboardKey::Digit0);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_9), KeyboardKey::Digit9);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_F1), KeyboardKey::F1);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_F25), KeyboardKey::F25);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_KP_0), KeyboardKey::Keypad0);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_KP_9), KeyboardKey::Keypad9);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_ENTER), KeyboardKey::Enter);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_KP_ENTER), KeyboardKey::KeypadEnter);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_BACKSPACE), KeyboardKey::Backspace);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_LEFT), KeyboardKey::Left);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_LEFT_CONTROL), KeyboardKey::LeftControl);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_RIGHT_CONTROL), KeyboardKey::RightControl);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_GRAVE_ACCENT), KeyboardKey::GraveAccent);
+    // A portable record may recognize a key that has no State binding token.
+    EXPECT_EQ(CE::Input::gainput_key(GLFW_KEY_F20), gainput::InvalidDeviceButtonId);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_F20), KeyboardKey::F20);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_UNKNOWN), KeyboardKey::Unknown);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_WORLD_1), KeyboardKey::Unknown);
+    EXPECT_EQ(CE::Input::keyboard_key(GLFW_KEY_LAST + 1), KeyboardKey::Unknown);
+}
+
+TEST(glfw_bindings, portable_mouse) {
+    using CE::Input::MouseButton;
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_LEFT), MouseButton::Left);
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_RIGHT), MouseButton::Right);
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_MIDDLE), MouseButton::Middle);
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_4), MouseButton::Extra1);
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_8), MouseButton::Extra5);
+    EXPECT_EQ(CE::Input::mouse_button(-1), MouseButton::Unknown);
+    EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_LAST + 1), MouseButton::Unknown);
+}

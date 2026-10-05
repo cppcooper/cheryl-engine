@@ -78,9 +78,9 @@ Prerequisites are the current failure, logging, consumption, resource and module
 contracts. Use [the U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence) for
 subtask progress, neutral probe scope and adapter acceptance.
 
-Prove the neutral recording probe, then select the concrete toolkit/version and its
-requirements before adding adapter-specific facilities. TGUI is the likely first
-adapter. Add pointer/modal/controller routing or platform services only for an
+The neutral recording probe establishes the baseline; TGUI 1.13.0 is selected under
+the [adapter requirements](tgui-adapter-requirements.md). Implement its optional
+owner and neutral bridges next. Add pointer/modal/controller routing or platform services only for an
 explicit consumer need with a capability/failure contract.
 
 The neutral probe uses one provider/window, immutable image replacement and the

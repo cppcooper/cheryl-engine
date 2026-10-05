@@ -1,8 +1,10 @@
 #pragma once
 
 #include "action-snapshot.h"
+#include "button-codes.h"
 #include "input-types.h"
 
+#include <optional>
 #include <variant>
 
 namespace CE::Input {
@@ -17,6 +19,11 @@ namespace CE::Input {
         return (static_cast<std::uint32_t>(value) & static_cast<std::uint32_t>(flag)) != 0;
     }
 
+    struct PointerEvent {
+        double x;
+        double y;
+    }; // Logical window coordinates.
+
     struct ButtonEvent {
         DeviceButtonId button;
         ButtonPhase phase;
@@ -24,19 +31,23 @@ namespace CE::Input {
         // Backend codes supplement opaque control IDs, including an unmapped key.
         int native_code = -1;
         int scancode = -1;
+        // Adapters identify known keyboard/mouse controls without exposing their
+        // dependency's constants. Other or unrecognized controls stay Unknown.
+        KeyboardKey key = KeyboardKey::Unknown;
+        MouseButton mouse_button = MouseButton::Unknown;
+        // Observation-time position for mouse buttons, when the source provides
+        // it. A later PointerEvent is not this click's position.
+        std::optional<PointerEvent> position = std::nullopt;
     };
     struct AxisEvent {
         DeviceButtonId axis;
         float value;
         AxisKind kind = AxisKind::Absolute;
     };
-    struct PointerEvent {
-        double x;
-        double y;
-    }; // Logical window coordinates.
     struct ScrollEvent {
         double x;
         double y;
+        std::optional<PointerEvent> position = std::nullopt;
     }; // Fractional scroll offsets, not synthetic buttons.
     struct TextEvent {
         char32_t codepoint;

@@ -19,10 +19,10 @@ Never:
 Cheryl::Engine -> TGUI / RmlUi / ImGui / another widget library
 ```
 
-TGUI remains the likely first player-facing adapter because its C++ authoring model
-fits current development needs. RmlUi remains attractive for a later highly styled
-production UI. Dear ImGui is primarily a developer/debug tooling candidate. These are
-roles, not dependencies selected by this plan.
+TGUI 1.13.0 is the first selected player-facing adapter; its C++ authoring model
+fits current development needs. Its [requirements and decisions](tgui-adapter-requirements.md)
+define the custom backend, font ownership and initial scope. RmlUi remains a later
+player-facing candidate; Dear ImGui is primarily a developer/debug tooling candidate.
 
 ## Abstraction boundary
 
@@ -131,35 +131,16 @@ rather than a gameplay rewrite.
 
 The [main development plan's U9](develop-review-and-development-plan.md#u9--prove-generic-ui-facing-facilities-with-a-real-adapter)
 owns prerequisites and ordering with the module acceptance work. The
-[neutral probe](../development/ui-probe.md) is implemented; its executable acceptance
-remains open below. A concrete toolkit adapter has not been selected or implemented.
+[neutral probe](../development/ui-probe.md) establishes the rendering, resource and
+input baseline. A concrete toolkit adapter has not been implemented.
 
 Follow these steps in order and update their status while U9 remains active.
 
-- [ ] **1. Establish the neutral consumer probe.** Extend the portable recording
-  graph with the library-neutral consumer selected for resource work: overlapping
-  translucent panels, a rectangularly clipped scroll region, an image, an ASCII
-  label and a focused editing target while controller gameplay continues. Reuse
-  current render/input/resource contracts, add the missing neutral clipping/color
-  facilities and verify alpha blending. This probe needs one provider/window,
-  immutable image replacement and committed text, without IME or shaping.
-  - [x] Settle clipping and color contracts before dependent probe code: copied
-    top-left logical clip edges and extent, finite/ordered validation, nested
-    intersection, framebuffer clamping and explicit pixel rounding. Keep the
-    existing position/UV layout and add a separate float RGBA vertex layout/upload;
-    providers without that layout reject it explicitly.
-  - [x] Implement neutral contracts and OpenGL support as one coherent unit.
-    Retain authored order, validate before native state changes, reset scissor for
-    unclipped draws/full clears, and add checks for scaling, empty clips, layout validation,
-    shader attribute mapping and native color/alpha/scissor behavior.
-  - [x] Extend the existing portable runtime recording graph with the probe in both
-    execution modes. Exercise owned vertex/image/ASCII-atlas data, clipped panels,
-    focused text with controller State, immutable image replacement and retained
-    old packets without introducing a widget API or another engine target.
-  - [ ] Reconcile current contracts and run the focused Engine/OpenGL acceptance
-    after explicit authorization. Reuse existing build directories, batch affected
-    targets with one low-priority job, and avoid repeating the full aggregate/demo.
-- [ ] **2. Select the toolkit and resolve requirements.** Select the concrete
+- [x] **1. Establish the neutral consumer probe.** The
+  [recording and native probes](../development/ui-probe.md) define its controlled
+  scene, clipping/color contracts, resource replacement, focused input and coverage
+  limits. Reuse that focused acceptance as the adapter's foundation.
+- [x] **2. Select the toolkit and resolve requirements.** Select the concrete
   toolkit/version and build a requirements matrix against Cheryl's
   render/resource/input/routing/platform contracts before adapter-specific changes.
   Set font ownership and identify any new lifetime, routing or platform prerequisite.
@@ -170,6 +151,28 @@ Follow these steps in order and update their status while U9 remains active.
   toolkit's rendering/font implementation.
   Unavailable clipboard/cursor/scale/IME services must receive honest capability
   responses; monitor scale does not establish per-window scale changes.
+  - [x] Review a pinned TGUI release's custom backend and record its requirements
+    against Cheryl. Resolve font ownership, atlas replacement, global toolkit
+    lifetime and the supported initial widget scope before implementation.
+  - [x] Define application-supplied materials and a platform upload handoff so the
+    adapter records retained neutral draws without constructing backend pipelines
+    or uploading resources from simulation.
+  - [x] Establish portable input identifiers before adapter event translation.
+    - [x] Add keyboard/mouse identities to button records without changing State
+      binding IDs, native diagnostics or existing aggregate initialization.
+    - [x] Populate identities in the native module, including unknown controls,
+      and add mapping and capture-to-tick preservation checks.
+    - [x] Retain observation-time coordinates on pointer buttons and scrolling.
+      The first click after capture starts cannot depend on an earlier movement
+      record, and a later cursor sample must not relocate an earlier click.
+    - [x] Document the contract and reconcile source versus executable acceptance.
+      Portable identifier/position checks are source-complete; their execution
+      joins the focused adapter acceptance rather than repeating the probe suites.
+    Leave optional platform services and broader routing at roadmap scope in the
+    [requirements](tgui-adapter-requirements.md).
+  - [x] Define the optional owner, dependency source/version contract and module
+    acceptance. Keep Engine-only selection free of toolkit discovery and avoid
+    downloading dependencies during ordinary configuration.
 - [ ] **3. Implement the first adapter.** Resolve the smallest required generic seam
   before dependent adapter code grows, then implement the toolkit-specific bridges
   as an optional owner. Every proposed OpenGL/GLFW/Gainput bypass is an engine-boundary
