@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 #if defined(GL_VERSION_3_3) || defined(GLFW_VERSION_MAJOR)
@@ -31,9 +32,17 @@ namespace {
     };
 
     class ContractWindow final : public CE::iWindow {
+        const std::thread::id owner_ = std::this_thread::get_id();
+
     public:
-        CE::ViewPort<int> logical_size() const override { return {32, 24}; }
-        CE::FramebufferSize framebuffer_size() const override { return {32, 24}; }
+        CE::ViewPort<int> logical_size() const override {
+            EXPECT_EQ(std::this_thread::get_id(), owner_);
+            return {16, 12};
+        }
+        CE::FramebufferSize framebuffer_size() const override {
+            EXPECT_EQ(std::this_thread::get_id(), owner_);
+            return {32, 24};
+        }
         CE::Enum::window_mode mode() const override { return CE::Enum::window_mode::NORMAL; }
         bool should_close() const override { return false; }
         void resize(int, int) override {}
@@ -133,6 +142,8 @@ namespace {
         void update(const CE::GFramework::TickContext& tick) override {
             observations_.pressed = tick.input.button(CE::Input::ActionId{1}).pressed();
             EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{32, 24}));
+            EXPECT_EQ(tick.logical_size.width, 16);
+            EXPECT_EQ(tick.logical_size.height, 12);
             ++observations_.updates;
             runtime->stop();
         }
@@ -168,6 +179,21 @@ TEST(runtime_contract, frame) {
     EXPECT_EQ(diagnostics.published, 1u);
     EXPECT_EQ(diagnostics.rendered, 1u);
     EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+}
+
+TEST(runtime_contract, concurrent_window_snapshot) {
+    Observations observations;
+    CE::Engine::EngineContext engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    ContractGame game(engine, observations);
+    CE::GFramework::GameRuntime runtime(engine, game, CE::GFramework::RunMode::Concurrent);
+    game.runtime = &runtime;
+    runtime.run();
+    EXPECT_EQ(observations.updates, 1);
+    EXPECT_EQ(observations.attached, nullptr);
 }
 
 TEST(runtime_contract, missing_display) {

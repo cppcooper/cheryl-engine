@@ -274,6 +274,7 @@ namespace CE::GFramework {
                 if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
                     break;
                 const auto size = window.framebuffer_size();
+                const auto logical_size = window.logical_size();
                 if (size != viewport) {
                     renderer.set_viewport(size);
                     viewport = size;
@@ -294,7 +295,9 @@ namespace CE::GFramework {
                     const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
                     phase_ = "game_update";
                     ++diagnostics_.updates;
-                    game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
+                    game_.update(
+                        TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size}
+                    );
                     updated = true;
                     if (stop_requested_.load(std::memory_order_acquire))
                         break;
@@ -379,6 +382,7 @@ namespace CE::GFramework {
         struct Handoff {
             Input::PollingBacklog backlog;
             FramebufferSize framebuffer_size;
+            ViewPort<int> logical_size{0, 0};
             std::optional<std::size_t> ready;
             std::exception_ptr worker_failure;
             bool worker_done = false;
@@ -434,6 +438,7 @@ namespace CE::GFramework {
             auto viewport = window.framebuffer_size();
             renderer.set_viewport(viewport);
             handoff.framebuffer_size = viewport;
+            handoff.logical_size = window.logical_size();
 
             // The worker owns simulation and its clock; the calling thread alone
             // touches the window, input adapter, renderer, and presentation surface.
@@ -465,11 +470,13 @@ namespace CE::GFramework {
                             if (stop_requested_.load(std::memory_order_acquire))
                                 break;
                             FramebufferSize size;
+                            ViewPort<int> logical_size{0, 0};
                             Input::InputClock::time_point consumed_at;
                             {
                                 std::lock_guard lock(scheduler_->mutex);
                                 polls = handoff.backlog.consume();
                                 size = handoff.framebuffer_size;
+                                logical_size = handoff.logical_size;
                                 consumed_at = Input::InputClock::now();
                             }
                             scheduler_->wake.notify_all();
@@ -478,7 +485,10 @@ namespace CE::GFramework {
                             const auto dropped = i + 1 == batch.steps.size() ? std::chrono::duration<double>(batch.dropped).count() : 0.0;
                             worker_phase = "game_update";
                             ++diagnostics_.updates;
-                            game_.update(TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped});
+                            game_.update(
+                                TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped,
+                                            logical_size}
+                            );
                             polls = {};
                             updated = true;
                             if (stop_requested_.load(std::memory_order_acquire))
@@ -585,6 +595,7 @@ namespace CE::GFramework {
                         throw Exceptions::failed_operation(CE_HERE, "Input adapter did not publish a snapshot");
                     observe_input(completed);
                     const auto size = window.framebuffer_size();
+                    const auto logical_size = window.logical_size();
                     if (size != viewport) {
                         renderer.set_viewport(size);
                         viewport = size;
@@ -597,6 +608,7 @@ namespace CE::GFramework {
                         handoff.backlog.complete(std::move(completed), Input::InputClock::now());
                         diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, handoff.backlog.completed_polls());
                         handoff.framebuffer_size = size;
+                        handoff.logical_size = logical_size;
                     }
                 }
 

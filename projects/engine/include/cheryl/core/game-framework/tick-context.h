@@ -2,6 +2,7 @@
 
 #include <core/controls/tick-input.h>
 #include <core/display/framebuffer-size.h>
+#include <core/display/viewport.h>
 
 #include "simulation-scheduler.h"
 
@@ -10,7 +11,8 @@ namespace CE::GFramework {
      * delta_seconds belongs to the simulation policy; input.elapsed() and raw
      * hold/down durations remain observation time. A recovery batch reports its
      * dropped time once, on the final update. Input never subdivides updates.
-     * framebuffer_size is sampled on the platform thread and copied into this tick.
+     * framebuffer_size and logical_size are sampled together on the platform thread
+     * and copied into this tick. Manually authored ticks default logical_size to zero.
      */
     struct TickContext {
         double delta_seconds;
@@ -18,6 +20,7 @@ namespace CE::GFramework {
         FramebufferSize framebuffer_size;
         UpdateKind update_kind = UpdateKind::Variable;
         double dropped_seconds = 0.0;
+        ViewPort<int> logical_size{0, 0};
 
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.

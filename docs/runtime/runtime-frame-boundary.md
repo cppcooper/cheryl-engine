@@ -21,6 +21,10 @@ Events/Text records. The runtime transfers both at the same consumption boundary
 `TickInput::records()` retains their shared observation order. Scoped capture
 requests and backend fidelity are documented in
 [input-state-model.md](input-state-model.md#ordered-events-and-os-text).
+Each tick also carries logical window and framebuffer dimensions sampled together
+on the platform owner. Simulation uses these copied values for UI layout and pixel
+scaling without reading the live window. Manually constructed ticks supply their
+logical dimensions explicitly; the default is zero.
 These rules also apply when simulation and rendering run sequentially. The
 sequential runtime owns one reusable frame. Concurrent mode owns three slots:
 one may be rendered, one may be the latest completed frame, and one may be in

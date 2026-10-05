@@ -205,6 +205,17 @@ Follow these steps in order and update their status while U9 remains active.
     ratios for pixel rounding. Enforce the smoothed-only policy before FreeType's
     `setSmooth` changes its own state; its base implementation mutates before
     delegating to a texture. Limit each GUI to one outstanding scene replacement.
+    - [x] Copy logical window dimensions into the runtime tick beside framebuffer
+      dimensions, with controlled-window checks for sequential/concurrent delivery.
+    - [ ] Add one explicit session with the custom GUI/backend, guarded FreeType
+      sampling, routed input/modifier state and capture/focus leases. Toolkit calls
+      stay on one UI owner; final destruction may transfer to the platform owner
+      only after simulation has stopped and external widget references are released.
+    - [ ] Wire a small TGUI panel into the selected demo, using application-built
+      materials and the existing retained-scene upload/adoption path. Preserve the
+      toolkit-free demo when the optional module is disabled.
+    - [ ] Add focused session/widget and downstream-consumer checks, then batch
+      executable acceptance at the boundary before treating the panel as working.
   - [ ] Run the focused portable/native input and module acceptance once the
     executable gate blocks dependent work; keep source completion separate from
     that acceptance and reuse the already accepted rendering baseline.
