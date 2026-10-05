@@ -14,6 +14,12 @@
 #include <string>
 #include <string_view>
 
+struct FileCloser {
+    void operator()(std::FILE* file) const noexcept {
+        std::fclose(file);
+    }
+};
+
 TEST(diagnostics, bounded_trace) {
     CE::Diagnostics::BoundedStreamBuffer<32> buffer;
     std::ostream stream(&buffer);
@@ -53,7 +59,7 @@ TEST(diagnostics, repeated_traces) {
 }
 
 TEST(diagnostics, fallback_record) {
-    const auto file = std::unique_ptr<std::FILE, decltype(&std::fclose)>(std::tmpfile(), std::fclose);
+    const auto file = std::unique_ptr<std::FILE, FileCloser>(std::tmpfile());
     ASSERT_NE(file, nullptr);
     std::exception_ptr failure;
     try {
@@ -69,7 +75,7 @@ TEST(diagnostics, fallback_record) {
 }
 
 TEST(diagnostics, bounded_record) {
-    const auto file = std::unique_ptr<std::FILE, decltype(&std::fclose)>(std::tmpfile(), std::fclose);
+    const auto file = std::unique_ptr<std::FILE, FileCloser>(std::tmpfile());
     ASSERT_NE(file, nullptr);
     std::exception_ptr failure;
     try {
