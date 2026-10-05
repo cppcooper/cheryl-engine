@@ -47,6 +47,11 @@ namespace CE::Assets {
         return ProgramDetail::link_program(renderer_.resources(), stages);
     }
 
+    std::shared_ptr<Geometry2D>
+    OpenGLResourceProvider::upload_geometry(const std::span<const Vertex2DColor> vertices, const PrimitiveTopology topology) {
+        return std::make_shared<VAO>(renderer_.resources(), vertices, topology);
+    }
+
     std::shared_ptr<const GLSLPipeline>
     OpenGLResourceProvider::build_pipeline(PipelineDefinition definition, const GLSLPipelineBindings& bindings) {
         validate_pipeline_definition(definition);

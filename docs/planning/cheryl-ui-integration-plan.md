@@ -55,8 +55,8 @@ The graphics/backend owner remains the only code that performs backend API work.
 
 Use [the render contract](../rendering/pipelines-and-materials.md) and
 [the frame/lifecycle contract](../runtime/runtime-frame-boundary.md) as the current
-foundation. Rectangular clipping and explicit neutral vertex color/layout are missing
-facilities needed by the first probe. Resolve:
+foundation. Rectangular clipping and explicit neutral vertex color/layout use that
+contract. The first probe must establish:
 
 - rectangular clipping/scissor;
 - explicit vertex color/layout;
@@ -142,6 +142,22 @@ Follow these steps in order and update their status while U9 remains active.
   current render/input/resource contracts, add the missing neutral clipping/color
   facilities and verify alpha blending. This probe needs one provider/window,
   immutable image replacement and committed text, without IME or shaping.
+  - [x] Settle clipping and color contracts before dependent probe code: copied
+    top-left logical clip edges and extent, finite/ordered validation, nested
+    intersection, framebuffer clamping and explicit pixel rounding. Keep the
+    existing position/UV layout and add a separate float RGBA vertex layout/upload;
+    providers without that layout reject it explicitly.
+  - [x] Implement neutral contracts and OpenGL support as one coherent unit.
+    Retain authored order, validate before native state changes, reset scissor for
+    unclipped draws/full clears, and add checks for scaling, empty clips, layout validation,
+    shader attribute mapping and native color/alpha/scissor behavior.
+  - [ ] Extend the existing portable runtime recording graph with the probe in both
+    execution modes. Exercise owned vertex/image/ASCII-atlas data, clipped panels,
+    focused text with controller State, immutable image replacement and retained
+    old packets without introducing a widget API or another engine target.
+  - [ ] Reconcile current contracts and run the focused Engine/OpenGL acceptance
+    after explicit authorization. Reuse existing build directories, batch affected
+    targets with one low-priority job, and avoid repeating the full aggregate/demo.
 - [ ] **2. Select the toolkit and resolve requirements.** Select the concrete
   toolkit/version and build a requirements matrix against Cheryl's
   render/resource/input/routing/platform contracts before adapter-specific changes.

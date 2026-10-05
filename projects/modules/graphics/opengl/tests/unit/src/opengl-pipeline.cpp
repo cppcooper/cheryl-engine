@@ -79,6 +79,8 @@ namespace {
         bool fail_mipmaps = false;
         int mipmap_calls = 0;
         int attributes_enabled = 0;
+        std::map<GLuint, std::pair<GLint, GLsizei>> attribute_layouts;
+        std::array<GLint, 4> scissor_box{};
         GLint unpack_alignment = 4;
         std::optional<GLResourceKind> fail_generation;
         bool lose_context_on_error = false;
@@ -288,7 +290,13 @@ namespace {
                 active_->error_ = GL_OUT_OF_MEMORY;
         }
         static void GLAD_API_PTR enable_attribute(GLuint) { ++active_->attributes_enabled; }
-        static void GLAD_API_PTR attribute_pointer(GLuint, GLint, GLenum, GLboolean, GLsizei, const void*) {}
+        static void GLAD_API_PTR attribute_pointer(GLuint index, GLint count, GLenum, GLboolean, GLsizei stride, const void*) {
+            active_->attribute_layouts[index] = {count, stride};
+        }
+        static void GLAD_API_PTR scissor(GLint x, GLint y, GLsizei width, GLsizei height) {
+            active_->scissor_box = {x, y, width, height};
+            ++active_->state_changes;
+        }
         static void GLAD_API_PTR draw_geometry(GLenum, GLint first, GLsizei count) { active_->draws.emplace_back(first, count); }
 
     public:
@@ -326,6 +334,7 @@ namespace {
                 replace(glad_glBlendFunc, startup_blend);
                 replace(glad_glClearColor, clear_colour);
                 replace(glad_glDisable, disable);
+                replace(glad_glScissor, scissor);
                 replace(glad_glBlendEquationSeparate, blend_equation);
                 replace(glad_glBlendFuncSeparate, blend_function);
                 replace(glad_glDepthFunc, set_depth_function);
@@ -792,6 +801,42 @@ TEST(opengl_pipeline, per_draw_state) {
     EXPECT_EQ(native.blend_equations, (std::pair{GLenum{GL_FUNC_ADD}, GLenum{GL_FUNC_ADD}}));
     EXPECT_EQ(native.blend_factors, (std::array<GLenum, 4>{GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA}));
     EXPECT_EQ(native.draws, (std::vector<std::pair<GLint, GLsizei>>{{0, 6}, {0, 3}}));
+}
+
+TEST(opengl_pipeline, clipped_draws) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
+    GLSLPipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
+    auto geometry = native.geometry();
+    const ClipRegion2D clip{{10, 20, 60, 80}, 100, 100};
+    pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, clip, {200, 300});
+    EXPECT_TRUE(native.enabled.at(GL_SCISSOR_TEST));
+    EXPECT_EQ(native.scissor_box, (std::array<GLint, 4>{20, 60, 100, 180}));
+    pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {});
+    EXPECT_FALSE(native.enabled.at(GL_SCISSOR_TEST));
+    const auto changes = native.state_changes;
+    pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, ClipRegion2D{{2, 0, 2, 10}, 100, 100}, {200, 300});
+    EXPECT_EQ(native.draws.size(), 2u);
+    EXPECT_EQ(native.state_changes, changes);
+    EXPECT_THROW(pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, ClipRegion2D{{}, 0, 100}, {200, 300}), invalid_args);
+    EXPECT_EQ(native.state_changes, changes);
+}
+
+TEST(opengl_pipeline, colored_vertices) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
+    native.attributes.push_back({"in_Color", GL_FLOAT_VEC4, 1, 2});
+    auto definition = time_definition();
+    EXPECT_THROW((void)GLSLPipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
+    definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
+    GLSLPipeline pipeline(definition, native.program(), {{{"time", "uTime"}}});
+    const std::array<CE::Vertex2DColor, 6> vertices{};
+    CE::VAO geometry(native.lifetime(), vertices, PrimitiveTopology::Triangles);
+    EXPECT_EQ(geometry.vertex_layout(), VertexLayout2D::Position3UV2Color4);
+    EXPECT_EQ(native.attribute_layouts.at(2), (std::pair<GLint, GLsizei>{4, sizeof(CE::Vertex2DColor)}));
+    pipeline.draw(geometry, 0, 6, {{"time", 1.0f}}, {});
+    native.attributes.back().type = GL_FLOAT_VEC3;
+    EXPECT_THROW((void)GLSLPipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
 }
 
 TEST(opengl_pipeline, draw_validation) {

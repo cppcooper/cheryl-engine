@@ -162,6 +162,17 @@ TEST(pipeline_geometry, invalid_geometry) {
     EXPECT_EQ(geometry.binds, 0u);
 }
 
+TEST(pipeline_geometry, colored_layout) {
+    auto definition = effect_definition();
+    definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
+    RecordingPipeline pipeline(definition);
+    RecordingGeometry geometry;
+    EXPECT_THROW(pipeline.validate_draw(geometry, 0, 6, {}), invalid_args);
+    geometry.layout = VertexLayout2D::Position3UV2Color4;
+    EXPECT_NO_THROW(pipeline.validate_draw(geometry, 0, 6, {}));
+    EXPECT_EQ(geometry.binds, 0u);
+}
+
 TEST(pipeline_state, conflicting_pass_constraints) {
     auto definition = effect_definition();
     definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};

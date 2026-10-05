@@ -48,6 +48,10 @@ namespace CE::Assets {
         // Atlas grids upload triangle strips; whole images and glyphs upload independent triangles.
         [[nodiscard]] virtual std::shared_ptr<Geometry2D>
         upload_geometry(std::span<const Vertex2D> vertices, PrimitiveTopology topology) = 0;
+        // Optional colored layout. Backends which do not implement it reject the
+        // request rather than silently discarding color or changing its layout.
+        [[nodiscard]] virtual std::shared_ptr<Geometry2D>
+        upload_geometry(std::span<const Vertex2DColor> vertices, PrimitiveTopology topology);
         // Compatibility owner: retain CPU storage only until the transient upload returns.
         [[nodiscard]] std::shared_ptr<Geometry2D>
         upload_geometry(std::shared_ptr<Vertex2D> vertices, std::uint32_t vertex_count, PrimitiveTopology topology);

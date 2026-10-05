@@ -13,6 +13,10 @@ namespace CE::Assets {
         return create_image(decode_image(file));
     }
 
+    std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(std::span<const Vertex2DColor>, PrimitiveTopology) {
+        throw Exceptions::failed_operation(CE_HERE, "Resource provider does not support colored 2D geometry");
+    }
+
     std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(
         std::shared_ptr<Vertex2D> vertices,
         const std::uint32_t vertex_count,

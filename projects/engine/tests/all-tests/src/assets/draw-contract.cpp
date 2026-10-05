@@ -53,3 +53,16 @@ TEST(draw_contract, material_resolution) {
     EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("scale")), 2.0f);
     EXPECT_FLOAT_EQ(std::get<glm::mat4>(packet.parameters.at("model"))[3][0], 42.0f);
 }
+
+TEST(draw_contract, copied_clip) {
+    CE::RenderAPIs::DrawStyle2D style;
+    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<ContractPipeline>(), {}});
+    style.clip = CE::RenderAPIs::ClipRegion2D{{10, 20, 40, 60}, 100, 100};
+    const auto packet = CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {});
+    style.clip->rectangle.right = 80;
+    ASSERT_TRUE(packet.clip);
+    EXPECT_EQ(packet.clip->rectangle.right, 40);
+    style.clip->logical_width = 0;
+    EXPECT_THROW((void)CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {}),
+        CE::Exceptions::invalid_args);
+}

@@ -1,7 +1,7 @@
 # Pipelines, materials, and render submission
 
-`PipelineDefinition` describes retained program source paths, the existing
-position3/UV2 vertex layout, triangle/strip topology, fixed blend/depth/cull
+`PipelineDefinition` describes retained program source paths, position3/UV2 or
+position3/UV2/color4 vertex layout, triangle/strip topology, fixed blend/depth/cull
 intent, and a public parameter contract. `MaterialDefinition` references a
 specific shared pipeline generation and supplies defaults, including retained
 image handles and zero-based texture-unit requests. Neither definition contains
@@ -65,12 +65,38 @@ OpenGL pipeline builders validate explicit mappings/reflection, required/optiona
 values, copied-value uploads, and sampler domains/units. GLSLPipeline::draw applies
 complete fixed state after validating pass constraints, geometry, and parameters.
 RenderFrame packets use that path.
-Linked attributes must match Vertex2D's
-position3 at location zero and UV2 at location one; inactive inputs may be omitted.
+Linked attributes match position3 at location zero and UV2 at location one. The
+colored layout additionally maps float RGBA at location two, with an explicit
+`GLSLPipelineBindings::color_attribute` name. Inactive inputs may be omitted;
+an active color input is rejected for the uncolored layout. `Vertex2D` keeps its
+existing storage; `Vertex2DColor` is a separate immutable upload format. Pipeline
+and geometry layouts must match. Shaders interpret color values consistently with
+their selected straight/premultiplied blend mode; upload does not convert them.
 Geometry exposes immutable CPU-readable layout/topology/count metadata. Pipeline
 validation checks complete primitives and bounded ranges before publication;
 native drawing additionally checks VAO/program domain identity and the live current
 context. Program/image native domains are checked as well.
+
+### Rectangular clipping
+
+`DrawStyle2D::clip` resolves into a copied optional `DrawPacket2D::clip`. A
+`ClipRegion2D` retains top-left logical edges and positive logical viewport dimensions.
+Edges must be finite and ordered; equal edges mean empty. `intersect_clip_rects`
+combines nested rectangles in the same logical coordinate space. Clipping does not
+transform with the draw's model matrix or change authored order.
+
+Playback maps the retained extent to its current framebuffer. `resolve_clip_region`
+clamps to the logical viewport and rounds nonempty edges outwards (floor left/top,
+ceil right/bottom). Rectangles outside the viewport, zero-area rectangles and a
+zero-sized framebuffer produce no pixels. This is integer rectangular clipping;
+it does not promise subpixel masks or rotated clips. Resize/content-scale changes
+use the playback framebuffer and the retained logical extent without reading live UI
+state. A changed logical layout belongs to a newly published frame.
+
+OpenGL converts top-left pixel edges to its bottom-left scissor box after validating
+the complete draw. Empty clips issue no draw; absent clips disable scissor. Full
+frame clears also disable scissor, so a preceding clipped packet cannot restrict
+the next clear. The renderer viewport supplies the framebuffer extent.
 
 ShaderMgr publishes Shader handles for explicit program access; DrawStyle2D stores
 an immutable Material handle.

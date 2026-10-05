@@ -28,6 +28,8 @@ namespace CE::Assets {
         [[nodiscard]] std::shared_ptr<Image> create_font_atlas(std::span<const unsigned char> alpha, PixelSize size) override;
         using ResourceProvider::upload_geometry;
         [[nodiscard]] std::shared_ptr<Geometry2D> upload_geometry(std::span<const Vertex2D> vertices, PrimitiveTopology topology) override;
+        [[nodiscard]] std::shared_ptr<Geometry2D>
+        upload_geometry(std::span<const Vertex2DColor> vertices, PrimitiveTopology topology) override;
         [[nodiscard]] std::shared_ptr<Shader> link_program(const std::vector<std::filesystem::path>& stages) override;
         [[nodiscard]] std::shared_ptr<const GLSLPipeline>
         build_pipeline(PipelineDefinition definition, const GLSLPipelineBindings& bindings);

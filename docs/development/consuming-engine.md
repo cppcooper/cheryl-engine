@@ -55,7 +55,7 @@ engine/module targets. See [the module guide](modules.md#crash-and-exception-tra
 
 [Engine consumer](../../projects/engine/tests/consumer/CMakeLists.txt) links only
 Engine and exercises multiple translation units, events, workers and CPU resources.
-Its 13 first-include probes now include the neutral umbrellas and reject GL/GLFW
+Its first-include probes include the neutral umbrellas and clipping contract and reject GL/GLFW
 header leakage. Standalone bootstrapping selects Engine only in a local scope.
 
 [Native GLFW consumer](../../projects/modules/platform/native-glfw/tests/consumer/CMakeLists.txt)

@@ -24,6 +24,7 @@ namespace CE::RenderAPIs {
         std::shared_ptr<OpenGLResourceLifetime> resources_;
         glm::mat4 projection_{1.0f};
         glm::mat4 view_{1.0f};
+        FramebufferSize viewport_{};
         bool initialized_ = false;
         bool stopped_ = false;
         bool destroying_ = false;

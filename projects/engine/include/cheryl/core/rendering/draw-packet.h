@@ -1,9 +1,11 @@
 #pragma once
 
 #include <assets/resources/pipeline.h>
+#include <core/rendering/clip-region.h>
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 
 namespace CE::RenderAPIs {
     struct DrawStyle2D {
@@ -12,6 +14,7 @@ namespace CE::RenderAPIs {
         float alpha = 1.0f;
         float scale = 1.0f;
         Assets::ParameterSet parameters;
+        std::optional<ClipRegion2D> clip;
     };
 
     /** Fully resolved CPU submission. No entity, asset, font, or live transform
@@ -25,6 +28,7 @@ namespace CE::RenderAPIs {
         Assets::ParameterSet parameters;
         std::size_t authored_order = 0;
         bool order_sensitive = true;
+        std::optional<ClipRegion2D> clip;
         // TODO: derive compatibility keys from retained generations/ranges for
         // future batching. Preserve authored order until an explicit policy exists.
     };

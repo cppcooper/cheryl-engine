@@ -94,8 +94,10 @@ namespace CE::Assets {
             const bool position =
                 attribute.name == bindings.position_attribute && attribute.location == 0 && attribute.type == GL_FLOAT_VEC3;
             const bool uv = attribute.name == bindings.uv_attribute && attribute.location == 1 && attribute.type == GL_FLOAT_VEC2;
-            if ((!position && !uv) || attribute.size != 1 || attribute.name.find('[') != std::string::npos)
-                throw Exceptions::invalid_args(CE_HERE, "Program attribute does not match Vertex2D: " + attribute.name);
+            const bool color = this->definition().vertex_layout == VertexLayout2D::Position3UV2Color4 &&
+                attribute.name == bindings.color_attribute && attribute.location == 2 && attribute.type == GL_FLOAT_VEC4;
+            if ((!position && !uv && !color) || attribute.size != 1 || attribute.name.find('[') != std::string::npos)
+                throw Exceptions::invalid_args(CE_HERE, "Program attribute does not match the selected 2D layout: " + attribute.name);
         }
         std::set<std::string> consumed;
         parameters_.reserve(contract.size());
@@ -218,7 +220,9 @@ namespace CE::Assets {
         const std::size_t first_vertex,
         const std::size_t vertex_count,
         const ParameterSet& values,
-        const PassConstraints2D& constraints
+        const PassConstraints2D& constraints,
+        const std::optional<RenderAPIs::ClipRegion2D>& clip,
+        const FramebufferSize framebuffer
     ) const {
         validate_draw(geometry, first_vertex, vertex_count, constraints);
         const auto* vao = dynamic_cast<const CE::VAO*>(&geometry);
@@ -226,8 +230,17 @@ namespace CE::Assets {
             throw Exceptions::invalid_args(CE_HERE, "Geometry does not belong to the pipeline's native domain");
         vao->require_draw(first_vertex, vertex_count);
         const auto effective = prepare_parameters(values);
+        const auto pixels = clip ? std::optional{RenderAPIs::resolve_clip_region(*clip, framebuffer)} : std::nullopt;
+        if (pixels && pixels->empty())
+            return;
         // Reapply every supported setting, including disabled-state parameters.
         // Adjacent draws and passes cannot inherit blend/depth/cull policy.
+        if (pixels) {
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(pixels->left, framebuffer.height - pixels->bottom, pixels->right - pixels->left, pixels->bottom - pixels->top);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
         apply_fixed_state();
         apply_parameters(effective);
         vao->bind();

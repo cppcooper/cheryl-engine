@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assets/resources/pipeline.h>
+#include <core/rendering/clip-region.h>
 #include <backends/opengl/glslprogram.h>
 
 #include <memory>
@@ -22,6 +23,7 @@ namespace CE::Assets {
         std::vector<GLSLParameterBinding> parameters;
         std::string position_attribute = "in_Position";
         std::string uv_attribute = "in_Texcoord";
+        std::string color_attribute = "in_Color";
     };
 
     class GLSLPipeline final : public Pipeline {
@@ -47,7 +49,9 @@ namespace CE::Assets {
             std::size_t first_vertex,
             std::size_t vertex_count,
             const ParameterSet& values,
-            const PassConstraints2D& constraints
+            const PassConstraints2D& constraints,
+            const std::optional<RenderAPIs::ClipRegion2D>& clip = {},
+            FramebufferSize framebuffer = {}
         ) const;
 
     private:

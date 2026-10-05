@@ -1,5 +1,6 @@
 cheryl_add_test_suite(engine-tests
     SOURCES
+        src/clipping.cpp
         src/runtime-contract.cpp
         ../all-tests/src/assets/draw-contract.cpp
         ../all-tests/src/assets/manifest.cpp

@@ -181,7 +181,8 @@ namespace CE::RenderAPIs {
                 const auto* pipeline = dynamic_cast<const Assets::GLSLPipeline*>(packet.material->definition().pipeline.get());
                 if (!pipeline || pipeline->resource_domain() != domain.get())
                     throw Exceptions::invalid_args(CE_HERE, "OpenGL frame requires a pipeline from this renderer's resource domain");
-                pipeline->draw(*packet.geometry, packet.first_vertex, packet.vertex_count, packet.parameters, pass.constraints);
+                pipeline->draw(*packet.geometry, packet.first_vertex, packet.vertex_count, packet.parameters, pass.constraints, packet.clip,
+                    viewport_);
             }
         }
     }
@@ -191,6 +192,7 @@ namespace CE::RenderAPIs {
         (void)resources();
         // Depth clears obey the write mask left by the last pipeline draw.
         glDepthMask(GL_TRUE);
+        glDisable(GL_SCISSOR_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
@@ -211,6 +213,7 @@ namespace CE::RenderAPIs {
         if (size.width < 0 || size.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
         glViewport(0, 0, size.width, size.height);
+        viewport_ = size;
     }
 
     void OpenGLRenderer::set_depth_test(const bool enabled) {

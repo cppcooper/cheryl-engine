@@ -35,6 +35,7 @@ set(CHERYL_ENGINE_SOURCES
     src/core/logging/backend-guard.cpp
     src/core/logging/log.cpp
     src/core/rendering/camera.cpp
+    src/core/rendering/clip-region.cpp
     src/core/rendering/draw-packet.cpp
     src/core/resources/asset-management/asset-loader.cpp
     src/core/resources/asset-management/font-mgr.cpp

@@ -12,7 +12,7 @@ namespace CE::Assets {
             if (source.empty())
                 throw Exceptions::invalid_args(CE_HERE, "Pipeline program source must not be empty");
         }
-        if (definition.vertex_layout != VertexLayout2D::Position3UV2)
+        if (definition.vertex_layout != VertexLayout2D::Position3UV2 && definition.vertex_layout != VertexLayout2D::Position3UV2Color4)
             throw Exceptions::invalid_args(CE_HERE, "Unsupported 2D vertex layout");
         if (definition.topology != PrimitiveTopology::Triangles && definition.topology != PrimitiveTopology::TriangleStrip)
             throw Exceptions::invalid_args(CE_HERE, "Unsupported pipeline topology");

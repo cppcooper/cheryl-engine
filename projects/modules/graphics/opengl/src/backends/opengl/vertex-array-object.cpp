@@ -90,24 +90,44 @@ namespace CE {
         const Assets::PrimitiveTopology topology
     )
     : type(flat), topology_(topology), vertex_count_(vertices.size()) {
-        if (vertices.empty() || !vertices.data() || vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()) ||
-            vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) / sizeof(Vertex2D))
+        upload_flat(lifetime, vertices.data(), sizeof(Vertex2D));
+    }
+
+    VAO::VAO(
+        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        const std::span<const Vertex2DColor> vertices,
+        const Assets::PrimitiveTopology topology
+    )
+    : type(flat), topology_(topology), layout_(Assets::VertexLayout2D::Position3UV2Color4), vertex_count_(vertices.size()) {
+        upload_flat(lifetime, vertices.data(), sizeof(Vertex2DColor));
+    }
+
+    void VAO::upload_flat(
+        const std::shared_ptr<RenderAPIs::OpenGLResourceLifetime>& lifetime,
+        const void* vertices,
+        const std::size_t byte_stride
+    ) {
+        if (vertex_count_ == 0 || !vertices || vertex_count_ > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()) ||
+            vertex_count_ > static_cast<std::size_t>(std::numeric_limits<GLsizeiptr>::max()) / byte_stride)
             throw Exceptions::invalid_args(CE_HERE, "2D geometry exceeds supported buffer/draw sizes");
-        if (topology != Assets::PrimitiveTopology::Triangles && topology != Assets::PrimitiveTopology::TriangleStrip)
+        if (topology_ != Assets::PrimitiveTopology::Triangles && topology_ != Assets::PrimitiveTopology::TriangleStrip)
             throw Exceptions::invalid_args(CE_HERE, "Unsupported 2D primitive topology");
         // Copy the view before return; the GPU resource retains no CPU owner.
-        constexpr GLsizei byte_stride = sizeof(Vertex2D);
-        const auto vertices_bytes = static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex2D));
+        const auto vertices_bytes = static_cast<GLsizeiptr>(vertex_count_ * byte_stride);
         vao_ = create_vertex_array(lifetime);
         glBindVertexArray(vao_.id());
         vbo_[1] = create_buffer(lifetime);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_[1].id());
-        glBufferData(GL_ARRAY_BUFFER, vertices_bytes, vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, vertices_bytes, vertices, GL_STATIC_DRAW);
         RenderAPIs::require_no_gl_error("OpenGL vertex storage upload failed");
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 0>());
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, static_cast<GLsizei>(byte_stride), glBufferOffset<float, 0>());
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, byte_stride, glBufferOffset<float, 3>());
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, static_cast<GLsizei>(byte_stride), glBufferOffset<float, 3>());
+        if (layout_ == Assets::VertexLayout2D::Position3UV2Color4) {
+            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, static_cast<GLsizei>(byte_stride), glBufferOffset<float, 5>());
+        }
         RenderAPIs::require_no_gl_error("OpenGL vertex array layout failed");
     }
 

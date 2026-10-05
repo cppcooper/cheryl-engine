@@ -8,6 +8,7 @@ set(consumer_headers
     cheryl/core/controls/input-interface.h
     cheryl/core/display/display-system-interface.h
     cheryl/core/rendering/render-frame.h
+    cheryl/core/rendering/clip-region.h
     cheryl/core/game-framework/game-runtime.h
     cheryl/core/logging/log-names.h
     cheryl/core/logging/logger.h

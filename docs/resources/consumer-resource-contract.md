@@ -9,6 +9,7 @@ require explicit resource contracts, rather than new domains or mutable textures
 | --- | --- |
 | Dynamic image creation | ResourceProvider::create_image already copies owned RGBA pixels into a new backend handle. |
 | Changed image/geometry | Create another immutable handle and publish a replacement material/frame. Retained old frames keep their selected resources. |
+| Vertex colors | Upload `Vertex2DColor` with float RGBA and select `Position3UV2Color4` in the pipeline. An unimplemented provider overload rejects the request explicitly; the existing `Vertex2D` path keeps its layout. |
 | Atomic batch reload | Not required. Loader upload can partially publish entries; its metadata pointer commits only after successful upload/allocation. |
 | Multiple domains/windows | Not required. Global managers support one active provider and serialized loading owner. Separate roots/loaders share that domain. |
 | In-place texture update or atlas growth | Not exposed. Reopen U8/U11 before a consumer requires mutation or Unicode glyph residency. |
@@ -54,10 +55,7 @@ assets repeatedly. No current count promises a GPU budget or global byte total.
 
 Current regression sources cover prepared-pixel ownership, independent metadata
 scans, partial upload lifetime/retry, provider guards, strong residency, cancellation,
-and retained material generations. The current focused sandbox acceptance passed
-25 cases across asset_preparation, resource_upload, asset_cache, material_cache,
-and execution_shutdown; normal/sandbox independent consumers compiled the selected
-public headers. See
+and retained material generations. See
 [asset-loading.md](../assets/asset-loading.md),
 [resource-residency.md](resource-residency.md), and
 [the development plan](../planning/develop-review-and-development-plan.md#u8-resolve-resource-extension-requirements-before-consumers).

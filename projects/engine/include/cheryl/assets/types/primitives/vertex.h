@@ -31,6 +31,14 @@ namespace CE {
         float u, v;
     };
 
+    // Float RGBA values consumed by the selected pipeline's shader and blend mode.
+    // Colors are copied with geometry, without changing the existing Vertex2D layout.
+    struct Vertex2DColor {
+        float x, y, z;
+        float u, v;
+        float r = 1.0f, g = 1.0f, b = 1.0f, a = 1.0f;
+    };
+
     struct Vertex3D {
         float x, y, z;
         float nx, ny, nz;

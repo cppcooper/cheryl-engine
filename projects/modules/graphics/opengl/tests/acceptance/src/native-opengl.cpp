@@ -309,6 +309,92 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
     };
 }
 
+TEST(native_opengl, ui_clipping_color) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    auto& resources = dynamic_cast<OpenGLResourceProvider&>(engine->resources());
+    renderer.initialize();
+    NativeShaderFiles files;
+    NativeShaderFiles::write(files.vertex, R"(#version 330 core
+layout(location = 0) in vec3 in_Position;
+layout(location = 2) in vec4 in_Color;
+out vec4 tint;
+void main() { gl_Position = vec4(in_Position, 1.0); tint = in_Color; }
+)");
+    NativeShaderFiles::write(files.fragment, R"(#version 330 core
+in vec4 tint;
+out vec4 color;
+void main() { color = tint; }
+)");
+    PipelineDefinition definition;
+    definition.program_sources = files.stages();
+    definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
+    auto material = resources.build_material({resources.build_pipeline(definition, {}), {}});
+    const auto upload = [&](const glm::vec4 color) {
+        const std::array<CE::Vertex2DColor, 3> vertices{{
+            {-1, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
+            {3, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
+            {-1, 3, 0, 0, 0, color.r, color.g, color.b, color.a}}};
+        return resources.upload_geometry(vertices, PrimitiveTopology::Triangles);
+    };
+    const auto red = upload({1, 0, 0, 0.5f});
+    const auto blue = upload({0, 0, 1, 0.5f});
+    const auto green = upload({0, 1, 0, 1});
+    RenderFrame frame;
+    {
+        RenderFrameWriter writer(frame);
+        auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
+        DrawStyle2D style;
+        style.material = material;
+        pass.add(resolve_draw_packet(red, 0, 3, style, {}, {}, {}));
+        style.clip = ClipRegion2D{{0, 0, 16, 16}, 32, 32};
+        pass.add(resolve_draw_packet(blue, 0, 3, style, {}, {}, {}));
+        style.clip->rectangle.right = 0; // Empty clips must not expose the green triangle.
+        pass.add(resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
+    }
+    const auto pixel = [&](int x, int y) {
+        std::array<unsigned char, 4> result{};
+        glReadBuffer(GL_BACK);
+        glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, result.data());
+        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        return result;
+    };
+    renderer.set_viewport({64, 64});
+    renderer.set_clear_colour(0, 0, 0, 1);
+    renderer.clear();
+    renderer.render(frame);
+    const auto overlap = pixel(16, 48); // Logical top left maps to OpenGL's upper rows.
+    EXPECT_NEAR(overlap[0], 64, 1);
+    EXPECT_EQ(overlap[1], 0);
+    EXPECT_NEAR(overlap[2], 128, 1);
+    const auto outside = pixel(16, 16);
+    EXPECT_NEAR(outside[0], 128, 1);
+    EXPECT_EQ(outside[1], 0);
+    EXPECT_EQ(outside[2], 0);
+    RenderFrame unclipped;
+    {
+        RenderFrameWriter writer(unclipped);
+        auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
+        DrawStyle2D style;
+        style.material = material;
+        pass.add(resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
+    }
+    renderer.render(unclipped);
+    EXPECT_FALSE(glIsEnabled(GL_SCISSOR_TEST));
+    EXPECT_EQ(pixel(48, 16), (std::array<unsigned char, 4>{0, 255, 0, 255}));
+    renderer.render(frame); // Leaves the last nonempty draw clipped.
+    renderer.clear();
+    EXPECT_FALSE(glIsEnabled(GL_SCISSOR_TEST));
+    EXPECT_EQ(pixel(48, 16), (std::array<unsigned char, 4>{0, 0, 0, 255}));
+    frame.recycle();
+    unclipped.recycle();
+    renderer.deinitialize();
+}
+
 TEST(native_opengl, deferred_worker_release) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";

@@ -4,7 +4,7 @@
 
 namespace CE::Assets {
     enum class PrimitiveTopology { Triangles, TriangleStrip };
-    enum class VertexLayout2D { Position3UV2, Unsupported };
+    enum class VertexLayout2D { Position3UV2, Position3UV2Color4, Unsupported };
 
     // A backend-owned 2D vertex buffer, independent of material/image bindings.
     struct Geometry2D {
