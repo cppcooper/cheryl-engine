@@ -49,6 +49,7 @@ target_link_libraries(cheryl_opengl
     PRIVATE glfw OpenGL::GL)
 
 if(CHERYL_BUILD_TESTS)
+    enable_testing()
     add_subdirectory(tests)
 endif()
 if(CHERYL_BUILD_CONSUMER_TESTS)
