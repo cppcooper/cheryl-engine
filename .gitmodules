@@ -12,7 +12,7 @@
 	url = https://github.com/gabime/spdlog.git
 [submodule "extern/gainput"]
 	path = extern/gainput
-	url = https://github.com/marcoesposito1988/gainput.git
+	url = https://github.com/jochumdev/gainput.git
 [submodule "extern/stb"]
 	path = extern/stb
 	url = https://github.com/nothings/stb.git
