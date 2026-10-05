@@ -211,11 +211,14 @@ Follow these steps in order and update their status while U9 remains active.
       sampling, routed input/modifier state and capture/focus leases. Toolkit calls
       stay on one UI owner; final destruction may transfer to the platform owner
       only after simulation has stopped and external widget references are released.
-    - [ ] Wire a small TGUI panel into the selected demo, using application-built
+    - [x] Wire a small TGUI panel into the selected demo, using application-built
       materials and the existing retained-scene upload/adoption path. Preserve the
       toolkit-free demo when the optional module is disabled.
     - [ ] Add focused session/widget and downstream-consumer checks, then batch
       executable acceptance at the boundary before treating the panel as working.
+      The session/consumer checks are authored. The
+      [demo procedure](../../projects/apps/demo/README.md) covers the selected
+      panel, sequential/concurrent runs, interactions and visual coverage limits.
   - [ ] Run the focused portable/native input and module acceptance once the
     executable gate blocks dependent work; keep source completion separate from
     that acceptance and reuse the already accepted rendering baseline.
@@ -223,6 +226,8 @@ Follow these steps in order and update their status while U9 remains active.
   nested/overlapping translucent panels, dynamic labels, a tooltip near viewport
   edges, a text field, scrolling and an image. Verify focus/routing and resize/DPI
   behavior as well as appearance.
+  The demo provides these widgets; source availability does not establish their
+  native appearance or behavior.
 - [ ] **5. Establish lifetime acceptance and document the adapter contract.**
   Establish retained/concurrent frame and resource-teardown acceptance, then write
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,

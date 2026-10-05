@@ -2,8 +2,9 @@
 
 `Cheryl::UI::TGUI` is an optional UI owner. It translates selected Cheryl input
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
-owns the custom backend, GUI, FreeType fonts and input leases. Demo integration and
-real-widget acceptance remain in the
+owns the custom backend, GUI, FreeType fonts and input leases. The
+[selected demo](../../../apps/demo/README.md) supplies a representative panel and
+application materials. Executable and real-widget acceptance remain in the
 [U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 The adapter is source-complete; executable acceptance remains pending.
 

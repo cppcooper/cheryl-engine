@@ -79,9 +79,11 @@ contracts. Use [the U9 checklist](cheryl-ui-integration-plan.md#remaining-develo
 subtask progress, neutral probe scope and adapter acceptance.
 
 The neutral recording probe establishes the baseline; TGUI 1.13.0 is selected under
-the [adapter requirements](tgui-adapter-requirements.md). Implement its optional
-owner and neutral bridges next. Add pointer/modal/controller routing or platform services only for an
-explicit consumer need with a capability/failure contract.
+the [adapter requirements](tgui-adapter-requirements.md). Its optional owner,
+session, neutral bridges and selected demo panel are source-complete. Complete
+focused executable/widget/lifetime acceptance next. Add pointer/modal/controller
+routing or platform services only for an explicit consumer need with a
+capability/failure contract.
 
 The neutral probe uses one provider/window, immutable image replacement and the
 existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas
