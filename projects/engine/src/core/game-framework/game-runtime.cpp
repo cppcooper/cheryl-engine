@@ -300,8 +300,15 @@ namespace CE::GFramework {
                     phase_ = "game_update";
                     ++diagnostics_.updates;
                     game_.update(
-                        TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size,
-                                    stop_source_}
+                        TickContext{
+                            std::chrono::duration<double>(step.delta).count(),
+                            state,
+                            size,
+                            step.kind,
+                            dropped,
+                            logical_size,
+                            stop_source_
+                        }
                     );
                     updated = true;
                     if (stop_source_.stop_requested())
@@ -489,8 +496,15 @@ namespace CE::GFramework {
                             worker_phase = "game_update";
                             ++diagnostics_.updates;
                             game_.update(
-                                TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped,
-                                            logical_size, stop_source_}
+                                TickContext{
+                                    std::chrono::duration<double>(step.delta).count(),
+                                    state,
+                                    size,
+                                    step.kind,
+                                    dropped,
+                                    logical_size,
+                                    stop_source_
+                                }
                             );
                             polls = {};
                             updated = true;
