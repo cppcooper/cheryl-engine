@@ -129,7 +129,7 @@ TEST(ui_tgui_session, modifiers_clipboard) {
     session.handle_input(release, false);
     EXPECT_FALSE(session.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
     EXPECT_THROW(tgui::getBackend()->setClipboard("private"), CE::Exceptions::failed_operation);
-    EXPECT_THROW(tgui::getBackend()->getClipboard(), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(tgui::getBackend()->getClipboard()), CE::Exceptions::failed_operation);
 }
 
 TEST(ui_tgui_session, views) {
@@ -202,7 +202,7 @@ TEST(ui_tgui_session, font_generations) {
     EXPECT_TRUE(font.isSmooth());
     for (char32_t code = U' '; code < 0x300; ++code)
         if (font.getBackendFont()->hasGlyph(code))
-            (void)font.getGlyph(code, 32, false);
+            static_cast<void>(font.getGlyph(code, 32, false));
     unsigned int version = 0;
     const auto texture = std::dynamic_pointer_cast<Texture>(font.getBackendFont()->getTexture(32, version));
     ASSERT_TRUE(texture);
@@ -218,7 +218,7 @@ TEST(ui_tgui_session, owner_teardown) {
     session.set_view({320, 240}, {320, 240});
     session.gui().add(tgui::Label::create("Retained CPU scene"));
     const auto retained = session.record();
-    std::thread other([&] { EXPECT_THROW(session.record(), CE::Exceptions::failed_operation); });
+    std::thread other([&] { EXPECT_THROW(static_cast<void>(session.record()), CE::Exceptions::failed_operation); });
     other.join();
     // Serial transfer after the owner stops; no external toolkit references.
     std::thread teardown([&] { session.close_after_quiescence(); });
@@ -228,7 +228,7 @@ TEST(ui_tgui_session, owner_teardown) {
     for (const auto& draw : retained.draws())
         if (draw.texture)
             EXPECT_FALSE(draw.texture->rgba.empty());
-    EXPECT_THROW(session.gui(), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(session.gui()), CE::Exceptions::failed_operation);
 }
 
 TEST(ui_tgui_session, prerequisites) {

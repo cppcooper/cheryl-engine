@@ -243,7 +243,9 @@ TEST(ui_tgui_scene, rejected_submission) {
     auto prepared = recording(image);
     std::weak_ptr<const CE::Assets::DecodedImage> pixels = image->snapshot();
     image.reset();
-    EXPECT_THROW(uploader.submit(stopped.submission(), std::move(prepared), materials()), CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(uploader.submit(stopped.submission(), std::move(prepared), materials())), CE::Exceptions::failed_operation
+    );
     EXPECT_TRUE(pixels.expired());
     EXPECT_EQ(provider.image_uploads, 0);
     EXPECT_EQ(provider.geometry_uploads, 0);
@@ -253,7 +255,7 @@ TEST(ui_tgui_scene, owner_domain) {
     MemoryProvider provider;
     MemoryProvider other;
     SceneUploader uploader(provider);
-    EXPECT_THROW(uploader.upload(other, recording(), materials()), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(uploader.upload(other, recording(), materials())), CE::Exceptions::failed_operation);
     std::exception_ptr failure;
     std::thread wrong_owner([&] {
         try {
@@ -271,17 +273,17 @@ TEST(ui_tgui_scene, owner_domain) {
 TEST(ui_tgui_scene, material_contract) {
     MemoryProvider provider;
     SceneUploader uploader(provider);
-    EXPECT_THROW(uploader.upload(provider, recording(), materials(false)), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(), materials(false))), CE::Exceptions::invalid_args);
     auto missing_sampler = materials();
     missing_sampler.image_parameter = "unknown";
-    EXPECT_THROW(uploader.upload(provider, recording(texture()), missing_sampler), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(texture()), missing_sampler)), CE::Exceptions::invalid_args);
     auto no_projection = materials();
     auto definition = no_projection.solid->definition().pipeline->definition();
     definition.parameters.clear();
     no_projection.solid =
         std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<MemoryPipeline>(std::move(definition)), {}});
-    EXPECT_THROW(uploader.upload(provider, recording(), no_projection), CE::Exceptions::invalid_args);
-    EXPECT_THROW(uploader.upload(provider, recording(), Materials{}), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(), no_projection)), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(), Materials{})), CE::Exceptions::invalid_args);
     EXPECT_EQ(provider.image_uploads, 0);
     EXPECT_EQ(provider.geometry_uploads, 0);
 }
@@ -291,10 +293,10 @@ TEST(ui_tgui_scene, image_contract) {
     SceneUploader uploader(provider);
     const auto recorded = recording(texture());
     provider.missing_image = true;
-    EXPECT_THROW(uploader.upload(provider, recorded, materials()), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recorded, materials())), CE::Exceptions::failed_operation);
     provider.missing_image = false;
     provider.wrong_size = true;
-    EXPECT_THROW(uploader.upload(provider, recorded, materials()), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(uploader.upload(provider, recorded, materials())), CE::Exceptions::failed_operation);
     EXPECT_EQ(provider.geometry_uploads, 0);
 }
 

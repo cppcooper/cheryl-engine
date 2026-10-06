@@ -84,8 +84,12 @@ TEST(ui_tgui_input, committed_text) {
 }
 
 TEST(ui_tgui_input, invalid_text) {
-    EXPECT_THROW(translate_event(record(DeviceKind::Keyboard, CE::Input::TextEvent{0xD800})), CE::Exceptions::invalid_args);
-    EXPECT_THROW(translate_event(record(DeviceKind::Keyboard, CE::Input::TextEvent{0x110000})), CE::Exceptions::invalid_args);
+    EXPECT_THROW(
+        static_cast<void>(translate_event(record(DeviceKind::Keyboard, CE::Input::TextEvent{0xD800}))), CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(
+        static_cast<void>(translate_event(record(DeviceKind::Keyboard, CE::Input::TextEvent{0x110000}))), CE::Exceptions::invalid_args
+    );
 }
 
 TEST(ui_tgui_input, pointer_position) {
@@ -123,7 +127,7 @@ TEST(ui_tgui_input, click_snapshot) {
     const auto first = translate_event(source);
     ASSERT_TRUE(first);
     EXPECT_EQ(first->type, tgui::Event::Type::MouseButtonReleased);
-    (void)translate_event(record(DeviceKind::Mouse, PointerEvent{100, 200}));
+    static_cast<void>(translate_event(record(DeviceKind::Mouse, PointerEvent{100, 200})));
     const auto repeated = translate_event(source);
     ASSERT_TRUE(repeated);
     EXPECT_EQ(repeated->mouseButton.x, 17);
@@ -144,26 +148,30 @@ TEST(ui_tgui_input, fractional_wheel) {
 
 TEST(ui_tgui_input, missing_position) {
     EXPECT_THROW(
-        translate_event(
+        static_cast<void>(translate_event(
             record(DeviceKind::Mouse, ButtonEvent{1, ButtonPhase::Press, Modifiers::None, -1, -1, KeyboardKey::Unknown, MouseButton::Left})
-        ),
+        )),
         CE::Exceptions::invalid_args
     );
-    EXPECT_THROW(translate_event(record(DeviceKind::Mouse, ScrollEvent{0, 1})), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(translate_event(record(DeviceKind::Mouse, ScrollEvent{0, 1}))), CE::Exceptions::invalid_args);
 }
 
 TEST(ui_tgui_input, invalid_coordinates) {
     const auto nan = std::numeric_limits<double>::quiet_NaN();
-    EXPECT_THROW(translate_event(record(DeviceKind::Mouse, PointerEvent{nan, 0})), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(translate_event(record(DeviceKind::Mouse, PointerEvent{nan, 0}))), CE::Exceptions::invalid_args);
     EXPECT_THROW(
-        translate_event(record(DeviceKind::Mouse, PointerEvent{static_cast<double>(std::numeric_limits<int>::max()) + 1.0, 0})),
+        static_cast<void>(
+            translate_event(record(DeviceKind::Mouse, PointerEvent{static_cast<double>(std::numeric_limits<int>::max()) + 1.0, 0}))
+        ),
         CE::Exceptions::invalid_args
     );
-    EXPECT_THROW(translate_event(record(DeviceKind::Mouse, ScrollEvent{0, nan, PointerEvent{0, 0}})), CE::Exceptions::invalid_args);
     EXPECT_THROW(
-        translate_event(
+        static_cast<void>(translate_event(record(DeviceKind::Mouse, ScrollEvent{0, nan, PointerEvent{0, 0}}))), CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(
+        static_cast<void>(translate_event(
             record(DeviceKind::Mouse, ScrollEvent{0, static_cast<double>(std::numeric_limits<float>::max()) * 2, PointerEvent{0, 0}})
-        ),
+        )),
         CE::Exceptions::invalid_args
     );
 }

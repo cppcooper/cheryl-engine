@@ -181,7 +181,7 @@ TEST(ui_tgui_recording, lifecycle) {
     EXPECT_THROW(configure(target), CE::Exceptions::failed_operation);
     EXPECT_THROW(target.set_pixel_scale({2, 2}), CE::Exceptions::failed_operation);
     target.addClippingLayer({}, {10, 20, 10, 10});
-    EXPECT_THROW(target.finish_recording(), CE::Exceptions::failed_operation);
+    EXPECT_THROW(static_cast<void>(target.finish_recording()), CE::Exceptions::failed_operation);
     target.discard_recording();
     target.begin_recording();
     EXPECT_THROW(target.removeClippingLayer(), CE::Exceptions::failed_operation);
