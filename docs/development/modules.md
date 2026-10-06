@@ -15,6 +15,12 @@ Declaration files reload variables in each caller's scope; helper function
 definitions remain guarded. Standalone entry points load metadata before declaring
 their projects or bootstrapping dependencies in local scopes.
 
+Support metadata inserts `_S_` after its owner: Engine uses
+`TARGET_LIB_ENGINE_S_LOGGING_CONFIG` and `TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS`,
+and OpenGL owns `TARGET_LIB_MODULE_OPENGL_S_GL46`. Corresponding output and
+linkage keys use the same owner/support suffix. `gl46` is OpenGL's generated GLAD
+support library.
+
 Owners collect their `src/*.cpp` trees with `file(GLOB_RECURSE ...
 CONFIGURE_DEPENDS)`. File additions and removals trigger CMake regeneration;
 implementation globs stay within the owner's source tree, with tests, support and

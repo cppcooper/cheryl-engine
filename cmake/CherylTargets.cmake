@@ -2,15 +2,19 @@
 
 # Engine
 set(TARGET_LIB_ENGINE cengine)
-set(TARGET_LIB_ENGINE_LOGGING_CONFIG cengine_logging_config)
-set(TARGET_LIB_ENGINE_SIGNAL_HANDLERS cengine_signal_handlers)
+
+# Engine support
+set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
+set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
 
 # Modules
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
 set(TARGET_LIB_MODULE_OPENGL module_opengl)
-set(TARGET_LIB_MODULE_OPENGL_GL46 gl46)
 set(TARGET_LIB_MODULE_UI_TGUI module_ui_tgui)
 set(TARGET_LIB_MODULE_UI_RMLUI module_ui_rmlui)
+
+# OpenGL support
+set(TARGET_LIB_MODULE_OPENGL_S_GL46 gl46)
 
 # Applications
 set(TARGET_APP_DEMO demo)

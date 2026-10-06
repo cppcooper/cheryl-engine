@@ -6,9 +6,11 @@ set(OUTPUT_LIB_ENGINE cheryl-engine)
 # Modules
 set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)
 set(OUTPUT_LIB_MODULE_OPENGL cheryl-module-opengl)
-set(OUTPUT_LIB_MODULE_OPENGL_GL46 gl46)
 set(OUTPUT_LIB_MODULE_UI_TGUI cheryl-module-ui-tgui)
 set(OUTPUT_LIB_MODULE_UI_RMLUI cheryl-module-ui-rmlui)
+
+# OpenGL support
+set(OUTPUT_LIB_MODULE_OPENGL_S_GL46 gl46)
 
 # Applications
 set(OUTPUT_APP_DEMO demo)

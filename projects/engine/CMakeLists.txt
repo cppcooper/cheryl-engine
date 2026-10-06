@@ -27,7 +27,7 @@ target_link_libraries(${TARGET_LIB_ENGINE}
 # Forward the bootstrap object to final consumers; an unreferenced archive member
 # would not reliably install the original Debug crash handlers.
 target_link_libraries(${TARGET_LIB_ENGINE} INTERFACE ${LINKAGE_INTERFACE_LIB_ENGINE})
-add_dependencies(${TARGET_LIB_ENGINE} ${TARGET_LIB_ENGINE_SIGNAL_HANDLERS})
+add_dependencies(${TARGET_LIB_ENGINE} ${TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS})
 if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Root Debug compilation is instrumented; standalone consumers also need
     # the sanitizer runtime even when their own directory is outside that root.
