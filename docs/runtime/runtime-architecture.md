@@ -47,6 +47,12 @@ remain generic. CPU preparation and upload are described in
 
 ## Execution and shutdown
 
+Games request shutdown from `update()` with `tick.request_stop()`. The tick carries
+the runtime's shared stop state, so games need no runtime singleton or callback
+wiring. Applications holding the runtime can still call `GameRuntime::stop()`;
+both requests use the same normal cleanup sequence. The stop request and tick
+lifetime contracts are in [runtime-frame-boundary.md](runtime-frame-boundary.md).
+
 Platform and simulation requests use separate dispatchers with safe saved submission
 endpoints. EventBus owns persistent registrations; delivery adapters select platform,
 simulation, or serial worker-stream execution. EngineContext creates tracked worker

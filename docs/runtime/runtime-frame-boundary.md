@@ -62,7 +62,17 @@ reload and adopts its immutable generation during a later update. Failure retain
 the old material and reports its error in the overlay.
 Callbacks must preserve the session's current graphics context. Backend resource
 guards reject another context even when it is selected on the correct thread.
-`stop()` sets an atomic request and wakes the concurrent scheduler's waits.
+Game code calls `tick.request_stop()` to request graceful shutdown from `update()`.
+Every runtime tick shares the session's `std::stop_source` with `GameRuntime::stop()`;
+both entry points wake scheduler waits and are safe to repeat. The request ends
+further simulation updates and uses the normal join, quiesce and cleanup sequence.
+It does not interrupt the current `update()`; return early when further game work
+is unnecessary. Sequential execution can still prepare and present its final
+updated frame before teardown.
+A copied `tick.runtime_stop` retains only stop state and remains safe after runtime
+destruction; do not retain the tick itself or its borrowed input view. Manually
+constructed ticks default to no runtime stop source; `request_stop()` then throws
+`failed_operation`. Tests or another scheduler can supply a source explicitly.
 
 `AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
 the final useful update of a bounded batch when a slot is free. If all slots are occupied, the update still

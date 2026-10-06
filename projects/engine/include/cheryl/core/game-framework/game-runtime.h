@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <stop_token>
 #include <thread>
 
 namespace CE::Engine {
@@ -75,7 +76,7 @@ namespace CE::GFramework {
         bool pressure_warning_ = false; // Platform owner.
         bool renderer_ready_ = false; // Platform-owned; partial initialization is not maintenance-ready.
         std::atomic<bool> run_started_{false};
-        std::atomic<bool> stop_requested_{false};
+        std::stop_source stop_source_;
         struct Scheduler {
             std::mutex mutex;
             std::condition_variable wake;
@@ -94,6 +95,7 @@ namespace CE::GFramework {
         );
 
         void run();
+        // Thread-safe request; run() performs normal teardown after simulation stops.
         void stop();
         // Caller synchronizes with run start/return. Query before run or after
         // its return/throw; live sampling rejects. Counters publish after join.

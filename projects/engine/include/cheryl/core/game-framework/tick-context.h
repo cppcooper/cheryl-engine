@@ -6,6 +6,8 @@
 
 #include "simulation-scheduler.h"
 
+#include <stop_token>
+
 namespace CE::GFramework {
     /** One simulation update. The runtime owns the input view for the duration of update().
      * delta_seconds belongs to the simulation policy; input.elapsed() and raw
@@ -21,7 +23,11 @@ namespace CE::GFramework {
         UpdateKind update_kind = UpdateKind::Variable;
         double dropped_seconds = 0.0;
         ViewPort<int> logical_size{0, 0};
+        std::stop_source runtime_stop{std::nostopstate};
 
+        // Runtime ticks carry a shared stop request; manually authored ticks
+        // without one reject this operation. Requesting stop does not end update().
+        void request_stop() const;
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.
         // With no observation interval, use held State. This does not recover tap history.

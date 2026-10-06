@@ -54,6 +54,10 @@ namespace CE::GFramework {
     void GameRuntime::run() {
         if (run_started_.exchange(true, std::memory_order_acq_rel))
             throw Exceptions::failed_operation(CE_HERE, "GameRuntime::run is single-use");
+        std::stop_callback wake_on_stop(stop_source_.get_token(), [scheduler = scheduler_] {
+            std::lock_guard lock(scheduler->mutex);
+            scheduler->wake.notify_all();
+        });
         // Reserve the graph before either runtime can initialize or clean up its adapters.
         try {
             engine_.begin_session();
@@ -196,7 +200,7 @@ namespace CE::GFramework {
     }
 
     void GameRuntime::run_sequential() {
-        if (stop_requested_.load(std::memory_order_acquire)) {
+        if (stop_source_.stop_requested()) {
             finish_unstarted_session();
             return;
         }
@@ -236,7 +240,7 @@ namespace CE::GFramework {
             game_started = true;
             phase_ = "game_init";
             game_.init();
-            if (!stop_requested_.load(std::memory_order_acquire)) {
+            if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
             }
@@ -254,7 +258,7 @@ namespace CE::GFramework {
             SimulationScheduler timing(timing_, started_at);
             bool published = false;
 
-            while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+            while (!stop_source_.stop_requested() && !window.should_close()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
                 // Sequential execution cannot poll during update(), but spacing
@@ -264,14 +268,14 @@ namespace CE::GFramework {
                     input.poll();
                     ++diagnostics_.polls;
                     window.check_native_failure();
-                    if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
+                    if (stop_source_.stop_requested() || window.should_close())
                         break;
                     auto completed = input.poll_snapshot();
                     observe_input(completed);
                     backlog.complete(std::move(completed), Input::InputClock::now());
                     diagnostics_.peak_polls = std::max<std::uint64_t>(diagnostics_.peak_polls, backlog.completed_polls());
                 }
-                if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
+                if (stop_source_.stop_requested() || window.should_close())
                     break;
                 const auto size = window.framebuffer_size();
                 const auto logical_size = window.logical_size();
@@ -288,7 +292,7 @@ namespace CE::GFramework {
                     // Every actual update gets its own detached mailbox and whole
                     // input transfer. A cycle with no update leaves the backlog intact.
                     simulation_dispatcher_.drain();
-                    if (stop_requested_.load(std::memory_order_acquire))
+                    if (stop_source_.stop_requested())
                         break;
                     auto state = accumulator.consume_polls(Input::InputClock::now(), backlog.consume());
                     const auto& step = batch.steps[i];
@@ -296,13 +300,14 @@ namespace CE::GFramework {
                     phase_ = "game_update";
                     ++diagnostics_.updates;
                     game_.update(
-                        TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size}
+                        TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped, logical_size,
+                                    stop_source_}
                     );
                     updated = true;
-                    if (stop_requested_.load(std::memory_order_acquire))
+                    if (stop_source_.stop_requested())
                         break;
                 }
-                if (!stop_requested_.load(std::memory_order_acquire)) {
+                if (!stop_source_.stop_requested()) {
                     phase_ = "platform_dispatch";
                     engine_.platform_dispatcher().drain(engine_);
                 }
@@ -330,7 +335,7 @@ namespace CE::GFramework {
                 const auto deadline =
                     std::min({timing.next_update_at(), backlog.next_poll_at(), SimulationClock::now() + resource_maintenance_interval});
                 scheduler_->wake.wait_until(lock, deadline, [&] {
-                    return stop_requested_.load(std::memory_order_acquire) || engine_.platform_dispatcher().has_pending();
+                    return stop_source_.stop_requested() || engine_.platform_dispatcher().has_pending();
                 });
             }
         } catch (...) {
@@ -369,7 +374,7 @@ namespace CE::GFramework {
     }
 
     void GameRuntime::run_concurrent() {
-        if (stop_requested_.load(std::memory_order_acquire)) {
+        if (stop_source_.stop_requested()) {
             finish_unstarted_session();
             return;
         }
@@ -427,7 +432,7 @@ namespace CE::GFramework {
             game_started = true;
             phase_ = "game_init";
             game_.init();
-            if (!stop_requested_.load(std::memory_order_acquire)) {
+            if (!stop_source_.stop_requested()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
             }
@@ -450,13 +455,11 @@ namespace CE::GFramework {
                     Input::InputAccumulator accumulator(previous_poll, started_at);
                     SimulationScheduler timing(timing_, started_at);
                     std::vector<std::shared_ptr<const Input::PollSnapshot>> polls;
-                    while (!stop_requested_.load(std::memory_order_acquire)) {
+                    while (!stop_source_.stop_requested()) {
                         {
                             std::unique_lock lock(scheduler_->mutex);
-                            scheduler_->wake.wait_until(lock, timing.next_update_at(), [&] {
-                                return stop_requested_.load(std::memory_order_acquire);
-                            });
-                            if (stop_requested_.load(std::memory_order_acquire))
+                            scheduler_->wake.wait_until(lock, timing.next_update_at(), [&] { return stop_source_.stop_requested(); });
+                            if (stop_source_.stop_requested())
                                 break;
                         }
                         const auto batch = timing.advance(SimulationClock::now());
@@ -467,7 +470,7 @@ namespace CE::GFramework {
                             // update consumes fresh polls or persistent State, never
                             // a replay of the previous update's edges/Events/Text.
                             simulation_dispatcher_.drain();
-                            if (stop_requested_.load(std::memory_order_acquire))
+                            if (stop_source_.stop_requested())
                                 break;
                             FramebufferSize size;
                             ViewPort<int> logical_size{0, 0};
@@ -487,14 +490,14 @@ namespace CE::GFramework {
                             ++diagnostics_.updates;
                             game_.update(
                                 TickContext{std::chrono::duration<double>(step.delta).count(), state, size, step.kind, dropped,
-                                            logical_size}
+                                            logical_size, stop_source_}
                             );
                             polls = {};
                             updated = true;
-                            if (stop_requested_.load(std::memory_order_acquire))
+                            if (stop_source_.stop_requested())
                                 break;
                         }
-                        if (stop_requested_.load(std::memory_order_acquire))
+                        if (stop_source_.stop_requested())
                             break;
                         if (!updated)
                             continue;
@@ -569,7 +572,7 @@ namespace CE::GFramework {
             std::optional<std::size_t> current_frame;
             // Full batches pause only polling. Rendering and recycling remain
             // available, and consumption wakes the platform to resume polling.
-            while (!stop_requested_.load(std::memory_order_acquire) && !window.should_close()) {
+            while (!stop_source_.stop_requested() && !window.should_close()) {
                 phase_ = "platform_dispatch";
                 engine_.platform_dispatcher().drain(engine_);
                 bool poll_due = false;
@@ -588,7 +591,7 @@ namespace CE::GFramework {
                     input.poll();
                     ++diagnostics_.polls;
                     window.check_native_failure();
-                    if (stop_requested_.load(std::memory_order_acquire) || window.should_close())
+                    if (stop_source_.stop_requested() || window.should_close())
                         break;
                     auto completed = input.poll_snapshot();
                     if (!completed)
@@ -659,7 +662,7 @@ namespace CE::GFramework {
                 const auto poll_deadline = handoff.backlog.next_poll_at();
                 const auto deadline = std::min(poll_deadline, SimulationClock::now() + resource_maintenance_interval);
                 scheduler_->wake.wait_until(lock, deadline, [&] {
-                    if (stop_requested_.load(std::memory_order_acquire) || handoff.worker_done || handoff.ready ||
+                    if (stop_source_.stop_requested() || handoff.worker_done || handoff.ready ||
                         engine_.platform_dispatcher().has_pending())
                         return true;
                     // Consumption can reopen capacity before spacing has elapsed.
@@ -733,11 +736,7 @@ namespace CE::GFramework {
     }
 
     void GameRuntime::stop() {
-        {
-            std::lock_guard lock(scheduler_->mutex);
-            stop_requested_.store(true, std::memory_order_release);
-        }
-        scheduler_->wake.notify_all();
+        (void)stop_source_.request_stop();
     }
 
     void GameRuntime::finish_unstarted_session() {

@@ -9,6 +9,13 @@
 
 using namespace std::chrono_literals;
 
+TEST(tick_context, unbound_stop) {
+    CE::Input::InputBindings bindings;
+    const CE::Input::TickInput input(bindings.action_snapshot(), {});
+    const CE::GFramework::TickContext tick{0.020, input, {}};
+    EXPECT_THROW(tick.request_stop(), CE::Exceptions::failed_operation);
+}
+
 TEST(tick_context, observed_and_simulated_time) {
     CE::Input::InputBindings bindings;
     const CE::Input::DeviceBind key{1, 32};

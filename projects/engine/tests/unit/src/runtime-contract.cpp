@@ -9,6 +9,8 @@
 #include <internals/exceptions.h>
 #include <gtest/gtest.h>
 
+#include <array>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <thread>
@@ -28,11 +30,16 @@ namespace {
         int presentations = 0;
         int initializations = 0;
         int shutdowns = 0;
+        int game_initializations = 0;
+        int quiesces = 0;
+        int game_shutdowns = 0;
         bool pressed = false;
+        std::stop_source saved_stop{std::nostopstate};
     };
 
     class ContractWindow final : public CE::iWindow {
         const std::thread::id owner_ = std::this_thread::get_id();
+        const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
 
     public:
         CE::ViewPort<int> logical_size() const override {
@@ -44,7 +51,7 @@ namespace {
             return {32, 24};
         }
         CE::Enum::window_mode mode() const override { return CE::Enum::window_mode::NORMAL; }
-        bool should_close() const override { return false; }
+        bool should_close() const override { return std::chrono::steady_clock::now() >= deadline_; }
         void resize(int, int) override {}
         void set_mode(CE::Enum::window_mode) override {}
         void hide_cursor(bool) const override {}
@@ -133,19 +140,33 @@ namespace {
         Observations& observations_;
 
     public:
-        CE::GFramework::GameRuntime* runtime = nullptr;
-
         ContractGame(CE::Engine::EngineContext& engine, Observations& observations)
         : engine_(engine), observations_(observations) {}
-        void init() override { (void)engine_.input().bindings().bind_button({1, 65}, CE::Input::ActionId{1}); }
-        void deinit() override {}
+        void init() override {
+            ++observations_.game_initializations;
+            (void)engine_.input().bindings().bind_button({1, 65}, CE::Input::ActionId{1});
+        }
+        void quiesce() override {
+            EXPECT_TRUE(observations_.saved_stop.stop_requested());
+            EXPECT_NE(observations_.attached, nullptr);
+            EXPECT_EQ(observations_.shutdowns, 0);
+            ++observations_.quiesces;
+        }
+        void deinit() override {
+            EXPECT_EQ(observations_.quiesces, 1);
+            EXPECT_NE(observations_.attached, nullptr);
+            EXPECT_EQ(observations_.shutdowns, 0);
+            ++observations_.game_shutdowns;
+        }
         void update(const CE::GFramework::TickContext& tick) override {
             observations_.pressed = tick.input.button(CE::Input::ActionId{1}).pressed();
             EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{32, 24}));
             EXPECT_EQ(tick.logical_size.width, 16);
             EXPECT_EQ(tick.logical_size.height, 12);
             ++observations_.updates;
-            runtime->stop();
+            observations_.saved_stop = tick.runtime_stop;
+            tick.request_stop();
+            tick.request_stop(); // Repeated requests preserve ordinary cleanup.
         }
         void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
             (void)frame.begin_pass(glm::mat4{1}, glm::mat4{1});
@@ -163,7 +184,6 @@ TEST(runtime_contract, frame) {
     );
     ContractGame game(engine, observations);
     CE::GFramework::GameRuntime runtime(engine, game);
-    game.runtime = &runtime;
     runtime.run();
     EXPECT_TRUE(observations.pressed);
     EXPECT_EQ(observations.updates, 1);
@@ -172,6 +192,9 @@ TEST(runtime_contract, frame) {
     EXPECT_EQ(observations.presentations, 1);
     EXPECT_EQ(observations.initializations, 1);
     EXPECT_EQ(observations.shutdowns, 1);
+    EXPECT_EQ(observations.game_initializations, 1);
+    EXPECT_EQ(observations.quiesces, 1);
+    EXPECT_EQ(observations.game_shutdowns, 1);
     EXPECT_EQ(observations.viewport, (CE::FramebufferSize{32, 24}));
     EXPECT_EQ(observations.attached, nullptr);
     const auto diagnostics = runtime.diagnostics();
@@ -190,10 +213,54 @@ TEST(runtime_contract, concurrent_window_snapshot) {
     );
     ContractGame game(engine, observations);
     CE::GFramework::GameRuntime runtime(engine, game, CE::GFramework::RunMode::Concurrent);
-    game.runtime = &runtime;
     runtime.run();
     EXPECT_EQ(observations.updates, 1);
+    EXPECT_EQ(observations.game_initializations, 1);
+    EXPECT_EQ(observations.quiesces, 1);
+    EXPECT_EQ(observations.game_shutdowns, 1);
+    EXPECT_EQ(observations.shutdowns, 1);
     EXPECT_EQ(observations.attached, nullptr);
+}
+
+TEST(runtime_contract, stopped) {
+    for (const auto mode : std::array{CE::GFramework::RunMode::Sequential, CE::GFramework::RunMode::Concurrent}) {
+        Observations observations;
+        CE::Engine::EngineContext engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        ContractGame game(engine, observations);
+        CE::GFramework::GameRuntime runtime(engine, game, mode);
+        runtime.stop();
+        runtime.stop();
+        runtime.run();
+        EXPECT_EQ(observations.updates, 0);
+        EXPECT_EQ(observations.initializations, 0);
+        EXPECT_EQ(observations.game_initializations, 0);
+        EXPECT_EQ(observations.quiesces, 0);
+        EXPECT_EQ(observations.game_shutdowns, 0);
+        EXPECT_EQ(observations.shutdowns, 0);
+        EXPECT_EQ(observations.attached, nullptr);
+    }
+}
+
+TEST(runtime_contract, saved_stop) {
+    Observations observations;
+    {
+        CE::Engine::EngineContext engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        ContractGame game(engine, observations);
+        CE::GFramework::GameRuntime runtime(engine, game);
+        runtime.run();
+    }
+    EXPECT_TRUE(observations.saved_stop.stop_requested());
+    EXPECT_FALSE(observations.saved_stop.request_stop());
+    EXPECT_EQ(observations.game_shutdowns, 1);
+    EXPECT_EQ(observations.shutdowns, 1);
 }
 
 TEST(runtime_contract, missing_display) {

@@ -244,8 +244,11 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Author module-owned sequential/concurrent runtime checks with a real TGUI
     session and platform queue, controlled engine adapters, immutable image
     replacement and frames retained through toolkit teardown.
+  - [x] Expose `tick.request_stop()` through runtime-owned stop state and author
+    Engine contract checks for sequential/concurrent game shutdown, repeated
+    requests, stop before run, saved-source lifetime and unbound manual ticks.
   - [ ] Accept those controlled runtime checks alongside the remaining consumer
-    and copied-window/input checks in a focused batch. Keep native interaction,
+    and copied-window/input/stop checks in a focused batch. Keep native interaction,
     resource playback and shutdown coverage separate from controlled acceptance.
 - [ ] **6. Prove a second independent player-facing adapter.** Select its toolkit
   and requirements, then prove independent composition and the same retained
