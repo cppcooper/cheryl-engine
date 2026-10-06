@@ -232,7 +232,7 @@ Follow these steps in order and update their status while U9 remains active.
   native appearance or behavior.
   - [x] Clarify the demo's Escape help as releasing keyboard focus and document
     the window close control as the way to end the demo.
-  - [ ] Place the top TGUI badge fully inside its parent panel's content clip;
+  - [x] Place the top TGUI badge fully inside its parent panel's content clip;
     retain parent clipping for child widgets and scrolling.
   - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
     the desktop's touchpad suppression disabled, following the

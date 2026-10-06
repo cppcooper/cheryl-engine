@@ -166,9 +166,9 @@ struct DemoUi::State {
         image_panel->add(change);
         panel->add(image_panel);
 
-        // A small translucent panel overlaps the main panel's upper edge.
+        // Keep the badge inside its parent clip, beside the title.
         auto badge = tgui::Panel::create({100, 28});
-        badge->setPosition({308, -10});
+        badge->setPosition({308, 12});
         badge->getRenderer()->setBackgroundColor({80, 140, 170, 170});
         auto badge_text = label("TGUI", 16);
         badge_text->setPosition({26, 4});

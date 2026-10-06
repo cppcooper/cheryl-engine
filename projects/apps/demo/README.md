@@ -88,6 +88,9 @@ HUD. Frame preparation appends that retained UI scene after the world/HUD pass;
 it never traverses live widgets. Teardown follows the runtime's simulation join and
 releases application-held widgets before the global toolkit backend.
 
+The TGUI badge sits inside the panel beside the title. Panel children are clipped
+to the parent's content area; scrolling uses that same normal clipping behavior.
+
 ## Interaction checks
 
 Repeat this sequence in normal and `--concurrent` modes, without `--max-updates`:
