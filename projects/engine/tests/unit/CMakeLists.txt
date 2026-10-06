@@ -1,27 +1,8 @@
+file(GLOB_RECURSE engine_test_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+list(APPEND engine_test_sources ${CHERYL_ENGINE_SHARED_UNIT_SOURCES})
 cheryl_add_test_suite(${TARGET_TEST_ENGINE}
     OUTPUT_NAME "${OUTPUT_TEST_ENGINE}"
-    SOURCES
-        src/clipping.cpp
-        src/runtime-contract.cpp
-        ../all-tests/src/assets/draw-contract.cpp
-        ../all-tests/src/assets/manifest.cpp
-        ../all-tests/src/assets/pipeline.cpp
-        ../all-tests/src/assets/render-frame.cpp
-        ../all-tests/src/assets/submission.cpp
-        ../all-tests/src/assets/vertex.cpp
-        ../all-tests/src/core/camera.cpp
-        ../all-tests/src/core/display-contract.cpp
-        ../all-tests/src/core/input-capture.cpp
-        ../all-tests/src/core/input-contract.cpp
-        ../all-tests/src/core/input-routing.cpp
-        ../all-tests/src/core/input.cpp
-        ../all-tests/src/core/polling-backlog.cpp
-        ../all-tests/src/core/simulation-scheduler.cpp
-        ../all-tests/src/core/tick-context.cpp
-        ../all-tests/src/math/math.cpp
-        ../all-tests/src/math/numbers-link.cpp
-        ../all-tests/src/math/numbers.cpp
-        ../all-tests/src/templates/ovar.cpp
-        ../all-tests/src/templates/state.cpp
+    SOURCES ${engine_test_sources}
     LIBRARIES ${LINKAGE_PUBLIC_TEST_ENGINE}
     PRIVATE_INCLUDES "${CHERYL_ENGINE_PRIVATE_SOURCE_DIR}")

@@ -15,6 +15,15 @@ Declaration files reload variables in each caller's scope; helper function
 definitions remain guarded. Standalone entry points load metadata before declaring
 their projects or bootstrapping dependencies in local scopes.
 
+Owners collect their `src/*.cpp` trees with `file(GLOB_RECURSE ...
+CONFIGURE_DEPENDS)`. File additions and removals trigger CMake regeneration;
+implementation globs stay within the owner's source tree, with tests, support and
+generated sources handled by their own targets. Native input collection excludes
+`src/core/controls/` when disabled, and the demo includes each toolkit translation
+unit only while its public adapter target exists. The shared test runner collects
+its top-level `.cpp` files with `GLOB`. First-include header probes name the public
+contracts they validate explicitly.
+
 Module owners are grouped by contract role: `platform/` contains display/window/input
 implementations, `graphics/` contains rendering/presentation/resource implementations
 and `ui/` contains optional toolkit consumers.
@@ -184,6 +193,15 @@ and definitions remain on the case target; one shared runner entry point supplie
 each executable's main. No engine consumer receives module test hooks. Output
 executables and archives remain at the build root. Standalone modules provide their
 own owner aggregate without enabling other owners' test suites.
+
+Each focused/acceptance suite globs its own `src/` tree. Engine cases still under
+`tests/all-tests/src/` are collected once and partitioned into the existing focused
+and acceptance selections by the owning test directory. External-dependency and
+resource cases, diagnostics, event-bus/runtime-adapter/worker-pool cases, and
+block/singleton cases remain acceptance-only; the remaining shared cases are
+focused unit checks. New Engine cases go in `tests/unit/src/` or
+`tests/acceptance/src/` according to their required selection. Native input cases
+remain conditional on `CHERYL_NATIVE_INPUT`.
 
 `CHERYL_BUILD_CONSUMER_TESTS=ON` adds the independent Engine and selected module
 consumers, including UI owners, with owner-specific first-include header probes.

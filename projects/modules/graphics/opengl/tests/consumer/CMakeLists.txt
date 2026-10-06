@@ -21,7 +21,9 @@ if(CHERYL_ENGINE_SOURCE)
 else()
     include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
 endif()
-add_executable(${TARGET_TEST_CONSUMER_MODULE_OPENGL} src/main.cpp)
+file(GLOB_RECURSE consumer_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_executable(${TARGET_TEST_CONSUMER_MODULE_OPENGL} ${consumer_sources})
 set_target_properties(${TARGET_TEST_CONSUMER_MODULE_OPENGL} PROPERTIES OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_MODULE_OPENGL}")
 if(DEFINED CHERYL_BUILD_ROOT)
     set_target_properties(${TARGET_TEST_CONSUMER_MODULE_OPENGL} PROPERTIES

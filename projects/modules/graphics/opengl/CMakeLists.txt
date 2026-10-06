@@ -25,18 +25,9 @@ if(NOT TARGET ${TARGET_LIB_MODULE_OPENGL_GL46})
     add_subdirectory(support/gl46)
 endif()
 
-add_library(${TARGET_LIB_MODULE_OPENGL} STATIC
-    src/backends/opengl/debug-output.cpp
-    src/backends/opengl/glfw-backend.cpp
-    src/backends/opengl/glfw-context.cpp
-    src/backends/opengl/glslprogram.cpp
-    src/backends/opengl/pipeline.cpp
-    src/backends/opengl/program-builder.cpp
-    src/backends/opengl/renderer.cpp
-    src/backends/opengl/resource-lifetime.cpp
-    src/backends/opengl/resource-provider.cpp
-    src/backends/opengl/texture.cpp
-    src/backends/opengl/vertex-array-object.cpp)
+file(GLOB_RECURSE cheryl_opengl_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_library(${TARGET_LIB_MODULE_OPENGL} STATIC ${cheryl_opengl_sources})
 add_library(Cheryl::OpenGL ALIAS ${TARGET_LIB_MODULE_OPENGL})
 set_target_properties(${TARGET_LIB_MODULE_OPENGL} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_OPENGL}"

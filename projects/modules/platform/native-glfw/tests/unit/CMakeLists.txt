@@ -1,6 +1,7 @@
-set(native_test_sources src/glfw-diagnostics.cpp)
-if(CHERYL_NATIVE_INPUT)
-    list(APPEND native_test_sources src/input.cpp)
+file(GLOB_RECURSE native_test_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+if(NOT CHERYL_NATIVE_INPUT)
+    list(FILTER native_test_sources EXCLUDE REGEX "/input\\.cpp$")
 endif()
 cheryl_add_test_suite(${TARGET_TEST_MODULE_NATIVE_GLFW}
     OUTPUT_NAME "${OUTPUT_TEST_MODULE_NATIVE_GLFW}"

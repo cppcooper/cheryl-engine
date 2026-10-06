@@ -35,15 +35,12 @@ if(NOT TARGET glfw)
     add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/glfw" extern/glfw EXCLUDE_FROM_ALL)
 endif()
 
-set(cheryl_native_sources
-    src/core/display/display-system.cpp
-    src/core/display/glfw-diagnostics.cpp
-    src/core/display/window.cpp)
+file(GLOB_RECURSE cheryl_native_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+if(NOT CHERYL_NATIVE_INPUT)
+    list(FILTER cheryl_native_sources EXCLUDE REGEX "/src/core/controls/")
+endif()
 if(CHERYL_NATIVE_INPUT)
-    list(APPEND cheryl_native_sources
-        src/core/controls/glfw-bindings.cpp
-        src/core/controls/input-mapper.cpp
-        src/core/controls/input-system.cpp)
     if(UNIX AND NOT APPLE AND NOT TARGET X11::X11)
         find_package(X11 REQUIRED)
     endif()

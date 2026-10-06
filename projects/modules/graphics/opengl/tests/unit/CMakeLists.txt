@@ -1,9 +1,7 @@
+file(GLOB_RECURSE opengl_test_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 cheryl_add_test_suite(${TARGET_TEST_MODULE_OPENGL}
     OUTPUT_NAME "${OUTPUT_TEST_MODULE_OPENGL}"
-    SOURCES
-        src/opengl-debug.cpp
-        src/opengl-lifetime.cpp
-        src/opengl-pipeline.cpp
-        src/opengl-program-builder.cpp
+    SOURCES ${opengl_test_sources}
     LIBRARIES ${LINKAGE_PUBLIC_TEST_MODULE_OPENGL}
     PRIVATE_INCLUDES "${CHERYL_OPENGL_PRIVATE_SOURCE_DIR}")

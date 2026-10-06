@@ -1,60 +1,8 @@
 project(cheryl_engine VERSION ${VERSION_PROJECT_ENGINE} LANGUAGES C CXX)
 
 # Native and graphics implementations belong to their selected modules.
-set(CHERYL_ENGINE_SOURCES
-    src/assets/definitions/grid.cpp
-    src/assets/definitions/manifest.cpp
-    src/assets/definitions/sprite.cpp
-    src/assets/definitions/tileset.cpp
-    src/assets/geometry/grid-geometry.cpp
-    src/assets/resources/decoded-image.cpp
-    src/assets/resources/parameters.cpp
-    src/assets/resources/pipeline.cpp
-    src/assets/resources/resource-provider.cpp
-    src/assets/submission/draw2d.cpp
-    src/assets/types/2d/ffont.cpp
-    src/assets/types/2d/graphic.cpp
-    src/assets/types/2d/sprite.cpp
-    src/assets/types/2d/stbfont.cpp
-    src/assets/types/2d/tileset.cpp
-    src/core/controls/input-accumulator.cpp
-    src/core/controls/input-bindings.cpp
-    src/core/controls/input-capture.cpp
-    src/core/controls/input-interface.cpp
-    src/core/controls/input-routing.cpp
-    src/core/controls/polling-backlog.cpp
-    src/core/controls/tick-input.cpp
-    src/core/display/monitor.cpp
-    src/core/engine/engine-context.cpp
-    src/core/engine/event-delivery.cpp
-    src/core/engine/platform-dispatcher.cpp
-    src/core/engine/simulation-dispatcher.cpp
-    src/core/engine/worker-affinity.cpp
-    src/core/engine/worker-pool.cpp
-    src/core/game-framework/game-runtime.cpp
-    src/core/game-framework/simulation-scheduler.cpp
-    src/core/game-framework/tick-context.cpp
-    src/core/logging/backend-guard.cpp
-    src/core/logging/log.cpp
-    src/core/rendering/camera.cpp
-    src/core/rendering/clip-region.cpp
-    src/core/rendering/draw-packet.cpp
-    src/core/resources/asset-management/asset-loader.cpp
-    src/core/resources/asset-management/font-mgr.cpp
-    src/core/resources/asset-management/manifest-loader.cpp
-    src/core/resources/asset-management/material-mgr.cpp
-    src/core/resources/asset-management/shader-mgr.cpp
-    src/core/resources/asset-management/sprite-mgr.cpp
-    src/core/resources/asset-management/texture-mgr.cpp
-    src/core/resources/asset-management/tileset-mgr.cpp
-    src/core/resources/fileio/file-mgr.cpp
-    src/core/resources/fileio/fonts-list.cpp
-    src/core/subsystems/event-bus.cpp
-    src/core/subsystems/event-system.cpp
-    src/internal/diagnostics.cpp
-    src/internal/exceptions.cpp
-    src/internal/internal-logs.cpp
-    src/math/anchor.cpp)
+file(GLOB_RECURSE CHERYL_ENGINE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_subdirectory(support/logging-config)
 add_subdirectory(support/signal-handlers)
 

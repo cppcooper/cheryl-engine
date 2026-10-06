@@ -7,9 +7,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11)
     list(APPEND native_test_definitions CHERYL_NATIVE_X11_TESTS=1)
     list(APPEND native_test_libraries ${LINKAGE_PUBLIC_TEST_ACCEPTANCE_OPENGL_LINUX_X11})
 endif()
+file(GLOB_RECURSE native_acceptance_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 cheryl_add_test_suite(${TARGET_TEST_ACCEPTANCE_OPENGL} ACCEPTANCE
     OUTPUT_NAME "${OUTPUT_TEST_ACCEPTANCE_OPENGL}"
-    SOURCES src/native-opengl.cpp
+    SOURCES ${native_acceptance_sources}
     LIBRARIES ${native_test_libraries}
     PRIVATE_INCLUDES "${CHERYL_OPENGL_PRIVATE_SOURCE_DIR}"
     DEFINITIONS ${native_test_definitions})

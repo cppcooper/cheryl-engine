@@ -15,7 +15,9 @@ if(NOT cheryl_repository_root)
     set(cheryl_repository_root "${CHERYL_ENGINE_SOURCE}")
 endif()
 include("${cheryl_repository_root}/cmake/CherylConsumers.cmake")
-add_executable(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} src/main.cpp)
+file(GLOB_RECURSE consumer_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_executable(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} ${consumer_sources})
 set_target_properties(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} PROPERTIES OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_MODULE_UI_TGUI}")
 if(DEFINED CHERYL_BUILD_ROOT)
     set_target_properties(${TARGET_TEST_CONSUMER_MODULE_UI_TGUI} PROPERTIES

@@ -6,7 +6,9 @@ endif()
 option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
 
-add_library(${TARGET_LIB_MODULE_@MODULE_ID@} STATIC src/module.cpp)
+file(GLOB_RECURSE module_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_library(${TARGET_LIB_MODULE_@MODULE_ID@} STATIC ${module_sources})
 add_library(Cheryl::@MODULE_ALIAS@ ALIAS ${TARGET_LIB_MODULE_@MODULE_ID@})
 set_target_properties(${TARGET_LIB_MODULE_@MODULE_ID@} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_@MODULE_ID@}"

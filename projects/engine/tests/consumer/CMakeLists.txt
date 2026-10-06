@@ -24,7 +24,9 @@ else()
 endif()
 
 # No dependency list, include directories, language standard or engine sources.
-add_executable(${TARGET_TEST_CONSUMER_ENGINE} src/main.cpp src/resources.cpp)
+file(GLOB_RECURSE consumer_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_executable(${TARGET_TEST_CONSUMER_ENGINE} ${consumer_sources})
 set_target_properties(${TARGET_TEST_CONSUMER_ENGINE} PROPERTIES OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_ENGINE}")
 if(DEFINED CHERYL_BUILD_ROOT)
     set_target_properties(${TARGET_TEST_CONSUMER_ENGINE} PROPERTIES

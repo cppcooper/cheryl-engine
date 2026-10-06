@@ -26,7 +26,9 @@ if(NOT TARGET TGUI::TGUI)
     endif()
 endif()
 
-add_library(${TARGET_LIB_MODULE_UI_TGUI} STATIC src/input.cpp src/rendering.cpp src/scene.cpp src/session.cpp)
+file(GLOB_RECURSE cheryl_tgui_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+add_library(${TARGET_LIB_MODULE_UI_TGUI} STATIC ${cheryl_tgui_sources})
 add_library(Cheryl::UI::TGUI ALIAS ${TARGET_LIB_MODULE_UI_TGUI})
 set_target_properties(${TARGET_LIB_MODULE_UI_TGUI} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_UI_TGUI}"
