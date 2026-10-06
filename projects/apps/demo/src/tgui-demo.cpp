@@ -96,93 +96,99 @@ struct DemoUi::State {
       materials(::materials(engine.resources(), root)) {}
 
     void create_widgets(const CE::GFramework::TickContext& tick) {
+        using CE::UI::TGUI::Scalable;
+
         session = std::make_unique<CE::UI::TGUI::Session>(input, 2);
         session->set_view(tick.logical_size, tick.framebuffer_size);
         auto& gui = session->gui();
         gui.setTextSize(16);
         gui.setKeyboardNavigationEnabled(true);
         panel = tgui::Panel::create({426, 500});
-        panel->setPosition({"100% - 450", 24});
         panel->getRenderer()->setBackgroundColor({28, 36, 54, 225});
         panel->getRenderer()->setBorderColor({95, 125, 170});
         panel->getRenderer()->setBorders(1);
         gui.add(panel, "demo-panel");
+        session->set_layout(
+            panel,
+            {.anchor = {1, 0}, .offset = {.fixed = {-24, 24}}, .scalable = Scalable{.width = 0.35f, .min_width = 394, .max_width = 426}}
+        );
+        const auto content_width = tgui::bindInnerWidth(panel) - 36;
 
         auto title = label("Cheryl UI", 24);
-        title->setPosition({18, 12});
         panel->add(title);
+        session->set_layout(title, {.offset = {.fixed = {18, 12}}});
         auto instructions = label("F2: edit   Esc: release focus   F3: hide/show");
-        instructions->setPosition({18, 48});
         panel->add(instructions);
+        session->set_layout(instructions, {.offset = {.fixed = {18, 48}}});
         status_label = label("");
-        status_label->setPosition({18, 80});
         panel->add(status_label);
+        session->set_layout(status_label, {.offset = {.fixed = {18, 80}}});
 
         auto reset = tgui::Button::create("Reset camera");
-        reset->setPosition({18, 148});
         reset->setSize({180, 32});
         reset->onPress([this] { reset_requested = true; });
         panel->add(reset);
+        session->set_layout(reset, {.offset = {.fixed = {18, 148}}});
         field = tgui::EditBox::create();
-        field->setPosition({18, 198});
-        field->setSize({388, 34});
+        field->setSize({content_width, 34});
         field->setDefaultText("Click here and type");
         field->getRenderer()->setBackgroundColor({240, 244, 250});
         panel->add(field, "text-field");
+        session->set_layout(field, {.offset = {.fixed = {18, 198}}});
         auto editing = label("Arrows, Home/End and Backspace work here");
         editing->setTextSize(14);
-        editing->setPosition({18, 240});
         panel->add(editing);
+        session->set_layout(editing, {.offset = {.fixed = {18, 240}}});
 
-        auto scroll = tgui::ScrollablePanel::create({388, 134}, {350, 310});
-        scroll->setPosition({18, 270});
+        auto scroll = tgui::ScrollablePanel::create({content_width, 134}, {350, 310});
         scroll->getRenderer()->setBackgroundColor({45, 60, 85, 180});
         scroll->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never);
+        panel->add(scroll);
+        session->set_layout(scroll, {.offset = {.fixed = {18, 270}}});
         for (unsigned int i = 0; i < 8; ++i) {
             auto row = tgui::Panel::create({330, 34});
-            row->setPosition({8, 8 + i * 38.0f});
             row->getRenderer()->setBackgroundColor({70, 105, 145, static_cast<std::uint8_t>(i % 2 ? 150 : 90)});
-            auto text = label(std::format("Scroll item {}", i + 1));
-            text->setPosition({8, 6});
-            row->add(text);
             scroll->add(row);
+            session->set_layout(row, {.offset = {.fixed = {8, 8 + i * 38.0f}}});
+            auto text = label(std::format("Scroll item {}", i + 1));
+            row->add(text);
+            session->set_layout(text, {.offset = {.fixed = {8, 6}}});
         }
-        panel->add(scroll);
 
-        auto image_panel = tgui::Panel::create({388, 68});
-        image_panel->setPosition({18, 416});
+        auto image_panel = tgui::Panel::create({content_width, 68});
         image_panel->getRenderer()->setBackgroundColor({85, 75, 115, 130});
+        panel->add(image_panel);
+        session->set_layout(image_panel, {.offset = {.fixed = {18, 416}}});
         picture = tgui::Picture::create(image(false));
-        picture->setPosition({8, 8});
         picture->setSize({52, 52});
         image_panel->add(picture);
+        session->set_layout(picture, {.offset = {.fixed = {8, 8}}});
         auto change = tgui::Button::create("Change image");
-        change->setPosition({82, 17});
         change->setSize({180, 32});
         change->onPress([this] {
             alternate_image = !alternate_image;
             picture->getRenderer()->setTexture(image(alternate_image));
         });
         image_panel->add(change);
-        panel->add(image_panel);
+        session->set_layout(change, {.offset = {.fixed = {82, 17}}});
 
         // Keep the badge inside its parent clip, beside the title.
         auto badge = tgui::Panel::create({100, 28});
-        badge->setPosition({308, 12});
         badge->getRenderer()->setBackgroundColor({80, 140, 170, 170});
-        auto badge_text = label("TGUI", 16);
-        badge_text->setPosition({26, 4});
-        badge->add(badge_text);
         panel->add(badge);
+        session->set_layout(badge, {.anchor = {1, 0}, .offset = {.fixed = {-8, 12}, .relative = {-0.02f, 0}}});
+        auto badge_text = label("TGUI", 16);
+        badge->add(badge_text);
+        session->set_layout(badge_text, {.anchor = {0.5f, 0.5f}});
 
         edge = tgui::Button::create("?");
-        edge->setPosition({"100% - 46", "100% - 46"});
         edge->setSize({28, 28});
         auto tooltip = label("This tooltip stays inside the window.");
         tooltip->setTextSize(14);
         tooltip->getRenderer()->setBackgroundColor({30, 45, 65, 240});
         edge->setToolTip(tooltip);
         gui.add(edge, "edge-tooltip");
+        session->set_layout(edge, {.anchor = {1, 1}, .offset = {.fixed = {-18, -18}}});
     }
 
     void handle_input(const CE::GFramework::TickContext& tick) {

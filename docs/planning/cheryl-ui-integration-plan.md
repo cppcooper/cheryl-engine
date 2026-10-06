@@ -242,7 +242,7 @@ Follow these steps in order and update their status while U9 remains active.
       owns numeric binding, validation, sizing replacement and lifetime semantics.
     - [x] Author controlled layout/resize/lifetime checks and extend independent
       consumer and first-include header coverage.
-    - [ ] Refactor demo placement and width-dependent regions to the typed API
+    - [x] Refactor demo placement and width-dependent regions to the typed API
       and native numeric bindings. Exercise fixed sizing, relative offsets and
       bounded resizing while keeping text and controls readable.
     - [ ] Accept the focused layout cases and inspect the changed demo's anchors,
