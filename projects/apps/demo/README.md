@@ -112,8 +112,9 @@ desktop's touchpad "Disable while typing" setting. That setting can suppress
 touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
 
-The controlled TGUI module checks are accepted. Independent composition and native
-widget/runtime/lifetime acceptance remain in
+The controlled TGUI input/recording/scene/session checks are accepted. The new
+controlled runtime cases, independent composition and native widget/lifetime
+acceptance remain in
 [U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 Reuse those accepted module results unless related source changes require a rerun;
 batch any needed demo/consumer builds with one low-priority job.

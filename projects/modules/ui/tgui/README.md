@@ -4,7 +4,7 @@
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, FreeType fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials. Remaining composition and native widget/runtime acceptance
+application materials. Remaining composition, controlled runtime and native widget acceptance
 are tracked in the
 [U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 
@@ -184,9 +184,22 @@ create their own custom backend and embedded font. They cover widget text routin
 focus epochs/preemption, modifier releases, pointer selection, unsupported clipboard
 shortcuts, copied view sizes, FreeType atlas growth/immutable generations and serial
 teardown after the UI owner stops. The independent consumer creates and records a
-real label. Independent consumer/header composition, actual queued runtime/concurrent
-handoff and native pixels require the remaining U9 acceptance; promise-based
-adoption and serial toolkit-teardown checks do not prove those paths.
+real label.
+
+`ui_tgui_runtime.sequential` and `ui_tgui_runtime.concurrent` use the real
+`GameRuntime`, TGUI session and platform queue with controlled window/input,
+presentation, renderer and memory-resource implementations. They mutate the widget's
+image after recording, publish the old and replacement generations, copy published
+packets into owned retained frames and release them after toolkit/game/provider
+teardown. Window reads and uploads require the platform owner; GUI recording and
+frame preparation require the simulation owner. Renderer observations coordinate
+replacement and shutdown, with a bounded window deadline rather than sleeps.
+These cases are authored and still need executable acceptance. They do not establish
+native GPU resource retirement or compositor behavior.
+
+Independent consumer/header composition and native pixels also require the remaining
+U9 acceptance. Reuse accepted input/recording/scene/session results; promise-based
+adoption and serial toolkit-teardown checks alone do not establish runtime handoff.
 
 To build the focused checks in a standalone source composition:
 

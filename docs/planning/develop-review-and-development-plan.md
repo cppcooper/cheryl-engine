@@ -81,7 +81,8 @@ subtask progress, neutral probe scope and adapter acceptance.
 The neutral recording probe establishes the baseline; TGUI 1.13.0 is selected under
 the [adapter requirements](tgui-adapter-requirements.md). Its optional owner,
 session, neutral bridges and selected demo panel are source-complete, with
-controlled module acceptance established. Complete downstream composition and
+controlled input/recording/scene/session acceptance established. Controlled runtime
+handoff checks are authored; complete their acceptance, downstream composition and
 native widget/runtime/lifetime acceptance next. Add pointer/modal/controller
 routing or platform services only for an explicit consumer need with a
 capability/failure contract.

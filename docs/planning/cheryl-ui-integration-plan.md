@@ -241,6 +241,12 @@ Follow these steps in order and update their status while U9 remains active.
   Establish retained/concurrent frame and resource-teardown acceptance, then write
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,
   resources, rendering, routed input, platform capabilities and module selection.
+  - [x] Author module-owned sequential/concurrent runtime checks with a real TGUI
+    session and platform queue, controlled engine adapters, immutable image
+    replacement and frames retained through toolkit teardown.
+  - [ ] Accept those controlled runtime checks alongside the remaining consumer
+    and copied-window/input checks in a focused batch. Keep native interaction,
+    resource playback and shutdown coverage separate from controlled acceptance.
 - [ ] **6. Prove a second independent player-facing adapter.** Select its toolkit
   and requirements, then prove independent composition and the same retained
   render/resource/input/lifetime boundaries without depending on the TGUI adapter.
