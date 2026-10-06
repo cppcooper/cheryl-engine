@@ -19,12 +19,18 @@ namespace {
 
     public:
         void initialize(CE::iWindow&) override {}
-        void poll() override {}
+        void poll() override {
+            begin_input_poll();
+            static_cast<void>(publish_input());
+        }
         void deinitialize() override {}
         CE::Input::InputBindings& bindings() override { return bindings_; }
         CE::Input::DeviceId keyboard_id() const override { return 1; }
         CE::Input::DeviceId mouse_id() const override { return 2; }
         CE::Input::DeviceId gamepad_id() const override { return 3; }
+        bool supports(const CE::Input::InputMode mode) const override {
+            return mode == CE::Input::InputMode::State || mode == CE::Input::InputMode::Events;
+        }
     };
 }
 
