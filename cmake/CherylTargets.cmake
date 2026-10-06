@@ -24,41 +24,43 @@ set(TARGET_LIB_TEST_SUPPORT cheryl_test_support)
 set(TARGET_LIB_TEST_MAIN cheryl_test_main)
 
 # Aggregate tests
-set(TARGET_TEST_ALL_ENGINE engine-all)
-set(TARGET_TEST_ALL_MODULE_NATIVE_GLFW native-glfw-all)
-set(TARGET_TEST_ALL_MODULE_OPENGL opengl-all)
-set(TARGET_TEST_ALL_MODULE_UI_TGUI ui-tgui-all)
-set(TARGET_TEST_ALL_MODULE_UI_RMLUI ui-rmlui-all)
 set(TARGET_TEST_ALL_TESTS all-tests)
+set(TARGET_TEST_ALL_ENGINE all-engine)
+set(TARGET_TEST_ALL_MODULE_NATIVE_GLFW all-native-glfw)
+set(TARGET_TEST_ALL_MODULE_OPENGL all-opengl)
+set(TARGET_TEST_ALL_MODULE_UI_TGUI all-ui-tgui)
+set(TARGET_TEST_ALL_MODULE_UI_RMLUI all-ui-rmlui)
 
 # Unit tests
-set(TARGET_TEST_ENGINE engine-tests)
-set(TARGET_TEST_ENGINE_LOGGING logging-tests)
-set(TARGET_TEST_MODULE_NATIVE_GLFW native-glfw-tests)
-set(TARGET_TEST_MODULE_OPENGL opengl-tests)
-set(TARGET_TEST_MODULE_UI_TGUI ui-tgui-tests)
-set(TARGET_TEST_MODULE_UI_RMLUI ui-rmlui-tests)
+set(TARGET_TEST_ENGINE tests-engine)
+set(TARGET_TEST_ENGINE_LOGGING tests-logging)
+set(TARGET_TEST_MODULE_NATIVE_GLFW tests-native-glfw)
+set(TARGET_TEST_MODULE_OPENGL tests-opengl)
+set(TARGET_TEST_MODULE_UI_TGUI tests-ui-tgui)
+set(TARGET_TEST_MODULE_UI_RMLUI tests-ui-rmlui)
 
 # Acceptance tests
-set(TARGET_TEST_ACCEPTANCE_ENGINE engine-acceptance)
-set(TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING cheryl-logging-acceptance)
-set(TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL cheryl-signal-acceptance)
-set(TARGET_TEST_ACCEPTANCE_OPENGL opengl-acceptance)
+set(TARGET_TEST_ACCEPTANCE_ENGINE acceptance-engine)
+set(TARGET_TEST_ACCEPTANCE_OPENGL acceptance-opengl)
+set(TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING acceptance-logging)
+set(TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL acceptance-signal)
 
 # Cross-module tests
-set(TARGET_TEST_UI_COEXIST ui-coexist-tests)
+set(TARGET_TEST_UI_COEXIST tests-ui-coexist)
 
 # Dependency checks
 set(TARGET_TEST_DEPENDENCY_BACKWARD_CPP backward-cpp)
 
-# Consumer tests and header probes
-set(TARGET_TEST_CONSUMER_ENGINE cheryl-consumer)
-set(TARGET_TEST_CONSUMER_ENGINE_HEADERS cheryl-consumer-headers)
-set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW cheryl-native-glfw-consumer)
-set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW_HEADERS cheryl-native-glfw-consumer-headers)
-set(TARGET_TEST_CONSUMER_MODULE_OPENGL cheryl-opengl-consumer)
-set(TARGET_TEST_CONSUMER_MODULE_OPENGL_HEADERS cheryl-opengl-consumer-headers)
-set(TARGET_TEST_CONSUMER_MODULE_UI_TGUI cheryl-ui-tgui-consumer)
-set(TARGET_TEST_CONSUMER_MODULE_UI_TGUI_HEADERS cheryl-ui-tgui-consumer-headers)
-set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI cheryl-ui-rmlui-consumer)
-set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI_HEADERS cheryl-ui-rmlui-consumer-headers)
+# Consumer tests
+set(TARGET_TEST_CONSUMER_ENGINE consumer-cengine)
+set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW consumer-module-native-glfw)
+set(TARGET_TEST_CONSUMER_MODULE_OPENGL consumer-module-opengl)
+set(TARGET_TEST_CONSUMER_MODULE_UI_TGUI consumer-module-ui-tgui)
+set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI consumer-module-ui-rmlui)
+
+# Header probes
+set(TARGET_TEST_CONSUMER_ENGINE_HEADERS consumer-headers-cengine)
+set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW_HEADERS consumer-module-headers-native-glfw)
+set(TARGET_TEST_CONSUMER_MODULE_OPENGL_HEADERS consumer-module-headers--opengl)
+set(TARGET_TEST_CONSUMER_MODULE_UI_TGUI_HEADERS consumer-module-headers--ui-tgui)
+set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI_HEADERS consumer-module-headers--ui-rmlui)
