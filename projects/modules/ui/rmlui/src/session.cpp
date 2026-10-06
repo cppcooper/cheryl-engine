@@ -151,6 +151,8 @@ namespace CE::UI::RmlUi {
     Session::Session(Input::iInputSystem& input, const Input::FocusId target, const SessionOptions options) {
         if (target == 0)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi requires a nonzero focus target");
+        if (options.maximum_texture_size < 1024)
+            throw Exceptions::invalid_args(CE_HERE, "RmlUi's stock font atlas needs a texture bound of at least 1024");
         state_ = std::make_unique<State>(input, target, options);
     }
 

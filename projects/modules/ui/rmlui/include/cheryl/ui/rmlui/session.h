@@ -14,6 +14,7 @@
 
 namespace CE::UI::RmlUi {
     struct SessionOptions {
+        // Core's stock FreeType atlas can allocate up to 1024 per dimension.
         unsigned int maximum_texture_size = 4096;
     };
 

@@ -82,6 +82,10 @@ unsupported compiled property without offering it again. Recreate the session
 after removing such a property. SDK callbacks allow render-stack cleanup to finish
 before the recording reports the error.
 
+Session texture bounds are at least 1024, matching the stock FreeType atlas's
+maximum dimension; the default bound is 4096. File/generated images must fit the
+configured bound. Standalone CPU `RenderTarget` checks can use smaller bounds.
+
 The application supplies `Materials` with colored triangle pipelines,
 `PremultipliedAlpha`, disabled depth/write/culling, a projection semantic and a
 custom image sampler for textured draws. Shaders multiply image RGBA by vertex

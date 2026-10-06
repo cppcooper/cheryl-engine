@@ -4,6 +4,7 @@
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/EventListener.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -166,6 +167,8 @@ TEST(ui_rmlui_session, view_time) {
     EXPECT_EQ(first.width(), 320);
     session.set_view({160, 120}, {0, 0});
     EXPECT_TRUE(session.record().draws().empty());
+    session.set_view({0, 0}, {0, 0});
+    EXPECT_TRUE(session.record().draws().empty());
     EXPECT_THROW(session.update_time(-1), CE::Exceptions::invalid_args);
     EXPECT_THROW(session.update_time(std::numeric_limits<double>::infinity()), CE::Exceptions::invalid_args);
     EXPECT_THROW(session.set_view({-1, 2}, {2, 2}), CE::Exceptions::invalid_args);
@@ -212,6 +215,45 @@ TEST(ui_rmlui_session, unavailable) {
     EXPECT_FALSE(session.capabilities().committed_text);
     EXPECT_FALSE(session.capabilities().keyboard_focus);
     EXPECT_THROW(session.request_keyboard_focus(), CE::Exceptions::failed_operation);
+}
+
+TEST(ui_rmlui_session, wheel_position) {
+    Input input;
+    Session session(input, 7);
+    auto& document = RmlUiTests::document(session);
+    struct Listener final : Rml::EventListener {
+        int calls = 0;
+        float x = 0;
+        float y = 0;
+        int mouse_x = 0;
+        int mouse_y = 0;
+
+        void ProcessEvent(Rml::Event& event) override {
+            ++calls;
+            x = event.GetParameter<float>("wheel_delta_x", 0);
+            y = event.GetParameter<float>("wheel_delta_y", 0);
+            mouse_x = event.GetParameter<int>("mouse_x", 0);
+            mouse_y = event.GetParameter<int>("mouse_y", 0);
+            event.StopPropagation();
+        }
+    } listener;
+    document.AddEventListener("mousescroll", &listener, true);
+    const auto poll = input.emit(ScrollEvent{0.5, -0.25, PointerEvent{20.75, 45.25}}, DeviceKind::Mouse);
+    session.handle_input(poll->records, false);
+    EXPECT_EQ(listener.calls, 0);
+    session.handle_input(poll->records, true);
+    EXPECT_EQ(listener.calls, 1);
+    EXPECT_FLOAT_EQ(listener.x, -0.5f);
+    EXPECT_FLOAT_EQ(listener.y, 0.25f);
+    EXPECT_EQ(listener.mouse_x, 20);
+    EXPECT_EQ(listener.mouse_y, 45);
+    document.RemoveEventListener("mousescroll", &listener, true);
+}
+
+TEST(ui_rmlui_session, font_bound) {
+    Input input;
+    EXPECT_THROW(Session(input, 7, {.maximum_texture_size = 512}), CE::Exceptions::invalid_args);
+    EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
 }
 
 TEST(ui_rmlui_session, owner) {
