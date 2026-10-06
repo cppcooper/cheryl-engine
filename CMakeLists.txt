@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
-project(cheryl)
+# Central project declarations for target names, output names, and linkage.
+include(cmake/CherylTargets.cmake)
+include(cmake/CherylOutputs.cmake)
+include(cmake/CherylLinkage.cmake)
+include(cmake/CherylVersions.cmake)
+project(cheryl
+        VERSION ${VERSION_PROJECT_CHERYL}
+        LANGUAGES C CXX
+)
 
 set(CHERYL_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
