@@ -87,11 +87,13 @@ native widget/runtime/lifetime acceptance next. Add pointer/modal/controller
 routing or platform services only for an explicit consumer need with a
 capability/failure contract.
 
-U9 also requires a second independent player-facing adapter, with RmlUi the leading
-candidate. Finish TGUI's acceptance first; the second implementation may remain
-incomplete while independent development proceeds. TGUI acceptance is a checkpoint,
+U9 also requires the selected RmlUi 6.3 adapter under its
+[requirements](rmlui-adapter-requirements.md). Finish TGUI's acceptance first;
+the second implementation may remain incomplete while independent development
+proceeds. TGUI acceptance is a checkpoint,
 and U9 remains open until the second adapter and a small coexistence/focus proof are
-accepted. Select its toolkit version and detailed scope when that phase is active.
+accepted. RmlUi implementation and independent acceptance are active in the owning
+U9 checklist; remaining TGUI acceptance stays separate.
 
 The neutral probe uses one provider/window, immutable image replacement and the
 existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas

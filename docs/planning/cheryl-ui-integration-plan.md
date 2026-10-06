@@ -21,8 +21,9 @@ Cheryl::Engine -> TGUI / RmlUi / ImGui / another widget library
 
 TGUI 1.13.0 is the first selected player-facing adapter; its C++ authoring model
 fits current development needs. Its [requirements and decisions](tgui-adapter-requirements.md)
-define the custom backend, font ownership and initial scope. RmlUi is the leading
-second-adapter candidate; Dear ImGui is primarily a developer/debug tooling candidate.
+define the custom backend, font ownership and initial scope. RmlUi 6.3 is the
+selected second adapter under its [requirements](rmlui-adapter-requirements.md);
+Dear ImGui is primarily a developer/debug tooling candidate.
 
 ## Abstraction boundary
 
@@ -271,11 +272,27 @@ Follow these steps in order and update their status while U9 remains active.
   - [ ] Accept those controlled runtime checks alongside the remaining consumer
     and copied-window/input/stop checks in a focused batch. Keep native interaction,
     resource playback and shutdown coverage separate from controlled acceptance.
-- [ ] **6. Prove a second independent player-facing adapter.** Select its toolkit
-  and requirements, then prove independent composition and the same retained
-  render/resource/input/lifetime boundaries without depending on the TGUI adapter.
-  Include a small coexistence/focus proof. RmlUi remains the leading candidate;
-  choose its version and detailed scope when this phase becomes active.
+- [ ] **6. Prove the independent RmlUi adapter.** Implement its
+  [requirements](rmlui-adapter-requirements.md), then prove independent composition
+  and the same retained render/resource/input/lifetime boundaries without
+  depending on the TGUI adapter.
+  Include a small coexistence/focus proof.
+  - [x] Select RmlUi 6.3 and review its concrete interfaces, font ownership,
+    premultiplied alpha and initial unsupported effects.
+  - [x] Add the pinned dependency and optional owner with independent source,
+    supplied-target/package composition and Engine-only isolation. Executable
+    composition acceptance remains below.
+  - [ ] Implement owned compiled geometry/texture recording, clipping and complete
+    retained-scene upload/adoption. Resolve orientation and unsupported behavior
+    before session/demo code depends on it.
+  - [ ] Implement the owner-bound native context, font lifetime, explicit time/view
+    updates, routed input and capability reporting.
+  - [ ] Author module-local checks, real sequential/concurrent runtime checks and
+    independent consumer/header probes. Test retained recordings/frames through
+    toolkit teardown before native integration.
+  - [ ] Add a native demo view and cross-project TGUI/RmlUi focus/coexistence proof.
+  - [ ] Accept the focused RmlUi, composition, runtime, coexistence and native
+    checks while reusing accepted TGUI coverage for unaffected behavior.
 
 TGUI acceptance is an intermediate checkpoint. The second adapter may remain
 incomplete while other independent work proceeds, but U9 stays open until both

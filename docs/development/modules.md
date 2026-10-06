@@ -16,6 +16,7 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 | `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
 | `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges; session/widget acceptance remains U9 work. |
+| `Cheryl::UI::RmlUi` | `projects/modules/ui/rmlui/` | Engine and RmlUi 6.3 Core with FreeType. Its independent adapter and acceptance are active U9 work. |
 
 ```mermaid
 flowchart LR
@@ -37,7 +38,7 @@ follow the same optional owner model; Steam remains a future integration.
 
 The root selects Native GLFW, OpenGL and TGUI by default. Set
 `CHERYL_BUILD_NATIVE_GLFW=OFF`, `CHERYL_BUILD_OPENGL=OFF` and
-`CHERYL_BUILD_UI_TGUI=OFF` for Engine alone.
+`CHERYL_BUILD_UI_TGUI=OFF` and `CHERYL_BUILD_UI_RMLUI=OFF` for Engine alone.
 Select Native GLFW with `CHERYL_BUILD_NATIVE_GLFW=ON` and
 `CHERYL_BUILD_OPENGL=OFF`; no Cheryl OpenGL/GLAD discovery occurs in that assembly.
 OpenGL requires Native GLFW. The demo is selected only with OpenGL and native input.
@@ -48,6 +49,12 @@ submodule or finds an exact TGUI 1.13.0 package without downloading. See its
 [module guide](../../projects/modules/ui/tgui/README.md) for the custom/FreeType
 dependency contract and current scope. Neither Engine nor another module selects
 or links the toolkit implicitly.
+
+`CHERYL_BUILD_UI_RMLUI` selects RmlUi independently and defaults to `OFF`.
+It reuses `RmlUi::Core`, accepts `CHERYL_RMLUI_SOURCE`, uses the pinned
+`extern/rmlui` submodule or finds an exact RmlUi 6.3 package. Its
+[module guide](../../projects/modules/ui/rmlui/README.md) describes the stock
+FreeType dependency contract. Selecting either UI owner does not select the other.
 
 An Engine-only consumer links `Cheryl::Engine`. Native graphics applications use:
 
@@ -137,7 +144,8 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `engine-all` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
 | `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
 | `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
-| `ui-tgui-all` | The selected TGUI module's input, recording and scene cases; real-widget/runtime acceptance remains U9 work. |
+| `ui-tgui-all` | The selected TGUI module's cases; remaining acceptance is tracked by U9. |
+| `ui-rmlui-all` | The selected RmlUi module's cases; implementation and acceptance are active U9 work. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

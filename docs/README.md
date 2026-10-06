@@ -64,6 +64,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 - [Develop review and development plan](planning/develop-review-and-development-plan.md)
 - [UI integration checklist](planning/cheryl-ui-integration-plan.md)
 - [TGUI requirements and decisions](planning/tgui-adapter-requirements.md)
+- [RmlUi requirements and decisions](planning/rmlui-adapter-requirements.md)
 - [Module boundaries and initial setup](planning/subsystem-modules-plan.md)
 - [Groundwork and module extraction plan](planning/module-groundwork-and-extraction-plan.md)
 - [Unfinished engine work](planning/todo.md)

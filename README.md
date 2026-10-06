@@ -57,12 +57,13 @@ for all controls, timing/input options and UI interaction checks.
 
 ### Build the engine alone
 
-This selection omits GLFW, Gainput, OpenGL, GLAD, TGUI and FreeType discovery:
+This selection omits GLFW, Gainput, OpenGL, GLAD, both UI toolkits and FreeType discovery:
 
 ```sh
 cmake -S . -B build/engine-only -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_DEMO=OFF \
+  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+  -DCHERYL_BUILD_DEMO=OFF \
   -DCHERYL_BUILD_TESTS=OFF
 cmake --build build/engine-only --target cherylGL --parallel 1
 ```
@@ -81,6 +82,7 @@ Reload CMake after changing module selection to expose the selected targets.
 | `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Selects the GLFW display/window module and its optional input implementation. |
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects the TGUI adapter independently of native/graphics modules. |
+| `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects the independent RmlUi adapter; can coexist with TGUI. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` when OpenGL and native input are selected. |
 | `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes owner aggregates and `all-tests` in the default build and CTest discovery. Requires tests. |
@@ -111,6 +113,8 @@ Useful dependency and toolchain settings:
 | `CHERYL_NATIVE_GLFW_SOURCE=/path/to/native-glfw` | Supplies Native GLFW to a standalone OpenGL module. |
 | `CHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0` | Selects a TGUI source tree instead of the bundled submodule. |
 | `TGUI_DIR=/path/to/TGUI/cmake/package` | Selects an exact TGUI 1.13.0 package with the required custom/FreeType features. |
+| `CHERYL_RMLUI_SOURCE=/path/to/RmlUi-6.3` | Selects a RmlUi source tree instead of the bundled submodule. |
+| `RmlUi_DIR=/path/to/RmlUi/cmake/package` | Selects an exact RmlUi 6.3 package with the stock FreeType font engine. |
 
 ## Dependencies
 
@@ -133,11 +137,12 @@ where supported by their [composition contract](docs/development/modules.md).
 | Gainput | [jochumdev/gainput](https://github.com/jochumdev/gainput), `extern/gainput` | Native input devices and mappings when input is enabled. |
 | GLAD | [Dav1dde/glad](https://github.com/Dav1dde/glad), `extern/glad` | OpenGL entry-point generation using the pinned specification. |
 | TGUI | [texus/TGUI](https://github.com/texus/TGUI), `extern/tgui` | Optional TGUI 1.13.0 custom backend and toolkit widgets. |
+| RmlUi | [mikke89/RmlUi](https://github.com/mikke89/RmlUi), `extern/rmlui` | Optional RmlUi 6.3 Core with native RML/RCSS authoring. |
 | GoogleTest | [google/googletest](https://github.com/google/googletest), `extern/googletest` | Test runners; discovered when tests are enabled. |
 | hidapi | [libusb/hidapi](https://github.com/libusb/hidapi), fetched by Gainput | HID controller support. Gainput fetches `hidapi-0.15.0` during configuration when enabled. |
 
 The first HID-enabled configuration needs network access or a prepared
-FetchContent cache for hidapi. TGUI source/package selection performs no download.
+FetchContent cache for hidapi. UI toolkit source/package selection performs no download.
 
 ### System dependencies
 
@@ -151,7 +156,7 @@ libraries, in addition to runtime libraries, for the selected owners.
 | Wayland, xkbcommon and `wayland-scanner` | Bundled GLFW Wayland | Linux GLFW enables X11 and Wayland by default. Set `GLFW_BUILD_WAYLAND=OFF` for an X11-only build. |
 | OpenGL | OpenGL module | System headers/link libraries; running the demo also requires a usable graphics driver and display. |
 | Python and Jinja2 | GLAD generation | Jinja2 must be available in CMake's selected Python interpreter. |
-| FreeType | TGUI module | Custom backend font rasterization. |
+| FreeType | TGUI or RmlUi module | Toolkit font rasterization. |
 | libudev / libusb | Linux hidapi | Development dependencies of the HID backends selected by Gainput's fetched hidapi. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve source/symbol resolution; availability determines the selected resolver. |
 | A discoverable system font | Demo | The HUD uses system-font discovery; TGUI uses its embedded default font. |
@@ -171,6 +176,7 @@ and `tests/`. Link targets to inherit headers and dependencies.
 | `Cheryl::NativeGLFW` | `cheryl_native_glfw` | [Native GLFW](projects/modules/platform/native-glfw/README.md) |
 | `Cheryl::OpenGL` | `cheryl_opengl` | [OpenGL](projects/modules/graphics/opengl/README.md) |
 | `Cheryl::UI::TGUI` | `cheryl_ui_tgui` | [TGUI](projects/modules/ui/tgui/README.md) |
+| `Cheryl::UI::RmlUi` | `cheryl_ui_rmlui` | [RmlUi](projects/modules/ui/rmlui/README.md) |
 
 For an engine-only application in an enclosing CMake project:
 
@@ -180,6 +186,7 @@ set(CHERYL_BUILD_DEMO OFF)
 set(CHERYL_BUILD_NATIVE_GLFW OFF)
 set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
+set(CHERYL_BUILD_UI_RMLUI OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 
 add_executable(game main.cpp)
@@ -188,7 +195,8 @@ target_link_libraries(game PRIVATE Cheryl::Engine)
 
 For native graphics, enable Native GLFW and OpenGL and link
 `Cheryl::Engine Cheryl::NativeGLFW Cheryl::OpenGL`. Enable and add
-`Cheryl::UI::TGUI` for toolkit UI. Engine never depends on those integrations.
+`Cheryl::UI::TGUI` or `Cheryl::UI::RmlUi` for toolkit UI, or select both.
+Engine never depends on those integrations.
 The OpenGL implementation, context and resources stay together in one module.
 
 Build-tree composition is supported. Installed/exported `find_package(Cheryl)`
@@ -210,9 +218,9 @@ cmake --build build/release --target engine-tests ui-tgui-tests --parallel 1
 | Runner / setting | Coverage |
 | --- | --- |
 | `engine-tests`, `logging-tests` | Focused neutral Engine and logging checks. |
-| `native-glfw-tests`, `opengl-tests`, `ui-tgui-tests` | Selected module implementation checks. |
+| `native-glfw-tests`, `opengl-tests`, `ui-tgui-tests`, `ui-rmlui-tests` | Selected module implementation checks. |
 | `engine-acceptance`, `opengl-acceptance` | Broader runtime, failure, resource and native graphics cases. |
-| `engine-all`, `native-glfw-all`, `opengl-all`, `ui-tgui-all` | Each owner's complete GoogleTest runner. |
+| `engine-all`, `native-glfw-all`, `opengl-all`, `ui-tgui-all`, `ui-rmlui-all` | Each owner's complete GoogleTest runner. |
 | `all-tests` | All GoogleTests in the selected assembly; explicitly buildable even when `CHERYL_BUILD_ALL_TESTS=OFF`. |
 | `CHERYL_BUILD_CONSUMER_TESTS=ON` | Adds `cheryl-consumer` and selected `cheryl-*-consumer` executables with dependent header probes. |
 | `cheryl-logging-acceptance`, `cheryl-signal-acceptance` | Separate manual drivers, covered in [architecture validation](docs/development/architecture-validation.md#manual-acceptance-drivers). |
