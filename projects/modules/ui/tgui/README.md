@@ -4,9 +4,9 @@
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, FreeType fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials. Executable and real-widget acceptance remain in the
+application materials. Remaining composition and native widget/runtime acceptance
+are tracked in the
 [U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
-The adapter is source-complete; executable acceptance remains pending.
 
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
 and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
@@ -172,9 +172,9 @@ create their own custom backend and embedded font. They cover widget text routin
 focus epochs/preemption, modifier releases, pointer selection, unsupported clipboard
 shortcuts, copied view sizes, FreeType atlas growth/immutable generations and serial
 teardown after the UI owner stops. The independent consumer creates and records a
-real label. Module acceptance awaits rerunning the recorder fixes. Actual queued runtime/concurrent
-handoff and native pixels remain U9 acceptance; promise-based adoption checks do
-not prove those paths.
+real label. Independent consumer/header composition, actual queued runtime/concurrent
+handoff and native pixels require the remaining U9 acceptance; promise-based
+adoption and serial toolkit-teardown checks do not prove those paths.
 
 After explicit build/test authorization, a standalone source composition is:
 

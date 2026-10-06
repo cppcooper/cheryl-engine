@@ -29,12 +29,14 @@ HUD. Frame preparation appends that retained UI scene after the world/HUD pass;
 it never traverses live widgets. Teardown follows the runtime's simulation join and
 releases application-held widgets before the global toolkit backend.
 
-The panel and adapter checks are source-complete; executable/native acceptance
-remains in [U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
+The adapter's controlled module checks are accepted; downstream composition and
+native demo acceptance remain in
+[U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 Once builds/tests are explicitly authorized, reuse an existing Debug build and
-batch `demo`, `ui-tgui-tests` and the independent consumer with one low-priority
-build job. Run the module suite/consumer together, then use a short normal and
-`--concurrent` demo run to check startup, uploads and teardown. For visual acceptance,
-exercise text/focus, scrolling, image replacement and the edge tooltip; resize the
+batch the affected demo/consumer targets with one low-priority build job. Reuse
+accepted module results unless new changes require a rerun. Run the independent
+consumer, then use a short normal and `--concurrent` demo run to check startup,
+uploads and teardown. For visual acceptance, exercise text/focus, scrolling,
+image replacement and the edge tooltip; resize the
 window across available content scales. Finite runs alone do not prove interaction,
 appearance or retained native resource behavior through those changes.

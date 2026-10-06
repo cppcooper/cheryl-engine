@@ -197,9 +197,10 @@ Follow these steps in order and update their status while U9 remains active.
     - [x] Upload a complete recording through the platform submission endpoint;
       retain the previous scene until a new result is ready, and preserve it on
       upload failure/cancellation. Add owner-local recording/resource checks.
-    These bridges and checks are source-complete; actual queued runtime execution,
-    FreeType glyph growth and native appearance remain executable acceptance.
-  - [ ] Implement the simulation-owned toolkit session and GUI lifecycle, focus
+    Controlled module checks establish recording/resource behavior and FreeType
+    glyph growth. Actual queued runtime execution and native appearance remain
+    acceptance work.
+  - [x] Implement the simulation-owned toolkit session and GUI lifecycle, focus
     leases, modifier snapshots, explicit timing/view updates and capabilities.
     Configure toolkit view/input in logical units and supply copied framebuffer
     ratios for pixel rounding. Enforce the smoothed-only policy before FreeType's
@@ -214,22 +215,15 @@ Follow these steps in order and update their status while U9 remains active.
     - [x] Wire a small TGUI panel into the selected demo, using application-built
       materials and the existing retained-scene upload/adoption path. Preserve the
       toolkit-free demo when the optional module is disabled.
-    - [ ] Add focused session/widget and downstream-consumer checks, then batch
-      executable acceptance at the boundary before treating the panel as working.
-      The session/consumer checks are authored. The
-      [demo procedure](../../projects/apps/demo/README.md) covers the selected
-      panel, sequential/concurrent runs, interactions and visual coverage limits.
-      - [x] Correct the recorder findings exposed by the first module-suite run
-        before repeating executable acceptance.
-        - [x] Record TGUI's unindexed glyph triangles alongside indexed geometry;
-          keep incomplete triangle and invalid index rejection covered.
-        - [x] Map intersected view-space clip edges in double precision without
-          the intermediate float viewport; retain conservative fractional bounds.
-        Source fixes and regression cases are complete; executable acceptance
-        still requires rebuilding and rerunning the module suite.
-  - [ ] Run the focused portable/native input and module acceptance once the
-    executable gate blocks dependent work; keep source completion separate from
-    that acceptance and reuse the already accepted rendering baseline.
+    - [x] Accept the module-local input/recording/scene/session checks, including
+      unindexed glyphs, exact/fractional clips, atlas growth, focus and serial
+      toolkit teardown with retained CPU recordings.
+  - [ ] Accept the independent consumer and first-include header probes in a
+    separate composition. The consumer checks are authored. The
+    [demo procedure](../../projects/apps/demo/README.md) covers the selected
+    panel, sequential/concurrent runs, interactions and visual coverage limits.
+  - [ ] Accept the selected Engine window-snapshot and portable/native input
+    checks. Reuse the accepted module suite and neutral rendering baseline.
 - [ ] **4. Prove representative widget behavior.** Exercise a menu with
   nested/overlapping translucent panels, dynamic labels, a tooltip near viewport
   edges, a text field, scrolling and an image. Verify focus/routing and resize/DPI
