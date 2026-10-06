@@ -1,29 +1,20 @@
 cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
-# Central project declarations for target names, output names, and linkage.
-include(cmake/CherylTargets.cmake)
-include(cmake/CherylOutputs.cmake)
-include(cmake/CherylLinkage.cmake)
 include(cmake/CherylVersions.cmake)
 project(cheryl
         VERSION ${VERSION_PROJECT_CHERYL}
         LANGUAGES C CXX
 )
 
+# Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
+include(cmake/CherylOptions.cmake)
+include(cmake/CherylTargets.cmake)
+include(cmake/CherylOutputs.cmake)
+include(cmake/CherylLinkage.cmake)
+
 set(CHERYL_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
 
-option(WARN "Enable compiler warnings [-Wall]" OFF)
-option(CHERYL_SANDBOX_BUILD "Deprecated native GLFW null-platform selection without Gainput" OFF)
-option(CHERYL_BUILD_NATIVE_GLFW "Build the native GLFW window/input integration" ON)
-option(CHERYL_BUILD_OPENGL "Build the OpenGL backend" ON)
-option(CHERYL_BUILD_UI_TGUI "Build the optional TGUI UI integration" ON)
-option(CHERYL_BUILD_UI_RMLUI "Build the optional RmlUi UI integration" OFF)
-option(CHERYL_BUILD_TESTS "Build Cheryl's tests and acceptance tools" ON)
-option(CHERYL_BUILD_ALL_TESTS "Include owner and cross-project aggregate test runners in the default build" OFF)
-option(CHERYL_BUILD_ACCEPTANCE_TESTS "Include broader acceptance runners in the default build" OFF)
-option(CHERYL_BUILD_CONSUMER_TESTS "Build the consumer and public-header checks" OFF)
-option(CHERYL_BUILD_DEMO "Build the windowed demonstration application" ON)
 if(WARN)
     set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
