@@ -9,10 +9,13 @@ and native/fixture coverage limits are in
 
 ## G6 — UI adapter
 
-Prove U9's neutral probe before selecting a concrete UI consumer. Add only generic
-render/resource/input/routing/platform capabilities that the adapter actually needs.
-The adapter is an optional owner and does not select OpenGL or own the native event
-pump. See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
+The neutral probe and controlled TGUI module checks establish the current baseline.
+Complete TGUI's independent composition and native widget/runtime/lifetime
+acceptance next. U9 also requires a second independent adapter; it can remain
+incomplete while other independent work proceeds. Add only generic capabilities a
+consumer actually needs. Adapters remain optional owners and do not select OpenGL
+or own the native event pump. Use the owning
+[U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence).
 
 ## G7 — optional input composition and Steam policy
 

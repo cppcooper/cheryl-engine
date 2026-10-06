@@ -9,20 +9,15 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Align the tracked CTTI and Gainput revisions with the selected dependency
-  checkouts when committing the upgrades. Engine helpers use CTTI 1.1's API and
-  native input uses Gainput's five-argument float callback; the older recorded
-  gitlinks do not provide these interfaces. See
-  [the consumer requirements](../development/consuming-engine.md) and
-  [the native module](../../projects/modules/platform/native-glfw/README.md).
 - Coordinate Gainput's process-global HID initialization/shutdown and native
   notification ownership before supporting simultaneous initialized native input
   adapters or reattachment to a different Windows window. `Init`/`Exit` share HID
   state, and Windows notifications retain the first native handle.
-- Complete executable acceptance of the library-neutral recording-graph UI probe,
-  then select and prove
-  the first optional adapter against its concrete toolkit/version requirements.
-  See [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
+- Complete TGUI's independent composition and native widget/runtime/lifetime
+  acceptance, then prove a second independent UI adapter. The neutral probe and
+  controlled TGUI module checks are accepted; U9 remains open until the second
+  adapter proof, which need not be implemented alongside TGUI. See
+  [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
 - Complete the remaining public-contract documentation, especially FileMgr indexing/
   borrowed lookups, system-font discovery/selection and display/window lifetime/
   capability semantics. See [U15](develop-review-and-development-plan.md#u15--documentation-and-roadmap-reconciliation).

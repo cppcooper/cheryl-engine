@@ -21,8 +21,8 @@ Cheryl::Engine -> TGUI / RmlUi / ImGui / another widget library
 
 TGUI 1.13.0 is the first selected player-facing adapter; its C++ authoring model
 fits current development needs. Its [requirements and decisions](tgui-adapter-requirements.md)
-define the custom backend, font ownership and initial scope. RmlUi remains a later
-player-facing candidate; Dear ImGui is primarily a developer/debug tooling candidate.
+define the custom backend, font ownership and initial scope. RmlUi is the leading
+second-adapter candidate; Dear ImGui is primarily a developer/debug tooling candidate.
 
 ## Abstraction boundary
 
@@ -232,6 +232,8 @@ Follow these steps in order and update their status while U9 remains active.
   native appearance or behavior.
   - [x] Clarify the demo's Escape help as releasing keyboard focus and document
     the window close control as the way to end the demo.
+  - [ ] Place the top TGUI badge fully inside its parent panel's content clip;
+    retain parent clipping for child widgets and scrolling.
   - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
     the desktop's touchpad suppression disabled, following the
     [demo procedure](../../projects/apps/demo/README.md).
@@ -239,6 +241,15 @@ Follow these steps in order and update their status while U9 remains active.
   Establish retained/concurrent frame and resource-teardown acceptance, then write
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,
   resources, rendering, routed input, platform capabilities and module selection.
+- [ ] **6. Prove a second independent player-facing adapter.** Select its toolkit
+  and requirements, then prove independent composition and the same retained
+  render/resource/input/lifetime boundaries without depending on the TGUI adapter.
+  Include a small coexistence/focus proof. RmlUi remains the leading candidate;
+  choose its version and detailed scope when this phase becomes active.
+
+TGUI acceptance is an intermediate checkpoint. The second adapter may remain
+incomplete while other independent work proceeds, but U9 stays open until both
+adapter proofs are accepted. It need not be implemented alongside TGUI.
 
 The probe's ASCII atlas does not dictate the toolkit's font implementation.
 Composition/preedit, Unicode shaping, grapheme-aware editing, stencil/filter effects,
@@ -255,12 +266,13 @@ The portable recording probe establishes contract behavior, not native driver or
 toolkit conformance. The initial native proof is Linux/GLFW/X11/OpenGL; other
 platforms, IME and device coverage need separately scoped acceptance.
 
-## Later proofs
+## Independent adapter proof
 
-A second independent player-facing adapter, likely RmlUi if useful, is the strongest
-proof that the boundary is genuinely multi-library. It must implement its own Cheryl
-bridges rather than depend on the first adapter. Coexistence then validates routing
-between heterogeneous consumers.
+The second adapter is required to complete U9, rather than an optional extension
+after it. It implements its own Cheryl bridges; similar responsibilities are not
+grounds for a shared widget abstraction or a dependency on TGUI. Coexistence
+validates routing between heterogeneous consumers. Preserve each toolkit's native
+authoring API and generalize only engine contract gaps demonstrated by both.
 
 Dear ImGui can later reuse the same neutral facilities for diagnostics/tooling while
 remaining independently selectable and without defining player-facing architecture.

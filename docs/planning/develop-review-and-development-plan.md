@@ -86,6 +86,12 @@ native widget/runtime/lifetime acceptance next. Add pointer/modal/controller
 routing or platform services only for an explicit consumer need with a
 capability/failure contract.
 
+U9 also requires a second independent player-facing adapter, with RmlUi the leading
+candidate. Finish TGUI's acceptance first; the second implementation may remain
+incomplete while independent development proceeds. TGUI acceptance is a checkpoint,
+and U9 remains open until the second adapter and a small coexistence/focus proof are
+accepted. Select its toolkit version and detailed scope when that phase is active.
+
 The neutral probe uses one provider/window, immutable image replacement and the
 existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas
 needs must be checked separately; the engine's STBFont baseline does not define a
@@ -94,8 +100,9 @@ layout or IME reopen their resource/render/platform contracts before dependent w
 
 **Acceptance:** the adapter's public/runtime architecture remains backend-neutral;
 physical input is collected once and routed without destructive mutation; UI
-resources obey the established retained-frame lifetime. A single adapter cannot
-establish multi-library extensibility; that claim needs an independent adapter proof.
+resources obey the established retained-frame lifetime. Independent proofs from
+both adapters establish multi-library extensibility without linking one adapter to
+the other or putting toolkit concepts into Engine.
 
 **Discovery boundary:** any required direct backend/native access is an engine
 contract gap. Resolve the smallest generic seam before dependent adapter code grows.
