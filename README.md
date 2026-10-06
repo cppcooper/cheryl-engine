@@ -41,8 +41,11 @@ use a single-configuration generator; multi-configuration generators also need
 
 The demo uses a system font and the checked-in shaders without needing the full
 image asset tree. WASD pans the camera, R resets it and F5 reloads its shader.
-F2 toggles text focus and Escape releases it. With TGUI selected, F3 hides/shows
-the panel. Close the window to exit.
+F2 toggles TGUI text focus and F3 hides/shows its panel. Escape releases focus;
+Q quits while gameplay has keyboard focus. Closing the window also exits.
+Selecting `CHERYL_BUILD_UI_RMLUI=ON` adds an independent RmlUi view, with F4 for
+text focus and F6 for visibility. See its [acceptance procedure](projects/modules/ui/rmlui/README.md#acceptance-procedure)
+for the focused checks; its executable/native acceptance is still pending.
 
 ```sh
 ./build/release/demo --concurrent
@@ -115,6 +118,7 @@ Useful dependency and toolchain settings:
 | `TGUI_DIR=/path/to/TGUI/cmake/package` | Selects an exact TGUI 1.13.0 package with the required custom/FreeType features. |
 | `CHERYL_RMLUI_SOURCE=/path/to/RmlUi-6.3` | Selects a RmlUi source tree instead of the bundled submodule. |
 | `RmlUi_DIR=/path/to/RmlUi/cmake/package` | Selects an exact RmlUi 6.3 package with the stock FreeType font engine. |
+| `CHERYL_RMLUI_TEST_FONT=/path/to/font.ttf` | Supplies a real font fixture for RmlUi checks when the selected SDK's sample font is unavailable. |
 
 ## Dependencies
 
@@ -221,6 +225,7 @@ cmake --build build/release --target engine-tests ui-tgui-tests --parallel 1
 | `native-glfw-tests`, `opengl-tests`, `ui-tgui-tests`, `ui-rmlui-tests` | Selected module implementation checks. |
 | `engine-acceptance`, `opengl-acceptance` | Broader runtime, failure, resource and native graphics cases. |
 | `engine-all`, `native-glfw-all`, `opengl-all`, `ui-tgui-all`, `ui-rmlui-all` | Each owner's complete GoogleTest runner. |
+| `ui-coexist-tests` | Assembly-owned focus and retained-lifetime proof when both UI adapters are selected. |
 | `all-tests` | All GoogleTests in the selected assembly; explicitly buildable even when `CHERYL_BUILD_ALL_TESTS=OFF`. |
 | `CHERYL_BUILD_CONSUMER_TESTS=ON` | Adds `cheryl-consumer` and selected `cheryl-*-consumer` executables with dependent header probes. |
 | `cheryl-logging-acceptance`, `cheryl-signal-acceptance` | Separate manual drivers, covered in [architecture validation](docs/development/architecture-validation.md#manual-acceptance-drivers). |
@@ -248,12 +253,13 @@ projects/
     platform/native-glfw/       # Display, windows and optional input
     graphics/opengl/            # Entire OpenGL backend and context
     ui/tgui/                    # Toolkit adapter and module tests
-  apps/demo/                    # Native application and optional UI panel
-  tests/                        # Cross-project all-tests assembly
+    ui/rmlui/                   # Independent native-document adapter and tests
+  apps/demo/                    # Native application and optional UI views
+  tests/                        # Cross-project checks and all-tests assembly
   dependency-checks/backward-cpp/
 cmake/                          # Composition, test and consumer helpers
 extern/                         # Pinned source dependencies
-assets/                         # Manifests and shader sources; images supplied separately
+assets/                         # Manifests, shaders and small UI proof images
 docs/                           # Current contracts, guides and plans
 ```
 
@@ -262,7 +268,7 @@ docs/                           # Current contracts, guides and plans
 | Symptom | Next step |
 | --- | --- |
 | A selected dependency directory is empty | Run `git submodule update --init --recursive`. |
-| TGUI target is missing in CLion | Set cached `CHERYL_BUILD_UI_TGUI=ON` and reload CMake. |
+| A UI target is missing in CLion | Set its cached `CHERYL_BUILD_UI_TGUI` or `CHERYL_BUILD_UI_RMLUI` option to `ON` and reload CMake. |
 | Python reports missing `jinja2` | Install Jinja2 in the interpreter selected by CMake, or set `Python_EXECUTABLE` to one which has it. |
 | GLFW reports missing Wayland tools/libraries | Install the Wayland development requirements or configure with `GLFW_BUILD_WAYLAND=OFF`. |
 | CMake 4 rejects an old dependency policy version | Configure with `CMAKE_POLICY_VERSION_MINIMUM=3.5`. |

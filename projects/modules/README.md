@@ -20,7 +20,7 @@ modules/
 | [platform/native-glfw](platform/native-glfw/README.md) | `Cheryl::NativeGLFW` | `CHERYL_BUILD_NATIVE_GLFW` | [`core/display`](../engine/include/cheryl/core/display): `iDisplaySystem`, `iWindow`; [`core/controls`](../engine/include/cheryl/core/controls): `iInputSystem`. |
 | [graphics/opengl](graphics/opengl/README.md) | `Cheryl::OpenGL` | `CHERYL_BUILD_OPENGL` | [`core/rendering`](../engine/include/cheryl/core/rendering): `iRenderer`, `iPresentationSurface`; [`assets/resources`](../engine/include/cheryl/assets/resources): `ResourceProvider`, `Image`, `Geometry2D`, `Shader`, `Pipeline`. |
 | [ui/tgui](ui/tgui/README.md) | `Cheryl::UI::TGUI` | `CHERYL_BUILD_UI_TGUI` | Translates input and records/uploads retained scenes through Engine contracts. The toolkit owns its widget API; controlled module checks are accepted, with native/composition acceptance still in U9. |
-| [ui/rmlui](ui/rmlui/README.md) | `Cheryl::UI::RmlUi` | `CHERYL_BUILD_UI_RMLUI` | Independent RmlUi Core integration. Recording, sessions and acceptance are active U9 work. |
+| [ui/rmlui](ui/rmlui/README.md) | `Cheryl::UI::RmlUi` | `CHERYL_BUILD_UI_RMLUI` | Native document sessions, routed input and premultiplied retained rendering through Engine contracts. Source is complete; executable/native acceptance remains in U9. |
 
 Native GLFW, OpenGL and TGUI are selected by default; RmlUi is opt-in.
 OpenGL requires Native GLFW. Each UI owner links only Engine and its own toolkit;

@@ -81,19 +81,19 @@ subtask progress, neutral probe scope and adapter acceptance.
 The neutral recording probe establishes the baseline; TGUI 1.13.0 is selected under
 the [adapter requirements](tgui-adapter-requirements.md). Its optional owner,
 session, neutral bridges and selected demo panel are source-complete, with
-controlled input/recording/scene/session acceptance established. Controlled runtime
-handoff checks are authored; complete their acceptance, downstream composition and
+controlled input/layout/recording/scene/session and both runtime modes accepted.
+Complete downstream composition, the selected Engine/native input/stop checks and
 native widget/runtime/lifetime acceptance next. Add pointer/modal/controller
 routing or platform services only for an explicit consumer need with a
 capability/failure contract.
 
 U9 also requires the selected RmlUi 6.3 adapter under its
-[requirements](rmlui-adapter-requirements.md). Finish TGUI's acceptance first;
-the second implementation may remain incomplete while independent development
-proceeds. TGUI acceptance is a checkpoint,
-and U9 remains open until the second adapter and a small coexistence/focus proof are
-accepted. RmlUi implementation and independent acceptance are active in the owning
-U9 checklist; remaining TGUI acceptance stays separate.
+[requirements](rmlui-adapter-requirements.md). Its independent module, native
+document session, rendering/resource bridges, demo view and coexistence/focus
+checks are source-complete. TGUI acceptance is a checkpoint; U9 remains open
+until executable RmlUi/composition/coexistence checks and native acceptance are
+established. The owning U9 checklist tracks those remaining checks separately
+from accepted TGUI coverage.
 
 The neutral probe uses one provider/window, immutable image replacement and the
 existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas

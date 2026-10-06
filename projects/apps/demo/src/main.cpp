@@ -21,6 +21,9 @@
 #ifdef CHERYL_DEMO_TGUI
 #include "tgui-demo.h"
 #endif
+#ifdef CHERYL_DEMO_RMLUI
+#include "rmlui-demo.h"
+#endif
 
 #include <charconv>
 #include <cstdint>
@@ -53,7 +56,11 @@ class Game : public CE::GFramework::AbstractGame {
     CE::Input::CaptureLease events_;
 #ifdef CHERYL_DEMO_TGUI
     std::unique_ptr<DemoUi> ui_;
-#else
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+    std::unique_ptr<DemoRmlUi> rml_ui_;
+#endif
+#if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
     static constexpr CE::Input::FocusId text_box = 1;
     CE::Input::CaptureLease text_capture_;
     CE::Input::FocusLease focus_;
@@ -133,12 +140,19 @@ public:
 #ifdef CHERYL_DEMO_TGUI
         ui_ = std::make_unique<DemoUi>(engine_, asset_root_);
 #endif
+#ifdef CHERYL_DEMO_RMLUI
+        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_, *font_path);
+#endif
     }
 
     void deinit() override {
+#ifdef CHERYL_DEMO_RMLUI
+        rml_ui_.reset();
+#endif
 #ifdef CHERYL_DEMO_TGUI
         ui_.reset(); // Runtime has joined simulation; widgets die before its backend.
-#else
+#endif
+#if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
         focus_.reset();
         text_capture_.reset();
 #endif
@@ -187,7 +201,7 @@ public:
                     return materials.get_asset(key);
                 });
             }
-#ifndef CHERYL_DEMO_TGUI
+#if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
             if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
                 button->phase == CE::Input::ButtonPhase::Press) {
                 if (focus_.owns_focus()) {
@@ -255,6 +269,12 @@ public:
             camera_.set_view_matrix(glm::mat4(1.0f));
         }
 #endif
+#ifdef CHERYL_DEMO_RMLUI
+        if (rml_ui_->update(tick, {updates_ + 1, clicks_, gamepad_presses_, wheel_, pan_.x, pan_.y})) {
+            pan_ = {0.0f, 0.0f};
+            camera_.set_view_matrix(glm::mat4(1.0f));
+        }
+#endif
         if (++updates_ == update_limit_ && stop_)
             stop_();
     }
@@ -273,30 +293,30 @@ public:
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
-        pass.add(
-            CE::Assets::resolve_text(
-                *font_,
-#ifdef CHERYL_DEMO_TGUI
-                std::format(
-                    "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
-                    "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                    "F2: UI text focus  Esc: release focus  F3: hide/show panel\nReload: {}\nUI: {}",
-                    mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, reload_error_, ui_->error()
-                ),
-#else
-                std::format(
-                    "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
-                    "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                    "F2: text focus  Enter/Esc: release focus\nArrows/Home/End: caret\nText [{}]: {}\nReload: {}",
-                    mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, focus_.owns_focus() ? "focused" : "unfocused", text_preview(),
-                    reload_error_
-                ),
-#endif
-                text, context
-            )
+        auto hud = std::format(
+            "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
+            "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
+            "Esc: release focus  Q: quit while gameplay has focus\nReload: {}",
+            mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, reload_error_
         );
 #ifdef CHERYL_DEMO_TGUI
+        hud += std::format("\nF2: TGUI text focus  F3: hide/show TGUI\nTGUI: {}", ui_->error());
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+        hud += std::format("\nF4: RmlUi text focus  F6: hide/show RmlUi\nRmlUi: {}", rml_ui_->error());
+#endif
+#if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
+        hud += std::format(
+            "\nF2: text focus  Enter/Esc: release focus\nArrows/Home/End: caret\nText [{}]: {}",
+            focus_.owns_focus() ? "focused" : "unfocused", text_preview()
+        );
+#endif
+        pass.add(CE::Assets::resolve_text(*font_, hud, text, context));
+#ifdef CHERYL_DEMO_TGUI
         ui_->write(frame);
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+        rml_ui_->write(frame);
 #endif
     }
 
@@ -321,7 +341,7 @@ private:
         };
     }
 
-#ifndef CHERYL_DEMO_TGUI
+#if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
     [[nodiscard]] std::string text_preview() const {
         // The current font atlas contains ASCII. Editing retains Unicode scalars;
         // display one fallback per unsupported scalar instead of pretending to shape text.

@@ -13,10 +13,11 @@ Unresolved artwork metadata is tracked separately in
   notification ownership before supporting simultaneous initialized native input
   adapters or reattachment to a different Windows window. `Init`/`Exit` share HID
   state, and Windows notifications retain the first native handle.
-- Complete TGUI's remaining composition/runtime/native acceptance and the selected
-  RmlUi 6.3 adapter proof. The neutral probe, controlled TGUI module checks and
-  basic native appearance/resizing are accepted; U9 remains open until independent
-  adapter and coexistence acceptance. See
+- Complete the UI adapters' remaining composition/native acceptance, selected
+  Engine/native input/stop checks and RmlUi executable/coexistence proof. Both
+  adapters are source-complete; the neutral probe, complete controlled TGUI suite
+  and basic native TGUI appearance/resizing are accepted. U9 remains open until
+  the remaining independent adapter and coexistence checks are accepted. See
   [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
 - Complete the remaining public-contract documentation, especially FileMgr indexing/
   borrowed lookups, system-font discovery/selection and display/window lifetime/

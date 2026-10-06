@@ -1,5 +1,9 @@
 # Selected owners register their reusable case targets before this assembly.
 cheryl_add_test_aggregate(all-tests EXPORT_SYMBOLS)
+if(TARGET Cheryl::UI::TGUI AND TARGET Cheryl::UI::RmlUi)
+    set(CHERYL_TEST_AGGREGATE all-tests)
+    add_subdirectory(ui-coexist)
+endif()
 get_property(project_aggregates GLOBAL PROPERTY CHERYL_TEST_AGGREGATES)
 foreach(project_aggregate IN LISTS project_aggregates)
     get_target_property(case_targets ${project_aggregate} CHERYL_TEST_CASE_TARGETS)

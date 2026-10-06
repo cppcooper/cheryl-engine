@@ -3,7 +3,8 @@
 `Cheryl::UI::RmlUi` is the optional, independently selected RmlUi 6.3 owner.
 It links `Cheryl::Engine` and `RmlUi::Core` with the stock FreeType font engine.
 The module provides native document sessions, portable input translation, CPU
-recording and retained scene upload. Native integration and acceptance are active in
+recording and retained scene upload. The optional demo view and assembly coexistence
+checks are source-complete; executable/native acceptance is active in
 [U9](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 
 The [requirements](../../../../docs/planning/rmlui-adapter-requirements.md) define
@@ -109,7 +110,8 @@ belongs to Cheryl's clip/projection playback. `update_time` advances the supplie
 simulation duration and updates native layout/animation. `record` updates pending
 authoring/input changes before rendering without advancing the clock again.
 
-`request_keyboard_focus` obtains Events/Text routing for this session's target.
+The session holds Events capture. `request_keyboard_focus` acquires Text capture
+and a keyboard routing lease for its target.
 `handle_input` observes modifier snapshots but delivers keyboard/text only for its
 requested epoch. Poll-latched records drain before focus preemption clears native
 editing. Pointer delivery is caller-selected; mouse buttons and fractional wheel
@@ -126,3 +128,57 @@ session destruction. After the runtime joins simulation, `close_after_quiescence
 permits final platform-owner teardown. Native contexts and font globals shut down
 while interface/font storage is still live. CPU recordings and uploaded Cheryl
 frames retain their own geometry/pixels/resources independently.
+
+## Acceptance procedure
+
+Run the new checks once in the existing native/OpenGL profile, with tests and both
+UI adapters selected. `demo` also requires native input. From the repository root:
+
+```sh
+git submodule update --init extern/rmlui
+cmake -S . -B build/debug -DCHERYL_BUILD_UI_RMLUI=ON \
+  -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+nice -n 19 cmake --build build/debug --parallel 1 \
+  --target demo ui-rmlui-all ui-coexist-tests engine-tests native-glfw-tests
+```
+
+After the build, run these focused checks when the machine has cooled:
+
+```sh
+./build/debug/ui-rmlui-all
+./build/debug/ui-coexist-tests
+./build/debug/engine-tests \
+  --gtest_filter='runtime_contract.*:input_capture.portable_buttons:tick_context.unbound_stop'
+./build/debug/native-glfw-tests --gtest_filter='glfw_bindings.portable_*'
+```
+
+`ui-coexist-tests` belongs to `projects/tests/`, and also joins the combined
+`all-tests` runner. It checks poll-latched text delivery, focus preemption and
+stale-lease release across both native toolkits, distinct alpha passes, and frames
+retained through independent toolkit/provider teardown. Do not run both runners
+for the same cases. The accepted TGUI suite needs no repeat for this batch.
+
+An independently configured consumer establishes standalone source composition
+and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
+after the root checks settle, so any fixes precede a separate compilation:
+
+```sh
+cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer \
+  -DCMAKE_BUILD_TYPE=Release -DCHERYL_ENGINE_SOURCE="$PWD" \
+  -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
+nice -n 19 cmake --build build/rmlui-consumer --parallel 1 \
+  --target cheryl-ui-rmlui-consumer
+./build/rmlui-consumer/cheryl-ui-rmlui-consumer
+```
+
+For TGUI's remaining standalone acceptance, configure its `tests/consumer/` entry
+point similarly, with `CHERYL_TGUI_SOURCE` and `cheryl-ui-tgui-consumer`. Reuse an
+existing independent build where available. Root consumers alone do not prove
+isolation; supplied-target/package composition needs its own check when used.
+
+Follow the [demo procedure](../../../apps/demo/README.md#interaction-checks) in
+normal and `--concurrent` modes for native alpha/orientation, fonts, focus,
+scrolling, bounded resize/DPI, image replacement and shutdown. Controlled cases
+do not establish compositor behavior, physical input or GPU resource retirement.
+Report skipped/unselected checks separately; U9 closes only after its remaining
+coverage is accepted.

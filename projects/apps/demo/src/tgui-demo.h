@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ui-status.h"
+
 #include <core/game-framework/tick-context.h>
 #include <core/rendering/render-frame.h>
 
@@ -11,15 +13,6 @@
 namespace CE::Engine {
     class EngineContext;
 }
-
-struct DemoUiStatus {
-    std::uint64_t updates;
-    std::uint64_t clicks;
-    std::uint64_t gamepad_presses;
-    double wheel;
-    float pan_x;
-    float pan_y;
-};
 
 // Application-owned presentation; Game keeps only neutral status and actions.
 class DemoUi final {

@@ -3,9 +3,10 @@
 A UI adapter is an optional module that translates a toolkit into Cheryl's
 existing input, render and resource contracts. The toolkit owns its widgets,
 documents, styling and layout. Engine does not include toolkit headers or select
-an adapter. The [TGUI module](../../projects/modules/ui/tgui/README.md) provides a
-working example; its public classes are toolkit-specific, not requirements for
-other adapters.
+an adapter. The [TGUI](../../projects/modules/ui/tgui/README.md) and
+[RmlUi](../../projects/modules/ui/rmlui/README.md) modules provide independent
+examples. Their public classes are toolkit-specific, not requirements for other
+adapters.
 
 ## Module and application ownership
 
@@ -35,6 +36,20 @@ validates their vertex layout, topology, alpha/depth/culling state, projection
 semantic and texture parameters. It does not create OpenGL pipelines or query a
 native context. Font rasterization may belong to the toolkit; its resulting atlas
 still follows the same CPU-copy and resource-publication boundary.
+
+The independent implementations differ where their toolkits differ:
+
+| Concern | TGUI | RmlUi |
+| --- | --- | --- |
+| Authoring | Native GUI/widgets; optional typed numeric placement and resizing. | Native context/documents; RML and RCSS layout, including percentage bounds and flex. |
+| Alpha | Straight vertex/image RGBA and `StraightAlpha` materials. | Premultiplied output and `PremultipliedAlpha` materials; file images convert once. |
+| Fonts | Guarded FreeType backend and embedded default font. | Stock Core FreeType engine and explicitly registered owned font files/bytes. |
+| Toolkit lifetime | One guarded process-global backend. | One guarded Core initialization with contexts and interfaces. |
+
+Existing Engine contracts cover both initial scopes. Their CPU recordings and
+uploaders remain toolkit-owned implementations; matching names do not justify a
+common widget or session API. The application chooses compatible materials and
+presentation order for each view.
 
 Unsupported renderer features need an explicit scope and failure/capability
 contract. Rectangular clipping does not establish arbitrary masks, filters,
@@ -99,3 +114,8 @@ record stream and select pointer recipients explicitly. Verify preemption withou
 record consumption or stale-lease interference, ordered retained passes, and
 resources surviving either toolkit's teardown. Keep shared functionality in
 Engine only when these independent implementations demonstrate its purpose.
+
+The repository's [coexistence suite](../../projects/tests/ui-coexist/CMakeLists.txt)
+owns that cross-project proof. The [demo](../../projects/apps/demo/README.md)
+selects either adapter or both and supplies separate focus controls. Each module's
+standalone consumer and implementation checks remain independent.

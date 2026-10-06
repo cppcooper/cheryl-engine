@@ -13,6 +13,8 @@ notes/
 *.log
 *.png
 !/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png
+!/assets/ui/quadrants.png
+!/assets/ui/quadrants-alt.png
 assets/**/*.txt
 assets/**/*.xcf
 assets/**/*.docx

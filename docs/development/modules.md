@@ -128,10 +128,12 @@ They have no native module link or display/device requirement. The new small run
 scenario covers input-to-frame transfer, presentation, teardown and session rejection;
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
-Each module owns its real implementation tests: `native-glfw-tests` and
-`opengl-tests`, plus `ui-tgui-tests` when selected. The TGUI input, CPU recording
-and controlled-provider scene cases need no native platform, graphics context or
-font file. `engine-acceptance`, `opengl-acceptance`,
+Each module owns its real implementation tests: `native-glfw-tests`,
+`opengl-tests`, `ui-tgui-tests` and `ui-rmlui-tests` when selected. UI checks use
+controlled engine adapters without native platforms or graphics contexts. TGUI
+session/runtime checks use its embedded font; RmlUi uses a selected real font
+fixture. The assembly owns `ui-coexist-tests` when both adapters are selected;
+neither module's tests depend on the other. `engine-acceptance`, `opengl-acceptance`,
 `cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
 default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
@@ -145,8 +147,8 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
 | `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
 | `ui-tgui-all` | The selected TGUI module's cases; remaining acceptance is tracked by U9. |
-| `ui-rmlui-all` | The selected RmlUi module's cases; implementation and acceptance are active U9 work. |
-| `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases. |
+| `ui-rmlui-all` | The selected RmlUi module's cases; executable acceptance remains in U9. |
+| `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases, plus assembly coexistence checks when both UI owners are selected. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes
 owner aggregates and the combined runner in the default build and CTest discovery.
@@ -163,9 +165,10 @@ each executable's main. No engine consumer receives module test hooks. Output
 executables and archives remain at the build root. Standalone modules provide their
 own owner aggregate without enabling other owners' test suites.
 
-`CHERYL_BUILD_CONSUMER_TESTS=ON` adds the independent Engine, selected Native GLFW
-and selected OpenGL consumers, with owner-specific first-include header probes.
-The engine probes include its neutral umbrellas; backend probes link their own module.
+`CHERYL_BUILD_CONSUMER_TESTS=ON` adds the independent Engine and selected module
+consumers, including UI owners, with owner-specific first-include header probes.
+The engine probes include its neutral umbrellas; module probes link their own
+public target and inherit its requirements.
 
 ## Crash and exception traces
 

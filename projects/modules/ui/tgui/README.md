@@ -4,8 +4,8 @@
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, FreeType fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials. Remaining composition, controlled runtime and native widget acceptance
-are tracked in the
+application materials. Remaining composition and native widget acceptance are
+tracked in the
 [U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
@@ -254,12 +254,12 @@ packets into owned retained frames and release them after toolkit/game/provider
 teardown. Window reads and uploads require the platform owner; GUI recording and
 frame preparation require the simulation owner. Renderer observations coordinate
 replacement and shutdown, with a bounded window deadline rather than sleeps.
-These cases are authored and still need executable acceptance. They do not establish
-native GPU resource retirement or compositor behavior.
+Both runtime cases are accepted as part of the complete module suite. They do not
+establish native GPU resource retirement or compositor behavior.
 
 Independent consumer/header composition and native pixels also require the remaining
-U9 acceptance. Reuse accepted input/recording/scene/session results; promise-based
-adoption and serial toolkit-teardown checks alone do not establish runtime handoff.
+U9 acceptance. Reuse the accepted complete module suite unless related source
+changes require a rerun. A root build does not establish standalone composition.
 
 To build the focused checks in a standalone source composition:
 
@@ -274,6 +274,7 @@ nice -n 19 cmake --build build-ui-tgui --parallel 1 \
 ./build-ui-tgui/cheryl-ui-tgui-consumer
 ```
 
-Batch the changed Engine/native input cases with this validation when their
-executable acceptance is needed. Reuse existing directories and avoid repeating
-the accepted neutral rendering probe or aggregate suites.
+For the remaining U9 checks, use the
+[focused batch](../rmlui/README.md#acceptance-procedure) and this module's independent
+consumer. Reuse existing directories and avoid repeating the accepted TGUI suite
+or neutral rendering probe.

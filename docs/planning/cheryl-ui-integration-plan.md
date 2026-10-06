@@ -133,8 +133,9 @@ rather than a gameplay rewrite.
 The [main development plan's U9](develop-review-and-development-plan.md#u9--prove-generic-ui-facing-facilities-with-a-real-adapter)
 owns prerequisites and ordering with the module acceptance work. The
 [neutral probe](../development/ui-probe.md) establishes the rendering, resource and
-input baseline. The [TGUI module](../../projects/modules/ui/tgui/README.md) owns the
-adapter's current source contracts; session and executable acceptance remain below.
+input baseline. The [TGUI](../../projects/modules/ui/tgui/README.md) and
+[RmlUi](../../projects/modules/ui/rmlui/README.md) module guides own their current
+source contracts. Remaining composition and native acceptance stays below.
 
 Follow these steps in order and update their status while U9 remains active.
 
@@ -198,9 +199,9 @@ Follow these steps in order and update their status while U9 remains active.
     - [x] Upload a complete recording through the platform submission endpoint;
       retain the previous scene until a new result is ready, and preserve it on
       upload failure/cancellation. Add owner-local recording/resource checks.
-    Controlled module checks establish recording/resource behavior and FreeType
-    glyph growth. Actual queued runtime execution and native appearance remain
-    acceptance work.
+    Controlled module and queued runtime checks establish recording/resource
+    behavior, FreeType glyph growth and retained playback. Remaining native
+    coverage follows the demo procedure.
   - [x] Implement the simulation-owned toolkit session and GUI lifecycle, focus
     leases, modifier snapshots, explicit timing/view updates and capabilities.
     Configure toolkit view/input in logical units and supply copied framebuffer
@@ -231,8 +232,9 @@ Follow these steps in order and update their status while U9 remains active.
   behavior as well as appearance.
   The demo provides these widgets. Keep visual inspection separate from native
   input/focus, resize/DPI and teardown acceptance.
-  - [x] Clarify the demo's Escape help as releasing keyboard focus and document
-    the window close control as the way to end the demo.
+  - [x] Clarify the demo's Escape help as releasing keyboard focus; Q requests
+    orderly runtime shutdown while gameplay owns keyboard input. The window's
+    close control also ends the demo.
   - [x] Accept the demo's visual appearance, including the top TGUI badge fully
     inside its parent panel's content clip. Retain parent clipping for child
     widgets and scrolling.
@@ -261,17 +263,20 @@ Follow these steps in order and update their status while U9 remains active.
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,
   resources, rendering, routed input, platform capabilities and module selection.
   - [x] Write the [adapter-author guide](../development/ui-adapters.md) from current
-    engine and TGUI contracts. Toolkit-specific authoring stays in the module;
-    independent second-adapter findings remain open.
+    engine and both independent adapter contracts. Toolkit-specific authoring
+    stays in its module; no additional generic engine seam is required by the
+    initial RmlUi scope.
   - [x] Author module-owned sequential/concurrent runtime checks with a real TGUI
     session and platform queue, controlled engine adapters, immutable image
     replacement and frames retained through toolkit teardown.
   - [x] Expose `tick.request_stop()` through runtime-owned stop state and author
     Engine contract checks for sequential/concurrent game shutdown, repeated
     requests, stop before run, saved-source lifetime and unbound manual ticks.
-  - [ ] Accept those controlled runtime checks alongside the remaining consumer
-    and copied-window/input/stop checks in a focused batch. Keep native interaction,
-    resource playback and shutdown coverage separate from controlled acceptance.
+  - [x] Accept both controlled TGUI runtime modes as part of the complete module
+    suite. Reuse that acceptance unless related source changes require a rerun.
+  - [ ] Accept the remaining independent consumer/header composition and selected
+    copied-window/input/stop checks. Keep native interaction, resource playback
+    and shutdown coverage separate from controlled acceptance.
 - [ ] **6. Prove the independent RmlUi adapter.** Implement its
   [requirements](rmlui-adapter-requirements.md), then prove independent composition
   and the same retained render/resource/input/lifetime boundaries without
@@ -292,9 +297,20 @@ Follow these steps in order and update their status while U9 remains active.
     independent consumer/header probes. Test retained recordings/frames through
     toolkit teardown before native integration. Source coverage is ready;
     executable acceptance remains below.
-  - [ ] Add a native demo view and cross-project TGUI/RmlUi focus/coexistence proof.
+  - [x] Add a native demo view and cross-project TGUI/RmlUi focus/coexistence proof.
+    The demo selects either toolkit independently. Its left RmlUi view uses native
+    RML/RCSS bounded percentage sizing and flex layout; the right TGUI view keeps
+    typed numeric layout. The assembly-owned check covers poll-latched preemption,
+    distinct blend modes and retained resources through independent teardown.
+    Executable and native acceptance remains below.
   - [ ] Accept the focused RmlUi, composition, runtime, coexistence and native
     checks while reusing accepted TGUI coverage for unaffected behavior.
+
+Use the [focused acceptance procedure](../../projects/modules/ui/rmlui/README.md#acceptance-procedure)
+for the new module, coexistence and standalone checks, and the
+[demo interaction procedure](../../projects/apps/demo/README.md#interaction-checks)
+for native appearance, focus, resizing and shutdown. Do not repeat the accepted
+TGUI module suite to establish unrelated RmlUi coverage.
 
 TGUI acceptance is an intermediate checkpoint. The second adapter may remain
 incomplete while other independent work proceeds, but U9 stays open until both
