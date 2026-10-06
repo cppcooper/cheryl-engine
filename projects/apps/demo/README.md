@@ -136,6 +136,7 @@ touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
 
 The controlled TGUI input/layout/recording/scene/session checks are accepted. The
+demo's visual appearance and basic UI resizing are also accepted. The
 controlled runtime cases, independent composition and native resize/widget/lifetime
 acceptance remain in
 [U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).

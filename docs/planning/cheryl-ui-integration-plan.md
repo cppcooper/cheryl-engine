@@ -248,6 +248,7 @@ Follow these steps in order and update their status while U9 remains active.
     - [x] Configure wider bounded width/height resizing in the demo. Anchor
       the image row at the bottom and let the list fill the available middle space.
     - [x] Accept the focused layout cases.
+    - [x] Accept visible resizing of the demo UI.
     - [ ] Inspect the changed demo's anchors, bounds, clipping and input positions
       across resize/DPI in both runtime modes.
       Reuse the accepted rendering/widget baseline for unaffected behavior.
@@ -258,6 +259,9 @@ Follow these steps in order and update their status while U9 remains active.
   Establish retained/concurrent frame and resource-teardown acceptance, then write
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,
   resources, rendering, routed input, platform capabilities and module selection.
+  - [x] Write the [adapter-author guide](../development/ui-adapters.md) from current
+    engine and TGUI contracts. Toolkit-specific authoring stays in the module;
+    independent second-adapter findings remain open.
   - [x] Author module-owned sequential/concurrent runtime checks with a real TGUI
     session and platform queue, controlled engine adapters, immutable image
     replacement and frames retained through toolkit teardown.

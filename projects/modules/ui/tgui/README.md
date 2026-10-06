@@ -13,6 +13,8 @@ and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Publi
 headers expose TGUI's native GUI/widget API; Engine headers never include TGUI. The
 [requirements](../../../../docs/planning/tgui-adapter-requirements.md) define the
 materials, font ownership, upload/lifetime and platform decisions for the adapter.
+The [adapter-author guide](../../../../docs/development/ui-adapters.md) describes
+the engine boundaries used by independently implemented UI modules.
 
 ## Contents
 
