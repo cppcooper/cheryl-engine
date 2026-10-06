@@ -230,6 +230,11 @@ Follow these steps in order and update their status while U9 remains active.
   behavior as well as appearance.
   The demo provides these widgets; source availability does not establish their
   native appearance or behavior.
+  - [x] Clarify the demo's Escape help as releasing keyboard focus and document
+    the window close control as the way to end the demo.
+  - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
+    the desktop's touchpad suppression disabled, following the
+    [demo procedure](../../projects/apps/demo/README.md).
 - [ ] **5. Establish lifetime acceptance and document the adapter contract.**
   Establish retained/concurrent frame and resource-teardown acceptance, then write
   the adapter-author guide in current-state documentation. Cover lifecycle/affinity,

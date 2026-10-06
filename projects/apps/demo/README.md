@@ -14,10 +14,11 @@ The panel has live counters, a camera-reset button, an editable field, a scrolli
 list, nested/overlapping translucent panels, a replaceable image and a tooltip near
 the window edge. Click a widget or press F2 to acquire exclusive keyboard focus;
 Escape or a click outside releases it. F2 toggles text focus, and F3 hides/shows the
-panel. Text editing uses committed Unicode input with the toolkit's embedded font;
-clipboard/IME services remain unavailable. Gamepad State continues independently
-of keyboard focus. Pointer delivery is explicitly selected while the panel is
-visible and does not suppress gameplay mouse State.
+panel. Close the window to end the demo. Text editing uses committed Unicode input
+with the toolkit's embedded font; clipboard/IME services remain unavailable.
+Gamepad State continues independently of keyboard focus. Pointer delivery is
+explicitly selected while the panel is visible and does not suppress gameplay
+mouse State.
 
 `Game` passes a neutral status model to `DemoUi` and receives a camera-reset action.
 `DemoUi` builds its OpenGL materials on platform during initialization, then creates
@@ -40,3 +41,8 @@ uploads and teardown. For visual acceptance, exercise text/focus, scrolling,
 image replacement and the edge tooltip; resize the
 window across available content scales. Finite runs alone do not prove interaction,
 appearance or retained native resource behavior through those changes.
+
+For simultaneous keyboard/pointer checks, use a separate mouse or disable the
+desktop's touchpad "Disable while typing" setting. That setting can suppress
+touchpad motion after key presses; see
+[libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).

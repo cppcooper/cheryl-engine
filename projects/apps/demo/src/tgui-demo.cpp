@@ -111,7 +111,7 @@ struct DemoUi::State {
         auto title = label("Cheryl UI", 24);
         title->setPosition({18, 12});
         panel->add(title);
-        auto instructions = label("F2: edit   Esc: leave   F3: hide/show");
+        auto instructions = label("F2: edit   Esc: release focus   F3: hide/show");
         instructions->setPosition({18, 48});
         panel->add(instructions);
         status_label = label("");

@@ -275,14 +275,14 @@ public:
                 std::format(
                     "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
                     "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                    "F2: UI text focus  Esc: leave  F3: hide/show panel\nReload: {}\nUI: {}",
+                    "F2: UI text focus  Esc: release focus  F3: hide/show panel\nReload: {}\nUI: {}",
                     mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, reload_error_, ui_->error()
                 ),
 #else
                 std::format(
                     "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
                     "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
-                    "F2: text focus  Enter/Esc: leave  Arrows/Home/End: caret\nText [{}]: {}\nReload: {}",
+                    "F2: text focus  Enter/Esc: release focus\nArrows/Home/End: caret\nText [{}]: {}\nReload: {}",
                     mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, focus_.owns_focus() ? "focused" : "unfocused", text_preview(),
                     reload_error_
                 ),
