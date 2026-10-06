@@ -4,6 +4,18 @@ Start with [runtime architecture and backend boundaries](runtime/runtime-archite
 for an overview of the engine and application APIs. The documents below cover
 individual systems, development practices, and unfinished work.
 
+For setup and build options, start with the [root README](../README.md).
+For a running application and controls, use the [demo guide](../projects/apps/demo/README.md).
+
+## Contents
+
+- [Runtime](#runtime)
+- [Assets](#assets)
+- [Rendering](#rendering)
+- [Resources](#resources)
+- [Development](#development)
+- [Planning](#planning)
+
 ## Runtime
 
 - [Runtime architecture and backend boundaries](runtime/runtime-architecture.md)
@@ -41,11 +53,16 @@ individual systems, development practices, and unfinished work.
 - [Logging acceptance](development/logging-acceptance.md)
 - [Consuming the engine](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
+- [Module index and owner guides](../projects/modules/README.md)
+- [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
+- [Neutral UI probe](development/ui-probe.md)
 - [Desktop smoke checks](development/native-desktop-checks.md)
 
 ## Planning
 
 - [Develop review and development plan](planning/develop-review-and-development-plan.md)
+- [UI integration checklist](planning/cheryl-ui-integration-plan.md)
+- [TGUI requirements and decisions](planning/tgui-adapter-requirements.md)
 - [Module boundaries and initial setup](planning/subsystem-modules-plan.md)
 - [Groundwork and module extraction plan](planning/module-groundwork-and-extraction-plan.md)
 - [Unfinished engine work](planning/todo.md)

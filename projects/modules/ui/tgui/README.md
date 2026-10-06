@@ -14,12 +14,24 @@ headers expose TGUI's native GUI/widget API; Engine headers never include TGUI. 
 [requirements](../../../../docs/planning/tgui-adapter-requirements.md) define the
 materials, font ownership, upload/lifetime and platform decisions for the adapter.
 
+## Contents
+
+- [Selection and dependency](#selection-and-dependency)
+- [Session ownership](#session-ownership)
+- [Input translation](#input-translation)
+- [Recording and publication](#recording-and-publication)
+- [Focused checks](#focused-checks)
+
 ## Selection and dependency
 
 At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently of
 native/graphics selection. Set it to `OFF` to omit the target and its toolkit/font
 dependencies. Link the application to
 `Cheryl::UI::TGUI`; its Engine and toolkit requirements propagate through the target.
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::UI::TGUI)
+```
 
 The module reuses an existing `TGUI::TGUI` target. Otherwise it uses an explicit
 `CHERYL_TGUI_SOURCE`, an explicit package location in `TGUI_DIR`, the pinned
@@ -176,7 +188,7 @@ real label. Independent consumer/header composition, actual queued runtime/concu
 handoff and native pixels require the remaining U9 acceptance; promise-based
 adoption and serial toolkit-teardown checks do not prove those paths.
 
-After explicit build/test authorization, a standalone source composition is:
+To build the focused checks in a standalone source composition:
 
 ```sh
 cmake -S projects/modules/ui/tgui -B build-ui-tgui \

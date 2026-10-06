@@ -4,6 +4,33 @@
 engine's neutral contracts. It owns the entire OpenGL implementation, generated
 GLAD, context operations and the GLFW/OpenGL assembly factory.
 
+## Selection and composition
+
+The root selects this owner with `CHERYL_BUILD_OPENGL=ON`, which requires
+`CHERYL_BUILD_NATIVE_GLFW=ON`. Applications link `Cheryl::OpenGL` to inherit its
+Engine, Native GLFW and generated GLAD requirements:
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::OpenGL)
+```
+
+From the repository root, a standalone build reuses supplied Engine/Native GLFW
+targets or bootstraps the explicitly selected owners:
+
+```sh
+cmake -S projects/modules/graphics/opengl -B build/opengl-module \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCHERYL_ENGINE_SOURCE=/absolute/path/to/cheryl-engine \
+  -DCHERYL_NATIVE_GLFW_SOURCE=/absolute/path/to/cheryl-engine/projects/modules/platform/native-glfw
+cmake --build build/opengl-module --target cheryl_opengl --parallel 1
+```
+
+System OpenGL development files and Python/Jinja2 for GLAD are required. Native
+window/input dependencies follow the selected Native GLFW configuration; see the
+[dependency table](../../../../README.md#dependencies).
+
+## Engine contracts
+
 | Engine contract | Implementation | Responsibility |
 | --- | --- | --- |
 | [`CE::RenderAPIs::iRenderer`](../../../engine/include/cheryl/core/rendering/renderer.h) | [`OpenGLRenderer`](include/cheryl/backends/opengl/renderer.h) | Consume published render frames and maintain graphics resources on their owner. |
@@ -19,9 +46,18 @@ selection and entry-point lookup. That extension belongs to this graphics owner.
 Its public headers retain the existing `backends/opengl/` spelling; implementation
 and private helpers live together under `src/backends/opengl/`.
 
-`tests/unit/` owns mock GL implementation checks. `tests/acceptance/` owns opt-in
-native graphics checks, and `tests/consumer/` owns link/header probes. These maps
-describe implementation ownership; executable extraction acceptance remains pending.
+## Checks
+
+| Target / directory | Coverage |
+| --- | --- |
+| `opengl-tests`, `tests/unit/` | Mock GL implementation checks without a graphics context. |
+| `opengl-acceptance`, `tests/acceptance/` | Native graphics/runtime checks when native input is selected. Requires `CHERYL_NATIVE_GL_TESTS=1` and a usable display for native cases. |
+| `opengl-all`, `tests/all-tests/` | All selected owner GoogleTests. |
+| `cheryl-opengl-consumer`, `tests/consumer/` | Link and first-include header probes selected with `CHERYL_BUILD_CONSUMER_TESTS=ON`. |
+
+Native and fixture opt-ins apply to the aggregate too. Mock checks or skipped
+native cases do not establish driver, compositor or physical-device behavior.
 
 Target selection, standalone paths and the shared-engine dependency are in
-[the module guide](../../../../docs/development/modules.md).
+[the module guide](../../../../docs/development/modules.md) and
+[architecture validation](../../../../docs/development/architecture-validation.md).

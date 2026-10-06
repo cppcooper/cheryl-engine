@@ -1,24 +1,82 @@
 # Cheryl Engine demo
 
 The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`.
-WASD pans the camera, R resets it and F5 queues a shader reload while retaining the
-previous material until replacement succeeds. `--concurrent` selects the separate
-simulation owner; `--max-updates=N` makes a finite run.
+Selecting `Cheryl::UI::TGUI` adds a toolkit panel with live counters, a camera-reset
+button, an editable field, a scrolling list, translucent panels, a replaceable image
+and an edge tooltip.
 
-When `Cheryl::UI::TGUI` is selected, the demo also links that optional module and
-shows a TGUI panel. Set `CHERYL_BUILD_UI_TGUI=ON` and reload CMake in existing
-profiles which cache it as `OFF`. Disabling the module retains the original
-toolkit-free demo and its small F2 text-input probe.
+## Build and launch
 
-The panel has live counters, a camera-reset button, an editable field, a scrolling
-list, nested/overlapping translucent panels, a replaceable image and a tooltip near
-the window edge. Click a widget or press F2 to acquire exclusive keyboard focus;
-Escape or a click outside releases it. F2 toggles text focus, and F3 hides/shows the
-panel. Close the window to end the demo. Text editing uses committed Unicode input
-with the toolkit's embedded font; clipboard/IME services remain unavailable.
-Gamepad State continues independently of keyboard focus. Pointer delivery is
-explicitly selected while the panel is visible and does not suppress gameplay
-mouse State.
+From the repository root, with the [dependencies](../../../README.md#dependencies)
+initialized:
+
+```sh
+cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+cmake --build build/release --target demo --parallel 1
+./build/release/demo
+./build/release/demo --concurrent
+```
+
+`demo` exists when OpenGL and native input are enabled. TGUI is enabled by default;
+set `CHERYL_BUILD_UI_TGUI=ON` and reload CMake if an existing profile caches it as
+`OFF`. Disabling TGUI retains the toolkit-free F2 text-input probe.
+
+The HUD uses a discoverable system font and shaders from the asset root. TGUI uses
+its embedded default font. The full image tree is needed only with `--full-assets`;
+its PNG files are not tracked. The default asset root is the checkout's `assets/`.
+A positional argument selects another root:
+
+```sh
+./build/release/demo --concurrent /path/to/assets
+```
+
+## Controls
+
+| Input | Behavior |
+| --- | --- |
+| WASD | Pans the camera while gameplay owns keyboard input. |
+| R | Resets the camera while gameplay owns keyboard input. |
+| F5 | Queues shader reload while gameplay owns keyboard input; the previous material remains until replacement succeeds. |
+| F2 | Toggles text focus; with TGUI, selects the edit box when the panel is visible. |
+| Escape | Releases keyboard focus. Close the window to end the demo. |
+| Enter | Releases focus in the toolkit-free text probe. |
+| F3 | Hides/shows the TGUI panel; hiding releases its keyboard focus. |
+| Left click | Acquires UI focus when a widget is hit; clicking outside releases it. Also updates the gameplay click counter. |
+| Wheel | Scrolls the hovered list and updates the wheel counter. |
+| Arrows, Home/End, Backspace/Delete | Edits focused text. |
+| Tab | Navigates TGUI widgets when UI keyboard focus is held. |
+| Gamepad A | Updates the gameplay press counter independently of keyboard focus. |
+
+Committed Unicode text reaches TGUI's embedded font; clipboard and IME services
+remain unavailable. Pointer delivery is selected while the panel is visible and
+does not suppress gameplay mouse State. Escape means release focus throughout the
+on-screen instructions.
+
+## Command-line options
+
+| Argument | Effect |
+| --- | --- |
+| `/path/to/assets` | Replaces the default asset root. |
+| `--full-assets` | Also loads the manifest/image tree. |
+| `--concurrent` | Runs simulation on its separate owner thread. |
+| `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
+| `--fixed` | Selects fixed-step simulation. |
+| `--fixed-step-ms=N` | Selects fixed simulation and sets its step in milliseconds. |
+| `--variable-interval-ms=N` | Sets the variable-update interval in milliseconds. |
+| `--max-fixed-updates=N` | Limits ordinary fixed updates per scheduler turn. |
+| `--variable-catch-up` | Selects fixed simulation with variable catch-up recovery. |
+| `--recovery-prefix=N` | Sets the fixed-update prefix before recovery. |
+| `--recovery-cap-ms=N` | Caps the recovery update's simulated duration. |
+| `--input-unlimited` | Removes the finite pending-input-poll admission limit. |
+| `--input-capacity=N` | Selects finite input polling with the given backlog capacity. |
+| `--input-spacing-ms=N` | Sets the minimum input-poll spacing in milliseconds. |
+
+See [simulation timing](../../../docs/runtime/simulation-timing.md) and
+[input polling](../../../docs/runtime/input-state-model.md) for policy constraints
+and defaults. A finite run checks startup/updates/shutdown; it does not establish
+visual or interactive behavior.
+
+## UI ownership and uploads
 
 `Game` passes a neutral status model to `DemoUi` and receives a camera-reset action.
 `DemoUi` builds its OpenGL materials on platform during initialization, then creates
@@ -30,19 +88,29 @@ HUD. Frame preparation appends that retained UI scene after the world/HUD pass;
 it never traverses live widgets. Teardown follows the runtime's simulation join and
 releases application-held widgets before the global toolkit backend.
 
-The adapter's controlled module checks are accepted; downstream composition and
-native demo acceptance remain in
-[U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
-Once builds/tests are explicitly authorized, reuse an existing Debug build and
-batch the affected demo/consumer targets with one low-priority build job. Reuse
-accepted module results unless new changes require a rerun. Run the independent
-consumer, then use a short normal and `--concurrent` demo run to check startup,
-uploads and teardown. For visual acceptance, exercise text/focus, scrolling,
-image replacement and the edge tooltip; resize the
-window across available content scales. Finite runs alone do not prove interaction,
-appearance or retained native resource behavior through those changes.
+## Interaction checks
+
+Repeat this sequence in normal and `--concurrent` modes, without `--max-updates`:
+
+1. Check label/font appearance, panel transparency, overlap and clipping.
+2. Click the field or press F2. Type, move the caret and delete text; typing WASD
+   should edit text without moving the camera. Press Escape, then check camera input.
+3. Scroll the list, reset the camera and change the image. Confirm counters and
+   retained UI content continue updating.
+4. Hover the bottom-right `?` tooltip, resize the window and, where available, move
+   it between displays with different content scales. Check layout, input hit
+   positions and clip edges.
+5. Hide/show the panel with F3, including while editing. Hiding releases text focus.
+6. Close the window while UI updates/uploads are active. Check orderly shutdown
+   in both modes.
 
 For simultaneous keyboard/pointer checks, use a separate mouse or disable the
 desktop's touchpad "Disable while typing" setting. That setting can suppress
 touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
+
+The controlled TGUI module checks are accepted. Independent composition and native
+widget/runtime/lifetime acceptance remain in
+[U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
+Reuse those accepted module results unless related source changes require a rerun;
+batch any needed demo/consumer builds with one low-priority job.

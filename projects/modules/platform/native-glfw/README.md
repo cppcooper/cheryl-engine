@@ -4,6 +4,42 @@
 input. It implements the engine's display and input contracts from one platform
 owner, which also manages GLFW lifetime and native callback diagnostics.
 
+## Selection and composition
+
+The root selects this owner with `CHERYL_BUILD_NATIVE_GLFW=ON`. Set
+`CHERYL_BUILD_OPENGL=OFF` to use the platform module without Cheryl's graphics
+backend; TGUI selection is independent. Applications link:
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::NativeGLFW)
+```
+
+Engine and the public Gainput headers propagate through the target. GLFW stays a
+private dependency. Selection options for a fresh module configuration are:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input and its Linux X11 requirement. |
+| `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW target without X11/Wayland. Disable native input as well to omit Gainput/X11. |
+| `CHERYL_BUILD_TESTS` | `OFF` standalone; `ON` at root | Selects this owner's implementation checks. |
+
+From the repository root, a standalone build can bootstrap an explicit Engine
+checkout without selecting other integration owners:
+
+```sh
+cmake -S projects/modules/platform/native-glfw -B build/native-module \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCHERYL_ENGINE_SOURCE=/absolute/path/to/cheryl-engine
+cmake --build build/native-module --target cheryl_native_glfw --parallel 1
+```
+
+On Linux, bundled GLFW enables both X11 and Wayland; use
+`GLFW_BUILD_WAYLAND=OFF` for X11 only. See the root
+[dependency table](../../../../README.md#dependencies) for system requirements and
+Gainput's optional HID fetch.
+
+## Engine contracts
+
 | Engine contract | Implementation | Responsibility |
 | --- | --- | --- |
 | [`CE::iDisplaySystem`](../../../engine/include/cheryl/core/display/display-system-interface.h) | [`CE::DisplaySystem`](include/cheryl/core/display/display-system.h) | Monitor snapshots, owned windows and active-window selection. |
@@ -34,6 +70,8 @@ suppresses Gainput samples/tests locally, including cached `ON` choices, without
 rewriting the host cache. The selected fork's `GAINPUT_ENABLE_HID` setting remains
 available; its HID support brings hidapi and the platform's HID development libraries.
 
+## Input lifetime and mapping
+
 The adapter calls Gainput `Init` before creating devices on its first window
 attachment, and `Exit` at adapter destruction. Windows initialization receives the
 GLFW window's native HWND; other platforms initialize the HID backend without a
@@ -52,3 +90,12 @@ without replaying Gainput notifications.
 
 Target selection, standalone paths and validation status are in
 [the module guide](../../../../docs/development/modules.md).
+
+## Checks
+
+With tests selected, `native-glfw-tests` covers mapping and callback diagnostics;
+`native-glfw-all` is the owner's aggregate. `CHERYL_BUILD_CONSUMER_TESTS=ON` adds
+`cheryl-native-glfw-consumer` and its first-include header probes. Native graphics
+runtime checks belong to the OpenGL owner's opt-in acceptance suite. Use the
+[composition procedures](../../../../docs/development/architecture-validation.md)
+when changing module boundaries.
