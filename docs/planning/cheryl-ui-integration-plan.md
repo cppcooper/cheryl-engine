@@ -282,9 +282,10 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Add the pinned dependency and optional owner with independent source,
     supplied-target/package composition and Engine-only isolation. Executable
     composition acceptance remains below.
-  - [ ] Implement owned compiled geometry/texture recording, clipping and complete
+  - [x] Implement owned compiled geometry/texture recording, clipping and complete
     retained-scene upload/adoption. Resolve orientation and unsupported behavior
-    before session/demo code depends on it.
+    before session/demo code depends on it. Controlled checks are authored;
+    executable alpha/orientation acceptance remains below.
   - [ ] Implement the owner-bound native context, font lifetime, explicit time/view
     updates, routed input and capability reporting.
   - [ ] Author module-local checks, real sequential/concurrent runtime checks and
