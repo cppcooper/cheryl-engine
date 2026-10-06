@@ -43,11 +43,13 @@ namespace CE::UI::TGUI {
             return result;
         }
 
-        RenderAPIs::ClipRegion2D clip_region(const tgui::FloatRect& viewport, const tgui::Vector2f size) {
-            RenderAPIs::ClipRegion2D clip{{viewport.left, viewport.top, static_cast<double>(viewport.left) + viewport.width,
-                                           static_cast<double>(viewport.top) + viewport.height},
-                                          size.x,
-                                          size.y};
+        RenderAPIs::ClipRect2D viewport_rectangle(const tgui::FloatRect& viewport) {
+            return {viewport.left, viewport.top, static_cast<double>(viewport.left) + viewport.width,
+                    static_cast<double>(viewport.top) + viewport.height};
+        }
+
+        RenderAPIs::ClipRegion2D clip_region(const RenderAPIs::ClipRect2D& rectangle, const tgui::Vector2f size) {
+            RenderAPIs::ClipRegion2D clip{rectangle, size.x, size.y};
             RenderAPIs::validate_clip_region(clip);
             return clip;
         }
@@ -104,7 +106,7 @@ namespace CE::UI::TGUI {
         const auto rounding = pixel_rounding(view, viewport, targetSize, pixel_scale_);
         tgui::BackendRenderTarget::setView(view, viewport, targetSize);
         configured_ = true;
-        clip_viewport_ = viewport;
+        clip_rectangle_ = viewport_rectangle(viewport);
         m_pixelsPerPoint = rounding;
     }
 
@@ -132,7 +134,7 @@ namespace CE::UI::TGUI {
         if (!configured_ || recording_)
             throw Exceptions::failed_operation(CE_HERE, "TGUI recording needs a configured target with no active recording");
         draws_.clear();
-        clip_viewport_ = m_viewport;
+        clip_rectangle_ = viewport_rectangle(m_viewport);
         recording_ = true;
     }
 
@@ -151,7 +153,7 @@ namespace CE::UI::TGUI {
     void RenderTarget::discard_recording() noexcept {
         draws_.clear();
         m_clipLayers.clear();
-        clip_viewport_ = m_viewport;
+        clip_rectangle_ = viewport_rectangle(m_viewport);
         recording_ = false;
     }
 
@@ -184,16 +186,16 @@ namespace CE::UI::TGUI {
             throw Exceptions::invalid_args(CE_HERE, "TGUI rotated clipping requires a mask contract");
         if (!drawable()) {
             m_clipLayers.emplace_back(tgui::FloatRect{}, tgui::FloatRect{});
-            clip_viewport_ = {};
+            clip_rectangle_ = {};
             return;
         }
         const auto old_size = m_clipLayers.size();
-        const auto old_clip = clip_viewport_;
+        const auto old_clip = clip_rectangle_;
         try {
             tgui::BackendRenderTarget::addClippingLayer(states, rect);
         } catch (...) {
             m_clipLayers.resize(old_size);
-            clip_viewport_ = old_clip;
+            clip_rectangle_ = old_clip;
             throw;
         }
     }
@@ -205,9 +207,28 @@ namespace CE::UI::TGUI {
         tgui::BackendRenderTarget::removeClippingLayer();
     }
 
-    void RenderTarget::updateClipping(const tgui::FloatRect, const tgui::FloatRect clipViewport) {
-        validate_rectangle(clipViewport);
-        clip_viewport_ = clipViewport;
+    void RenderTarget::updateClipping(const tgui::FloatRect clipRect, const tgui::FloatRect) {
+        validate_rectangle(clipRect);
+        if (!drawable() || clipRect.width == 0 || clipRect.height == 0) {
+            clip_rectangle_ = {};
+            return;
+        }
+        if (clipRect == m_viewRect) {
+            clip_rectangle_ = viewport_rectangle(m_viewport);
+            return;
+        }
+        // TGUI intersects in view space, then builds a float viewport whose
+        // accumulated error can turn an exact edge into an extra scissor pixel.
+        // Map each original edge once, retaining double precision until playback.
+        const auto horizontal = [&](const double edge) {
+            return m_viewport.left + ((edge - m_viewRect.left) * m_viewport.width / m_viewRect.width);
+        };
+        const auto vertical = [&](const double edge) {
+            return m_viewport.top + ((edge - m_viewRect.top) * m_viewport.height / m_viewRect.height);
+        };
+        clip_rectangle_ = {horizontal(clipRect.left), vertical(clipRect.top),
+                           horizontal(static_cast<double>(clipRect.left) + clipRect.width),
+                           vertical(static_cast<double>(clipRect.top) + clipRect.height)};
     }
 
     void RenderTarget::drawVertexArray(
@@ -219,10 +240,13 @@ namespace CE::UI::TGUI {
         const std::shared_ptr<tgui::BackendTexture>& texture
     ) {
         require_recording();
-        if (indexCount == 0)
+        if (!indices && indexCount != 0)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI index counts require index storage");
+        const auto count = indices ? indexCount : vertexCount;
+        if (count == 0)
             return;
-        if (!vertices || !indices || vertexCount == 0 || indexCount % 3 != 0)
-            throw Exceptions::invalid_args(CE_HERE, "TGUI recording needs complete indexed triangles");
+        if (!vertices || vertexCount == 0 || count % 3 != 0)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI recording needs complete triangles");
         validate_transform(states.transform);
         RecordedDraw draw;
         if (texture) {
@@ -231,14 +255,15 @@ namespace CE::UI::TGUI {
                 throw Exceptions::invalid_args(CE_HERE, "TGUI recording needs a loaded Cheryl texture");
             draw.texture = owned->snapshot();
         }
-        if (!drawable() || clip_viewport_.width == 0 || clip_viewport_.height == 0)
+        if (!drawable() || clip_rectangle_.left == clip_rectangle_.right || clip_rectangle_.top == clip_rectangle_.bottom)
             return;
-        draw.clip = clip_region(clip_viewport_, m_targetSize);
-        draw.vertices.reserve(indexCount);
-        for (std::size_t i = 0; i < indexCount; ++i) {
-            if (indices[i] >= vertexCount)
+        draw.clip = clip_region(clip_rectangle_, m_targetSize);
+        draw.vertices.reserve(count);
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto index = indices ? indices[i] : i;
+            if (index >= vertexCount)
                 throw Exceptions::invalid_args(CE_HERE, "TGUI triangle index exceeds its vertex storage");
-            const auto& source = vertices[indices[i]];
+            const auto& source = vertices[index];
             const auto position = states.transform.transformPoint(source.position);
             const float x = m_viewport.left + ((position.x - m_viewRect.left) / m_viewRect.width) * m_viewport.width;
             const float y = m_viewport.top + ((position.y - m_viewRect.top) / m_viewRect.height) * m_viewport.height;

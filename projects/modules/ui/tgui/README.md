@@ -120,8 +120,12 @@ toolkit setting would change appearance.
 `RenderTarget` receives a view, viewport and target extent in logical window units.
 Supply copied framebuffer/logical ratios through `set_pixel_scale` for toolkit
 pixel rounding. The target bakes transforms and view mapping into copied colored
-triangles, flips textured V coordinates to Cheryl's image convention, and retains
-intersected logical clips in draw order. Arbitrary rotated clipping rejects;
+triangles, accepting both indexed geometry and unindexed triangle lists used for
+glyphs. It flips textured V coordinates to Cheryl's image convention and retains
+intersected logical clips in draw order. Clip edges map directly from the toolkit's
+intersected view rectangle in double precision; an intermediate float viewport
+must not add a pixel to an exact edge. Genuine fractional edges still use Cheryl's
+conservative outward rounding during playback. Arbitrary rotated clipping rejects;
 rectangular/right-angle clipping follows the pinned toolkit's supported algorithm.
 Zero-sized views and empty clips record no draws. Changing a view/scale during
 recording or finishing unmatched clip layers rejects explicitly.
@@ -168,7 +172,7 @@ create their own custom backend and embedded font. They cover widget text routin
 focus epochs/preemption, modifier releases, pointer selection, unsupported clipboard
 shortcuts, copied view sizes, FreeType atlas growth/immutable generations and serial
 teardown after the UI owner stops. The independent consumer creates and records a
-real label. These checks are authored but unrun. Actual queued runtime/concurrent
+real label. Module acceptance awaits rerunning the recorder fixes. Actual queued runtime/concurrent
 handoff and native pixels remain U9 acceptance; promise-based adoption checks do
 not prove those paths.
 

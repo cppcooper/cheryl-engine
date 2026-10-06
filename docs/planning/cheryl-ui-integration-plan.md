@@ -219,6 +219,14 @@ Follow these steps in order and update their status while U9 remains active.
       The session/consumer checks are authored. The
       [demo procedure](../../projects/apps/demo/README.md) covers the selected
       panel, sequential/concurrent runs, interactions and visual coverage limits.
+      - [x] Correct the recorder findings exposed by the first module-suite run
+        before repeating executable acceptance.
+        - [x] Record TGUI's unindexed glyph triangles alongside indexed geometry;
+          keep incomplete triangle and invalid index rejection covered.
+        - [x] Map intersected view-space clip edges in double precision without
+          the intermediate float viewport; retain conservative fractional bounds.
+        Source fixes and regression cases are complete; executable acceptance
+        still requires rebuilding and rerunning the module suite.
   - [ ] Run the focused portable/native input and module acceptance once the
     executable gate blocks dependent work; keep source completion separate from
     that acceptance and reuse the already accepted rendering baseline.

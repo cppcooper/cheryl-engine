@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <limits>
 #include <memory>
 
@@ -128,6 +129,35 @@ TEST(ui_tgui_recording, retained_texture) {
     EXPECT_FLOAT_EQ(scene.draws()[0].vertices[2].v, 0);
 }
 
+TEST(ui_tgui_recording, triangle_list) {
+    RenderTarget target;
+    configure(target);
+    auto vertices = quad();
+    auto texture = std::make_shared<Texture>(32);
+    constexpr std::array<unsigned char, 4> pixels{255, 0, 0, 255};
+    ASSERT_TRUE(texture->loadTextureOnly({1, 1}, pixels.data(), true));
+    target.begin_recording();
+    target.drawTriangle({}, vertices[0], vertices[1], vertices[2]);
+    // Font drawing submits expanded triangles without an index buffer.
+    target.drawVertexArray({}, vertices.data(), 3, nullptr, 0, texture);
+    vertices.fill(tgui::Vertex{});
+    const auto scene = target.finish_recording();
+    ASSERT_EQ(scene.draws().size(), 2u);
+    for (const auto& draw : scene.draws()) {
+        ASSERT_EQ(draw.vertices.size(), 3u);
+        EXPECT_FLOAT_EQ(draw.vertices[0].x, 20);
+        EXPECT_FLOAT_EQ(draw.vertices[0].y, 30);
+        EXPECT_FLOAT_EQ(draw.vertices[1].x, 120);
+        EXPECT_FLOAT_EQ(draw.vertices[2].y, 80);
+        EXPECT_FLOAT_EQ(draw.vertices[0].r, 1);
+        EXPECT_FLOAT_EQ(draw.vertices[0].a, 128.0f / 255);
+    }
+    EXPECT_FALSE(scene.draws()[0].texture);
+    EXPECT_EQ(scene.draws()[1].texture, texture->snapshot());
+    EXPECT_FLOAT_EQ(scene.draws()[1].vertices[0].v, 1);
+    EXPECT_FLOAT_EQ(scene.draws()[1].vertices[2].v, 0);
+}
+
 TEST(ui_tgui_recording, nested_clips) {
     RenderTarget target;
     configure(target);
@@ -152,6 +182,35 @@ TEST(ui_tgui_recording, nested_clips) {
     target.setView({0, 0, 640, 480}, {0, 0, 640, 480}, {640, 480});
     EXPECT_EQ(scene.width(), 320);
     EXPECT_EQ(scene.draws()[0].clip.logical_width, 320);
+}
+
+TEST(ui_tgui_recording, scaled_clip) {
+    RenderTarget target;
+    target.setView({10, 20, 80, 50}, {20, 30, 100, 75}, {320, 240});
+    target.begin_recording();
+    target.addClippingLayer({}, {22, 30, 24, 20});
+    draw(target);
+    target.removeClippingLayer();
+    const auto scene = target.finish_recording();
+    ASSERT_EQ(scene.draws().size(), 1u);
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{35, 45, 65, 75}));
+    EXPECT_EQ(CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{70, 90, 130, 150}));
+}
+
+TEST(ui_tgui_recording, fractional_clip) {
+    RenderTarget target;
+    target.setView({0, 0, 320, 240}, {0, 0, 320, 240}, {320, 240});
+    const auto right = std::nextafter(1.0f, 2.0f);
+    target.begin_recording();
+    target.addClippingLayer({}, {0.25f, 0.25f, right - 0.25f, 1});
+    draw(target);
+    target.removeClippingLayer();
+    const auto scene = target.finish_recording();
+    ASSERT_EQ(scene.draws().size(), 1u);
+    // A real fractional edge just outside a pixel stays outside. Removing float
+    // viewport noise must not introduce snapping or weaken outward rounding.
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{0.25, 0.25, right, 1.25}));
+    EXPECT_EQ(CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{0, 0, 3, 3}));
 }
 
 TEST(ui_tgui_recording, empty_clip) {
@@ -200,11 +259,24 @@ TEST(ui_tgui_recording, invalid_draw) {
     EXPECT_THROW(target.drawVertexArray({}, vertices.data(), vertices.size(), bad.data(), bad.size(), {}), CE::Exceptions::invalid_args);
     EXPECT_THROW(target.drawVertexArray({}, vertices.data(), vertices.size(), bad.data(), 2, {}), CE::Exceptions::invalid_args);
     constexpr std::array<unsigned int, 3> indices{0, 1, 2};
+    EXPECT_THROW(target.drawVertexArray({}, vertices.data(), vertices.size(), nullptr, 0, {}), CE::Exceptions::invalid_args);
+    EXPECT_THROW(target.drawVertexArray({}, nullptr, 3, nullptr, 0, {}), CE::Exceptions::invalid_args);
+    EXPECT_THROW(target.drawVertexArray({}, vertices.data(), 3, nullptr, 3, {}), CE::Exceptions::invalid_args);
     vertices[0].position.x = std::numeric_limits<float>::quiet_NaN();
     EXPECT_THROW(
         target.drawVertexArray({}, vertices.data(), vertices.size(), indices.data(), indices.size(), {}), CE::Exceptions::invalid_args
     );
     EXPECT_EQ(target.finish_recording().draws().size(), 1u);
+}
+
+TEST(ui_tgui_recording, empty_draw) {
+    RenderTarget target;
+    configure(target);
+    target.begin_recording();
+    constexpr std::array<unsigned int, 3> indices{0, 1, 2};
+    target.drawVertexArray({}, nullptr, 0, nullptr, 0, {});
+    target.drawVertexArray({}, nullptr, 0, indices.data(), 0, {});
+    EXPECT_TRUE(target.finish_recording().draws().empty());
 }
 
 TEST(ui_tgui_recording, invalid_view) {

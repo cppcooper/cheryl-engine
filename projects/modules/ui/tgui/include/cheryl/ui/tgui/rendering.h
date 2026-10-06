@@ -58,7 +58,7 @@ namespace CE::UI::TGUI {
 
     class RenderTarget final : public tgui::BackendRenderTarget {
         tgui::Vector2f pixel_scale_{1, 1};
-        tgui::FloatRect clip_viewport_;
+        RenderAPIs::ClipRect2D clip_rectangle_;
         std::vector<RecordedDraw> draws_;
         bool configured_ = false;
         bool recording_ = false;
@@ -76,6 +76,8 @@ namespace CE::UI::TGUI {
         void drawGui(const std::shared_ptr<tgui::RootContainer>& root) override;
         void addClippingLayer(const tgui::RenderStates& states, tgui::FloatRect rect) override;
         void removeClippingLayer() override;
+        // Null indices select a triangle list in vertex order, used for glyphs.
+        // Otherwise expand the indexed triangles into the same owned format.
         void drawVertexArray(
             const tgui::RenderStates& states,
             const tgui::Vertex* vertices,
