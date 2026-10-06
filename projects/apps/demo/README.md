@@ -90,10 +90,22 @@ releases application-held widgets before the global toolkit backend.
 
 The demo uses the adapter's [typed layout](../../modules/ui/tgui/README.md#typed-layout).
 The panel anchors to the window's top-right with a 24-unit inset. Its width follows
-35% of the window, bounded between 394 and 426 logical units. The edit field,
-scrolling list and image region follow the panel's content width with fixed side
-margins. Fonts, control heights and the panel's 500-unit height keep their native
-sizes; a window narrower than 418 or shorter than 524 units can clip the panel.
+35% of the window, bounded between 394 and 640 logical units; its height follows
+75%, bounded between 500 and 800 units. For example:
+
+| Logical window size | Panel size |
+| --- | --- |
+| 1280 × 720 | 448 × 540 |
+| 1600 × 900 | 560 × 675 |
+| 1920 × 1080 | 640 × 800 |
+
+The edit field, list viewport, list rows and image region follow their parent's
+content width with fixed side margins. The image region anchors to the panel's
+bottom, and the list fills the space between the fixed header and image region.
+The list computes its content extent from its rows, so resizing can show or hide
+the scrollbar without a fixed content width clipping wider rows. Fonts and control
+heights keep their native sizes; a window narrower than 418 or shorter than 524
+units can clip the panel.
 
 The TGUI badge anchors inside the panel beside the title using a fixed inset plus
 a relative inset, and its text stays centered. The tooltip button anchors to the
@@ -110,9 +122,10 @@ Repeat this sequence in normal and `--concurrent` modes, without `--max-updates`
 3. Scroll the list, reset the camera and change the image. Confirm counters and
    retained UI content continue updating.
 4. Hover the bottom-right `?` tooltip, resize the window and, where available, move
-   it between displays with different content scales. Check the panel's width
-   bounds, the badge and tooltip anchors, side margins around the field/list/image,
-   input hit positions and clip edges.
+   it between displays with different content scales. Resize in both directions
+   and check the panel's width/height bounds, the badge and tooltip anchors, side
+   margins around the field/list/image, list growth above the image row, scrollbar
+   visibility, input hit positions and clip edges.
 5. Hide/show the panel with F3, including while editing. Hiding releases text focus.
 6. Close the window while UI updates/uploads are active. Check orderly shutdown
    in both modes.
@@ -122,9 +135,9 @@ desktop's touchpad "Disable while typing" setting. That setting can suppress
 touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
 
-The controlled TGUI input/recording/scene/session checks are accepted. The new
-layout and controlled runtime cases, independent composition and native
-resize/widget/lifetime acceptance remain in
+The controlled TGUI input/layout/recording/scene/session checks are accepted. The
+controlled runtime cases, independent composition and native resize/widget/lifetime
+acceptance remain in
 [U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 Reuse those accepted module results unless related source changes require a rerun;
 batch any needed demo/consumer builds with one low-priority job.

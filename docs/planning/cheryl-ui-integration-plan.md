@@ -245,8 +245,11 @@ Follow these steps in order and update their status while U9 remains active.
     - [x] Refactor demo placement and width-dependent regions to the typed API
       and native numeric bindings. Exercise fixed sizing, relative offsets and
       bounded resizing while keeping text and controls readable.
-    - [ ] Accept the focused layout cases and inspect the changed demo's anchors,
-      bounds, clipping and input positions across resize/DPI in both runtime modes.
+    - [x] Configure wider bounded width/height resizing in the demo. Anchor
+      the image row at the bottom and let the list fill the available middle space.
+    - [x] Accept the focused layout cases.
+    - [ ] Inspect the changed demo's anchors, bounds, clipping and input positions
+      across resize/DPI in both runtime modes.
       Reuse the accepted rendering/widget baseline for unaffected behavior.
   - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
     the desktop's touchpad suppression disabled, following the

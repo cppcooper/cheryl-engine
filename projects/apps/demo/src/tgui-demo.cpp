@@ -109,10 +109,18 @@ struct DemoUi::State {
         panel->getRenderer()->setBorders(1);
         gui.add(panel, "demo-panel");
         session->set_layout(
-            panel,
-            {.anchor = {1, 0}, .offset = {.fixed = {-24, 24}}, .scalable = Scalable{.width = 0.35f, .min_width = 394, .max_width = 426}}
+            panel, {.anchor = {1, 0},
+                    .offset = {.fixed = {-24, 24}},
+                    .scalable =
+                        Scalable{.width = 0.35f, .height = 0.75f, .min_width = 394, .max_width = 640, .min_height = 500, .max_height = 800}}
         );
-        const auto content_width = tgui::bindInnerWidth(panel) - 36;
+        constexpr float side_margin = 18;
+        constexpr float list_top = 270;
+        constexpr float image_height = 68;
+        constexpr float image_bottom = 14;
+        constexpr float region_gap = 12;
+        const auto content_width = tgui::bindInnerWidth(panel) - 2 * side_margin;
+        const auto list_height = tgui::bindInnerHeight(panel) - list_top - region_gap - image_height - image_bottom;
 
         auto title = label("Cheryl UI", 24);
         panel->add(title);
@@ -134,19 +142,20 @@ struct DemoUi::State {
         field->setDefaultText("Click here and type");
         field->getRenderer()->setBackgroundColor({240, 244, 250});
         panel->add(field, "text-field");
-        session->set_layout(field, {.offset = {.fixed = {18, 198}}});
+        session->set_layout(field, {.offset = {.fixed = {side_margin, 198}}});
         auto editing = label("Arrows, Home/End and Backspace work here");
         editing->setTextSize(14);
         panel->add(editing);
         session->set_layout(editing, {.offset = {.fixed = {18, 240}}});
 
-        auto scroll = tgui::ScrollablePanel::create({content_width, 134}, {350, 310});
+        auto scroll = tgui::ScrollablePanel::create({content_width, list_height});
         scroll->getRenderer()->setBackgroundColor({45, 60, 85, 180});
         scroll->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never);
         panel->add(scroll);
-        session->set_layout(scroll, {.offset = {.fixed = {18, 270}}});
+        session->set_layout(scroll, {.offset = {.fixed = {side_margin, list_top}}});
+        const auto row_width = tgui::bindInnerWidth(scroll) - 16;
         for (unsigned int i = 0; i < 8; ++i) {
-            auto row = tgui::Panel::create({330, 34});
+            auto row = tgui::Panel::create({row_width, 34});
             row->getRenderer()->setBackgroundColor({70, 105, 145, static_cast<std::uint8_t>(i % 2 ? 150 : 90)});
             scroll->add(row);
             session->set_layout(row, {.offset = {.fixed = {8, 8 + i * 38.0f}}});
@@ -155,10 +164,10 @@ struct DemoUi::State {
             session->set_layout(text, {.offset = {.fixed = {8, 6}}});
         }
 
-        auto image_panel = tgui::Panel::create({content_width, 68});
+        auto image_panel = tgui::Panel::create({content_width, image_height});
         image_panel->getRenderer()->setBackgroundColor({85, 75, 115, 130});
         panel->add(image_panel);
-        session->set_layout(image_panel, {.offset = {.fixed = {18, 416}}});
+        session->set_layout(image_panel, {.anchor = {0, 1}, .offset = {.fixed = {side_margin, -image_bottom}}});
         picture = tgui::Picture::create(image(false));
         picture->setSize({52, 52});
         image_panel->add(picture);

@@ -242,8 +242,7 @@ real label.
 `ui_tgui_layout.*` checks edge anchors, mixed fixed/relative offsets, parent
 border/padding changes, bounded per-axis resizing, rule replacement, native size
 bindings, owner/hierarchy rejection, weak lifetime and anchored recording. The
-consumer and first-include probes also cover the typed layout header. These checks
-are source-complete and still need executable acceptance.
+consumer and first-include probes also cover the typed layout header.
 
 `ui_tgui_runtime.sequential` and `ui_tgui_runtime.concurrent` use the real
 `GameRuntime`, TGUI session and platform queue with controlled window/input,
