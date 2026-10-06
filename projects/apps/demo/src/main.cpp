@@ -46,6 +46,7 @@ namespace DemoActions {
     constexpr CE::Input::ActionId Click{8};
     constexpr CE::Input::ActionId WheelY{9};
     constexpr CE::Input::ActionId GamepadA{11};
+    constexpr CE::Input::ActionId QuitGame{13};
 } // namespace DemoActions
 
 class Game : public CE::GFramework::AbstractGame {
@@ -118,6 +119,7 @@ public:
         (void)bindings.bind_button({keyboard, gainput::KeyS}, DemoActions::Down);
         (void)bindings.bind_button({keyboard, gainput::KeyD}, DemoActions::Right);
         (void)bindings.bind_button({keyboard, gainput::KeyR}, DemoActions::Reset);
+        (void)bindings.bind_button({keyboard, gainput::KeyQ}, DemoActions::QuitGame);
 
         const auto mouse = input.mouse_id();
         (void)bindings.bind_axis({mouse, gainput::MouseAxisX}, DemoActions::MouseX);
@@ -148,6 +150,9 @@ public:
     }
 
     void update(const CE::GFramework::TickContext& tick) override {
+        if (tick.input.button(DemoActions::QuitGame).held()) {
+            tick.request_stop();
+        }
         if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
             try {
                 font_shader_ = pending_shader_.get();
