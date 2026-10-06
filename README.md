@@ -68,10 +68,11 @@ cmake -S . -B build/engine-only -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
   -DCHERYL_BUILD_DEMO=OFF \
   -DCHERYL_BUILD_TESTS=OFF
-cmake --build build/engine-only --target cherylGL --parallel 1
+cmake --build build/engine-only --target cengine --parallel 1
 ```
 
-`cherylGL` is the existing CMake build target for the neutral engine library.
+`cengine` is the CMake build target for the neutral engine library, whose archive
+uses the output name `cheryl-engine`.
 Applications use its alias, `Cheryl::Engine`.
 
 ## CMake options
@@ -176,11 +177,11 @@ and `tests/`. Link targets to inherit headers and dependencies.
 
 | Public target | Build target | Owner |
 | --- | --- | --- |
-| `Cheryl::Engine` | `cherylGL` | [projects/engine](projects/engine) |
-| `Cheryl::NativeGLFW` | `cheryl_native_glfw` | [Native GLFW](projects/modules/platform/native-glfw/README.md) |
-| `Cheryl::OpenGL` | `cheryl_opengl` | [OpenGL](projects/modules/graphics/opengl/README.md) |
-| `Cheryl::UI::TGUI` | `cheryl_ui_tgui` | [TGUI](projects/modules/ui/tgui/README.md) |
-| `Cheryl::UI::RmlUi` | `cheryl_ui_rmlui` | [RmlUi](projects/modules/ui/rmlui/README.md) |
+| `Cheryl::Engine` | `cengine` | [projects/engine](projects/engine) |
+| `Cheryl::NativeGLFW` | `module_native_glfw` | [Native GLFW](projects/modules/platform/native-glfw/README.md) |
+| `Cheryl::OpenGL` | `module_opengl` | [OpenGL](projects/modules/graphics/opengl/README.md) |
+| `Cheryl::UI::TGUI` | `module_ui_tgui` | [TGUI](projects/modules/ui/tgui/README.md) |
+| `Cheryl::UI::RmlUi` | `module_ui_rmlui` | [RmlUi](projects/modules/ui/rmlui/README.md) |
 
 For an engine-only application in an enclosing CMake project:
 
@@ -215,9 +216,13 @@ their own suites. Build the runner you need, then execute it directly:
 
 ```sh
 cmake --build build/release --target engine-tests ui-tgui-tests --parallel 1
-./build/release/engine-tests
-./build/release/ui-tgui-tests
+./build/release/tests-engine
+./build/release/tests-ui-tgui
 ```
+
+Build commands and CTest prefixes use target names; executables use the names in
+[CherylOutputs.cmake](cmake/CherylOutputs.cmake). For example, `engine-tests`
+produces `tests-engine`, and `all-tests` produces `tests-all`.
 
 | Runner / setting | Coverage |
 | --- | --- |
@@ -234,7 +239,7 @@ For one combined run:
 
 ```sh
 cmake --build build/release --target all-tests --parallel 1
-./build/release/all-tests
+./build/release/tests-all
 ```
 
 `CHERYL_BUILD_ALL_TESTS=ON` also registers aggregate cases with CTest. Choose a

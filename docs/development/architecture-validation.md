@@ -70,7 +70,7 @@ nice -n 19 cmake --build build-validation-release --parallel 1 --target \
   cheryl-consumer engine-tests logging-tests \
   cheryl-logging-acceptance cheryl-signal-acceptance
 ./build-validation-release/cheryl-consumer
-./build-validation-release/engine-tests
+./build-validation-release/tests-engine
 ```
 
 Consumers depend on their first-include probes; no separate probe build is needed.
@@ -139,7 +139,7 @@ than rebuilding the full assembly solely to repeat it.
 Native OpenGL cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display:
 
 ```sh
-CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/opengl-all \
+CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-all-opengl \
   --gtest_filter=native_opengl.*
 ```
 

@@ -1,8 +1,10 @@
 # Isolated timeout/fault/static-teardown cases are driven by logging.py.
 if(CHERYL_BUILD_ACCEPTANCE_TESTS)
-    add_executable(cheryl-logging-acceptance src/main.cpp)
+    add_executable(${TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING} src/main.cpp)
 else()
-    add_executable(cheryl-logging-acceptance EXCLUDE_FROM_ALL src/main.cpp)
+    add_executable(${TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING} EXCLUDE_FROM_ALL src/main.cpp)
 endif()
-set_target_properties(cheryl-logging-acceptance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
-target_link_libraries(cheryl-logging-acceptance PRIVATE Cheryl::Engine)
+set_target_properties(${TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING} PROPERTIES
+    OUTPUT_NAME "${OUTPUT_TEST_ACCEPTANCE_ENGINE_LOGGING}"
+    RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+target_link_libraries(${TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING} PRIVATE ${LINKAGE_PRIVATE_TEST_ACCEPTANCE_ENGINE_LOGGING})

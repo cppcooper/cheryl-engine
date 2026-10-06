@@ -4,6 +4,17 @@ Cheryl uses one shared engine library and independently selected integration
 libraries. Each owner defines its sources, public includes, dependencies and tests.
 The repository root selects the assembly; it does not own implementation inventories.
 
+The files `cmake/CherylVersions.cmake`, `CherylOptions.cmake`,
+`CherylTargets.cmake`, `CherylOutputs.cmake` and `CherylLinkage.cmake` declare shared
+build metadata. Owners consume the version, concrete target name, artifact
+`OUTPUT_NAME` and scoped dependency lists while retaining their own source and
+composition rules. Cheryl and Engine use version 4.0.0; the demo and existing
+modules use independent 1.0.0 versions. Public `Cheryl::...` aliases remain the
+composition boundary so a supplied owner's concrete target name can differ.
+Declaration files reload variables in each caller's scope; helper function
+definitions remain guarded. Standalone entry points load metadata before declaring
+their projects or bootstrapping dependencies in local scopes.
+
 Module owners are grouped by contract role: `platform/` contains display/window/input
 implementations, `graphics/` contains rendering/presentation/resource implementations
 and `ui/` contains optional toolkit consumers.
@@ -12,7 +23,7 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 
 | Target | Owner | Dependencies selected by that owner |
 | --- | --- | --- |
-| `Cheryl::Engine` (`cherylGL`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
+| `Cheryl::Engine` (`cengine`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
 | `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
 | `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges; session/widget acceptance remains U9 work. |
@@ -110,8 +121,10 @@ Threads/GLM/CTTI/spdlog/Backward/GLFW/Gainput/OpenGL/GLAD targets are reused whe
 applicable. Installed `find_package` distribution remains separate work.
 
 New optional owners can start from [the module template](../../cmake/templates/Module.cmake.in).
-Replace its name/alias, declare actual sources and public include roots, discover
-only the owner's needed dependencies, and put tests under that owner. A new target
+Replace its project name, alias and uppercase metadata ID, add the corresponding
+version/target/output/linkage declarations, declare actual sources and public
+include roots, discover only the owner's needed dependencies, and put tests under
+that owner. A new target
 still requires an actual selection, replacement or dependency-isolation benefit.
 
 ## Test ownership and selection
@@ -120,6 +133,13 @@ GoogleTest runners use `*-tests` for normal focused tests, `*-acceptance` for br
 or environment-dependent acceptance tests, and `*-all` for all GoogleTests owned by
 a subsystem/module. `all-tests` contains all GoogleTests in the selected Cheryl
 assembly.
+
+These are build target identities and CTest prefixes. Executable names come from
+[CherylOutputs.cmake](../../cmake/CherylOutputs.cmake): for example, `engine-tests`
+produces `tests-engine`, `engine-acceptance` produces `tests-acceptance-engine`,
+and `all-tests` produces `tests-all`. Manual logging/signal drivers use their
+declared output names as well. Archives and executables retain their build-root
+output directories.
 
 `CHERYL_BUILD_TESTS=ON` builds the inexpensive `engine-tests`, `logging-tests`
 and selected module unit runners. Engine unit cases exercise real

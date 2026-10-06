@@ -1,17 +1,15 @@
 cmake_minimum_required(VERSION 3.28)
 
+if(CHERYL_ENGINE_SOURCE)
+    include("${CHERYL_ENGINE_SOURCE}/cmake/CherylModules.cmake")
+else()
+    include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/CherylModules.cmake")
+endif()
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    project(cheryl_ui_rmlui_module LANGUAGES CXX)
+    project(cheryl_ui_rmlui_module VERSION ${VERSION_PROJECT_MODULE_UI_RMLUI} LANGUAGES CXX)
 endif()
 if(TARGET Cheryl::UI::RmlUi)
     return()
-endif()
-if(NOT COMMAND cheryl_prepare_module)
-    if(CHERYL_ENGINE_SOURCE)
-        include("${CHERYL_ENGINE_SOURCE}/cmake/CherylModules.cmake")
-    else()
-        include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/CherylModules.cmake")
-    endif()
 endif()
 option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
@@ -31,13 +29,16 @@ if(NOT RMLUI_FONT_ENGINE STREQUAL "freetype")
     message(FATAL_ERROR "Cheryl UI requires RMLUI_FONT_ENGINE=freetype; a supplied Core target must declare this configuration")
 endif()
 
-add_library(cheryl_ui_rmlui STATIC src/input.cpp src/rendering.cpp src/scene.cpp src/session.cpp)
-add_library(Cheryl::UI::RmlUi ALIAS cheryl_ui_rmlui)
-set_target_properties(cheryl_ui_rmlui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
-target_include_directories(cheryl_ui_rmlui PUBLIC
+add_library(${TARGET_LIB_MODULE_UI_RMLUI} STATIC src/input.cpp src/rendering.cpp src/scene.cpp src/session.cpp)
+add_library(Cheryl::UI::RmlUi ALIAS ${TARGET_LIB_MODULE_UI_RMLUI})
+set_target_properties(${TARGET_LIB_MODULE_UI_RMLUI} PROPERTIES
+    VERSION "${VERSION_PROJECT_MODULE_UI_RMLUI}"
+    OUTPUT_NAME "${OUTPUT_LIB_MODULE_UI_RMLUI}"
+    ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+target_include_directories(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
-target_link_libraries(cheryl_ui_rmlui PUBLIC Cheryl::Engine RmlUi::Core)
+target_link_libraries(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC ${LINKAGE_PUBLIC_LIB_MODULE_UI_RMLUI})
 
 if(CHERYL_BUILD_TESTS)
     enable_testing()

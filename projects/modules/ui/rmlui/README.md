@@ -14,7 +14,7 @@ engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 
 ## Selection and dependency
 
-Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `cheryl_ui_rmlui`,
+Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,
 `ui-rmlui-tests` and `ui-rmlui-all` when tests are selected. The root option defaults
 to `OFF`; TGUI and RmlUi can be selected separately or together.
 
@@ -145,11 +145,11 @@ nice -n 19 cmake --build build/debug --parallel 1 \
 After the build, run these focused checks when the machine has cooled:
 
 ```sh
-./build/debug/ui-rmlui-all
-./build/debug/ui-coexist-tests
-./build/debug/engine-tests \
+./build/debug/tests-all-ui-rmlui
+./build/debug/tests-ui-coexist
+./build/debug/tests-engine \
   --gtest_filter='runtime_contract.*:input_capture.portable_buttons:tick_context.unbound_stop'
-./build/debug/native-glfw-tests --gtest_filter='glfw_bindings.portable_*'
+./build/debug/tests-native-glfw --gtest_filter='glfw_bindings.portable_*'
 ```
 
 `ui-coexist-tests` belongs to `projects/tests/`, and also joins the combined

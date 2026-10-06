@@ -1,8 +1,10 @@
 # The driver compares Engine-linked consumers in builds with and without NDEBUG.
 if(CHERYL_BUILD_ACCEPTANCE_TESTS)
-    add_executable(cheryl-signal-acceptance src/main.cpp)
+    add_executable(${TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL} src/main.cpp)
 else()
-    add_executable(cheryl-signal-acceptance EXCLUDE_FROM_ALL src/main.cpp)
+    add_executable(${TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL} EXCLUDE_FROM_ALL src/main.cpp)
 endif()
-set_target_properties(cheryl-signal-acceptance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
-target_link_libraries(cheryl-signal-acceptance PRIVATE Cheryl::Engine)
+set_target_properties(${TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL} PROPERTIES
+    OUTPUT_NAME "${OUTPUT_TEST_ACCEPTANCE_ENGINE_SIGNAL}"
+    RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+target_link_libraries(${TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL} PRIVATE ${LINKAGE_PRIVATE_TEST_ACCEPTANCE_ENGINE_SIGNAL})

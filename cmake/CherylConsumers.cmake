@@ -1,3 +1,5 @@
+include("${CMAKE_CURRENT_LIST_DIR}/CherylOutputs.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/CherylLinkage.cmake")
 include_guard(GLOBAL)
 
 function(cheryl_add_header_probes target library)

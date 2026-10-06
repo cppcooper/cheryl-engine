@@ -1,3 +1,6 @@
+include("${CMAKE_CURRENT_LIST_DIR}/CherylVersions.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/CherylOutputs.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/CherylLinkage.cmake")
 include_guard(GLOBAL)
 
 # A module reuses supplied targets or bootstraps one explicitly selected checkout.
@@ -38,7 +41,7 @@ function(cheryl_prepare_module)
             add_subdirectory("${repository_root}/extern/googletest" "${CMAKE_CURRENT_BINARY_DIR}/extern/googletest" EXCLUDE_FROM_ALL)
         endif()
         include("${repository_root}/cmake/CherylTests.cmake")
-        if(NOT TARGET cheryl_test_support)
+        if(NOT TARGET ${TARGET_LIB_TEST_SUPPORT})
             add_subdirectory("${repository_root}/projects/engine/tests/support" "${CMAKE_CURRENT_BINARY_DIR}/test-support")
         endif()
     endif()

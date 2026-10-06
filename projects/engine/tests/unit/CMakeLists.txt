@@ -1,4 +1,5 @@
-cheryl_add_test_suite(engine-tests
+cheryl_add_test_suite(${TARGET_TEST_ENGINE}
+    OUTPUT_NAME "${OUTPUT_TEST_ENGINE}"
     SOURCES
         src/clipping.cpp
         src/runtime-contract.cpp
@@ -22,5 +23,5 @@ cheryl_add_test_suite(engine-tests
         ../all-tests/src/math/numbers.cpp
         ../all-tests/src/templates/ovar.cpp
         ../all-tests/src/templates/state.cpp
-    LIBRARIES Cheryl::Engine
+    LIBRARIES ${LINKAGE_PUBLIC_TEST_ENGINE}
     PRIVATE_INCLUDES "${CHERYL_ENGINE_PRIVATE_SOURCE_DIR}")

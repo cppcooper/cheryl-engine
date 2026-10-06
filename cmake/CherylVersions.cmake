@@ -1,5 +1,4 @@
-# cmake/CherylVersions.cmake
-include_guard(GLOBAL)
+# Reload declarations into the caller's scope, including standalone entry points.
 
 # Cheryl
 set(VERSION_PROJECT_CHERYL 4.0.0)

@@ -20,7 +20,7 @@ def disable_core_files():
 
 
 def check_build(build, ndebug):
-    executable = build.resolve() / "cheryl-signal-acceptance"
+    executable = build.resolve() / "tests-acceptance-engine-signal"
     with tempfile.TemporaryDirectory(prefix="cheryl-signal-acceptance-") as temporary:
         scope = subprocess.run(
             [str(executable), "scope"], cwd=temporary, capture_output=True,

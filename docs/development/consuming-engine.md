@@ -1,9 +1,10 @@
 # Consuming the engine
 
 The supported packaging boundary is build-tree composition from a Cheryl checkout.
-`projects/engine/` owns the neutral `Cheryl::Engine` target (the existing real name
-`cherylGL` remains). Applications link selected integration targets explicitly;
-[the module guide](modules.md) describes ownership, standalone composition and tests.
+`projects/engine/` owns the neutral `Cheryl::Engine` target, backed by the build
+target `cengine` and archive output name `cheryl-engine`. Applications link selected
+integration targets explicitly; [the module guide](modules.md) describes ownership,
+standalone composition and tests.
 
 ```cmake
 set(CHERYL_BUILD_TESTS OFF)

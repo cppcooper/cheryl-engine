@@ -1,1 +1,2 @@
-cheryl_add_test_aggregate(${CHERYL_TEST_AGGREGATE} OWNER)
+cheryl_add_test_aggregate(${CHERYL_TEST_AGGREGATE}
+    OUTPUT_NAME "${OUTPUT_TEST_ALL_MODULE_OPENGL}" OWNER)

@@ -39,7 +39,7 @@ acquisition, initialization, and lifecycle reentry before entering locks.
 
 ## Compile policy
 
-The cherylGL target publicly propagates cheryl_logging_config. The test target
+The cengine target publicly propagates cengine_logging_config. The test target
 consumes the actual library and inherits that same configuration. CMake's
 CHERYL_LOG_PROFILE selects auto, developer, support, or release. Auto selects
 developer for Debug, support for RelWithDebInfo, and release for other configurations.

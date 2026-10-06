@@ -1,4 +1,4 @@
-cheryl_add_header_probes(cheryl-opengl-consumer-headers Cheryl::OpenGL
+cheryl_add_header_probes(${TARGET_TEST_CONSUMER_MODULE_OPENGL_HEADERS} ${LINKAGE_PRIVATE_TEST_CONSUMER_MODULE_OPENGL}
     HEADERS
         cheryl/backends/opengl.h
         cheryl/backends/opengl/context.h

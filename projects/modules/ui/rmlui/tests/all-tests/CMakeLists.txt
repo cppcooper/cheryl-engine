@@ -1,1 +1,2 @@
-cheryl_add_test_aggregate(ui-rmlui-all OWNER)
+cheryl_add_test_aggregate(${TARGET_TEST_ALL_MODULE_UI_RMLUI}
+    OUTPUT_NAME "${OUTPUT_TEST_ALL_MODULE_UI_RMLUI}" OWNER)

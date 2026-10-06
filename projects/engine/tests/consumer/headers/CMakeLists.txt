@@ -16,4 +16,4 @@ set(consumer_headers
     cheryl/core/logging/logger.h
     cheryl/core/resources/asset-management/asset-loader.h
     cheryl/assets/resources/resource-provider.h)
-cheryl_add_header_probes(cheryl-consumer-headers Cheryl::Engine NEUTRAL HEADERS ${consumer_headers})
+cheryl_add_header_probes(${TARGET_TEST_CONSUMER_ENGINE_HEADERS} ${LINKAGE_PRIVATE_TEST_CONSUMER_ENGINE} NEUTRAL HEADERS ${consumer_headers})

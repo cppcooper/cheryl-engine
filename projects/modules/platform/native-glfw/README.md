@@ -30,7 +30,7 @@ checkout without selecting other integration owners:
 cmake -S projects/modules/platform/native-glfw -B build/native-module \
   -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_ENGINE_SOURCE=/absolute/path/to/cheryl-engine
-cmake --build build/native-module --target cheryl_native_glfw --parallel 1
+cmake --build build/native-module --target module_native_glfw --parallel 1
 ```
 
 On Linux, bundled GLFW enables both X11 and Wayland; use

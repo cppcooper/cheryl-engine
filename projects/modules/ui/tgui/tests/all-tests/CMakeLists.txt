@@ -1,1 +1,2 @@
-cheryl_add_test_aggregate(ui-tgui-all OWNER)
+cheryl_add_test_aggregate(${TARGET_TEST_ALL_MODULE_UI_TGUI}
+    OUTPUT_NAME "${OUTPUT_TEST_ALL_MODULE_UI_TGUI}" OWNER)

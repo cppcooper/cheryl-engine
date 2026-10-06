@@ -41,10 +41,10 @@ and isolation checks. Consumer targets also build their first-include probes.
 Run the Engine unit runner once, then select the recording graph's acceptance:
 
 ```sh
-./build-engine/engine-tests
-./build-engine/engine-acceptance --gtest_filter='ui_probe.*:runtime_adapter.*'
-./build-opengl/opengl-tests
-CHERYL_NATIVE_GL_TESTS=1 ./build-opengl/opengl-acceptance \
+./build-engine/tests-engine
+./build-engine/tests-acceptance-engine --gtest_filter='ui_probe.*:runtime_adapter.*'
+./build-opengl/tests-opengl
+CHERYL_NATIVE_GL_TESTS=1 ./build-opengl/tests-acceptance-opengl \
   --gtest_filter='native_opengl.ui_clipping_color'
 ```
 

@@ -24,11 +24,13 @@ else()
 endif()
 
 # No dependency list, include directories, language standard or engine sources.
-add_executable(cheryl-consumer src/main.cpp src/resources.cpp)
+add_executable(${TARGET_TEST_CONSUMER_ENGINE} src/main.cpp src/resources.cpp)
+set_target_properties(${TARGET_TEST_CONSUMER_ENGINE} PROPERTIES OUTPUT_NAME "${OUTPUT_TEST_CONSUMER_ENGINE}")
 if(DEFINED CHERYL_BUILD_ROOT)
-    set_target_properties(cheryl-consumer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+    set_target_properties(${TARGET_TEST_CONSUMER_ENGINE} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
 endif()
-target_link_libraries(cheryl-consumer PRIVATE Cheryl::Engine)
+target_link_libraries(${TARGET_TEST_CONSUMER_ENGINE} PRIVATE ${LINKAGE_PRIVATE_TEST_CONSUMER_ENGINE})
 
 add_subdirectory(headers)
-add_dependencies(cheryl-consumer cheryl-consumer-headers)
+add_dependencies(${TARGET_TEST_CONSUMER_ENGINE} ${TARGET_TEST_CONSUMER_ENGINE_HEADERS})

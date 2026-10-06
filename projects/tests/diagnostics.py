@@ -21,7 +21,7 @@ def main():
     parser.add_argument("build_dir", type=Path)
     parser.add_argument("--info-stripped", action="store_true")
     args = parser.parse_args()
-    executable = args.build_dir.resolve() / "all-tests"
+    executable = args.build_dir.resolve() / "tests-all"
     cases = "runtime_adapter.sequential_frame:runtime_adapter.concurrent_frame:runtime_adapter.routed_event_order"
     with tempfile.TemporaryDirectory(prefix="cheryl-diagnostics-") as temporary:
         root = Path(temporary)

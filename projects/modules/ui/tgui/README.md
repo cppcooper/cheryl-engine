@@ -48,7 +48,7 @@ Compiled version/feature checks also reject a supplied package/target with an
 unreviewed version or native toolkit backend.
 
 Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
-to `ON` and reload CMake to expose `cheryl_ui_tgui` and its selected test targets.
+to `ON` and reload CMake to expose `module_ui_tgui` and its selected test targets.
 
 For a standalone module, supply `Cheryl::Engine` or `CHERYL_ENGINE_SOURCE`. Engine
 bootstrap suppresses UI/native/graphics/demo/test selection in its local scope.
@@ -270,7 +270,7 @@ cmake -S projects/modules/ui/tgui -B build-ui-tgui \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
 nice -n 19 cmake --build build-ui-tgui --parallel 1 \
   --target ui-tgui-tests cheryl-ui-tgui-consumer
-./build-ui-tgui/ui-tgui-tests
+./build-ui-tgui/tests-ui-tgui
 ./build-ui-tgui/cheryl-ui-tgui-consumer
 ```
 

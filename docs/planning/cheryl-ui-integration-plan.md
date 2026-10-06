@@ -287,6 +287,9 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Add the pinned dependency and optional owner with independent source,
     supplied-target/package composition and Engine-only isolation. Executable
     composition acceptance remains below.
+  - [ ] Suppress inherited `CHERYL_BUILD_UI_RMLUI` in Engine, Native GLFW and
+    OpenGL consumer bootstraps before accepting their isolation with RmlUi enabled
+    in an enclosing build. These consumers currently disable only TGUI.
   - [x] Implement owned compiled geometry/texture recording, clipping and complete
     retained-scene upload/adoption. Resolve orientation and unsupported behavior
     before session/demo code depends on it. Controlled checks are authored;

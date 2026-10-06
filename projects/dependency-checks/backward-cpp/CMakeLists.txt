@@ -1,3 +1,5 @@
-add_executable(backward-cpp src/main.cpp)
-set_target_properties(backward-cpp PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
-target_link_libraries(backward-cpp PUBLIC Backward::Backward)
+add_executable(${TARGET_TEST_DEPENDENCY_BACKWARD_CPP} src/main.cpp)
+set_target_properties(${TARGET_TEST_DEPENDENCY_BACKWARD_CPP} PROPERTIES
+    OUTPUT_NAME "${OUTPUT_TEST_DEPENDENCY_BACKWARD_CPP}"
+    RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+target_link_libraries(${TARGET_TEST_DEPENDENCY_BACKWARD_CPP} PUBLIC ${LINKAGE_PUBLIC_TEST_DEPENDENCY_BACKWARD_CPP})
