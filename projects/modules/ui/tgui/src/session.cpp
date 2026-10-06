@@ -6,12 +6,14 @@
 
 #include <TGUI/Backend/Font/FreeType/BackendFontFreeType.hpp>
 #include <TGUI/Backend/Window/Backend.hpp>
+#include <TGUI/Container.hpp>
 #include <TGUI/Keyboard.hpp>
 
 #include <chrono>
 #include <cmath>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 namespace CE::UI::TGUI {
     namespace {
@@ -103,6 +105,38 @@ namespace CE::UI::TGUI {
             }
         };
 
+        bool normalized(const tgui::Vector2f point) {
+            return std::isfinite(point.x) && std::isfinite(point.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
+        }
+
+        void validate_axis(const std::optional<float> fraction, const float minimum, const float maximum) {
+            if (fraction && (!std::isfinite(*fraction) || *fraction < 0 || *fraction > 1))
+                throw Exceptions::invalid_args(CE_HERE, "TGUI scalable fractions must be finite values in [0, 1]");
+            if (!std::isfinite(minimum) || minimum < 0 || std::isnan(maximum) || maximum < minimum)
+                throw Exceptions::invalid_args(CE_HERE, "TGUI scalable bounds require a finite nonnegative minimum and maximum >= minimum");
+        }
+
+        void validate_layout(const WidgetLayout& layout) {
+            if (!normalized(layout.anchor) || (layout.origin && !normalized(*layout.origin)))
+                throw Exceptions::invalid_args(CE_HERE, "TGUI layout anchors and origins must be finite values in [0, 1]");
+            if (!std::isfinite(layout.offset.fixed.x) || !std::isfinite(layout.offset.fixed.y) ||
+                !std::isfinite(layout.offset.relative.x) || !std::isfinite(layout.offset.relative.y))
+                throw Exceptions::invalid_args(CE_HERE, "TGUI layout offsets must be finite");
+            if (layout.scalable) {
+                if (!layout.scalable->width && !layout.scalable->height)
+                    throw Exceptions::invalid_args(CE_HERE, "TGUI scalable layout requires a width or height fraction");
+                validate_axis(layout.scalable->width, layout.scalable->min_width, layout.scalable->max_width);
+                validate_axis(layout.scalable->height, layout.scalable->min_height, layout.scalable->max_height);
+            }
+        }
+
+        tgui::Layout scaled_axis(const tgui::Layout& parent, const float fraction, const float minimum, const float maximum) {
+            auto size = tgui::bindMax(minimum, parent * fraction);
+            if (std::isfinite(maximum))
+                size = tgui::bindMin(maximum, size);
+            return size;
+        }
+
         bool clipboard_shortcut(const tgui::Event& event) {
             return event.type == tgui::Event::Type::KeyPressed &&
                    (tgui::keyboard::isKeyPressCopy(event.key) || tgui::keyboard::isKeyPressCut(event.key) ||
@@ -111,6 +145,12 @@ namespace CE::UI::TGUI {
     }
 
     struct Session::State {
+        struct ManagedSize {
+            std::weak_ptr<tgui::Widget> widget;
+            bool width = false;
+            bool height = false;
+        };
+
         Input::iInputSystem& input;
         const Input::FocusId target;
         const std::thread::id thread = std::this_thread::get_id();
@@ -121,6 +161,7 @@ namespace CE::UI::TGUI {
         std::uint64_t focus_epoch = 0;
         bool drawable = false;
         bool pointer_view = false;
+        std::unordered_map<tgui::Widget*, ManagedSize> managed_sizes;
         // Destruction order keeps the backend alive through GUI/font teardown.
         BackendLease backend;
         std::shared_ptr<RenderTarget> render_target = std::make_shared<RenderTarget>();
@@ -168,6 +209,57 @@ namespace CE::UI::TGUI {
                            : tgui::Vector2f{1, 1}
         );
         state.gui.set_logical_size(logical);
+    }
+
+    void Session::set_layout(tgui::Widget::Ptr widget, const WidgetLayout& layout) {
+        auto& state = owner();
+        validate_layout(layout);
+        if (!widget || !widget->getParent())
+            throw Exceptions::invalid_args(CE_HERE, "TGUI layout requires a widget added to this session's GUI");
+        if (widget->getAutoLayout() != tgui::AutoLayout::Manual)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI typed placement requires manual widget layout");
+        auto* parent = widget->getParent();
+        auto* ancestor = parent;
+        const auto root = state.gui.getContainer();
+        while (ancestor && ancestor != root.get())
+            ancestor = ancestor->getParent();
+        if (!ancestor)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI layout widget belongs to another hierarchy");
+
+        const auto container = std::static_pointer_cast<tgui::Container>(parent->shared_from_this());
+        const auto parent_width = tgui::bindInnerWidth(container);
+        const auto parent_height = tgui::bindInnerHeight(container);
+        const auto origin = layout.origin.value_or(layout.anchor);
+        const tgui::Layout2d position{parent_width * (layout.anchor.x + layout.offset.relative.x) + layout.offset.fixed.x,
+                                      parent_height * (layout.anchor.y + layout.offset.relative.y) + layout.offset.fixed.y};
+
+        std::erase_if(state.managed_sizes, [](const auto& entry) { return entry.second.widget.expired(); });
+        const auto previous = state.managed_sizes.find(widget.get());
+        const bool had_width = previous != state.managed_sizes.end() && previous->second.width;
+        const bool had_height = previous != state.managed_sizes.end() && previous->second.height;
+        const bool width = layout.scalable && layout.scalable->width.has_value();
+        const bool height = layout.scalable && layout.scalable->height.has_value();
+        auto size = widget->getSizeLayout();
+        if (width)
+            size.x = scaled_axis(parent_width, *layout.scalable->width, layout.scalable->min_width, layout.scalable->max_width);
+        else if (had_width)
+            size.x = widget->getSize().x;
+        if (height)
+            size.y = scaled_axis(parent_height, *layout.scalable->height, layout.scalable->min_height, layout.scalable->max_height);
+        else if (had_height)
+            size.y = widget->getSize().y;
+        if (!std::isfinite(position.x.getValue()) || !std::isfinite(position.y.getValue()) || !std::isfinite(size.x.getValue()) ||
+            !std::isfinite(size.y.getValue()))
+            throw Exceptions::invalid_args(CE_HERE, "TGUI layout produces nonfinite coordinates or dimensions");
+
+        if (width || height)
+            state.managed_sizes.insert_or_assign(widget.get(), State::ManagedSize{widget, width, height});
+        else
+            state.managed_sizes.erase(widget.get());
+        if (width || height || had_width || had_height)
+            widget->setSize(size);
+        widget->setOrigin(origin);
+        widget->setPosition(position);
     }
 
     void Session::update_time(const double seconds) {

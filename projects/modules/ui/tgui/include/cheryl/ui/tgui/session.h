@@ -1,5 +1,6 @@
 #pragma once
 
+#include "layout.h"
 #include "rendering.h"
 
 #include <core/controls/input-interface.h>
@@ -44,6 +45,10 @@ namespace CE::UI::TGUI {
         [[nodiscard]] Capabilities capabilities() const;
         // Both dimensions are copied by the runtime; no native window is read.
         void set_view(ViewPort<int> logical, FramebufferSize framebuffer);
+        // Add the widget to this GUI first. Typed rules bind its current parent's
+        // content dimensions; reapply after reparenting. Released scalable axes
+        // freeze at their current size. Other native sizing remains unchanged.
+        void set_layout(tgui::Widget::Ptr widget, const WidgetLayout& layout);
         void update_time(double seconds);
         void request_keyboard_focus(Input::KeyboardRouting routing = Input::KeyboardRouting::Exclusive);
         void release_keyboard_focus();

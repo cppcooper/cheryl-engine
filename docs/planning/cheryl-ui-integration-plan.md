@@ -235,6 +235,19 @@ Follow these steps in order and update their status while U9 remains active.
   - [x] Accept the demo's visual appearance, including the top TGUI badge fully
     inside its parent panel's content clip. Retain parent clipping for child
     widgets and scrolling.
+  - [ ] Add typed placement and optional bounded resizing to the TGUI adapter.
+    Keep native widgets and styling; layout configuration belongs to this module.
+    - [x] Add `WidgetLayout`, `Offset`, `Scalable` and `Session::set_layout`.
+      The [typed layout contract](../../projects/modules/ui/tgui/README.md#typed-layout)
+      owns numeric binding, validation, sizing replacement and lifetime semantics.
+    - [x] Author controlled layout/resize/lifetime checks and extend independent
+      consumer and first-include header coverage.
+    - [ ] Refactor demo placement and width-dependent regions to the typed API
+      and native numeric bindings. Exercise fixed sizing, relative offsets and
+      bounded resizing while keeping text and controls readable.
+    - [ ] Accept the focused layout cases and inspect the changed demo's anchors,
+      bounds, clipping and input positions across resize/DPI in both runtime modes.
+      Reuse the accepted rendering/widget baseline for unaffected behavior.
   - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
     the desktop's touchpad suppression disabled, following the
     [demo procedure](../../projects/apps/demo/README.md).

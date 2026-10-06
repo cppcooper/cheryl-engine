@@ -18,6 +18,7 @@ materials, font ownership, upload/lifetime and platform decisions for the adapte
 
 - [Selection and dependency](#selection-and-dependency)
 - [Session ownership](#session-ownership)
+- [Typed layout](#typed-layout)
 - [Input translation](#input-translation)
 - [Recording and publication](#recording-and-publication)
 - [Focused checks](#focused-checks)
@@ -92,6 +93,58 @@ destruction. The input source must outlive it. After simulation has joined,
 no toolkit calls or references may race or survive it. GUI resources are destroyed
 before TGUI's global font, theme, timers and backend. Retained CPU recordings and
 uploaded Cheryl frames remain independent of the toolkit lifetime.
+
+## Typed layout
+
+`layout.h` defines three configuration values: `WidgetLayout`, `Offset` and
+`Scalable`. Add a native TGUI widget to this session's GUI hierarchy, then call
+`session.set_layout(widget, rules)` on the UI owner. The adapter installs numeric
+TGUI bindings; TGUI maintains them when the window, parent size, border or padding
+changes. The adapter does not parse layout strings or create a separate widget
+hierarchy. Native toolkit authoring and styling remain available.
+
+| Configuration | Contract |
+|---|---|
+| `WidgetLayout.anchor` | A finite point in `[0, 1]` within the parent's content area; `{1, 0}` selects top-right. The default is top-left. |
+| `WidgetLayout.origin` | The normalized attachment point on the widget. Omission uses `anchor`. |
+| `Offset.fixed` | Signed displacement in logical UI units. |
+| `Offset.relative` | Signed fractions of parent content width/height, added to the fixed displacement. Omission defaults both parts to zero. |
+| `WidgetLayout.scalable` | Optional sizing rules. Without them, a newly configured widget keeps its native sizing. |
+| `Scalable.width`, `.height` | Optional finite fractions in `[0, 1]` of parent content dimensions. At least one must be supplied. Only selected axes resize. |
+| `Scalable.min_width`, `.max_width`, `.min_height`, `.max_height` | Bounds in logical units for the selected axes. Minimums are finite and nonnegative; maximums cannot be below them. Defaults are zero and an unbounded positive maximum. |
+
+The widget's attachment point is `anchor * parent_content_size + fixed_offset +
+relative_offset * parent_content_size`. Origin determines which point of the widget
+sits there. Resizing is a separate optional component and does not change the
+meaning of offsets. Logical sizes map to framebuffer pixels through `set_view`.
+
+```cpp
+using CE::UI::TGUI::Scalable;
+
+session.gui().add(panel);
+session.set_layout(panel, {
+    .anchor = {1, 0},
+    .offset = {.fixed = {-8, 24}, .relative = {-0.02f, 0}},
+    .scalable = Scalable{.width = 0.35f, .min_width = 320, .max_width = 600},
+});
+```
+
+Changing rules replaces placement and any selected sizing bindings. An axis
+previously managed by `Scalable` freezes at its current size when its fraction is
+removed; other native size bindings remain in place. Omit `scalable` to release
+both managed axes. A minimum can exceed a small parent's available space: the
+containing UI chooses scrolling or a different arrangement. This API does not
+silently shrink below the minimum. Scaling uses TGUI's native `setSize` semantics,
+including each widget's own automatic-sizing behavior; text and padding follow
+native styling.
+
+Typed placement requires TGUI's `AutoLayout::Manual`. Native automatic alignment
+can be used separately. Invalid rules, unparented widgets and foreign hierarchies
+reject before widget mutation. Reapply after moving a widget to a different parent;
+bindings refer to the parent selected by that call. Weak sizing bookkeeping does
+not retain widgets, parents or toolkit resources, and expires with the session.
+The call retains its target while native change signals run, so a callback may
+remove the widget and release the caller's handle safely.
 
 ## Input translation
 
@@ -185,6 +238,12 @@ focus epochs/preemption, modifier releases, pointer selection, unsupported clipb
 shortcuts, copied view sizes, FreeType atlas growth/immutable generations and serial
 teardown after the UI owner stops. The independent consumer creates and records a
 real label.
+
+`ui_tgui_layout.*` checks edge anchors, mixed fixed/relative offsets, parent
+border/padding changes, bounded per-axis resizing, rule replacement, native size
+bindings, owner/hierarchy rejection, weak lifetime and anchored recording. The
+consumer and first-include probes also cover the typed layout header. These checks
+are source-complete and still need executable acceptance.
 
 `ui_tgui_runtime.sequential` and `ui_tgui_runtime.concurrent` use the real
 `GameRuntime`, TGUI session and platform queue with controlled window/input,

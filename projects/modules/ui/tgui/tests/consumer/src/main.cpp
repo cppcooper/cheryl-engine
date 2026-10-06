@@ -1,4 +1,5 @@
 #include <cheryl/ui/tgui/input.h>
+#include <cheryl/ui/tgui/layout.h>
 #include <cheryl/ui/tgui/rendering.h>
 #include <cheryl/ui/tgui/scene.h>
 #include <cheryl/ui/tgui/session.h>
@@ -36,11 +37,14 @@ int main() {
     Input input;
     CE::UI::TGUI::Session session(input, 1);
     session.set_view({320, 240}, {640, 480});
-    session.gui().add(tgui::Label::create("Independent consumer"));
+    const auto label = tgui::Label::create("Independent consumer");
+    session.gui().add(label);
+    session.set_layout(label, {.anchor = {0.5f, 0.5f}, .offset = {.relative = {0.125f, 0}}});
     session.update_time(0.01);
     const auto widgets = session.record();
     return event && event->type == tgui::Event::Type::TextEntered && event->text.unicode == U'A' && scene.draws().size() == 1 &&
-                   scene.draws()[0].vertices.size() == 6 && frame.passes().empty() && !widgets.draws().empty()
+                   scene.draws()[0].vertices.size() == 6 && frame.passes().empty() && !widgets.draws().empty() &&
+                   label->getPosition() == tgui::Vector2f{200, 120}
                ? 0
                : 1;
 }
