@@ -228,12 +228,13 @@ Follow these steps in order and update their status while U9 remains active.
   nested/overlapping translucent panels, dynamic labels, a tooltip near viewport
   edges, a text field, scrolling and an image. Verify focus/routing and resize/DPI
   behavior as well as appearance.
-  The demo provides these widgets; source availability does not establish their
-  native appearance or behavior.
+  The demo provides these widgets. Keep visual inspection separate from native
+  input/focus, resize/DPI and teardown acceptance.
   - [x] Clarify the demo's Escape help as releasing keyboard focus and document
     the window close control as the way to end the demo.
-  - [x] Place the top TGUI badge fully inside its parent panel's content clip;
-    retain parent clipping for child widgets and scrolling.
+  - [x] Accept the demo's visual appearance, including the top TGUI badge fully
+    inside its parent panel's content clip. Retain parent clipping for child
+    widgets and scrolling.
   - [ ] Verify simultaneous keyboard/pointer input with a separate mouse or with
     the desktop's touchpad suppression disabled, following the
     [demo procedure](../../projects/apps/demo/README.md).
