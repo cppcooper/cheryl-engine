@@ -286,11 +286,12 @@ Follow these steps in order and update their status while U9 remains active.
     retained-scene upload/adoption. Resolve orientation and unsupported behavior
     before session/demo code depends on it. Controlled checks are authored;
     executable alpha/orientation acceptance remains below.
-  - [ ] Implement the owner-bound native context, font lifetime, explicit time/view
+  - [x] Implement the owner-bound native context, font lifetime, explicit time/view
     updates, routed input and capability reporting.
-  - [ ] Author module-local checks, real sequential/concurrent runtime checks and
+  - [x] Author module-local checks, real sequential/concurrent runtime checks and
     independent consumer/header probes. Test retained recordings/frames through
-    toolkit teardown before native integration.
+    toolkit teardown before native integration. Source coverage is ready;
+    executable acceptance remains below.
   - [ ] Add a native demo view and cross-project TGUI/RmlUi focus/coexistence proof.
   - [ ] Accept the focused RmlUi, composition, runtime, coexistence and native
     checks while reusing accepted TGUI coverage for unaffected behavior.

@@ -2,8 +2,8 @@
 
 `Cheryl::UI::RmlUi` is the optional, independently selected RmlUi 6.3 owner.
 It links `Cheryl::Engine` and `RmlUi::Core` with the stock FreeType font engine.
-The module provides portable key/modifier translation, CPU recording and retained
-scene upload. Session, native integration and acceptance are active in
+The module provides native document sessions, portable input translation, CPU
+recording and retained scene upload. Native integration and acceptance are active in
 [U9](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
 
 The [requirements](../../../../docs/planning/rmlui-adapter-requirements.md) define
@@ -53,8 +53,17 @@ Lock flags in RmlUi's modifier representation.
 geometry/pixels, alpha/orientation, clipping, retained frames, provider ownership,
 material validation and failure-preserving adoption. A checked-in two-row image
 distinguishes file premultiplication and row order from generated texture handling.
-The independent consumer links only this adapter; its header probes use public
-headers as the first include. Executable acceptance remains in U9.
+`ui_rmlui_session.*` uses real documents, input elements and FreeType fonts.
+`ui_rmlui_runtime.sequential` and `.concurrent` exercise queued old/new image
+publication, real runtime playback, owner threads and retained frames through
+toolkit/provider teardown. They use controlled engine adapters without a display.
+The independent consumer loads a document, edits its field and retains CPU draws
+after session destruction; header probes use public headers as the first include.
+Executable acceptance remains in U9.
+
+Checks use the selected SDK's `Samples/assets/LatoLatin-Regular.ttf` fixture or
+an explicit `CHERYL_RMLUI_TEST_FONT` file. Missing fonts reject configuration;
+these cases do not silently skip font coverage or search the host's system fonts.
 
 ## Recording and publication
 
@@ -80,3 +89,36 @@ RGBA without an additional premultiplication. `SceneUploader` belongs to one
 provider/domain and platform owner; `submit` transfers owned recording data through
 Cheryl's dispatcher. `adopt_scene` never waits and replaces the retained scene only
 after a complete successful upload. Failure or cancellation preserves its predecessor.
+
+## Native documents and input
+
+Create `Session` on the simulation/UI owner and call `context()` for native RML
+document loading, RCSS styling, elements and listeners. The adapter contains no
+layout string parser or common widget API. `load_font` registers a named family
+from an owned file buffer or copied memory bytes. Both remain valid through Core
+shutdown. The session owns one global Core initialization; a second session or
+host-installed interface rejects instead of replacing the host's SDK state.
+
+Supply copied logical/framebuffer dimensions with `set_view`. Context dimensions
+are logical units and its density-independent ratio is one; framebuffer scaling
+belongs to Cheryl's clip/projection playback. `update_time` advances the supplied
+simulation duration and updates native layout/animation. `record` updates pending
+authoring/input changes before rendering without advancing the clock again.
+
+`request_keyboard_focus` obtains Events/Text routing for this session's target.
+`handle_input` observes modifier snapshots but delivers keyboard/text only for its
+requested epoch. Poll-latched records drain before focus preemption clears native
+editing. Pointer delivery is caller-selected; mouse buttons and fractional wheel
+input apply their observation-time coordinates before delivery. Physical keys,
+repeats and releases stay independent of committed Unicode text.
+
+Capabilities report keyboard/text support and rectangular clipping. Clipboard,
+cursor changes, IME and advanced effects are unavailable. Clipboard shortcuts are
+suppressed before they change a selection; explicit clipboard interface calls
+reject. The adapter never runs a native toolkit backend or window event loop.
+
+Release external element, event-listener and toolkit-resource references before
+session destruction. After the runtime joins simulation, `close_after_quiescence`
+permits final platform-owner teardown. Native contexts and font globals shut down
+while interface/font storage is still live. CPU recordings and uploaded Cheryl
+frames retain their own geometry/pixels/resources independently.

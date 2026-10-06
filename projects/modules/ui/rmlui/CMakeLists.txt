@@ -31,7 +31,7 @@ if(NOT RMLUI_FONT_ENGINE STREQUAL "freetype")
     message(FATAL_ERROR "Cheryl UI requires RMLUI_FONT_ENGINE=freetype; a supplied Core target must declare this configuration")
 endif()
 
-add_library(cheryl_ui_rmlui STATIC src/input.cpp src/rendering.cpp src/scene.cpp)
+add_library(cheryl_ui_rmlui STATIC src/input.cpp src/rendering.cpp src/scene.cpp src/session.cpp)
 add_library(Cheryl::UI::RmlUi ALIAS cheryl_ui_rmlui)
 set_target_properties(cheryl_ui_rmlui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
 target_include_directories(cheryl_ui_rmlui PUBLIC
