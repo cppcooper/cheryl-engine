@@ -7,22 +7,47 @@ live counters, a camera-reset button, an editable field, a scrolling list,
 translucent panels, a replaceable image and an edge tooltip. Either or both can
 be selected.
 
-## Build and launch
+## Setup
 
 From the repository root, with the [dependencies](../../../README.md#dependencies)
-initialized:
+initialized, configure the demo:
 
 ```sh
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -DCHERYL_BUILD_UI_RMLUI=ON
+cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+```
+
+Build its target:
+
+```sh
 cmake --build build/release --target demo --parallel 1
+```
+
+Run in sequential or concurrent mode:
+
+```sh
 ./build/release/demo
 ./build/release/demo --concurrent
 ```
 
-`demo` exists when OpenGL and native input are enabled. TGUI is enabled by default;
-set `CHERYL_BUILD_UI_TGUI=ON` and reload CMake if an existing profile caches it as
-`OFF`. RmlUi defaults to `OFF`; the command above enables it alongside TGUI.
-Disabling both adapters retains the toolkit-free F2 text-input probe.
+| Target | Executable | Requirements |
+| --- | --- | --- |
+| `demo` | `demo` | Demo selection, OpenGL and native input enabled. |
+
+| CMake option | Root default | Effect |
+| --- | --- | --- |
+| `CHERYL_BUILD_DEMO` | `ON` | Selects the demo target when its requirements are enabled. |
+| `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Supplies display/windows and native input. |
+| `CHERYL_BUILD_OPENGL` | `ON` | Supplies graphics/context/resources; requires Native GLFW. |
+| `CHERYL_NATIVE_INPUT` | `ON` | Supplies the demo's Gainput-backed input implementation. |
+| `CHERYL_BUILD_UI_TGUI` | `ON` | Adds the right-hand TGUI panel. |
+| `CHERYL_BUILD_UI_RMLUI` | `ON` | Adds the left-hand RmlUi view. |
+
+Reload CMake after changing a cached selection. Disabling both adapters retains
+the toolkit-free F2 text-input probe. The build supplies `CHERYL_DEMO_TGUI=1` and
+`CHERYL_DEMO_RMLUI=1` for selected UI targets; `CHERYL_SOURCE_DIR` supplies the
+default asset root. See the root [setup guide](../../../README.md#setup) for clone,
+submodule updates, common configurations, all tests and
+[compile-time macro tables](../../../README.md#compile-time-options-macros).
 
 The HUD and RmlUi use a discoverable system font. TGUI uses its embedded default
 font. Shaders and the small RmlUi proof document/images are checked in under the

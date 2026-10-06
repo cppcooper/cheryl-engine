@@ -4,7 +4,8 @@ Start with [runtime architecture and backend boundaries](runtime/runtime-archite
 for an overview of the engine and application APIs. The documents below cover
 individual systems, development practices, and unfinished work.
 
-For setup and build options, start with the [root README](../README.md).
+For [setup and build options](../README.md#setup) and
+[grouped targets/output filenames](../README.md#targets), start with the root README.
 For a running application and controls, use the [demo guide](../projects/apps/demo/README.md).
 
 ## Contents

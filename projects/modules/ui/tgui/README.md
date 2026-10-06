@@ -31,6 +31,7 @@ At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently 
 native/graphics selection. Set it to `OFF` to omit the target and its toolkit/font
 dependencies. Link the application to
 `Cheryl::UI::TGUI`; its Engine and toolkit requirements propagate through the target.
+The build target is `module_ui_tgui`, with output name `cheryl-module-ui-tgui`.
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::UI::TGUI)
@@ -230,9 +231,15 @@ or adapter destruction; native playback still requires the original live domain.
 
 ## Focused checks
 
-The module owns `ui-tgui-tests`, the `ui-tgui-all` aggregate and
-`cheryl-ui-tgui-consumer`. Its cases join `all-tests` only when this module is
-selected. Input/recording checks and controlled-provider scene checks require no
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-ui-tgui` | `tests-ui-tgui` | `CHERYL_BUILD_TESTS`: input, recording, sessions, layouts and controlled runtime cases. |
+| `all-ui-tgui` | `tests-all-ui-tgui` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-ui-tgui` | `cheryl-ui-tgui-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: real label creation/recording in an independent consumer. |
+| `consumer-module-headers--ui-tgui` | Object library | Consumer's first-include header probes; built with the consumer. |
+
+Its cases join `all-tests` only when this module is selected. Input/recording
+checks and controlled-provider scene checks require no
 window, graphics context, font file or installed toolkit-global backend. They cover
 index expansion, transforms, clips, immutable texture generations, resource reuse,
 retained frames, failed/cancelled adoption and owner/domain rejection. Session checks
@@ -262,15 +269,22 @@ Independent consumer/header composition and native pixels also require the remai
 U9 acceptance. Reuse the accepted complete module suite unless related source
 changes require a rerun. A root build does not establish standalone composition.
 
-To build the focused checks in a standalone source composition:
+From the repository root, configure the focused checks in a standalone source
+composition:
 
 ```sh
 cmake -S projects/modules/ui/tgui -B build-ui-tgui \
   -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
+```
+
+```sh
 nice -n 19 cmake --build build-ui-tgui --parallel 1 \
-  --target ui-tgui-tests cheryl-ui-tgui-consumer
+  --target tests-ui-tgui consumer-module-ui-tgui
+```
+
+```sh
 ./build-ui-tgui/tests-ui-tgui
 ./build-ui-tgui/cheryl-ui-tgui-consumer
 ```

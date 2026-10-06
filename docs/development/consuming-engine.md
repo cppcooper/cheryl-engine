@@ -77,7 +77,7 @@ After explicit build/test authorization, the engine-only consumer entry point is
 cmake -S projects/engine/tests/consumer -B build-consumer-engine \
   -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_BUILD_UI_RMLUI=OFF
-cmake --build build-consumer-engine --target cheryl-consumer --parallel 1
+cmake --build build-consumer-engine --target consumer-cengine --parallel 1
 ./build-consumer-engine/cheryl-consumer
 ```
 

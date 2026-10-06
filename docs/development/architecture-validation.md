@@ -67,8 +67,8 @@ cmake -S . -B build-validation-release -G Ninja \
   -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
   -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
 nice -n 19 cmake --build build-validation-release --parallel 1 --target \
-  cheryl-consumer engine-tests logging-tests \
-  cheryl-logging-acceptance cheryl-signal-acceptance
+  consumer-cengine tests-engine tests-logging \
+  acceptance-logging acceptance-signal
 ./build-validation-release/cheryl-consumer
 ./build-validation-release/tests-engine
 ```
@@ -87,8 +87,8 @@ for the selected module. Build its targets together:
 
 | Entry point | Targets |
 | --- | --- |
-| `projects/modules/platform/native-glfw/` | `cheryl-native-glfw-consumer`, `native-glfw-tests`, `native-glfw-all` |
-| `projects/modules/graphics/opengl/` | `cheryl-opengl-consumer`, `opengl-tests`, `opengl-acceptance`, `opengl-all` |
+| `projects/modules/platform/native-glfw/` | `consumer-module-native-glfw`, `tests-native-glfw`, `all-native-glfw` |
+| `projects/modules/graphics/opengl/` | `consumer-module-opengl`, `tests-opengl`, `acceptance-opengl`, `all-opengl` |
 
 Supply `CHERYL_REPOSITORY_ROOT` explicitly; OpenGL also accepts
 `CHERYL_NATIVE_GLFW_SOURCE`. For Linux/X11 native input, select
@@ -191,7 +191,7 @@ runner because shader reflection belongs to OpenGL; use the developer logging
 profile unless explicitly checking stripped diagnostics. Neither driver needs a
 fresh full-aggregate run.
 
-For the Debug signal check, build only `cheryl-signal-acceptance` against a current
+For the Debug signal check, build only `acceptance-signal` against a current
 neutral Debug Engine archive and verify its final link excludes native/OpenGL owners.
 Configure an Engine-only Debug directory if no suitable archive exists. The POSIX
 driver accepts either build argument alone, checks actual `NDEBUG` scope and bounds

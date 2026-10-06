@@ -15,8 +15,9 @@ engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 ## Selection and dependency
 
 Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,
-`ui-rmlui-tests` and `ui-rmlui-all` when tests are selected. The root option defaults
-to `OFF`; TGUI and RmlUi can be selected separately or together.
+`tests-ui-rmlui` and `all-ui-rmlui` when tests are selected. The root option defaults
+to `ON`; TGUI and RmlUi can be selected separately or together. The module library's
+output name is `cheryl-module-ui-rmlui`.
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::UI::RmlUi)
@@ -49,6 +50,13 @@ this mapping. `modifiers` preserves Control, Shift, Alt, Super, Caps Lock and Nu
 Lock flags in RmlUi's modifier representation.
 
 ## Focused checks
+
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-ui-rmlui` | `tests-ui-rmlui` | `CHERYL_BUILD_TESTS`: input, recording, sessions and controlled runtime cases. |
+| `all-ui-rmlui` | `tests-all-ui-rmlui` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-ui-rmlui` | `cheryl-ui-rmlui-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: native document editing and retained CPU draws. |
+| `consumer-module-headers--ui-rmlui` | Object library | Consumer's first-include header probes; built with the consumer. |
 
 `ui_rmlui_input.*` covers representative keys and combined modifiers.
 `ui_rmlui_recording.*`, `ui_rmlui_texture.*` and `ui_rmlui_scene.*` cover owned
@@ -137,10 +145,16 @@ UI adapters selected. `demo` also requires native input. From the repository roo
 
 ```sh
 git submodule update --init extern/rmlui
-cmake -S . -B build/debug -DCHERYL_BUILD_UI_RMLUI=ON \
+```
+
+```sh
+cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON \
   -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+```
+
+```sh
 nice -n 19 cmake --build build/debug --parallel 1 \
-  --target demo ui-rmlui-all ui-coexist-tests engine-tests native-glfw-tests
+  --target demo all-ui-rmlui tests-ui-coexist tests-engine tests-native-glfw
 ```
 
 After the build, run these focused checks when the machine has cooled:
@@ -153,7 +167,7 @@ After the build, run these focused checks when the machine has cooled:
 ./build/debug/tests-native-glfw --gtest_filter='glfw_bindings.portable_*'
 ```
 
-`ui-coexist-tests` belongs to `projects/tests/`, and also joins the combined
+`tests-ui-coexist` belongs to `projects/tests/`, and also joins the combined
 `all-tests` runner. It checks poll-latched text delivery, focus preemption and
 stale-lease release across both native toolkits, distinct alpha passes, and frames
 retained through independent toolkit/provider teardown. Do not run both runners
@@ -167,14 +181,21 @@ after the root checks settle, so any fixes precede a separate compilation:
 cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer \
   -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
+```
+
+```sh
 nice -n 19 cmake --build build/rmlui-consumer --parallel 1 \
-  --target cheryl-ui-rmlui-consumer
+  --target consumer-module-ui-rmlui
+```
+
+```sh
 ./build/rmlui-consumer/cheryl-ui-rmlui-consumer
 ```
 
 For TGUI's remaining standalone acceptance, configure its `tests/consumer/` entry
-point similarly, with `CHERYL_TGUI_SOURCE` and `cheryl-ui-tgui-consumer`. Reuse an
-existing independent build where available. Root consumers alone do not prove
+point similarly, with `CHERYL_TGUI_SOURCE` and target `consumer-module-ui-tgui`.
+Its executable remains `cheryl-ui-tgui-consumer`. Reuse an existing independent
+build where available. Root consumers alone do not prove
 isolation; supplied-target/package composition needs its own check when used.
 
 Follow the [demo procedure](../../../apps/demo/README.md#interaction-checks) in

@@ -8,7 +8,8 @@ owner, which also manages GLFW lifetime and native callback diagnostics.
 
 The root selects this owner with `CHERYL_BUILD_NATIVE_GLFW=ON`. Set
 `CHERYL_BUILD_OPENGL=OFF` to use the platform module without Cheryl's graphics
-backend; TGUI selection is independent. Applications link:
+backend; UI selection is independent. The library's build target is
+`module_native_glfw`, with output name `cheryl-module-native-glfw`. Applications link:
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::NativeGLFW)
@@ -30,6 +31,9 @@ checkout without selecting other integration owners:
 cmake -S projects/modules/platform/native-glfw -B build/native-module \
   -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_REPOSITORY_ROOT="$PWD"
+```
+
+```sh
 cmake --build build/native-module --target module_native_glfw --parallel 1
 ```
 
@@ -93,9 +97,14 @@ Target selection, standalone paths and validation status are in
 
 ## Checks
 
-With tests selected, `native-glfw-tests` covers mapping and callback diagnostics;
-`native-glfw-all` is the owner's aggregate. `CHERYL_BUILD_CONSUMER_TESTS=ON` adds
-`cheryl-native-glfw-consumer` and its first-include header probes. Native graphics
-runtime checks belong to the OpenGL owner's opt-in acceptance suite. Use the
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-native-glfw` | `tests-native-glfw` | `CHERYL_BUILD_TESTS`: mapping and callback diagnostics. |
+| `all-native-glfw` | `tests-all-native-glfw` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-native-glfw` | `cheryl-native-glfw-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: independent link/implementation consumer. |
+| `consumer-module-headers-native-glfw` | Object library | Consumer's first-include header probes; built with the consumer. |
+
+Native graphics runtime checks belong to the OpenGL owner's opt-in acceptance
+suite. Use the
 [composition procedures](../../../../docs/development/architecture-validation.md)
 when changing module boundaries.

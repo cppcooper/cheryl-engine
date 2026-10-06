@@ -8,7 +8,8 @@ GLAD, context operations and the GLFW/OpenGL assembly factory.
 
 The root selects this owner with `CHERYL_BUILD_OPENGL=ON`, which requires
 `CHERYL_BUILD_NATIVE_GLFW=ON`. Applications link `Cheryl::OpenGL` to inherit its
-Engine, Native GLFW and generated GLAD requirements:
+Engine, Native GLFW and generated GLAD requirements. Its build target is
+`module_opengl`, with output name `cheryl-module-opengl`:
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::OpenGL)
@@ -22,6 +23,9 @@ cmake -S projects/modules/graphics/opengl -B build/opengl-module \
   -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_NATIVE_GLFW_SOURCE="$PWD/projects/modules/platform/native-glfw"
+```
+
+```sh
 cmake --build build/opengl-module --target module_opengl --parallel 1
 ```
 
@@ -48,12 +52,13 @@ and private helpers live together under `src/backends/opengl/`.
 
 ## Checks
 
-| Target / directory | Coverage |
-| --- | --- |
-| `opengl-tests`, `tests/unit/` | Mock GL implementation checks without a graphics context. |
-| `opengl-acceptance`, `tests/acceptance/` | Native graphics/runtime checks when native input is selected. Requires `CHERYL_NATIVE_GL_TESTS=1` and a usable display for native cases. |
-| `opengl-all`, `tests/all-tests/` | All selected owner GoogleTests. |
-| `cheryl-opengl-consumer`, `tests/consumer/` | Link and first-include header probes selected with `CHERYL_BUILD_CONSUMER_TESTS=ON`. |
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-opengl` | `tests-opengl` | `CHERYL_BUILD_TESTS`: mock GL checks without a graphics context. |
+| `acceptance-opengl` | `tests-acceptance-opengl` | Native graphics/runtime checks when tests and native input are selected. `CHERYL_BUILD_ACCEPTANCE_TESTS` adds it to the default build/CTest; native cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display. |
+| `all-opengl` | `tests-all-opengl` | All selected owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-opengl` | `cheryl-opengl-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: independent link/implementation consumer. |
+| `consumer-module-headers--opengl` | Object library | Consumer's first-include header probes; built with the consumer. |
 
 Native and fixture opt-ins apply to the aggregate too. Mock checks or skipped
 native cases do not establish driver, compositor or physical-device behavior.

@@ -62,7 +62,7 @@ follow the same optional owner model; Steam remains a future integration.
 
 ## Select an assembly
 
-The root selects Native GLFW, OpenGL and TGUI by default. Set
+The root selects Native GLFW, OpenGL, TGUI and RmlUi by default. Set
 `CHERYL_BUILD_NATIVE_GLFW=OFF`, `CHERYL_BUILD_OPENGL=OFF` and
 `CHERYL_BUILD_UI_TGUI=OFF` and `CHERYL_BUILD_UI_RMLUI=OFF` for Engine alone.
 Select Native GLFW with `CHERYL_BUILD_NATIVE_GLFW=ON` and
@@ -76,7 +76,7 @@ submodule or finds an exact TGUI 1.13.0 package without downloading. See its
 dependency contract and current scope. Neither Engine nor another module selects
 or links the toolkit implicitly.
 
-`CHERYL_BUILD_UI_RMLUI` selects RmlUi independently and defaults to `OFF`.
+`CHERYL_BUILD_UI_RMLUI` selects RmlUi independently and defaults to `ON`.
 It reuses `RmlUi::Core`, accepts `CHERYL_RMLUI_SOURCE`, uses the pinned
 `extern/rmlui` submodule or finds an exact RmlUi 6.3 package. Its
 [module guide](../../projects/modules/ui/rmlui/README.md) describes the stock
@@ -146,32 +146,32 @@ still requires an actual selection, replacement or dependency-isolation benefit.
 
 ## Test ownership and selection
 
-GoogleTest runners use `*-tests` for normal focused tests, `*-acceptance` for broader
-or environment-dependent acceptance tests, and `*-all` for all GoogleTests owned by
+GoogleTest runners use `tests-*` for normal focused tests, `acceptance-*` for broader
+or environment-dependent acceptance tests, and `all-*` for all GoogleTests owned by
 a subsystem/module. `all-tests` contains all GoogleTests in the selected Cheryl
 assembly.
 
 These are build target identities and CTest prefixes. Executable names come from
-[CherylOutputs.cmake](../../cmake/CherylOutputs.cmake): for example, `engine-tests`
-produces `tests-engine`, `engine-acceptance` produces `tests-acceptance-engine`,
+[CherylOutputs.cmake](../../cmake/CherylOutputs.cmake): for example, `tests-engine`
+produces `tests-engine`, `acceptance-engine` produces `tests-acceptance-engine`,
 and `all-tests` produces `tests-all`. Manual logging/signal drivers use their
 declared output names as well. Archives and executables retain their build-root
 output directories.
 
-`CHERYL_BUILD_TESTS=ON` builds the inexpensive `engine-tests`, `logging-tests`
+`CHERYL_BUILD_TESTS=ON` builds the inexpensive `tests-engine`, `tests-logging`
 and selected module unit runners. Engine unit cases exercise real
 engine-owned bindings, frames and runtime code with controlled contract adapters.
 They have no native module link or display/device requirement. The new small runtime
 scenario covers input-to-frame transfer, presentation, teardown and session rejection;
 the larger runtime fault/concurrency cases remain engine-owned acceptance.
 
-Each module owns its real implementation tests: `native-glfw-tests`,
-`opengl-tests`, `ui-tgui-tests` and `ui-rmlui-tests` when selected. UI checks use
+Each module owns its real implementation tests: `tests-native-glfw`,
+`tests-opengl`, `tests-ui-tgui` and `tests-ui-rmlui` when selected. UI checks use
 controlled engine adapters without native platforms or graphics contexts. TGUI
 session/runtime checks use its embedded font; RmlUi uses a selected real font
-fixture. The assembly owns `ui-coexist-tests` when both adapters are selected;
-neither module's tests depend on the other. `engine-acceptance`, `opengl-acceptance`,
-`cheryl-logging-acceptance` and `cheryl-signal-acceptance` are excluded from the
+fixture. The assembly owns `tests-ui-coexist` when both adapters are selected;
+neither module's tests depend on the other. `acceptance-engine`, `acceptance-opengl`,
+`acceptance-logging` and `acceptance-signal` are excluded from the
 default build unless `CHERYL_BUILD_ACCEPTANCE_TESTS=ON`. Native GL cases still need the existing explicit
 `CHERYL_NATIVE_GL_TESTS=1` opt-in and a usable display. Font fixtures retain their
 existing explicit opt-ins. Dummy engine checks do not establish module conformance.
@@ -180,11 +180,11 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 
 | Target | Cases |
 | --- | --- |
-| `engine-all` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
-| `native-glfw-all` | Native GLFW diagnostics and, when selected, native input mapping cases. |
-| `opengl-all` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
-| `ui-tgui-all` | The selected TGUI module's cases; remaining acceptance is tracked by U9. |
-| `ui-rmlui-all` | The selected RmlUi module's cases; executable acceptance remains in U9. |
+| `all-engine` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
+| `all-native-glfw` | Native GLFW diagnostics and, when selected, native input mapping cases. |
+| `all-opengl` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
+| `all-ui-tgui` | The selected TGUI module's cases; remaining acceptance is tracked by U9. |
+| `all-ui-rmlui` | The selected RmlUi module's cases; executable acceptance remains in U9. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases, plus assembly coexistence checks when both UI owners are selected. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes
@@ -226,7 +226,7 @@ silently dropping an unreferenced initializer from a static archive. The legacy
 no extra bootstrap link. Exception/explicit stack capture uses its existing bounded
 capture and fallback code in every build, independently of signal installation.
 
-`cheryl-signal-acceptance` links only Engine and references no engine entry point.
+`acceptance-signal` links only Engine and references no engine entry point.
 Its manual POSIX driver checks the consumer's actual `NDEBUG` definition, then
 raises `SIGABRT` in a child with a 15-second timeout and core files disabled.
 The Debug case requires Backward's trace header and a stack frame; the `NDEBUG`
