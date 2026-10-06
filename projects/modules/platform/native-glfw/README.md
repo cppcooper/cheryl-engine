@@ -29,7 +29,7 @@ checkout without selecting other integration owners:
 ```sh
 cmake -S projects/modules/platform/native-glfw -B build/native-module \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_ENGINE_SOURCE=/absolute/path/to/cheryl-engine
+  -DCHERYL_REPOSITORY_ROOT="$PWD"
 cmake --build build/native-module --target module_native_glfw --parallel 1
 ```
 

@@ -90,7 +90,7 @@ for the selected module. Build its targets together:
 | `projects/modules/platform/native-glfw/` | `cheryl-native-glfw-consumer`, `native-glfw-tests`, `native-glfw-all` |
 | `projects/modules/graphics/opengl/` | `cheryl-opengl-consumer`, `opengl-tests`, `opengl-acceptance`, `opengl-all` |
 
-Supply `CHERYL_ENGINE_SOURCE` explicitly; OpenGL also accepts
+Supply `CHERYL_REPOSITORY_ROOT` explicitly; OpenGL also accepts
 `CHERYL_NATIVE_GLFW_SOURCE`. For Linux/X11 native input, select
 `CHERYL_NATIVE_INPUT=ON`, `CHERYL_NATIVE_NULL_PLATFORM=OFF`, `GLFW_BUILD_X11=ON`
 and `GLFW_BUILD_WAYLAND=OFF`. Bootstrapped Engine tests remain disabled; OpenGL's
@@ -114,7 +114,7 @@ block(SCOPE_FOR VARIABLES)
     set(CHERYL_BUILD_TESTS OFF)
     set(CHERYL_BUILD_CONSUMER_TESTS OFF)
     set(CHERYL_BUILD_DEMO OFF)
-    add_subdirectory("${CHERYL_ENGINE_SOURCE}" engine EXCLUDE_FROM_ALL)
+    add_subdirectory("${CHERYL_REPOSITORY_ROOT}" engine EXCLUDE_FROM_ALL)
 endblock()
 
 set(CHERYL_BUILD_TESTS ON)

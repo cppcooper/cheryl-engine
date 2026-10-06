@@ -4,8 +4,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 if(NOT TARGET Cheryl::Engine)
-    get_filename_component(cheryl_default_engine_source "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
-    set(CHERYL_ENGINE_SOURCE "${cheryl_default_engine_source}" CACHE PATH "Cheryl source checkout")
     block(SCOPE_FOR VARIABLES)
         set(CHERYL_BUILD_TESTS OFF)
         set(CHERYL_BUILD_DEMO OFF)
@@ -13,15 +11,11 @@ if(NOT TARGET Cheryl::Engine)
         set(CHERYL_BUILD_NATIVE_GLFW OFF)
         set(CHERYL_BUILD_OPENGL OFF)
         set(CHERYL_BUILD_UI_TGUI OFF)
-        add_subdirectory("${CHERYL_ENGINE_SOURCE}" engine EXCLUDE_FROM_ALL)
+        add_subdirectory("${CHERYL_REPOSITORY_ROOT}" engine EXCLUDE_FROM_ALL)
     endblock()
 endif()
 
-if(CHERYL_ENGINE_SOURCE)
-    include("${CHERYL_ENGINE_SOURCE}/cmake/CherylConsumers.cmake")
-else()
-    include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
-endif()
+include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
 
 # No dependency list, include directories, language standard or engine sources.
 file(GLOB_RECURSE consumer_sources CONFIGURE_DEPENDS

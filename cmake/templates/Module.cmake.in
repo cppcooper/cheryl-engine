@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-include("${CHERYL_ENGINE_SOURCE}/cmake/CherylModules.cmake")
+include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(@MODULE_NAME@ VERSION ${VERSION_PROJECT_MODULE_@MODULE_ID@} LANGUAGES CXX)
 endif()

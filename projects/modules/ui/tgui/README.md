@@ -50,8 +50,9 @@ unreviewed version or native toolkit backend.
 Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
 to `ON` and reload CMake to expose `module_ui_tgui` and its selected test targets.
 
-For a standalone module, supply `Cheryl::Engine` or `CHERYL_ENGINE_SOURCE`. Engine
-bootstrap suppresses UI/native/graphics/demo/test selection in its local scope.
+For a standalone module, set `CHERYL_REPOSITORY_ROOT` to the Cheryl checkout.
+The module reuses a supplied `Cheryl::Engine` or bootstraps Engine from that root,
+suppressing UI/native/graphics/demo/test selection in its local scope.
 For an independently configured consumer, use `tests/consumer/` as the source
 directory with the same dependency arguments; it links only this module and checks
 its public header as the first include.
@@ -265,7 +266,7 @@ To build the focused checks in a standalone source composition:
 
 ```sh
 cmake -S projects/modules/ui/tgui -B build-ui-tgui \
-  -DCHERYL_ENGINE_SOURCE=/path/to/cheryl-engine \
+  -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
 nice -n 19 cmake --build build-ui-tgui --parallel 1 \

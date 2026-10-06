@@ -34,8 +34,9 @@ tests, native backends, Lua and optional plugins. Conflicting settings reject
 instead of rewriting a host's choices. The module links Core directly, leaving
 the upstream debugger outside the adapter dependency graph.
 
-For a standalone module or its `tests/consumer/` entry point, supply
-`Cheryl::Engine` or `CHERYL_ENGINE_SOURCE`. Engine bootstrap suppresses other
+For a standalone module or its `tests/consumer/` entry point, set
+`CHERYL_REPOSITORY_ROOT` to the Cheryl checkout. The module reuses a supplied
+`Cheryl::Engine` or bootstraps Engine from that root, suppressing other
 module/demo/test selection in its local scope. Consumer/header checks are selected
 through `CHERYL_BUILD_CONSUMER_TESTS` at the root or by configuring the consumer
 entry point independently.
@@ -164,7 +165,7 @@ after the root checks settle, so any fixes precede a separate compilation:
 
 ```sh
 cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer \
-  -DCMAKE_BUILD_TYPE=Release -DCHERYL_ENGINE_SOURCE="$PWD" \
+  -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
 nice -n 19 cmake --build build/rmlui-consumer --parallel 1 \
   --target cheryl-ui-rmlui-consumer

@@ -113,7 +113,7 @@ Useful dependency and toolchain settings:
 | `GAINPUT_ENABLE_HID=OFF` | Omits the selected Gainput fork's HID support and hidapi fetch. |
 | `Python_EXECUTABLE=/path/to/python` | Selects the GLAD generator's interpreter, which must have Jinja2 installed. |
 | `CMAKE_POLICY_VERSION_MINIMUM=3.5` | Allows pinned legacy dependency CMake files to configure with CMake 4 when needed. |
-| `CHERYL_ENGINE_SOURCE=/path/to/cheryl-engine` | Supplies the engine checkout to a standalone module. |
+| `CHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine` | Supplies the checkout for helpers and dependency bootstrapping in standalone modules/consumers; the root configuration sets it automatically. |
 | `CHERYL_NATIVE_GLFW_SOURCE=/path/to/native-glfw` | Supplies Native GLFW to a standalone OpenGL module. |
 | `CHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0` | Selects a TGUI source tree instead of the bundled submodule. |
 | `TGUI_DIR=/path/to/TGUI/cmake/package` | Selects an exact TGUI 1.13.0 package with the required custom/FreeType features. |

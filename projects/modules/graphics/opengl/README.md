@@ -20,8 +20,8 @@ targets or bootstraps the explicitly selected owners:
 ```sh
 cmake -S projects/modules/graphics/opengl -B build/opengl-module \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_ENGINE_SOURCE=/absolute/path/to/cheryl-engine \
-  -DCHERYL_NATIVE_GLFW_SOURCE=/absolute/path/to/cheryl-engine/projects/modules/platform/native-glfw
+  -DCHERYL_REPOSITORY_ROOT="$PWD" \
+  -DCHERYL_NATIVE_GLFW_SOURCE="$PWD/projects/modules/platform/native-glfw"
 cmake --build build/opengl-module --target module_opengl --parallel 1
 ```
 

@@ -112,20 +112,22 @@ shutdown keeps its established ordering.
 
 ## Standalone modules
 
-Each module can reuse a supplied `Cheryl::Engine` target or bootstrap an explicit
-`CHERYL_ENGINE_SOURCE` checkout. OpenGL additionally reuses `Cheryl::NativeGLFW` or
-accepts an explicit `CHERYL_NATIVE_GLFW_SOURCE` module directory. There is no engine
-source copy, SDK download, parent-directory assumption for dependency bootstrapping,
-or forced host cache rewrite. A supplied Engine target publishes its source metadata;
-foreign/imported targets without it need the explicit source checkout for helpers.
+Module and consumer entry points use `CHERYL_REPOSITORY_ROOT` for shared helpers
+and Engine dependency bootstrapping. The root configuration sets it automatically;
+standalone configurations and enclosing hosts supply the absolute Cheryl checkout
+path before adding an owner. There is no alternate `CHERYL_ENGINE_SOURCE` path or
+parent-directory fallback. Each module reuses a supplied `Cheryl::Engine` target
+or bootstraps Engine from the repository root. OpenGL additionally reuses
+`Cheryl::NativeGLFW` or accepts an explicit `CHERYL_NATIVE_GLFW_SOURCE` module
+directory. There is no engine source copy, SDK download or forced host cache rewrite.
 
 After explicit build authorization, standalone entry points are:
 
 ```sh
 cmake -S projects/modules/platform/native-glfw -B build-native-module \
-  -DCHERYL_ENGINE_SOURCE=/path/to/cheryl-engine
+  -DCHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine
 cmake -S projects/modules/graphics/opengl -B build-opengl-module \
-  -DCHERYL_ENGINE_SOURCE=/path/to/cheryl-engine \
+  -DCHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine \
   -DCHERYL_NATIVE_GLFW_SOURCE=/path/to/cheryl-engine/projects/modules/platform/native-glfw
 ```
 
