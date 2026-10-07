@@ -13,7 +13,7 @@ author pages below, then extract or copy the images into the expected locations.
 | [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/character-customizer.json) |
 | [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/punyworld-overworld.json) |
 | [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/magecity.json) |
-| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | [dungeon_tiles.png](https://opengameart.org/sites/default/files/dungeon_tiles_0.png) | [dungeon_tiles.json](../../assets/dungeon_tiles.json) |
+| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | `dungeon_tiles.png` | [dungeon_tiles.json](../../assets/dungeon_tiles.json) |
 
 The three MiniWorld sprite/building manifests share one archive. Character Customizer
 is a separate archive on the same page. That page also offers `MiniworldGuide.docx`
