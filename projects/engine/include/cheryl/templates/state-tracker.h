@@ -3,7 +3,10 @@
 #include <concepts>
 #include <utility>
 
-/** Tracks two successive values of one logical state. update() advances the sample boundary. */
+/** Caller-owned successive samples without synchronization. Accessors borrow this
+ * tracker's storage and must not race update(). update() assigns previous before
+ * current; throwing T assignment can leave partial state rather than rolling back.
+ */
 template <typename T>
     requires std::copy_constructible<T> && std::assignable_from<T&, T>
 class StateTracker {

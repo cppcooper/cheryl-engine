@@ -1,6 +1,6 @@
 # Consumer resource contract
 
-U8's selected consumer is U0's library-neutral UI submission/input probe. It uses
+The library-neutral UI submission/input probe uses
 one active cache/provider and rendering window, immutable CPU-created images,
 expanded triangles, and the existing printable-ASCII font atlas. These choices
 require explicit resource contracts, rather than new domains or mutable textures.
@@ -12,7 +12,7 @@ require explicit resource contracts, rather than new domains or mutable textures
 | Vertex colors | Upload `Vertex2DColor` with float RGBA and select `Position3UV2Color4` in the pipeline. An unimplemented provider overload rejects the request explicitly; the existing `Vertex2D` path keeps its layout. |
 | Atomic batch reload | Not required. Loader upload can partially publish entries; its metadata pointer commits only after successful upload/allocation. |
 | Multiple domains/windows | Not required. Global managers support one active provider and serialized loading owner. Separate roots/loaders share that domain. |
-| In-place texture update or atlas growth | Not exposed. Reopen U8/U11 before a consumer requires mutation or Unicode glyph residency. |
+| In-place texture update or atlas growth | Not exposed. Revisit this contract before a consumer requires mutation or Unicode glyph residency. |
 | Eviction/budgets | No automatic policy. Strong cache residency and explicit clear/replacement/teardown remain. |
 
 PreparedAssets owns its decoded pixels and definitions and retains no provider or
@@ -57,5 +57,5 @@ Current regression sources cover prepared-pixel ownership, independent metadata
 scans, partial upload lifetime/retry, provider guards, strong residency, cancellation,
 and retained material generations. See
 [asset-loading.md](../assets/asset-loading.md),
-[resource-residency.md](resource-residency.md), and
-[the development plan](../planning/develop-review-and-development-plan.md#u8-resolve-resource-extension-requirements-before-consumers).
+[resource-residency.md](resource-residency.md), and the reusable
+[architecture validation procedures](../development/architecture-validation.md).

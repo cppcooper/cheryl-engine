@@ -39,7 +39,6 @@
  *  PoolOrder
  *
  * // management classes
- * BlockPool<T>
  * BlockManagement<T>
  * iManage<T>
  * AbstractManager<T>
@@ -52,6 +51,8 @@
  * A contiguous range within one backing allocation. owner keeps that allocation
  * alive; head may point into it after a split. length counts T objects (bytes for void).
  * Splitting produces ranges with the same owner without transferring storage.
+ * Range mutation requires caller synchronization and valid representable backing
+ * bounds. Compound registry/pool transitions use BlockTransactions instead.
  */
 template <typename T> struct Block {
     using spointer = std::shared_ptr<T>;
@@ -64,6 +65,9 @@ template <typename T> struct Block {
     OBlock split_at(std::size_t idx);
     bool contains(void* p) const;
 
+    // Independent element control blocks, not aliases of owner. The supplied
+    // deleter must retain/release backing storage and manage constructed lifetimes;
+    // this helper neither constructs elements nor keeps the Block's owner itself.
     std::vector<spointer> vector(std::function<void(T*)> d) {
         std::vector<spointer> ret;
         ret.reserve(length);

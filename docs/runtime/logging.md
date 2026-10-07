@@ -261,9 +261,8 @@ reported once per newly observed range across categories, including flush loss.
 The final pool deleter drains/joins accepted work and reports any outstanding loss
 range, without ordinary logger use or queued pool ownership. flush releases its
 lifecycle lock before a potentially blocking queue submission.
-Executable U5 acceptance passed before broad subsystem integration.
-The contract and execution evidence are recorded in the
-[development plan](../planning/develop-review-and-development-plan.md#u5-executable-gate-and-u6-implementation-boundaries).
+Use the [logging acceptance procedures](../development/logging-acceptance.md) for
+compile-profile, callback/failure and teardown coverage limits.
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
 External native owners must not continue producing after facade teardown.
@@ -291,12 +290,11 @@ isolated processes provide the timeout and fault-injection acceptance boundary.
 Additional sources cover independently throwing close handlers, startup exceptions
 with failing cleanup, non-standard file formatters, standard console formatters,
 continued healthy-destination output, cumulative failure counts, and close/reopen
-recovery. The authorized U5 normal/sandbox profile matrix and supplementary
-ASan/UBSan checks passed; the [development plan](../planning/develop-review-and-development-plan.md#u5-executable-gate-and-u6-implementation-boundaries)
-records the execution evidence and limits. Further build/test runs require the
+recovery. The [logging acceptance guide](../development/logging-acceptance.md)
+defines the profile/sanitizer procedures and retained coverage limits. Further build/test runs require the
 authorization specified by AGENTS.md.
 
-The standalone cheryl-logging-acceptance target and
+The standalone `acceptance-logging` target and
 [logging.py](../../projects/engine/tests/logging-acceptance/logging.py) run fault, failed rotation, full-queue
 native reentry, discarded record/flush, retained clone, named category routing,
 static teardown, and fatal

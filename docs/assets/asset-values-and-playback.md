@@ -6,6 +6,9 @@ immutable when sharing it. Parsing validates document-local references;
 [Loader preparation](asset-loading.md) additionally checks cross-document identities
 and decoded image bounds. Direct aggregate construction does not perform those
 checks automatically.
+Parsed texture paths already include the source document's parent directory and
+lexical normalization; consumers do not prepend it again. `textures()` returns
+owned deduplicated entry paths in sprite-then-tileset first-reference order.
 
 ## Coordinates and grid geometry
 

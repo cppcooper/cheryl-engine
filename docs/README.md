@@ -25,6 +25,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 - [Native callbacks and failure reporting](runtime/failure-reporting.md)
 - [Input actions, state, events, text, and focus](runtime/input-state-model.md)
 - [Simulation timing and recovery](runtime/simulation-timing.md)
+- [State, timing and math utilities](runtime/utility-contracts.md)
 - [Thread dispatch](runtime/thread-dispatch.md)
 - [Event buses and persistent registration](runtime/event-delivery.md)
 - [Worker pools and groups](runtime/worker-execution.md)

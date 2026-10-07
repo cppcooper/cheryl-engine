@@ -13,6 +13,7 @@
  * Integer syntax is base-10 from_chars: no leading space or plus, with a minus
  * only for signed parsing. Invalid syntax throws invalid_args; a numeric value
  * outside the selected parser's range throws bad_request.
+ * Floating parsing accepts stod's nonfinite values; it adds no finiteness policy.
  */
 inline double parse_floats(const std::string& str) {
     try {
@@ -28,7 +29,8 @@ inline double parse_floats(const std::string& str) {
     }
 }
 
-// Using std::variant to return the smallest type possible
+// Integers choose the smallest fitting type of the requested signedness; floating
+// parsing always returns double. Values own their storage without borrowing input.
 using NumberVariant = std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, double>;
 
 template <bool is_unsigned> NumberVariant parse_integers(const std::string& str) {

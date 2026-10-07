@@ -57,6 +57,10 @@ namespace CE::math {
      * Bit zero is the least-significant bit. Mutable indexing returns a proxy so
      * individual bits can be assigned as though they were ordinary booleans.
      * words() exposes the same packed storage as a contiguous word array.
+     * Indices must be below Bits; assertions are not checked release-mode errors.
+     * Spans/proxies borrow this array. Access is unsynchronized, including writes
+     * to different bits in one word; whole-word access can modify unused high bits.
+     * Native storage/byte order is not a portable serialized representation.
      */
     template <std::size_t Bits> class BitArray {
         static_assert(Bits > 0);

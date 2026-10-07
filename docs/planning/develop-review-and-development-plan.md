@@ -7,7 +7,7 @@ choose and sequence future work: prerequisites, unresolved work, discovery bound
 and acceptance still required.
 
 The [planning catalogue](README.md) groups short-, mid- and long-term work. This
-roadmap owns the short-term documentation scope and mid-term feature prerequisites;
+roadmap owns short-term native acceptance and mid-term feature prerequisites;
 consumer-selected extensions are deferred to the [long-term plan](long-term-plan.md).
 
 Implementation history belongs in Git. Keep durable contracts in their subject
@@ -46,22 +46,6 @@ rather than the earlier implementation journal:
 - Architecture coverage and environment limits:
   [architecture-validation.md](../development/architecture-validation.md).
 - Deprecated legacy FFont behavior: [legacy-ffont.md](../resources/legacy-ffont.md).
-
-<a id="u5-executable-gate-and-u6-implementation-boundaries"></a>
-
-U5's logging gate covers the pre-extraction normal/sandbox compile-profile matrix,
-isolated queue/fault/reentry/teardown scenarios and supplementary Debug ASan/UBSan
-checks. It does not establish all interleavings or arbitrary callback termination;
-TSan needs a separate configuration without the ASan/UBSan combination. The original
-gate record, finding classification and U0–U8 implementation rationale are recoverable
-with `git show f03d2f8:docs/planning/develop-review-and-development-plan.md`.
-
-<a id="u8-resolve-resource-extension-requirements-before-consumers"></a>
-
-U8 selects the library-neutral probe's one provider/window, immutable image
-replacement, expanded triangles and ASCII atlas. Mutable updates, multiple domains,
-atomic batch reload and automatic residency are outside that scope; reopen the
-[resource contract](../resources/consumer-resource-contract.md) before adding them.
 
 The current selected architecture has one neutral `Cheryl::Engine`, optional Native
 GLFW, whole OpenGL and independent TGUI/RmlUi modules, owner-local tests, and
@@ -163,53 +147,20 @@ Deferred engine and module candidates are owned by the
 have no short- or mid-term scheduling commitment; a named consumer must establish
 scope and prerequisites before this work enters the development sequence.
 
-### U15 — Documentation and roadmap reconciliation
-
-Complete the still-open public-contract inventory alongside each implementation unit:
-
-- [x] [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h):
-  incremental indexing, missing roots/errors, ordering and borrowed lookup
-  lifetime; correct stale loader-discovery comments. Decide refresh support only if
-  a consumer needs it.
-- [x] [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
-  skipped-root/error behavior, preference/enumeration rules and supported
-  collection-face selection in FontMgr.
-- [x] Display/window declarations: platform affinity, monitor snapshot freshness, scale
-  changes and borrowed window lifetime, incorporating the
-  [UI capability boundaries](../development/ui-adapters.md#routing-and-unavailable-services).
-- [x] Asset definitions, resource handles, playback and CPU submission: document
-  retained versus borrowed data, construction/lookup failures, timing and coordinate
-  units, and the loader's validation boundary.
-- [x] Parameters, render-frame writers and cameras: document validation scope,
-  publication/borrowed lifetimes, owner-thread rules and projection units.
-- [x] Input and dispatch declarations: document owner operations, cross-thread
-  handles, consumption boundaries, cancellation and callback lifetime.
-- [ ] Utility declarations: document synchronization, borrowed state, callbacks,
-  preconditions, units and failure guarantees; correct stale examples.
-- [ ] Reconcile stale U5/U8 status/evidence referrals when affecting their subject documents.
-  Preserve useful procedures, current contracts and coverage limits without relocating
-  routine reports.
-
-The current file-index and font contracts are in
-[file indexing and font discovery](../assets/file-and-font-discovery.md). Display,
-window and scale contracts are in
-[display and window ownership](../runtime/display-and-window-contract.md).
-
-**Acceptance:** callers can determine supported behavior from public declarations and
-focused links. If documentation cannot state a guarantee, classify the missing
-contract and resolve it at the appropriate development boundary instead of inventing
-one. Reconcile unresolved source TODOs with remaining work; a plan does not close them.
-When a unit completes, update its subject documentation and `todo.md`, then remove
-superseded alternatives and resolved planning detail.
-
 ## Sequencing and evidence
 
 Future adapter work follows the neutral contract/probe -> selected toolkit
 requirements -> consumer-required Engine changes -> independent adapter proof order
 in the [adapter-author guide](../development/ui-adapters.md). U10 and U13 may proceed
 on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
-U12 follows measurements and settled render semantics. U14 remains consumer-driven
-and U15 accompanies each unit.
+U12 follows measurements and settled render semantics. U14 remains consumer-driven.
+
+Public declarations and focused subject documents define ownership, valid threads,
+preconditions, units and failure/publication guarantees alongside each development
+unit. If a guarantee is unresolved, classify it at the appropriate development
+boundary instead of inventing it. Reconcile source TODOs with remaining work; a plan
+does not close them. Update the affected subject documents and `todo.md` before
+removing completed planning detail.
 
 Repository execution and commit rules are defined in `AGENTS.md`. Build, compilation,
 tests and remote pushes require their specified authorization. A checked planning

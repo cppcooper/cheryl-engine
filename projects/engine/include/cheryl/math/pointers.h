@@ -3,6 +3,11 @@
 #include <cstring>
 #include <internals/exceptions.h>
 namespace CE::ptr {
+    // Address arithmetic only: no allocation, ownership, bounds/lifetime validation
+    // or overflow check. Byte sums must be representable and derived pointers must
+    // stay in their backing allocation. Pointer comparisons require comparable ranges;
+    // alignment offsets require a nonzero valid alignment. calculate_alignment(null)
+    // reports zero, which cannot be passed to the alignment-offset helpers.
     // returns true if address >= start && address < end
     inline bool is_in_range(const uintptr_t start, const uintptr_t end, const uintptr_t address) {
         return start <= address && address < end;
@@ -68,7 +73,9 @@ namespace CE::ptr {
     //     return static_cast<T*>(align_ptr(ptr, alignof(T)));
     // }
 
-    // FNV-1a hash function for a pointer with modulus for a better hash distribution
+    // Address-derived FNV-1a value, not a stable identity across lifetimes/processes.
+    // Only 1/2/4/8-byte results are accepted; smaller widths reduce modulo their
+    // unsigned maximum (excluding that maximum value), while 8 bytes keep the hash.
     inline std::variant<uint8_t, uint16_t, uint32_t, uint64_t> pointer_to_hash(void* ptr, size_t hash_size_bytes) {
         // Convert the pointer to an integer representation
         uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);

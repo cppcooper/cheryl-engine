@@ -11,8 +11,9 @@
 #include <vector>
 
 namespace CE::Assets {
-    /** Fully resolved, CPU-only definitions. Texture paths are relative to this document's
-     * directory; Loader validates cross-document IDs and image bounds before GPU construction.
+    /** Owned CPU definitions. Parsed texture paths already include source.parent_path()
+     * and lexical normalization; do not prepend the document directory again.
+     * Loader validates cross-document IDs and image bounds before GPU construction.
      */
     struct AssetManifest {
         std::filesystem::path source;
@@ -26,6 +27,8 @@ namespace CE::Assets {
         std::vector<SpriteDefinition> sprites;
         std::vector<TilesetDefinition> tilesets;
 
+        // Owned deduplicated entry paths, sprites then tilesets in first-reference
+        // order. The manifest-level default is included only when an entry uses it.
         [[nodiscard]] std::vector<std::filesystem::path> textures() const;
     };
 }

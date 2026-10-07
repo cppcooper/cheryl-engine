@@ -6,6 +6,7 @@
 #include <mutex>
 #include <utility>
 
+// Owned value/revision copy; pointee lifetime still follows T's own ownership.
 template <typename T> struct VersionedSnapshot {
     T value;
     std::uint64_t revision;
@@ -13,6 +14,10 @@ template <typename T> struct VersionedSnapshot {
 
 /** Synchronizes one value and its revision as a unit. Repeated equal sets do not advance the revision.
  * Readers can retain a revision and wait for a later change without missing a change between reads.
+ * Comparison/copy/assignment execute under the storage mutex and must not reenter
+ * this variable. Their exceptions propagate; throwing assignment follows T's own
+ * failure guarantee and may change a value without advancing revision/notifying.
+ * Keep the variable alive through all readers/waiters; destruction is not cancellation.
  */
 template <typename T>
     requires std::copy_constructible<T> && std::assignable_from<T&, T> && std::equality_comparable<T>
@@ -52,6 +57,8 @@ public:
         return revision_;
     }
 
+    // Wait indefinitely until revision differs (not necessarily exactly one update).
+    // Notifications coalesce; a snapshot is current state, not a history of values.
     [[nodiscard]] VersionedSnapshot<T> wait_for_change(std::uint64_t since) const {
         std::unique_lock lock(mutex_);
         changed_.wait(lock, [&] { return revision_ != since; });

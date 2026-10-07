@@ -17,12 +17,18 @@ namespace CE {
 
         enum AnchorType { Center, TopLeft, TopCenter, TopRight, CenterLeft, CenterRight, BottomLeft, BottomCenter, BottomRight };
 
+        // Case-sensitive two-letter names (CL/ML and CR/MR are aliases); unknown
+        // names or enum values fall back to Center rather than throwing.
         [[nodiscard]] AnchorType get_anchor(const std::string& anchor);
         [[nodiscard]] Pivot get_pivot(AnchorType anchor);
 
         /** Convert a top-left-origin image rectangle into local Y-up geometry.
          * The pointer overloads and MakeQuad write six vertices for two independent triangles;
          * MakeQuadStrip produces a separate four-vertex atlas frame.
+         * CPU-only: pixel dimensions and offsets, normalized UVs, finite [0,1] pivot
+         * and nonzero texture dimensions required. Frame bounds/size are not checked.
+         * Pointer destinations must hold six Vertex2D or thirty floats (x,y,z,u,v);
+         * they are borrowed through the call. Invalid pivot/texture throws before writes.
          */
         struct Anchor {
             [[nodiscard]] static Quad MakeQuad(

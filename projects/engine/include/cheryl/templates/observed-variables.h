@@ -10,6 +10,10 @@
 /** Adds immediate observer callbacks to synchronized, versioned storage. Every set() invokes
  * observers on the calling thread, even when the value is unchanged. Waiters wake only for a
  * changed value. Use VersionedVariable directly when callback thread affinity is undesirable.
+ * Callbacks run in array order after releasing the storage mutex, with this set's
+ * argument, not a later snapshot. Their const reference is borrowed for the call.
+ * Concurrent/reentrant sets can overlap callbacks; callbacks protect their own targets.
+ * A throw propagates after publication and skips later observers without rollback.
  */
 template <typename T, std::uint8_t Observers = 1> class ObservedVariable {
 public:
@@ -41,5 +45,6 @@ public:
     [[nodiscard]] VersionedSnapshot<T> snapshot() const { return value_.snapshot(); }
     [[nodiscard]] std::uint64_t revision() const { return value_.revision(); }
     [[nodiscard]] VersionedSnapshot<T> wait_for_change(std::uint64_t since) const { return value_.wait_for_change(since); }
+    // Begins at this call's sampled revision; does not observe an earlier unread change.
     void wait_until_change() const { (void)wait_for_change(revision()); }
 };

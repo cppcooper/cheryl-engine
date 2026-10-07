@@ -133,7 +133,12 @@ auto focus = input.routing().focus(textbox_id); // Retain these handles while ac
 
 The demo requests Events for its F2 focus toggle and requests Text while its textbox is focused. It edits Unicode scalar values with Backspace/Delete, arrows, Home/End, and exits focus with Enter/Escape. WASD gameplay is gated while typing; gamepad input and fractional scroll remain available. Its existing font atlas is ASCII, so the preview displays one `?` for each unsupported scalar. Text capture and storage retain the actual Unicode scalar; font shaping and grapheme-aware editing remain separate work.
 
-Generic tools are independent of input: `StateTracker<T>` compares successive samples; `VersionedVariable<T>` synchronizes a value, revision, and change waiter; `ObservedVariable<T>` layers immediate callbacks on that storage; and `StateMachine<State, Trigger>` defines typed transition rules, guards, and hooks. `State` and `Trigger` are the types of whole domains, such as enums with several values. A game may compose multiple machines and let a guard inspect another machine. None of these tools assumes the game has controllers or runs its simulation on another thread.
+Generic [state utilities](utility-contracts.md) are independent of input. They
+define sampled state, synchronized value/revision storage, immediate observation
+and transition tables, including callback and failure boundaries. `State` and
+`Trigger` describe whole domains, such as enums with several values. A game can
+compose machines and let a guard inspect another machine without prescribing
+controllers or simulation threads.
 
 GLFW callback work catches its first failure and reports it from `update()` instead of unwinding through the C callback stack. Runtime cleanup detaches callbacks, clears focus and pending capture, and tears down rendering after a poll/worker failure. Already delivered immutable handles remain valid. Capacity limits completed polls, not records inside one pump; an OS pump can deliver many records, all retained when their channels were active. At shutdown the runtime discards pending input after stopping/joining simulation; it does not perform an extra final update.
 

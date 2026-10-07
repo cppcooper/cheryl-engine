@@ -5,6 +5,8 @@
 
 #include <chrono>
 
+// Caller-owned timer without synchronization. The default clock is monotonic;
+// a supplied clock determines backward jumps and its duration's representation.
 template <typename ClockType = std::chrono::steady_clock> class DeltaTime {
 public:
     using TimePoint = typename ClockType::time_point;

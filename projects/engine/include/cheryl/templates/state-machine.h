@@ -10,6 +10,12 @@
  * first matching rule whose guard succeeds wins. Guards and actions may inspect other machines,
  * allowing a game to compose state domains without requiring a controller or machine hierarchy.
  * The machine is owned by its caller and is not synchronized or reentrant during trigger().
+ * Stored callbacks own their captures; borrowed targets must survive use/removal.
+ * state() borrows this machine. Guards may add rules for later consideration in
+ * the same trigger; hooks for a chosen transition are copied before calling exit.
+ * Order is exit -> state assignment -> action -> enter. Exceptions propagate and
+ * stop that sequence: exit failure keeps old state, action/enter failure keeps new
+ * state; throwing State assignment follows that type's guarantee. No rollback.
  */
 template <typename State, typename Trigger>
     requires std::copy_constructible<State> && std::copy_constructible<Trigger> && std::equality_comparable<State> &&

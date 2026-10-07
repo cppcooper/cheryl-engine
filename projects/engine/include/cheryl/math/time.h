@@ -2,6 +2,8 @@
 #include <chrono>
 #include <type_traits>
 
+// Signed nanoseconds using the platform's long representation; aliases carry units,
+// not timestamps or clock ownership.
 using t_elapsed = std::chrono::duration<signed long int, std::ratio<1, 1000000000>>;
 using Hours = std::chrono::hours;
 using Minutes = std::chrono::minutes;
@@ -14,6 +16,8 @@ template <typename Rep, typename Period> struct is_chrono_duration<std::chrono::
 
 template <typename T> constexpr bool is_chrono_duration_v = is_chrono_duration<T>::value;
 
+// Standard duration_cast semantics (integer results truncate toward zero). Callers
+// ensure conversion fits Out; no overflow or floating-nonfinite validation is added.
 template <typename In, typename Out> Out tcast(const In& t) {
     static_assert(is_chrono_duration_v<Out>, "tcast can only cast durations to other durations");
     static_assert(is_chrono_duration_v<In>, "tcast can only cast durations to other durations");

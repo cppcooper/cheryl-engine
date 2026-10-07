@@ -7,6 +7,9 @@
 #include <internals/exceptions.h>
 
 namespace CE::Math {
+    // Caller-defined length units. larger adds gb; greedy truncates gf*length then
+    // adds gb, requiring finite positive gf and representable growth. Overflow throws
+    // bad_request. exact/unknown policies retain length; neither operation allocates.
     inline std::size_t adjust_length(std::size_t length, Enum::fitType fit, std::size_t gb, double gf) {
         switch (fit) {
             case Enum::greedy: {
@@ -28,6 +31,7 @@ namespace CE::Math {
                 return length;
         }
     }
+    // Reduce one growth tier; exact/unknown becomes exact.
     inline Enum::fitType reduce(const Enum::fitType fit) {
         switch (fit) {
             case Enum::greedy:
