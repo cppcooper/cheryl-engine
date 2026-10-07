@@ -15,7 +15,9 @@ meaningful coverage limits.
 | [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Ready with a supported controller |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 
-Run command blocks from the repository root. They require CMake 3.28 or newer,
+Each command block locates the checkout root with Git and runs there, so it can
+be launched from `docs/` or any other directory inside this checkout. It restores
+the starting directory afterward. These commands require CMake 3.28 or newer,
 Ninja, a C++23 toolchain and initialized pinned submodules; see
 [setup and dependencies](../README.md#setup). Native builds also need OpenGL and
 Python with Jinja2. Linux native builds need X11 and the selected hidapi backend's
@@ -39,23 +41,27 @@ consumer build includes neutral first-include probes. This configuration also ch
 that these APIs require no native or graphics owner.
 
 ```sh
-cmake -S . -B build/testing-engine -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-  -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
-  -DCHERYL_BUILD_DEMO=OFF
-nice -n 19 cmake --build build/testing-engine --parallel 1 --target \
-  consumer-cengine tests-engine acceptance-engine
-./build/testing-engine/cheryl-consumer
-ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
-  --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
-ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
-  --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-engine -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=OFF
+  nice -n 19 cmake --build build/testing-engine --parallel 1 --target \
+    consumer-cengine tests-engine acceptance-engine
+  ./build/testing-engine/cheryl-consumer
+  ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
+    --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
+  ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
+    --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
+)
 ```
 
 Timing coverage includes exact boundaries, loop wrapping, last-frame holding,
@@ -71,26 +77,30 @@ and typed offers, nested resize observations and deferred callback failures. Run
 a usable X11 desktop session; these cases create actual GLFW/OpenGL windows.
 
 ```sh
-cmake -S . -B build/testing-native-linux -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-  -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-  -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
-  -DGAINPUT_ENABLE_HID=ON -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
-  -DCHERYL_BUILD_DEMO=ON
-nice -n 19 cmake --build build/testing-native-linux --parallel 1 --target \
-  consumer-module-native-glfw tests-native-glfw acceptance-opengl demo
-./build/testing-native-linux/cheryl-native-glfw-consumer
-ctest --test-dir build/testing-native-linux --parallel 1 --output-on-failure \
-  --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
-CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-native-linux \
-  --parallel 1 --output-on-failure --no-tests=error \
-  -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-native-linux -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=ON -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=ON
+  nice -n 19 cmake --build build/testing-native-linux --parallel 1 --target \
+    consumer-module-native-glfw tests-native-glfw acceptance-opengl demo
+  ./build/testing-native-linux/cheryl-native-glfw-consumer
+  ctest --test-dir build/testing-native-linux --parallel 1 --output-on-failure \
+    --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
+  CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-native-linux \
+    --parallel 1 --output-on-failure --no-tests=error \
+    -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
+)
 ```
 
 The input cases do not observe physical controller reports or device notifications.
@@ -106,34 +116,41 @@ Use a usable Windows desktop session. This is an acceptance request for the curr
 Windows source, not evidence that its dependency/toolchain configuration is accepted.
 
 ```powershell
-cmake -S . -B build/testing-native-windows -G Ninja `
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
-  -DCMAKE_CXX_SCAN_FOR_MODULES=OFF `
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST `
-  -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF `
-  -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON `
-  -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF `
-  -DGAINPUT_ENABLE_HID=ON `
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF `
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON `
-  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON `
-  -DCHERYL_BUILD_DEMO=ON
-cmake --build build/testing-native-windows --parallel 1 --target `
-  consumer-cengine consumer-module-native-glfw tests-engine acceptance-engine `
-  tests-native-glfw acceptance-opengl demo
-./build/testing-native-windows/cheryl-consumer.exe
-./build/testing-native-windows/cheryl-native-glfw-consumer.exe
-ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
-  --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
-ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
-  --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
-ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
-  --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
-$env:CHERYL_NATIVE_GL_TESTS = '1'
-ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
-  --no-tests=error `
-  -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
-Remove-Item Env:CHERYL_NATIVE_GL_TESTS
+$cherylRoot = git rev-parse --show-toplevel
+if ($LASTEXITCODE -ne 0) { throw "Cannot locate the checkout root." }
+Push-Location -LiteralPath $cherylRoot -ErrorAction Stop
+try {
+  cmake -S . -B build/testing-native-windows -G Ninja `
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF `
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST `
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF `
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON `
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF `
+    -DGAINPUT_ENABLE_HID=ON `
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF `
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON `
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON `
+    -DCHERYL_BUILD_DEMO=ON
+  cmake --build build/testing-native-windows --parallel 1 --target `
+    consumer-cengine consumer-module-native-glfw tests-engine acceptance-engine `
+    tests-native-glfw acceptance-opengl demo
+  ./build/testing-native-windows/cheryl-consumer.exe
+  ./build/testing-native-windows/cheryl-native-glfw-consumer.exe
+  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+    --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
+  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+    --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
+  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+    --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
+  $env:CHERYL_NATIVE_GL_TESTS = '1'
+  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+    --no-tests=error `
+    -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
+  Remove-Item Env:CHERYL_NATIVE_GL_TESTS
+} finally {
+  Pop-Location
+}
 ```
 
 A configuration/build failure is an unresolved prerequisite; report it before
@@ -146,9 +163,35 @@ TR2/TR3 demo with both optional UI adapters disabled. This checks rendering and
 responsiveness during actual window-manager delivery; automated TR2/TR3 establish
 the typed/legacy callback contract, which the demo does not display directly.
 
-- Run `./build/testing-native-linux/demo` on Linux or
-  `./build/testing-native-windows/demo.exe` on Windows; repeat with `--concurrent`.
-  Keep each session interactive by omitting `--max-updates`.
+Launch both runtime modes with the block for your platform. Close the first
+session to start the concurrent session. Use these same launch blocks for TR5.
+
+Linux:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-native-linux/demo
+  ./build/testing-native-linux/demo --concurrent
+)
+```
+
+Windows:
+
+```powershell
+$cherylRoot = git rev-parse --show-toplevel
+if ($LASTEXITCODE -ne 0) { throw "Cannot locate the checkout root." }
+Push-Location -LiteralPath $cherylRoot -ErrorAction Stop
+try {
+  ./build/testing-native-windows/demo.exe
+  ./build/testing-native-windows/demo.exe --concurrent
+} finally {
+  Pop-Location
+}
+```
+
+- Keep each session interactive by omitting `--max-updates`.
 - Drag edges/corners through several larger and smaller sizes, then maximize and
   restore. The HUD and camera-target text remain placed correctly and rendering
   resumes normally after each change.
