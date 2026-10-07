@@ -38,8 +38,8 @@ namespace CE::Assets {
         double weight{1.0};
     };
 
-    /** Parsed terrain signatures and candidate tile indices. A future tile-map system computes
-     * a signature from neighbors, looks up variants, and selects by their stored weights.
+    /** Parsed terrain signatures and candidate tile indices in definition order.
+     * CPU selection samples shared edge/corner labels and chooses a weighted variant.
      */
     struct WangAutotileDefinition {
         std::string description;

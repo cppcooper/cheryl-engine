@@ -7,7 +7,8 @@ choose and sequence future work: prerequisites, unresolved work, discovery bound
 and acceptance still required.
 
 The [planning catalogue](README.md) groups short-, mid- and long-term work. This
-roadmap owns short-term Linux native work and mid-term feature prerequisites;
+roadmap owns short-term tile selection and Linux acceptance, and mid-term feature
+prerequisites;
 multi-platform acceptance and consumer-selected extensions are deferred to the
 [long-term plan](long-term-plan.md).
 
@@ -78,9 +79,8 @@ that cannot safely be inferred from the assets is tracked in
 
 ### Native input lifetime safety
 
-Keep the supported default to one initialized native input owner. Resolve Gainput
-HID lifetime and Linux controller integration before enabling the HID path; use the
-resulting contract in the
+Keep the supported default to one initialized native input owner. Accept the pending
+Linux joystick regressions with HID disabled, using the current contract in the
 [native module guide](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
 
 - [x] Guard process-wide ownership without disrupting an existing adapter or leaking
@@ -115,14 +115,16 @@ resulting contract in the
     the controller attached and attachment after startup in both runtime modes.
   - [ ] Accept the build/regressions through
     [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build).
-- [ ] Accept the Gainput HID input foundation described in the
-  [submodule handoff](../../extern/gainput/TODO.md#ordered-implementation). That file
-  owns the deferred backend implementation sequence, followed by adaptive-trigger
-  output and its Cheryl consumer contract. Work in the existing submodule from
-  Cheryl; retain one native owner and one report source for each controller.
-- [ ] Expose Linux HID initialization, enumeration/open, source and report observations
-  for lifecycle acceptance. The demo counter cannot establish those stages;
-  prerequisites and observations are in [testing requests](../testing-requests.md).
+
+Gainput backend work remains deferred at the detached `d94c60f` pin. The
+[submodule handoff](../../extern/gainput/TODO.md#ordered-implementation) owns the
+backend sequence, followed by adaptive-trigger output and its Cheryl consumer
+contract. When scheduled, work in the existing submodule from Cheryl and retain
+one native owner and one report source per controller. Linux HID observations also
+remain deferred and blocked on initialization, enumeration/open, source and report
+instrumentation; the demo counter cannot establish those stages. The pending
+[QA request](../testing-requests.md#tr6-qa-hid-lifecycle-and-notification-observations)
+preserves the required observations.
 
 Windows owner-policy, attachment/destruction, consumer/header and notification
 acceptance are deferred to the [platform plan](platform-acceptance.md). Broader
@@ -148,10 +150,12 @@ gitlink and keep pending source acceptance distinct from remote availability.
 
 ### U10 — Deterministic tile selection
 
-On the stable metadata contract, define a world-neutral neighbor sampler, edge/
-unknown-terrain policy, Wang/bitmask mapping, seeded weighted choice and missing-rule
-result. Settle connectivity and animation-phase semantics before publishing a map API;
-animation substitution uses simulation-owned time.
+This is the active short-term implementation task. Build on stable metadata and the
+[tile selection contract](../assets/asset-values-and-playback.md#tile-selection).
+The consumer owns world coordinates and supplies shared Wang edge/corner labels or
+bitmask cell terrain, a stable per-location seed and simulation-owned animation time.
+Mixed cell terrain does not imply a Wang labeling rule. Selection has no UI or batching
+prerequisite and must complete before publishing a world/map API that depends on it.
 
 - [x] Add stateless tile-animation cell lookup from nonnegative elapsed milliseconds,
   with caller-owned phase, exact frame boundaries, looping and nonlooping behavior,
@@ -160,12 +164,20 @@ animation substitution uses simulation-owned time.
   defines current behavior.
 - [x] Accept tile-animation timing and neutral header probes in the Linux Engine-only
   assembly through user-run testing.
-- [ ] Define the neighbor sampler, connectivity and unknown/edge-terrain policies;
-  derive Wang signatures and bitmasks without borrowing a graphics-owned world.
-- [ ] Add seeded weighted candidate selection and an explicit missing-rule result;
-  resolve animation only after choosing the original target cell.
-- [ ] Integrate selection with Tileset and publish resolved cells to CPU submission;
-  accept deterministic, boundary and missing-rule cases with authorized execution.
+- [x] Settle sampling sites, connectivity, boundary policies, deterministic seed and
+  simulation-owned phase before introducing the selector API.
+- [x] Implement CPU-only Wang/bitmask selection, explicit failure results and weighted
+  candidates; add focused regressions and a neutral first-include header probe.
+  Reject malformed direct rule metadata needed by the selected query, and align
+  manifest/schema validation with the four-neighbor cardinal-only contract.
+- [ ] Integrate selection and one-time animated-target substitution with Tileset;
+  validate original and resolved grid cells, and cover passing the resulting cell
+  to existing CPU submission without retaining or resampling the world.
+- [ ] Publish durable selection contracts and reconcile the aggregated Linux Engine
+  request after each source unit. Keep artwork metadata prerequisites separate.
+- [ ] Accept deterministic, sampling/boundary, invalid-rule, missing-rule, animation
+  and CPU submission regressions plus public header probes through user-run
+  [TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).
 
 **Acceptance:** boundary/missing-rule cases and identical samples/seed/time resolve
 deterministically without graphics-thread world access. Missing artwork semantics
@@ -211,8 +223,9 @@ scope and prerequisites before this work enters the development sequence.
 
 Future adapter work follows the neutral contract/probe -> selected toolkit
 requirements -> consumer-required Engine changes -> independent adapter proof order
-in the [adapter-author guide](../development/ui-adapters.md). Linux HID work and U10
-may proceed on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
+in the [adapter-author guide](../development/ui-adapters.md). U10 proceeds on stable
+asset metadata while Gainput backend work remains deferred at its pin. U11 follows
+an actual Unicode/layout consumer;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven.
 
 Public declarations and focused subject documents define ownership, valid threads,

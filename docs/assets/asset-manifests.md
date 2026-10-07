@@ -74,10 +74,19 @@ south, south_west, west, north_west
 
 Terrain ID `0` means no terrain. `wang-corner` sets use the corner slots and `wang-edge` sets use the edge slots. Multiple cells may share a signature; they are visual variants, selected uniformly unless a `weight` is present.
 
-The schema also supports `four-neighbor` and `eight-neighbor` bitmask autotiles. `bit_order[i]` owns bit `1 << i`, and the decimal mask string selects a cell from `cases`.
+The schema also supports `four-neighbor` and `eight-neighbor` bitmask autotiles.
+`bit_order[i]` owns bit `1 << i`, and the decimal mask string selects a cell from
+`cases`. Four-neighbor rules declare one to four unique cardinal directions;
+eight-neighbor rules declare one to eight unique directions. Runtime connectivity
+and boundary policies are defined by the
+[tile selector](asset-values-and-playback.md#tile-selection).
 
 The Puny World manifest is transcribed from the author-supplied `punyworld-overworld-tiles.tsx`. The corresponding source-bundle PNG was verified byte-for-byte against the upstream PNG, so its 70 animated targets, 280 timed frames, 168 corner-Wang assignments, and 45 edge-Wang assignments preserve the upstream tile IDs exactly.
 
 ## Runtime implementation
 
-The manifest parser, typed asset dispatch, pivot/grid construction, animation expansion, and autotile lookup data are implemented. See [asset-loading.md](asset-loading.md) for the runtime entry point, validation/load order, retrieval APIs, and per-entity sprite playback. Tile-map neighbor selection and animated-target substitution remain unfinished in [todo.md](../planning/todo.md).
+The manifest parser, typed asset dispatch, pivot/grid construction, animation
+expansion, autotile lookup data and CPU-only rule selector are implemented. See
+[asset-loading.md](asset-loading.md) for the runtime entry point, validation/load
+order, retrieval APIs and per-entity sprite playback. Tileset selection with
+animated-target substitution remains unfinished in [todo.md](../planning/todo.md).

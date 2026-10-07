@@ -109,9 +109,62 @@ After choosing a base tile, resolve that target's animation once; an animated fr
 cell does not trigger recursive target substitution. This helper supplies timing for
 the later selection layer without sampling a world or accessing graphics resources.
 
-Wang signatures, weights and bitmask cases are metadata. These APIs do not sample
-neighbors, choose variants or automatically replace a selected animated target.
-That selection layer remains in the [roadmap](../planning/develop-review-and-development-plan.md#u10--deterministic-tile-selection).
+## Tile selection
+
+The CPU-only `select_tile(rule, sampler, options)` overloads accept Wang, bitmask or
+variant definitions and return a `TileSelectionResult`: either a `CellIndex` or a
+`TileSelectionFailure`. `MissingRule` means the derived signature/mask has no
+candidate; `IncompleteNeighborhood` means a required sample remains unresolved.
+Neither failure silently chooses a fallback tile. The caller can skip the tile,
+retain an earlier selection or supply its own fallback cell.
+
+The sampler receives a `TerrainSite` with a direction and site kind. Bitmask sites
+are neighboring cells. Wang sites are the selected tile's shared edges or corner
+vertices, with nonzero IDs from that rule's terrain catalogue. The consumer owns
+coordinates and the conversion from its world representation to these labels;
+adjacent tiles must sample the same label at a shared site. Cell-centered terrain
+alone does not define how a mixed Wang edge/vertex is labeled. This interface adds
+no world storage or map coordinate convention.
+
+Required sites are sampled synchronously once each in canonical north-to-northwest
+order, regardless of declared bit order. An unresolved sample still allows the
+remaining required sites to be sampled. Keep the rule, options and sampled world
+stable for the call; sampler exceptions propagate and no callback/world reference is
+retained. Unused directions are not sampled. Read-only queries can run concurrently
+when the supplied samplers and world support that access.
+
+`Known` samples carry an ID; zero means empty. `Outside` and `Unknown` samples ignore
+their ID and have independent fallback policies: `Empty`, `Center` or `Unresolved`.
+Defaults treat outside-world sites as empty and unknown sites as unresolved. A known
+Wang label absent from its terrain catalogue uses the unknown policy. A Wang center
+fallback requires `options.terrain` to be declared or zero. Bitmasks have no terrain
+catalogue: different known IDs are disconnected rather than unknown.
+
+Wang selection fills its edge or corner slots directly and zeroes the unused slots.
+Bitmasks connect equal nonzero IDs to `options.terrain`, and `bit_order[i]` owns bit
+`1 << i`. Four-neighbor rules declare one to four unique cardinal directions;
+eight-neighbor rules declare one to eight unique directions. Diagonals default to
+`RequireCardinals`, which needs both adjacent cardinal cells to connect, including
+cardinal directions absent from `bit_order`. `Independent` uses just the declared
+diagonal's sample. Any unresolved required sample prevents selection even when
+another sample would already disconnect that diagonal.
+
+Wang variants use the caller's explicit 64-bit seed and candidate indices in
+definition order. A fixed unsigned seed mixer produces a 53-bit fraction; cumulative
+positive weights choose the cell, independently of unordered-map iteration or other
+queries. Normalize by the maximum weight before accumulation to avoid overflowing a
+sum of finite weights. Double arithmetic and finite draw precision apply: sufficiently
+small relative weights may have no representable draw. Terrain `probability` metadata
+does not choose the world's terrain or modify these variant weights. The caller
+chooses a stable seed per location; animation time does not reseed a variant.
+
+An empty sampler, invalid policies, malformed direction/slot order, or invalid
+matched Wang candidate indices/signatures/weights throws `invalid_args`. Candidate
+indices must be strictly increasing, and matched weights must be finite and positive.
+Unmatched rules and other direct aggregate fields are not fully revalidated. The
+free selector returns a base cell without grid checks or animation substitution;
+Tileset integration remains in the
+[active task](../planning/develop-review-and-development-plan.md#u10--deterministic-tile-selection).
 
 ## Fonts and CPU submission
 

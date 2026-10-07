@@ -673,6 +673,28 @@
           "$ref": "#/$defs/bitmask_case_map"
         }
       },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "four-neighbor"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "bit_order": {
+            "maxItems": 4,
+            "items": {
+              "enum": [
+                "north",
+                "east",
+                "south",
+                "west"
+              ]
+            }
+          }
+        }
+      },
       "additionalProperties": false
     },
     "autotile": {

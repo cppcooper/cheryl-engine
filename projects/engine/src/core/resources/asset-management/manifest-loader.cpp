@@ -574,8 +574,9 @@ namespace CE::Assets {
                 .description = description(value, source, location), .type = type, .bit_order = {}, .cases = {}};
             const auto& order = required(value, "bit_order", source, location);
             require_array(order, source, std::string(location) + ".bit_order");
-            if (order.empty() || order.size() > 8) {
-                fail(source, std::string(location) + ".bit_order", "bit order must have 1 to 8 entries");
+            const auto maximum_directions = type == BitmaskType::FourNeighbor ? 4u : 8u;
+            if (order.empty() || order.size() > maximum_directions) {
+                fail(source, std::string(location) + ".bit_order", "bit order has too many or no directions for its type");
             }
             std::unordered_set<int> seen;
             // The declared direction at each position becomes that bit's meaning;
@@ -583,12 +584,15 @@ namespace CE::Assets {
             for (std::size_t index = 0; index < order.size(); ++index) {
                 const auto direction =
                     parse_direction(order[index], source, std::string(location) + ".bit_order[" + std::to_string(index) + ']');
+                if (type == BitmaskType::FourNeighbor && static_cast<int>(direction) % 2 != 0) {
+                    fail(source, std::string(location) + ".bit_order", "four-neighbor rules require cardinal directions");
+                }
                 if (!seen.emplace(static_cast<int>(direction)).second) {
                     fail(source, std::string(location) + ".bit_order", "directions must be unique");
                 }
                 result.bit_order.push_back(direction);
             }
-            // The declared neighbor order determines which bits a future tile-map selector sets.
+            // The declared neighbor order determines which bits the CPU selector sets.
             // Reject masks outside that width before storing their resolved cell indices.
             const auto& cases = required(value, "cases", source, location);
             require_object(cases, source, std::string(location) + ".cases");

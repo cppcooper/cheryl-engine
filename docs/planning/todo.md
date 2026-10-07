@@ -9,9 +9,9 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Resolve the selected HID backend's Linux controller report/state integration before
-  HID-specific QA. Accept the Linux joystick mapping correction's automated
-  regressions separately with HID disabled. Outstanding prerequisites and execution
+- Accept the Linux joystick mapping correction's automated regressions with HID
+  disabled. Gainput backend implementation and HID-specific QA remain deferred at
+  the pinned baseline. Outstanding prerequisites and execution
   are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
 - Windows native ownership, resize/typed-event, desktop and controller acceptance,
@@ -21,10 +21,10 @@ Unresolved artwork metadata is tracked separately in
 
 ## Gameplay and presentation facilities
 
-- Add a tile-map selection layer: derive neighbor signatures/masks, choose weighted
-  candidates deterministically from an explicit seed, and apply animated-target
-  substitution using simulation-owned time. Current Tileset APIs expose metadata but
-  do not select world neighbors.
+- Integrate the CPU tile selector with Tileset and apply animated-target substitution
+  using simulation-owned time. Rule sampling, boundary/connectivity policies and
+  seeded weighted candidates are implemented; source and executable acceptance are
+  tracked in the [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
 - Add Unicode text layout/glyph runs before treating committed Unicode input as fully
   renderable text. Define decoding, fallback, shaping/bidi/line-breaking scope and
   retained atlas ownership before choosing dependencies. IME/editing is a separate

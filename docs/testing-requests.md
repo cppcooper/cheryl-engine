@@ -8,8 +8,8 @@ meaningful coverage limits.
 
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
-| [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Blocked on an observation harness |
-| [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
+| [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Deferred; blocked on backend work and an observation harness |
+| [TR7](#tr7-automated-tile-selection-and-animation) | Automated | Linux | Ready; reuse the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 
 Each command block locates the checkout root with Git and runs there, so it can
@@ -34,7 +34,8 @@ successful automation does not establish the separate QA observations.
 
 ## TR6: QA HID lifecycle and notification observations
 
-**Blocked:** an observation harness is needed before requesting this run. Successful
+**Deferred and blocked:** Gainput backend work remains deferred at the pinned
+baseline; an observation harness is needed before requesting this run. Successful
 Gainput initialization does not prove HID readiness: the HID path can be compiled
 out, and the dependency discards its initialization return code when enabled.
 The demo's opt-in controller trace observes Gainput callbacks and sampled pad state,
@@ -55,14 +56,17 @@ Keep this Linux request blocked until the harness has runnable setup/launch
 instructions. Windows notification observations are in the
 [deferred platform plan](planning/platform-acceptance.md#deferred-hid-lifecycle-and-windows-notifications).
 
-## TR7: Automated tile-animation warning correction
+## TR7: Automated tile selection and animation
 
-Rebuild the changed tile-animation test source without discarded-result warnings
-and run its existing exception/boundary cases. Exception assertions now explicitly
-discard the returned cell with `static_cast<void>`; the public `[[nodiscard]]`
-attribute and value assertions remain intact. Reuse the Engine-only build from
-the completed TR1 request; its broader typed-event coverage needs no rerun for
-this test-only correction.
+Build the CPU tile selector and its neutral first-include probe, then run the focused
+selection, animation and manifest regressions. Coverage includes edge/corner site
+labels, declared bit order, diagonal gating, outside/unknown policies, missing rules,
+weighted seeded repeatability, large finite weights and malformed direct rules.
+The existing timing cases also cover the pending ignored-result warning correction;
+exception assertions explicitly discard irrelevant values while retaining the public
+`[[nodiscard]]` contract. This request needs no display, controller or graphics module.
+Reuse the Engine-only build from completed TR1 when its compiler/configuration match;
+unrelated typed-event acceptance needs no rerun.
 
 ```sh
 (
@@ -79,14 +83,15 @@ this test-only correction.
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=OFF
   cmake --build build/testing-engine --parallel "$(nproc)" --target \
-    tests-engine
+    tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-engine\.tile_animation\.'
+    --no-tests=error -R '^tests-engine\.(tile_selection|tile_animation|asset_manifest)\.'
 )
 ```
 
-Acceptance: the changed test source compiles without ignored-result diagnostics,
-and all selected `tile_animation.*` cases pass without skips.
+Acceptance: the implementation and public header probes compile without new warnings,
+and all selected `tile_selection.*`, `tile_animation.*` and `asset_manifest.*` cases
+pass without skips. Committed source and static checks do not establish this acceptance.
 
 ## TR8: Automated controller diagnostic build
 
