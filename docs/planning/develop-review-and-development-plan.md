@@ -187,11 +187,12 @@ cannot supply them. This work has no UI or batching prerequisite.
 
 ### U11 — Unicode text layout and glyph resources
 
-This is the active implementation task. The builtin STBFont and demo text submission
-are the initial consumer; toolkit adapters retain their own layout services. Begin
-with encoding and the existing ASCII atlas before introducing shaped runs or new
-dependencies. The current Font interface exposes quad indices and one atlas/geometry
-pair, so extending it directly would constrain fallback and retained generations.
+Source implementation is complete; executable and native acceptance remain pending.
+The builtin demo uses the separate
+[Unicode text service](../assets/text-layout.md), while existing STBFont/FFont
+consumers and toolkit layout services retain their own APIs. The legacy Font interface
+exposes quad indices and one atlas/geometry pair; the new service retains each complete
+message generation to support fallback without constraining that interface.
 
 The initial rendering scope covers English, accented Latin including French/German,
 and Russian/Cyrillic. Implement Unicode paragraph direction (automatic or explicitly
@@ -220,8 +221,6 @@ Complete these coherent units in dependency order:
   contract and keep atlas contents unchanged.
 - [x] Add ASCII, multilingual fallback, malformed-input and CPU submission regressions;
   document current encoding behavior and reconcile the same acceptance request.
-- [ ] Accept the implemented decoder/font changes through user-run
-  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
 - [x] Settle the initial scripts, direction, fallback guarantee, optional wrapping and
   grayscale rendering scope. Keep source mapping for display separate from caret/IME.
 - [x] Add immutable owned font selection, family discovery/coverage inspection and an
@@ -236,10 +235,16 @@ Complete these coherent units in dependency order:
   the legacy API; failure publishes no replacement, and earlier frames retain their
   original geometry/atlas pair. Each preparation admits only its message's glyphs;
   automatic residency/budgets and a shared mutable atlas are outside this unit.
-- [ ] Integrate the builtin demo through dispatcher uploads, preserving working ASCII
+- [x] Integrate the builtin demo through dispatcher uploads, preserving working ASCII
   consumers. Provide multilingual, combining, bidi, fallback, wrapping, upload-failure
   and retained-generation regressions and a runnable Linux visual observation harness.
-- [ ] Accept the selected multilingual/fallback/cluster and retained-generation scope.
+- [ ] Accept decoder/font selection, multilingual/shaping/bidi/wrapping, resource
+  failure/retention and header probes through
+  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation); compile the
+  changed demo in the batched
+  [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build), then accept
+  Linux sequential/concurrent visual, fallback and replacement observations through
+  [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering).
 
 **Discovery boundary:** font selection must establish real coverage and the bundled
 fallback before layout depends on it. Keep ICU indices internal and verify owned
@@ -268,6 +273,15 @@ instead of handwritten Unicode tables. Library-specific types remain private.
 results; multi-byte input is not rendered as a fallback per byte; glyph runs survive
 in-flight rendering and atlas changes. Preserve ASCII compatibility. IME/preedit and
 grapheme-aware editing remain separate consumer contracts.
+
+### U11 follow-on — Color emoji
+
+Consider color emoji for the next text batch after the initial Unicode acceptance.
+Select the required color-font formats, font sources and supported emoji sequences
+before implementation. Establish RGBA page orientation, material/alpha handling and
+sequence/fallback policy while retaining source clusters and immutable generations.
+Keep the existing grayscale path independently usable. Color glyph and sequence
+appearance need their own CPU/native acceptance; none is requested in this batch.
 
 ### U12 — Measured optimization facilities
 

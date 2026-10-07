@@ -17,5 +17,6 @@ ${font_fallback_values}
     std::span<const unsigned char> builtin_font_bytes() noexcept { return fallback; }
 }
 ")
+set_source_files_properties("${font_fallback_source}" PROPERTIES GENERATED TRUE)
 target_sources(${TARGET_LIB_ENGINE} PRIVATE "${font_fallback_source}")
 target_include_directories(${TARGET_LIB_ENGINE} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/text")

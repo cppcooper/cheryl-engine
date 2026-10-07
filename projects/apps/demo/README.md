@@ -49,8 +49,10 @@ default asset root. See the root [setup guide](../../../README.md#setup) for clo
 submodule updates, common configurations, all tests and
 [compile-time macro tables](../../../README.md#compile-time-options-macros).
 
-The HUD and RmlUi use a discoverable system font. TGUI uses its embedded default
-font. Shaders and the small RmlUi proof document/images are checked in under the
+The builtin HUD selects optional system/application fonts and always retains an
+embedded fallback; it can start without an installed system font. RmlUi keeps its
+separate file-based service, using a selected file or the checked-in DejaVu Sans
+fallback. TGUI uses its own embedded default font. Shaders and the small RmlUi proof document/images are checked in under the
 asset root. The full manifest image tree is needed only with `--full-assets`;
 those PNG files are not tracked. The [asset package catalog](../../../docs/assets/catalog.md)
 lists their download sources and expected paths. The default asset root is the
@@ -106,6 +108,11 @@ gameplay mouse State. The demo does not add pointer capture or modal arbitration
 | `--input-capacity=N` | Selects finite input polling with the given backlog capacity. |
 | `--input-spacing-ms=N` | Sets the minimum input-poll spacing in milliseconds. |
 | `--input-diagnostics` | Enables controller callback/sample TRACE records in `logs/os-platform.log`; requires compiled TRACE logging. |
+| `--unicode-text` | Shows accented Latin, Cyrillic, mixed/pure RTL, missing-glyph and wrapping examples in the builtin HUD. |
+| `--builtin-font` | Disables automatic installed-family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
+| `--font=/path/to/font.ttf` | Appends an application file to the ordered preferred font sources; repeat as needed. Invalid files fail startup. |
+| `--font-family=NAME` | Appends an installed family to the same preferred order. Quote names containing spaces; unavailable families are skipped. |
+| `--text-direction=auto`, `ltr` or `rtl` | Sets builtin paragraph direction. Latin/numbers keep their natural run direction; explicit RTL aligns HUD lines to the width's right edge. |
 
 See [simulation timing](../../../docs/runtime/simulation-timing.md) and
 [input polling](../../../docs/runtime/input-state-model.md) for policy constraints
@@ -117,6 +124,29 @@ The [native controller diagnostics](../../modules/platform/native-glfw/README.md
 explain the records and their limits. The option changes the OS-platform logger's
 file/logger gates to TRACE while retaining its console preset. It rejects builds
 that stripped TRACE before starting the runtime.
+
+## Builtin Unicode text
+
+The HUD and camera label use the neutral
+[Unicode text service](../../../docs/assets/text-layout.md). The HUD wraps to the
+framebuffer width minus two 24-pixel margins. The toolkit-free F2 probe now encodes
+its scalar editing buffer as UTF-8, so supported accents/Cyrillic display as glyphs
+and unknown graphemes use a visible replacement. Its caret still moves through
+logical scalars; this does not establish grapheme/bidi editing or clipboard/IME.
+
+After initial owner-thread upload, changed HUD text/width is prepared by an owned
+CPU-worker request and uploaded by the platform dispatcher. At most one replacement
+is preparing/uploading. Later changes coalesce into the next request; the last
+complete text stays visible until publication. Failed candidates retain that text
+and report the failure to stderr. Frame preparation reads only immutable uploaded
+generations and never discovers fonts, shapes, rasterizes or uploads. Shutdown
+settles/cancels context work before releasing application-held text/resources.
+
+For an interactive preview, use `--unicode-text --builtin-font`, then repeat with
+`--concurrent` and `--text-direction=rtl`. Full Linux visual/upload acceptance is
+pending in [TR9](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering).
+Color emoji and wider CJK acceptance remain outside this batch. The missing-glyph
+example exercises replacement rather than Chinese-language coverage.
 
 ## UI ownership and uploads
 
@@ -198,6 +228,9 @@ Both adapters' controlled runtime and independent consumer/header proofs, and
 their coexistence proof, are accepted. Native appearance, alpha/image orientation,
 fonts, focus switching, scrolling, image replacement, resizing/clipping and shutdown
 are accepted from the user's manual demo report in sequential and concurrent modes.
+The changed builtin text path and font bootstrap have separate pending
+[Unicode acceptance](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering);
+earlier toolkit reports do not establish that new coverage.
 The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
 desktop scale. It does not establish per-window scale transitions, other platforms,
 IME or physical GPU resource retirement.

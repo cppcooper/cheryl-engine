@@ -1,4 +1,4 @@
-#include <assets/types/2d/stbfont.h>
+#include <assets/types/2d/unicode-text.h>
 #include <assets/submission/draw2d.h>
 #include <backends/opengl/resource-provider.h>
 #include <backends/opengl/glfw-backend.h>
@@ -11,9 +11,7 @@
 #include <core/logging.h>
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
-#include <core/resources/asset-management/font-mgr.h>
 #include <core/resources/asset-management/material-mgr.h>
-#include <core/resources/fileio/fonts-system.h>
 #include <internals/exceptions.h>
 
 #include <ext/matrix_transform.hpp>
@@ -27,6 +25,7 @@
 #endif
 
 #include <charconv>
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <exception>
@@ -35,6 +34,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -72,7 +72,17 @@ class Game : public CE::GFramework::AbstractGame {
     CE::Camera2D camera_;
     std::filesystem::path asset_root_;
     bool load_all_assets_;
-    std::shared_ptr<CE::Assets::STBFont> font_;
+    CE::Text::FontSelection font_selection_;
+    CE::Text::LayoutOptions text_options_;
+    bool unicode_preview_;
+    std::optional<CE::Text::FontCollection> fonts_;
+    std::optional<CE::Engine::WorkerGroup> text_workers_;
+    std::shared_ptr<const CE::Assets::RenderedText> target_text_;
+    std::shared_ptr<const CE::Assets::RenderedText> hud_text_;
+    std::future<CE::Assets::PreparedText> pending_text_preparation_;
+    std::future<std::shared_ptr<const CE::Assets::RenderedText>> pending_text_upload_;
+    std::string requested_hud_;
+    float requested_width_ = 0;
     std::shared_ptr<const CE::Assets::Material> font_shader_;
     std::future<std::shared_ptr<const CE::Assets::Material>> pending_shader_;
     std::string reload_error_;
@@ -87,8 +97,16 @@ class Game : public CE::GFramework::AbstractGame {
     std::function<void()> stop_;
 
 public:
-    Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root, bool load_all_assets)
-    : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets) {}
+    Game(
+        CE::Engine::EngineContext& engine,
+        std::filesystem::path asset_root,
+        bool load_all_assets,
+        CE::Text::FontSelection fonts,
+        CE::Text::LayoutOptions text_options,
+        bool unicode_preview
+    )
+    : engine_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets), font_selection_(std::move(fonts)),
+      text_options_(std::move(text_options)), unicode_preview_(unicode_preview) {}
 
     void stop_after_updates(const std::uint64_t count, std::function<void()> stop) {
         if (count == 0 || !stop)
@@ -108,14 +126,12 @@ public:
             CE::Assets::Loader loader(asset_root_);
             loader.load_assets(resources);
         }
-        // Environment/bootstrap choices belong to the application, independently of asset manifests.
-        const auto font_path = CE::Resources::select_default_system_font(CE::Resources::find_system_fonts());
-        if (!font_path)
-            throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
-        CE::Assets::FontMgr::get().load_assets({*font_path}, resources);
-        font_ = std::dynamic_pointer_cast<CE::Assets::STBFont>(CE::Assets::FontMgr::get().default_font());
-        if (!font_)
-            throw CE::Exceptions::runtime_exception(CE_HERE, "No supported system font was found");
+        // Font bytes/layout are CPU values; initial uploads run on this platform owner.
+        fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
+        text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
+        target_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
+            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_)), resources
+        ));
         CE::Assets::MaterialMgr::get().load_material(shader2d, resources, font_recipe(shader2d));
         font_shader_ = CE::Assets::MaterialMgr::get().get_asset(shader2d);
 
@@ -142,8 +158,22 @@ public:
         ui_ = std::make_unique<DemoUi>(engine_, asset_root_);
 #endif
 #ifdef CHERYL_DEMO_RMLUI
-        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_, *font_path);
+        // RmlUi retains its separate file-based font service.
+        auto toolkit_font = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/fonts/DejaVuSans.ttf";
+        for (const auto& face : fonts_->faces()) {
+            if (face.path) {
+                toolkit_font = *face.path;
+                break;
+            }
+        }
+        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_, std::move(toolkit_font));
 #endif
+        requested_hud_ = hud_message();
+        auto options = hud_options();
+        requested_width_ = *options.maximum_width;
+        hud_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
+            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, requested_hud_, options)), resources
+        ));
     }
 
     void deinit() override {
@@ -159,7 +189,12 @@ public:
 #endif
         events_.reset();
         engine_.input().bindings().clear();
-        font_.reset();
+        pending_text_preparation_ = {};
+        pending_text_upload_ = {};
+        hud_text_.reset();
+        target_text_.reset();
+        text_workers_.reset();
+        fonts_.reset();
         pending_shader_ = {};
         font_shader_.reset();
     }
@@ -276,6 +311,7 @@ public:
             camera_.set_view_matrix(glm::mat4(1.0f));
         }
 #endif
+        refresh_hud();
         if (++updates_ == update_limit_ && stop_)
             stop_();
     }
@@ -283,17 +319,29 @@ public:
     void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
-        const CE::Assets::SubmissionContext2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+        const CE::Assets::SubmissionContext2D context{
+            pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}};
         CE::RenderAPIs::DrawStyle2D text;
         text.material = font_shader_;
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)
         );
-        pass.add(CE::Assets::resolve_text(*font_, "Camera target", text, context));
+        pass.add(CE::Assets::resolve_text(*target_text_, text, context));
 
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
+        pass.add(CE::Assets::resolve_text(*hud_text_, text, context));
+#ifdef CHERYL_DEMO_TGUI
+        ui_->write(frame);
+#endif
+#ifdef CHERYL_DEMO_RMLUI
+        rml_ui_->write(frame);
+#endif
+    }
+
+private:
+    [[nodiscard]] std::string hud_message() const {
         auto hud = std::format(
             "Cheryl Engine demo\nWASD: pan camera  R: reset  F5: reload shader\n"
             "Mouse: {:.2f}, {:.2f}  Clicks: {}  Wheel: {:.2f}\nGamepad A: {} presses\n"
@@ -312,19 +360,62 @@ public:
             focus_.owns_focus() ? "focused" : "unfocused", text_preview()
         );
 #endif
-        pass.add(CE::Assets::resolve_text(*font_, hud, text, context));
-#ifdef CHERYL_DEMO_TGUI
-        ui_->write(frame);
-#endif
-#ifdef CHERYL_DEMO_RMLUI
-        rml_ui_->write(frame);
-#endif
+        if (unicode_preview_) {
+            constexpr std::u8string_view samples = u8"\nFrench: Fran\u00e7ais, d\u00e9j\u00e0 vu / e\u0301"
+                u8"\nGerman: Gr\u00fc\u00dfe, Stra\u00dfe\nRussian: \u041f\u0440\u0438\u0432\u0435\u0442, \u043c\u0438\u0440!"
+                u8"\nMixed RTL: \u05d0\u05d1\u05d2 123 English\n\u05d0\u05d1\u05d2 123"
+                u8"\nMissing glyph: \u4e2d\nWrap: This sentence follows the available width when the window is resized.";
+            hud.append(reinterpret_cast<const char*>(samples.data()), samples.size());
+        }
+        return hud;
     }
 
-private:
+    [[nodiscard]] CE::Text::LayoutOptions hud_options() const {
+        auto options = text_options_;
+        options.maximum_width = std::max(1.0f, static_cast<float>(camera_.framebuffer_size().width) - 48.0f);
+        return options;
+    }
+
+    void refresh_hud() {
+        // Only owned values cross worker/platform boundaries. One replacement at a
+        // time coalesces changing counters/text without blocking simulation.
+        try {
+            if (pending_text_upload_.valid() &&
+                pending_text_upload_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
+                hud_text_ = pending_text_upload_.get();
+            if (pending_text_preparation_.valid() &&
+                pending_text_preparation_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                pending_text_upload_ = engine_.platform_dispatcher().submit(
+                    [prepared = pending_text_preparation_.get()](CE::Engine::EngineContext& platform) mutable {
+                        return std::make_shared<const CE::Assets::RenderedText>(
+                            CE::Assets::upload_text(std::move(prepared), platform.resources()));
+                    }
+                );
+            }
+        } catch (const std::exception& error) {
+            std::cerr << "Text replacement failed; keeping the previous text: " << error.what() << '\n';
+        }
+        if (pending_text_preparation_.valid() || pending_text_upload_.valid())
+            return;
+        auto message = hud_message();
+        auto options = hud_options();
+        if (message == requested_hud_ && *options.maximum_width == requested_width_)
+            return;
+        requested_hud_ = message;
+        requested_width_ = *options.maximum_width;
+        try {
+            pending_text_preparation_ = text_workers_->submit(
+                [fonts = *fonts_, message = std::move(message), options = std::move(options)] {
+                    return CE::Assets::prepare_text(CE::Text::layout_text(fonts, message, options));
+                }
+            );
+        } catch (const std::exception& error) {
+            std::cerr << "Text preparation failed; keeping the previous text: " << error.what() << '\n';
+        }
+    }
+
     CE::Assets::MaterialMgr::Builder font_recipe(const std::filesystem::path& key) const {
-        const auto atlas = font_->glyph_atlas_handle();
-        return [key, atlas](CE::Assets::ResourceProvider& provider) {
+        return [key](CE::Assets::ResourceProvider& provider) {
             using namespace CE::Assets;
             auto* native = dynamic_cast<OpenGLResourceProvider*>(&provider);
             if (!native)
@@ -338,20 +429,38 @@ private:
                 {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}};
             const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
                 {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
-            return native->build_material({native->build_pipeline(std::move(definition), bindings), {{"image", ImageBinding{atlas, 0}}}});
+            return native->build_material({native->build_pipeline(std::move(definition), bindings), {}});
         };
     }
 
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
     [[nodiscard]] std::string text_preview() const {
-        // The current font atlas contains ASCII. Editing retains Unicode scalars;
-        // display one fallback per unsupported scalar instead of pretending to shape text.
+        // The probe still edits logical scalars; display encoding does not claim
+        // grapheme-aware caret movement, bidi selection, clipboard or IME.
         std::string preview;
         for (std::size_t i = 0; i <= text_.size(); ++i) {
             if (i == caret_)
                 preview += '|';
-            if (i < text_.size())
-                preview += text_[i] >= 32 && text_[i] <= 126 ? static_cast<char>(text_[i]) : '?';
+            if (i == text_.size())
+                continue;
+            auto scalar = static_cast<std::uint32_t>(text_[i]);
+            if (scalar > 0x10ffff || (scalar >= 0xd800 && scalar <= 0xdfff))
+                scalar = 0xfffd;
+            if (scalar < 0x80) {
+                preview += static_cast<char>(scalar);
+            } else if (scalar < 0x800) {
+                preview += static_cast<char>(0xc0 | (scalar >> 6));
+                preview += static_cast<char>(0x80 | (scalar & 0x3f));
+            } else if (scalar < 0x10000) {
+                preview += static_cast<char>(0xe0 | (scalar >> 12));
+                preview += static_cast<char>(0x80 | ((scalar >> 6) & 0x3f));
+                preview += static_cast<char>(0x80 | (scalar & 0x3f));
+            } else {
+                preview += static_cast<char>(0xf0 | (scalar >> 18));
+                preview += static_cast<char>(0x80 | ((scalar >> 12) & 0x3f));
+                preview += static_cast<char>(0x80 | ((scalar >> 6) & 0x3f));
+                preview += static_cast<char>(0x80 | (scalar & 0x3f));
+            }
         }
         return preview;
     }
@@ -364,6 +473,9 @@ int main(const int argc, char** argv) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
     bool input_diagnostics = false;
+    bool unicode_preview = false;
+    CE::Text::FontSelection font_selection;
+    CE::Text::LayoutOptions text_options;
     unsigned int max_updates = 0;
     auto mode = CE::GFramework::RunMode::Sequential;
     CE::Input::PollingOptions polling;
@@ -385,6 +497,25 @@ int main(const int argc, char** argv) {
             polling.policy = CE::Input::PollingPolicy::Unlimited;
         else if (argument == "--input-diagnostics")
             input_diagnostics = true;
+        else if (argument == "--unicode-text")
+            unicode_preview = true;
+        else if (argument == "--builtin-font")
+            font_selection.automatic_system_fonts = false;
+        else if (argument.starts_with("--font="))
+            font_selection.preferred.push_back(CE::Text::FontFile{std::filesystem::path(argument.substr(7))});
+        else if (argument.starts_with("--font-family="))
+            font_selection.preferred.push_back(CE::Text::SystemFontFamily{std::string(argument.substr(14))});
+        else if (argument.starts_with("--text-direction=")) {
+            const auto direction = argument.substr(17);
+            if (direction == "auto")
+                text_options.direction = CE::Text::ParagraphDirection::Automatic;
+            else if (direction == "ltr")
+                text_options.direction = CE::Text::ParagraphDirection::LeftToRight;
+            else if (direction == "rtl")
+                text_options.direction = CE::Text::ParagraphDirection::RightToLeft;
+            else
+                throw CE::Exceptions::invalid_args(CE_HERE, "--text-direction accepts auto, ltr or rtl");
+        }
         else if (argument.starts_with("--max-updates="))
             max_updates = number(argument.substr(std::string_view("--max-updates=").size()));
         else if (argument == "--fixed")
@@ -422,7 +553,7 @@ int main(const int argc, char** argv) {
     auto engine = CE::Engine::make_glfw_opengl_context();
     if (input_diagnostics)
         dynamic_cast<CE::Input::InputSystem&>(engine->input()).set_gamepad_diagnostics(true);
-    Game game(*engine, asset_root, load_all_assets);
+    Game game(*engine, asset_root, load_all_assets, std::move(font_selection), std::move(text_options), unicode_preview);
     GameRuntime game_runtime(*engine, game, mode, polling, timing);
     if (max_updates != 0)
         game.stop_after_updates(max_updates, [&game_runtime] { game_runtime.stop(); });

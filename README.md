@@ -154,7 +154,7 @@ cmake --build build/release --target demo --parallel
 ./build/release/demo
 ```
 
-The demo uses a system font and checked-in shaders without needing the full image
+The demo uses optional system fonts, an embedded fallback and checked-in shaders without needing the full image
 asset tree. WASD pans the camera, R resets it and F5 reloads its shader. F2 toggles
 TGUI text focus and F3 hides/shows its panel. F4 toggles RmlUi text focus and F6
 hides/shows its view. Escape releases focus; Q quits while gameplay has keyboard
@@ -381,7 +381,7 @@ libraries, in addition to runtime libraries, for the selected owners.
 | HarfBuzz and ICU (uc/i18n) | Engine | Unicode shaping, paragraph bidi, grapheme/line boundaries. HarfBuzz uses a supplied/CMake target or pkg-config. |
 | libudev / libusb | Linux hidapi | Development dependencies of the HID backends selected by Gainput's fetched hidapi. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve source/symbol resolution; availability determines the selected resolver. |
-| A discoverable system font | Demo | The HUD uses system-font discovery; TGUI uses its embedded default font. |
+| Fonts | Demo | Builtin text has an embedded fallback; RmlUi can use the checked-in font file, and TGUI uses its own embedded default. |
 
 Engine-only builds omit the platform, graphics and toolkit requirements above.
 The first native acceptance platform is Linux/GLFW/X11/OpenGL; broader Wayland,

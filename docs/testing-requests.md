@@ -11,15 +11,16 @@ meaningful coverage limits.
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Deferred; blocked on backend work and an observation harness |
 | [TR7](#tr7-automated-engine-asset-preparation) | Automated | Linux | Ready; reuse the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
+| [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
 the starting directory afterward. These commands require CMake 3.28 or newer,
-Ninja, a C++23 toolchain and initialized pinned submodules; see
+Ninja, a C++23 toolchain, FreeType/HarfBuzz/ICU uc/i18n development libraries and initialized pinned submodules; see
 [setup and dependencies](../README.md#setup). Native builds also need OpenGL and
 Python with Jinja2. Linux native builds need X11 and the selected hidapi backend's
 libudev/libusb development dependencies. HID configuration can fetch pinned hidapi.
-The demo needs a discoverable system font.
+Builtin demo text has an embedded fallback and needs no installed font.
 All command-line configurations explicitly select the Ninja generator.
 Windows, macOS, Wayland and other platform acceptance are deferred to the
 [long-term platform plan](planning/platform-acceptance.md); TR3–TR5 and the Windows
@@ -73,11 +74,13 @@ scalar or malformed subpart, callback exception behavior, and text packets retai
 resources and copied placement after the text/font is released. These cases use
 synthetic immutable font metrics/resources and require no installed font file.
 Font-selection cases use the repository-owned fallback fixture and isolated discovery
-roots: verify actual families, explicit order, deduplication, load failures and owned
+roots: verify the initial English/French/German/Russian alphabets, actual families,
+explicit order, deduplication, load failures and owned
 font bytes after deleting their original file. Layout cases cover accented Latin and
 Cyrillic, composed/decomposed clusters and ligatures, mixed bidi/overrides/numbers,
 explicit RTL leading alignment, whole-grapheme replacement, embedded NUL/malformed
-source ranges, hard/soft breaks, indivisible overflow and concurrent owned layouts.
+source ranges, hard/soft breaks, bidi across wrapped lines, indivisible overflow
+and concurrent owned layouts.
 The Engine requires FreeType, HarfBuzz and ICU uc/i18n development headers/libraries
 even with both UI modules disabled. Reconfigure the
 matching existing build to pick up that dependency and the embedded font source.
@@ -133,6 +136,9 @@ reordered slots, d-pad hats, disconnect/reconnect and retained legacy mappings.
 It requires no physical controller or display. The reusable
 [Linux joystick smoke procedure](development/native-desktop-checks.md#linux-joystick-controller-checks)
 covers physical reports separately.
+The same batched build compiles the changed Unicode HUD, worker/dispatcher replacement
+path and text-preview options. Native visual text observations belong to TR9; no
+additional build of this configuration is needed before those launches.
 
 ```sh
 (
@@ -187,3 +193,65 @@ separate from owner aggregates because its syscall wrappers apply process-wide.
 The exported command belongs to the owned dependency; HID macro arguments should
 be absent with this explicit OFF configuration. This accepts neither HID runtime
 startup nor physical controller reports/reconnection.
+
+## TR9: QA Unicode text rendering
+
+**Platform/prerequisites:** Linux/GLFW/X11/OpenGL, a usable display/driver, and the
+TR8-built `build/testing-native-linux/demo` with both UI adapters and HID disabled.
+The checked-in shaders/font fixture and embedded font are available; no controller,
+installed font, full image tree, clipboard or IME service is required. Close each run
+before the next. Reuse the TR8 build rather than building these targets again.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-native-linux/demo --unicode-text --builtin-font
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --concurrent
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl --concurrent
+  ./build/testing-native-linux/demo --unicode-text
+  ./build/testing-native-linux/demo --unicode-text --concurrent
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf
+  env XDG_DATA_HOME="$PWD/assets" ./build/testing-native-linux/demo \
+    --unicode-text --builtin-font '--font-family=DejaVu Sans'
+)
+```
+
+The last run supplies a controlled family-discovery root containing the repository
+fixture. Existing installed DejaVu Sans candidates can precede it; both are valid
+explicit family selections. Common-family automatic runs can legitimately select
+only the embedded fallback when none are installed. This establishes graceful
+absence, while isolated `font_selection.families` cases establish discovery metadata
+and ordering. Missing font preferences are not proof of successfully loading them.
+
+- Inspect English, French accents and `e`+combining acute, German umlauts/`ß`, and
+  Russian glyphs. Accents stay with their base and glyph masks are upright, with
+  no per-byte replacements, solid rectangles or atlas bleed. In builtin-only runs,
+  the Chinese missing-glyph example is one visible replacement; color/CJK rendering
+  is outside acceptance.
+- In automatic direction, the Hebrew-only line begins at the right of the available
+  width; its letters read right to left while `123` remains left to right. The mixed
+  Hebrew/English line preserves both run directions. Explicit RTL aligns the Latin
+  paragraphs to the right without reversing their letters or numbers.
+- Resize narrower/wider, maximize and restore while moving the mouse or entering
+  text. The wrap sample and HUD follow the framebuffer width with 24-pixel margins;
+  accents/whole graphemes remain together, hard breaks remain, and updates settle
+  without blank text, corrupted old frames, hangs or native errors. Ordinary glyph
+  overhang is separate from measured line advance; a too-wide indivisible grapheme
+  can overflow and is not silently split.
+- Use F2 and committed text input for supported accents/Cyrillic where keyboard
+  layouts allow, then Enter/Esc to release focus. Text focus still prevents WASD
+  from panning; the unfocused camera/input controls and F5 shader replacement remain
+  usable. The probe edits logical scalars, so grapheme/bidi caret behavior is not
+  part of this request. Static samples establish display independently of typing.
+- Close during rapid resizing/text/counter changes in sequential and concurrent
+  modes. Worker preparation and platform uploads settle/cancel without stale
+  callbacks, deadlocks or cleanup errors. Failure-injection/retained-generation
+  behavior is covered separately by `text_resources.replacement` in TR7.
+
+Report the tested revision, launch variants, visible failures, console errors and
+skips/unavailable input layouts. Finite runs and successful CPU checks do not establish
+these visual observations. If using an existing toolkit-enabled build as well,
+check the builtin HUD with overlapping views hidden and verify normal view startup;
+toolkit text shaping/fallback remains its own service, outside this builtin scope.

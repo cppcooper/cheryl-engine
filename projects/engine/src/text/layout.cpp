@@ -53,8 +53,9 @@ namespace CE::Text {
                 error = U_ZERO_ERROR;
                 size = uloc_forLanguageTag(language.c_str(), locale.data(), static_cast<int32_t>(locale.size()), &parsed, &error);
             }
-            check_icu(error, "Text language conversion");
-            if (parsed != static_cast<int32_t>(language.size()))
+            if (error == U_MEMORY_ALLOCATION_ERROR)
+                throw std::bad_alloc{};
+            if (U_FAILURE(error) || parsed != static_cast<int32_t>(language.size()))
                 throw Exceptions::invalid_args(CE_HERE, "Text language must be a complete BCP 47 tag");
             return {locale.data(), static_cast<std::size_t>(size)};
         }
@@ -339,7 +340,9 @@ namespace CE::Text {
                 std::vector<Opportunity> result;
                 static_cast<void>(ubrk_first(breaks.get()));
                 for (auto point = ubrk_next(breaks.get()); point != UBRK_DONE; point = ubrk_next(breaks.get())) {
-                    result.push_back({scalar_at(offsets_[begin] + point), ubrk_getRuleStatus(breaks.get()) >= UBRK_LINE_HARD});
+                    const auto limit = scalar_at(offsets_[begin] + point);
+                    if (limit > begin && attributes_[limit - 1].end == limit)
+                        result.push_back({limit, ubrk_getRuleStatus(breaks.get()) >= UBRK_LINE_HARD});
                 }
                 if (result.empty() || result.back().end != end)
                     result.push_back({end, false});

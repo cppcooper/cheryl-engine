@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -26,7 +27,8 @@ namespace {
         FontDirectory()
         : path(std::filesystem::temp_directory_path() / ("cheryl-font-" +
               std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" + std::to_string(next++))) {
-            std::filesystem::create_directory(path);
+            if (!std::filesystem::create_directory(path))
+                throw std::runtime_error("Font fixture directory already exists");
         }
         ~FontDirectory() {
             std::error_code error;
@@ -41,10 +43,15 @@ TEST(font_selection, fallback) {
     EXPECT_TRUE(fonts.faces()[0].builtin);
     EXPECT_FALSE(fonts.faces()[0].path);
     EXPECT_EQ(fonts.faces()[0].family, "DejaVu Sans");
-    for (const auto scalar : U"Aa\u00e9\u00fc\u00df\u0153\u0416\u044f\u0301\ufffd\u05d0") {
+    for (const auto scalar : U"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+             U"\u00c0\u00c2\u00c6\u00c7\u00c8\u00c9\u00ca\u00cb\u00ce\u00cf\u00d4\u00d9\u00db\u00dc\u0152\u0178"
+             U"\u00e0\u00e2\u00e6\u00e7\u00e8\u00e9\u00ea\u00eb\u00ee\u00ef\u00f4\u00f9\u00fb\u00fc\u0153\u00ff"
+             U"\u00c4\u00d6\u00e4\u00f6\u00df\u1e9e\u0401\u0451\u0301\ufffd\u05d0") {
         if (scalar)
             EXPECT_TRUE(fonts.covers(scalar));
     }
+    for (char32_t scalar = 0x0410; scalar <= 0x044f; ++scalar)
+        EXPECT_TRUE(fonts.covers(scalar));
     EXPECT_FALSE(fonts.covers(U'\u4e2d'));
     EXPECT_FALSE(fonts.covers(static_cast<char32_t>(0xd800)));
     EXPECT_FALSE(fonts.covers(static_cast<char32_t>(0x110000)));
@@ -86,7 +93,7 @@ TEST(font_selection, snapshot) {
     auto selection = isolated_selection();
     selection.preferred = {FontFile{file}};
     const auto fonts = FontCollection::load(selection);
-    std::filesystem::remove(file);
+    EXPECT_TRUE(std::filesystem::remove(file));
     EXPECT_FALSE(std::filesystem::exists(file));
     EXPECT_TRUE(fonts.covers(U'\u0416'));
     EXPECT_TRUE(fonts.covers(U'\u00e9'));

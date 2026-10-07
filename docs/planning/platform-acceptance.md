@@ -18,7 +18,8 @@ accepted or skipped case.
 Commands locate the checkout root with Git and preserve the caller's starting
 directory. Use a Windows Developer PowerShell with Ninja, CMake 3.28 or newer,
 a C++23 toolchain and initialized pinned submodules; native builds also need OpenGL
-and Python with Jinja2. The demo needs a discoverable system font. Reuse a matching
+and Python with Jinja2. Engine text also requires FreeType, HarfBuzz and ICU uc/i18n;
+the demo now has a builtin font fallback. Reuse a matching
 build directory when its compiler/configuration agree. Builds and CTest use normal
 priority and available parallelism. Stop on failures and require nonempty test
 selection without skips. Record revision, configuration, platform and coverage;

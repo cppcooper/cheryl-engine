@@ -16,8 +16,10 @@ In each mode, check these observations:
    responsive during resizing, without hangs or deferred native errors.
 2. Press F2, type ASCII text, move the caret and use Backspace/Delete. Text focus
    prevents those keystrokes from moving the camera. Enter/Esc releases focus.
-   The existing ASCII atlas displays fallback characters for unsupported Unicode;
-   this is not a Unicode shaping check.
+   The builtin HUD now uses the Unicode text service. Its selected multilingual,
+   bidi/fallback and wrapping observations are pending separately in
+   [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering); this existing input
+   sequence alone does not establish them. Probe editing still uses logical scalars.
 3. Test shader reload using copied assets. From the repository root, run
    `cp -a assets/. /tmp/cheryl-reload-assets`, then launch
    `/path/to/demo /tmp/cheryl-reload-assets`, substituting your demo executable.

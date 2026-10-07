@@ -75,6 +75,7 @@ TEST(text_layout, bidi) {
     options.direction = ParagraphDirection::RightToLeft;
     options.maximum_width = 500;
     const auto explicit_rtl = layout_text(collection, "ABC", options);
+    ASSERT_EQ(explicit_rtl.glyphs().size(), 3u);
     EXPECT_TRUE(explicit_rtl.lines()[0].right_to_left);
     EXPECT_EQ(visual_sources(explicit_rtl), (std::vector<std::size_t>{0, 1, 2})); // Latin keeps its natural run direction.
     EXPECT_FLOAT_EQ(explicit_rtl.glyphs()[0].x, 500 - explicit_rtl.lines()[0].width);
@@ -91,6 +92,7 @@ TEST(text_layout, fallback) {
     EXPECT_EQ(unsupported.glyphs()[0].id.face, collection.faces().size() - 1);
     EXPECT_EQ(unsupported.glyphs()[0].source, (SourceRange{0, 5, 0, 2}));
     const auto replacement = layout_text(collection, utf8(u8"\ufffd"));
+    ASSERT_EQ(replacement.glyphs().size(), 1u);
     EXPECT_FALSE(replacement.glyphs()[0].missing);
     const auto malformed = layout_text(collection, "\xe1\x80" "A");
     ASSERT_EQ(malformed.scalars().size(), 2u);
@@ -150,6 +152,23 @@ TEST(text_layout, owned) {
     const auto parallel = task.get();
     EXPECT_EQ(visual_sources(shaped), visual_sources(parallel));
     EXPECT_FLOAT_EQ(shaped.lines()[0].width, parallel.lines()[0].width);
+}
+
+TEST(text_layout, bidi_wrap) {
+    const auto collection = fonts();
+    LayoutOptions options;
+    options.maximum_width = layout_text(collection, utf8(u8"אבג")).lines()[0].width + 0.01f;
+    const auto wrapped = layout_text(collection, utf8(u8"אבג אבג"), options);
+    ASSERT_EQ(wrapped.lines().size(), 2u);
+    EXPECT_TRUE(wrapped.lines()[0].right_to_left);
+    EXPECT_TRUE(wrapped.lines()[1].right_to_left);
+    EXPECT_EQ(wrapped.lines()[0].source, (SourceRange{0, 7, 0, 4}));
+    EXPECT_EQ(wrapped.lines()[1].source, (SourceRange{7, 6, 4, 3}));
+    EXPECT_EQ(visual_sources(wrapped), (std::vector<std::size_t>{2, 1, 0, 6, 5, 4}));
+    for (const auto& line : wrapped.lines()) {
+        EXPECT_LE(line.width, *options.maximum_width);
+        EXPECT_FALSE(line.overflow);
+    }
 }
 
 TEST(text_layout, invalid) {

@@ -3,7 +3,9 @@
 The initial rendering scope is accented Latin (including English, French and German),
 Russian/Cyrillic, mixed paragraph direction and optional width-constrained wrapping.
 Glyph coverage and shaping are font/script concerns rather than a separate renderer
-for every language. Wider CJK/script acceptance and color emoji are deferred in the
+for every language. Color emoji is a possible
+[next text batch](../planning/develop-review-and-development-plan.md#u11-follow-on--color-emoji);
+wider CJK/script acceptance remains in the
 [long-term plan](../planning/long-term-plan.md#other-engine-extensions).
 Display source maps do not establish caret movement, selection or IME/preedit.
 
@@ -11,7 +13,9 @@ Display source maps do not establish caret movement, selection or IME/preedit.
 
 `CE::Text::FontCollection::load(selection)` creates an immutable CPU snapshot of font
 bytes. `FontSelection::preferred` interleaves application `FontFile` paths/collection
-face indices and `SystemFontFamily` names in the application's desired order. File
+face indices and `SystemFontFamily` names in the application's desired order. Face
+indices select ordinary collection faces, with a variable font's default coordinates;
+named variation instances are not selected through that index. File
 entries are strict: missing, unreadable, corrupt, nonscalable or non-Unicode faces
 fail loading. An unavailable installed family is skipped. Nothing is published on
 failure, and earlier font collections remain usable. Allocation failures propagate.
@@ -123,8 +127,11 @@ Old submitted frames retain their resources, subject to the original backend dom
 remaining alive for native use. Submission performs no shaping, discovery, rasterization,
 upload, binding or drawing.
 
-The demo integration remains in the active
-[U11 implementation checklist](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
+The [demo](../../projects/apps/demo/README.md#builtin-unicode-text) submits immutable
+HUD/camera text, prepares replacements on a CPU worker and uploads through the
+platform dispatcher. Its preview supports builtin-only, automatic, explicit file/
+family and paragraph-direction choices. Linux visual/upload acceptance remains in
+[TR9](../testing-requests.md#tr9-qa-unicode-text-rendering).
 Font selection, layout, resource/submission regressions and neutral header probes
 have pending Linux acceptance in
 [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).

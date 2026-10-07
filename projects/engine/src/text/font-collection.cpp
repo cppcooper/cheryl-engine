@@ -129,6 +129,8 @@ namespace CE::Text {
         FT_Face raw = nullptr;
         auto error = FT_New_Memory_Face(library, data.bytes->data(), static_cast<FT_Long>(data.bytes->size()), data.index, &raw);
         FreeTypeFace face(raw, FT_Done_Face);
+        if (!error && data.index >= static_cast<unsigned long>(raw->num_faces))
+            throw Exceptions::runtime_exception(CE_HERE, "Font face index must select a collection face, not a named variation");
         if (!error && (!FT_IS_SCALABLE(raw) || FT_Select_Charmap(raw, FT_ENCODING_UNICODE)))
             throw Exceptions::runtime_exception(CE_HERE, "A text font needs a scalable Unicode face");
         if (!error && pixel_height)

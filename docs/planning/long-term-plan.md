@@ -100,10 +100,10 @@ omit/replace/test benefit; a seam alone does not justify it.
 ## Other engine extensions
 
 After the initial [Unicode layout task](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources),
-consider color emoji and wider CJK/script acceptance. Color glyph formats need a
-separate pixel/material contract; broader fonts need language-specific shaping,
-line-breaking and coverage fixtures. Neither belongs to the current grayscale
-Latin/Cyrillic and bidi batch.
+consider wider CJK/script acceptance when a consumer establishes its required fonts,
+language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
+possible [nearer text follow-on](develop-review-and-development-plan.md#u11-follow-on--color-emoji).
+Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
 3D, topology/NUMA adapters, audio, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
