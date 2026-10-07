@@ -1,4 +1,4 @@
-# First TGUI adapter
+# TGUI adapter requirements
 
 Use [TGUI 1.13.0](https://github.com/texus/TGUI/releases/tag/v1.13.0) with a
 custom Cheryl backend. Its native widget API stays in an optional
@@ -43,7 +43,7 @@ upgrade reopens the affected assumptions.
 
 The [module guide](../../projects/modules/ui/tgui/README.md) owns the current
 composition, session and validation procedures. The
-[adapter-author guide](../development/ui-adapters.md) owns the Engine boundaries.
+[adapter-author guide](ui-adapters.md) owns the Engine boundaries.
 
 Reuse supplied `TGUI::TGUI` targets, an explicitly selected dependency source, the
 pinned `extern/tgui` submodule or a package at the pinned version; do not download

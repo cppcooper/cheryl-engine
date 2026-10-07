@@ -57,17 +57,17 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 - [Module index and owner guides](../projects/modules/README.md)
 - [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
 - [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
+- [TGUI requirements and decisions](development/tgui-adapter-requirements.md)
+- [RmlUi requirements and decisions](development/rmlui-adapter-requirements.md)
 - [Writing a UI adapter](development/ui-adapters.md)
 - [Neutral UI probe](development/ui-probe.md)
 - [Desktop smoke checks](development/native-desktop-checks.md)
 
 ## Planning
 
-- [Develop review and development plan](planning/develop-review-and-development-plan.md)
-- [TGUI requirements and decisions](planning/tgui-adapter-requirements.md)
-- [RmlUi requirements and decisions](planning/rmlui-adapter-requirements.md)
-- [Module boundaries and initial setup](planning/subsystem-modules-plan.md)
-- [Groundwork and module extraction plan](planning/module-groundwork-and-extraction-plan.md)
+- [Short-, mid- and long-term planning catalogue](planning/README.md)
+- [Development roadmap](planning/develop-review-and-development-plan.md)
+- [Long-term engine and integration plans](planning/long-term-plan.md)
 - [Unfinished engine work](planning/todo.md)
 - [Unresolved asset-manifest metadata](planning/asset-manifest-todo.md)
 

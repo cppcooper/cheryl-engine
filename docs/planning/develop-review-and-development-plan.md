@@ -1,10 +1,14 @@
-# Develop review and development plan
+# Development roadmap
 
 ## Purpose
 
 This file is the current development roadmap. It records only information needed to
 choose and sequence future work: prerequisites, unresolved work, discovery boundaries
 and acceptance still required.
+
+The [planning catalogue](README.md) groups short-, mid- and long-term work. This
+roadmap owns the short-term documentation scope and mid-term feature prerequisites;
+consumer-selected extensions are deferred to the [long-term plan](long-term-plan.md).
 
 Implementation history belongs in Git. Keep durable contracts in their subject
 documents and retain only coverage limits or blockers that affect future work. Do not
@@ -130,12 +134,10 @@ architectural role. Serialization/versioned protocol concerns are separate.
 
 ### U14 — Optional engine expansion
 
-3D, topology/NUMA adapters, audio, networking, world/entity/physics, serialization,
-additional render backends, device-loss recovery and broader OS/device validation stay
-optional until a named application consumer establishes scope and prerequisites.
-Placeholders do not imply supported facilities. The remaining optional input-provider
-composition and Steam session/adapter gates are in
-[module-groundwork-and-extraction-plan.md](module-groundwork-and-extraction-plan.md).
+Deferred engine and module candidates are owned by the
+[long-term plan](long-term-plan.md). Steam API/Input and their SDK-free preparation
+have no short- or mid-term scheduling commitment; a named consumer must establish
+scope and prerequisites before this work enters the development sequence.
 
 ### U15 — Documentation and roadmap reconciliation
 

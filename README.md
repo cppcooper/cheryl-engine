@@ -465,5 +465,5 @@ docs/                           # Current contracts, guides and plans
 - [Runtime architecture](docs/runtime/runtime-architecture.md): ownership and application/backend boundaries.
 - [Module guide](docs/development/modules.md): selection, composition and test ownership.
 - [Code style](docs/development/code-style.md) and [agent instructions](AGENTS.md): repository conventions.
-- [Development roadmap](docs/planning/develop-review-and-development-plan.md) and
-  [unfinished work](docs/planning/todo.md): remaining work and prerequisites.
+- [Planning catalogue](docs/planning/README.md): short-, mid- and long-term plans,
+  remaining work and prerequisites.

@@ -58,7 +58,37 @@ flowchart LR
 
 Engine has no reverse link to a module. Logging, memory, workers, events, assets
 and utilities remain organization within that one engine library. UI consumers
-follow the same optional owner model; Steam remains a future integration.
+follow the same optional owner model. Deferred candidates, including Steam, are in
+the [long-term plan](../planning/long-term-plan.md).
+
+## Module boundary criteria
+
+A separate module is justified when it gives an application a concrete choice or
+isolation benefit: omitting a dependency, selecting an alternative implementation,
+or testing an external integration independently. A directory, internal interface
+or small caller count does not by itself justify a library boundary. Cheryl keeps
+one shared `Cheryl::Engine`.
+
+Keep the selected Native GLFW, whole OpenGL and independent TGUI/RmlUi owners
+cohesive unless a consumer demonstrates a benefit from another boundary. Native
+input depends on a live window; dividing display and input splits that coupled
+lifetime. OpenGL's context interface permits another window integration within its
+owner and does not itself justify context/bridge libraries.
+
+Before introducing another library target, record:
+
+1. the concrete omit/replace/test benefit;
+2. the engine contract the owner implements;
+3. dependencies that become optional or isolated;
+4. lifetime/dependency direction and how cycles are avoided;
+5. test ownership and the smallest independent consumer proving the boundary;
+6. compatibility consequences for current consumers.
+
+If those points do not identify a real benefit, keep the code inside the existing
+owner. Logging, memory, workers, events, general utilities and similar internal
+facilities remain engine organization unless a consumer demonstrates otherwise.
+Evaluate architectural interfaces by their contract rather than deleting them
+because they have few callers.
 
 ## Select an assembly
 

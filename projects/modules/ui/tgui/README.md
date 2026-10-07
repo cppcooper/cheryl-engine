@@ -10,7 +10,7 @@ initial sequential/concurrent widget and lifetime proof are accepted.
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
 and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
 headers expose TGUI's native GUI/widget API; Engine headers never include TGUI. The
-[requirements](../../../../docs/planning/tgui-adapter-requirements.md) define the
+[requirements](../../../../docs/development/tgui-adapter-requirements.md) define the
 materials, font ownership, upload/lifetime and platform decisions for the adapter.
 The [adapter-author guide](../../../../docs/development/ui-adapters.md) describes
 the engine boundaries used by independently implemented UI modules.

@@ -8,7 +8,7 @@ controlled sequential/concurrent runtime behavior and assembly coexistence are
 accepted. The [demo guide](../../../apps/demo/README.md#interaction-checks) records
 the native proof's coverage limits.
 
-The [requirements](../../../../docs/planning/rmlui-adapter-requirements.md) define
+The [requirements](../../../../docs/development/rmlui-adapter-requirements.md) define
 the selected rendering/font/lifetime scope. The
 [adapter-author guide](../../../../docs/development/ui-adapters.md) describes the
 engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.

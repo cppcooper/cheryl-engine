@@ -43,4 +43,5 @@ Unresolved artwork metadata is tracked separately in
   ownership and the current named/`std::any` interface contract.
 - Treat 3D, topology/NUMA adapters, audio, networking, world/entity/physics,
   serialization, additional graphics backends and broader platform/device support as
-  separate consumer-driven roadmaps.
+  separate consumer-driven work in the [long-term plan](long-term-plan.md), alongside
+  deferred Steam API/Input and optional input composition.

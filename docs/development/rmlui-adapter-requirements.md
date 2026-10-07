@@ -7,7 +7,7 @@ is [RmlUi 6.3](https://github.com/mikke89/RmlUi/releases/tag/6.3), commit
 
 The [module guide](../../projects/modules/ui/rmlui/README.md) owns the current
 composition and focused acceptance procedure.
-The [adapter-author guide](../development/ui-adapters.md) owns the engine boundaries.
+The [adapter-author guide](ui-adapters.md) owns the engine boundaries.
 
 ## Initial scope and decisions
 
