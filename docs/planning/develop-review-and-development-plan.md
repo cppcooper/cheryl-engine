@@ -101,11 +101,11 @@ adapter support; use the resulting contract in the
   - [x] Add isolated synthetic-device regressions for button actions, sticks/hats,
     remapping and reconnection without requiring a controller or HID startup.
   - [x] Submit the focused build/regressions and Bluetooth Cross/reconnect QA.
-  - [x] Observe Bluetooth DualSense button delivery through user-run demo testing.
-    Counting, hold/release, both runtime modes and physical reconnect remain in TR5.
+  - [x] Accept Bluetooth DualSense physical controller QA with HID disabled: mapped
+    buttons/axes, A press behavior, off-center disconnect/reconnect, startup with
+    the controller attached and attachment after startup in both runtime modes.
   - [ ] Accept the build/regressions through
-    [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build) and physical
-    controller behavior through [TR5](../testing-requests.md#tr5-qa-controller-reports-and-reconnection).
+    [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build).
 - [ ] Accept the Gainput HID input foundation described in the
   [submodule handoff](../../extern/gainput/TODO.md#ordered-implementation). That file
   owns the deferred backend implementation sequence, followed by adaptive-trigger

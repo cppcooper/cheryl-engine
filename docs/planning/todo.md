@@ -12,8 +12,8 @@ Unresolved artwork metadata is tracked separately in
 - Accept Windows native input ownership, attachment/destruction and consumer checks,
   plus physical HID/notification behavior on Linux and Windows. Resolve the selected
   HID backend's controller report/state integration before HID-specific QA. Accept
-  the Linux joystick mapping correction and DualSense Bluetooth Cross/reconnection
-  separately with HID disabled. Outstanding prerequisites and execution are tracked
+  the Linux joystick mapping correction's automated regressions separately with
+  HID disabled. Outstanding prerequisites and execution are tracked
   in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
 - Complete Windows desktop resize QA and native resize/neutral typed-event acceptance

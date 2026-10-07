@@ -132,11 +132,16 @@ logical device ID. Disconnect clears held buttons/axes and closes the descriptor
 reopening the joystick reloads its mappings. This path requires a readable joydev
 node and keeps the existing fixed joystick-index selection. It does not scan for a
 particular physical controller or identify a reconnected device across node changes.
-Accept this path with `GAINPUT_ENABLE_HID=OFF` while the HID integration below
+Use this path with `GAINPUT_ENABLE_HID=OFF` while the HID integration below
 remains unresolved.
 
 The demo binds Cross/A to the HUD press counter. Its other gamepad controls have
 no gameplay bindings; their traces can verify decoding without moving the camera.
+Physical controller acceptance covers a Bluetooth DualSense on Linux/X11 with HID
+disabled; USB, HID and Windows controller behavior remain separate coverage.
+The reusable
+[joystick controller checks](../../../../docs/development/native-desktop-checks.md#linux-joystick-controller-checks)
+exercise reports, held input, reconnection and startup attachment in both runtimes.
 
 ## Controller backend limits
 

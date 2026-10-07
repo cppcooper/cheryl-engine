@@ -10,7 +10,7 @@ meaningful coverage limits.
 | --- | --- | --- | --- |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
 | [TR4](#tr4-qa-desktop-resize) | QA | Windows | Ready after TR3 |
-| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Linux button delivery confirmed; remaining QA and Windows pending |
+| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Windows | Ready after TR3; platform acceptance pending |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 | [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
@@ -122,49 +122,21 @@ Linux resize procedure.
 ## TR5: QA controller reports and reconnection
 
 Verify actual controller reports through the demo rather than relying on a
-device-free native poll. Use the Linux joystick demo rebuilt by updated TR8 or the
-Windows demo built by TR3, with a controller supported by the selected Gainput
-backend and permission to access its device.
-
-**Linux button delivery confirmed with the Bluetooth DualSense.** Exact counting,
-hold/release behavior, other mapped controls, both runtime modes and physical
-reconnection still need acceptance. The remaining checks use the demo built by
-updated TR8 and select the
-[Linux joystick path](../projects/modules/platform/native-glfw/README.md#linux-controller-mapping)
-with `GAINPUT_ENABLE_HID=OFF`. HID feature wiring/report integration and Windows
-notifications remain separate prerequisites for TR6.
-
-For Linux, use this launch block after TR8. For Windows,
-use the launch block in [TR4](#tr4-qa-desktop-resize).
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-native-linux/demo --input-diagnostics
-  cp logs/os-platform.log build/testing-native-linux/tr5-sequential.log
-  ./build/testing-native-linux/demo --input-diagnostics --concurrent
-  cp logs/os-platform.log build/testing-native-linux/tr5-concurrent.log
-)
-```
+device-free native poll. Use the Windows demo built by TR3, with a controller
+supported by the selected Gainput backend and permission to access its device.
+Launch both runtime modes with the block in [TR4](#tr4-qa-desktop-resize).
 
 - Launch the demo normally, then repeat with `--concurrent`. Record OS, controller
   model and wired/wireless connection type.
 - Press/release gamepad A (Cross on a DualSense) several times. The HUD's `Gamepad A`
   press counter advances once per press. Holding it for two seconds adds one press;
   releasing it and waiting adds none.
-- On Linux, confirm Cross produces `gainput_delta kind=button` and
-  `gamepad_sample kind=button` for the assigned pad and `PadButtonA`. Exercise the
-  other face buttons, shoulders/triggers, sticks and d-pad; translated controls
-  appear in the trace. Only Cross/A has a demo gamepad binding, so other controls
-  need not move the camera or change its counter.
 - Disconnect while holding Cross or a stick off center, then reconnect while the
-  demo runs. Rendering and
-  keyboard/mouse input stay responsive; release/zero samples clear held input and
-  subsequent A presses are observed again. On Linux, retain both `tr5-*.log` files;
-  close each session normally before the next launch rotates the log.
+  demo runs. Rendering and keyboard/mouse input stay responsive, and subsequent A
+  presses are observed again.
 - Close and relaunch the demo with the controller attached. Reports continue and
-  shutdown does not hang or crash.
+  shutdown does not hang or crash. Also launch with it disconnected, then connect
+  it while the demo runs; A presses become observable.
 
 Report unsupported or unreadable devices as unavailable coverage. This is a report
 and reconnection smoke check: the HUD cannot distinguish HID from another backend
@@ -233,7 +205,9 @@ the existing native build with owned static Gainput, HID disabled and both UI
 adapters disabled. The synthetic suite supplies kernel mappings/events to the real
 pad implementation and mapper, covering A presses/holds/releases, other controls,
 reordered slots, d-pad hats, disconnect/reconnect and retained legacy mappings.
-It requires no physical controller or display. Physical reports remain in TR5.
+It requires no physical controller or display. The reusable
+[Linux joystick smoke procedure](development/native-desktop-checks.md#linux-joystick-controller-checks)
+covers physical reports separately.
 
 ```sh
 (
