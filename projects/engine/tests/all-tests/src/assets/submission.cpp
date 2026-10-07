@@ -211,3 +211,45 @@ TEST(asset_submission, tile_strip_ranges) {
     EXPECT_EQ(geometry->native_calls, 0);
     EXPECT_EQ(image->native_calls, 0);
 }
+
+TEST(asset_submission, selected_tile) {
+    using namespace std::chrono_literals;
+    auto geometry = std::make_shared<SubmissionGeometry>(16, PrimitiveTopology::TriangleStrip);
+    auto image = std::make_shared<SubmissionImage>();
+    std::weak_ptr<SubmissionGeometry> retained_geometry = geometry;
+    std::weak_ptr<SubmissionImage> retained_image = image;
+    TilesetDefinition definition;
+    definition.grid.rows = 1;
+    definition.grid.columns = 4;
+    BitmaskAutotileDefinition rule;
+    rule.type = BitmaskType::FourNeighbor;
+    rule.bit_order = {Direction::North};
+    rule.cases.emplace(0, 3);
+    definition.autotiles.emplace("border", rule);
+    TileAnimationDefinition clip;
+    clip.target = 3;
+    clip.frames = {{1, 30ms}, {2, 50ms}};
+    definition.animations.emplace("water", clip);
+    auto tileset = std::make_unique<Tileset>(TilesetData{geometry, image, std::move(definition)});
+    std::size_t samples = 0;
+    const TerrainSampler sampler = [&](TerrainSite) {
+        ++samples;
+        return TerrainSample{TerrainSampleState::Outside};
+    };
+    const auto selection = tileset->select_tile("border", sampler, {}, 30ms);
+    ASSERT_TRUE(std::holds_alternative<CellIndex>(selection));
+    const auto packet = resolve_tile(*tileset, std::get<CellIndex>(selection), make_style(PrimitiveTopology::TriangleStrip), make_context());
+    tileset.reset();
+    geometry.reset();
+    image.reset();
+
+    EXPECT_EQ(packet.first_vertex, 8u);
+    EXPECT_EQ(packet.vertex_count, 4u);
+    EXPECT_EQ(samples, 1u);
+    ASSERT_FALSE(retained_geometry.expired());
+    ASSERT_FALSE(retained_image.expired());
+    EXPECT_EQ(packet.geometry, retained_geometry.lock());
+    EXPECT_EQ(std::get<ImageBinding>(packet.parameters.at("image")).image, retained_image.lock());
+    EXPECT_EQ(retained_geometry.lock()->native_calls, 0);
+    EXPECT_EQ(retained_image.lock()->native_calls, 0);
+}

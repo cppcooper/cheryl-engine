@@ -58,10 +58,13 @@ instructions. Windows notification observations are in the
 
 ## TR7: Automated tile selection and animation
 
-Build the CPU tile selector and its neutral first-include probe, then run the focused
-selection, animation and manifest regressions. Coverage includes edge/corner site
+Build the CPU tile selector/Tileset integration and their neutral first-include
+probes, then run the focused selection, animation, submission and manifest
+regressions. Coverage includes edge/corner site
 labels, declared bit order, diagonal gating, outside/unknown policies, missing rules,
-weighted seeded repeatability, large finite weights and malformed direct rules.
+weighted seeded repeatability, large finite weights and malformed direct rules,
+one-time target substitution, caller-owned phases, original/resolved grid bounds and
+packet resource retention without native binding or world resampling.
 The existing timing cases also cover the pending ignored-result warning correction;
 exception assertions explicitly discard irrelevant values while retaining the public
 `[[nodiscard]]` contract. This request needs no display, controller or graphics module.
@@ -85,13 +88,15 @@ unrelated typed-event acceptance needs no rerun.
   cmake --build build/testing-engine --parallel "$(nproc)" --target \
     tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-engine\.(tile_selection|tile_animation|asset_manifest)\.'
+    --no-tests=error \
+    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest)\.|asset_submission\.(selected_tile|tile_strip_ranges)$)'
 )
 ```
 
 Acceptance: the implementation and public header probes compile without new warnings,
-and all selected `tile_selection.*`, `tile_animation.*` and `asset_manifest.*` cases
-pass without skips. Committed source and static checks do not establish this acceptance.
+and all selected `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
+`asset_manifest.*` and the two selected `asset_submission` cases pass without skips.
+Committed source and static checks do not establish this acceptance.
 
 ## TR8: Automated controller diagnostic build
 

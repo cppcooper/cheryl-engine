@@ -170,10 +170,10 @@ prerequisite and must complete before publishing a world/map API that depends on
   candidates; add focused regressions and a neutral first-include header probe.
   Reject malformed direct rule metadata needed by the selected query, and align
   manifest/schema validation with the four-neighbor cardinal-only contract.
-- [ ] Integrate selection and one-time animated-target substitution with Tileset;
+- [x] Integrate selection and one-time animated-target substitution with Tileset;
   validate original and resolved grid cells, and cover passing the resulting cell
   to existing CPU submission without retaining or resampling the world.
-- [ ] Publish durable selection contracts and reconcile the aggregated Linux Engine
+- [x] Publish durable selection contracts and reconcile the aggregated Linux Engine
   request after each source unit. Keep artwork metadata prerequisites separate.
 - [ ] Accept deterministic, sampling/boundary, invalid-rule, missing-rule, animation
   and CPU submission regressions plus public header probes through user-run

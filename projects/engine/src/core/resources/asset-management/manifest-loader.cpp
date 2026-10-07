@@ -796,8 +796,8 @@ namespace CE::Assets {
                         definition.orientations =
                             parse_orientations(tileset.at("orientations"), definition.grid, source_, location + ".orientations");
                     }
-                    // Resolve target cells and frames now; the map renderer will later choose a
-                    // base/autotile cell and substitute an animated frame for targeted cells.
+                    // Resolve target cells and frames now; simulation-owned Tileset lookup
+                    // substitutes an animated frame after choosing the original base cell.
                     if (tileset.contains("animations")) {
                         const auto& animations = tileset.at("animations");
                         require_object(animations, source_, location + ".animations");
@@ -832,8 +832,7 @@ namespace CE::Assets {
                             definition.animations.emplace(animation_name, std::move(animation_definition));
                         }
                     }
-                    // Autotile rules can choose a base cell at map time; store their
-                    // resolved grid cells alongside animations for that later lookup.
+                    // CPU tile selection uses these resolved grid cells alongside animations.
                     if (tileset.contains("autotiles")) {
                         definition.autotiles = parse_autotiles(tileset.at("autotiles"), definition.grid, source_, location + ".autotiles");
                     }

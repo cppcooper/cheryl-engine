@@ -110,6 +110,15 @@ TEST(tile_selection, diagonals) {
     EXPECT_EQ(select_tile(rule, sampler, options), (TileSelectionResult{CellIndex{4}}));
     EXPECT_EQ(calls, (std::vector<TerrainSite>{{TerrainSiteKind::Cell, Direction::NorthEast}}));
 
+    const TerrainSampler unknown_side = [](const TerrainSite site) {
+        if (site.direction == Direction::North)
+            return TerrainSample{};
+        return TerrainSample{TerrainSampleState::Known, 0};
+    };
+    EXPECT_EQ(select_tile(rule, unknown_side, options), (TileSelectionResult{CellIndex{3}}));
+    options.diagonals = DiagonalConnectivity::RequireCardinals;
+    EXPECT_EQ(select_tile(rule, unknown_side, options), (TileSelectionResult{TileSelectionFailure::IncompleteNeighborhood}));
+
     rule.bit_order = {Direction::North, Direction::NorthEast, Direction::East, Direction::SouthEast,
         Direction::South, Direction::SouthWest, Direction::West, Direction::NorthWest};
     rule.cases.emplace(255, 8);

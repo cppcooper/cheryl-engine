@@ -3,6 +3,7 @@
 #include <assets/types/2d/base/asset2d.h>
 #include <assets/types/primitives/frame.h>
 #include <assets/definitions/tileset.h>
+#include <assets/selection/tile-selection.h>
 
 #include <chrono>
 #include <memory>
@@ -45,11 +46,8 @@ namespace CE::Assets {
         [[nodiscard]] bool loops() const { return definition_.loop; }
     };
 
-    // TODO: Integrate a tile-map selection layer here: derive a Wang signature or bitmask from
-    // neighboring terrain, choose a weighted candidate, then substitute animation_for(target)
-    // using simulation-owned elapsed time before submitting the resolved tile to rendering.
     /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
-     * These queries expose metadata; they do not inspect a world or choose neighbors.
+     * Selection samples through the caller's callback and resolves simulation-owned time.
      * Direct construction rejects duplicate targets but does not revalidate all manifest
      * fields. Keep definitions/resources stable for concurrent read-only queries.
      */
@@ -66,6 +64,18 @@ namespace CE::Assets {
         [[nodiscard]] Tile tile(std::size_t cell) const;
         [[nodiscard]] TileAnimation animation(const std::string& name) const;
         [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;
+        // Resolve only the original target's clip; frame cells never recurse. Negative
+        // time or invalid timelines throw invalid_args; original/final grid violations
+        // throw bad_request. Static targets still require nonnegative time.
+        [[nodiscard]] CellIndex cell_at(CellIndex target, std::chrono::milliseconds elapsed) const;
+        // Unknown names throw out_of_range. Preserve selector failure values, otherwise
+        // apply cell_at() once. No callback is retained; submit the returned cell value.
+        [[nodiscard]] TileSelectionResult select_tile(
+            const std::string& name,
+            const TerrainSampler& sampler,
+            const TileSelectionOptions& options,
+            std::chrono::milliseconds elapsed
+        ) const;
         // References borrow this Tileset's lifetime; unknown metadata names throw out_of_range.
         [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
         [[nodiscard]] CellIndex orientation(const std::string& name) const;

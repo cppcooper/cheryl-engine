@@ -20,5 +20,6 @@ set(consumer_headers
     cheryl/core/resources/asset-management/asset-loader.h
     cheryl/assets/definitions/animation.h
     cheryl/assets/selection/tile-selection.h
+    cheryl/assets/types/2d/tileset.h
     cheryl/assets/resources/resource-provider.h)
 cheryl_add_header_probes(${TARGET_TEST_CONSUMER_ENGINE_HEADERS} ${LINKAGE_PRIVATE_TEST_CONSUMER_ENGINE} NEUTRAL HEADERS ${consumer_headers})

@@ -20,7 +20,7 @@ an artwork-owner decision before additional semantics can be encoded safely.
   or retains selectable layers. The current manifest selects a flattened PNG; layer
   selection needs a different asset/runtime contract.
 
-Engine-side tile selection and animation substitution remain separately listed in
-[todo.md](todo.md).
+Tile selection uses the declared rules; its pending executable acceptance is tracked
+separately in the [roadmap](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
 Additional downloaded dungeon packages await separate manifests in the
 [long-term plan](long-term-plan.md#additional-dungeon-asset-manifests).

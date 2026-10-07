@@ -45,6 +45,36 @@ namespace CE::Assets {
         return std::nullopt;
     }
 
+    CellIndex Tileset::cell_at(const CellIndex target, const std::chrono::milliseconds elapsed) const {
+        if (elapsed.count() < 0)
+            throw Exceptions::invalid_args(CE_HERE, "Tile selection elapsed time must be nonnegative");
+        const auto count = definition_.grid.cell_count();
+        if (target >= count)
+            throw Exceptions::bad_request(CE_HERE, "Selected tile target is outside the grid");
+
+        const auto animation_name = animation_targets_.find(target);
+        if (animation_name == animation_targets_.end())
+            return target;
+        const auto cell = definition_.animations.at(animation_name->second).cell_at(elapsed);
+        if (cell >= count)
+            throw Exceptions::bad_request(CE_HERE, "Selected tile animation frame is outside the grid");
+        return cell;
+    }
+
+    TileSelectionResult Tileset::select_tile(
+        const std::string& name,
+        const TerrainSampler& sampler,
+        const TileSelectionOptions& options,
+        const std::chrono::milliseconds elapsed
+    ) const {
+        if (elapsed.count() < 0)
+            throw Exceptions::invalid_args(CE_HERE, "Tile selection elapsed time must be nonnegative");
+        auto result = CE::Assets::select_tile(autotile(name), sampler, options);
+        if (auto* cell = std::get_if<CellIndex>(&result))
+            *cell = cell_at(*cell, elapsed);
+        return result;
+    }
+
     const ViewDefinition& Tileset::view(const std::string& name) const {
         return definition_.views.at(name);
     }

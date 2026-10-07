@@ -21,10 +21,12 @@ Unresolved artwork metadata is tracked separately in
 
 ## Gameplay and presentation facilities
 
-- Integrate the CPU tile selector with Tileset and apply animated-target substitution
-  using simulation-owned time. Rule sampling, boundary/connectivity policies and
-  seeded weighted candidates are implemented; source and executable acceptance are
-  tracked in the [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
+- Accept the implemented CPU tile selector, Tileset animation substitution and
+  resolved-cell submission through the pending Linux request. Sampling and boundary
+  policies, seeded weighted candidates and simulation-owned time follow the
+  [tile selection contract](../assets/asset-values-and-playback.md#tile-selection);
+  executable acceptance remains in the
+  [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
 - Add Unicode text layout/glyph runs before treating committed Unicode input as fully
   renderable text. Define decoding, fallback, shaping/bidi/line-breaking scope and
   retained atlas ownership before choosing dependencies. IME/editing is a separate

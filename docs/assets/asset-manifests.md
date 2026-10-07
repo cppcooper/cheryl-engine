@@ -61,7 +61,10 @@ row = profile.facings[facing] + clip.row_offset
 
 Each value in `clip.columns` then identifies a frame on that row. `frame_duration_ms` applies to every frame and `loop` controls wraparound. The `swordsman` profile is attached to the template plus the cyan, lime, purple, and red Swordsman sheets.
 
-Per-sprite `animations` support arbitrary cells and per-frame durations. Tileset animations additionally identify a `target` cell: rendering that target advances through its `frames`. If an autotile selects an animated target, autotile selection happens first and animation substitution happens second.
+Per-sprite `animations` support arbitrary cells and per-frame durations. Tileset
+animations additionally identify a `target` cell: simulation-owned elapsed time
+selects its frame before submission. If an autotile selects an animated target,
+autotile selection happens first and animation substitution happens second.
 
 ## Autotiles
 
@@ -86,7 +89,10 @@ The Puny World manifest is transcribed from the author-supplied `punyworld-overw
 ## Runtime implementation
 
 The manifest parser, typed asset dispatch, pivot/grid construction, animation
-expansion, autotile lookup data and CPU-only rule selector are implemented. See
+expansion, autotile lookup data, CPU-only rule selector and Tileset animated-target
+substitution are implemented. See
 [asset-loading.md](asset-loading.md) for the runtime entry point, validation/load
-order, retrieval APIs and per-entity sprite playback. Tileset selection with
-animated-target substitution remains unfinished in [todo.md](../planning/todo.md).
+order, retrieval APIs and per-entity sprite playback. Sampling, deterministic
+selection and simulation-time substitution follow the
+[tile selection contract](asset-values-and-playback.md#tile-selection); Linux
+executable acceptance remains in [TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).

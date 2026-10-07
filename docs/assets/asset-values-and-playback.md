@@ -106,8 +106,8 @@ Lookup rejects negative time, an empty clip, nonpositive frame durations and tot
 duration overflow. It validates the complete timeline even when the selected frame
 is earlier. Direct definitions still need caller-provided grid/cell validation.
 After choosing a base tile, resolve that target's animation once; an animated frame's
-cell does not trigger recursive target substitution. This helper supplies timing for
-the later selection layer without sampling a world or accessing graphics resources.
+cell does not trigger recursive target substitution. Tileset lookup uses this helper
+after choosing the original target.
 
 ## Tile selection
 
@@ -162,9 +162,39 @@ An empty sampler, invalid policies, malformed direction/slot order, or invalid
 matched Wang candidate indices/signatures/weights throws `invalid_args`. Candidate
 indices must be strictly increasing, and matched weights must be finite and positive.
 Unmatched rules and other direct aggregate fields are not fully revalidated. The
-free selector returns a base cell without grid checks or animation substitution;
-Tileset integration remains in the
-[active task](../planning/develop-review-and-development-plan.md#u10--deterministic-tile-selection).
+free selector returns a base cell without grid checks or animation substitution.
+
+`Tileset::cell_at(target, elapsed)` checks the original target against its grid,
+resolves only that target's clip at the caller's elapsed milliseconds, and checks the
+returned frame cell. Static targets return their original cell. A frame that is
+itself an animation target does not trigger another lookup. Negative time throws
+`invalid_args`, including for static targets; original or returned cells outside the
+grid throw `bad_request`. A selected clip validates its full timeline, but only its
+returned cell is checked against the grid. Direct construction still needs valid
+cells for later frames; loader construction validates all of them.
+
+`Tileset::select_tile(name, sampler, options, elapsed)` combines rule selection and
+one-time animation substitution. Unknown rule names throw `std::out_of_range`;
+selector failure values pass through without inspecting a clip. Negative elapsed
+time is rejected before sampling even when a rule would fail. Identical stable
+samples, seed and elapsed time produce the same result. To retain a base choice
+between frames, use the free selector once, then call `cell_at` with new simulation
+times. These queries do not advance a cursor or bind resources.
+
+During frame preparation, pass the resolved cell to the existing CPU submission
+overload. For an existing Tileset, sampler, options, simulation elapsed milliseconds,
+draw style/context and `RenderPassWriter` named `pass`:
+
+```cpp
+const auto selection = tileset.select_tile("terrain", sampler, options, simulation_elapsed);
+if (const auto* cell = std::get_if<CE::Assets::CellIndex>(&selection))
+    pass.add(CE::Assets::resolve_tile(tileset, *cell, style, context));
+```
+
+The selection result owns only a cell/failure value. The resulting packet copies
+draw state and retains graphics resources; it carries no sampler, live world or
+clock. Source regressions and first-include probes have pending Linux acceptance in
+[TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).
 
 ## Fonts and CPU submission
 
