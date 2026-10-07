@@ -33,6 +33,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 ## Assets
 
 - [Asset loading](assets/asset-loading.md)
+- [File indexing and font discovery](assets/file-and-font-discovery.md)
 - [Asset manifest format](assets/asset-manifests.md)
 
 ## Rendering

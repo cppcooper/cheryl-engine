@@ -66,8 +66,10 @@ retrieves an already-initialized singleton.
 ## Resources and application bootstrap
 
 The generic loader loads images, sprites, and tilesets. The application explicitly
-chooses system fonts and shader recipes. The demo always selects its font and
-`shader2d` material recipe, including with `--full-assets`; F5 queues material
+chooses system fonts and shader recipes; the
+[file/font discovery guide](file-and-font-discovery.md) defines candidate selection,
+index freshness and FontMgr's default/collection-face policy. The demo always selects
+its font and `shader2d` material recipe, including with `--full-assets`; F5 queues material
 replacement built from the shader recipe. Failed replacement keeps the previous
 generation, and published packets retain their selected generation. Fonts and
 shader/material recipes remain outside manifest 1.0.

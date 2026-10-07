@@ -163,11 +163,11 @@ scope and prerequisites before this work enters the development sequence.
 
 Complete the still-open public-contract inventory alongside each implementation unit:
 
-- [ ] [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h):
+- [x] [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h):
   incremental indexing, missing roots/errors, ordering and borrowed lookup
   lifetime; correct stale loader-discovery comments. Decide refresh support only if
   a consumer needs it.
-- [ ] [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
+- [x] [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
   skipped-root/error behavior, preference/enumeration rules and supported
   collection-face selection in FontMgr.
 - [ ] Display/window declarations: platform affinity, monitor snapshot freshness, scale
@@ -180,6 +180,9 @@ Complete the still-open public-contract inventory alongside each implementation 
 - [ ] Reconcile stale U5/U8 status/evidence referrals when affecting their subject documents.
   Preserve useful procedures, current contracts and coverage limits without relocating
   routine reports.
+
+The current file-index and font contracts are in
+[file indexing and font discovery](../assets/file-and-font-discovery.md).
 
 **Acceptance:** callers can determine supported behavior from public declarations and
 focused links. If documentation cannot state a guarantee, classify the missing
