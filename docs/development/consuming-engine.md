@@ -74,9 +74,9 @@ reference real implementation symbols without requiring a display at execution.
 After explicit build/test authorization, the engine-only consumer entry point is:
 
 ```sh
-cmake -S projects/engine/tests/consumer -B build-consumer-engine \
+cmake -S projects/engine/tests/consumer -B build-consumer-engine -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD"
-cmake --build build-consumer-engine --target consumer-cengine --parallel 1
+cmake --build build-consumer-engine --target consumer-cengine --parallel
 ./build-consumer-engine/cheryl-consumer
 ```
 

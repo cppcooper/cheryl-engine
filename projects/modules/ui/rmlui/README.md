@@ -151,12 +151,12 @@ git submodule update --init extern/rmlui
 ```
 
 ```sh
-cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON \
+cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON -G Ninja \
   -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
 ```
 
 ```sh
-nice -n 19 cmake --build build/debug --parallel 1 \
+cmake --build build/debug --parallel \
   --target demo all-ui-rmlui tests-ui-coexist tests-engine tests-native-glfw
 ```
 
@@ -181,13 +181,13 @@ and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
 after the root checks settle, so any fixes precede a separate compilation:
 
 ```sh
-cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer \
+cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
 ```
 
 ```sh
-nice -n 19 cmake --build build/rmlui-consumer --parallel 1 \
+cmake --build build/rmlui-consumer --parallel \
   --target consumer-module-ui-rmlui
 ```
 

@@ -42,9 +42,10 @@ is needed, and inspect target dependencies, compilation inventories and final li
 commands before execution. A stale source inventory, unselected check or missing
 prerequisite is not executable acceptance.
 
-Combine needed build targets into as few invocations as practical. Use low priority
-and one job when further builds are necessary, with breaks between them. Run tests
-sharing files/logs serially in isolated working directories. A compiler cache can
+Combine needed build targets into as few invocations as practical. User-run builds
+use normal priority and Ninja's native parallelism; agent-run work follows the
+resource-sharing limits in `AGENTS.md`. Tests that share mutable files need isolated
+working directories before parallel execution. A compiler cache can
 reuse identical compilation across selections. `CMAKE_CXX_SCAN_FOR_MODULES=OFF`
 avoids unnecessary language-module scanning: Cheryl's integration modules are
 ordinary libraries. Keep GoogleTest discovery at `PRE_TEST` so building a runner
@@ -66,7 +67,7 @@ cmake -S . -B build-validation-release -G Ninja \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
   -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
   -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
-nice -n 19 cmake --build build-validation-release --parallel 1 --target \
+cmake --build build-validation-release --parallel --target \
   consumer-cengine tests-engine tests-logging \
   acceptance-logging acceptance-signal
 ./build-validation-release/cheryl-consumer

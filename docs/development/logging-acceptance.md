@@ -24,7 +24,7 @@ native/display prerequisites; use the
 For example, after authorization:
 
 ```sh
-cmake -S . -B build-log-sandbox-developer -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B build-log-sandbox-developer -DCMAKE_BUILD_TYPE=Release -G Ninja \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
   -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
@@ -32,7 +32,7 @@ cmake -S . -B build-log-sandbox-developer -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
   -DCHERYL_BUILD_DEMO=OFF \
   -DCHERYL_SANDBOX_BUILD=ON -DCHERYL_LOG_PROFILE=developer
-nice -n 19 cmake --build build-log-sandbox-developer --parallel 1 \
+cmake --build build-log-sandbox-developer --parallel \
   --target tests-logging acceptance-logging
 python3 projects/engine/tests/logging-acceptance/logging.py build-log-sandbox-developer
 ```

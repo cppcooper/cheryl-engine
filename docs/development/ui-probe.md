@@ -34,8 +34,8 @@ toolkit or Unicode/IME acceptance.
 After explicit build/test authorization, reuse suitable Engine-only and OpenGL build
 directories. Build `tests-engine`, `acceptance-engine` and `consumer-cengine` together
 in Engine only; build `tests-opengl`, `acceptance-opengl` and
-`consumer-module-opengl` together in OpenGL. Use one low-priority job and cooling
-breaks. The [architecture guide](architecture-validation.md) describes their options
+`consumer-module-opengl` together in OpenGL. Use normal priority and parallel builds.
+The [architecture guide](architecture-validation.md) describes their options
 and isolation checks. Consumer targets also build their first-include probes.
 
 Run the Engine unit runner once, then select the recording graph's acceptance:

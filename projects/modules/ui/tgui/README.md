@@ -275,14 +275,14 @@ From the repository root, configure the focused checks in a standalone source
 composition:
 
 ```sh
-cmake -S projects/modules/ui/tgui -B build/ui-tgui \
+cmake -S projects/modules/ui/tgui -B build/ui-tgui -G Ninja \
   -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
 ```
 
 ```sh
-nice -n 19 cmake --build build/ui-tgui --parallel 1 \
+cmake --build build/ui-tgui --parallel \
   --target tests-ui-tgui consumer-module-ui-tgui
 ```
 

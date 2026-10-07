@@ -100,25 +100,26 @@ AddressSanitizer/UndefinedBehaviorSanitizer on non-MSVC compilers and developer
 logging:
 
 ```sh
-cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
+cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -G Ninja
 ```
 
 RelWithDebInfo combines optimization and debug symbols with support logging:
 
 ```sh
-cmake -S . -B build/support -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake -S . -B build/support -DCMAKE_BUILD_TYPE=RelWithDebInfo -G Ninja
 ```
 
 Release uses optimization and release logging:
 
 ```sh
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
 ```
 
 Build an explicit [target](#targets) to compile its dependencies without building
 every runner. The following commands use `build/release`; substitute your chosen
-directory. One parallel job keeps CPU use modest. Multi-configuration generators
-need `--config Release` when building and `-C Release` with CTest; executables
+directory. Builds use Ninja's native parallelism at normal priority.
+Multi-configuration generators need `--config Release` when building and `-C Release`
+with CTest; executables
 normally appear in a `Release/` subdirectory. Windows executable names add `.exe`.
 
 ### Run all tests
@@ -127,7 +128,7 @@ With `CHERYL_BUILD_TESTS=ON`, build and run the combined GoogleTest runner for a
 selected owners:
 
 ```sh
-cmake --build build/release --target all-tests --parallel 1
+cmake --build build/release --target all-tests --parallel
 ./build/release/tests-all
 ```
 
@@ -149,7 +150,7 @@ Use either the direct runner or this CTest selection for a combined run.
 ### Run the demo
 
 ```sh
-cmake --build build/release --target demo --parallel 1
+cmake --build build/release --target demo --parallel
 ./build/release/demo
 ```
 
@@ -395,14 +396,14 @@ application links. An Engine-only root build omits GLFW, Gainput, OpenGL, GLAD,
 both UI toolkits and FreeType discovery:
 
 ```sh
-cmake -S . -B build/engine-only -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B build/engine-only -DCMAKE_BUILD_TYPE=Release -G Ninja \
   -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
   -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
   -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF
 ```
 
 ```sh
-cmake --build build/engine-only --target cengine --parallel 1
+cmake --build build/engine-only --target cengine --parallel
 ```
 
 For an engine-only application in an enclosing CMake project:

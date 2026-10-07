@@ -27,7 +27,8 @@ Windows commands use a Developer PowerShell with the compiler and Ninja availabl
 All command-line configurations explicitly select the Ninja generator.
 
 Reuse these build directories when the compiler and configuration match. Each block
-batches its build targets with one job, then selects only the requested cases. Stop
+batches its build targets and uses the available CPU count for builds and CTest
+at normal priority, selecting only the requested cases. Stop
 on a command failure. A zero-case selection or skipped case leaves that coverage
 pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
@@ -54,12 +55,12 @@ that these APIs require no native or graphics owner.
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=OFF
-  nice -n 19 cmake --build build/testing-engine --parallel 1 --target \
+  cmake --build build/testing-engine --parallel "$(nproc)" --target \
     consumer-cengine tests-engine acceptance-engine
   ./build/testing-engine/cheryl-consumer
-  ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
+  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
-  ctest --test-dir build/testing-engine --parallel 1 --output-on-failure \
+  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
 )
 ```
@@ -92,13 +93,13 @@ a usable X11 desktop session; these cases create actual GLFW/OpenGL windows.
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON
-  nice -n 19 cmake --build build/testing-native-linux --parallel 1 --target \
+  cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
     consumer-module-native-glfw tests-native-glfw acceptance-opengl demo
   ./build/testing-native-linux/cheryl-native-glfw-consumer
-  ctest --test-dir build/testing-native-linux --parallel 1 --output-on-failure \
+  ctest --test-dir build/testing-native-linux --parallel "$(nproc)" --output-on-failure \
     --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
   CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-native-linux \
-    --parallel 1 --output-on-failure --no-tests=error \
+    --parallel "$(nproc)" --output-on-failure --no-tests=error \
     -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
 )
 ```
@@ -132,19 +133,19 @@ try {
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON `
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON `
     -DCHERYL_BUILD_DEMO=ON
-  cmake --build build/testing-native-windows --parallel 1 --target `
+  cmake --build build/testing-native-windows --parallel ([Environment]::ProcessorCount) --target `
     consumer-cengine consumer-module-native-glfw tests-engine acceptance-engine `
     tests-native-glfw acceptance-opengl demo
   ./build/testing-native-windows/cheryl-consumer.exe
   ./build/testing-native-windows/cheryl-native-glfw-consumer.exe
-  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+  ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
-  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+  ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
-  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+  ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
   $env:CHERYL_NATIVE_GL_TESTS = '1'
-  ctest --test-dir build/testing-native-windows --parallel 1 --output-on-failure `
+  ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error `
     -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
   Remove-Item Env:CHERYL_NATIVE_GL_TESTS

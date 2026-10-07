@@ -13,13 +13,13 @@ From the repository root, with the [dependencies](../../../README.md#dependencie
 initialized, configure the demo:
 
 ```sh
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
 ```
 
 Build its target:
 
 ```sh
-cmake --build build/release --target demo --parallel 1
+cmake --build build/release --target demo --parallel
 ```
 
 Run in sequential or concurrent mode:
@@ -197,4 +197,4 @@ IME or physical GPU resource retirement.
 
 Reuse accepted coverage unless related source changes require a rerun. The
 [focused acceptance procedure](../../modules/ui/rmlui/README.md#acceptance-procedure)
-batches RmlUi and coexistence checks with one low-priority build job.
+batches RmlUi and coexistence checks in one parallel build.

@@ -28,13 +28,13 @@ From the repository root, a standalone build can bootstrap an explicit Engine
 checkout without selecting other integration owners:
 
 ```sh
-cmake -S projects/modules/platform/native-glfw -B build/native-module \
+cmake -S projects/modules/platform/native-glfw -B build/native-module -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCHERYL_REPOSITORY_ROOT="$PWD"
 ```
 
 ```sh
-cmake --build build/native-module --target module_native_glfw --parallel 1
+cmake --build build/native-module --target module_native_glfw --parallel
 ```
 
 On Linux, bundled GLFW enables both X11 and Wayland; use
