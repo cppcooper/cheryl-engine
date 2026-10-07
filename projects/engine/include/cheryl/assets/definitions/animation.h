@@ -30,6 +30,12 @@ namespace CE::Assets {
         CellIndex target{};
         std::vector<TimedFrameDefinition> frames;
         bool loop{};
+
+        // Return a cell index for caller-owned simulation time.
+        // Exact duration boundaries enter the next frame; loops wrap and other clips
+        // hold their last cell. Negative time, empty/nonpositive or overflowing
+        // timelines throw invalid_args. Cell/grid bounds remain the caller's contract.
+        [[nodiscard]] CellIndex cell_at(std::chrono::milliseconds elapsed) const;
     };
 
     struct ProfileClipDefinition {

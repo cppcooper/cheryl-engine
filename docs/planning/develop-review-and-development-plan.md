@@ -96,6 +96,19 @@ unknown-terrain policy, Wang/bitmask mapping, seeded weighted choice and missing
 result. Settle connectivity and animation-phase semantics before publishing a map API;
 animation substitution uses simulation-owned time.
 
+- [x] Add stateless tile-animation cell lookup from nonnegative elapsed milliseconds,
+  with caller-owned phase, exact frame boundaries, looping and nonlooping behavior,
+  invalid-timeline checks and source regressions.
+  The [tile timing contract](../assets/asset-values-and-playback.md#tile-playback-and-rules)
+  defines current behavior; executable acceptance of `tile_animation.*` remains
+  outstanding.
+- [ ] Define the neighbor sampler, connectivity and unknown/edge-terrain policies;
+  derive Wang signatures and bitmasks without borrowing a graphics-owned world.
+- [ ] Add seeded weighted candidate selection and an explicit missing-rule result;
+  resolve animation only after choosing the original target cell.
+- [ ] Integrate selection with Tileset and publish resolved cells to CPU submission;
+  accept deterministic, boundary and missing-rule cases with authorized execution.
+
 **Acceptance:** boundary/missing-rule cases and identical samples/seed/time resolve
 deterministically without graphics-thread world access. Missing artwork semantics
 remain blocked on [asset-manifest-todo.md](asset-manifest-todo.md); sheet dimensions

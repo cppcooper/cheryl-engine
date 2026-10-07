@@ -94,6 +94,21 @@ index changes using the positive per-frame millisecond durations. There is no
 elapsed-time advance operation. A directly constructed `Frame` requires its initial
 index to be below its nonzero limit; later `set_frame()` normalizes the index.
 
+`TileAnimationDefinition::cell_at(elapsed)` independently resolves a clip cell from
+nonnegative elapsed milliseconds. The caller chooses the simulation clock and phase
+origin: a shared elapsed value synchronizes tiles, while per-tile values provide
+independent phases. Lookup has no cursor and does not mutate the definition or
+resources. Each frame owns a half-open interval; at an exact duration boundary,
+lookup enters the next frame. Looping clips wrap by total duration and nonlooping
+clips hold the last cell after their timeline ends.
+
+Lookup rejects negative time, an empty clip, nonpositive frame durations and total
+duration overflow. It validates the complete timeline even when the selected frame
+is earlier. Direct definitions still need caller-provided grid/cell validation.
+After choosing a base tile, resolve that target's animation once; an animated frame's
+cell does not trigger recursive target substitution. This helper supplies timing for
+the later selection layer without sampling a world or accessing graphics resources.
+
 Wang signatures, weights and bitmask cases are metadata. These APIs do not sample
 neighbors, choose variants or automatically replace a selected animated target.
 That selection layer remains in the [roadmap](../planning/develop-review-and-development-plan.md#u10--deterministic-tile-selection).
