@@ -131,10 +131,22 @@ timing changes are independent development units.
 
 ### U13 — Typed events
 
-Define channel/type identity, payload ownership and mismatch policy, then add typed
-registration/submission with compile-time payload constraints. Prove a representative
-engine/native channel through existing registration, invalidation, waits, worker FIFO
-and platform/simulation delivery, including queued error-handler ownership.
+Use an owned exact channel name plus its copy-constructible, unqualified payload
+type as typed identity. Same name/type values address the same channel within a bus;
+other types and legacy named/`std::any` channels are separate. Typed submission
+requires the exact payload type, and callback entry checks erased payloads before
+invocation. Callback references borrow an invocation-owned copy. Initial payload
+construction errors belong to the producer; per-listener queued preparation,
+delivery and cancellation errors retain the existing owned error-sink contract.
+
+- [x] Add the typed channel/API and reuse registration, invocation, invalidation and
+  delivery machinery, with compile-time constraints and source regressions for
+  identity, copy ownership, waits, FIFO, callback errors and cancellation.
+- [ ] Publish native WindowResized on a canonical typed channel while retaining the
+  legacy named notification. Cover platform/simulation delivery and borrowed-window
+  limits without exposing native types in Engine.
+- [ ] Accept typed event and native resize regressions with authorized execution;
+  source completion does not establish executable acceptance.
 
 **Acceptance:** unchecked payload casts cannot reach typed callbacks and cancellation/
 shutdown behavior is preserved. Retain the named/`std::any` interface according to its

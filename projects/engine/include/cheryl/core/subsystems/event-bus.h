@@ -1,5 +1,6 @@
 #pragma once
 #include <core/diagnostics.h>
+#include "event-channel.h"
 
 #include <any>
 #include <atomic>
@@ -11,6 +12,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
 
@@ -28,7 +31,8 @@ namespace CE::SubSystems {
     /** An owned named-event registry. A bus separates registrations/lifecycle;
      * it does not select a thread. Immediate dispatch runs on its producer's thread.
      * String/any payload consistency remains the application author's contract.
-     * TODO: Add typed channels separately from delivery and registration lifetime.
+     * Typed channels isolate name/type identity and check payloads before callback
+     * entry, using the same persistent registration and optional delivery lifetime.
      */
     class EventBus final {
     public:
@@ -43,6 +47,33 @@ namespace CE::SubSystems {
         using ErrorHandler = std::function<void(std::exception_ptr)>;
 
     private:
+        struct ChannelKey {
+            std::string name;
+            std::type_index payload = typeid(void); // Reserved for legacy named channels.
+        };
+        struct ChannelView {
+            std::string_view name;
+            std::type_index payload;
+        };
+        struct ChannelHash {
+            using is_transparent = void;
+            std::size_t operator()(ChannelView channel) const noexcept {
+                return std::hash<std::string_view>{}(channel.name) ^ channel.payload.hash_code();
+            }
+            std::size_t operator()(const ChannelKey& channel) const noexcept {
+                return (*this)(ChannelView{channel.name, channel.payload});
+            }
+        };
+        struct ChannelEqual {
+            using is_transparent = void;
+            bool operator()(const ChannelKey& left, ChannelView right) const noexcept {
+                return left.name == right.name && left.payload == right.payload;
+            }
+            bool operator()(ChannelView left, const ChannelKey& right) const noexcept { return (*this)(right, left); }
+            bool operator()(const ChannelKey& left, const ChannelKey& right) const noexcept {
+                return (*this)(left, ChannelView{right.name, right.payload});
+            }
+        };
         struct Counters {
             const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
             std::atomic<std::uint64_t> invocations{0};
@@ -51,7 +82,7 @@ namespace CE::SubSystems {
         };
         struct Listener {
             std::shared_ptr<Counters> counters;
-            std::string event;
+            ChannelKey event;
             Callback callback;
             Delivery delivery;
             ErrorHandler errors;
@@ -73,7 +104,7 @@ namespace CE::SubSystems {
         };
         struct State {
             std::mutex mutex;
-            std::unordered_map<std::string, std::vector<std::shared_ptr<Listener>>> channels;
+            std::unordered_map<ChannelKey, std::vector<std::shared_ptr<Listener>>, ChannelHash, ChannelEqual> channels;
             std::uint64_t next_id = 1;
             bool closed = false;
             std::shared_ptr<Counters> counters = std::make_shared<Counters>();
@@ -120,6 +151,34 @@ namespace CE::SubSystems {
         // Borrow payload for this call; listeners receive copies. Immediate exceptions
         // propagate, queued failures go to their error sink. A closed bus rejects dispatch.
         void dispatch(const std::string& event, const std::any& payload);
+        // Exact name/type channel; callback copies/registration and delivery obey
+        // the same lifetime as named listeners. Empty callbacks reject as usual.
+        template <EventPayload Payload>
+        Registration register_listener(
+            const EventChannel<Payload>& event,
+            typename EventChannel<Payload>::Callback callback,
+            Delivery delivery = Delivery{},
+            ErrorHandler errors = ErrorHandler{}
+        ) {
+            Callback erased;
+            if (callback) {
+                erased = [callback = std::move(callback)](std::any payload) {
+                    const auto* value = std::any_cast<Payload>(&payload);
+                    if (!value)
+                        throw std::bad_any_cast{};
+                    callback(*value);
+                };
+            }
+            return register_channel(event.name(), typeid(Payload), std::move(erased), std::move(delivery), std::move(errors));
+        }
+        // Own an exact-type payload before dispatch. Construction failure reaches
+        // the producer; per-listener queued failures reach their existing error sink.
+        template <EventPayload Payload, typename Value>
+            requires std::same_as<std::remove_cvref_t<Value>, Payload> && std::is_constructible_v<Payload, Value&&>
+        void dispatch(const EventChannel<Payload>& event, Value&& payload) {
+            auto owned = std::make_any<Payload>(std::forward<Value>(payload));
+            dispatch_channel(event.name(), typeid(Payload), owned);
+        }
         // Invalidation prevents new invocation entry; already-running work finishes.
         bool unregister_listener(const Registration& registration);
         // Only wait after invalidation. Waiting on one's own invocation rejects.
@@ -134,6 +193,14 @@ namespace CE::SubSystems {
         void report_diagnostics() const noexcept;
 
     private:
+        Registration register_channel(
+            const std::string& event,
+            std::type_index payload,
+            Callback callback,
+            Delivery delivery,
+            ErrorHandler errors
+        );
+        void dispatch_channel(std::string_view event, std::type_index type, const std::any& payload);
         static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
         static void invalidate(const std::shared_ptr<Listener>& listener);
         static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);

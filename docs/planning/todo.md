@@ -35,8 +35,10 @@ Unresolved artwork metadata is tracked separately in
   batching or sorting. Authored packet order remains the baseline.
 - Add a profiling-based timing adviser only from measured workload data; it must not
   silently replace explicit fixed-step, input-retention or recovery policy.
-- Add typed event channels while preserving existing registration/delivery/lifetime
-  ownership and the current named/`std::any` interface contract.
+- Complete native channel integration and accept the typed event API through existing
+  registration/delivery/lifetime ownership. The named/`std::any` contract remains;
+  source completion and acceptance are in the
+  [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
 - Treat 3D, topology/NUMA adapters, audio, networking, world/entity/physics,
   serialization, additional graphics backends and broader platform/device support as
   separate consumer-driven work in the [long-term plan](long-term-plan.md), alongside

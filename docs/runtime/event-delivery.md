@@ -41,6 +41,46 @@ in-flight callbacks that borrow a bus or other target before destroying it.
 Registry snapshots and invocation guards retain callback ownership as needed,
 without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.
 
+## Typed channels
+
+`EventChannel<Payload>` owns an exact channel name. Its name plus its unqualified,
+copy-constructible payload type identify a channel within each bus. Equivalent
+name/type values share registrations, independent of token lifetime; another
+payload type with the same name is a separate channel. Legacy string/`std::any`
+channels retain their application-defined type contract and are separate from typed
+channels. Type identity is in-process; names and RTTI are not a serialized protocol.
+
+```cpp
+struct LevelLoaded {
+    int level;
+};
+const CE::SubSystems::EventChannel<LevelLoaded> loaded{"level-loaded"};
+int last_level = 0;
+auto id = local_bus.register_listener(loaded, [&](const LevelLoaded& event) {
+    last_level = event.level;
+});
+local_bus.dispatch(loaded, LevelLoaded{3});
+local_bus.unregister_and_wait(id);
+```
+
+Typed submission requires the exact payload type rather than implicit numeric or
+other conversions. It copies an lvalue or constructs from an rvalue into an owned
+payload before dispatch; even `std::any` can be a typed payload without flattening
+its contents. Each listener receives the existing invocation-owned payload copy
+through a borrowed `const Payload&`. Copy it for retained use, and keep pointees
+alive according to Payload's own ownership. A checked erased-type lookup precedes
+the typed callback; inconsistent internal payloads throw `bad_any_cast` instead of
+reaching that callback. Public named producers cannot target a typed channel.
+
+Persistent registration, snapshot order, invalidation, waits, close and optional
+delivery use the same listener machinery as named channels. `EventSystem` forwards
+both APIs to its default bus. Initial typed-payload construction failures reach the
+producer before the registry dispatch begins. Per-listener queued copying,
+callback/target failures and cancellation still belong to the registered error sink;
+invalidation waits protect the callback's borrowed target, not that error sink's
+independent lifetime through pending-ticket destruction. No typed API chooses a
+thread or changes worker-stream ordering.
+
 ## Optional queued delivery
 
 Pass a delivery callable and error sink to `register_listener`. The bus accepts
@@ -104,4 +144,7 @@ destructor reentry without running another listener's cancellation under that lo
 
 [Recorded validation](../development/architecture-validation.md) includes controlled pump rejection,
 concurrent producers, payload-copy invalidation, native-policy suppression, and
-reentrant recovery. Typed channels remain unfinished in [todo.md](../planning/todo.md).
+reentrant recovery. Typed identity/ownership, compile-time constraints, waits,
+queued failure/error-sink lifetime and worker FIFO have additional regression
+sources; executable acceptance remains in the
+[typed-event task](../planning/develop-review-and-development-plan.md#u13--typed-events).

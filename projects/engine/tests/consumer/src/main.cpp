@@ -18,6 +18,12 @@ int main() {
     events.dispatch("consumer", 7);
     events.unregister_and_wait(registration);
 
+    const CE::SubSystems::EventChannel<int> typed{"consumer"};
+    int typed_observed = 0;
+    const auto typed_registration = events.register_listener(typed, [&](const int& value) { typed_observed = value; });
+    events.dispatch(typed, 9);
+    events.unregister_and_wait(typed_registration);
+
     CE::Engine::WorkerPool workers{1};
     const auto group = workers.make_group();
     auto value = group.submit([] { return 11; });
@@ -27,5 +33,5 @@ int main() {
     const bool log_names = std::string_view{CE::enginelog} == "engine" && std::string_view{CE::platformlog} == "os-platform" &&
                            std::string_view{CE::renderlog} == "rendering" && std::string_view{CE::assetlog} == "assets" &&
                            std::string_view{CE::memlog} == "memory" && std::string_view{CE::ce_log_name} == "cheryl";
-    return observed == 7 && value.get() == 11 && exercise_resources() && log_names ? 0 : 1;
+    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && log_names ? 0 : 1;
 }

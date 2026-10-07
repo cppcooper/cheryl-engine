@@ -24,13 +24,24 @@ namespace CE::SubSystems {
 
     EventBus::Registration
     EventBus::register_listener(const std::string& event, Callback callback, Delivery delivery, ErrorHandler errors) {
+        return register_channel(event, typeid(void), std::move(callback), std::move(delivery), std::move(errors));
+    }
+
+    EventBus::Registration
+    EventBus::register_channel(
+        const std::string& event,
+        const std::type_index payload,
+        Callback callback,
+        Delivery delivery,
+        ErrorHandler errors
+    ) {
         if (!callback)
             throw Exceptions::invalid_args(CE_HERE, "An event listener requires a callback");
         if (delivery && !errors)
             throw Exceptions::invalid_args(CE_HERE, "Queued event delivery requires an error handler");
         auto listener = std::make_shared<Listener>();
         listener->counters = state_->counters;
-        listener->event = event;
+        listener->event = {event, payload};
         listener->callback = std::move(callback);
         listener->delivery = std::move(delivery);
         listener->errors = std::move(errors);
@@ -42,7 +53,7 @@ namespace CE::SubSystems {
         if (state_->next_id == std::numeric_limits<std::uint64_t>::max())
             throw Exceptions::failed_operation(CE_HERE, "Event registration IDs exhausted");
         const auto id = state_->next_id;
-        state_->channels[event].push_back(listener);
+        state_->channels[listener->event].push_back(listener);
         ++state_->next_id;
         ++state_->registrations;
         ++state_->active;
@@ -50,13 +61,17 @@ namespace CE::SubSystems {
     }
 
     void EventBus::dispatch(const std::string& event, const std::any& payload) {
+        dispatch_channel(event, typeid(void), payload);
+    }
+
+    void EventBus::dispatch_channel(const std::string_view event, const std::type_index type, const std::any& payload) {
         std::vector<std::shared_ptr<Listener>> snapshot;
         {
             std::lock_guard lock(state_->mutex);
             if (state_->closed)
                 throw Exceptions::failed_operation(CE_HERE, "EventBus is closed");
             ++state_->dispatches;
-            const auto found = state_->channels.find(event);
+            const auto found = state_->channels.find(ChannelView{event, type});
             if (found == state_->channels.end())
                 return;
             snapshot = found->second;
