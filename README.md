@@ -168,8 +168,10 @@ provides the focused module, composition and native checks.
 ```
 
 `--full-assets` additionally loads the manifest/image tree. Its PNG files are not
-tracked and must be supplied under the selected asset root. The default root is
-the checkout's `assets/` directory. See the [demo guide](projects/apps/demo/README.md)
+tracked and must be supplied under the selected asset root; the
+[asset package catalog](docs/assets/catalog.md) lists download sources and image
+placement. The default root is the checkout's `assets/` directory. See the
+[demo guide](projects/apps/demo/README.md)
 for all controls, timing/input options and UI interaction checks.
 
 ### Compile-time options (macros)

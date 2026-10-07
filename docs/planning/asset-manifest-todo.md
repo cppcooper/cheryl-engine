@@ -10,9 +10,12 @@ an artwork-owner decision before additional semantics can be encoded safely.
 - MiniWorld directional weapons/projectiles: name orientation cells and choose spin/
   flight timings once their intended runtime behavior is decided. Grids and center
   pivots are already encoded.
-- Legacy 0x72 dungeon sheet: locate metadata matching the 23×24 grid of 16-pixel cells
+- Legacy 0x72 dungeon sheet: confirm the original archive revision/member and locate
+  metadata matching the 23×24 grid of 16-pixel cells
   (368×384 occupied pixels), or explicitly replace the sheet and remap it. Metadata
   for a different revision/layout cannot safely supply this sheet's named slices.
+  The [download catalog](../assets/catalog.md#legacy-dungeon-sheet--0x72) records the package
+  source and current provenance limit.
 - Colored/Orc buildings and Mage City: add per-cell gameplay names only if the engine
   needs semantic lookup below the existing regional/color view level.
 - Character Customizer: decide whether runtime customization loads composited exports

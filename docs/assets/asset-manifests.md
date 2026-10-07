@@ -2,6 +2,9 @@
 
 The authoritative format is `assets/schemas/asset-manifest-1.0.schema.json`. Manifest files live directly in `assets/`; schema files are not asset manifests and must not be discovered as loadable assets.
 
+The [asset package catalog](catalog.md) lists download sources and image placement
+for the packages referenced by the checked-in manifests.
+
 ## Identity and inheritance
 
 - A globally unique asset ID is `namespace:name`, combining the namespace and sprite or tileset map key. The loader checks duplicate IDs across manifests before upload.

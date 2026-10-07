@@ -52,7 +52,9 @@ submodule updates, common configurations, all tests and
 The HUD and RmlUi use a discoverable system font. TGUI uses its embedded default
 font. Shaders and the small RmlUi proof document/images are checked in under the
 asset root. The full manifest image tree is needed only with `--full-assets`;
-those PNG files are not tracked. The default asset root is the checkout's `assets/`.
+those PNG files are not tracked. The [asset package catalog](../../../docs/assets/catalog.md)
+lists their download sources and expected paths. The default asset root is the
+checkout's `assets/`.
 A positional argument selects another root:
 
 ```sh
