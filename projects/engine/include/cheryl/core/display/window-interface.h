@@ -2,6 +2,7 @@
 
 #include "framebuffer-size.h"
 #include "viewport.h"
+#include <core/subsystems/event-channel.h>
 
 #include <enums.h>
 
@@ -32,7 +33,7 @@ namespace CE {
         virtual void hide_cursor(bool hide) const = 0;
     };
 
-    /** Payload of "window-resized": copied drawable pixels and a display-borrowed
+    /** Payload of window_resized_event and legacy "window-resized": copied pixels and a display-borrowed
      * window pointer. Queued delivery does not extend that window's lifetime or permit
      * access from another owner; retain the size alone for deferred consumers.
      */
@@ -40,4 +41,6 @@ namespace CE {
         iWindow* window;
         FramebufferSize size;
     };
+
+    inline const SubSystems::EventChannel<WindowResized> window_resized_event{"window-resized"};
 }

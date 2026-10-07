@@ -72,16 +72,26 @@ it does not itself select a desktop-sized extent.
 `mode()` reflects the selected mode and can already have changed when a transition
 reports a listener failure.
 
-A changed framebuffer size publishes `WindowResized` through `window-resized`.
-The event contains copied pixel dimensions and a borrowed window pointer; a logical
-size change alone does not establish a framebuffer-size event. Queued delivery does
-not extend window lifetime or permit dereferencing it on another owner. Deferred
-consumers retain the dimensions and use their normal runtime/registration lifetime.
+A changed framebuffer size publishes `WindowResized` on the canonical typed
+`CE::window_resized_event` channel. Native GLFW first dispatches the legacy named
+`"window-resized"` notification, then the typed channel, using the same saved size
+observation. A logical size change alone does not establish a framebuffer-size
+event. Nested resize delivery can interleave these channels; each payload keeps its
+own observation even if another listener changes the window again. Queued callbacks
+do not have a completion order across channels.
+
+The event contains copied pixel dimensions and a borrowed window pointer. Queued
+delivery does not extend window lifetime or permit dereferencing it on another
+owner. Deferred consumers retain the dimensions and use their normal runtime and
+registration lifetime. The [event-delivery contract](event-delivery.md#typed-channels)
+defines channel identity, payload ownership and optional owner delivery.
 
 Native callback failures follow the
 [failure-reporting contract](failure-reporting.md). Explicit resize/mode operations
 consume earlier callback failures and can propagate listener failures after native
-state/dimensions change. They do not provide transactional rollback. `should_close()`
+state/dimensions change. A synchronous legacy-dispatch failure prevents the typed
+offer for that observation; typed listener failures use the same native callback
+boundary. Earlier deliveries and native state changes are not rolled back. `should_close()`
 also consumes deferred callback failure before reading the close flag. Cached size
 getters do not consume that failure.
 

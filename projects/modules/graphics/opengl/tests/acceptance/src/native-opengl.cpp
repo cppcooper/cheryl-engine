@@ -1612,6 +1612,84 @@ namespace {
     };
 }
 
+TEST(native_opengl, resize_events) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto* handle = window.native_handle();
+    const auto size = window.framebuffer_size();
+    const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
+    glfwSetFramebufferSizeCallback(handle, callback);
+    ASSERT_NE(callback, nullptr);
+    auto& events = CE::SubSystems::EventSystem::get();
+    std::vector<int> order;
+    std::vector<CE::FramebufferSize> named_sizes;
+    std::vector<CE::FramebufferSize> typed_sizes;
+    bool nested = false;
+    const CE::FramebufferSize outer{size.width + 3, size.height + 3};
+    const CE::FramebufferSize inner{size.width + 4, size.height + 4};
+    ResizeRegistration named{events, events.register_listener("window-resized", [&](std::any payload) {
+                                 const auto event = std::any_cast<CE::WindowResized>(payload);
+                                 EXPECT_EQ(event.window, &window);
+                                 order.push_back(1);
+                                 named_sizes.push_back(event.size);
+                                 if (nested && event.size == outer)
+                                     callback(handle, inner.width, inner.height);
+                             })};
+    ResizeRegistration typed{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized& event) {
+                                 EXPECT_EQ(event.window, &window);
+                                 order.push_back(2);
+                                 typed_sizes.push_back(event.size);
+                             })};
+    EXPECT_NO_THROW(callback(handle, size.width, size.height));
+    EXPECT_TRUE(order.empty());
+    EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
+    EXPECT_EQ(order, (std::vector<int>{1, 2}));
+    EXPECT_EQ(named_sizes, typed_sizes);
+    EXPECT_EQ(typed_sizes, (std::vector<CE::FramebufferSize>{{size.width + 1, size.height + 1}}));
+
+    order.clear();
+    named_sizes.clear();
+    typed_sizes.clear();
+    nested = true;
+    EXPECT_NO_THROW(callback(handle, outer.width, outer.height));
+    EXPECT_NO_THROW(window.check_native_failure());
+    EXPECT_EQ(window.framebuffer_size(), inner);
+    EXPECT_EQ(order, (std::vector<int>{1, 1, 2, 2}));
+    EXPECT_EQ(named_sizes, (std::vector<CE::FramebufferSize>{outer, inner}));
+    EXPECT_EQ(typed_sizes, (std::vector<CE::FramebufferSize>{inner, outer}));
+}
+
+TEST(native_opengl, typed_resize_failure) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto* handle = window.native_handle();
+    const auto size = window.framebuffer_size();
+    auto& events = CE::SubSystems::EventSystem::get();
+    int calls = 0;
+    ResizeRegistration listener{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized& event) {
+                                    EXPECT_EQ(event.window, &window);
+                                    EXPECT_EQ(event.size, window.framebuffer_size());
+                                    ++calls;
+                                    throw std::runtime_error("typed resize listener failed");
+                                })};
+    const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
+    glfwSetFramebufferSizeCallback(handle, callback);
+    ASSERT_NE(callback, nullptr);
+    EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
+    EXPECT_NO_THROW(callback(handle, size.width + 2, size.height + 2));
+    EXPECT_EQ(calls, 1);
+    EXPECT_EQ(window.framebuffer_size(), (CE::FramebufferSize{size.width + 2, size.height + 2}));
+    EXPECT_THROW(window.check_native_failure(), std::runtime_error);
+    EXPECT_NO_THROW(window.check_native_failure());
+    EXPECT_NO_THROW(callback(handle, size.width + 3, size.height + 3));
+    EXPECT_THROW(window.resize(96, 80), std::runtime_error);
+    EXPECT_NO_THROW(window.check_native_failure());
+}
+
 TEST(native_opengl, resize_callback_failure) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -1621,10 +1699,14 @@ TEST(native_opengl, resize_callback_failure) {
     const auto size = window.framebuffer_size();
     auto& events = CE::SubSystems::EventSystem::get();
     int calls = 0;
+    int typed_calls = 0;
     ResizeRegistration listener{events, events.register_listener("window-resized", [&](std::any) {
                                     ++calls;
                                     throw std::runtime_error("resize listener failed");
                                 })};
+    ResizeRegistration typed{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized&) {
+                                 ++typed_calls;
+                             })};
     // Invoke the actual registered C callback deterministically, without asking
     // the window manager to deliver a resize at a particular point in the test.
     const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
@@ -1647,6 +1729,7 @@ TEST(native_opengl, resize_callback_failure) {
     EXPECT_THROW(input.update(), std::runtime_error);
     EXPECT_NO_THROW(window.check_native_failure());
     input.deinitialize();
+    EXPECT_EQ(typed_calls, 0);
 }
 
 #endif

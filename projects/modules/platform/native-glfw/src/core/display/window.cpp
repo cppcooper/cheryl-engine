@@ -120,7 +120,12 @@ namespace CE {
         framebuffer_size_ = {width, height};
         ++resize_observations_;
         // Consumers recompute pixel-dependent state (for example, camera projection) on this event.
-        SubSystems::EventSystem::get().dispatch("window-resized", WindowResized{this, framebuffer_size_});
+        // Keep one observation across both channels, even if a legacy listener
+        // changes the window again. Legacy delivery keeps its existing order/failure boundary.
+        const WindowResized resized{this, framebuffer_size_};
+        auto& events = SubSystems::EventSystem::get();
+        events.dispatch("window-resized", resized);
+        events.dispatch(window_resized_event, resized);
     }
 
     void Window::resize(const int width, const int height) {

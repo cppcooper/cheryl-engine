@@ -67,7 +67,9 @@ platform window/input facilities with its own API-specific setup.
 
 The [display/window contract](../../../../docs/runtime/display-and-window-contract.md)
 defines platform affinity, borrowed lifetimes, construction-time monitor snapshots,
-size observations and scale/cursor capability limits.
+size observations and scale/cursor capability limits. Framebuffer changes publish
+the typed `CE::window_resized_event` channel alongside the legacy named notification;
+the contract defines their ordering and failure boundary.
 
 With native input enabled, the owner reuses a supplied `gainput::gainput`,
 `gainputstatic` or `gainput` target, in that order, or adds the selected

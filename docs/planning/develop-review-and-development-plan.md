@@ -131,22 +131,21 @@ timing changes are independent development units.
 
 ### U13 — Typed events
 
-Use an owned exact channel name plus its copy-constructible, unqualified payload
-type as typed identity. Same name/type values address the same channel within a bus;
-other types and legacy named/`std::any` channels are separate. Typed submission
-requires the exact payload type, and callback entry checks erased payloads before
-invocation. Callback references borrow an invocation-owned copy. Initial payload
-construction errors belong to the producer; per-listener queued preparation,
-delivery and cancellation errors retain the existing owned error-sink contract.
+The [typed channel contract](../runtime/event-delivery.md#typed-channels) defines
+identity, exact payload typing, invocation ownership and error boundaries. The
+[display/window contract](../runtime/display-and-window-contract.md#sizes-modes-and-observation)
+defines native resize observation and legacy compatibility. Executable acceptance
+must cover these contracts through the existing registration/delivery lifetime.
 
 - [x] Add the typed channel/API and reuse registration, invocation, invalidation and
   delivery machinery, with compile-time constraints and source regressions for
   identity, copy ownership, waits, FIFO, callback errors and cancellation.
-- [ ] Publish native WindowResized on a canonical typed channel while retaining the
+- [x] Publish native WindowResized on a canonical typed channel while retaining the
   legacy named notification. Cover platform/simulation delivery and borrowed-window
   limits without exposing native types in Engine.
 - [ ] Accept typed event and native resize regressions with authorized execution;
-  source completion does not establish executable acceptance.
+  use the [focused validation procedure](../development/architecture-validation.md#typed-events).
+  Source completion does not establish executable acceptance.
 
 **Acceptance:** unchecked payload casts cannot reach typed callbacks and cancellation/
 shutdown behavior is preserved. Retain the named/`std::any` interface according to its

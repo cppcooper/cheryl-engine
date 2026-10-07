@@ -77,6 +77,43 @@ Consumers depend on their first-include probes; no separate probe build is neede
 Use the logging and Release signal drivers below. The logging driver also executes
 focused logging cases, so they need no additional unit run.
 
+### Typed events
+
+For Engine-only typed-event checks, enable `CHERYL_BUILD_ACCEPTANCE_TESTS` alongside
+the unit and consumer selections above and add `acceptance-engine` to the needed
+build targets. The consumer and first-include probes cover the neutral typed API.
+Run the unit and acceptance cases once each after an authorized build:
+
+```sh
+./build-validation-release/cheryl-consumer
+./build-validation-release/tests-engine --gtest_filter=typed_events.*
+./build-validation-release/tests-acceptance-engine \
+  --gtest_filter='typed_events.*:event_delivery.runtime_owner_threads'
+```
+
+The [unit cases](../../projects/engine/tests/unit/src/typed-events.cpp) cover exact
+identity, type constraints, owned payloads, removal, nested dispatch and immediate
+errors. The [acceptance cases](../../projects/engine/tests/acceptance/src/typed-events.cpp)
+cover deferred copies, cancellation, error-sink ownership, waits and worker FIFO.
+`event_delivery.runtime_owner_threads` exercises typed resize payloads on platform
+and simulation owners in sequential and concurrent runtime modes without borrowing
+window access across owners.
+
+Select Native GLFW + OpenGL with native input and OpenGL acceptance enabled for the
+native resize bridge. With a usable display, run its focused owner cases:
+
+```sh
+CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-acceptance-opengl \
+  --gtest_filter='native_opengl.resize_events:native_opengl.typed_resize_failure:native_opengl.resize_callback_failure'
+```
+
+These cases invoke the actual registered C callback to check unchanged-size
+suppression, saved observations across nested resize delivery, legacy-before-typed
+offers and native failure consumption. They do not establish compositor-generated
+resize delivery. Skipped native cases leave that callback coverage unaccepted;
+outstanding execution remains in the
+[typed-event task](../planning/develop-review-and-development-plan.md#u13--typed-events).
+
 ### Native, OpenGL and standalone composition
 
 The [standalone entry points](modules.md#standalone-modules) can prove both the

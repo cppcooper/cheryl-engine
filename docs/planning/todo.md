@@ -12,6 +12,10 @@ Unresolved artwork metadata is tracked separately in
 - Accept the native input ownership guard and attachment/destruction behavior on
   Linux and Windows. Source completion and outstanding execution are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
+- Accept the typed event API and native resize channels through existing
+  registration/delivery/lifetime ownership. The named/`std::any` contract remains;
+  source coverage and outstanding execution are in the
+  [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
 
 ## Gameplay and presentation facilities
 
@@ -35,10 +39,6 @@ Unresolved artwork metadata is tracked separately in
   batching or sorting. Authored packet order remains the baseline.
 - Add a profiling-based timing adviser only from measured workload data; it must not
   silently replace explicit fixed-step, input-retention or recovery policy.
-- Complete native channel integration and accept the typed event API through existing
-  registration/delivery/lifetime ownership. The named/`std::any` contract remains;
-  source completion and acceptance are in the
-  [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
 - Treat 3D, topology/NUMA adapters, audio, networking, world/entity/physics,
   serialization, additional graphics backends and broader platform/device support as
   separate consumer-driven work in the [long-term plan](long-term-plan.md), alongside

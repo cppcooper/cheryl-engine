@@ -81,6 +81,16 @@ invalidation waits protect the callback's borrowed target, not that error sink's
 independent lifetime through pending-ticket destruction. No typed API chooses a
 thread or changes worker-stream ordering.
 
+`CE::window_resized_event` in `core/display/window-interface.h` is the canonical
+typed channel for `WindowResized`. Native GLFW explicitly publishes both it and the
+legacy named `"window-resized"` notification; this producer bridge does not make
+generic named and typed channels equivalent. Register with the typed channel to
+receive a checked `const WindowResized&`, optionally selecting platform or simulation
+delivery as below. Its dimensions are copied, while its window pointer remains
+borrowed and cannot be dereferenced on simulation. The
+[display/window contract](display-and-window-contract.md#sizes-modes-and-observation)
+defines observation, ordering and native failure behavior.
+
 ## Optional queued delivery
 
 Pass a delivery callable and error sink to `register_listener`. The bus accepts

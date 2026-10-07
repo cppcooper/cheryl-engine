@@ -34,6 +34,7 @@
 #include <future>
 #include <memory>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
@@ -1872,6 +1873,11 @@ TEST(event_delivery, runtime_owner_threads) {
         CE::SubSystems::EventBus bus;
         std::thread::id platform_thread;
         std::thread::id simulation_thread;
+        std::thread::id resize_platform_thread;
+        std::thread::id resize_simulation_thread;
+        std::optional<CE::WindowResized> platform_resize;
+        std::optional<CE::WindowResized> simulation_resize;
+        CE::WindowResized expected_resize{nullptr, {}};
         const auto report = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected event delivery failure"; };
         bus.register_listener(
             "tick", [&](std::any) { platform_thread = std::this_thread::get_id(); },
@@ -1881,11 +1887,42 @@ TEST(event_delivery, runtime_owner_threads) {
             "tick", [&](std::any) { simulation_thread = std::this_thread::get_id(); },
             CE::Engine::simulation_event_delivery(runtime.simulation_dispatcher().submission()), report
         );
-        game.on_init = [&] { bus.dispatch("tick", 0); };
+        bus.register_listener(
+            CE::window_resized_event,
+            [&](const CE::WindowResized& event) {
+                resize_platform_thread = std::this_thread::get_id();
+                platform_resize = event;
+            },
+            CE::Engine::platform_event_delivery(engine->platform_dispatcher().submission()), report
+        );
+        bus.register_listener(
+            CE::window_resized_event,
+            [&](const CE::WindowResized& event) {
+                resize_simulation_thread = std::this_thread::get_id();
+                // The window pointer is an identity only here; simulation never dereferences it.
+                simulation_resize = event;
+            },
+            CE::Engine::simulation_event_delivery(runtime.simulation_dispatcher().submission()), report
+        );
+        game.on_init = [&] {
+            bus.dispatch("tick", 0);
+            expected_resize = {&engine->window(), engine->window().framebuffer_size()};
+            auto source = expected_resize;
+            bus.dispatch(CE::window_resized_event, source);
+            source = {nullptr, {0, 0}};
+        };
         game.on_tick = [&] { runtime.stop(); };
         runtime.run();
         EXPECT_EQ(platform_thread, std::this_thread::get_id());
         EXPECT_EQ(simulation_thread, game.update_thread);
+        EXPECT_EQ(resize_platform_thread, std::this_thread::get_id());
+        EXPECT_EQ(resize_simulation_thread, game.update_thread);
+        ASSERT_TRUE(platform_resize);
+        ASSERT_TRUE(simulation_resize);
+        EXPECT_EQ(platform_resize->window, expected_resize.window);
+        EXPECT_EQ(simulation_resize->window, expected_resize.window);
+        EXPECT_EQ(platform_resize->size, expected_resize.size);
+        EXPECT_EQ(simulation_resize->size, expected_resize.size);
         bus.close();
     }
 }
