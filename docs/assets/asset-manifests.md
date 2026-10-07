@@ -95,4 +95,4 @@ substitution are implemented. See
 order, retrieval APIs and per-entity sprite playback. Sampling, deterministic
 selection and simulation-time substitution follow the
 [tile selection contract](asset-values-and-playback.md#tile-selection); Linux
-executable acceptance remains in [TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).
+executable acceptance remains in [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).

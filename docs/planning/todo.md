@@ -27,10 +27,11 @@ Unresolved artwork metadata is tracked separately in
   [tile selection contract](../assets/asset-values-and-playback.md#tile-selection);
   executable acceptance remains in the
   [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
-- Add Unicode text layout/glyph runs before treating committed Unicode input as fully
-  renderable text. Define decoding, fallback, shaping/bidi/line-breaking scope and
-  retained atlas ownership before choosing dependencies. IME/editing is a separate
-  consumer requirement unless selected UI work needs it.
+- Integrate the implemented [UTF-8 decoder](../assets/text-encoding.md) with STBFont,
+  then settle script/fallback and shaping/bidi/line-breaking scope before publishing
+  glyph-run and retained-atlas APIs. Source completion and acceptance are tracked in
+  [U11](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
+  IME/editing is a separate consumer requirement unless selected UI work needs it.
 - Add broader pointer capture, modal/controller routing or optional platform services
   only for an explicit consumer contract. Current adapters cover rectangular clipping,
   colored geometry and routed committed text; their

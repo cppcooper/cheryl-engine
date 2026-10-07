@@ -7,7 +7,7 @@ choose and sequence future work: prerequisites, unresolved work, discovery bound
 and acceptance still required.
 
 The [planning catalogue](README.md) groups short-, mid- and long-term work. This
-roadmap owns short-term tile selection and Linux acceptance, and mid-term feature
+roadmap owns short-term Unicode text work and Linux acceptance, and mid-term feature
 prerequisites;
 multi-platform acceptance and consumer-selected extensions are deferred to the
 [long-term plan](long-term-plan.md).
@@ -150,7 +150,8 @@ gitlink and keep pending source acceptance distinct from remote availability.
 
 ### U10 — Deterministic tile selection
 
-This is the active short-term implementation task. Build on stable metadata and the
+Source implementation is complete; Linux executable acceptance remains pending.
+Use stable metadata and the
 [tile selection contract](../assets/asset-values-and-playback.md#tile-selection).
 The consumer owns world coordinates and supplies shared Wang edge/corner labels or
 bitmask cell terrain, a stable per-location seed and simulation-owned animation time.
@@ -177,7 +178,7 @@ prerequisite and must complete before publishing a world/map API that depends on
   request after each source unit. Keep artwork metadata prerequisites separate.
 - [ ] Accept deterministic, sampling/boundary, invalid-rule, missing-rule, animation
   and CPU submission regressions plus public header probes through user-run
-  [TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).
+  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
 
 **Acceptance:** boundary/missing-rule cases and identical samples/seed/time resolve
 deterministically without graphics-thread world access. Missing artwork semantics
@@ -186,11 +187,47 @@ cannot supply them. This work has no UI or batching prerequisite.
 
 ### U11 — Unicode text layout and glyph resources
 
-Define decoding/error replacement, scalar versus cluster indices, fallback fonts,
-shaping/bidi/line-breaking scope and layout-result ownership before choosing libraries.
-Define glyph IDs/metrics/runs, atlas growth or replacement, retained generations and
-platform upload dispatch against the resource contract. Settle any editing/IME effects
-on cluster indices or platform services before publishing the layout API.
+This is the active implementation task. The builtin STBFont and demo text submission
+are the initial consumer; toolkit adapters retain their own layout services. Begin
+with encoding and the existing ASCII atlas before introducing shaped runs or new
+dependencies. The current Font interface exposes quad indices and one atlas/geometry
+pair, so extending it directly would constrain fallback and retained generations.
+
+Implement two coherent source units before the wider layout boundary:
+
+- [x] Add neutral UTF-8 scalar decoding with owned byte-offset/byte-count records and
+  an explicit malformed-input flag. Preserve embedded NUL, BOM and unassigned/noncharacter
+  scalars; replace ill-formed input by maximal subpart without swallowing valid successor
+  bytes. Keep scalar positions distinct from grapheme and shaping-cluster indices.
+- [x] Add decoder source regressions and a first-include probe; aggregate Linux
+  Engine-only acceptance with the existing asset request.
+- [ ] Make STBFont layout and callback traversal consume decoded scalars, preserving
+  printable ASCII, newline/CR/tab behavior and callback exception semantics. Emit one
+  fallback per unsupported scalar or malformed subpart. Retain FFont's legacy byte
+  contract and keep atlas contents unchanged.
+- [ ] Add ASCII, multilingual fallback, malformed-input and CPU submission regressions;
+  document current encoding behavior and reconcile the same acceptance request.
+- [ ] Accept the implemented decoder/font changes through user-run
+  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
+- [ ] Settle the application-visible layout scope: required scripts and direction,
+  shaping versus scalar placement, font fallback/coverage, line breaking/wrapping,
+  language/script hints and whether cluster mapping serves display or editing.
+- [ ] Select libraries after those requirements, then define owned glyph IDs, metrics,
+  runs and source-cluster mappings. Keep source byte/scalar indices explicit; a decoded
+  scalar is not automatically a grapheme or one shaped glyph. Preserve ASCII consumers.
+- [ ] Implement glyph preparation and immutable atlas/geometry generation publication
+  through the existing provider upload owner/dispatcher. Layout runs retain their
+  selected generations through in-flight frames; preparation failure publishes no
+  replacement. Establish admission, unavailable-glyph and cache replacement policy
+  before adding glyph residency or budgets.
+- [ ] Accept the selected multilingual/fallback/cluster and retained-generation scope.
+
+**Discovery boundary:** the decoding and ASCII fallback units need no glyph-layout
+library or new platform service. Full layout needs the script/fallback/paragraph
+requirements above before a public run API or dependency choice. Resource uploads
+follow the [consumer resource contract](../resources/consumer-resource-contract.md);
+layout cannot mutate an atlas retained by a submitted frame. IME/preedit and
+grapheme-aware editing remain separate consumer contracts until explicitly selected.
 
 **Acceptance:** invalid UTF-8, multilingual/fallback and cluster cases have defined
 results; multi-byte input is not rendered as a fallback per byte; glyph runs survive
@@ -223,9 +260,9 @@ scope and prerequisites before this work enters the development sequence.
 
 Future adapter work follows the neutral contract/probe -> selected toolkit
 requirements -> consumer-required Engine changes -> independent adapter proof order
-in the [adapter-author guide](../development/ui-adapters.md). U10 proceeds on stable
-asset metadata while Gainput backend work remains deferred at its pin. U11 follows
-an actual Unicode/layout consumer;
+in the [adapter-author guide](../development/ui-adapters.md). U10 retains Linux
+acceptance while U11 begins with the builtin font consumer's UTF-8 foundation.
+Gainput backend work remains deferred at its pin;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven.
 
 Public declarations and focused subject documents define ownership, valid threads,

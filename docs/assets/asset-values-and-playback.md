@@ -194,7 +194,7 @@ if (const auto* cell = std::get_if<CE::Assets::CellIndex>(&selection))
 The selection result owns only a cell/failure value. The resulting packet copies
 draw state and retains graphics resources; it carries no sampler, live world or
 clock. Source regressions and first-include probes have pending Linux acceptance in
-[TR7](../testing-requests.md#tr7-automated-tile-selection-and-animation).
+[TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
 
 ## Fonts and CPU submission
 
