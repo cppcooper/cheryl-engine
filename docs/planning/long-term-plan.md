@@ -61,6 +61,9 @@ calls cannot establish that behavior. Preserve one collection path per effective
 controller. The current
 [native adapter lifetime](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
 permits one initialized owner and retains its original Windows notification window.
+If a consumer requires explicit HID startup-failure reporting, change the dependency
+contract before relying on it: the selected Gainput `Init` currently discards the HID
+initialization return code. Ownership checks do not supply that missing readiness signal.
 
 ## Other optional modules
 

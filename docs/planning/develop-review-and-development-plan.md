@@ -89,7 +89,7 @@ adapter support; use the resulting contract in the
 [native module guide](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
 
 - [x] Guard process-wide ownership without disrupting an existing adapter or leaking
-  ownership after failed initialization.
+  ownership when initialization throws.
 - [x] Reject reattachment to a different Windows notification window while retaining
   devices and same-window reattachment.
 - [x] Add owner-policy and native integration regressions; document supported lifetime.
@@ -100,6 +100,10 @@ Execution requires `input_lifetime.*` in the native module and
 `native_opengl.input_owner`, `input_window` and `input_reattach` in the existing native
 acceptance suite. Select its real-display opt-in and include HID-enabled configurations
 before claiming the process-global backend or Windows notifications are accepted.
+The selected Gainput `InputManager::Init` discards `HIDInit`'s return code; successful
+initialization or a device-free poll cannot establish HID readiness. Native acceptance
+must independently observe controller reports and device notifications. Explicit
+startup-failure reporting requires a dependency contract change if a consumer needs it.
 
 ### U10 — Deterministic tile selection
 

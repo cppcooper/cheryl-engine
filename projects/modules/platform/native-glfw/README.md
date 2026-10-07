@@ -84,9 +84,14 @@ Gainput's HID state has one initialized native adapter as its process-wide owner
 The adapter claims ownership before `Init`, creates devices on its first window
 attachment, and calls `Exit` at destruction. Another native adapter's initialization
 fails explicitly while that owner exists, including while its callbacks are detached.
-Failed ownership acquisition leaves the existing adapter intact; failed `Init`
-releases the claim. Applications must not call `Init` or `Exit` through `manager()`
+Failed ownership acquisition leaves the existing adapter intact; an exception from
+`Init` releases the claim. Applications must not call `Init` or `Exit` through `manager()`
 or run an independently initialized Gainput manager alongside this adapter.
+
+The selected Gainput fork discards the HID backend's initialization return code.
+Ownership rollback covers exceptions; successful `Init` alone does not establish
+HID device/notification readiness. Native HID acceptance verifies that behavior
+independently of owner-policy checks.
 
 Windows initialization receives the GLFW window's native HWND. Reattachment requires
 that same native window, which remains live until the adapter is destroyed; recreate
