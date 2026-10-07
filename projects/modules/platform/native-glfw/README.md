@@ -145,6 +145,36 @@ Device visibility and access must also be verified in the user's desktop session
 The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
 owns the correction and observation prerequisites.
 
+## Controller diagnostics
+
+`InputSystem::set_gamepad_diagnostics(true)` opts in on the platform owner before
+startup or between polls. TRACE must be compiled and admitted by the OS-platform
+logger and a destination. The demo's `--input-diagnostics` configures its file/logger
+gates before creating the context and enables the adapter's trace. Normal mapping,
+device IDs and state reconciliation are unchanged.
+
+Records go to `logs/os-platform.log`, relative to the launch directory:
+
+| Operation | Evidence |
+| --- | --- |
+| `gainput_init` | DEBUG entry/return around `InputManager::Init`; no HID readiness assertion. |
+| `gamepad_setup` | DEBUG assigned pad ID, the public header's HID report ID when available, and trace selection. |
+| `gainput_delta` | Opt-in TRACE callback device/control IDs and old/new values for pads or unresolved device IDs; known keyboard/mouse devices are omitted. |
+| `gamepad_sample` | Opt-in TRACE pad values that change during the adapter's full-state reconciliation. |
+| `gamepad_poll` | Opt-in TRACE availability, device state, A-button validity and sampled value, at most once per second. |
+
+Callback records use the mapper's diagnostic domain; setup/sample records use the
+adapter's domain. Match device IDs across these stages. An unresolved callback ID
+matching `hid_report_device` identifies a routing mismatch candidate; it does not
+identify a physical controller or independently establish HID report delivery.
+
+Inspect the compiler command for Gainput's own `GainputInputManager.cpp`, not the
+adapter's compile definitions, when checking the HID guard. A returned initialization
+call or continuing poll heartbeat cannot establish enumeration, device-open success
+or notification registration. Those observations still need hooks in Gainput.
+The [testing queue](../../../../docs/testing-requests.md) supplies the build inspection
+and short Bluetooth capture; controller/HID acceptance remains separate.
+
 ## Checks
 
 | Target | Output / kind | Selection / coverage |

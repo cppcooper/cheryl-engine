@@ -105,11 +105,18 @@ gameplay mouse State. The demo does not add pointer capture or modal arbitration
 | `--input-unlimited` | Removes the finite pending-input-poll admission limit. |
 | `--input-capacity=N` | Selects finite input polling with the given backlog capacity. |
 | `--input-spacing-ms=N` | Sets the minimum input-poll spacing in milliseconds. |
+| `--input-diagnostics` | Enables controller callback/sample TRACE records in `logs/os-platform.log`; requires compiled TRACE logging. |
 
 See [simulation timing](../../../docs/runtime/simulation-timing.md) and
 [input polling](../../../docs/runtime/input-state-model.md) for policy constraints
 and defaults. A finite run checks startup/updates/shutdown; it does not establish
 visual or interactive behavior.
+
+For controller investigation, use a developer logging build and `--input-diagnostics`.
+The [native controller diagnostics](../../modules/platform/native-glfw/README.md#controller-diagnostics)
+explain the records and their limits. The option changes the OS-platform logger's
+file/logger gates to TRACE while retaining its console preset. It rejects builds
+that stripped TRACE before starting the runtime.
 
 ## UI ownership and uploads
 

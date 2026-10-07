@@ -52,6 +52,8 @@ namespace CE::Input {
         const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
         bool observed_gamepad_available_ = false;
         bool observed_window_focus_ = false;
+        bool gamepad_diagnostics_ = false;
+        InputClock::time_point next_gamepad_diagnostics_{};
 
         template <typename Work> void receive(Work&& work) noexcept {
             if (callback_failure_)
@@ -82,6 +84,8 @@ namespace CE::Input {
         void begin_poll();
         void update();
         void deinitialize() override;
+        // Opt-in gamepad values/IDs at TRACE; call on platform before startup or between polls.
+        void set_gamepad_diagnostics(bool enabled) noexcept;
 
         [[nodiscard]] InputBindings& bindings() override { return bindings_; }
         // Access devices/configuration after initialize(); Init/Exit belong to this adapter.

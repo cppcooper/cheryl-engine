@@ -84,6 +84,14 @@ adapter support; use the resulting contract in the
 - [x] Accept native owner rejection, attachment/destruction and reattachment
   regressions on Linux through user-run native OpenGL acceptance.
 - [x] Accept native consumer/header probes on Linux through user-run testing.
+- [x] Add opt-in controller diagnostics before changing the backend:
+  - [x] Report Gainput initialization, callback device IDs and sampled pad state
+    without changing mapping or recording keyboard/text input.
+  - [x] Add a demo launch option for TRACE file logging and document its scope.
+  - [x] Submit a compiler-command check and short Bluetooth controller capture in
+    the testing queue; distinguish callback evidence from HID backend readiness.
+- [ ] Accept the diagnostic build and Bluetooth capture through
+  [TR8/TR9](../testing-requests.md#tr8-automated-controller-diagnostic-build).
 - [ ] Repair the selected fork's CMake propagation of the HID compiler definition.
   Verify that HID initialization/polling follows the configured feature selection
   before accepting controller reports.

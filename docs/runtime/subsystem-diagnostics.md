@@ -100,11 +100,17 @@ Destructor observations use emergency reporting only.
 Display/window records describe monitor counts, window mode and logical/pixel
 dimensions without titles. Resize callbacks accumulate counts; an unlocked
 platform observation emits the latest dimensions at most every two seconds.
-Input records describe State/Event/Text/Focus capability, native attachment,
+Routine input records describe State/Event/Text/Focus capability, native attachment,
 window focus, routing focus epochs and gamepad availability transitions. Focus
 routing is queried only when the adapter advertises support; observation failures
-cannot replace runtime failures. Character data, physical keys and event payloads
-are never included.
+cannot replace runtime failures. Routine records omit character data, physical keys
+and event payloads.
+
+Explicit [controller tracing](../../projects/modules/platform/native-glfw/README.md#controller-diagnostics)
+adds TRACE gamepad callback/sample IDs and values, including callbacks with unresolved
+device IDs, and a one-second sampled-state heartbeat. The native adapter's GLFW
+keyboard, pointer and committed-text values are not traced. This opt-in observer
+does not change input mapping and is separate from HID/device-notification acceptance.
 
 OpenGLRenderer::set_native_diagnostics(true) opts in before startup. Debug output
 requires GL 4.3 or KHR_debug and the loaded entry points; OpenGL 3.3 remains the

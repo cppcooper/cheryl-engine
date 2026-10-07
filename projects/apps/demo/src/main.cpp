@@ -8,6 +8,7 @@
 #include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
+#include <core/logging.h>
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/font-mgr.h>
@@ -362,6 +363,7 @@ using CE::GFramework::GameRuntime;
 int main(const int argc, char** argv) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
+    bool input_diagnostics = false;
     unsigned int max_updates = 0;
     auto mode = CE::GFramework::RunMode::Sequential;
     CE::Input::PollingOptions polling;
@@ -381,6 +383,8 @@ int main(const int argc, char** argv) {
             mode = CE::GFramework::RunMode::Concurrent;
         else if (argument == "--input-unlimited")
             polling.policy = CE::Input::PollingPolicy::Unlimited;
+        else if (argument == "--input-diagnostics")
+            input_diagnostics = true;
         else if (argument.starts_with("--max-updates="))
             max_updates = number(argument.substr(std::string_view("--max-updates=").size()));
         else if (argument == "--fixed")
@@ -408,7 +412,16 @@ int main(const int argc, char** argv) {
         else
             asset_root = argv[i];
     }
+    if (input_diagnostics) {
+        if constexpr (!ctlog::enabled(ctlog::TRACE_))
+            throw CE::Exceptions::invalid_args(CE_HERE, "--input-diagnostics requires a build with TRACE logging");
+        auto config = CE::LogConfig::for_logger(CE::platformlog);
+        config.logger_level = config.file_level = spdlog::level::trace;
+        CE::Logger<CE::platformlog>::initialize(spdlog::file_event_handlers{}, config);
+    }
     auto engine = CE::Engine::make_glfw_opengl_context();
+    if (input_diagnostics)
+        dynamic_cast<CE::Input::InputSystem&>(engine->input()).set_gamepad_diagnostics(true);
     Game game(*engine, asset_root, load_all_assets);
     GameRuntime game_runtime(*engine, game, mode, polling, timing);
     if (max_updates != 0)
