@@ -65,6 +65,10 @@ presentation. GLFW/OpenGL context selection, buffer swapping and the native grap
 factory live in the OpenGL module. A different graphics implementation can use the
 platform window/input facilities with its own API-specific setup.
 
+The [display/window contract](../../../../docs/runtime/display-and-window-contract.md)
+defines platform affinity, borrowed lifetimes, construction-time monitor snapshots,
+size observations and scale/cursor capability limits.
+
 With native input enabled, the owner reuses a supplied `gainput::gainput`,
 `gainputstatic` or `gainput` target, in that order, or adds the selected
 `extern/gainput` source. Gainput's public headers propagate through that target;

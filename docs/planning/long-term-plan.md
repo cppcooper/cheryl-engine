@@ -88,6 +88,13 @@ device-loss recovery and broader OS/device validation remain separate consumer-d
 work. Placeholders do not imply supported facilities. Establish scope, prerequisites,
 ownership and acceptance before promoting any candidate into the development roadmap.
 
+Native monitor hotplug and per-window scale/change reporting need explicit consumers.
+Settle refreshed inventory identity, native-handle invalidation and existing-window
+rebinding before adding hotplug support; monitor scale alone does not satisfy a
+per-window service. The current
+[display/window contract](../runtime/display-and-window-contract.md) defines the
+construction-time inventory and copied-size capability limits.
+
 ## Development boundary
 
 Module work preserves owner lifetimes and dependency direction. A future owner uses

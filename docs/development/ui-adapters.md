@@ -52,8 +52,9 @@ Expanded triangles suffice for the current adapters. Indexing, batching and draw
 sorting require their own consumer need; preserve authored world/HUD/overlay order.
 The initial resource scope is one window/provider domain with immutable replacement.
 Mutable texture updates, multiple domains and dynamic atlas policies need explicit
-publication/lifetime contracts before exposure. Monitor scale alone does not
-establish per-window scale changes; use copied dimensions and explicit font scaling
+publication/lifetime contracts before exposure. The
+[display/window scale contract](../runtime/display-and-window-contract.md#scale-and-ui-capabilities)
+uses copied dimensions and explicit font scaling
 within each adapter's supported scope.
 
 The independent implementations differ where their toolkits differ:

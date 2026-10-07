@@ -21,6 +21,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 
 - [Runtime architecture and backend boundaries](runtime/runtime-architecture.md)
 - [Frame ownership and runtime lifecycle](runtime/runtime-frame-boundary.md)
+- [Display and window ownership](runtime/display-and-window-contract.md)
 - [Native callbacks and failure reporting](runtime/failure-reporting.md)
 - [Input actions, state, events, text, and focus](runtime/input-state-model.md)
 - [Simulation timing and recovery](runtime/simulation-timing.md)

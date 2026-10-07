@@ -14,6 +14,9 @@ namespace CE {
     /** Owns a GLFW window and its logical/framebuffer dimensions on the platform
      * thread. Native callbacks retain their first failure; normal polling and
      * explicit resize/mode boundaries consume it through check_native_failure().
+     * Size getters return cached observations updated by callbacks and explicit
+     * resize/mode queries; they neither pump events nor synchronize cross-thread reads.
+     * Input and graphics users release this borrowed native window before destruction.
      */
     class Window final : public iWindow {
         ViewPort<int> logical_size_;
@@ -38,15 +41,24 @@ namespace CE {
         Window(Window&&) = delete;
         Window& operator=(Window&&) = delete;
 
+        // Borrowed until destruction. Preserve Window's GLFW user pointer and callbacks.
         [[nodiscard]] GLFWwindow* native_handle() const { return glfw_window_; }
         [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         [[nodiscard]] ViewPort<int> logical_size() const override { return logical_size_; }
         [[nodiscard]] FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
+        // Selected mode; a later callback failure does not roll this value back.
         [[nodiscard]] Enum::window_mode mode() const override { return window_mode_; }
         [[nodiscard]] bool should_close() const override;
         void check_native_failure() const override;
 
+        /** Request positive logical dimensions and refresh observed logical/pixel sizes.
+         * Listener failures can propagate after dimensions change; mutation is not atomic.
+         */
         void resize(int width, int height) override;
+        /** NORMAL restores saved windowed placement; BORDERLESS uses it undecorated;
+         * FULLSCREEN attaches the selected monitor at its captured dimensions. Refresh
+         * observed sizes afterward. Unknown modes fail; callback failures do not roll back.
+         */
         void set_mode(Enum::window_mode mode) override;
         void hide_cursor(bool hide) const override;
 

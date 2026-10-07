@@ -170,7 +170,7 @@ Complete the still-open public-contract inventory alongside each implementation 
 - [x] [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
   skipped-root/error behavior, preference/enumeration rules and supported
   collection-face selection in FontMgr.
-- [ ] Display/window declarations: platform affinity, monitor snapshot freshness, scale
+- [x] Display/window declarations: platform affinity, monitor snapshot freshness, scale
   changes and borrowed window lifetime, incorporating the
   [UI capability boundaries](../development/ui-adapters.md#routing-and-unavailable-services).
 - [ ] Remaining exported asset, submission, parameter, camera, input, dispatch and utility
@@ -182,7 +182,9 @@ Complete the still-open public-contract inventory alongside each implementation 
   routine reports.
 
 The current file-index and font contracts are in
-[file indexing and font discovery](../assets/file-and-font-discovery.md).
+[file indexing and font discovery](../assets/file-and-font-discovery.md). Display,
+window and scale contracts are in
+[display and window ownership](../runtime/display-and-window-contract.md).
 
 **Acceptance:** callers can determine supported behavior from public declarations and
 focused links. If documentation cannot state a guarantee, classify the missing
