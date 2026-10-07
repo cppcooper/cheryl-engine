@@ -4,6 +4,8 @@ Engine and module extensions are deferred until a named application consumer
 establishes their scope and prerequisites. Additional asset manifests below are also
 deferred to the long term. Steam API services, Steam Input and their SDK-free
 preparation are outside the short- and mid-term development sequence.
+Multi-platform testing is also shelved; Linux/X11 remains the active short-term
+platform.
 
 Use the current ownership, lifetime, selection and standalone contracts in the
 [module guide](../development/modules.md). Its
@@ -11,6 +13,16 @@ Use the current ownership, lifetime, selection and standalone contracts in the
 govern new owners. Reusable isolation/composition procedures and native/fixture
 coverage limits are in
 [architecture validation](../development/architecture-validation.md).
+
+## Multi-platform acceptance
+
+The [deferred platform plan](platform-acceptance.md) owns Windows native input,
+typed-event/resize, desktop and controller acceptance, Windows HID notification
+observations, and macOS/Wayland/other-platform prerequisites. It preserves the
+Windows TR3–TR5 procedures and deferred Windows portion of TR6 outside the active
+testing queue. Resume each platform only when testing is scheduled; reconcile its
+dependency/toolchain configuration and observation harness before reactivating
+requests. Linux source development and Linux/X11 acceptance proceed independently.
 
 ## Steam API and input integration
 

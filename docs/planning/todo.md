@@ -9,17 +9,15 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Accept Windows native input ownership, attachment/destruction and consumer checks,
-  plus physical HID/notification behavior on Linux and Windows. Resolve the selected
-  HID backend's controller report/state integration before HID-specific QA. Accept
-  the Linux joystick mapping correction's automated regressions separately with
-  HID disabled. Outstanding prerequisites and execution are tracked
-  in the
+- Resolve the selected HID backend's Linux controller report/state integration before
+  HID-specific QA. Accept the Linux joystick mapping correction's automated
+  regressions separately with HID disabled. Outstanding prerequisites and execution
+  are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
-- Complete Windows desktop resize QA and native resize/neutral typed-event acceptance
-  through existing registration/delivery/lifetime ownership.
-  The named/`std::any` contract remains; outstanding execution is in the
-  [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
+- Windows native ownership, resize/typed-event, desktop and controller acceptance,
+  Windows HID notifications and macOS/Wayland/other-platform coverage are shelved in
+  the [long-term platform plan](platform-acceptance.md). Linux/X11 typed-event and
+  resize acceptance is complete; its durable contracts remain in the subject guides.
 
 ## Gameplay and presentation facilities
 

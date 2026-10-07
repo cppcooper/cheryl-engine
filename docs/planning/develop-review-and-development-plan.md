@@ -7,8 +7,9 @@ choose and sequence future work: prerequisites, unresolved work, discovery bound
 and acceptance still required.
 
 The [planning catalogue](README.md) groups short-, mid- and long-term work. This
-roadmap owns short-term native acceptance and mid-term feature prerequisites;
-consumer-selected extensions are deferred to the [long-term plan](long-term-plan.md).
+roadmap owns short-term Linux native work and mid-term feature prerequisites;
+multi-platform acceptance and consumer-selected extensions are deferred to the
+[long-term plan](long-term-plan.md).
 
 Implementation history belongs in Git. Keep durable contracts in their subject
 documents and retain only coverage limits or blockers that affect future work. Do not
@@ -47,6 +48,11 @@ rather than the earlier implementation journal:
   the user-reported native acceptance scope and platform limits.
 - Architecture coverage and environment limits:
   [architecture-validation.md](../development/architecture-validation.md).
+- Typed channels, delivery lifetime and native resize compatibility:
+  [event-delivery.md](../runtime/event-delivery.md) and
+  [display-and-window-contract.md](../runtime/display-and-window-contract.md).
+  Linux/X11 acceptance is complete; the named/`std::any` API retains its architectural
+  role. Serialization/versioned protocols remain separate consumer requirements.
 - Deprecated legacy FFont behavior: [legacy-ffont.md](../resources/legacy-ffont.md).
 
 The current selected architecture has one neutral `Cheryl::Engine`, optional Native
@@ -60,6 +66,9 @@ The first native acceptance platform remains Linux with GLFW/X11 and OpenGL; nor
 and sandbox engine configurations remain in scope. The advertised OpenGL 3.3 baseline,
 physical GPU/compositor behavior, full Wayland and other operating systems require
 their own acceptance. A software-driver run cannot establish those capabilities.
+Windows, macOS, Wayland and other platform testing are shelved in the
+[deferred platform plan](platform-acceptance.md); pending platform coverage does not
+gate Linux short-term work.
 
 Unresolved source-facing work is summarized in [todo.md](todo.md). Artwork metadata
 that cannot safely be inferred from the assets is tracked in
@@ -69,9 +78,9 @@ that cannot safely be inferred from the assets is tracked in
 
 ### Native input lifetime safety
 
-Keep the supported default to one initialized native input owner. Resolve conflicting
-Gainput HID lifetime and Windows notification ownership before broader native
-adapter support; use the resulting contract in the
+Keep the supported default to one initialized native input owner. Resolve Gainput
+HID lifetime and Linux controller integration before enabling the HID path; use the
+resulting contract in the
 [native module guide](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
 
 - [x] Guard process-wide ownership without disrupting an existing adapter or leaking
@@ -111,22 +120,18 @@ adapter support; use the resulting contract in the
   owns the deferred backend implementation sequence, followed by adaptive-trigger
   output and its Cheryl consumer contract. Work in the existing submodule from
   Cheryl; retain one native owner and one report source for each controller.
-- [ ] Expose HID report/backend and Windows notification observations for lifecycle
-  acceptance. The demo counter cannot establish those routes; prerequisites and
-  required observations are in [testing requests](../testing-requests.md).
-- [ ] Accept Windows owner-policy, attachment/destruction and native consumer/header
-  probes. Device-free polls do not establish HID/device-notification behavior.
+- [ ] Expose Linux HID initialization, enumeration/open, source and report observations
+  for lifecycle acceptance. The demo counter cannot establish those stages;
+  prerequisites and observations are in [testing requests](../testing-requests.md).
 
-Remaining Windows automation requires `input_lifetime.*`, native consumer/header
-probes and integration checks, including `native_opengl.input_owner`, `input_window`
-and `input_reattach`.
-Select the real-display opt-in and include HID-enabled configurations before claiming
-the process-global backend or Windows notifications are accepted.
+Windows owner-policy, attachment/destruction, consumer/header and notification
+acceptance are deferred to the [platform plan](platform-acceptance.md). Broader
+native ownership remains a separate consumer requirement.
 When HID is compiled in, the selected Gainput `InputManager::Init` discards
 `HIDInit`'s return code; successful initialization or a device-free poll cannot
-establish HID readiness. Native acceptance
-must independently observe controller reports and device notifications. Explicit
-startup-failure reporting requires a dependency contract change if a consumer needs it.
+establish HID readiness. Linux acceptance must independently observe HID reports
+and lifecycle. Explicit startup-failure reporting requires a dependency contract
+change if a consumer needs it.
 
 Linux joystick acceptance uses HID disabled; enabling the HID runtime requires the
 compiler-definition and report/state corrections together, with one report source
@@ -195,37 +200,6 @@ identify another bottleneck. A timing advisor must explain measured suggestions 
 leave fixed-step, recovery and input policy under application control. Renderer and
 timing changes are independent development units.
 
-### U13 — Typed events
-
-The [typed channel contract](../runtime/event-delivery.md#typed-channels) defines
-identity, exact payload typing, invocation ownership and error boundaries. The
-[display/window contract](../runtime/display-and-window-contract.md#sizes-modes-and-observation)
-defines native resize observation and legacy compatibility. Executable acceptance
-must cover these contracts through the existing registration/delivery lifetime.
-
-- [x] Add the typed channel/API and reuse registration, invocation, invalidation and
-  delivery machinery, with compile-time constraints and source regressions for
-  identity, copy ownership, waits, FIFO, callback errors and cancellation.
-- [x] Publish native WindowResized on a canonical typed channel while retaining the
-  legacy named notification. Cover platform/simulation delivery and borrowed-window
-  limits without exposing native types in Engine.
-- [x] Accept typed event unit/queued-delivery regressions, runtime owner delivery and
-  neutral consumer/header probes in the Linux Engine-only assembly through user-run
-  testing.
-- [x] Accept native resize callback ordering, nested observations and typed/legacy
-  callback failure regressions on Linux through user-run testing.
-- [x] Accept desktop-generated resize, maximize/restore, interactive input and
-  shutdown on Linux/X11 in sequential and concurrent modes through user-run QA.
-  Reuse the [desktop procedure](../development/native-desktop-checks.md).
-- [ ] Accept native resize and neutral typed-event regressions on Windows and
-  complete Windows desktop-generated resize QA;
-  use the [focused validation procedure](../development/architecture-validation.md#typed-events).
-  Source completion does not establish executable acceptance.
-
-**Acceptance:** unchecked payload casts cannot reach typed callbacks and cancellation/
-shutdown behavior is preserved. Retain the named/`std::any` interface according to its
-architectural role. Serialization/versioned protocol concerns are separate.
-
 ### U14 — Optional engine expansion
 
 Deferred engine and module candidates are owned by the
@@ -237,8 +211,8 @@ scope and prerequisites before this work enters the development sequence.
 
 Future adapter work follows the neutral contract/probe -> selected toolkit
 requirements -> consumer-required Engine changes -> independent adapter proof order
-in the [adapter-author guide](../development/ui-adapters.md). U10 and U13 may proceed
-on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
+in the [adapter-author guide](../development/ui-adapters.md). Linux HID work and U10
+may proceed on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven.
 
 Public declarations and focused subject documents define ownership, valid threads,

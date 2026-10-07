@@ -5,9 +5,13 @@ consumer requirements and prerequisites are settled.
 
 | Horizon | Scope | Owning documents |
 | --- | --- | --- |
-| Short term | Native input lifetime and device integration acceptance | [Native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety) |
-| Mid term | Deterministic tile selection, Unicode layout, measured optimization and typed events | [Development roadmap](develop-review-and-development-plan.md#remaining-roadmap) |
-| Long term | Additional dungeon asset manifests, Steam API/Steam Input, optional input composition and consumer-selected engine or module extensions | [Long-term plan](long-term-plan.md) |
+| Short term | Linux native input and HID integration, with Linux/X11 acceptance | [Native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety) |
+| Mid term | Deterministic tile selection, Unicode layout and measured optimization | [Development roadmap](develop-review-and-development-plan.md#remaining-roadmap) |
+| Long term | Multi-platform acceptance, additional dungeon asset manifests, Steam API/Steam Input, optional input composition and consumer-selected extensions | [Long-term plan](long-term-plan.md), [deferred platform acceptance](platform-acceptance.md) |
+
+Windows, macOS, Wayland and other platform testing are shelved. Their pending
+coverage does not gate Linux short-term development; deferred coverage remains
+unaccepted until those platforms are scheduled and exercised.
 
 [todo.md](todo.md) summarizes unresolved engine facilities;
 [asset-manifest-todo.md](asset-manifest-todo.md) tracks artwork metadata and owner

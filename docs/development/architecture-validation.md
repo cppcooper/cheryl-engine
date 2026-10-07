@@ -112,8 +112,8 @@ These cases invoke the actual registered C callback to check unchanged-size
 suppression, saved observations across nested resize delivery, legacy-before-typed
 offers and native failure consumption. They do not establish compositor-generated
 resize delivery. Skipped native cases leave that callback coverage unaccepted;
-outstanding execution remains in the
-[typed-event task](../planning/develop-review-and-development-plan.md#u13--typed-events).
+Linux/X11 callback and desktop coverage is accepted. Remaining Windows execution
+is shelved in the [platform plan](../planning/platform-acceptance.md).
 
 ### Native, OpenGL and standalone composition
 

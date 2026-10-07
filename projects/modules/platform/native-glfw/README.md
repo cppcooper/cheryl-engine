@@ -104,8 +104,11 @@ window. Detachment clears window state while retaining devices and ownership.
 Each `Update` receives elapsed steady-clock seconds between attached polls; time
 spent detached does not enter that interval.
 
-Owner-policy checks and native attachment/destruction acceptance remain tracked in
-the [development roadmap](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety).
+Linux owner-policy and native attachment/destruction checks are accepted. Linux
+controller integration remains in the
+[development roadmap](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety);
+Windows acceptance is shelved in the
+[platform plan](../../../../docs/planning/platform-acceptance.md).
 
 The input mapper uses Gainput's five-argument `OnDeviceButtonFloat` callback.
 It forwards `newValue` as the current axis state; the elapsed-time argument does
