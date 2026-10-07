@@ -1,11 +1,12 @@
 # RmlUi adapter requirements
 
-RmlUi is the selected second player-facing adapter for U9. The initial dependency
+RmlUi supplies the independent player-facing adapter for native documents. The initial dependency
 is [RmlUi 6.3](https://github.com/mikke89/RmlUi/releases/tag/6.3), commit
 `ba95ffe8bfb6370efb2cdcca927eaad4710c5413`. The adapter links `RmlUi::Core` and
 `Cheryl::Engine`, independently of TGUI and native graphics/input modules.
 
-Progress belongs to the [U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence).
+The [module guide](../../projects/modules/ui/rmlui/README.md) owns the current
+composition and focused acceptance procedure.
 The [adapter-author guide](../development/ui-adapters.md) owns the engine boundaries.
 
 ## Initial scope and decisions

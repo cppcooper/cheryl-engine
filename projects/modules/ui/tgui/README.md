@@ -4,9 +4,8 @@
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, FreeType fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials. Remaining composition and native widget acceptance are
-tracked in the
-[U9 checklist](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
+application materials. Independent module/consumer/header composition and the
+initial sequential/concurrent widget and lifetime proof are accepted.
 
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
 and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
@@ -265,31 +264,34 @@ replacement and shutdown, with a bounded window deadline rather than sleeps.
 Both runtime cases are accepted as part of the complete module suite. They do not
 establish native GPU resource retirement or compositor behavior.
 
-Independent consumer/header composition and native pixels also require the remaining
-U9 acceptance. Reuse the accepted complete module suite unless related source
-changes require a rerun. A root build does not establish standalone composition.
+Independent consumer/header composition and native appearance, interaction,
+resize/clipping and shutdown are accepted within the selected desktop proof.
+The native report includes the existing 125% desktop scale; it does not establish
+per-window scale transitions or other platforms. Reuse accepted coverage unless
+related source changes require a rerun. A root build does not establish standalone
+composition.
 
 From the repository root, configure the focused checks in a standalone source
 composition:
 
 ```sh
-cmake -S projects/modules/ui/tgui -B build-ui-tgui \
+cmake -S projects/modules/ui/tgui -B build/ui-tgui \
   -DCHERYL_REPOSITORY_ROOT="$PWD" \
   -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
   -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
 ```
 
 ```sh
-nice -n 19 cmake --build build-ui-tgui --parallel 1 \
+nice -n 19 cmake --build build/ui-tgui --parallel 1 \
   --target tests-ui-tgui consumer-module-ui-tgui
 ```
 
 ```sh
-./build-ui-tgui/tests-ui-tgui
-./build-ui-tgui/cheryl-ui-tgui-consumer
+./build/ui-tgui/tests-ui-tgui
+./build/ui-tgui/cheryl-ui-tgui-consumer
 ```
 
-For the remaining U9 checks, use the
-[focused batch](../rmlui/README.md#acceptance-procedure) and this module's independent
-consumer. Reuse existing directories and avoid repeating the accepted TGUI suite
-or neutral rendering probe.
+For RmlUi-specific changes, use its
+[focused batch](../rmlui/README.md#acceptance-procedure). Reuse existing directories
+and avoid repeating the accepted TGUI suite or neutral rendering probe unless the
+changes affect those contracts.

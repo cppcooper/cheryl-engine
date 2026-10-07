@@ -56,6 +56,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 - [Engine and integration modules](development/modules.md)
 - [Module index and owner guides](../projects/modules/README.md)
 - [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
+- [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
 - [Writing a UI adapter](development/ui-adapters.md)
 - [Neutral UI probe](development/ui-probe.md)
 - [Desktop smoke checks](development/native-desktop-checks.md)
@@ -63,7 +64,6 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 ## Planning
 
 - [Develop review and development plan](planning/develop-review-and-development-plan.md)
-- [UI integration checklist](planning/cheryl-ui-integration-plan.md)
 - [TGUI requirements and decisions](planning/tgui-adapter-requirements.md)
 - [RmlUi requirements and decisions](planning/rmlui-adapter-requirements.md)
 - [Module boundaries and initial setup](planning/subsystem-modules-plan.md)

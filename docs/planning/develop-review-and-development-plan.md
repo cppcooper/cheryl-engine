@@ -35,6 +35,10 @@ rather than the earlier implementation journal:
   [consumer-resource-contract.md](../resources/consumer-resource-contract.md).
 - Module ownership and selected integration targets:
   [modules.md](../development/modules.md).
+- Independent TGUI/RmlUi adapters, retained runtime and coexistence boundaries:
+  [ui-adapters.md](../development/ui-adapters.md). Their initial proof is accepted;
+  the [demo guide](../../projects/apps/demo/README.md#interaction-checks) retains
+  the user-reported native acceptance scope and platform limits.
 - Architecture coverage and environment limits:
   [architecture-validation.md](../development/architecture-validation.md).
 - Deprecated legacy FFont behavior: [legacy-ffont.md](../resources/legacy-ffont.md).
@@ -56,7 +60,8 @@ atomic batch reload and automatic residency are outside that scope; reopen the
 [resource contract](../resources/consumer-resource-contract.md) before adding them.
 
 The current selected architecture has one neutral `Cheryl::Engine`, optional Native
-GLFW and whole OpenGL modules, owner-local tests, and cross-project aggregate tests.
+GLFW, whole OpenGL and independent TGUI/RmlUi modules, owner-local tests, and
+cross-project aggregate tests.
 Reuse the [isolation and composition procedures](../development/architecture-validation.md)
 when changing those boundaries. Installed/imported package support remains separate
 packaging work.
@@ -69,46 +74,6 @@ their own acceptance. A software-driver run cannot establish those capabilities.
 Unresolved source-facing work is summarized in [todo.md](todo.md). Artwork metadata
 that cannot safely be inferred from the assets is tracked in
 [asset-manifest-todo.md](asset-manifest-todo.md).
-
-## Active work
-
-### U9 — Prove generic UI-facing facilities with a real adapter
-
-Prerequisites are the current failure, logging, consumption, resource and module
-contracts. Use [the U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence) for
-subtask progress, neutral probe scope and adapter acceptance.
-
-The neutral recording probe establishes the baseline; TGUI 1.13.0 is selected under
-the [adapter requirements](tgui-adapter-requirements.md). Its optional owner,
-session, neutral bridges and selected demo panel are source-complete, with
-controlled input/layout/recording/scene/session and both runtime modes accepted.
-Complete downstream composition, the selected Engine/native input/stop checks and
-native widget/runtime/lifetime acceptance next. Add pointer/modal/controller
-routing or platform services only for an explicit consumer need with a
-capability/failure contract.
-
-U9 also requires the selected RmlUi 6.3 adapter under its
-[requirements](rmlui-adapter-requirements.md). Its independent module, native
-document session, rendering/resource bridges, demo view and coexistence/focus
-checks are source-complete. TGUI acceptance is a checkpoint; U9 remains open
-until executable RmlUi/composition/coexistence checks and native acceptance are
-established. The owning U9 checklist tracks those remaining checks separately
-from accepted TGUI coverage.
-
-The neutral probe uses one provider/window, immutable image replacement and the
-existing committed-text/ASCII presentation baseline. A selected toolkit's font/atlas
-needs must be checked separately; the engine's STBFont baseline does not define a
-toolkit's capabilities. Multiple domains, image mutation, complex effects, Unicode
-layout or IME reopen their resource/render/platform contracts before dependent work.
-
-**Acceptance:** the adapter's public/runtime architecture remains backend-neutral;
-physical input is collected once and routed without destructive mutation; UI
-resources obey the established retained-frame lifetime. Independent proofs from
-both adapters establish multi-library extensibility without linking one adapter to
-the other or putting toolkit concepts into Engine.
-
-**Discovery boundary:** any required direct backend/native access is an engine
-contract gap. Resolve the smallest generic seam before dependent adapter code grows.
 
 ## Remaining roadmap
 
@@ -184,7 +149,8 @@ Complete the still-open public-contract inventory alongside each implementation 
   skipped-root/error behavior, preference/enumeration rules and supported
   collection-face selection in FontMgr.
 - Display/window declarations: platform affinity, monitor snapshot freshness, scale
-  changes and borrowed window lifetime, incorporating U9 capability decisions.
+  changes and borrowed window lifetime, incorporating the
+  [UI capability boundaries](../development/ui-adapters.md#routing-and-unavailable-services).
 - Remaining exported asset, submission, parameter, camera, input, dispatch and utility
   declarations: missing ownership, valid thread, preconditions, failure/publication
   guarantees and units. Correct stale examples without uniform boilerplate or cosmetic
@@ -202,9 +168,10 @@ superseded alternatives and resolved planning detail.
 
 ## Sequencing and evidence
 
-The dependent order is neutral U9 probe -> selected adapter requirements ->
-consumer-required engine changes -> adapter proof. U10 and U13 may proceed on their
-stable prerequisites. U11 follows an actual Unicode/layout consumer;
+Future adapter work follows the neutral contract/probe -> selected toolkit
+requirements -> consumer-required Engine changes -> independent adapter proof order
+in the [adapter-author guide](../development/ui-adapters.md). U10 and U13 may proceed
+on their stable prerequisites. U11 follows an actual Unicode/layout consumer;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven
 and U15 accompanies each unit.
 

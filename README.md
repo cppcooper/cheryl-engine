@@ -158,8 +158,8 @@ asset tree. WASD pans the camera, R resets it and F5 reloads its shader. F2 togg
 TGUI text focus and F3 hides/shows its panel. F4 toggles RmlUi text focus and F6
 hides/shows its view. Escape releases focus; Q quits while gameplay has keyboard
 focus. Closing the window also exits. Each UI view follows its module selection.
-RmlUi's executable/native acceptance remains in its
-[acceptance procedure](projects/modules/ui/rmlui/README.md#acceptance-procedure).
+RmlUi's [acceptance procedure](projects/modules/ui/rmlui/README.md#acceptance-procedure)
+provides the focused module, composition and native checks.
 
 ```sh
 ./build/release/demo --concurrent

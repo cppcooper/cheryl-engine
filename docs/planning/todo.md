@@ -13,12 +13,6 @@ Unresolved artwork metadata is tracked separately in
   notification ownership before supporting simultaneous initialized native input
   adapters or reattachment to a different Windows window. `Init`/`Exit` share HID
   state, and Windows notifications retain the first native handle.
-- Complete the UI adapters' remaining composition/native acceptance, selected
-  Engine/native input/stop checks and RmlUi executable/coexistence proof. Both
-  adapters are source-complete; the neutral probe, complete controlled TGUI suite
-  and basic native TGUI appearance/resizing are accepted. U9 remains open until
-  the remaining independent adapter and coexistence checks are accepted. See
-  [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
 - Complete the remaining public-contract documentation, especially FileMgr indexing/
   borrowed lookups, system-font discovery/selection and display/window lifetime/
   capability semantics. See [U15](develop-review-and-development-plan.md#u15--documentation-and-roadmap-reconciliation).
@@ -33,11 +27,11 @@ Unresolved artwork metadata is tracked separately in
   renderable text. Define decoding, fallback, shaping/bidi/line-breaking scope and
   retained atlas ownership before choosing dependencies. IME/editing is a separate
   consumer requirement unless selected UI work needs it.
-- Complete UI-required neutral rendering/routing/platform facilities demonstrated by
-  the probe and selected adapter. The probe requires rectangular clipping and explicit
-  color/layout support; pointer/modal routing or platform services require an explicit
-  consumer contract. The clipping/color source contracts and recording probe are
-  in place; see the UI strategy for remaining acceptance and discovery gates.
+- Add broader pointer capture, modal/controller routing or optional platform services
+  only for an explicit consumer contract. Current adapters cover rectangular clipping,
+  colored geometry and routed committed text; their
+  [capability boundaries](../development/ui-adapters.md#routing-and-unavailable-services)
+  define what additional requirements must establish before exposure.
 
 ## Optional and measured extensions
 

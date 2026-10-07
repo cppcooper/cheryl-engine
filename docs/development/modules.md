@@ -41,8 +41,8 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 | `Cheryl::Engine` (`cengine`) | `projects/engine/` | Threads, GLM, CTTI, spdlog, Backward; private STB/JSON implementation includes. |
 | `Cheryl::NativeGLFW` | `projects/modules/platform/native-glfw/` | Engine and GLFW; Gainput and its Linux X11 requirements when native input is enabled. |
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
-| `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges; session/widget acceptance remains U9 work. |
-| `Cheryl::UI::RmlUi` | `projects/modules/ui/rmlui/` | Engine and RmlUi 6.3 Core with FreeType. Its independent adapter and acceptance are active U9 work. |
+| `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges. |
+| `Cheryl::UI::RmlUi` | `projects/modules/ui/rmlui/` | Engine and RmlUi 6.3 Core with FreeType. Owns native document sessions and premultiplied retained rendering. |
 
 ```mermaid
 flowchart LR
@@ -183,8 +183,8 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `all-engine` | Engine unit, broader Engine acceptance, and logging unit cases. No native/graphics module link. |
 | `all-native-glfw` | Native GLFW diagnostics and, when selected, native input mapping cases. |
 | `all-opengl` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
-| `all-ui-tgui` | The selected TGUI module's cases; remaining acceptance is tracked by U9. |
-| `all-ui-rmlui` | The selected RmlUi module's cases; executable acceptance remains in U9. |
+| `all-ui-tgui` | The selected TGUI module's cases. |
+| `all-ui-rmlui` | The selected RmlUi module's cases. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases, plus assembly coexistence checks when both UI owners are selected. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

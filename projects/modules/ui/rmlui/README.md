@@ -3,9 +3,10 @@
 `Cheryl::UI::RmlUi` is the optional, independently selected RmlUi 6.3 owner.
 It links `Cheryl::Engine` and `RmlUi::Core` with the stock FreeType font engine.
 The module provides native document sessions, portable input translation, CPU
-recording and retained scene upload. The optional demo view and assembly coexistence
-checks are source-complete; executable/native acceptance is active in
-[U9](../../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
+recording and retained scene upload. Independent consumer/header composition,
+controlled sequential/concurrent runtime behavior and assembly coexistence are
+accepted. The [demo guide](../../../apps/demo/README.md#interaction-checks) records
+the native proof's coverage limits.
 
 The [requirements](../../../../docs/planning/rmlui-adapter-requirements.md) define
 the selected rendering/font/lifetime scope. The
@@ -67,9 +68,10 @@ distinguishes file premultiplication and row order from generated texture handli
 `ui_rmlui_runtime.sequential` and `.concurrent` exercise queued old/new image
 publication, real runtime playback, owner threads and retained frames through
 toolkit/provider teardown. They use controlled engine adapters without a display.
+Their in-memory document has a source URL in the fixtures directory; relative image
+names resolve against it, avoiding Core's removal of a leading slash from image URLs.
 The independent consumer loads a document, edits its field and retains CPU draws
 after session destruction; header probes use public headers as the first include.
-Executable acceptance remains in U9.
 
 Checks use the selected SDK's `Samples/assets/LatoLatin-Regular.ttf` fixture or
 an explicit `CHERYL_RMLUI_TEST_FONT` file. Missing fonts reject configuration;
@@ -140,8 +142,9 @@ frames retain their own geometry/pixels/resources independently.
 
 ## Acceptance procedure
 
-Run the new checks once in the existing native/OpenGL profile, with tests and both
-UI adapters selected. `demo` also requires native input. From the repository root:
+For changes affecting RmlUi, reuse the existing native/OpenGL profile with tests
+and both UI adapters selected. `demo` also requires native input. From the repository
+root:
 
 ```sh
 git submodule update --init extern/rmlui
@@ -171,7 +174,7 @@ After the build, run these focused checks when the machine has cooled:
 `all-tests` runner. It checks poll-latched text delivery, focus preemption and
 stale-lease release across both native toolkits, distinct alpha passes, and frames
 retained through independent toolkit/provider teardown. Do not run both runners
-for the same cases. The accepted TGUI suite needs no repeat for this batch.
+for the same cases. Reuse the accepted TGUI suite unless changes affect its paths.
 
 An independently configured consumer establishes standalone source composition
 and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
@@ -192,15 +195,17 @@ nice -n 19 cmake --build build/rmlui-consumer --parallel 1 \
 ./build/rmlui-consumer/cheryl-ui-rmlui-consumer
 ```
 
-For TGUI's remaining standalone acceptance, configure its `tests/consumer/` entry
-point similarly, with `CHERYL_TGUI_SOURCE` and target `consumer-module-ui-tgui`.
-Its executable remains `cheryl-ui-tgui-consumer`. Reuse an existing independent
-build where available. Root consumers alone do not prove
-isolation; supplied-target/package composition needs its own check when used.
+Verify that `consumer-module-ui-rmlui` depends on
+`consumer-module-headers--ui-rmlui` and compiles its input, rendering, scene and
+session probes. The independent graph must exclude TGUI, Native GLFW and OpenGL.
+Root consumers alone do not prove isolation; supplied-target/package composition
+needs its own check when used. TGUI's independent procedure stays in its
+[module guide](../tgui/README.md#focused-checks).
 
 Follow the [demo procedure](../../../apps/demo/README.md#interaction-checks) in
 normal and `--concurrent` modes for native alpha/orientation, fonts, focus,
 scrolling, bounded resize/DPI, image replacement and shutdown. Controlled cases
 do not establish compositor behavior, physical input or GPU resource retirement.
-Report skipped/unselected checks separately; U9 closes only after its remaining
-coverage is accepted.
+Report skipped/unselected checks separately. The selected native demo checks are
+accepted from the user's manual report in both runtime modes; the
+[demo guide](../../../apps/demo/README.md#interaction-checks) retains their limits.

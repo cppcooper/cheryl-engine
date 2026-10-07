@@ -32,9 +32,9 @@ toolkit or Unicode/IME acceptance.
 ## Focused validation
 
 After explicit build/test authorization, reuse suitable Engine-only and OpenGL build
-directories. Build `engine-tests`, `engine-acceptance` and `cheryl-consumer` together
-in Engine only; build `opengl-tests`, `opengl-acceptance` and
-`cheryl-opengl-consumer` together in OpenGL. Use one low-priority job and cooling
+directories. Build `tests-engine`, `acceptance-engine` and `consumer-cengine` together
+in Engine only; build `tests-opengl`, `acceptance-opengl` and
+`consumer-module-opengl` together in OpenGL. Use one low-priority job and cooling
 breaks. The [architecture guide](architecture-validation.md) describes their options
 and isolation checks. Consumer targets also build their first-include probes.
 
@@ -51,5 +51,5 @@ CHERYL_NATIVE_GL_TESTS=1 ./build-opengl/tests-acceptance-opengl \
 Do not repeat the same cases through owner/cross-project aggregates. Run serially
 in isolated working directories; a native skip does not establish pixel acceptance.
 The [render contract](../rendering/pipelines-and-materials.md#rectangular-clipping)
-defines clipping/color behavior and the [U9 checklist](../planning/cheryl-ui-integration-plan.md#remaining-development-sequence)
-owns remaining adapter work.
+defines clipping/color behavior and the [adapter-author guide](ui-adapters.md)
+defines the independent toolkit boundaries and acceptance scope.

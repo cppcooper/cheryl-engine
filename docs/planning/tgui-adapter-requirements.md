@@ -5,6 +5,7 @@ custom Cheryl backend. Its native widget API stays in an optional
 `Cheryl::UI::TGUI` owner under `projects/modules/ui/tgui/`. The adapter links
 Engine and TGUI; the selected graphics/platform modules belong to the application.
 Engine-only selection does not discover TGUI or FreeType.
+TGUI is selected first because its C++ authoring model fits current development needs.
 
 The initial scope is one window/provider domain and one simulation owner, with
 panels, labels, buttons, tooltips, scrolling, images and a committed-text field.
@@ -38,13 +39,11 @@ The [custom-backend selection guide](https://tgui.eu/tutorials/latest-stable/bac
 describes upstream's dependency selection. These source links are pinned so a toolkit
 upgrade reopens the affected assumptions.
 
-## Ordered implementation and acceptance
+## Composition and acceptance
 
-Progress belongs to the [U9 checklist](cheryl-ui-integration-plan.md#remaining-development-sequence).
-First establish portable button identifiers and their native mapping. Then add the
-optional adapter owner and event translation, followed by CPU texture/render
-recording, platform upload and toolkit-session lifetime. Add the actual menu and
-retained/concurrent acceptance after those foundations are stable.
+The [module guide](../../projects/modules/ui/tgui/README.md) owns the current
+composition, session and validation procedures. The
+[adapter-author guide](../development/ui-adapters.md) owns the Engine boundaries.
 
 Reuse supplied `TGUI::TGUI` targets, an explicitly selected dependency source, the
 pinned `extern/tgui` submodule or a package at the pinned version; do not download
@@ -62,5 +61,7 @@ clipping/color proof and adds a real toolkit scene; a recording or skipped nativ
 case does not establish that appearance.
 
 Unicode shaping, grapheme editing, IME, mutable images, multiple domains, offscreen
-effects, modal/pointer routing and mixed-toolkit coexistence remain separate work.
-The first adapter's scalar-text support must not claim any of those capabilities.
+effects and broader modal/pointer routing remain separate work. Initial TGUI/RmlUi
+coexistence covers focus preemption and retained frames, without implying those
+additional capabilities.
+Scalar-text support does not establish shaping, grapheme editing or IME.

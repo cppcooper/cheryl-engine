@@ -8,6 +8,10 @@ an adapter. The [TGUI](../../projects/modules/ui/tgui/README.md) and
 examples. Their public classes are toolkit-specific, not requirements for other
 adapters.
 
+An unknown future toolkit should require an additional adapter module without
+introducing its concepts into Engine. Dear ImGui remains a developer/debug tooling
+candidate; it does not define player-facing widget architecture.
+
 ## Module and application ownership
 
 Give the adapter one library target, `include/`, `src/` and owner-local `tests/`.
@@ -19,7 +23,14 @@ CMake configuration does not download it or change a host's toolkit settings.
 Keep gameplay state in ordinary application models. A toolkit-specific view owns
 native UI objects, reads those models and returns application actions. The game
 chooses its adapters, presentation order and input recipients. Adapters do not
-depend on each other or define a common widget hierarchy.
+depend on each other or define a common widget hierarchy or `iUiSystem`. A shared
+runtime abstraction requires evidence from actual implementations.
+
+Before implementing another adapter, select its toolkit/version and map concrete
+requirements to Engine's contracts. Resolve font ownership, resource publication,
+material construction, lifecycle and unavailable platform services before dependent
+code grows. Any required direct graphics/native access is an Engine contract gap;
+resolve the smallest demonstrated seam first.
 
 ## Bridge responsibilities
 
@@ -36,6 +47,14 @@ validates their vertex layout, topology, alpha/depth/culling state, projection
 semantic and texture parameters. It does not create OpenGL pipelines or query a
 native context. Font rasterization may belong to the toolkit; its resulting atlas
 still follows the same CPU-copy and resource-publication boundary.
+
+Expanded triangles suffice for the current adapters. Indexing, batching and draw
+sorting require their own consumer need; preserve authored world/HUD/overlay order.
+The initial resource scope is one window/provider domain with immutable replacement.
+Mutable texture updates, multiple domains and dynamic atlas policies need explicit
+publication/lifetime contracts before exposure. Monitor scale alone does not
+establish per-window scale changes; use copied dimensions and explicit font scaling
+within each adapter's supported scope.
 
 The independent implementations differ where their toolkits differ:
 
@@ -119,3 +138,9 @@ The repository's [coexistence suite](../../projects/tests/ui-coexist/CMakeLists.
 owns that cross-project proof. The [demo](../../projects/apps/demo/README.md)
 selects either adapter or both and supplies separate focus controls. Each module's
 standalone consumer and implementation checks remain independent.
+
+The initial independent module/consumer/header, controlled runtime and coexistence
+proofs are accepted. The [demo interaction guide](../../projects/apps/demo/README.md#interaction-checks)
+owns the user-reported native acceptance and selected-platform limits. Reuse accepted
+coverage unless changes affect it; a new backend, platform or supplied package needs
+its own applicable proof.

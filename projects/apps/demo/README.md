@@ -185,11 +185,14 @@ desktop's touchpad "Disable while typing" setting. That setting can suppress
 touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
 
-The complete controlled TGUI suite, including sequential/concurrent runtime
-checks, is accepted. Its basic native appearance and UI resizing are also
-accepted. RmlUi executable checks, independent composition, coexistence and the
-remaining native resize/widget/lifetime checks stay in
-[U9](../../../docs/planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
-Reuse accepted results unless related source changes require a rerun. The
+Both adapters' controlled runtime and independent consumer/header proofs, and
+their coexistence proof, are accepted. Native appearance, alpha/image orientation,
+fonts, focus switching, scrolling, image replacement, resizing/clipping and shutdown
+are accepted from the user's manual demo report in sequential and concurrent modes.
+The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
+desktop scale. It does not establish per-window scale transitions, other platforms,
+IME or physical GPU resource retirement.
+
+Reuse accepted coverage unless related source changes require a rerun. The
 [focused acceptance procedure](../../modules/ui/rmlui/README.md#acceptance-procedure)
-batches new checks with one low-priority build job.
+batches RmlUi and coexistence checks with one low-priority build job.

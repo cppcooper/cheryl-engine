@@ -15,7 +15,8 @@ select an alternative implementation, or test an external integration independen
 A directory, internal interface or small caller count does not by itself justify a
 library boundary.
 
-The current selected optional owners are Native GLFW and the whole OpenGL backend.
+The current selected optional owners are Native GLFW, the whole OpenGL backend and
+independent TGUI/RmlUi adapters.
 Keep each cohesive owner intact unless a later consumer demonstrates a real benefit
 from another boundary. Native input depends on a live window; dividing display and
 input would split that coupled lifetime. OpenGL's context interface permits another
@@ -27,8 +28,10 @@ libraries.
 ### UI adapters
 
 Each toolkit is independently selectable and depends on neutral engine contracts.
-Toolkit code must not become an engine dependency. The first concrete work is U9;
-see [cheryl-ui-integration-plan.md](cheryl-ui-integration-plan.md).
+Toolkit code must not become an Engine dependency. TGUI and RmlUi establish the
+current boundary in the [adapter-author guide](../development/ui-adapters.md).
+Select another toolkit only for a concrete application need and preserve its native
+authoring API; similarity to existing bridges does not require shared widgets.
 
 ### Steam integration
 
