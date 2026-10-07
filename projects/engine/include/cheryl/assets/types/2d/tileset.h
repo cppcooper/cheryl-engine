@@ -28,7 +28,10 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
-    /** A selected tile clip with mutable frame index; advancing elapsed time belongs to its caller. */
+    /** Owns a clip copy and retains its resources. Frame's index selects a clip entry,
+     * not a grid cell; looping wraps and nonlooping clamps. An empty clip throws.
+     * The caller schedules index changes from millisecond durations on one owner.
+     */
     struct TileAnimation final : Asset2D,
                                  Frame<TileAnimation> {
     private:
@@ -47,6 +50,8 @@ namespace CE::Assets {
     // using simulation-owned elapsed time before submitting the resolved tile to rendering.
     /** Shared tile grid plus definitions for static cells, animated targets, and autotile rules.
      * These queries expose metadata; they do not inspect a world or choose neighbors.
+     * Direct construction rejects duplicate targets but does not revalidate all manifest
+     * fields. Keep definitions/resources stable for concurrent read-only queries.
      */
     struct Tileset final : Asset2D {
     private:
@@ -56,9 +61,12 @@ namespace CE::Assets {
     public:
         explicit Tileset(TilesetData data);
 
+        // Retained resource values; tile() rejects out-of-grid cells. animation() throws
+        // out_of_range for an unknown name; animation_for() returns no value for no target.
         [[nodiscard]] Tile tile(std::size_t cell) const;
         [[nodiscard]] TileAnimation animation(const std::string& name) const;
         [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;
+        // References borrow this Tileset's lifetime; unknown metadata names throw out_of_range.
         [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
         [[nodiscard]] CellIndex orientation(const std::string& name) const;
         [[nodiscard]] const AutotileDefinition& autotile(const std::string& name) const;

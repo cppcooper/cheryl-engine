@@ -8,7 +8,10 @@
 #include <utility>
 
 namespace CE::Assets {
-    /** Shared image and geometry, without a mutable per-object frame selection. */
+    /** Retains immutable uploaded contents without a per-object frame selection.
+     * Direct construction permits null handles; loaders/submission validate their
+     * own inputs. Native use still requires the original live backend domain.
+     */
     struct Asset2D {
         const std::shared_ptr<Geometry2D> geometry;
         const std::shared_ptr<Image> texture;

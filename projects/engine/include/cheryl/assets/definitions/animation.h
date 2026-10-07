@@ -9,6 +9,8 @@
 #include <vector>
 
 namespace CE::Assets {
+    // Owned CPU metadata; validated clips have in-grid cells and positive millisecond
+    // durations. Aggregate construction alone does not validate those requirements.
     struct TimedFrameDefinition {
         CellIndex cell{};
         std::chrono::milliseconds duration{};

@@ -24,7 +24,7 @@ namespace CE::Assets {
     };
 
     // TODO: A Unicode/text-layout service must decode code points and shape glyph runs before
-    // drawing; this atlas covers only printable ASCII and the current draw loop treats bytes as
+    // drawing; this atlas covers only printable ASCII and the current layout treats bytes as
     // characters (multi-byte UTF-8 sequences each produce separate fallback glyphs).
     /** Baked ASCII glyph quads, advances, and alpha atlas. Layout reads immutable
      * metrics, so published text commands can share a font without changing it.
@@ -37,11 +37,14 @@ namespace CE::Assets {
     public:
         explicit STBFont(STBFontData data);
         ~STBFont() override = default;
+        // Baked pixel offsets; newline moves down one line, CR is ignored, tab advances
+        // four spaces, other unsupported bytes select '?'. alternate_bank throws.
         [[nodiscard]] std::vector<GlyphPlacement2D>
         layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
         /** Bake printable ASCII from a caller-supplied font file at a positive
-         * font_size. System discovery is optional; bundled fonts use this same
-         * path. The first face is selected when the file contains a collection.
+         * font_size in pixels. Upload obeys provider affinity; failure returns no data
+         * and publishes no cache entry. System discovery is optional; bundled fonts
+         * use this same path. The first face is selected for a collection.
          */
         [[nodiscard]] static STBFontData load_font(const std::filesystem::path& font_path, int font_size, ResourceProvider& provider);
 
@@ -49,7 +52,8 @@ namespace CE::Assets {
         [[nodiscard]] const Image& glyph_atlas() const { return *texture; }
 
         // Emit a baked glyph index and its local pen offset without storing the
-        // message or changing the font. The caller supplies its own draw policy.
+        // message or changing the font. Callback exceptions propagate; prior callback
+        // effects are not rolled back. The caller supplies its own draw policy.
         template <typename SubmitGlyph> void for_each_glyph(std::string_view text, SubmitGlyph&& submit) const {
             float cursor_x = 0.0f;
             float cursor_y = 0.0f;

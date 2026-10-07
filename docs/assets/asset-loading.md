@@ -90,6 +90,8 @@ weighted variants, and neighbor-mask lookup tables. `Sprite::definition()` and
 `SpriteAnimation` already advances timed clips and publishes resolved cells; the
 cached sprite has no mutable playback cursor. Tile-map neighbor selection and
 application meanings for views/orientations remain gameplay work.
+The [asset value and playback contract](asset-values-and-playback.md) defines direct
+construction limits, borrowed metadata, lookup failure and submission ownership.
 
 Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
 Manifest, preparation/upload, and runtime-adapter regressions belong to the

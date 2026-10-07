@@ -11,5 +11,7 @@ namespace CE::Assets {
         PixelSize size;
         std::vector<unsigned char> rgba;
     };
+    // CPU-only file decode; throws on unreadable/unsupported data or storage overflow.
+    // Returns owned pixels without publishing a resource/cache entry.
     [[nodiscard]] DecodedImage decode_image(const std::filesystem::path& file);
 }

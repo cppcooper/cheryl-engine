@@ -9,6 +9,10 @@
 namespace CE::Assets {
     enum class FrameIndexPolicy { Wrap, Clamp };
 
+    /** Unsynchronized ordinal cursor, independent of elapsed time or grid cells.
+     * A zero limit throws; the initial index must be below the limit. set_frame()
+     * wraps/clamps later selections. offset() is metadata, not added to index().
+     */
     template <typename Derived> struct Frame {
         [[nodiscard]] std::size_t offset() const noexcept { return offset_; }
         [[nodiscard]] std::size_t index() const noexcept { return index_; }

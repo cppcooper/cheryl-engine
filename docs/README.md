@@ -34,6 +34,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 ## Assets
 
 - [Asset loading](assets/asset-loading.md)
+- [Asset values, playback and CPU submission](assets/asset-values-and-playback.md)
 - [File indexing and font discovery](assets/file-and-font-discovery.md)
 - [Asset manifest format](assets/asset-manifests.md)
 

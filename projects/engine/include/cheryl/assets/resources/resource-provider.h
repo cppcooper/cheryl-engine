@@ -44,6 +44,8 @@ namespace CE::Assets {
         // Creates a fresh immutable image from owned top-to-bottom RGBA pixels.
         // Caller retains/reuses the input; failure publishes no cache entry here.
         [[nodiscard]] virtual std::shared_ptr<Image> create_image(const DecodedImage& image) = 0;
+        // One alpha byte per pixel in the font baker's row/UV order; dimensions must
+        // be nonzero and match the span. Copies input before returning on the upload owner.
         [[nodiscard]] virtual std::shared_ptr<Image> create_font_atlas(std::span<const unsigned char> alpha, PixelSize size) = 0;
         // Atlas grids upload triangle strips; whole images and glyphs upload independent triangles.
         [[nodiscard]] virtual std::shared_ptr<Geometry2D>

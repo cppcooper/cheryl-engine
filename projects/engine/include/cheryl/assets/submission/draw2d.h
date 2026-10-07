@@ -17,6 +17,8 @@ namespace CE::Assets {
         std::string key; // Public pipeline key, never a GLSL uniform name.
         std::uint32_t unit = 0;
     };
+    // Owned per-pass values. image optionally inserts the asset's image in the draw
+    // layer; its key must be nonempty and absent from DrawStyle2D::parameters.
     struct SubmissionContext2D {
         ShaderPass pass;
         ParameterSet parameters;
@@ -24,6 +26,9 @@ namespace CE::Assets {
         std::optional<ImageParameter2D> image;
     };
 
+    // CPU-only resolution from stable inputs: copies values and retains resources,
+    // without binding or advancing playback. Failures publish no frame packets.
+    // Cell overloads check grid bounds; all returned packets validate material/ranges.
     [[nodiscard]] RenderAPIs::DrawPacket2D
     resolve_sprite(const Sprite& sprite, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     [[nodiscard]] RenderAPIs::DrawPacket2D
@@ -34,6 +39,8 @@ namespace CE::Assets {
     resolve_tile(const TileAnimation& animation, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     [[nodiscard]] RenderAPIs::DrawPacket2D
     resolve_graphic(const Graphic& graphic, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
+    // Layout does not retain text. Glyph offsets are scaled then transformed by the
+    // caller's model; packets retain the font resources. Empty layout returns no draws.
     [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D> resolve_text(
         const Font& font,
         std::string_view text,
