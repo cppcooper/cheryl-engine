@@ -76,16 +76,24 @@ available; its HID support brings hidapi and the platform's HID development libr
 
 ## Input lifetime and mapping
 
-The adapter calls Gainput `Init` before creating devices on its first window
-attachment, and `Exit` at adapter destruction. Windows initialization receives the
-GLFW window's native HWND; other platforms initialize the HID backend without a
-window handle. Detachment clears window state while retaining devices for
-reattachment. Each `Update` receives elapsed steady-clock seconds between attached
-polls; time spent detached does not enter that interval.
+Gainput's HID state has one initialized native adapter as its process-wide owner.
+The adapter claims ownership before `Init`, creates devices on its first window
+attachment, and calls `Exit` at destruction. Another native adapter's initialization
+fails explicitly while that owner exists, including while its callbacks are detached.
+Failed ownership acquisition leaves the existing adapter intact; failed `Init`
+releases the claim. Applications must not call `Init` or `Exit` through `manager()`
+or run an independently initialized Gainput manager alongside this adapter.
 
-Gainput's HID state is process-global. Coordination between simultaneous initialized
-native adapters and notification rebinding to a different Windows window remains
-[unresolved work](../../../../docs/planning/todo.md).
+Windows initialization receives the GLFW window's native HWND. Reattachment requires
+that same native window, which remains live until the adapter is destroyed; recreate
+the adapter before replacing the notification window. Other platforms initialize
+the HID backend without a window handle and can reattach to a different live GLFW
+window. Detachment clears window state while retaining devices and ownership.
+Each `Update` receives elapsed steady-clock seconds between attached polls; time
+spent detached does not enter that interval.
+
+Owner-policy checks and native attachment/destruction acceptance remain tracked in
+the [development roadmap](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety).
 
 The input mapper uses Gainput's five-argument `OnDeviceButtonFloat` callback.
 It forwards `newValue` as the current axis state; the elapsed-time argument does
@@ -99,7 +107,7 @@ Target selection, standalone paths and validation status are in
 
 | Target | Output / kind | Selection / coverage |
 | --- | --- | --- |
-| `tests-native-glfw` | `tests-native-glfw` | `CHERYL_BUILD_TESTS`: mapping and callback diagnostics. |
+| `tests-native-glfw` | `tests-native-glfw` | `CHERYL_BUILD_TESTS`: input ownership policy, mapping and callback diagnostics. |
 | `all-native-glfw` | `tests-all-native-glfw` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
 | `consumer-module-native-glfw` | `cheryl-native-glfw-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: independent link/implementation consumer. |
 | `consumer-module-headers-native-glfw` | Object library | Consumer's first-include header probes; built with the consumer. |

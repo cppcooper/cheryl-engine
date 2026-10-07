@@ -52,6 +52,16 @@ suppression before promising per-device Steam/native selection; retain native
 keyboard/mouse/text. Additional services, direct event mode and runtime loading
 depend on later consumer choices.
 
+### Broader native input ownership
+
+Multiple initialized native adapters and Windows notification-window rebinding need
+a concrete consumer requirement. Coordinate process-wide Gainput HID collection,
+shutdown and notification ownership before supporting them; independent `Init`/`Exit`
+calls cannot establish that behavior. Preserve one collection path per effective
+controller. The current
+[native adapter lifetime](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
+permits one initialized owner and retains its original Windows notification window.
+
 ## Other optional modules
 
 ### UI adapters

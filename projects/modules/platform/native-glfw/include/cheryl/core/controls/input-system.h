@@ -7,6 +7,7 @@
 #include "input-mapper.h"
 
 #include <exception>
+#include <memory>
 #include <templates/singleton.h>
 #include <utility>
 
@@ -19,17 +20,20 @@ namespace CE {
 
 namespace CE::Input {
     class GlfwInputDevice;
+    class GainputLifetime;
 
     // Routes GLFW window input into Gainput; Gainput polls gamepads directly.
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
     // GLFW event processing and Gainput Update stay on the platform thread. Completed action snapshots
     // can be handed to simulation without reading live Gainput state from another thread.
-    // Gainput initializes on the first attachment and exits at adapter destruction.
+    // One adapter owns Gainput from its first attachment through destruction.
+    // Windows reattachment requires the same live native notification window.
     // Detachment retains devices; Update receives elapsed seconds between attached polls.
     // Ordered GLFW records are captured before Gainput mapping. The character
     // callback provides OS text independently of physical keyboard State.
     class InputSystem final : public iInputSystem,
                               public Singleton_CTS<InputSystem> {
+        std::unique_ptr<GainputLifetime> gainput_lifetime_;
         gainput::InputManager manager_;
         InputMapper bindings_;
         bool manager_initialized_ = false;
@@ -80,7 +84,7 @@ namespace CE::Input {
         void deinitialize() override;
 
         [[nodiscard]] InputBindings& bindings() override { return bindings_; }
-        // Access the backend for extra Gainput devices and configuration after initialize().
+        // Access devices/configuration after initialize(); Init/Exit belong to this adapter.
         [[nodiscard]] gainput::InputManager& manager() { return manager_; }
         [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
         [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }

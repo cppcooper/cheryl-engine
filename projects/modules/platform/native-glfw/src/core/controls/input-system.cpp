@@ -1,5 +1,7 @@
 #include <core/controls/input-system.h>
 
+#include "gainput-lifetime.h"
+
 #include <core/controls/glfw-bindings.h>
 #include <core/display/window.h>
 #include <internals/exceptions.h>
@@ -23,12 +25,15 @@
 #endif
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace {
+    std::atomic_flag gainput_ownership = ATOMIC_FLAG_INIT;
+
     // GLFW's window user pointer belongs to Window. Keep adapter association
     // separately so callbacks also work for explicitly constructed adapters.
     std::unordered_map<GLFWwindow*, CE::Input::InputSystem*> attached_inputs;
@@ -205,16 +210,22 @@ namespace CE::Input {
         auto* handle = glfw_window->native_handle();
         if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
             throw Exceptions::failed_operation(CE_HERE, "The window already has an input adapter");
-        if (!manager_initialized_) {
 #if defined(_WIN32)
-            manager_.Init(glfwGetWin32Window(handle));
+        void* gainput_window = glfwGetWin32Window(handle);
 #else
-            // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
-            // initialization does not consume a native window handle.
-            manager_.Init(nullptr);
+        // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
+        // initialization does not consume a native window handle.
+        void* gainput_window = nullptr;
 #endif
+        if (!manager_initialized_) {
+            // Release the claim if Init fails. Once initialized, retain it through
+            // Exit and member destruction so no adapter can tear down another's HID.
+            auto lifetime = std::make_unique<GainputLifetime>(gainput_ownership, gainput_window);
+            manager_.Init(gainput_window);
+            gainput_lifetime_ = std::move(lifetime);
             manager_initialized_ = true;
-        }
+        } else
+            gainput_lifetime_->require_window(gainput_window);
 
         // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
         if (!keyboard_) {

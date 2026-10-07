@@ -81,6 +81,26 @@ that cannot safely be inferred from the assets is tracked in
 
 ## Remaining roadmap
 
+### Native input lifetime safety
+
+Keep the supported default to one initialized native input owner. Resolve conflicting
+Gainput HID lifetime and Windows notification ownership before broader native
+adapter support; use the resulting contract in the
+[native module guide](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
+
+- [x] Guard process-wide ownership without disrupting an existing adapter or leaking
+  ownership after failed initialization.
+- [x] Reject reattachment to a different Windows notification window while retaining
+  devices and same-window reattachment.
+- [x] Add owner-policy and native integration regressions; document supported lifetime.
+- [ ] Accept the owner-policy checks and native attachment/destruction cases on Linux
+  and Windows. Source inspection does not establish HID/device-notification behavior.
+
+Execution requires `input_lifetime.*` in the native module and
+`native_opengl.input_owner`, `input_window` and `input_reattach` in the existing native
+acceptance suite. Select its real-display opt-in and include HID-enabled configurations
+before claiming the process-global backend or Windows notifications are accepted.
+
 ### U10 — Deterministic tile selection
 
 On the stable metadata contract, define a world-neutral neighbor sampler, edge/
@@ -143,21 +163,21 @@ scope and prerequisites before this work enters the development sequence.
 
 Complete the still-open public-contract inventory alongside each implementation unit:
 
-- [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h):
+- [ ] [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h):
   incremental indexing, missing roots/errors, ordering and borrowed lookup
   lifetime; correct stale loader-discovery comments. Decide refresh support only if
   a consumer needs it.
-- [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
+- [ ] [System-font discovery/default selection](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h):
   skipped-root/error behavior, preference/enumeration rules and supported
   collection-face selection in FontMgr.
-- Display/window declarations: platform affinity, monitor snapshot freshness, scale
+- [ ] Display/window declarations: platform affinity, monitor snapshot freshness, scale
   changes and borrowed window lifetime, incorporating the
   [UI capability boundaries](../development/ui-adapters.md#routing-and-unavailable-services).
-- Remaining exported asset, submission, parameter, camera, input, dispatch and utility
+- [ ] Remaining exported asset, submission, parameter, camera, input, dispatch and utility
   declarations: missing ownership, valid thread, preconditions, failure/publication
   guarantees and units. Correct stale examples without uniform boilerplate or cosmetic
   reformatting.
-- Reconcile stale U5/U8 status/evidence referrals when affecting their subject documents.
+- [ ] Reconcile stale U5/U8 status/evidence referrals when affecting their subject documents.
   Preserve useful procedures, current contracts and coverage limits without relocating
   routine reports.
 

@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include <core/controls/glfw-bindings.h>
 #include <core/controls/input-mapper.h>
+#include "core/controls/gainput-lifetime.h"
+
+#include <atomic>
+#include <stdexcept>
 
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
@@ -89,4 +93,37 @@ TEST(glfw_bindings, portable_mouse) {
     EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_8), MouseButton::Extra5);
     EXPECT_EQ(CE::Input::mouse_button(-1), MouseButton::Unknown);
     EXPECT_EQ(CE::Input::mouse_button(GLFW_MOUSE_BUTTON_LAST + 1), MouseButton::Unknown);
+}
+
+TEST(input_lifetime, owner) {
+    std::atomic_flag ownership = ATOMIC_FLAG_INIT;
+    {
+        CE::Input::GainputLifetime first(ownership, nullptr);
+        EXPECT_THROW((void)CE::Input::GainputLifetime(ownership, nullptr), CE::Exceptions::failed_operation);
+        // A rejected claimant must leave the existing owner in control.
+        EXPECT_THROW((void)CE::Input::GainputLifetime(ownership, nullptr), CE::Exceptions::failed_operation);
+        EXPECT_NO_THROW(first.require_window(nullptr));
+    }
+    EXPECT_NO_THROW((void)CE::Input::GainputLifetime(ownership, nullptr));
+}
+
+TEST(input_lifetime, failed_init) {
+    std::atomic_flag ownership = ATOMIC_FLAG_INIT;
+    const auto initialize = [&] {
+        CE::Input::GainputLifetime lifetime(ownership, nullptr);
+        throw std::runtime_error("initialization failed");
+    };
+    EXPECT_THROW(initialize(), std::runtime_error);
+    EXPECT_NO_THROW((void)CE::Input::GainputLifetime(ownership, nullptr));
+}
+
+TEST(input_lifetime, window) {
+    std::atomic_flag ownership = ATOMIC_FLAG_INIT;
+    int first = 0;
+    int second = 0;
+    CE::Input::GainputLifetime lifetime(ownership, &first);
+    EXPECT_NO_THROW(lifetime.require_window(&first));
+    EXPECT_THROW(lifetime.require_window(&second), CE::Exceptions::failed_operation);
+    EXPECT_NO_THROW(lifetime.require_window(&first));
+    EXPECT_THROW((void)CE::Input::GainputLifetime(ownership, &second), CE::Exceptions::failed_operation);
 }

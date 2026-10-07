@@ -9,10 +9,9 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Coordinate Gainput's process-global HID initialization/shutdown and native
-  notification ownership before supporting simultaneous initialized native input
-  adapters or reattachment to a different Windows window. `Init`/`Exit` share HID
-  state, and Windows notifications retain the first native handle.
+- Accept the native input ownership guard and attachment/destruction behavior on
+  Linux and Windows. Source completion and outstanding execution are tracked in the
+  [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
 - Complete the remaining public-contract documentation, especially FileMgr indexing/
   borrowed lookups, system-font discovery/selection and display/window lifetime/
   capability semantics. See [U15](develop-review-and-development-plan.md#u15--documentation-and-roadmap-reconciliation).

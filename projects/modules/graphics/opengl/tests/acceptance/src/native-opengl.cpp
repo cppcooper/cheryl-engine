@@ -1556,6 +1556,54 @@ TEST(native_opengl, input_reattach) {
     // Context destruction detaches from the live window and releases Gainput once.
 }
 
+TEST(native_opengl, input_owner) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto* other_window = engine->display().create_window(engine->display().primary_monitor(), engine->window().mode(), 64, 64);
+    ASSERT_NE(other_window, nullptr);
+    auto first = std::make_unique<CE::Input::InputSystem>();
+    CE::Input::InputSystem second;
+    first->initialize(engine->window());
+    EXPECT_THROW(second.initialize(*other_window), CE::Exceptions::failed_operation);
+    {
+        CE::Input::InputSystem rejected;
+        EXPECT_THROW(rejected.initialize(*other_window), CE::Exceptions::failed_operation);
+    }
+    EXPECT_NO_THROW(first->poll());
+    first->deinitialize();
+    // Detachment retains devices and ownership. A rejected adapter must not Exit
+    // the first adapter's backend, and the original can still reattach and poll.
+    EXPECT_THROW(second.initialize(*other_window), CE::Exceptions::failed_operation);
+    EXPECT_NO_THROW(first->initialize(engine->window()));
+    EXPECT_NO_THROW(first->poll());
+    first.reset();
+    EXPECT_NO_THROW(second.initialize(*other_window));
+    EXPECT_NO_THROW(second.poll());
+}
+
+TEST(native_opengl, input_window) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    auto* other_window = engine->display().create_window(engine->display().primary_monitor(), engine->window().mode(), 64, 64);
+    ASSERT_NE(other_window, nullptr);
+    input.initialize(engine->window());
+    const auto keyboard = input.keyboard_id();
+    auto* device = input.manager().GetDevice(keyboard);
+    input.deinitialize();
+#if defined(_WIN32)
+    EXPECT_THROW(input.initialize(*other_window), CE::Exceptions::failed_operation);
+    EXPECT_NO_THROW(input.initialize(engine->window()));
+#else
+    EXPECT_NO_THROW(input.initialize(*other_window));
+#endif
+    EXPECT_EQ(input.keyboard_id(), keyboard);
+    EXPECT_EQ(input.manager().GetDevice(keyboard), device);
+    EXPECT_NO_THROW(input.poll());
+}
+
 namespace {
     struct ResizeRegistration {
         CE::SubSystems::EventSystem& events;
