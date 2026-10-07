@@ -75,17 +75,16 @@ After explicit build/test authorization, the engine-only consumer entry point is
 
 ```sh
 cmake -S projects/engine/tests/consumer -B build-consumer-engine \
-  -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
-  -DCHERYL_BUILD_UI_RMLUI=OFF
+  -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD"
 cmake --build build-consumer-engine --target consumer-cengine --parallel 1
 ./build-consumer-engine/cheryl-consumer
 ```
 
 Standalone consumer entry points require
 `CHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine` for shared helpers and bootstrapping.
-Engine, Native GLFW and OpenGL consumers also need `CHERYL_BUILD_UI_RMLUI=OFF`
-until their bootstrap isolation is completed in the
-[UI plan](../planning/cheryl-ui-integration-plan.md#remaining-development-sequence).
+Engine, Native GLFW and OpenGL consumer bootstraps suppress both UI selections in
+a local variable scope, including inherited `ON` choices, without changing the
+enclosing configuration's cache.
 Normal Native GLFW consumption selects no Cheryl OpenGL/GLAD dependency; the
 OpenGL consumer selects both integration owners. CMake 4 hosts may need
 `CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned legacy dependency projects. Standalone
