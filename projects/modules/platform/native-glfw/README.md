@@ -169,12 +169,8 @@ Controller acceptance also requires disconnect clearing and one selected report
 source for each controller.
 HID device visibility and access also require observation in the user's desktop
 session; successful Linux joystick reads do not establish HID access.
-The [Gainput handoff](../../../../extern/gainput/TODO.md) owns the remaining backend
-correction and adaptive-trigger sequence. Its active Linux foundation repairs the
-shared tracker's exact-path matching, empty enumeration, read-failure retirement,
-open retries and notification cleanup; it does not activate the report bridge.
-The [selected contracts](../../../../extern/gainput/HID.md) require physical-source
-association and connection generations before input/output routing. The
+The [Gainput handoff](../../../../extern/gainput/TODO.md) owns the deferred backend
+correction and adaptive-trigger sequence. The
 [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
 tracks Cheryl's lifetime and observation acceptance.
 
@@ -252,7 +248,6 @@ and short Bluetooth capture; controller/HID acceptance remains separate.
 | --- | --- | --- |
 | `tests-native-glfw` | `tests-native-glfw` | `CHERYL_BUILD_TESTS`: input ownership policy, mapping and callback diagnostics. |
 | `tests-native-joystick` | `tests-native-joystick` | Linux GNU/Clang, owned static Gainput, HID disabled: synthetic kernel maps, button actions, sticks/hats, disconnect/reconnect and legacy dialects. |
-| `tests-native-hid` | `tests-native-hid` | Same Linux owned static/HID-OFF selection: real tracker/whitelist/Sony parsers with synthetic transport, notification and time fixtures; connection lifecycle and startup failures. |
 | `all-native-glfw` | `tests-all-native-glfw` | Ordinary owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
 | `consumer-module-native-glfw` | `cheryl-native-glfw-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: independent link/implementation consumer. |
 | `consumer-module-headers-native-glfw` | Object library | Consumer's first-include header probes; built with the consumer. |
@@ -260,10 +255,6 @@ and short Bluetooth capture; controller/HID acceptance remains separate.
 The joystick runner uses private syscall wrapping and stays separate from owner
 aggregates. It requires no physical joystick/display and does not accept HID
 startup, device permissions or physical reconnect behavior.
-The HID runner also stays separate: its transport declarations and polling wrapper
-are test-local. It requires no physical controller/display or installed hidapi headers;
-it does not accept successful report decoding, real dependency ABI/linkage,
-pad association/state, connection generations or output effects.
 
 Native graphics runtime checks belong to the OpenGL owner's opt-in acceptance
 suite. Use the
