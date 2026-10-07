@@ -8,6 +8,9 @@
 namespace CE::Input {
     /** Owns the last consumption boundary and persistent State baseline.
      * consume() summarizes a whole polling batch; it never schedules simulation.
+     * One owner supplies synchronization and a valid nonnull baseline/start.
+     * Consumption validates sample/interval order before changing its baseline;
+     * returned TickInput owns handles and copied records independent of later calls.
      */
     class InputAccumulator final {
     public:

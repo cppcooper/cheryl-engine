@@ -40,11 +40,16 @@ namespace CE::Input {
     /** Immutable State and ordered records for one independently scheduled update.
      * The baseline is the last consumed sample. New polls are consumed together
      * in publication order, regardless of how many transitions they contain.
+     * Owns sample handles/record storage. Read-only queries may cross threads;
+     * spans/filter views borrow this value and cannot survive its move/destruction.
      */
     class TickInput {
         friend class InputAccumulator;
 
     public:
+        // Baseline must be nonnull; polls must be nonnull, strictly newer by ID,
+        // nondecreasing by observation time, and no later than until. since must be
+        // at/after the baseline and until at/after since; invalid input throws.
         // For manual consumers, the interval defaults to the sample timestamps.
         TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls);
         TickInput(
@@ -54,9 +59,12 @@ namespace CE::Input {
             InputClock::time_point until
         );
 
+        // Owned state copies. axis() rejects a kind change within this poll batch;
+        // changing kind between consumptions is supported. Durations remain seconds.
         [[nodiscard]] ButtonTickState button(ActionId action) const;
         [[nodiscard]] AxisTickState axis(ActionId action) const;
         [[nodiscard]] std::span<const std::shared_ptr<const ActionSnapshot>> polls() const { return polls_; }
+        // Retained final sample, or the baseline if this batch is empty.
         [[nodiscard]] std::shared_ptr<const ActionSnapshot> latest_poll() const;
         [[nodiscard]] InputDuration elapsed() const { return until_ - since_; }
         // Shared, non-destructive view for every consumer in this simulation update.

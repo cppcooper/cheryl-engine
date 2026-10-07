@@ -45,6 +45,9 @@ namespace CE::Engine {
         /** Copyable submission endpoint, with no borrowed dispatcher or engine pointer.
          * Queueing always defers execution, including submissions from the owner thread.
          * Rejection throws failed_operation; accepted callback failures reach their future.
+         * Submission is thread-safe while the endpoint remains alive. Own callable
+         * captures through execution/cancellation; reference captures/results remain
+         * the caller's lifetime responsibility. Do not wait from the execution owner.
          */
         class Submission final {
             friend class PlatformDispatcher;
@@ -91,6 +94,7 @@ namespace CE::Engine {
         [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
             return submission().submit(std::forward<Work>(work));
         }
+        // Synchronized queued-work snapshot; false does not establish completion/closure.
         [[nodiscard]] bool has_pending() const;
         // Queue snapshot only. Callback exceptions remain owned by their futures.
         [[nodiscard]] Diagnostics::DispatchStats diagnostics() const;

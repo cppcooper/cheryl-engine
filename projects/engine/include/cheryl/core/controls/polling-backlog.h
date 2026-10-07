@@ -21,12 +21,17 @@ namespace CE::Input {
      */
     class PollingBacklog final {
     public:
+        // Finite capacity must be positive; spacing nonnegative and policy known.
         explicit PollingBacklog(PollingOptions options = {});
 
         [[nodiscard]] bool can_poll() const;
         [[nodiscard]] bool poll_due(InputClock::time_point now) const;
+        // max() when capacity is full; consumption restores capacity without resetting spacing.
         [[nodiscard]] InputClock::time_point next_poll_at() const;
         [[nodiscard]] std::size_t completed_polls() const { return polls_.size(); }
+        // Requires eligible spacing/capacity, nonnull poll/State, a newer poll ID,
+        // and observation time no later than completion. Invalid inputs throw;
+        // allocation failure is not a rollback/retry guarantee for mutable staging.
         void complete(std::shared_ptr<const PollSnapshot> poll, InputClock::time_point completed_at);
         void complete(std::shared_ptr<const ActionSnapshot> state, InputClock::time_point completed_at);
         // Transfers the whole batch and immediately leaves a fresh empty backlog.

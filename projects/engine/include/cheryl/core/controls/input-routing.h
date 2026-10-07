@@ -22,6 +22,8 @@ namespace CE::Input {
 
     /** Scoped keyboard-focus ownership. Releasing an old owner cannot clear
      * a newer focus request, including one using the same target ID.
+     * Move/release on any thread with exclusive access to this handle. Retains only
+     * routing state, not the widget/adapter. Release clears focus without restoring older requests.
      */
     class FocusLease final {
         friend class InputRouting;
@@ -34,6 +36,7 @@ namespace CE::Input {
         FocusLease(const FocusLease&) = delete;
         FocusLease& operator=(const FocusLease&) = delete;
         void reset() noexcept;
+        // Snapshot only; ownership can change immediately after this observation.
         [[nodiscard]] bool owns_focus() const;
         [[nodiscard]] FocusId target() const { return focus_ ? focus_->target : 0; }
         [[nodiscard]] std::uint64_t epoch() const { return focus_ ? focus_->epoch : 0; }
@@ -53,8 +56,11 @@ namespace CE::Input {
         InputRouting() = default;
         InputRouting(const InputRouting&) = delete;
         InputRouting& operator=(const InputRouting&) = delete;
+        // Nonzero target/valid policy required; atomic publication wins among concurrent
+        // requests. Epoch identifies a request, not a widget's lifetime or capture lease.
         [[nodiscard]] FocusLease focus(FocusId target, KeyboardRouting routing = KeyboardRouting::Exclusive);
         [[nodiscard]] std::shared_ptr<const KeyboardFocus> current() const { return state_->current.load(); }
+        // Clear current ownership without changing capture activation or published records.
         void clear() { state_->current.store(state_->empty); }
 
     private:

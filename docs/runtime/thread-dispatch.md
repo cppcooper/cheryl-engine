@@ -25,6 +25,13 @@ unexecuted work is cancelled by promise destruction (`broken_promise`). Do not
 wait on a future from the thread required to complete it. Wake callbacks own their
 scheduler state so an enqueue racing closure can safely finish its notification.
 
+Callable arguments are decay-owned by submission. Copy endpoints for independent
+producers and retain them through their calls; they do not extend runtime/adapter
+lifetime. Reference captures and reference-valued results still borrow their targets.
+`has_pending()` observes queued tasks only, so false does not establish that a detached
+batch has finished or that acceptance has closed. Diagnostics are owned observations,
+not completion barriers. Use the returned future and runtime lifecycle for completion.
+
 Event delivery adapters use these saved endpoints through a callable. EventBus
 remains independent of both dispatcher types; the adapters belong to composition
 code. See [event-delivery.md](event-delivery.md).

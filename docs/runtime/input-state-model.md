@@ -28,6 +28,42 @@ Input adapters report physical changes; bindings translate them into semantic ac
 
 For code using the earlier API, replace `bind_button(control, callback)` or `bind_axis(control, callback)` with a semantic `ActionId` binding and read it in `update(const TickContext&)`. Custom adapters call `on_button(control, held)` or `on_axis(control, value)`; Gainput's old value is not needed by the binding layer.
 
+## Ownership and validation
+
+`InputBindings` configuration, physical notifications, gates and publication share
+one platform owner. `action_snapshot()` atomically copies a retained immutable
+handle from any reader thread. Retrieve `poll_snapshot()` after the complete poll
+on the platform owner, then share that handle; reading a State and complete-poll
+pointer separately during publication is not a combined snapshot operation.
+The initialized window is borrowed until callback detachment. Request handles keep
+only capture/routing state, rather than extending adapter or window lifetime.
+Independent handles can be requested/released across threads, with exclusive access
+to each individual move-only handle.
+
+Button chords must be nonempty. Axis scales must be finite, dead zones finite in
+`[0, 1)`, and physical values/deltas finite. Values are not clamped to `[-1, 1]`;
+dead-zone rescaling can apply to logical movement as well as controller values.
+An empty axis modifier chord is unconditional. Publication requires nondecreasing
+observation time and preserves the earlier published handle on failure; poll IDs
+can skip. Mutable collection/configuration staging has no general rollback/retry
+guarantee after allocation or arithmetic failure. Adapters report such failures
+through their platform failure boundary rather than publishing a partial sample.
+
+Manual TickInput/accumulator consumers must provide a nonnull baseline, strictly
+newer poll IDs with nondecreasing observation times, and a consumption interval
+starting at/after the baseline and ending at/after its start. Samples cannot be later
+than that end. These checks precede advancing the accumulator baseline. TickInput
+owns its handles and copied record storage; spans and filtered record views borrow
+that value and must not survive its move/destruction. Missing action queries return
+inactive/zero state copies. An axis kind change within one batch fails when queried;
+consumption boundaries separate supported kind changes.
+
+PollingBacklog rejects unknown policies, negative spacing and zero finite capacity.
+`complete()` requires eligible capacity/spacing, a newer nonnull State and observation
+time no later than completion. Its mutable staging has no allocation-failure rollback
+guarantee. A full batch reports no next eligible poll; consuming it restores capacity
+while retaining the existing spacing deadline.
+
 ## Polling backlog and scheduling
 
 `GameRuntime` accepts `PollingOptions` independently of `RunMode`. The default `Lockstep` policy permits one completed poll between simulation consumptions. `Finite` permits `capacity` completed polls; `Unlimited` removes that limit. Every completed poll counts, even if no action changed. This implementation keeps all completed poll handles in its transport batch; State derives the useful activity from them. Capacity therefore describes observations, not the number of button transitions or retained changed samples.
@@ -79,7 +115,7 @@ Custom adapters use `begin_input_poll()` before collection and `publish_input()`
 
 ## Focus, routing, and editing controls
 
-`InputRouting` is a separate focus-request abstraction accessed through `iInputSystem::routing()`. `focus(nonzero_target_id, policy)` returns a move-only `FocusLease`. The latest request owns keyboard focus; releasing an older lease cannot clear a newer owner, even when the same target ID is reused. `FocusLease::epoch()` identifies that particular request. Capture requests and focus leases may be held by UI objects on the simulation thread; all platform input work remains on the platform thread.
+`InputRouting` is a separate focus-request abstraction accessed through `iInputSystem::routing()`. `focus(nonzero_target_id, policy)` returns a move-only `FocusLease`. The latest published request owns keyboard focus; atomic publication decides overlapping requests. Releasing an older lease cannot clear a newer owner, even when the same target ID is reused. Releasing the current lease clears focus without restoring older requests. `FocusLease::epoch()` identifies that particular request, and `owns_focus()` is an observation rather than a lock on ownership. Capture requests and focus leases may be held by UI objects on the simulation thread; all platform input work remains on the platform thread.
 
 The platform latches focus at the beginning of each poll, together with capture activation. This one focus snapshot controls both keyboard State gating and record routing. Requests made during collection take effect at the next poll. `InputRecord::target` and `focus_epoch` retain the owner at collection time; pending input is never retroactively assigned to a new focus target. Target zero means no UI owner. `TickInput::records_for(target[, epoch])` exposes the ordered Text and editing-control records for a consumer, while `gameplay_events()` filters physical records allowed through to gameplay. These are non-destructive views, not platform-thread widget callbacks; the game/UI dispatches or reads them during its update. A reused ID can filter by epoch when it represents a new consumer lifetime.
 

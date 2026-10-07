@@ -38,6 +38,8 @@ namespace CE::SubSystems {
         // false or throwing without retaining it. Never execute inline or wait.
         // Targets must preserve FIFO execution within a listener's stream.
         using Delivery = std::function<bool(Work)>;
+        // Required for queued delivery; must not throw and must own/protect its target
+        // through pending-task destruction, independently of listener invalidation/waits.
         using ErrorHandler = std::function<void(std::exception_ptr)>;
 
     private:
@@ -107,12 +109,16 @@ namespace CE::SubSystems {
         EventBus& operator=(const EventBus&) = delete;
 
         // A registration is intentionally persistent even when its ID is ignored.
+        // Empty callback or queued delivery without errors throws invalid_args;
+        // closed bus throws failed_operation. Strings/callables are owned after registration.
         Registration register_listener(
             const std::string& event,
             Callback callback,
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         );
+        // Borrow payload for this call; listeners receive copies. Immediate exceptions
+        // propagate, queued failures go to their error sink. A closed bus rejects dispatch.
         void dispatch(const std::string& event, const std::any& payload);
         // Invalidation prevents new invocation entry; already-running work finishes.
         bool unregister_listener(const Registration& registration);

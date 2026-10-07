@@ -182,7 +182,7 @@ Complete the still-open public-contract inventory alongside each implementation 
   units, and the loader's validation boundary.
 - [x] Parameters, render-frame writers and cameras: document validation scope,
   publication/borrowed lifetimes, owner-thread rules and projection units.
-- [ ] Input and dispatch declarations: document owner operations, cross-thread
+- [x] Input and dispatch declarations: document owner operations, cross-thread
   handles, consumption boundaries, cancellation and callback lifetime.
 - [ ] Utility declarations: document synchronization, borrowed state, callbacks,
   preconditions, units and failure guarantees; correct stale examples.

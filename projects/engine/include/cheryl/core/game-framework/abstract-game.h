@@ -5,7 +5,8 @@
 
 namespace CE::GFramework {
     /** Game simulation hooks driven by GameRuntime.
-     * update() receives one input state and its elapsed time, regardless of whether
+     * update() receives accumulated input and the selected simulation delta, with
+     * input observation time available separately, regardless of whether
      * simulation runs on the platform thread or on a worker. The game is free to organize
      * its logic without a prescribed controller or state-machine architecture.
      * Drawing does not run on this interface. After advancing simulation,

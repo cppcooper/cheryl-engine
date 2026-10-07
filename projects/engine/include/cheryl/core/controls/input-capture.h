@@ -17,6 +17,8 @@ namespace CE::Input {
 
     /** A scoped request to collect a channel. Multiple requests coexist;
      * releasing a handle never erases already captured records or another request.
+     * Move/release on any thread with exclusive access to this particular handle.
+     * Retained request state survives collector destruction; it does not retain an adapter.
      */
     class CaptureLease final {
         friend class InputCapture;
@@ -45,9 +47,13 @@ namespace CE::Input {
         InputCapture() = default;
         InputCapture(const InputCapture&) = delete;
         InputCapture& operator=(const InputCapture&) = delete;
+        // Concurrent requests are supported; invalid modes throw. State is a no-op request.
         [[nodiscard]] CaptureLease request(InputMode mode);
         void begin_poll(KeyboardFocus focus = {});
+        // Owns data in collector order for active channels only. Captured Text must
+        // be a Unicode scalar; observation timestamps and other payloads are not normalized.
         void record(DeviceId device, DeviceKind kind, InputRecordData data, InputClock::time_point observed_at = InputClock::now());
+        // Transfer the whole pending vector; discard does not revoke outstanding leases.
         [[nodiscard]] std::vector<InputRecord> complete();
         void discard_pending();
 

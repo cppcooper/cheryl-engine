@@ -46,6 +46,9 @@ namespace CE::Engine {
      * resources, renderer, surface, and display, so callbacks detach from a live window.
      * GameRuntime coordinates their initialization and shutdown; this is not a game loop.
      * One context supports one runtime session; stopped adapters are not restarted.
+     * Null adapters/owned input or a zero owned worker count throw on construction.
+     * Borrowed input must survive runtime cleanup/context lifetime and detach from
+     * the display's live window before its destruction. Adapter use retains its affinity.
      */
     class EngineContext final {
         std::unique_ptr<iDisplaySystem> display_;
@@ -87,6 +90,8 @@ namespace CE::Engine {
         EngineContext(const EngineContext&) = delete;
         EngineContext& operator=(const EngineContext&) = delete;
 
+        // Borrowed adapters, not ownership transfer; getters do not marshal work.
+        // window() requires the display owner and throws if there is no active window.
         [[nodiscard]] iDisplaySystem& display() const;
         [[nodiscard]] iWindow& window() const;
         [[nodiscard]] RenderAPIs::iPresentationSurface& surface() const;
@@ -97,6 +102,7 @@ namespace CE::Engine {
         [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
+        // Synchronized across producers; closed context/pool or invalid options throw.
         [[nodiscard]] WorkerGroup make_worker_group(WorkerGroupOptions options = WorkerGroupOptions{});
 
     private:

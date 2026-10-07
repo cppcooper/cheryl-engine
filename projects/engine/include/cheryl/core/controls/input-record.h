@@ -58,6 +58,8 @@ namespace CE::Input {
     /** A backend-delivered observation. Sequence spans both Events and Text so
      * their relative order survives publication and the runtime thread handoff.
      * observed_at is callback/sample time, not a hardware event timestamp.
+     * Sequence belongs to one collector, not a process-global hardware stream.
+     * Payloads own their data; aggregate construction alone performs no validation.
      */
     struct InputRecord {
         std::uint64_t sequence;

@@ -9,7 +9,7 @@
 
 namespace CE::Input {
     using InputClock = std::chrono::steady_clock;
-    using InputDuration = std::chrono::duration<double>;
+    using InputDuration = std::chrono::duration<double>; // Observation-clock seconds.
     enum class AxisKind { Absolute, Relative };
 
     /** Game-defined semantic identifier. A game's enums can be converted explicitly at its boundary. */
@@ -70,6 +70,7 @@ namespace CE::Input {
                     return true;
             return false;
         }
+        // Owned state copies; missing actions return inactive/zero defaults.
         [[nodiscard]] ButtonActionState button(ActionId action) const {
             const auto found = buttons_.find(action);
             return found == buttons_.end() ? ButtonActionState{} : found->second;

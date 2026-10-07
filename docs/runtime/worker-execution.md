@@ -35,6 +35,10 @@ policy before each job, so groups are more than labels on a shared queue. Explic
 CPU IDs must fit the inherited eligible CPU set; required unavailable CPUs reject.
 Preferred eligibility may fall back, and `policy()` describes the requested and
 effective set. `capabilities()` exposes unsupported affinity/topology facilities.
+Capabilities are a startup snapshot, not a live OS-eligibility query; each job's
+native policy application supplies its execution-time check. `policy()` and
+`status()` return owned values. Status counters observe progress without locking
+application state or establishing completion; closed-group drainage is the barrier.
 Hard cache-domain/NUMA requests reject until a native topology adapter exists;
 manual CPU sets can already express a game's known locality domains. CPU affinity
 does not promise that data remains in L1/L2, and NUMA memory placement is separate.

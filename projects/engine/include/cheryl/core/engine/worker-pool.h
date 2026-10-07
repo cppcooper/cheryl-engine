@@ -82,6 +82,8 @@ namespace CE::Engine {
     /** A workload handle sharing physical capacity with other groups in its pool.
      * Dropping a handle does not cancel accepted jobs. Close rejects new work;
      * drain waits for accepted jobs and requires close first. No forced termination.
+     * Copies share one group. Submission/close/status are synchronized across producers;
+     * keep the physical pool alive until work settles. Same-pool drainage rejects.
      */
     class WorkerGroup final {
         friend class WorkerPool;
@@ -93,6 +95,9 @@ namespace CE::Engine {
         static void record_failure(const std::weak_ptr<WorkerDetail::GroupState>& group) noexcept;
 
     public:
+        // Owns the callable/captures until execution or policy failure. Closure/pool
+        // expiry throws before acceptance; accepted callback/policy failure reaches
+        // the future. Borrowed captures/results need their own lifetime protection.
         template <typename Work> [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>> {
             using Result = std::invoke_result_t<std::decay_t<Work>&>;
             auto completion = std::make_shared<std::promise<Result>>();
@@ -120,6 +125,7 @@ namespace CE::Engine {
 
         void close() const;
         void drain() const;
+        // Owned snapshots; status is observation only, policy is immutable after creation.
         [[nodiscard]] WorkerGroupStatus status() const;
         [[nodiscard]] WorkerGroupPolicy policy() const;
         // Explicit observer: caller holds no scheduler/context/application lock.
@@ -142,13 +148,17 @@ namespace CE::Engine {
         WorkerPool(std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter);
 
     public:
+        // Positive physical thread count; partial thread-start failure joins created threads.
         explicit WorkerPool(std::size_t worker_count = 1);
         ~WorkerPool();
         WorkerPool(const WorkerPool&) = delete;
         WorkerPool& operator=(const WorkerPool&) = delete;
 
+        // Thread-safe publication; invalid options or unavailable required policy throw.
+        // Preferred policy can fall back as reported by the returned group's policy().
         [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
+        // Owned startup snapshot, not a live query of changing OS eligibility.
         [[nodiscard]] WorkerCapabilities capabilities() const;
         [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept;
         // Explicit observer; constructors/shutdown do not log under an outer owner lock.

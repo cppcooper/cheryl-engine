@@ -94,6 +94,9 @@ namespace CE::GFramework {
             SimulationTimingOptions timing = SimulationTimingOptions{}
         );
 
+        // One blocking session on the platform owner. Borrowed engine/game must remain
+        // alive through return/throw; cleanup preserves the first failure. Do not destroy
+        // the runtime while run() or another operation is using it.
         void run();
         // Thread-safe request; run() performs normal teardown after simulation stops.
         void stop();
