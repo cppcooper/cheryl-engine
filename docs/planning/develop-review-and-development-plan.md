@@ -231,7 +231,7 @@ Complete these coherent units in dependency order:
   owned face-qualified glyphs, byte/scalar cluster ranges and line metrics, optional
   language hints, explicit paragraph direction and local maximum width. Select fallback
   for entire graphemes and reshape accepted lines after breaking.
-- [ ] Prepare grayscale glyph pages on the CPU and upload complete immutable text
+- [x] Prepare grayscale glyph pages on the CPU and upload complete immutable text
   generations through the existing provider owner. Add retained-run submission alongside
   the legacy API; failure publishes no replacement, and earlier frames retain their
   original geometry/atlas pair. Each preparation admits only its message's glyphs;
@@ -283,6 +283,9 @@ and comparative measurements justify the optimization. Defer batching if profile
 identify another bottleneck. A timing advisor must explain measured suggestions and
 leave fixed-step, recovery and input policy under application control. Renderer and
 timing changes are independent development units.
+Measure repeated shaping of candidate prefixes in constrained paragraphs and
+message-specific glyph preparation/upload before introducing reusable glyph caches.
+Any faster fitter must preserve actual accepted-line widths, source clusters and bidi.
 
 ### U14 — Optional engine expansion
 

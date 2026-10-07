@@ -12,7 +12,7 @@ require explicit resource contracts, rather than new domains or mutable textures
 | Vertex colors | Upload `Vertex2DColor` with float RGBA and select `Position3UV2Color4` in the pipeline. An unimplemented provider overload rejects the request explicitly; the existing `Vertex2D` path keeps its layout. |
 | Atomic batch reload | Not required. Loader upload can partially publish entries; its metadata pointer commits only after successful upload/allocation. |
 | Multiple domains/windows | Not required. Global managers support one active provider and serialized loading owner. Separate roots/loaders share that domain. |
-| In-place texture update or atlas growth | Not exposed. Revisit this contract before a consumer requires mutation or Unicode glyph residency. |
+| In-place texture update or atlas growth | Not exposed. Unicode text prepares message-specific immutable pages and publishes complete retained generations; a shared glyph-residency cache remains separate work. |
 | Eviction/budgets | No automatic policy. Strong cache residency and explicit clear/replacement/teardown remain. |
 
 PreparedAssets owns its decoded pixels and definitions and retains no provider or
@@ -32,6 +32,9 @@ describe submitted definitions, not an atomic view of all current cache contents
 changed files and the same key do not turn Loader into a hot-reload transaction.
 Existing per-key material/program replacement builds a complete candidate before
 publication and preserves old retained generations; it does not imply batch reload.
+The separate [Unicode text generation](../assets/text-layout.md#preparation-upload-and-retained-submission)
+likewise publishes only after all message pages upload successfully. Failure retires
+the candidate's transient handles and leaves the application's prior text unchanged.
 
 Published frames/materials must retain selected image/geometry/program handles.
 Replacement releases the cache's old owner while those handles remain safe within

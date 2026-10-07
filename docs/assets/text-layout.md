@@ -93,7 +93,38 @@ Line fitting currently measures candidate prefixes; very long constrained paragr
 can require repeated shaping. Optimize that only with representative measurements,
 while retaining the actual accepted-line width and source/bidi contracts.
 
-Prepared glyph pages, retained submission and the demo integration remain in the
-active [U11 implementation checklist](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
-Font-selection/layout regressions and neutral header probes have pending Linux
-acceptance in [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
+## Preparation, upload and retained submission
+
+`CE::Assets::prepare_text(shaped, raster_options)` owns the layout and prepares
+grayscale alpha pages and six-vertex glyph quads on the CPU. It rasterizes each
+distinct face-qualified glyph once for that message, retaining glyph bearings and
+shaped placement offsets. Spaces/empty outlines advance without drawing. Pages use
+one transparent border pixel, are cropped to used padded bounds and preserve the
+font provider's row/UV order. The configured maximum page extent is 4..4096 pixels
+(default 1024); a glyph too large for one padded page fails before a bitmap allocation.
+There is no shared glyph cache, in-place repack, eviction or residency budget.
+
+`upload_text(prepared, provider)` copies CPU buffers into fresh immutable page
+geometry/atlas handles on the provider's upload owner. Passing a copy preserves CPU
+preparation for retry; moving it into an owned
+[dispatcher request](../runtime/thread-dispatch.md) transfers that
+value. A successful call returns one `RenderedText` generation with its matching
+placements and resources. A failure returns no generation and publishes no replacement.
+Already created transient resources follow backend retirement; this is not an atomic
+native-resource transaction. Callers publish a complete candidate only after success.
+
+`resolve_text(rendered, style, context)` performs CPU packet resolution alongside
+the legacy font overload. Supply a nonempty `context.image` pipeline key/unit so
+each glyph selects its own generation page; that key must be absent from draw
+parameters. Glyph offsets are scaled and transformed by the supplied model exactly
+as in legacy submission. Packets copy values and retain both page handles. Replacing
+or releasing the text/font/preparation cannot pair old quad ranges with a newer atlas.
+Old submitted frames retain their resources, subject to the original backend domain
+remaining alive for native use. Submission performs no shaping, discovery, rasterization,
+upload, binding or drawing.
+
+The demo integration remains in the active
+[U11 implementation checklist](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
+Font selection, layout, resource/submission regressions and neutral header probes
+have pending Linux acceptance in
+[TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).

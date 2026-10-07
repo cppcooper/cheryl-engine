@@ -210,6 +210,12 @@ traversal uses the same decoding/spacing rules; exceptions propagate with prior
 callback effects intact. Alternate-bank layout is rejected. FFont retains a separate
 [legacy metric/bank contract](../resources/legacy-ffont.md).
 
+The separate [Unicode text service](text-layout.md) shapes accented Latin/Cyrillic,
+resolves paragraph bidi and optional local-width wrapping, selects whole-grapheme
+fallback and prepares immutable glyph pages. Its `RenderedText` overload submits
+already uploaded placements and matching page handles; supply `context.image` for
+page selection. Legacy Font implementations retain their existing APIs/metrics.
+
 `resolve_sprite`, `resolve_tile`, `resolve_graphic` and `resolve_text` perform CPU
 submission without binding resources or mutating playback. Keep their inputs stable
 for the call. They copy style/pass values and retain geometry, material and any

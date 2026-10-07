@@ -99,4 +99,22 @@ namespace CE::Assets {
         }
         return result;
     }
+
+    std::vector<RenderAPIs::DrawPacket2D>
+    resolve_text(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context) {
+        if (!context.image || context.image->key.empty() || style.parameters.contains(context.image->key))
+            throw Exceptions::invalid_args(CE_HERE, "Unicode text submission needs a page image parameter");
+        std::vector<RenderAPIs::DrawPacket2D> result;
+        result.reserve(text.draws().size());
+        for (const auto& glyph : text.draws()) {
+            const auto& page = text.pages()[glyph.page];
+            auto placed = image_style(style, page.atlas, context);
+            placed.model_matrix = glm::translate(style.model_matrix, glm::vec3(glyph.x * style.scale, glyph.y * style.scale, 0));
+            result.push_back(RenderAPIs::resolve_draw_packet(
+                page.geometry, range_start(glyph.index, VAONumbers::vertices_per_quad), VAONumbers::vertices_per_quad,
+                placed, context.pass, context.parameters, context.constraints
+            ));
+        }
+        return result;
+    }
 }

@@ -4,6 +4,7 @@
 #include <assets/types/2d/graphic.h>
 #include <assets/types/2d/sprite.h>
 #include <assets/types/2d/tileset.h>
+#include <assets/types/2d/unicode-text.h>
 #include <core/rendering/draw-packet.h>
 
 #include <optional>
@@ -48,4 +49,8 @@ namespace CE::Assets {
         const SubmissionContext2D& context,
         FontLayoutOptions options = FontLayoutOptions{}
     );
+    // Already shaped/uploaded immutable generation; page images are selected through
+    // context.image. No layout, font discovery, rasterization or upload occurs here.
+    [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D>
+    resolve_text(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
 }

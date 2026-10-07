@@ -25,5 +25,6 @@ set(consumer_headers
     cheryl/text/utf8.h
     cheryl/text/font-collection.h
     cheryl/text/layout.h
+    cheryl/assets/types/2d/unicode-text.h
     cheryl/assets/resources/resource-provider.h)
 cheryl_add_header_probes(${TARGET_TEST_CONSUMER_ENGINE_HEADERS} ${LINKAGE_PRIVATE_TEST_CONSUMER_ENGINE} NEUTRAL HEADERS ${consumer_headers})

@@ -81,6 +81,10 @@ source ranges, hard/soft breaks, indivisible overflow and concurrent owned layou
 The Engine requires FreeType, HarfBuzz and ICU uc/i18n development headers/libraries
 even with both UI modules disabled. Reconfigure the
 matching existing build to pick up that dependency and the embedded font source.
+Text-resource cases rasterize actual builtin outlines, verify repeated-glyph admission,
+page cropping/padding, multiple page selection and copied provider buffers, then retain
+old packet resources across successful replacement and failed candidate uploads.
+Empty text uploads nothing; invalid sizes, page images and sampler collisions fail.
 The existing timing cases also cover the pending ignored-result warning correction;
 exception assertions explicitly discard irrelevant values while retaining the public
 `[[nodiscard]]` contract. This request needs no display, controller or graphics module.
@@ -105,13 +109,13 @@ unrelated typed-event acceptance needs no rerun.
     tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
 Acceptance: the implementation and public header probes compile without new warnings,
 and all selected `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
-`asset_manifest.*`, `utf8.*`, `stbfont.*`, `font_selection.*`, `text_layout.*`
+`asset_manifest.*`, `utf8.*`, `stbfont.*`, `font_selection.*`, `text_layout.*`, `text_resources.*`
 and the four selected `asset_submission` cases
 pass without skips. Legacy STBFont cases establish scalar fallback over its ASCII atlas;
 the separate layout cases use actual builtin glyphs and shaping. These CPU checks do
