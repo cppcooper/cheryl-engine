@@ -90,13 +90,26 @@ adapter support; use the resulting contract in the
   - [x] Add a demo launch option for TRACE file logging and document its scope.
   - [x] Submit a compiler-command check and short Bluetooth controller capture in
     the testing queue; distinguish callback evidence from HID backend readiness.
-- [ ] Accept the diagnostic build and Bluetooth capture through
-  [TR8/TR9](../testing-requests.md#tr8-automated-controller-diagnostic-build).
+- [x] Inspect sequential/concurrent Bluetooth traces and the dependency compiler
+  command. Linux joystick axes reach pad `2`, but button deltas are absent and A
+  stays false; the HID runtime definition is absent. This identifies the missing
+  Linux joystick translation as the current Cross-button blocker.
+- [ ] Correct the Linux joystick path independently of the unresolved HID path:
+  - [x] Use kernel button/axis maps for controllers outside the existing legacy
+    dialects, retaining created device IDs and state updates.
+  - [x] Clear held state and close the descriptor on disconnect; rebuild mappings
+    when the joystick reconnects.
+  - [x] Add isolated synthetic-device regressions for button actions, sticks/hats,
+    remapping and reconnection without requiring a controller or HID startup.
+  - [x] Submit the focused build/regressions and Bluetooth Cross/reconnect QA.
+  - [ ] Accept the build/regressions through
+    [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build) and physical
+    controller behavior through [TR5](../testing-requests.md#tr5-qa-controller-reports-and-reconnection).
 - [ ] Repair the selected fork's CMake propagation of the HID compiler definition.
   Verify that HID initialization/polling follows the configured feature selection
   before accepting controller reports.
 - [ ] Correct controller report routing, retained pad state and availability in the
-  selected backend before requesting DualSense Bluetooth QA again. Resolve the
+  selected HID backend before requesting HID-specific DualSense QA. Resolve the
   [backend limits](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits)
   while preserving single-owner lifetime and avoiding duplicate HID/joystick reports.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
@@ -115,6 +128,12 @@ When HID is compiled in, the selected Gainput `InputManager::Init` discards
 establish HID readiness. Native acceptance
 must independently observe controller reports and device notifications. Explicit
 startup-failure reporting requires a dependency contract change if a consumer needs it.
+
+Linux joystick acceptance uses HID disabled; enabling the HID runtime requires the
+compiler-definition and report/state corrections together, with one report source
+per controller. The corrected Gainput revision is local until the user's personal
+fork hosts it. Publishing it and changing the submodule URL remain separate work
+requiring the fork URL and explicit push authorization.
 
 ### U10 — Deterministic tile selection
 

@@ -10,11 +10,10 @@ meaningful coverage limits.
 | --- | --- | --- | --- |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
 | [TR4](#tr4-qa-desktop-resize) | QA | Windows | Ready after TR3 |
-| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Blocked for Linux DualSense; Windows pending |
+| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Linux ready after updated TR8; Windows pending |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 | [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
-| [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; reuse the existing native build |
-| [TR9](#tr9-qa-dualsense-pipeline-trace) | QA | Linux/X11 | Ready after TR8; Bluetooth DualSense available |
+| [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -123,40 +122,47 @@ Linux resize procedure.
 ## TR5: QA controller reports and reconnection
 
 Verify actual controller reports through the demo rather than relying on a
-device-free native poll. Use the existing HID-enabled Linux native demo or the
+device-free native poll. Use the Linux joystick demo rebuilt by updated TR8 or the
 Windows demo built by TR3, with a controller supported by the selected Gainput
 backend and permission to access its device.
 
-**Blocked for the available Linux fixture:** the demo does not detect the user's
-DualSense over Bluetooth. The pinned backend has
-[controller report/state integration limits](../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
-The existing Linux build also omits the compiler definition needed for HID
-initialization/polling. Correct the feature wiring and report/state integration,
-then verify device access in the user's desktop session before requesting another
-run with this controller. Device detection, reports and reconnection remain
-unaccepted; another supported fixture can be used independently.
-Use [TR8](#tr8-automated-controller-diagnostic-build) and
-[TR9](#tr9-qa-dualsense-pipeline-trace) to gather build/callback evidence before
-changing the fork. Their diagnostic capture does not require TR5 to pass.
+**Linux ready after the updated TR8 build:** captured Bluetooth traces establish
+joystick axis delivery to pad `2`, but no button deltas or sampled A presses. The
+local Gainput correction adds kernel button/axis translation and disconnect clearing;
+verify it with the same DualSense. This acceptance selects the
+[Linux joystick path](../projects/modules/platform/native-glfw/README.md#linux-controller-mapping)
+with `GAINPUT_ENABLE_HID=OFF`. HID feature wiring/report integration and Windows
+notifications remain separate prerequisites for TR6.
 
-For Linux, use this launch block when those prerequisites are resolved. For Windows,
+For Linux, use this launch block after TR8. For Windows,
 use the launch block in [TR4](#tr4-qa-desktop-resize).
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-native-linux/demo
-  ./build/testing-native-linux/demo --concurrent
+  ./build/testing-native-linux/demo --input-diagnostics
+  cp logs/os-platform.log build/testing-native-linux/tr5-sequential.log
+  ./build/testing-native-linux/demo --input-diagnostics --concurrent
+  cp logs/os-platform.log build/testing-native-linux/tr5-concurrent.log
 )
 ```
 
 - Launch the demo normally, then repeat with `--concurrent`. Record OS, controller
   model and wired/wireless connection type.
 - Press/release gamepad A (Cross on a DualSense) several times. The HUD's `Gamepad A`
-  press counter advances once per press and stops advancing when released.
-- Disconnect and reconnect the controller while the demo runs. Rendering and
-  keyboard/mouse input stay responsive; subsequent A presses are observed again.
+  press counter advances once per press. Holding it for two seconds adds one press;
+  releasing it and waiting adds none.
+- On Linux, confirm Cross produces `gainput_delta kind=button` and
+  `gamepad_sample kind=button` for the assigned pad and `PadButtonA`. Exercise the
+  other face buttons, shoulders/triggers, sticks and d-pad; translated controls
+  appear in the trace. Only Cross/A has a demo gamepad binding, so other controls
+  need not move the camera or change its counter.
+- Disconnect while holding Cross or a stick off center, then reconnect while the
+  demo runs. Rendering and
+  keyboard/mouse input stay responsive; release/zero samples clear held input and
+  subsequent A presses are observed again. On Linux, retain both `tr5-*.log` files;
+  close each session normally before the next launch rotates the log.
 - Close and relaunch the demo with the controller attached. Reports continue and
   shutdown does not hang or crash.
 
@@ -221,11 +227,13 @@ and all selected `tile_animation.*` cases pass without skips.
 
 ## TR8: Automated controller diagnostic build
 
-Build the changed native input headers/implementation and demo option, then run the
-existing mapper regression and native consumer. Reuse the Linux native build with
-both UI adapters disabled. Export the actual Gainput manager compiler command for
-the separate runtime-path investigation; this request does not accept controller
-reports or HID readiness.
+Build the Linux joystick correction, native input diagnostics and demo, then run
+the mapper regression, synthetic joystick suite and native consumer. Reconfigure
+the existing native build with owned static Gainput, HID disabled and both UI
+adapters disabled. The synthetic suite supplies kernel mappings/events to the real
+pad implementation and mapper, covering A presses/holds/releases, other controls,
+reordered slots, d-pad hats, disconnect/reconnect and retained legacy mappings.
+It requires no physical controller or display. Physical reports remain in TR5.
 
 ```sh
 (
@@ -233,22 +241,23 @@ reports or HID readiness.
   cd "$(git rev-parse --show-toplevel)"
   cmake -S . -B build/testing-native-linux -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
     -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
-    -DGAINPUT_ENABLE_HID=ON -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON
   cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
-    consumer-module-native-glfw tests-native-glfw demo
+    consumer-module-native-glfw tests-native-glfw tests-native-joystick demo
   ./build/testing-native-linux/cheryl-native-glfw-consumer
   printf 'Native GLFW consumer passed.\n'
   ctest --test-dir build/testing-native-linux --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-native-glfw\.input_mapper\.'
+    --no-tests=error -R '^(tests-native-glfw\.input_mapper\.|tests-native-joystick\.linux_joystick\.)'
   python3 - <<'PY'
 import json
 from pathlib import Path
@@ -273,45 +282,9 @@ PY
 )
 ```
 
-Acceptance: build/consumer/header checks and the selected mapper cases pass without
-new warnings, failures or skips. Report the HID macro arguments separately. With
-the current pinned source, absent arguments match the missing runtime definition;
-they do not fail this instrumentation request or satisfy TR5/TR6. The exported
-command is for the owned dependency; a supplied Gainput build needs its own command.
-
-## TR9: QA DualSense pipeline trace
-
-Capture the current Bluetooth failure in sequential and concurrent modes after TR8.
-This observes where controller input stops; successful controller detection is not
-a prerequisite. Keep the controller paired/connected in the desktop session and
-omit `--max-updates` so each run remains interactive.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-native-linux/demo --input-diagnostics
-  cp logs/os-platform.log build/testing-native-linux/tr9-sequential.log
-  ./build/testing-native-linux/demo --input-diagnostics --concurrent
-  cp logs/os-platform.log build/testing-native-linux/tr9-concurrent.log
-)
-```
-
-- In each mode, wait two seconds, press/release Cross five times, hold Cross for two
-  seconds, release, then disconnect/reconnect and press Cross again. Close normally
-  to preserve that session's log before the next launch rotates it.
-- Confirm `gainput_init` begins/returns, `gamepad_setup` lists the assigned pad and
-  report IDs, and `gamepad_poll` continues while the demo runs. Report missing stages.
-- Record whether `gainput_delta` appears, its `device`/`device_known` fields, whether
-  `gamepad_sample` follows on the assigned pad, and whether the HUD counter advances.
-  Report absence as an observation; it does not prove a device permission failure.
-- Confirm WASD/mouse input and shutdown remain usable during capture. The trace
-  contains no GLFW key, pointer or committed-text values.
-- Retain both `tr9-*.log` files and TR8's compiler-command snapshot. Include the
-  controller connection type and tested revision when reporting results.
-
-Expected with the current source: the compile snapshot lacks the HID runtime
-definition; setup can show pad ID `2` and HID report ID `4` even when no HID callback
-runs. A `gainput_init` return proves only manager initialization. Callback/heartbeat
-evidence does not establish HID enumeration/open success or Windows notifications;
-TR5/TR6 remain pending.
+Acceptance: build/consumer/header checks and all selected mapper/joystick cases pass
+without new warnings, failures or skips. The joystick runner is intentionally
+separate from owner aggregates because its syscall wrappers apply process-wide.
+The exported command belongs to the owned dependency; HID macro arguments should
+be absent with this explicit OFF configuration. This accepts neither HID runtime
+startup nor physical controller reports/reconnection.

@@ -115,6 +115,29 @@ without replaying Gainput notifications.
 Target selection, standalone paths and validation status are in
 [the module guide](../../../../docs/development/modules.md).
 
+## Linux controller mapping
+
+The selected Gainput Linux joystick backend opens `/dev/input/js0` for the first
+pad. Existing named PS3 and Xbox 360 dialects retain their mappings. Other
+controllers use `JSIOCGBTNMAP` and `JSIOCGAXMAP` to translate driver event slots into
+gamepad controls following the
+[Linux gamepad specification](https://docs.kernel.org/input/gamepad.html).
+DualSense Cross maps from `BTN_SOUTH` to `PadButtonA`; right-stick and trigger axes
+use their kernel codes, and hat axes produce directional button state. Unsupported
+codes are ignored. If mapping ioctls fail, the previous raw-axis fallback remains;
+button support is unavailable for an unrecognized dialect.
+
+Translated reports update the created pad's retained state and emit its actual
+logical device ID. Disconnect clears held buttons/axes and closes the descriptor;
+reopening the joystick reloads its mappings. This path requires a readable joydev
+node and keeps the existing fixed joystick-index selection. It does not scan for a
+particular physical controller or identify a reconnected device across node changes.
+Accept this path with `GAINPUT_ENABLE_HID=OFF` while the HID integration below
+remains unresolved.
+
+The demo binds Cross/A to the HUD press counter. Its other gamepad controls have
+no gameplay bindings; their traces can verify decoding without moving the camera.
+
 ## Controller backend limits
 
 The pinned Gainput fork's CMake HID selection includes decoder sources and hidapi,
@@ -130,18 +153,14 @@ ID `2`. The parsers also do not update that pad's retained state or establish it
 availability through the HID connection. These remain integration defects when the
 HID runtime is enabled.
 
-The Linux joystick fallback polls `/dev/input/js0` for this first pad and provides
-button mappings for named PS3 and Xbox 360 controllers. It has no DualSense button
-mapping. Parser presence and successful initialization therefore do not establish
-usable DualSense input; Bluetooth detection/report QA remains unresolved.
-
 Cheryl uses the IDs returned by Gainput's device creation API and queries the pad's
 availability/current state after each update to reconcile held controls and
 disconnection. Repairing the feature wiring, report identity and retained pad state
 belongs in the Gainput fork; Cheryl's acceptance must verify that integration.
 Controller acceptance also requires disconnect clearing and one selected report
 source for each controller.
-Device visibility and access must also be verified in the user's desktop session.
+HID device visibility and access also require observation in the user's desktop
+session; successful Linux joystick reads do not establish HID access.
 The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
 owns the correction and observation prerequisites.
 
@@ -167,6 +186,9 @@ Callback records use the mapper's diagnostic domain; setup/sample records use th
 adapter's domain. Match device IDs across these stages. An unresolved callback ID
 matching `hid_report_device` identifies a routing mismatch candidate; it does not
 identify a physical controller or independently establish HID report delivery.
+Axis callbacks alone do not establish button delivery. Cross/A needs a button
+delta and sampled transition for `PadButtonA` on the assigned pad, followed by the
+demo counter. An available pad or valid button ID alone does not establish decoding.
 
 Inspect the compiler command for Gainput's own `GainputInputManager.cpp`, not the
 adapter's compile definitions, when checking the HID guard. A returned initialization
@@ -180,9 +202,14 @@ and short Bluetooth capture; controller/HID acceptance remains separate.
 | Target | Output / kind | Selection / coverage |
 | --- | --- | --- |
 | `tests-native-glfw` | `tests-native-glfw` | `CHERYL_BUILD_TESTS`: input ownership policy, mapping and callback diagnostics. |
-| `all-native-glfw` | `tests-all-native-glfw` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `tests-native-joystick` | `tests-native-joystick` | Linux GNU/Clang, owned static Gainput, HID disabled: synthetic kernel maps, button actions, sticks/hats, disconnect/reconnect and legacy dialects. |
+| `all-native-glfw` | `tests-all-native-glfw` | Ordinary owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
 | `consumer-module-native-glfw` | `cheryl-native-glfw-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: independent link/implementation consumer. |
 | `consumer-module-headers-native-glfw` | Object library | Consumer's first-include header probes; built with the consumer. |
+
+The joystick runner uses private syscall wrapping and stays separate from owner
+aggregates. It requires no physical joystick/display and does not accept HID
+startup, device permissions or physical reconnect behavior.
 
 Native graphics runtime checks belong to the OpenGL owner's opt-in acceptance
 suite. Use the

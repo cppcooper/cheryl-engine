@@ -2,3 +2,10 @@ get_filename_component(CHERYL_NATIVE_PRIVATE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_
 set(CHERYL_TEST_AGGREGATE ${TARGET_TEST_ALL_MODULE_NATIVE_GLFW})
 add_subdirectory(all-tests)
 add_subdirectory(unit)
+if(CHERYL_NATIVE_INPUT AND cheryl_gainput_added AND NOT GAINPUT_ENABLE_HID AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+        AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    get_target_property(cheryl_gainput_type ${cheryl_gainput_concrete} TYPE)
+    if(cheryl_gainput_type STREQUAL "STATIC_LIBRARY")
+        add_subdirectory(joystick)
+    endif()
+endif()
