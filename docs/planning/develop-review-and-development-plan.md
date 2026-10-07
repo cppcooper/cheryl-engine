@@ -91,9 +91,8 @@ adapter support; use the resulting contract in the
   - [x] Submit a compiler-command check and short Bluetooth controller capture in
     the testing queue; distinguish callback evidence from HID backend readiness.
 - [x] Inspect sequential/concurrent Bluetooth traces and the dependency compiler
-  command. Linux joystick axes reach pad `2`, but button deltas are absent and A
-  stays false; the HID runtime definition is absent. This identifies the missing
-  Linux joystick translation as the current Cross-button blocker.
+  command. Axis-only delivery to pad `2` with the HID runtime compiled out identifies
+  the Linux joystick translation as the cause of the original Cross-button failure.
 - [ ] Correct the Linux joystick path independently of the unresolved HID path:
   - [x] Use kernel button/axis maps for controllers outside the existing legacy
     dialects, retaining created device IDs and state updates.
@@ -102,6 +101,8 @@ adapter support; use the resulting contract in the
   - [x] Add isolated synthetic-device regressions for button actions, sticks/hats,
     remapping and reconnection without requiring a controller or HID startup.
   - [x] Submit the focused build/regressions and Bluetooth Cross/reconnect QA.
+  - [x] Observe Bluetooth DualSense button delivery through user-run demo testing.
+    Counting, hold/release, both runtime modes and physical reconnect remain in TR5.
   - [ ] Accept the build/regressions through
     [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build) and physical
     controller behavior through [TR5](../testing-requests.md#tr5-qa-controller-reports-and-reconnection).

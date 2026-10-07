@@ -10,7 +10,7 @@ meaningful coverage limits.
 | --- | --- | --- | --- |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
 | [TR4](#tr4-qa-desktop-resize) | QA | Windows | Ready after TR3 |
-| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Linux ready after updated TR8; Windows pending |
+| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Linux button delivery confirmed; remaining QA and Windows pending |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 | [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
@@ -126,10 +126,10 @@ device-free native poll. Use the Linux joystick demo rebuilt by updated TR8 or t
 Windows demo built by TR3, with a controller supported by the selected Gainput
 backend and permission to access its device.
 
-**Linux ready after the updated TR8 build:** captured Bluetooth traces establish
-joystick axis delivery to pad `2`, but no button deltas or sampled A presses. The
-local Gainput correction adds kernel button/axis translation and disconnect clearing;
-verify it with the same DualSense. This acceptance selects the
+**Linux button delivery confirmed with the Bluetooth DualSense.** Exact counting,
+hold/release behavior, other mapped controls, both runtime modes and physical
+reconnection still need acceptance. The remaining checks use the demo built by
+updated TR8 and select the
 [Linux joystick path](../projects/modules/platform/native-glfw/README.md#linux-controller-mapping)
 with `GAINPUT_ENABLE_HID=OFF`. HID feature wiring/report integration and Windows
 notifications remain separate prerequisites for TR6.
