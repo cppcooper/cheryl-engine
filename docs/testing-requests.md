@@ -9,8 +9,8 @@ meaningful coverage limits.
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
-| [TR4](#tr4-qa-desktop-resize) | QA | Linux/X11 and Windows | Ready with the Linux demo; Windows after TR3 |
-| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Ready with a supported controller |
+| [TR4](#tr4-qa-desktop-resize) | QA | Windows | Ready after TR3 |
+| [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Blocked for Linux DualSense; Windows pending |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 | [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
 
@@ -84,27 +84,13 @@ attempting the dependent QA. Passing device-free polls does not accept TR6.
 
 ## TR4: QA desktop resize
 
-Verify desktop-generated resizing after the native resize bridge change. Use the
-existing Linux native demo or the Windows demo built by TR3, with both optional UI
-adapters disabled. This checks rendering and responsiveness during actual
-window-manager delivery. The demo does not display the typed/legacy callback
-contract; its Linux automation is accepted and its Windows coverage remains in TR3.
+Verify desktop-generated resizing on Windows after the native resize bridge change.
+Use the demo built by TR3, with both optional UI adapters disabled. This checks
+rendering and responsiveness during actual window-manager delivery. The demo does
+not display the typed/legacy callback contract; TR3 requests its automated coverage.
 
-Launch both runtime modes with the block for your platform. Close the first
-session to start the concurrent session. Use these same launch blocks for TR5.
-
-Linux:
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-native-linux/demo
-  ./build/testing-native-linux/demo --concurrent
-)
-```
-
-Windows:
+Launch both runtime modes. Close the first session to start the concurrent session.
+Use this Windows launch block for TR5 as well.
 
 ```powershell
 $cherylRoot = git rev-parse --show-toplevel
@@ -128,20 +114,40 @@ try {
 - Close the window while updates are active in both modes. Shutdown completes
   normally. Report the platform and mode for any failure.
 
-The existing accepted Linux UI appearance/focus checks are not requested again.
-This request does not establish per-window scale transitions, Wayland or GPU reset
-recovery.
+This request does not establish per-window scale transitions or GPU reset recovery.
+The reusable [desktop checks](development/native-desktop-checks.md) retain the
+Linux resize procedure.
 
 ## TR5: QA controller reports and reconnection
 
 Verify actual controller reports through the demo rather than relying on a
-device-free native poll. Use the same HID-enabled native build as TR4 and a controller
-supported by the selected Gainput backend, with permission to access its device.
+device-free native poll. Use the existing HID-enabled Linux native demo or the
+Windows demo built by TR3, with a controller supported by the selected Gainput
+backend and permission to access its device.
+
+**Blocked for the available Linux fixture:** the demo does not detect the user's
+DualSense over Bluetooth. The pinned backend has
+[controller report/state integration limits](../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
+Correct that integration and verify device access in the user's desktop session
+before requesting another run with this controller. Device detection, reports and
+reconnection remain unaccepted; another supported fixture can be used independently.
+
+For Linux, use this launch block when those prerequisites are resolved. For Windows,
+use the launch block in [TR4](#tr4-qa-desktop-resize).
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-native-linux/demo
+  ./build/testing-native-linux/demo --concurrent
+)
+```
 
 - Launch the demo normally, then repeat with `--concurrent`. Record OS, controller
   model and wired/wireless connection type.
-- Press/release gamepad A several times. The HUD's `Gamepad A` press counter advances
-  once per press and stops advancing when released.
+- Press/release gamepad A (Cross on a DualSense) several times. The HUD's `Gamepad A`
+  press counter advances once per press and stops advancing when released.
 - Disconnect and reconnect the controller while the demo runs. Rendering and
   keyboard/mouse input stay responsive; subsequent A presses are observed again.
 - Close and relaunch the demo with the controller attached. Reports continue and

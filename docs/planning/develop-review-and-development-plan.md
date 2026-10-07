@@ -84,6 +84,10 @@ adapter support; use the resulting contract in the
 - [x] Accept native owner rejection, attachment/destruction and reattachment
   regressions on Linux through user-run native OpenGL acceptance.
 - [x] Accept native consumer/header probes on Linux through user-run testing.
+- [ ] Correct controller report routing, retained pad state and availability in the
+  selected backend before requesting DualSense Bluetooth QA again. Resolve the
+  [backend limits](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits)
+  while preserving single-owner lifetime and avoiding duplicate HID/joystick reports.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
   acceptance. The demo counter cannot establish those routes; prerequisites and
   required observations are in [testing requests](../testing-requests.md).
@@ -173,8 +177,11 @@ must cover these contracts through the existing registration/delivery lifetime.
   testing.
 - [x] Accept native resize callback ordering, nested observations and typed/legacy
   callback failure regressions on Linux through user-run testing.
+- [x] Accept desktop-generated resize, maximize/restore, interactive input and
+  shutdown on Linux/X11 in sequential and concurrent modes through user-run QA.
+  Reuse the [desktop procedure](../development/native-desktop-checks.md).
 - [ ] Accept native resize and neutral typed-event regressions on Windows and
-  complete desktop-generated resize QA;
+  complete Windows desktop-generated resize QA;
   use the [focused validation procedure](../development/architecture-validation.md#typed-events).
   Source completion does not establish executable acceptance.
 

@@ -10,8 +10,10 @@ configuration uses GLFW's X11 backend with Wayland disabled.
 In each mode, check these observations:
 
 1. Text renders clearly; WASD pans the camera and R resets it. Mouse coordinates,
-   click count and wheel values respond. Resize the window several times: text
-   remains correctly placed and the controls remain responsive.
+   click count and wheel values respond. Drag window edges/corners through larger
+   and smaller sizes, then maximize and restore. The HUD and camera-target text
+   remain correctly placed; rendering and WASD/R, click and wheel input remain
+   responsive during resizing, without hangs or deferred native errors.
 2. Press F2, type ASCII text, move the caret and use Backspace/Delete. Text focus
    prevents those keystrokes from moving the camera. Enter/Esc releases focus.
    The existing ASCII atlas displays fallback characters for unsupported Unicode;

@@ -114,6 +114,25 @@ without replaying Gainput notifications.
 Target selection, standalone paths and validation status are in
 [the module guide](../../../../docs/development/modules.md).
 
+## Controller backend limits
+
+The pinned Gainput fork includes PS5/DualSense HID decoding for USB and Bluetooth,
+but its parser emits listener deltas under the fixed `CONTROLLER_ID` (`4`). The
+native adapter's normal keyboard/mouse/pad creation assigns the pad ID `2`. Those
+HID deltas do not update that pad's retained state, which the adapter samples after
+every Gainput update to reconcile held controls and disconnection.
+
+The Linux joystick fallback polls `/dev/input/js0` for this first pad and provides
+button mappings for named PS3 and Xbox 360 controllers. It has no DualSense button
+mapping. Parser presence and successful initialization therefore do not establish
+usable DualSense input; Bluetooth detection/report QA remains unresolved.
+
+Controller acceptance requires correct report identity, retained state, availability
+and disconnect clearing, with one selected report source for each controller.
+Device visibility and access must also be verified in the user's desktop session.
+The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
+owns the correction and observation prerequisites.
+
 ## Checks
 
 | Target | Output / kind | Selection / coverage |
