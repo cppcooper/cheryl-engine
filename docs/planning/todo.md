@@ -12,9 +12,9 @@ Unresolved artwork metadata is tracked separately in
 - Accept the native input ownership guard and attachment/destruction behavior on
   Linux and Windows. Source completion and outstanding execution are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
-- Accept the typed event API and native resize channels through existing
-  registration/delivery/lifetime ownership. The named/`std::any` contract remains;
-  source coverage and outstanding execution are in the
+- Accept native resize channels on Linux and Windows, and neutral typed-event
+  delivery on Windows, through existing registration/delivery/lifetime ownership.
+  The named/`std::any` contract remains; outstanding execution is in the
   [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
 
 ## Gameplay and presentation facilities

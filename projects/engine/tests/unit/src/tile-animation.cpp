@@ -42,14 +42,14 @@ TEST(tile_animation, loop) {
 
 TEST(tile_animation, invalid) {
     auto animation = clip();
-    EXPECT_THROW(animation.cell_at(-1ms), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(animation.cell_at(-1ms)), CE::Exceptions::invalid_args);
     EXPECT_EQ(animation.cell_at(30ms), 3);
     animation.frames.back().duration = 0ms;
-    EXPECT_THROW(animation.cell_at(0ms), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(animation.cell_at(0ms)), CE::Exceptions::invalid_args);
     animation.frames.back().duration = -1ms;
-    EXPECT_THROW(animation.cell_at(0ms), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(animation.cell_at(0ms)), CE::Exceptions::invalid_args);
     animation.frames.clear();
-    EXPECT_THROW(animation.cell_at(0ms), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(animation.cell_at(0ms)), CE::Exceptions::invalid_args);
 }
 
 TEST(tile_animation, duration_limit) {
@@ -61,5 +61,5 @@ TEST(tile_animation, duration_limit) {
     animation.loop = true;
     EXPECT_EQ(animation.cell_at(maximum), 7);
     animation.frames.push_back({3, 1ms});
-    EXPECT_THROW(animation.cell_at(0ms), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(animation.cell_at(0ms)), CE::Exceptions::invalid_args);
 }

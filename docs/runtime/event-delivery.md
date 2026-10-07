@@ -156,5 +156,5 @@ destructor reentry without running another listener's cancellation under that lo
 concurrent producers, payload-copy invalidation, native-policy suppression, and
 reentrant recovery. Typed identity/ownership, compile-time constraints, waits,
 queued failure/error-sink lifetime and worker FIFO have additional regression
-sources; executable acceptance remains in the
+coverage. Remaining native and Windows acceptance is in the
 [typed-event task](../planning/develop-review-and-development-plan.md#u13--typed-events).

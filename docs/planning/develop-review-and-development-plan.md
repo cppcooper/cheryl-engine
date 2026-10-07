@@ -105,8 +105,9 @@ animation substitution uses simulation-owned time.
   with caller-owned phase, exact frame boundaries, looping and nonlooping behavior,
   invalid-timeline checks and source regressions.
   The [tile timing contract](../assets/asset-values-and-playback.md#tile-playback-and-rules)
-  defines current behavior; executable acceptance of `tile_animation.*` remains
-  outstanding.
+  defines current behavior.
+- [x] Accept tile-animation timing and neutral header probes in the Linux Engine-only
+  assembly through user-run testing.
 - [ ] Define the neighbor sampler, connectivity and unknown/edge-terrain policies;
   derive Wang signatures and bitmasks without borrowing a graphics-owned world.
 - [ ] Add seeded weighted candidate selection and an explicit missing-rule result;
@@ -161,7 +162,11 @@ must cover these contracts through the existing registration/delivery lifetime.
 - [x] Publish native WindowResized on a canonical typed channel while retaining the
   legacy named notification. Cover platform/simulation delivery and borrowed-window
   limits without exposing native types in Engine.
-- [ ] Accept typed event and native resize regressions with authorized execution;
+- [x] Accept typed event unit/queued-delivery regressions, runtime owner delivery and
+  neutral consumer/header probes in the Linux Engine-only assembly through user-run
+  testing.
+- [ ] Accept native resize regressions on Linux and Windows, and the neutral typed
+  event regressions on Windows;
   use the [focused validation procedure](../development/architecture-validation.md#typed-events).
   Source completion does not establish executable acceptance.
 

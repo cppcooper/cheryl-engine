@@ -115,4 +115,6 @@ Do not generate mailbox patches unless explicitly requested.
 - Follow the repository's existing style and `.clang-format`.
 - When organizing class declarations, place data members above methods.
 - Keep unit-test names short and intuitive rather than long and descriptive.
+- Tests must exercise behavior without intentionally emitting compiler warnings in normal builds. Consume results when they matter to the assertion; explicitly discard irrelevant `[[nodiscard]]` results with `static_cast<void>(...)`, including inside exception assertions. Apply the same warning discipline to other intentional diagnostic triggers.
+- Test compiler diagnostics themselves through isolated probes that capture and assert the expected diagnostic. Keep any required diagnostic suppression narrowly scoped to the tested construct and compiler; do not remove API attributes or disable warnings across a target/project to accommodate a test.
 - Do not use "no callers" or "few callers" as grounds for removing an interface. Evaluate interfaces according to their architectural purpose and contract.

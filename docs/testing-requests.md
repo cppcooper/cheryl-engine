@@ -8,12 +8,12 @@ meaningful coverage limits.
 
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
-| [TR1](#tr1-automated-engine-timing-and-typed-events) | Automated | Linux | Ready |
 | [TR2](#tr2-automated-native-input-and-resize-on-linux) | Automated | Linux/X11 | Ready |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
 | [TR4](#tr4-qa-desktop-resize) | QA | Linux/X11 and Windows | Ready after TR2/TR3 builds |
 | [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Ready with a supported controller |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
+| [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -32,43 +32,6 @@ at normal priority, selecting only the requested cases. Stop
 on a command failure. A zero-case selection or skipped case leaves that coverage
 pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
-
-## TR1: Automated Engine timing and typed events
-
-Accept U10's stateless tile-animation timing and U13's typed channel identity,
-payload ownership, callback errors, queued cancellation, waits and FIFO. The runtime
-case covers platform/simulation delivery in sequential and concurrent modes. The
-consumer build includes neutral first-include probes. This configuration also checks
-that these APIs require no native or graphics owner.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-engine -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
-    -DCHERYL_BUILD_DEMO=OFF
-  cmake --build build/testing-engine --parallel "$(nproc)" --target \
-    consumer-cengine tests-engine acceptance-engine
-  ./build/testing-engine/cheryl-consumer
-  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
-  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
-)
-```
-
-Timing coverage includes exact boundaries, loop wrapping, last-frame holding,
-out-of-order lookups, invalid durations and millisecond overflow. See the
-[timing contract](assets/asset-values-and-playback.md#tile-playback-and-rules) and
-[typed-event procedure](development/architecture-validation.md#typed-events).
 
 ## TR2: Automated native input and resize on Linux
 
@@ -112,7 +75,8 @@ desktop interaction check. HID/device evidence remains separate in TR5/TR6.
 
 Accept the same native cases on Windows, particularly rejection of reattachment to
 a different notification window and successful reattachment to the original live
-window. Include TR1's Engine regressions and consumer probes on this platform.
+window. Include tile-animation and typed-event regressions and consumer probes
+on this platform.
 Use a usable Windows desktop session. This is an acceptance request for the current
 Windows source, not evidence that its dependency/toolchain configuration is accepted.
 
@@ -244,3 +208,36 @@ The eventual QA request needs:
   destruction. A reconnect discovered by fallback polling is insufficient.
 
 Keep this request blocked until the harness has runnable setup/launch instructions.
+
+## TR7: Automated tile-animation warning correction
+
+Rebuild the changed tile-animation test source without discarded-result warnings
+and run its existing exception/boundary cases. Exception assertions now explicitly
+discard the returned cell with `static_cast<void>`; the public `[[nodiscard]]`
+attribute and value assertions remain intact. Reuse the Engine-only build from
+the completed TR1 request; its broader typed-event coverage needs no rerun for
+this test-only correction.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-engine -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=OFF
+  cmake --build build/testing-engine --parallel "$(nproc)" --target \
+    tests-engine
+  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^tests-engine\.tile_animation\.'
+)
+```
+
+Acceptance: the changed test source compiles without ignored-result diagnostics,
+and all selected `tile_animation.*` cases pass without skips.
