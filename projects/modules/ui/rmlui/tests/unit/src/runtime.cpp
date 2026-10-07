@@ -17,6 +17,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <future>
 #include <memory>
 #include <span>
@@ -279,9 +280,12 @@ namespace {
                 state_.simulation = std::this_thread::get_id();
                 session_ = std::make_unique<Session>(engine_.input(), 7);
                 session_->set_view(tick.logical_size, tick.framebuffer_size);
-                auto& document = RmlUiTests::document(*session_);
+                const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
+                // RmlUi strips the leading slash from absolute image URLs.
+                // Anchor the document at the fixtures and use relative names.
+                auto& document = RmlUiTests::document(*session_, (image_path.parent_path() / "runtime.rml").generic_string());
                 document.SetInnerRML(
-                    "<div>Queued RmlUi</div><img id='picture' src='" + std::string{CHERYL_RMLUI_TEST_IMAGE} +
+                    "<div>Queued RmlUi</div><img id='picture' src='" + image_path.filename().generic_string() +
                     "' style='width:20px; height:20px;' />"
                 );
                 picture_ = document.GetElementById("picture");
@@ -289,7 +293,7 @@ namespace {
                     throw std::runtime_error("Missing runtime image");
                 auto recording = session_->record();
                 // Change the native image before the queued upload sees its old pixels.
-                picture_->SetAttribute("src", std::string{CHERYL_RMLUI_TEST_BLUE_IMAGE});
+                picture_->SetAttribute("src", std::filesystem::path{CHERYL_RMLUI_TEST_BLUE_IMAGE}.filename().generic_string());
                 pending_ = uploader_.submit(engine_.platform_dispatcher().submission(), std::move(recording), materials_);
             } else {
                 EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
