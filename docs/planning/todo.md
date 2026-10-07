@@ -9,8 +9,8 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Accept Linux native consumer checks, Windows native input ownership
-  and attachment/destruction, and physical HID/notification behavior. Outstanding
+- Accept Windows native input ownership, attachment/destruction and consumer checks,
+  plus physical HID/notification behavior on Linux and Windows. Outstanding
   prerequisites and execution are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
 - Complete desktop resize QA and Windows native resize/neutral typed-event acceptance

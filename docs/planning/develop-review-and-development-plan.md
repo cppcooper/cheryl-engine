@@ -83,16 +83,16 @@ adapter support; use the resulting contract in the
   compatibility cases on Linux through user-run testing.
 - [x] Accept native owner rejection, attachment/destruction and reattachment
   regressions on Linux through user-run native OpenGL acceptance.
+- [x] Accept native consumer/header probes on Linux through user-run testing.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
   acceptance. The demo counter cannot establish those routes; prerequisites and
   required observations are in [testing requests](../testing-requests.md).
-- [ ] Accept Linux native consumer/header probes and Windows owner-policy and
-  attachment/destruction cases. Device-free polls do not establish
-  HID/device-notification behavior.
+- [ ] Accept Windows owner-policy, attachment/destruction and native consumer/header
+  probes. Device-free polls do not establish HID/device-notification behavior.
 
-Remaining automation requires native consumer/header checks on Linux, plus
-`input_lifetime.*` and native integration checks on Windows. Windows native
-integration includes `native_opengl.input_owner`, `input_window` and `input_reattach`.
+Remaining Windows automation requires `input_lifetime.*`, native consumer/header
+probes and integration checks, including `native_opengl.input_owner`, `input_window`
+and `input_reattach`.
 Select the real-display opt-in and include HID-enabled configurations before claiming
 the process-global backend or Windows notifications are accepted.
 The selected Gainput `InputManager::Init` discards `HIDInit`'s return code; successful

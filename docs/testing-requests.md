@@ -8,9 +8,8 @@ meaningful coverage limits.
 
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
-| [TR2](#tr2-automated-native-consumer-on-linux) | Automated | Linux/X11 | Consumer result pending |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
-| [TR4](#tr4-qa-desktop-resize) | QA | Linux/X11 and Windows | Ready after TR2/TR3 builds |
+| [TR4](#tr4-qa-desktop-resize) | QA | Linux/X11 and Windows | Ready with the Linux demo; Windows after TR3 |
 | [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Ready with a supported controller |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux and Windows | Blocked on an observation harness |
 | [TR7](#tr7-automated-tile-animation-warning-correction) | Automated | Linux | Ready; reuse the existing Engine-only build |
@@ -32,39 +31,6 @@ at normal priority, selecting only the requested cases. Stop
 on a command failure. A zero-case selection or skipped case leaves that coverage
 pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
-
-## TR2: Automated native consumer on Linux
-
-Accept the remaining native consumer/header probes. Reuse the existing HID-enabled
-Linux/X11 build. The consumer result has not been reported; the owner-policy, native
-input integration and resize callback cases are accepted and need no rerun for this
-request. The demo target supplies TR4/TR5 setup.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-native-linux -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
-    -DGAINPUT_ENABLE_HID=ON -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
-    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
-    -DCHERYL_BUILD_DEMO=ON
-  cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
-    consumer-module-native-glfw demo
-  ./build/testing-native-linux/cheryl-native-glfw-consumer
-  printf 'Native GLFW consumer passed.\n'
-)
-```
-
-Consumer/header checks do not observe physical controller reports or notifications.
-TR4 supplies desktop-generated resize QA; HID/device evidence remains in TR5/TR6.
 
 ## TR3: Automated native input and resize on Windows
 
@@ -119,9 +85,10 @@ attempting the dependent QA. Passing device-free polls does not accept TR6.
 ## TR4: QA desktop resize
 
 Verify desktop-generated resizing after the native resize bridge change. Use the
-TR2/TR3 demo with both optional UI adapters disabled. This checks rendering and
-responsiveness during actual window-manager delivery; automated TR2/TR3 establish
-the typed/legacy callback contract, which the demo does not display directly.
+existing Linux native demo or the Windows demo built by TR3, with both optional UI
+adapters disabled. This checks rendering and responsiveness during actual
+window-manager delivery. The demo does not display the typed/legacy callback
+contract; its Linux automation is accepted and its Windows coverage remains in TR3.
 
 Launch both runtime modes with the block for your platform. Close the first
 session to start the concurrent session. Use these same launch blocks for TR5.
@@ -168,7 +135,7 @@ recovery.
 ## TR5: QA controller reports and reconnection
 
 Verify actual controller reports through the demo rather than relying on a
-device-free native poll. Use the same HID-enabled build as TR2/TR3 and a controller
+device-free native poll. Use the same HID-enabled native build as TR4 and a controller
 supported by the selected Gainput backend, with permission to access its device.
 
 - Launch the demo normally, then repeat with `--concurrent`. Record OS, controller
