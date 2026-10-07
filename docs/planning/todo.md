@@ -9,11 +9,12 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
-- Accept the native input ownership guard and attachment/destruction behavior on
-  Linux and Windows. Source completion and outstanding execution are tracked in the
+- Accept Linux native consumer checks, Windows native input ownership
+  and attachment/destruction, and physical HID/notification behavior. Outstanding
+  prerequisites and execution are tracked in the
   [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
-- Accept native resize channels on Linux and Windows, and neutral typed-event
-  delivery on Windows, through existing registration/delivery/lifetime ownership.
+- Complete desktop resize QA and Windows native resize/neutral typed-event acceptance
+  through existing registration/delivery/lifetime ownership.
   The named/`std::any` contract remains; outstanding execution is in the
   [typed-event task](develop-review-and-development-plan.md#u13--typed-events).
 

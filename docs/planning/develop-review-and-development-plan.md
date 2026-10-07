@@ -79,16 +79,22 @@ adapter support; use the resulting contract in the
 - [x] Reject reattachment to a different Windows notification window while retaining
   devices and same-window reattachment.
 - [x] Add owner-policy and native integration regressions; document supported lifetime.
+- [x] Accept native owner-policy acquisition, failed initialization and window
+  compatibility cases on Linux through user-run testing.
+- [x] Accept native owner rejection, attachment/destruction and reattachment
+  regressions on Linux through user-run native OpenGL acceptance.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
   acceptance. The demo counter cannot establish those routes; prerequisites and
   required observations are in [testing requests](../testing-requests.md).
-- [ ] Accept the owner-policy checks and native attachment/destruction cases on Linux
-  and Windows. Source inspection does not establish HID/device-notification behavior.
+- [ ] Accept Linux native consumer/header probes and Windows owner-policy and
+  attachment/destruction cases. Device-free polls do not establish
+  HID/device-notification behavior.
 
-Execution requires `input_lifetime.*` in the native module and
-`native_opengl.input_owner`, `input_window` and `input_reattach` in the existing native
-acceptance suite. Select its real-display opt-in and include HID-enabled configurations
-before claiming the process-global backend or Windows notifications are accepted.
+Remaining automation requires native consumer/header checks on Linux, plus
+`input_lifetime.*` and native integration checks on Windows. Windows native
+integration includes `native_opengl.input_owner`, `input_window` and `input_reattach`.
+Select the real-display opt-in and include HID-enabled configurations before claiming
+the process-global backend or Windows notifications are accepted.
 The selected Gainput `InputManager::Init` discards `HIDInit`'s return code; successful
 initialization or a device-free poll cannot establish HID readiness. Native acceptance
 must independently observe controller reports and device notifications. Explicit
@@ -165,8 +171,10 @@ must cover these contracts through the existing registration/delivery lifetime.
 - [x] Accept typed event unit/queued-delivery regressions, runtime owner delivery and
   neutral consumer/header probes in the Linux Engine-only assembly through user-run
   testing.
-- [ ] Accept native resize regressions on Linux and Windows, and the neutral typed
-  event regressions on Windows;
+- [x] Accept native resize callback ordering, nested observations and typed/legacy
+  callback failure regressions on Linux through user-run testing.
+- [ ] Accept native resize and neutral typed-event regressions on Windows and
+  complete desktop-generated resize QA;
   use the [focused validation procedure](../development/architecture-validation.md#typed-events).
   Source completion does not establish executable acceptance.
 

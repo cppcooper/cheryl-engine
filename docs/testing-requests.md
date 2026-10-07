@@ -8,7 +8,7 @@ meaningful coverage limits.
 
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
-| [TR2](#tr2-automated-native-input-and-resize-on-linux) | Automated | Linux/X11 | Ready |
+| [TR2](#tr2-automated-native-consumer-on-linux) | Automated | Linux/X11 | Consumer result pending |
 | [TR3](#tr3-automated-native-input-and-resize-on-windows) | Automated | Windows | Ready; platform acceptance pending |
 | [TR4](#tr4-qa-desktop-resize) | QA | Linux/X11 and Windows | Ready after TR2/TR3 builds |
 | [TR5](#tr5-qa-controller-reports-and-reconnection) | QA | Linux/X11 and Windows | Ready with a supported controller |
@@ -33,12 +33,12 @@ on a command failure. A zero-case selection or skipped case leaves that coverage
 pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
 
-## TR2: Automated native input and resize on Linux
+## TR2: Automated native consumer on Linux
 
-Accept the native input owner policy, attachment/destruction, retained devices and
-reattachment with HID enabled. Accept the registered framebuffer callback's legacy
-and typed offers, nested resize observations and deferred callback failures. Run in
-a usable X11 desktop session; these cases create actual GLFW/OpenGL windows.
+Accept the remaining native consumer/header probes. Reuse the existing HID-enabled
+Linux/X11 build. The consumer result has not been reported; the owner-policy, native
+input integration and resize callback cases are accepted and need no rerun for this
+request. The demo target supplies TR4/TR5 setup.
 
 ```sh
 (
@@ -57,26 +57,21 @@ a usable X11 desktop session; these cases create actual GLFW/OpenGL windows.
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON
   cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
-    consumer-module-native-glfw tests-native-glfw acceptance-opengl demo
+    consumer-module-native-glfw demo
   ./build/testing-native-linux/cheryl-native-glfw-consumer
-  ctest --test-dir build/testing-native-linux --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
-  CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-native-linux \
-    --parallel "$(nproc)" --output-on-failure --no-tests=error \
-    -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
+  printf 'Native GLFW consumer passed.\n'
 )
 ```
 
-The input cases do not observe physical controller reports or device notifications.
-The resize cases invoke the registered C callback directly, so TR4 supplies the
-desktop interaction check. HID/device evidence remains separate in TR5/TR6.
+Consumer/header checks do not observe physical controller reports or notifications.
+TR4 supplies desktop-generated resize QA; HID/device evidence remains in TR5/TR6.
 
 ## TR3: Automated native input and resize on Windows
 
-Accept the same native cases on Windows, particularly rejection of reattachment to
-a different notification window and successful reattachment to the original live
-window. Include tile-animation and typed-event regressions and consumer probes
-on this platform.
+Accept native input integration and resize callback cases on Windows, particularly
+rejection of reattachment to a different notification window and successful
+reattachment to the original live window. Include tile-animation and typed-event
+regressions and consumer probes on this platform.
 Use a usable Windows desktop session. This is an acceptance request for the current
 Windows source, not evidence that its dependency/toolchain configuration is accepted.
 
