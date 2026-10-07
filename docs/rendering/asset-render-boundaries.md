@@ -9,8 +9,9 @@
 and resource providers. `core/rendering/` contains frame submissions, the renderer
 contract, copied draw parameters, and resolved packets.
 
-`backends/opengl/` contains the concrete OpenGL resources, provider, renderer,
-context, and GLFW composition. Its headers are opt-in through
+The [OpenGL module](../../projects/modules/graphics/opengl/README.md) owns concrete
+resources, provider, renderer and context under its `backends/opengl/` headers.
+Its headers are opt-in through
 `<backends/opengl.h>`; `<assets.h>` and `<core.h>` do not include Glad.
 Concrete resources may use OpenGL types, while shared asset and renderer
 interfaces must not expose them.
@@ -20,8 +21,9 @@ Units are zero-based requests owned by the draw/material; cached images retain
 no mutable binding unit. CPU submission specifies image parameters and units.
 The OpenGL renderer checks an image's backend independently of geometry binding.
 Standard shader parameters use `ShaderPass` and `ShaderDraw`; the OpenGL material maps
-semantic roles to its uniform names, including the selected texture unit. Custom
-uniform APIs remain available for application parameters. Common drawing code
+semantic roles to its uniform names; material sampler requests use ImageBinding.
+The legacy ShaderDraw path also carries a texture unit. Custom uniform APIs remain
+available for application parameters. Common drawing code
 does not select GLSL names.
 
 Typed pipeline definitions, immutable material defaults, and copied custom

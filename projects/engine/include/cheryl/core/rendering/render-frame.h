@@ -46,6 +46,8 @@ namespace CE::RenderAPIs {
         RenderFrame(RenderFrame&&) = delete;
         RenderFrame& operator=(RenderFrame&&) = delete;
 
+        // Borrowed active-pass view; keep the slot alive and exclude writing/recycling
+        // for the entire read. Outer-vector growth invalidates existing views.
         [[nodiscard]] std::span<const RenderPass> passes() const { return {passes_.data(), active_passes_}; }
 
         // After rendering or supersession, release packet handles on the graphics
@@ -61,6 +63,7 @@ namespace CE::RenderAPIs {
 
     /** A short-lived handle to one pass. Its index stays valid if adding another pass
      * grows the frame's outer vector. Use it only while the frame is being prepared.
+     * No writer operation synchronizes or publishes a slot to another thread.
      */
     class RenderPassWriter final {
     private:
@@ -75,9 +78,11 @@ namespace CE::RenderAPIs {
             const auto& pass = frame_.passes_[index_];
             return {pass.projection, pass.view};
         }
+        // Borrowed references can be invalidated by outer-vector growth or recycling.
         [[nodiscard]] const Assets::ParameterSet& parameters() const { return frame_.passes_[index_].parameters; }
         [[nodiscard]] const Assets::PassConstraints2D& constraints() const { return frame_.passes_[index_].constraints; }
 
+        // Validation/allocation failure leaves the existing draw list intact.
         void add(DrawPacket2D draw) {
             auto& pass = frame_.passes_[index_];
             validate_draw_packet(draw, pass.constraints);
@@ -106,6 +111,9 @@ namespace CE::RenderAPIs {
 
     /** Writes into a free slot after update(). Camera matrices are copied once per
      * pass; draw packets are constructed in the slot's retained vector storage.
+     * Caller excludes other writers/readers and retains the frame. Construction
+     * rejects unrecycled active passes. Destruction does not publish or roll back;
+     * a preparation failure requires recycling the partial frame before reuse.
      */
     class RenderFrameWriter final {
     private:
@@ -120,6 +128,8 @@ namespace CE::RenderAPIs {
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
 
+        // Appends an active pass in authored order, copying matrices and owning values.
+        // Keep returned writers within this preparation phase, before recycle/publication.
         [[nodiscard]] RenderPassWriter begin_pass(
             const glm::mat4& projection,
             const glm::mat4& view,

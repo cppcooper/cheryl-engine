@@ -9,6 +9,9 @@ namespace CE::RenderAPIs {
      * presentation surface, resource provider, or mutable game state.
      * render() consumes ordered passes from a published frame on the graphics thread.
      * The operations below are backend primitives for the frame renderer.
+     * Borrowed frame/matrix inputs must remain stable through each call. The caller
+     * brackets native use with backend initialization/teardown and retains its context.
+     * A backend failure may leave native state changed or part of a frame drawn.
      */
     class iRenderer {
     public:

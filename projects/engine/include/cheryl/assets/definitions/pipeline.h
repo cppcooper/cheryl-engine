@@ -34,6 +34,8 @@ namespace CE::Assets {
         std::optional<CullMode> cull;
     };
 
+    // Owned CPU recipe; source paths are not read by common validation. Publication
+    // copies a snapshot into Pipeline; native builders additionally link/reflect it.
     struct PipelineDefinition {
         std::vector<std::filesystem::path> program_sources;
         VertexLayout2D vertex_layout = VertexLayout2D::Position3UV2;
@@ -42,11 +44,14 @@ namespace CE::Assets {
         ParameterContract parameters;
     };
 
-    // Defaults include image handles/unit requests through ImageBinding values.
+    // Retains a pipeline generation; defaults own image handles/unit requests.
+    // Material construction validates this partial custom layer, not a complete draw.
     struct MaterialDefinition {
         std::shared_ptr<const Pipeline> pipeline;
         ParameterSet defaults;
     };
 
+    // CPU-only structural validation; throws on empty paths, unsupported layout/
+    // topology/state, disabled-depth writes or an invalid parameter contract.
     void validate_pipeline_definition(const PipelineDefinition& definition);
 }

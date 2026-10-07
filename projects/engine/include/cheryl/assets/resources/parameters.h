@@ -21,6 +21,8 @@ namespace CE::Assets {
         std::uint32_t unit = 0;
     };
 
+    // Values/keys are owned; copying a sampler retains its immutable image. CPU
+    // validation/resolution requires stable inputs but no graphics context.
     using ParameterValue = std::variant<float, int, unsigned int, bool, glm::vec2, glm::vec3, glm::vec4, glm::mat4, ImageBinding>;
     using ParameterSet = std::map<std::string, ParameterValue, std::less<>>;
 
@@ -40,13 +42,20 @@ namespace CE::Assets {
     using ParameterContract = std::vector<ParameterDefinition>;
 
     [[nodiscard]] ParameterType parameter_type(const ParameterValue& value);
+    // Throws invalid_args for malformed keys/types/semantics/defaults. Does not
+    // reflect a program or validate image domains, unit limits or numeric ranges.
     void validate_parameter_contract(const ParameterContract& contract);
+    // Validate one partial custom layer: rejects unknown/semantic keys, wrong types
+    // and null images; does not require complete values or distinct sampler units.
     void validate_parameter_values(const ParameterContract& contract, const ParameterSet& values);
-    // Validate a complete packet, including engine values already resolved by its producer.
+    // Validate a complete packet, including already resolved engine values. Requires
+    // all required keys and distinct sampler units; does not verify semantic provenance.
     void validate_resolved_parameters(const ParameterContract& contract, const ParameterSet& values);
 
     // Copies defaults < pass < material < draw. Engine semantics have a single owner
-    // and cannot be overridden by a custom-value layer. Optional missing keys are absent.
+    // and cannot be overridden by a custom-value layer. Validate every input layer,
+    // even overridden entries, then the complete result. Optional missing keys are
+    // absent. Failure leaves inputs unchanged and returns no partially resolved set.
     [[nodiscard]] ParameterSet resolve_parameters(
         const ParameterContract& contract,
         const ShaderPass& pass_semantics,

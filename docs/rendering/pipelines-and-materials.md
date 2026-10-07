@@ -77,6 +77,18 @@ validation checks complete primitives and bounded ranges before publication;
 native drawing additionally checks VAO/program domain identity and the live current
 context. Program/image native domains are checked as well.
 
+Common validation is CPU-only and reads stable inputs. Pipeline construction checks
+source paths for emptiness, supported layout/topology/state and parameter contracts;
+it does not read files, link or reflect a program. Material construction validates a
+partial custom-default layer, so required values and sampler collisions are checked
+when resolving a complete draw. `validate_parameter_values()` permits missing keys
+and colliding units in a partial layer; `validate_resolved_parameters()` requires
+required keys and distinct final sampler units, but does not prove that engine values
+actually came from a camera. Neither checks image domains, backend unit limits,
+numeric finiteness or alpha/scale ranges. Backend binding supplies its additional
+validation. A validation/resolution failure leaves caller inputs and immutable recipes
+unchanged.
+
 ### Rectangular clipping
 
 `DrawStyle2D::clip` resolves into a copied optional `DrawPacket2D::clip`. A
@@ -181,8 +193,52 @@ and assigns stable authored order. RenderFrame keeps reusable vector capacity an
 releases packet/pass handles on recycle. The OpenGL renderer checks its native
 pipeline domain, then calls the validated fixed-state draw path in authored order.
 Graphic/Tile/TileAnimation and text drawing use CPU submission helpers.
+Their [asset/playback contract](../assets/asset-values-and-playback.md) defines
+metadata and glyph units, direct-construction limits and image-key insertion.
 Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
 FFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
 place and rotate text through DrawStyle2D.model_matrix. New fonts use STBFont with
 a supplied system or bundled font file. ASCII fallback is explicit; Unicode shaping
 remains separate. See [FFont deprecation](../resources/legacy-ffont.md).
+
+### Frame storage and writers
+
+Frame writers borrow a slot; they do not lock it or publish it across threads.
+The runtime's [frame boundary](../runtime/runtime-frame-boundary.md) owns that transfer.
+Only active passes are visible through `passes()`, whose span borrows the slot and
+is invalidated by outer-vector growth. A RenderPassWriter uses an index that survives
+that growth, but references from `parameters()`/`constraints()` do not. Keep every
+writer within one exclusive preparation phase, before publication or recycling.
+
+Each `add()` validates before inserting. The group overload validates all packets
+and reserves capacity before appending any of them. Validation/allocation failure
+leaves that pass's earlier draws intact; it does not roll back an entire frame or
+other application side effects. Writer destruction performs no commit or rollback.
+Recycle a partially prepared frame before reuse. `begin_pass()` owns its values and
+copies matrices; a pass's constraints are immutable during its preparation through
+this writer API. Authored pass/draw order is the playback order regardless of the
+packet's `order_sensitive` metadata.
+
+Recycle only after playback or supersession excludes readers, on the resource
+release owner required by the backend. It releases active packet/pass handles and
+keeps vector capacity for later preparation. Native render/presentation failures
+can leave partial output or changed native state; CPU validation is not a transaction
+over backend execution.
+
+### Camera observations
+
+CameraBase is unsynchronized mutable CPU state. Setters and matrix references belong
+to one owner; a revision is a change counter, not an atomic publication mechanism.
+Copy matrices into a pass before sharing them with playback. Changed framebuffer
+size, view or perspective advances the revision once, while equal configurations
+leave it unchanged. View equality is exact per component; view matrices are not
+checked for finiteness or invertibility.
+
+Framebuffer dimensions are pixels. Negative dimensions throw before changing the
+camera; zero dimensions are retained while projection clamps each axis to at least
+one. Camera2D uses GLM orthographic bounds `[0, width]` and `[0, height]`, Y-up, with
+near/far 0/1. Camera3D uses vertical FOV in degrees and framebuffer aspect; finite
+`0 < FOV < 180` and `0 < near < far` are required, with plane distances in view units.
+Invalid perspective values leave the old configuration unchanged. Neither camera
+selects renderer depth policy or converts logical window coordinates to framebuffer
+pixels; that choice belongs to the consumer.

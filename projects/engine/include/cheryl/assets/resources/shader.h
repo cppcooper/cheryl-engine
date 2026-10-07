@@ -3,6 +3,9 @@
 #include <glm.hpp>
 
 namespace CE::Assets {
+    // Copied engine semantics. Matrices use the caller's coordinate convention;
+    // alpha/scale have no common clamping. ShaderDraw::texture_unit is a legacy
+    // zero-based request; material parameters use explicit ImageBinding instead.
     struct ShaderPass {
         glm::mat4 projection{1.0f};
         glm::mat4 view{1.0f};
@@ -14,7 +17,9 @@ namespace CE::Assets {
         int texture_unit = 0;
     };
 
-    // Parameters supplied by draw calls to the selected rendering backend.
+    // Mutable executable-program access on the backend owner/current context.
+    // Retain the program through use; uniform names/matrices are borrowed for each
+    // call. Native type/name validation and failure state belong to the backend.
     struct Shader {
         virtual ~Shader() = default;
         // Bind semantic engine parameters; concrete backends choose their representation.

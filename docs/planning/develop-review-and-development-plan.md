@@ -180,7 +180,7 @@ Complete the still-open public-contract inventory alongside each implementation 
 - [x] Asset definitions, resource handles, playback and CPU submission: document
   retained versus borrowed data, construction/lookup failures, timing and coordinate
   units, and the loader's validation boundary.
-- [ ] Parameters, render-frame writers and cameras: document validation scope,
+- [x] Parameters, render-frame writers and cameras: document validation scope,
   publication/borrowed lifetimes, owner-thread rules and projection units.
 - [ ] Input and dispatch declarations: document owner operations, cross-thread
   handles, consumption boundaries, cancellation and callback lifetime.
