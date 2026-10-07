@@ -54,6 +54,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 
 ## Development
 
+- [Pending automated and QA testing requests](testing-requests.md)
 - [C++ code style](development/code-style.md)
 - [Recorded validation and repeatable commands](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)

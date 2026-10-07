@@ -56,6 +56,18 @@ Once the plan is established, follow it unless implementation reveals informatio
 
 Complete and commit coherent development units independently so the commit history reflects the progression of the implementation and preserves completed work as later development proceeds.
 
+## Testing requests
+
+- Maintain `docs/testing-requests.md` as the user-facing queue of testing needed for implemented work. Reconcile it after each coherent development unit and whenever source, targets, configuration or reported results change the required coverage.
+- Aggregate deferred testing across development cycles. Extend an existing request when it covers the same behavior and configuration; avoid duplicate case runs through owner and aggregate runners, and batch needed build targets into as few invocations as practical.
+- Label each request as **Automated** or **QA**, with its platform, prerequisites, readiness and acceptance scope. Keep development progress in the owning plan rather than duplicating its macro-task checklist here.
+- For each automated request, provide a runnable fenced command block. Include required CMake configuration, explicit build targets, environment opt-ins, working directory and test selection. State when a matching existing build can be reused.
+- User-run command-line CMake configuration must explicitly select Ninja with `-G Ninja`. Build and test commands use that configured build directory.
+- For each QA request, provide a brief detailed summary and concise requirement bullets covering setup, actions, expected observations and required platform/runtime modes.
+- Mark requests blocked when fixtures, hardware or an observation harness are unavailable, and identify the next action. Do not invent commands or count skipped, unselected or device-free checks as the missing acceptance.
+- When the user reports results, reconcile requests and owning plans with the actual tested revision, configuration, platforms and coverage. Remove accepted requests, preserve unresolved portions and repair affected links; retain durable coverage limits in the relevant subject guide rather than appending routine execution logs.
+- Submitting a request does not authorize agents to configure/build the project or execute tests. Existing repository authorization rules still apply.
+
 ## Documentation discipline
 
 Documentation should help a reader understand the current system or complete future work. Keep context proportional to the task: start with the relevant roadmap or subject document and follow related links as needed rather than loading the entire planning folder.

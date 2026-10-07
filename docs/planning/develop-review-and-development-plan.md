@@ -13,6 +13,8 @@ consumer-selected extensions are deferred to the [long-term plan](long-term-plan
 Implementation history belongs in Git. Keep durable contracts in their subject
 documents and retain only coverage limits or blockers that affect future work. Do not
 append completed task narratives or routine successful execution reports here.
+User-run commands, QA requirements and unavailable acceptance prerequisites are in
+the [testing request queue](../testing-requests.md).
 
 ## Current baseline
 
@@ -77,6 +79,9 @@ adapter support; use the resulting contract in the
 - [x] Reject reattachment to a different Windows notification window while retaining
   devices and same-window reattachment.
 - [x] Add owner-policy and native integration regressions; document supported lifetime.
+- [ ] Expose HID report/backend and Windows notification observations for lifecycle
+  acceptance. The demo counter cannot establish those routes; prerequisites and
+  required observations are in [testing requests](../testing-requests.md).
 - [ ] Accept the owner-policy checks and native attachment/destruction cases on Linux
   and Windows. Source inspection does not establish HID/device-notification behavior.
 
