@@ -13,6 +13,7 @@ author pages below, then extract or copy the images into the expected locations.
 | [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/character-customizer.json) |
 | [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/punyworld-overworld.json) |
 | [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/magecity.json) |
+| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | [dungeon_tiles.png](https://opengameart.org/sites/default/files/dungeon_tiles_0.png) | [dungeon_tiles.json](../../assets/dungeon_tiles.json) |
 
 The three MiniWorld sprite/building manifests share one archive. Character Customizer
 is a separate archive on the same page. That page also offers `MiniworldGuide.docx`
@@ -60,22 +61,26 @@ Place the downloaded `magecity.png` at `tilesets/magecity.png`. Preserve the ori
 256×1450-pixel image. The manifest describes its populated region as eight columns
 and forty-four rows of 32-pixel cells.
 
-## Packages needing a confirmed match
+### Dungeon tileset
 
-### Legacy dungeon sheet — 0x72
+Place Buch's `dungeon_tiles.png` at `tilesets/dungeon_tiles.png`. The hosted download
+can be saved as `dungeon_tiles_0.png`; rename it to the manifest's filename. The image
+is 368×384 pixels, with twenty-three columns and twenty-four rows of 16-pixel cells.
+This source PNG matches the existing sheet. The separate 0x72 packages below have
+their own layouts and future manifests.
 
-| Detail | Expected value |
-| --- | --- |
-| Manifest | [dungeon_tiles.json](../../assets/dungeon_tiles.json) |
-| Image path | `assets/tilesets/dungeon_tiles.png` |
-| Image dimensions | 368×384 pixels |
-| Cell layout | Twenty-three columns and twenty-four rows of 16-pixel cells |
-| Candidate source | [16x16 Dungeon Tileset — 0x72](https://0x72.itch.io/16x16-dungeon-tileset), currently offering `0x72_16x16DungeonTileset.v5.zip` |
+## Downloaded packages awaiting manifests
 
-The exact archive revision and member corresponding to this legacy combined sheet
-are not yet confirmed. To resolve this entry, identify the download and archive member
-containing the matching image. Compare its dimensions and cell layout before renaming
-it; a different layout needs a deliberate manifest remap. DungeonTileset II is a
-separate layout.
-Matching source provenance and slice metadata remain in the
-[asset metadata plan](../planning/asset-manifest-todo.md).
+These source packages are saved locally under the ignored `asset-downloads/` tree,
+outside `assets/` because the loader discovers PNGs recursively. The ZIPs remain
+unextracted. `asset-downloads/0x72/sources.json` records their source pages, filenames,
+sizes and SHA-256 hashes. Local downloads are not included in Git.
+
+| Package and author page | Directory under `asset-downloads/0x72/` | Saved files |
+| --- | --- | --- |
+| [16x16 Dungeon Tileset — 0x72](https://0x72.itch.io/16x16-dungeon-tileset) | `16x16-dungeon-tileset/` | `0x72_16x16DungeonTileset.v5.zip` |
+| [16x16 DungeonTileset II — 0x72](https://0x72.itch.io/dungeontileset-ii) | `dungeontileset-ii/` | `0x72_DungeonTilesetII_v1.7.zip`, `pumpkin_dude.png`, `doc.png` |
+
+Unpacking these packages and writing a manifest for each belongs to the
+[long-term asset task](../planning/long-term-plan.md#additional-dungeon-asset-manifests).
+The extension and remix links on their author pages are separate candidate packages.

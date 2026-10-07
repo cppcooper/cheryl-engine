@@ -19,7 +19,7 @@
   },
   "tilesets": {
     "dungeon": {
-      "description": "The complete 23-column by 24-row legacy 0x72 dungeon sheet.",
+      "description": "The complete 23-column by 24-row Buch dungeon sheet.",
       "grid": {
         "origin": {
           "x": 0,

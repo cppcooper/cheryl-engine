@@ -7,7 +7,7 @@ consumer requirements and prerequisites are settled.
 | --- | --- | --- |
 | Short term | Native input lifetime and device integration acceptance | [Native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety) |
 | Mid term | Deterministic tile selection, Unicode layout, measured optimization and typed events | [Development roadmap](develop-review-and-development-plan.md#remaining-roadmap) |
-| Long term | Steam API/Steam Input, optional input composition and consumer-selected engine or module extensions | [Long-term plan](long-term-plan.md) |
+| Long term | Additional dungeon asset manifests, Steam API/Steam Input, optional input composition and consumer-selected engine or module extensions | [Long-term plan](long-term-plan.md) |
 
 [todo.md](todo.md) summarizes unresolved engine facilities;
 [asset-manifest-todo.md](asset-manifest-todo.md) tracks artwork metadata and owner

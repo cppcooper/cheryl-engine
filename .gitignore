@@ -18,6 +18,7 @@ notes/
 assets/**/*.txt
 assets/**/*.xcf
 assets/**/*.docx
+/asset-downloads/
 
 /cheryl/
 bb-key

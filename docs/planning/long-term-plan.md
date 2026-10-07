@@ -1,8 +1,9 @@
 # Long-term engine and integration plans
 
-This work is deferred until a named application consumer establishes its scope and
-prerequisites. Steam API services, Steam Input and their SDK-free preparation are
-outside the short- and mid-term development sequence.
+Engine and module extensions are deferred until a named application consumer
+establishes their scope and prerequisites. Additional asset manifests below are also
+deferred to the long term. Steam API services, Steam Input and their SDK-free
+preparation are outside the short- and mid-term development sequence.
 
 Use the current ownership, lifetime, selection and standalone contracts in the
 [module guide](../development/modules.md). Its
@@ -97,6 +98,32 @@ rebinding before adding hotplug support; monitor scale alone does not satisfy a
 per-window service. The current
 [display/window contract](../runtime/display-and-window-contract.md) defines the
 construction-time inventory and copied-size capability limits.
+
+## Additional dungeon asset manifests
+
+Prepare one manifest for each of the two 0x72 dungeon packages in the
+[download catalog](../assets/catalog.md#downloaded-packages-awaiting-manifests) when
+this long-term task becomes active. Keep the original downloads available for source
+comparison. Preserve the existing Buch dungeon image and manifest; the added packages
+need distinct namespaces and image directories.
+
+Handle one package per coherent development unit:
+
+1. Unpack the saved archive into its own image tree and inventory renderable sheets,
+   helper images, editor data and author documentation for that revision.
+2. Establish cell bounds, pivots, named slices, action/facing rows and animation
+   timing from the matching artwork and supplied metadata. Record unresolved
+   semantics rather than inferring them from dimensions alone.
+3. Write a separate JSON manifest covering the selected package images and add its
+   final locations and manifest link to the catalog. Use the current
+   [manifest format](../assets/asset-manifests.md) and
+   [loading validation contract](../assets/asset-loading.md).
+
+**Acceptance:** the catalog identifies each package revision, and its manifest uses
+valid image paths and grids; slices and animations match that revision. Schema/source checks and
+authorized loader execution establish their respective coverage. Package acquisition
+does not establish manifest or runtime acceptance. Community extension/remix packs
+remain separate candidates outside these two manifests.
 
 ## Development boundary
 
