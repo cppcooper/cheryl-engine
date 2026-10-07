@@ -77,11 +77,11 @@ TEST(utf8, resume) {
 TEST(utf8, owned) {
     std::vector<Utf8Scalar> scalars;
     {
-        std::string source = "\xef\xbb\xbf" "e\xcc\x81\xef\xb7\x90";
+        std::string source = "\xef\xbb\xbf" "e\xcc\x81\xef\xb7\x90\xcd\xb8";
         scalars = decode_utf8(source);
         source.assign(source.size(), 'X');
     }
     const std::vector<Utf8Scalar> expected{{U'\ufeff', 0, 3, false}, {U'e', 3, 1, false},
-        {U'\u0301', 4, 2, false}, {U'\ufdd0', 6, 3, false}};
+        {U'\u0301', 4, 2, false}, {U'\ufdd0', 6, 3, false}, {U'\u0378', 9, 2, false}};
     EXPECT_EQ(scalars, expected); // No BOM stripping, normalization or combining-mark clustering.
 }

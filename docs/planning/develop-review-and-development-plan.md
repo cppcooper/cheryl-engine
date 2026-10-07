@@ -201,11 +201,11 @@ Implement two coherent source units before the wider layout boundary:
   bytes. Keep scalar positions distinct from grapheme and shaping-cluster indices.
 - [x] Add decoder source regressions and a first-include probe; aggregate Linux
   Engine-only acceptance with the existing asset request.
-- [ ] Make STBFont layout and callback traversal consume decoded scalars, preserving
+- [x] Make STBFont layout and callback traversal consume decoded scalars, preserving
   printable ASCII, newline/CR/tab behavior and callback exception semantics. Emit one
   fallback per unsupported scalar or malformed subpart. Retain FFont's legacy byte
   contract and keep atlas contents unchanged.
-- [ ] Add ASCII, multilingual fallback, malformed-input and CPU submission regressions;
+- [x] Add ASCII, multilingual fallback, malformed-input and CPU submission regressions;
   document current encoding behavior and reconcile the same acceptance request.
 - [ ] Accept the implemented decoder/font changes through user-run
   [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
@@ -228,6 +228,28 @@ requirements above before a public run API or dependency choice. Resource upload
 follow the [consumer resource contract](../resources/consumer-resource-contract.md);
 layout cannot mutate an atlas retained by a submitted frame. IME/preedit and
 grapheme-aware editing remain separate consumer contracts until explicitly selected.
+
+The existing resource boundary determines the safe run model: glyph IDs are qualified
+by their font face, and placements retain the matching atlas/geometry generation as
+one immutable snapshot. A later upload/repack publishes fresh handles through the
+provider owner; old submitted runs keep the old handles. CPU layout must not pair
+placements from one generation with subsequently borrowed Font handles. Preserve the
+existing Font/FFont APIs and introduce the selected run service alongside them.
+
+**Decisions for the next unit:** choose representative languages/scripts and whether
+mixed left-to-right/right-to-left paragraphs are required initially; choose an ordered
+application-supplied fallback font list or system-font coverage discovery; choose
+explicit newlines versus automatic wrapping and whether color emoji is in scope.
+The proposed first rendering scope uses ordered supplied fonts, explicit newlines and
+grayscale glyphs, with editing/IME separate. Actual script/direction requirements
+determine the shaping/bidi dependencies and acceptance fixtures.
+
+[HarfBuzz](https://harfbuzz.github.io/what-is-harfbuzz.html) is a candidate for glyph
+shaping and [FreeType](https://freetype.org/freetype2/docs/index.html) for font access
+and rasterization. HarfBuzz does not perform paragraph bidi or line breaking; those
+need separate policy/services according to its
+[scope documentation](https://harfbuzz.github.io/what-harfbuzz-doesnt-do.html).
+No dependency or public shaped-run API is selected before these requirements.
 
 **Acceptance:** invalid UTF-8, multilingual/fallback and cluster cases have defined
 results; multi-byte input is not rendered as a fallback per byte; glyph runs survive

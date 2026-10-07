@@ -58,9 +58,9 @@ instructions. Windows notification observations are in the
 
 ## TR7: Automated Engine asset preparation
 
-Build the CPU tile selector/Tileset integration and their neutral first-include
-probes and neutral UTF-8 decoder, then run the focused selection, animation,
-submission, manifest and encoding regressions. Coverage includes edge/corner site
+Build the CPU tile selector/Tileset integration, UTF-8 decoder and STBFont integration
+with their neutral first-include probes, then run the focused selection, animation,
+submission, manifest, encoding and font regressions. Coverage includes edge/corner site
 labels, declared bit order, diagonal gating, outside/unknown policies, missing rules,
 weighted seeded repeatability, large finite weights and malformed direct rules,
 one-time target substitution, caller-owned phases, original/resolved grid bounds and
@@ -68,6 +68,10 @@ packet resource retention without native binding or world resampling.
 Encoding cases cover valid scalar ranges, byte offsets, embedded NUL/BOM,
 maximal-subpart replacement, truncated prefixes, forbidden encodings and preservation
 of valid successor bytes. Owned records survive source mutation/destruction.
+Font cases cover unchanged ASCII spacing/controls, one fallback per unsupported
+scalar or malformed subpart, callback exception behavior, and text packets retaining
+resources and copied placement after the text/font is released. These cases use
+synthetic immutable font metrics/resources and require no installed font file.
 The existing timing cases also cover the pending ignored-result warning correction;
 exception assertions explicitly discard irrelevant values while retaining the public
 `[[nodiscard]]` contract. This request needs no display, controller or graphics module.
@@ -92,14 +96,16 @@ unrelated typed-event acceptance needs no rerun.
     tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8)\.|asset_submission\.(selected_tile|tile_strip_ranges)$)'
+    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
 Acceptance: the implementation and public header probes compile without new warnings,
 and all selected `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
-`asset_manifest.*`, `utf8.*` and the two selected `asset_submission` cases pass without skips.
-Committed source and static checks do not establish this acceptance.
+`asset_manifest.*`, `utf8.*`, `stbfont.*` and the four selected `asset_submission` cases
+pass without skips. The new font cases establish UTF-8 fallback over the ASCII atlas,
+not actual multilingual glyph coverage or shaping. Committed source and static checks
+do not establish this acceptance.
 
 ## TR8: Automated controller diagnostic build
 

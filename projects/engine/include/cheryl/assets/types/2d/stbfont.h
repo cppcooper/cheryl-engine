@@ -1,5 +1,6 @@
 #pragma once
 #include <assets/types/2d/font.h>
+#include <text/utf8.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -23,9 +24,8 @@ namespace CE::Assets {
         float line_height{};
     };
 
-    // TODO: A Unicode/text-layout service must decode code points and shape glyph runs before
-    // drawing; this atlas covers only printable ASCII and the current layout treats bytes as
-    // characters (multi-byte UTF-8 sequences each produce separate fallback glyphs).
+    // TODO: Full glyph layout needs selected shaping, fallback fonts and retained atlas generations.
+    // UTF-8 decoding here selects ASCII glyphs or one fallback per unsupported scalar/subpart.
     /** Baked ASCII glyph quads, advances, and alpha atlas. Layout reads immutable
      * metrics, so published text commands can share a font without changing it.
      */
@@ -38,7 +38,8 @@ namespace CE::Assets {
         explicit STBFont(STBFontData data);
         ~STBFont() override = default;
         // Baked pixel offsets; newline moves down one line, CR is ignored, tab advances
-        // four spaces, other unsupported bytes select '?'. alternate_bank throws.
+        // four spaces, other unsupported UTF-8 scalars or malformed subparts select '?'.
+        // This ASCII atlas has no shaping or non-ASCII glyphs. alternate_bank throws.
         [[nodiscard]] std::vector<GlyphPlacement2D>
         layout(std::string_view text, FontLayoutOptions options = FontLayoutOptions{}) const override;
         /** Bake printable ASCII from a caller-supplied font file at a positive
@@ -57,9 +58,12 @@ namespace CE::Assets {
         template <typename SubmitGlyph> void for_each_glyph(std::string_view text, SubmitGlyph&& submit) const {
             float cursor_x = 0.0f;
             float cursor_y = 0.0f;
-            constexpr auto fallback = static_cast<unsigned char>('?');
+            constexpr auto fallback = U'?';
             constexpr auto space_index = static_cast<std::size_t>(' ' - first_font_character);
-            for (const unsigned char requested : text) {
+            std::size_t offset = 0;
+            while (const auto scalar = Text::decode_utf8_scalar(text, offset)) {
+                offset += scalar->byte_count;
+                const auto requested = scalar->value;
                 if (requested == '\n') {
                     cursor_x = 0.0f;
                     cursor_y -= line_height_;

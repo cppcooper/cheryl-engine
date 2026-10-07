@@ -119,6 +119,37 @@ TEST(asset_submission, text_layout_and_retention) {
     EXPECT_EQ(image->native_calls, 0);
 }
 
+TEST(asset_submission, utf8_text) {
+    auto geometry = std::make_shared<SubmissionGeometry>(font_character_count * 6, PrimitiveTopology::Triangles);
+    auto image = std::make_shared<SubmissionImage>();
+    std::weak_ptr<SubmissionGeometry> retained_geometry = geometry;
+    std::weak_ptr<SubmissionImage> retained_image = image;
+    std::array<float, font_character_count> advances;
+    advances.fill(5.0f);
+    auto font = std::make_unique<STBFont>(STBFontData{geometry, image, advances, 12.0f});
+    auto style = make_style(PrimitiveTopology::Triangles);
+    style.model_matrix[3][0] = 10.0f;
+    style.scale = 2.0f;
+    std::string text = "A\xc3\xa9\xe4\xb8\xad\xf0\x9f\x98\x80" "B";
+    const auto packets = resolve_text(*font, text, style, make_context());
+    text.clear();
+    font.reset();
+    geometry.reset();
+    image.reset();
+    ASSERT_EQ(packets.size(), 5u);
+    EXPECT_EQ(packets.front().first_vertex, static_cast<std::size_t>('A' - first_font_character) * 6);
+    for (std::size_t index = 1; index < 4; ++index)
+        EXPECT_EQ(packets[index].first_vertex, static_cast<std::size_t>('?' - first_font_character) * 6);
+    EXPECT_EQ(packets.back().first_vertex, static_cast<std::size_t>('B' - first_font_character) * 6);
+    EXPECT_FLOAT_EQ(std::get<glm::mat4>(packets.back().parameters.at("model"))[3][0], 50.0f);
+    ASSERT_FALSE(retained_geometry.expired());
+    ASSERT_FALSE(retained_image.expired());
+    EXPECT_EQ(packets.front().geometry, retained_geometry.lock());
+    EXPECT_EQ(std::get<ImageBinding>(packets.back().parameters.at("image")).image, retained_image.lock());
+    EXPECT_EQ(retained_geometry.lock()->native_calls, 0);
+    EXPECT_EQ(retained_image.lock()->native_calls, 0);
+}
+
 TEST(font_layout, independent_font_banks) {
     auto geometry = std::make_shared<SubmissionGeometry>(num_chars_ffont * 6, PrimitiveTopology::Triangles);
     auto image = std::make_shared<SubmissionImage>();

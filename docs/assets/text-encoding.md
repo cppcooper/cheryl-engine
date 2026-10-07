@@ -33,7 +33,17 @@ address the original view; scalar indices address record order. Combining marks,
 ligatures and emoji sequences require separate grapheme/shaping-cluster mappings,
 and glyph indices are not interchangeable with either source index.
 
+`STBFont::layout()` and `for_each_glyph()` use the scalar decoder without changing
+the baked printable-ASCII atlas. Each unsupported scalar or malformed subpart draws
+one `?`, so a valid two-, three- or four-byte character no longer expands into one
+fallback per byte. Printable ASCII and newline/CR/tab handling retain their previous
+metrics. Embedded NUL remains an unsupported scalar rather than ending the view.
+FFont retains its deprecated byte-oriented contract. See
+[font submission](asset-values-and-playback.md#fonts-and-cpu-submission).
+
 The [Unicode task](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources)
-owns font integration, shaped runs, fallback and glyph resources. Decoder source
-regressions and a neutral first-include probe have pending Linux acceptance in
+owns the unresolved script/paragraph scope, shaped runs, fallback fonts and retained
+glyph generations. The current ASCII atlas does not establish multilingual glyph
+coverage, combining-mark placement, bidi order or grapheme-aware editing. Decoder,
+STBFont and submission regression sources plus neutral probes have pending Linux acceptance in
 [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).

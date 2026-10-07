@@ -200,10 +200,14 @@ clock. Source regressions and first-include probes have pending Linux acceptance
 
 `Font::layout()` returns owned glyph placements and does not retain the input text.
 Indices address six-vertex glyph quads; offsets are local Y-up pen positions in the
-font's metrics. STBFont uses baked pixel metrics and printable ASCII bytes. Space
+font's metrics. STBFont decodes UTF-8 and uses baked printable-ASCII glyphs. Space
 advances without a glyph, newline resets X and subtracts line height, carriage return
-is ignored, and tab advances four spaces. Other bytes use `?` individually, including
-each byte of UTF-8. Alternate-bank layout is rejected. FFont has a separate
+is ignored, and tab advances four spaces. Each unsupported scalar selects one `?`;
+malformed input selects one `?` per maximal subpart using the
+[encoding contract](text-encoding.md). Combining sequences remain separate scalar
+placements because this atlas supplies no shaping or non-ASCII glyphs. Callback
+traversal uses the same decoding/spacing rules; exceptions propagate with prior
+callback effects intact. Alternate-bank layout is rejected. FFont retains a separate
 [legacy metric/bank contract](../resources/legacy-ffont.md).
 
 `resolve_sprite`, `resolve_tile`, `resolve_graphic` and `resolve_text` perform CPU
