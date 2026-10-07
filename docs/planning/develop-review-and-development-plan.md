@@ -193,7 +193,20 @@ with encoding and the existing ASCII atlas before introducing shaped runs or new
 dependencies. The current Font interface exposes quad indices and one atlas/geometry
 pair, so extending it directly would constrain fallback and retained generations.
 
-Implement two coherent source units before the wider layout boundary:
+The initial rendering scope covers English, accented Latin including French/German,
+and Russian/Cyrillic. Implement Unicode paragraph direction (automatic or explicitly
+LTR/RTL), mixed-direction runs and optional width-constrained wrapping. Callers supply
+width in local font pixels; UI code derives that constraint from its own layout/scale.
+Color emoji, full CJK acceptance and editing/IME are outside this batch. Additional
+scripts use the same pipeline but need suitable fonts and their own acceptance.
+
+Font selection accepts ordered application font files and installed family names,
+then optional automatic common-family selection, then an embedded licensed fallback.
+Common system families are preferences rather than availability guarantees. The
+embedded fallback supplies the initial alphabets and a visible replacement when no
+face covers an entire grapheme; it cannot promise every Unicode character.
+
+Complete these coherent units in dependency order:
 
 - [x] Add neutral UTF-8 scalar decoding with owned byte-offset/byte-count records and
   an explicit malformed-input flag. Preserve embedded NUL, BOM and unassigned/noncharacter
@@ -209,22 +222,28 @@ Implement two coherent source units before the wider layout boundary:
   document current encoding behavior and reconcile the same acceptance request.
 - [ ] Accept the implemented decoder/font changes through user-run
   [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
-- [ ] Settle the application-visible layout scope: required scripts and direction,
-  shaping versus scalar placement, font fallback/coverage, line breaking/wrapping,
-  language/script hints and whether cluster mapping serves display or editing.
-- [ ] Select libraries after those requirements, then define owned glyph IDs, metrics,
-  runs and source-cluster mappings. Keep source byte/scalar indices explicit; a decoded
-  scalar is not automatically a grapheme or one shaped glyph. Preserve ASCII consumers.
-- [ ] Implement glyph preparation and immutable atlas/geometry generation publication
-  through the existing provider upload owner/dispatcher. Layout runs retain their
-  selected generations through in-flight frames; preparation failure publishes no
-  replacement. Establish admission, unavailable-glyph and cache replacement policy
-  before adding glyph residency or budgets.
+- [x] Settle the initial scripts, direction, fallback guarantee, optional wrapping and
+  grayscale rendering scope. Keep source mapping for display separate from caret/IME.
+- [x] Add immutable owned font selection, family discovery/coverage inspection and an
+  independently bundled/embedded fallback; preserve the legacy Font/FFont APIs. Use
+  FreeType for font inspection/rasterization with neutral headers and private linkage.
+- [ ] Add HarfBuzz shaping and ICU paragraph bidi, grapheme and line boundaries. Define
+  owned face-qualified glyphs, byte/scalar cluster ranges and line metrics, optional
+  language hints, explicit paragraph direction and local maximum width. Select fallback
+  for entire graphemes and reshape accepted lines after breaking.
+- [ ] Prepare grayscale glyph pages on the CPU and upload complete immutable text
+  generations through the existing provider owner. Add retained-run submission alongside
+  the legacy API; failure publishes no replacement, and earlier frames retain their
+  original geometry/atlas pair. Each preparation admits only its message's glyphs;
+  automatic residency/budgets and a shared mutable atlas are outside this unit.
+- [ ] Integrate the builtin demo through dispatcher uploads, preserving working ASCII
+  consumers. Provide multilingual, combining, bidi, fallback, wrapping, upload-failure
+  and retained-generation regressions and a runnable Linux visual observation harness.
 - [ ] Accept the selected multilingual/fallback/cluster and retained-generation scope.
 
-**Discovery boundary:** the decoding and ASCII fallback units need no glyph-layout
-library or new platform service. Full layout needs the script/fallback/paragraph
-requirements above before a public run API or dependency choice. Resource uploads
+**Discovery boundary:** font selection must establish real coverage and the bundled
+fallback before layout depends on it. Keep ICU indices internal and verify owned
+source mappings and actual shaped-line widths before resource preparation. Resource uploads
 follow the [consumer resource contract](../resources/consumer-resource-contract.md);
 layout cannot mutate an atlas retained by a submitted frame. IME/preedit and
 grapheme-aware editing remain separate consumer contracts until explicitly selected.
@@ -236,20 +255,14 @@ provider owner; old submitted runs keep the old handles. CPU layout must not pai
 placements from one generation with subsequently borrowed Font handles. Preserve the
 existing Font/FFont APIs and introduce the selected run service alongside them.
 
-**Decisions for the next unit:** choose representative languages/scripts and whether
-mixed left-to-right/right-to-left paragraphs are required initially; choose an ordered
-application-supplied fallback font list or system-font coverage discovery; choose
-explicit newlines versus automatic wrapping and whether color emoji is in scope.
-The proposed first rendering scope uses ordered supplied fonts, explicit newlines and
-grayscale glyphs, with editing/IME separate. Actual script/direction requirements
-determine the shaping/bidi dependencies and acceptance fixtures.
-
-[HarfBuzz](https://harfbuzz.github.io/what-is-harfbuzz.html) is a candidate for glyph
-shaping and [FreeType](https://freetype.org/freetype2/docs/index.html) for font access
-and rasterization. HarfBuzz does not perform paragraph bidi or line breaking; those
-need separate policy/services according to its
-[scope documentation](https://harfbuzz.github.io/what-harfbuzz-doesnt-do.html).
-No dependency or public shaped-run API is selected before these requirements.
+[HarfBuzz](https://harfbuzz.github.io/what-is-harfbuzz.html) supplies shaping;
+[FreeType](https://freetype.org/freetype2/docs/index.html) supplies font access and
+grayscale rasterization. HarfBuzz's
+[scope](https://harfbuzz.github.io/what-harfbuzz-doesnt-do.html) requires separate
+paragraph bidi and line breaking; use ICU's
+[bidi](https://unicode-org.github.io/icu/userguide/transforms/bidi.html) and
+[boundary analysis](https://unicode-org.github.io/icu/userguide/boundaryanalysis/)
+instead of handwritten Unicode tables. Library-specific types remain private.
 
 **Acceptance:** invalid UTF-8, multilingual/fallback and cluster cases have defined
 results; multi-byte input is not rendered as a fallback per byte; glyph runs survive

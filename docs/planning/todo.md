@@ -28,8 +28,9 @@ Unresolved artwork metadata is tracked separately in
   executable acceptance remains in the
   [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
 - Accept the implemented [UTF-8 decoder and STBFont scalar fallback](../assets/text-encoding.md),
-  then settle script/fallback and shaping/bidi/line-breaking scope before publishing
-  glyph-run and retained-atlas APIs. Source completion and acceptance are tracked in
+  and the [owned font collection/embedded fallback](../assets/text-layout.md).
+  Implement the selected accented Latin/Cyrillic, bidi and width-constrained wrapping
+  scope with shaped glyph runs and retained resources. Source completion and acceptance are tracked in
   [U11](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
   IME/editing is a separate consumer requirement unless selected UI work needs it.
 - Add broader pointer capture, modal/controller routing or optional platform services

@@ -377,7 +377,7 @@ libraries, in addition to runtime libraries, for the selected owners.
 | Wayland, xkbcommon and `wayland-scanner` | Bundled GLFW Wayland | Linux GLFW enables X11 and Wayland by default. Set `GLFW_BUILD_WAYLAND=OFF` for an X11-only build. |
 | OpenGL | OpenGL module | System headers/link libraries; running the demo also requires a usable graphics driver and display. |
 | Python and Jinja2 | GLAD generation | Jinja2 must be available in CMake's selected Python interpreter. |
-| FreeType | TGUI or RmlUi module | Toolkit font rasterization. |
+| FreeType | Engine; also TGUI/RmlUi | Neutral font inspection and grayscale rasterization; toolkit font services remain independent. |
 | libudev / libusb | Linux hidapi | Development dependencies of the HID backends selected by Gainput's fetched hidapi. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve source/symbol resolution; availability determines the selected resolver. |
 | A discoverable system font | Demo | The HUD uses system-font discovery; TGUI uses its embedded default font. |
@@ -393,7 +393,7 @@ and `tests/`. Link targets to inherit headers and dependencies.
 
 The [core](#core) and [module](#modules) targets provide public aliases for
 application links. An Engine-only root build omits GLFW, Gainput, OpenGL, GLAD,
-both UI toolkits and FreeType discovery:
+both UI toolkits; FreeType remains an Engine font dependency:
 
 ```sh
 cmake -S . -B build/engine-only -DCMAKE_BUILD_TYPE=Release -G Ninja \

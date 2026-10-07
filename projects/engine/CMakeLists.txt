@@ -23,7 +23,9 @@ target_include_directories(${TARGET_LIB_ENGINE} PRIVATE
     "${CHERYL_REPOSITORY_ROOT}/extern/stb"
     "${CHERYL_REPOSITORY_ROOT}/extern/json/single_include")
 target_link_libraries(${TARGET_LIB_ENGINE}
-    PUBLIC ${LINKAGE_PUBLIC_LIB_ENGINE})
+    PUBLIC ${LINKAGE_PUBLIC_LIB_ENGINE}
+    PRIVATE ${LINKAGE_PRIVATE_LIB_ENGINE})
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FontFallback.cmake")
 # Forward the bootstrap object to final consumers; an unreferenced archive member
 # would not reliably install the original Debug crash handlers.
 target_link_libraries(${TARGET_LIB_ENGINE} INTERFACE ${LINKAGE_INTERFACE_LIB_ENGINE})

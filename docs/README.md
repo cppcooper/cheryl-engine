@@ -38,6 +38,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 - [Asset loading](assets/asset-loading.md)
 - [Asset values, playback and CPU submission](assets/asset-values-and-playback.md)
 - [Text encoding and source indices](assets/text-encoding.md)
+- [Unicode text layout and font resources](assets/text-layout.md)
 - [File indexing and font discovery](assets/file-and-font-discovery.md)
 - [Asset manifest format](assets/asset-manifests.md)
 
