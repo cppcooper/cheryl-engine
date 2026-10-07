@@ -41,9 +41,11 @@ metrics. Embedded NUL remains an unsupported scalar rather than ending the view.
 FFont retains its deprecated byte-oriented contract. See
 [font submission](asset-values-and-playback.md#fonts-and-cpu-submission).
 
-The [Unicode task](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources)
-owns the unresolved script/paragraph scope, shaped runs, fallback fonts and retained
-glyph generations. The current ASCII atlas does not establish multilingual glyph
+The separate [Unicode layout API](text-layout.md) supplies owned font selection,
+shaping, bidi, source-cluster ranges and optional wrapping for the selected initial
+scope. Retained glyph generations remain in the active
+[Unicode task](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
+The legacy ASCII atlas does not establish multilingual glyph
 coverage, combining-mark placement, bidi order or grapheme-aware editing. Decoder,
 STBFont and submission regression sources plus neutral probes have pending Linux acceptance in
 [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).

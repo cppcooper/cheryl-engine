@@ -227,7 +227,7 @@ Complete these coherent units in dependency order:
 - [x] Add immutable owned font selection, family discovery/coverage inspection and an
   independently bundled/embedded fallback; preserve the legacy Font/FFont APIs. Use
   FreeType for font inspection/rasterization with neutral headers and private linkage.
-- [ ] Add HarfBuzz shaping and ICU paragraph bidi, grapheme and line boundaries. Define
+- [x] Add HarfBuzz shaping and ICU paragraph bidi, grapheme and line boundaries. Define
   owned face-qualified glyphs, byte/scalar cluster ranges and line metrics, optional
   language hints, explicit paragraph direction and local maximum width. Select fallback
   for entire graphemes and reshape accepted lines after breaking.

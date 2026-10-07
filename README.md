@@ -378,6 +378,7 @@ libraries, in addition to runtime libraries, for the selected owners.
 | OpenGL | OpenGL module | System headers/link libraries; running the demo also requires a usable graphics driver and display. |
 | Python and Jinja2 | GLAD generation | Jinja2 must be available in CMake's selected Python interpreter. |
 | FreeType | Engine; also TGUI/RmlUi | Neutral font inspection and grayscale rasterization; toolkit font services remain independent. |
+| HarfBuzz and ICU (uc/i18n) | Engine | Unicode shaping, paragraph bidi, grapheme/line boundaries. HarfBuzz uses a supplied/CMake target or pkg-config. |
 | libudev / libusb | Linux hidapi | Development dependencies of the HID backends selected by Gainput's fetched hidapi. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve source/symbol resolution; availability determines the selected resolver. |
 | A discoverable system font | Demo | The HUD uses system-font discovery; TGUI uses its embedded default font. |

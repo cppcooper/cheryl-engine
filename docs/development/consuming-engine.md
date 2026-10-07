@@ -28,7 +28,7 @@ repeat another owner's include/dependency list.
 | spdlog, CTTI, GLM | Engine public requirements; legacy `glm.hpp` spelling remains supported. |
 | Backward::Interface | Engine public trace/resolver requirements; its own global signal-handler object is not linked. |
 | STB and JSON | Engine private implementation include directories. |
-| FreeType | Engine private font implementation/link requirement; no native font types appear in public headers. |
+| FreeType, HarfBuzz, ICU uc/i18n | Engine private font/layout implementation and link requirements; no library-native types appear in public headers. |
 | GLFW | Native GLFW private implementation requirement, also used privately by the OpenGL context binding. |
 | Gainput | Native GLFW public requirement when `CHERYL_NATIVE_INPUT` is enabled; its types occur in that owner's headers. |
 | X11 | Native input's Linux dependency; OpenGL acceptance also uses it for explicitly selected X11 scenarios. |

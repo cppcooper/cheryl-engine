@@ -74,8 +74,12 @@ resources and copied placement after the text/font is released. These cases use
 synthetic immutable font metrics/resources and require no installed font file.
 Font-selection cases use the repository-owned fallback fixture and isolated discovery
 roots: verify actual families, explicit order, deduplication, load failures and owned
-font bytes after deleting their original file. The Engine now requires FreeType
-development headers/libraries even with both UI modules disabled. Reconfigure the
+font bytes after deleting their original file. Layout cases cover accented Latin and
+Cyrillic, composed/decomposed clusters and ligatures, mixed bidi/overrides/numbers,
+explicit RTL leading alignment, whole-grapheme replacement, embedded NUL/malformed
+source ranges, hard/soft breaks, indivisible overflow and concurrent owned layouts.
+The Engine requires FreeType, HarfBuzz and ICU uc/i18n development headers/libraries
+even with both UI modules disabled. Reconfigure the
 matching existing build to pick up that dependency and the embedded font source.
 The existing timing cases also cover the pending ignored-result warning correction;
 exception assertions explicitly discard irrelevant values while retaining the public
@@ -101,15 +105,17 @@ unrelated typed-event acceptance needs no rerun.
     tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
 Acceptance: the implementation and public header probes compile without new warnings,
 and all selected `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
-`asset_manifest.*`, `utf8.*`, `stbfont.*`, `font_selection.*` and the four selected `asset_submission` cases
-pass without skips. The new font cases establish UTF-8 fallback over the ASCII atlas,
-not actual multilingual glyph coverage or shaping. Committed source and static checks
+`asset_manifest.*`, `utf8.*`, `stbfont.*`, `font_selection.*`, `text_layout.*`
+and the four selected `asset_submission` cases
+pass without skips. Legacy STBFont cases establish scalar fallback over its ASCII atlas;
+the separate layout cases use actual builtin glyphs and shaping. These CPU checks do
+not establish visual rendering/upload acceptance. Committed source and static checks
 do not establish this acceptance.
 
 ## TR8: Automated controller diagnostic build

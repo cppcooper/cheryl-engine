@@ -20,6 +20,9 @@ set(LINKAGE_INTERFACE_LIB_ENGINE
 
 set(LINKAGE_PRIVATE_LIB_ENGINE
         Freetype::Freetype
+        harfbuzz::harfbuzz
+        ICU::uc
+        ICU::i18n
 )
 
 set(LINKAGE_PUBLIC_LIB_ENGINE_S_SIGNAL_HANDLERS
