@@ -7,5 +7,6 @@ if(CHERYL_NATIVE_INPUT AND cheryl_gainput_added AND NOT GAINPUT_ENABLE_HID AND C
     get_target_property(cheryl_gainput_type ${cheryl_gainput_concrete} TYPE)
     if(cheryl_gainput_type STREQUAL "STATIC_LIBRARY")
         add_subdirectory(joystick)
+        add_subdirectory(hid)
     endif()
 endif()

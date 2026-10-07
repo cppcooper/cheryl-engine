@@ -90,13 +90,19 @@ and all selected `tile_animation.*` cases pass without skips.
 
 ## TR8: Automated controller diagnostic build
 
-Build the Linux joystick correction, native input diagnostics and demo, then run
-the mapper regression, synthetic joystick suite and native consumer. Reconfigure
-the existing native build with owned static Gainput, HID disabled and both UI
-adapters disabled. The synthetic suite supplies kernel mappings/events to the real
+Build the Linux joystick correction, HID lifecycle foundation, native input diagnostics
+and demo, then run the mapper regression, synthetic joystick/HID suites and native
+consumer. Reconfigure the existing native build with owned static Gainput, HID
+disabled and both UI adapters disabled. The joystick suite supplies kernel mappings/events to the real
 pad implementation and mapper, covering A presses/holds/releases, other controls,
 reordered slots, d-pad hats, disconnect/reconnect and retained legacy mappings.
-It requires no physical controller or display. The reusable
+The HID runner compiles the real tracker, whitelist and PS4/PS5 parsers against
+synthetic hidapi, udev and time fixtures. It covers exact/distinct paths, empty lists,
+failed opens/initial reads, later read failure/reconnection, capacity/slot reuse,
+invalid paths, initialization failure/restart, partial notification cleanup and
+periodic rechecks with or without notifications. It supplies no successful input
+reports and cannot accept decoding, pad association/state or physical HID behavior.
+Both suites require no physical controller or display. The reusable
 [Linux joystick smoke procedure](development/native-desktop-checks.md#linux-joystick-controller-checks)
 covers physical reports separately.
 
@@ -118,11 +124,11 @@ covers physical reports separately.
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON
   cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
-    consumer-module-native-glfw tests-native-glfw tests-native-joystick demo
+    consumer-module-native-glfw tests-native-glfw tests-native-joystick tests-native-hid demo
   ./build/testing-native-linux/cheryl-native-glfw-consumer
   printf 'Native GLFW consumer passed.\n'
   ctest --test-dir build/testing-native-linux --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^(tests-native-glfw\.input_mapper\.|tests-native-joystick\.linux_joystick\.)'
+    --no-tests=error -R '^(tests-native-glfw\.input_mapper\.|tests-native-joystick\.linux_joystick\.|tests-native-hid\.HidLifecycle\.)'
   python3 - <<'PY'
 import json
 from pathlib import Path
@@ -147,9 +153,11 @@ PY
 )
 ```
 
-Acceptance: build/consumer/header checks and all selected mapper/joystick cases pass
-without new warnings, failures or skips. The joystick runner is intentionally
-separate from owner aggregates because its syscall wrappers apply process-wide.
+Acceptance: build/consumer/header checks and all selected mapper/joystick/HID lifecycle
+cases pass without new warnings, failures or skips. The joystick and HID runners are
+intentionally separate from owner aggregates because their syscall/transport fixtures
+apply process-wide. The HID fixture declarations do not establish real hidapi/udev
+ABI or platform linkage acceptance; keep that coverage with the later HID-ON work.
 The exported command belongs to the owned dependency; HID macro arguments should
 be absent with this explicit OFF configuration. This accepts neither HID runtime
 startup nor physical controller reports/reconnection.

@@ -117,9 +117,9 @@ resulting contract in the
     [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build).
 - [ ] Accept the Gainput HID input foundation described in the
   [submodule handoff](../../extern/gainput/TODO.md#ordered-implementation). That file
-  owns the deferred backend implementation sequence, followed by adaptive-trigger
-  output and its Cheryl consumer contract. Work in the existing submodule from
-  Cheryl; retain one native owner and one report source for each controller.
+  owns the active Linux foundation and remaining backend sequence, followed by
+  adaptive-trigger output and its Cheryl consumer contract. Work in the existing
+  submodule from Cheryl; retain one native owner and one report source for each controller.
 - [ ] Expose Linux HID initialization, enumeration/open, source and report observations
   for lifecycle acceptance. The demo counter cannot establish those stages;
   prerequisites and observations are in [testing requests](../testing-requests.md).
@@ -137,7 +137,11 @@ Linux joystick acceptance uses HID disabled; enabling the HID runtime requires t
 compiler-definition and report/state corrections together, with one report source
 per controller. The [Gainput handoff](../../extern/gainput/TODO.md) owns controller
 identity, source selection, lifecycle corrections and the adaptive-trigger feature
-contract. Choose other optional feature requirements using the
+contract. Its [selected contracts](../../extern/gainput/HID.md) settle identity,
+source fallback and feedback ownership; the tracker prerequisite has source fixes
+and isolated regression coverage pending [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build).
+Runtime activation follows physical association, connection generations and retained
+pad-state integration. Choose other optional feature requirements using the
 [HID capability scope](../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope).
 Battery exposure and touch/motion acceptance remain separate from the handoff's
 initial DualSense input and adaptive-trigger scope.
