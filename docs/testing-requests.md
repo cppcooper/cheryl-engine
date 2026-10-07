@@ -128,9 +128,11 @@ backend and permission to access its device.
 **Blocked for the available Linux fixture:** the demo does not detect the user's
 DualSense over Bluetooth. The pinned backend has
 [controller report/state integration limits](../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
-Correct that integration and verify device access in the user's desktop session
-before requesting another run with this controller. Device detection, reports and
-reconnection remain unaccepted; another supported fixture can be used independently.
+The existing Linux build also omits the compiler definition needed for HID
+initialization/polling. Correct the feature wiring and report/state integration,
+then verify device access in the user's desktop session before requesting another
+run with this controller. Device detection, reports and reconnection remain
+unaccepted; another supported fixture can be used independently.
 
 For Linux, use this launch block when those prerequisites are resolved. For Windows,
 use the launch block in [TR4](#tr4-qa-desktop-resize).
@@ -160,8 +162,9 @@ or establish the Windows notification route.
 ## TR6: QA HID lifecycle and notification observations
 
 **Blocked:** an observation harness is needed before requesting this run. Successful
-Gainput initialization does not prove HID readiness because the dependency discards
-the HID initialization return code. The demo provides no backend/notification trace.
+Gainput initialization does not prove HID readiness: the HID path can be compiled
+out, and the dependency discards its initialization return code when enabled.
+The demo provides no backend/notification trace.
 The next development action is to expose those observations without changing the
 [single-owner lifetime contract](../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
 

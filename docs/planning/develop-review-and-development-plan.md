@@ -84,6 +84,9 @@ adapter support; use the resulting contract in the
 - [x] Accept native owner rejection, attachment/destruction and reattachment
   regressions on Linux through user-run native OpenGL acceptance.
 - [x] Accept native consumer/header probes on Linux through user-run testing.
+- [ ] Repair the selected fork's CMake propagation of the HID compiler definition.
+  Verify that HID initialization/polling follows the configured feature selection
+  before accepting controller reports.
 - [ ] Correct controller report routing, retained pad state and availability in the
   selected backend before requesting DualSense Bluetooth QA again. Resolve the
   [backend limits](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits)
@@ -99,8 +102,9 @@ probes and integration checks, including `native_opengl.input_owner`, `input_win
 and `input_reattach`.
 Select the real-display opt-in and include HID-enabled configurations before claiming
 the process-global backend or Windows notifications are accepted.
-The selected Gainput `InputManager::Init` discards `HIDInit`'s return code; successful
-initialization or a device-free poll cannot establish HID readiness. Native acceptance
+When HID is compiled in, the selected Gainput `InputManager::Init` discards
+`HIDInit`'s return code; successful initialization or a device-free poll cannot
+establish HID readiness. Native acceptance
 must independently observe controller reports and device notifications. Explicit
 startup-failure reporting requires a dependency contract change if a consumer needs it.
 

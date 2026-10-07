@@ -90,7 +90,8 @@ Failed ownership acquisition leaves the existing adapter intact; an exception fr
 `Init` releases the claim. Applications must not call `Init` or `Exit` through `manager()`
 or run an independently initialized Gainput manager alongside this adapter.
 
-The selected Gainput fork discards the HID backend's initialization return code.
+When HID is compiled in, the selected Gainput fork discards the HID backend's
+initialization return code.
 Ownership rollback covers exceptions; successful `Init` alone does not establish
 HID device/notification readiness. Native HID acceptance verifies that behavior
 independently of owner-policy checks.
@@ -116,19 +117,30 @@ Target selection, standalone paths and validation status are in
 
 ## Controller backend limits
 
-The pinned Gainput fork includes PS5/DualSense HID decoding for USB and Bluetooth,
-but its parser emits listener deltas under the fixed `CONTROLLER_ID` (`4`). The
-native adapter's normal keyboard/mouse/pad creation assigns the pad ID `2`. Those
-HID deltas do not update that pad's retained state, which the adapter samples after
-every Gainput update to reconcile held controls and disconnection.
+The pinned Gainput fork's CMake HID selection includes decoder sources and hidapi,
+but does not supply the compiler definition `GAINPUT_ENABLE_HID` that guards the
+manager's HID initialization and polling. The existing Linux native build's compile
+rules omit that definition, so those runtime calls are compiled out. Enabling the
+CMake option alone does not establish an active HID path.
+
+Both PS4 and PS5 HID parsers emit listener deltas under Gainput's fixed
+`CONTROLLER_ID` (`4`). This is a logical Gainput device ID, not a DualSense hardware
+identifier. The native adapter's normal keyboard/mouse/pad creation assigns the pad
+ID `2`. The parsers also do not update that pad's retained state or establish its
+availability through the HID connection. These remain integration defects when the
+HID runtime is enabled.
 
 The Linux joystick fallback polls `/dev/input/js0` for this first pad and provides
 button mappings for named PS3 and Xbox 360 controllers. It has no DualSense button
 mapping. Parser presence and successful initialization therefore do not establish
 usable DualSense input; Bluetooth detection/report QA remains unresolved.
 
-Controller acceptance requires correct report identity, retained state, availability
-and disconnect clearing, with one selected report source for each controller.
+Cheryl uses the IDs returned by Gainput's device creation API and queries the pad's
+availability/current state after each update to reconcile held controls and
+disconnection. Repairing the feature wiring, report identity and retained pad state
+belongs in the Gainput fork; Cheryl's acceptance must verify that integration.
+Controller acceptance also requires disconnect clearing and one selected report
+source for each controller.
 Device visibility and access must also be verified in the user's desktop session.
 The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
 owns the correction and observation prerequisites.
