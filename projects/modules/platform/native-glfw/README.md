@@ -161,8 +161,10 @@ Controller acceptance also requires disconnect clearing and one selected report
 source for each controller.
 HID device visibility and access also require observation in the user's desktop
 session; successful Linux joystick reads do not establish HID access.
-The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
-owns the correction and observation prerequisites.
+The [Gainput handoff](../../../../extern/gainput/TODO.md) owns the deferred backend
+correction and adaptive-trigger sequence. The
+[native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
+tracks Cheryl's lifetime and observation acceptance.
 
 ### HID capability and platform scope
 

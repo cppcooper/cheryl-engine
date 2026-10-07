@@ -106,18 +106,11 @@ adapter support; use the resulting contract in the
   - [ ] Accept the build/regressions through
     [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build) and physical
     controller behavior through [TR5](../testing-requests.md#tr5-qa-controller-reports-and-reconnection).
-- [ ] Repair the selected fork's CMake propagation of the HID compiler definition.
-  Verify that HID initialization/polling follows the configured feature selection
-  before accepting controller reports. Resolve platform source selection and Sony
-  fallback ownership together: Windows DirectInput filters HID-supported pads and
-  the macOS native pad delegates Sony support to HID without the Apple CMake branch
-  including the shared runtime/parsers.
-- [ ] Correct controller report routing, retained pad state and availability in the
-  selected HID backend before requesting HID-specific DualSense QA. Resolve the
-  [backend limits](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits)
-  while preserving single-owner lifetime and avoiding duplicate HID/joystick reports.
-  Include enumeration path equality, removal when enumeration becomes empty and
-  propagation of parser read failures in the lifecycle correction.
+- [ ] Accept the Gainput HID input foundation described in the
+  [submodule handoff](../../extern/gainput/TODO.md#ordered-implementation). That file
+  owns the deferred backend implementation sequence, followed by adaptive-trigger
+  output and its Cheryl consumer contract. Work in the existing submodule from
+  Cheryl; retain one native owner and one report source for each controller.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
   acceptance. The demo counter cannot establish those routes; prerequisites and
   required observations are in [testing requests](../testing-requests.md).
@@ -137,17 +130,16 @@ startup-failure reporting requires a dependency contract change if a consumer ne
 
 Linux joystick acceptance uses HID disabled; enabling the HID runtime requires the
 compiler-definition and report/state corrections together, with one report source
-per controller. Before adding optional touch/motion or output features, choose the
-consumer requirements using the
+per controller. The [Gainput handoff](../../extern/gainput/TODO.md) owns controller
+identity, source selection, lifecycle corrections and the adaptive-trigger feature
+contract. Choose other optional feature requirements using the
 [HID capability scope](../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope).
-Touch coordinates need distinct control IDs; rumble timing mixes seconds with a
-millisecond duration, and the ordinary pad's HID output forwarding is disconnected.
-Battery exposure and adaptive-trigger output require new feature contracts rather
-than acceptance of existing public behavior.
+Battery exposure and touch/motion acceptance remain separate from the handoff's
+initial DualSense input and adaptive-trigger scope.
 
-The corrected Gainput revision is local until the user's personal
-fork hosts it. Publishing it and changing the submodule URL remain separate work
-requiring the fork URL and explicit push authorization.
+Cheryl's submodule URL selects the user's personal Gainput fork. New submodule
+commits remain local until explicitly authorized publication; update the parent
+gitlink and keep pending source acceptance distinct from remote availability.
 
 ### U10 — Deterministic tile selection
 
