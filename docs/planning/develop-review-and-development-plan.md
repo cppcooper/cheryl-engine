@@ -108,11 +108,16 @@ adapter support; use the resulting contract in the
     controller behavior through [TR5](../testing-requests.md#tr5-qa-controller-reports-and-reconnection).
 - [ ] Repair the selected fork's CMake propagation of the HID compiler definition.
   Verify that HID initialization/polling follows the configured feature selection
-  before accepting controller reports.
+  before accepting controller reports. Resolve platform source selection and Sony
+  fallback ownership together: Windows DirectInput filters HID-supported pads and
+  the macOS native pad delegates Sony support to HID without the Apple CMake branch
+  including the shared runtime/parsers.
 - [ ] Correct controller report routing, retained pad state and availability in the
   selected HID backend before requesting HID-specific DualSense QA. Resolve the
   [backend limits](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits)
   while preserving single-owner lifetime and avoiding duplicate HID/joystick reports.
+  Include enumeration path equality, removal when enumeration becomes empty and
+  propagation of parser read failures in the lifecycle correction.
 - [ ] Expose HID report/backend and Windows notification observations for lifecycle
   acceptance. The demo counter cannot establish those routes; prerequisites and
   required observations are in [testing requests](../testing-requests.md).
@@ -132,7 +137,15 @@ startup-failure reporting requires a dependency contract change if a consumer ne
 
 Linux joystick acceptance uses HID disabled; enabling the HID runtime requires the
 compiler-definition and report/state corrections together, with one report source
-per controller. The corrected Gainput revision is local until the user's personal
+per controller. Before adding optional touch/motion or output features, choose the
+consumer requirements using the
+[HID capability scope](../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope).
+Touch coordinates need distinct control IDs; rumble timing mixes seconds with a
+millisecond duration, and the ordinary pad's HID output forwarding is disconnected.
+Battery exposure and adaptive-trigger output require new feature contracts rather
+than acceptance of existing public behavior.
+
+The corrected Gainput revision is local until the user's personal
 fork hosts it. Publishing it and changing the submodule URL remain separate work
 requiring the fork URL and explicit push authorization.
 

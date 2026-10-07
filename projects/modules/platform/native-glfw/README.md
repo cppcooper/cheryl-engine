@@ -164,6 +164,41 @@ session; successful Linux joystick reads do not establish HID access.
 The [native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
 owns the correction and observation prerequisites.
 
+### HID capability and platform scope
+
+The shared HID layer whitelists DualShock 4, DualShock 4 Slim and DualSense; it does
+not provide a generic decoder for every HID controller. Its PS4/PS5 parsers contain
+USB and Bluetooth report decoding, including ordinary controls, touch contacts and
+motion sensors. Source presence does not establish usable Gainput pad support:
+
+| Capability | Current integration limit |
+| --- | --- |
+| Buttons, sticks and triggers | Require the report identity, retained state and availability bridge described above. |
+| Touch and motion | Use the same unfinished bridge. Both parsers send each contact's X and Y to the same axis ID; touch routing needs correction before acceptance. |
+| Conventional rumble and lights | HID output packet code exists, but the normal pad API's HID forwarding is commented out. Device selection and rumble duration handling need correction. |
+| Battery and adaptive triggers | DualSense battery information remains private parser data; adaptive-trigger output is an unimplemented disabled stub. Neither is an exposed feature contract. |
+
+The platform fallbacks also depend on this integration. Windows DirectInput removes
+whitelisted Sony controllers on the assumption that HID handles them. The macOS
+native pad implementation maps selected Xbox controllers and leaves PlayStation
+controllers to HID, while the Apple CMake branch omits the shared HID runtime and
+parser sources. These are source-level gaps; Windows and macOS controller behavior
+requires platform acceptance. The Linux joystick correction does not establish
+coverage on either platform.
+
+For direct Bluetooth reports on Linux, select hidapi's hidraw backend; its libusb
+backend supports USB only, as described in the
+[hidapi documentation](https://github.com/libusb/hidapi#about). The working joystick
+route already uses kernel-decoded Bluetooth input. Direct HID is also not the only
+route to advanced Linux features: the
+[Sony kernel driver](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-playstation.c)
+exposes motion/touch input, conventional rumble, battery and light controls through
+Linux interfaces that this joystick adapter does not consume.
+
+Cheryl's portable input interface currently exposes control input without rumble,
+light or battery APIs. Select the desired feature scope before extending that
+consumer contract; repairing Gainput alone does not expose those features to games.
+
 ## Controller diagnostics
 
 `InputSystem::set_gamepad_diagnostics(true)` opts in on the platform owner before
