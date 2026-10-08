@@ -22,6 +22,7 @@
     #reset { align-self: flex-start; margin: 8px 0 12px; flex-shrink: 0; }
     input { display: block; height: 34px; box-sizing: border-box; padding: 6px;
             background-color: #edf2fa; color: #172532; flex-shrink: 0; }
+    input:placeholder-shown { color: #78818b; }
     input:focus { border-width: 1px; border-color: #89d8ef; }
     #scroll { flex-grow: 1; flex-basis: 0; min-height: 80px; overflow: auto;
               margin: 12px 0; padding: 6px; background-color: #354d65b0; }
@@ -44,7 +45,7 @@
         <div class="instructions">F4: edit · Esc: release focus · F6: hide/show</div>
         <div id="status"></div>
         <button id="reset">Reset camera</button>
-        <input id="field" type="text" value="Click here and type" />
+        <input id="field" type="text" placeholder="Click here and type" />
         <div id="scroll">
             <div class="row">Scroll item 1</div><div class="row">Scroll item 2</div>
             <div class="row">Scroll item 3</div><div class="row">Scroll item 4</div>
