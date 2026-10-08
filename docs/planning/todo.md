@@ -27,6 +27,9 @@ Unresolved artwork metadata is tracked separately in
 
 ## Gameplay and presentation facilities
 
+- Accept the demo's optional static/animated tile and sprite showcase, including
+  missing/partial-artwork startup, simulation-owned playback and retained rendering.
+  The [demo plan](demo-assets.md) owns source progress and Linux acceptance.
 - Accept implemented optional miniaudio audio output through neutral owned clips
   and voice controls, with overlapping effects and streamed music. The
   [audio plan](audio-integration.md) owns source progress and Linux acceptance; FMOD

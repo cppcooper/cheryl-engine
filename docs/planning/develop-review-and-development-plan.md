@@ -19,6 +19,10 @@ append completed task narratives or routine successful execution reports here.
 User-run commands, QA requirements and unavailable acceptance prerequisites are in
 the [testing request queue](../testing-requests.md).
 
+The short-term [demo asset showcase](demo-assets.md) supplies visible static and
+animated tile/sprite observations while retaining startup without package images;
+its Linux QA reuses the pending native demo build.
+
 ## Current baseline
 
 The original review's U1–U8 source work is implemented. Use the current contracts

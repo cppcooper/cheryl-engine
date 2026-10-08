@@ -14,6 +14,7 @@ meaningful coverage limits.
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
 | [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready; audio-only assembly, no device or display |
 | [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready after TR10 builds the consumer; requires audible stereo output |
+| [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready after TR8; present/partial-artwork checks require the three sample images |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -144,8 +145,9 @@ It requires no physical controller or display. The reusable
 [Linux joystick smoke procedure](development/native-desktop-checks.md#linux-joystick-controller-checks)
 covers physical reports separately.
 The same batched build compiles the changed Unicode HUD, worker/dispatcher replacement
-path and text-preview options. Native visual text observations belong to TR9; no
-additional build of this configuration is needed before those launches.
+path and text-preview options, optional tile/sprite loading and playback, and the
+separate triangle/triangle-strip materials. Native text observations belong to TR9
+and tile/sprite observations to TR12; reuse this build for both requests.
 
 ```sh
 (
@@ -161,6 +163,7 @@ additional build of this configuration is needed before those launches.
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
     -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON
@@ -208,6 +211,8 @@ TR8-built `build/testing-native-linux/demo` with both UI adapters and HID disabl
 The checked-in shaders/font fixture and embedded font are available; no controller,
 installed font, full image tree, clipboard or IME service is required. Close each run
 before the next. Reuse the TR8 build rather than building these targets again.
+Press F7 to hide the new tile/sprite samples when they overlap the long text preview;
+their appearance and animation belong to TR12.
 
 ```sh
 (
@@ -367,3 +372,108 @@ and errors. This baseline covers native output and sustained WAV streaming;
 whole-clip FLAC/MP3 decoding is in TR10. Native compressed-file streaming/seek/loop,
 standalone and supplied-SDK variants, device hotplug and other platforms retain
 their separate coverage limits in the [owner guide](../projects/modules/audio/miniaudio/README.md).
+
+## TR12: QA demo tiles and sprites
+
+**Platform:** Linux/GLFW/X11/OpenGL. **Readiness:** ready after TR8 builds the changed
+demo; reuse that build with both UI adapters and HID disabled. **Prerequisites:** a
+usable display/driver and the tracked bootstrap assets. Present/partial-artwork
+observations also need the three images in the
+[demo sample table](../projects/apps/demo/README.md#tile-and-sprite-samples), placed
+according to the [package catalog](assets/catalog.md). If those images are absent,
+that portion is blocked: place them and rerun it. Missing-artwork startup remains
+ready and never counts as successful rendering.
+
+The block stages tracked assets and selected images in temporary roots, preserving
+the checkout's files. Each launch is interactive: complete the relevant observations
+and close it before the next. It runs sequential variable timing and concurrent
+16 ms fixed timing, and exercises empty package trees both normally and with
+`--full-assets`. It prints blocked artwork cases when source images are unavailable.
+The temporary roots are removed after the launches; no rebuild is needed.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 - <<'PY'
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+checkout = Path.cwd()
+demo = checkout / 'build/testing-native-linux/demo'
+assets = checkout / 'assets'
+images = [Path('tilesets/punyworld-overworld-tileset.png'),
+          Path('MiniWorldSprites/Objects/SwordShort.png'),
+          Path('MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
+tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', 'assets/']).decode().split('\0')
+cases = [('missing-images', []), ('missing-manifests', [])]
+missing = [str(path) for path in images if not (assets / path).is_file()]
+if missing:
+    print('BLOCKED: present/partial/broken-image observations need:', ', '.join(missing), flush=True)
+else:
+    cases += [('selected-images', images), ('tiles-only', images[:1]),
+              ('sprites-only', images[1:]), ('broken-weapon', images)]
+
+with tempfile.TemporaryDirectory(prefix='cheryl-demo-assets-') as workspace:
+    for name, selected in cases:
+        root = Path(workspace) / name
+        for file in filter(None, tracked):
+            relative = Path(file).relative_to('assets')
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(checkout / file, destination)
+        for image in selected:
+            destination = root / image
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(assets / image, destination)
+        if name == 'missing-manifests':
+            for manifest in ['atlas.json', 'punyworld-overworld.json']:
+                (root / manifest).unlink()
+        if name == 'broken-weapon':
+            (root / images[1]).write_bytes(b'invalid PNG fixture')
+        variants = [[], ['--full-assets']] if name == 'missing-images' else [[]]
+        for options in variants:
+            for mode in [[], ['--concurrent', '--fixed-step-ms=16']]:
+                arguments = [str(demo), '--builtin-font', *mode, *options, str(root)]
+                print('QA:', name, ' '.join(arguments), flush=True)
+                subprocess.run(arguments, check=True)
+PY
+)
+```
+
+- In `selected-images`, all three asset statuses are ready despite unrelated
+  package sheets being absent. Inspect four upright, labeled groups at three times
+  source size, intact colors/transparent backgrounds and no joined adjacent-cell
+  geometry. The current provider uses linear magnification; softened pixel edges
+  reflect that policy. Report neighboring-cell color leakage separately for the
+  [sampling follow-on](planning/long-term-plan.md#other-engine-extensions).
+  Static grass, sword and frozen Swordsman do not animate.
+- Watch the three animated tiles use their respective 400/200/100 ms frame durations
+  and loop. The sprite top row walks south/north/east; the bottom row walks west,
+  idles south and attacks south. Walk/idle loop; attack reaches its final frame and
+  holds until Space restarts it. Observe for several cycles in both runtime variants.
+- Press P: all changing frames freeze. Wait, then resume: playback continues without
+  jumping over the paused time. While paused, Space resets attack to its first frame
+  and holds it until resume. F7 hides/shows all samples and labels while hidden
+  playback keeps advancing; WASD/R moves/restores the world samples while the HUD
+  stays fixed. Text focus suppresses P/Space/F7 gameplay actions.
+- In missing-image and missing-manifest roots, the HUD reports skipped samples,
+  diagnostics report each failed optional load without repeating every frame, and
+  text/input/camera/F5/shutdown still work. `--full-assets` failure also preserves
+  startup. In `tiles-only` and `sprites-only`, available groups render and animate
+  while absent groups skip. In `broken-weapon`, only the weapon skips; tiles and
+  Swordsman remain functional. These are separate observations from missing-image
+  acceptance.
+- Use F5 in both runtime variants: text and samples keep working after replacement.
+  To observe failure retention, edit only a printed temporary root's `shaders/shader2d.frag`
+  in another terminal to invalid GLSL, press F5, restore it from the checkout and
+  press F5 again. Both old materials remain usable on failure and both recover;
+  the HUD reports then clears the error. Close while animations and replacements
+  are active without hangs, native resource errors or stale callbacks.
+
+Report the revision, launch cases/modes, visible failures, stderr diagnostics and
+blocked/skipped observations. This accepts the sample application, not a world/map
+API or physical GPU retirement. Wider platform testing remains deferred in the
+[platform plan](planning/platform-acceptance.md).

@@ -120,6 +120,14 @@ Audio's first miniaudio backend is selected in the short-term
 ordinary playback contract; Studio events, banks and adaptive authoring require
 their own scope and SDK/deployment requirements.
 
+Selectable image filtering and atlas isolation need a consumer contract. The
+OpenGL provider currently gives RGBA images linear magnification and generated
+mipmaps; grid UVs address cell edges without padding. The
+[demo samples](../../projects/apps/demo/README.md#tile-and-sprite-samples) expose
+that baseline. Use their observations to establish nearest/linear, mipmap and wrap
+requirements, per-image/per-binding ownership and atlas-edge behavior before adding
+a sampler API; avoid mutating shared cached textures from demo frame preparation.
+
 World, entities, collision and game mechanics wait for a game consumer. The game
 can consume Cheryl as a Git submodule and supply its own optional modules from
 the start, or implement its features directly. Do not plan on a later extraction

@@ -53,10 +53,13 @@ The builtin HUD selects optional system/application fonts and always retains an
 embedded fallback; it can start without an installed system font. RmlUi keeps its
 separate file-based service, using a selected file or the checked-in DejaVu Sans
 fallback. TGUI uses its own embedded default font. Shaders and the small RmlUi proof document/images are checked in under the
-asset root. The full manifest image tree is needed only with `--full-assets`;
-those PNG files are not tracked. The [asset package catalog](../../../docs/assets/catalog.md)
-lists their download sources and expected paths. The default asset root is the
-checkout's `assets/`.
+asset root. The tile/sprite showcase attempts to load three optional package images
+on every launch. Missing or broken package metadata/images skip the affected samples
+and report once to stderr; the HUD, input and selected UI views continue running.
+`--full-assets` also attempts the whole manifest/image tree and reports a failed
+batch without aborting startup. Package PNGs are not tracked. The
+[asset package catalog](../../../docs/assets/catalog.md) lists their download sources
+and expected paths. The default asset root is the checkout's `assets/`.
 A positional argument selects another root:
 
 ```sh
@@ -69,7 +72,10 @@ A positional argument selects another root:
 | --- | --- |
 | WASD | Pans the camera while gameplay owns keyboard input. |
 | R | Resets the camera while gameplay owns keyboard input. |
-| F5 | Queues shader reload while gameplay owns keyboard input; the previous material remains until replacement succeeds. |
+| F5 | Queues text/image shader reload while gameplay owns keyboard input; the previous material pair remains until both replacements succeed. |
+| F7 | Hides/shows the tile/sprite samples and their labels while gameplay owns keyboard input. Hidden animations continue advancing. |
+| P | Pauses/resumes all sample animations while gameplay owns keyboard input. |
+| Space | Replays the sample's nonlooping Swordsman attack while gameplay owns keyboard input. If paused, it holds the first frame until resumed. |
 | F2 | Toggles TGUI text focus when its panel is visible, or the text probe when both adapters are disabled. |
 | F4 | Toggles RmlUi text focus when its view is visible. |
 | Escape | Releases keyboard focus. |
@@ -94,7 +100,7 @@ gameplay mouse State. The demo does not add pointer capture or modal arbitration
 | Argument | Effect |
 | --- | --- |
 | `/path/to/assets` | Replaces the default asset root. |
-| `--full-assets` | Also loads the manifest/image tree. |
+| `--full-assets` | Attempts the whole manifest/image tree; failure reports to stderr and startup continues with available samples. |
 | `--concurrent` | Runs simulation on its separate owner thread. |
 | `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
 | `--fixed` | Selects fixed-step simulation. |
@@ -124,6 +130,45 @@ The [native controller diagnostics](../../modules/platform/native-glfw/README.md
 explain the records and their limits. The option changes the OS-platform logger's
 file/logger gates to TRACE while retaining its console preset. It rejects builds
 that stripped TRACE before starting the runtime.
+
+## Tile and sprite samples
+
+Four labeled groups appear near the bottom of the world view at three times the
+authored pixel size. WASD pans them with the camera; R restores the initial view.
+Hide overlapping UI panels with F3/F6 when inspecting the artwork, or hide the
+samples with F7 when inspecting a long Unicode HUD.
+
+| Group | Samples | Optional image relative to the asset root |
+| --- | --- | --- |
+| Static tiles | A 3×2 Puny World patch using cells 0, 1, 2, 27, 28 and 29. | `tilesets/punyworld-overworld-tileset.png` |
+| Animated tiles | Puny World targets 309, 314 and 324, left to right, using their declared 400, 200 and 100 ms frame durations. | `tilesets/punyworld-overworld-tileset.png` |
+| Static sprites | A short sword and a frozen cyan Swordsman, both using cell 0. | `MiniWorldSprites/Objects/SwordShort.png`; Swordsman image below |
+| Animated sprites | Top row: south, north and east walk. Bottom row: west walk, south idle and south attack. Walking and idle loop; attack holds its last frame until Space replays it. | `MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png` |
+
+The samples use `punyworld-overworld.json` and `atlas.json` for grids, pivots and
+authored clips. Only these selected entries/images are loaded by default; unrelated
+absent sheets do not suppress available samples. The HUD reports each selected
+asset as ready or skipped. A failed MiniWorld manifest skips both its sprite samples,
+while a failed individual image skips only that entry. No replacement package artwork
+is generated. The checked-in bootstrap shaders and selected UI resources retain
+their existing requirements.
+
+Initial loading and label uploads run on the platform owner. Tile elapsed time and
+independent sprite cursors advance using `TickContext::delta_seconds`; fractional
+tile time accumulates before conversion to milliseconds. Pausing excludes that time
+without creating a resume jump. Frame preparation resolves current cells into
+resource-retaining packets and performs no image loading or playback mutation.
+Separate triangle-strip image and triangle text materials share `shader2d` sources
+and straight-alpha blending. Images inherit the OpenGL provider's linear
+magnification and generated mipmaps, so enlarged pixel edges can look softened.
+Selectable filtering and atlas isolation are
+[follow-on work](../../../docs/planning/long-term-plan.md#other-engine-extensions).
+F5 adopts both replacement handles together; a failed
+replacement keeps the current pair. Teardown releases the application-held samples
+and labels on the platform owner after simulation joins.
+
+Native appearance, animation and optional-artwork acceptance is pending in
+[TR12](../../../docs/testing-requests.md#tr12-qa-demo-tiles-and-sprites).
 
 ## Builtin Unicode text
 

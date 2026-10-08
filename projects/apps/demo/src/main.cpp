@@ -17,6 +17,8 @@
 #include <ext/matrix_transform.hpp>
 #include <gainput/gainput.h>
 
+#include "asset-demo.h"
+
 #ifdef CHERYL_DEMO_TGUI
 #include "tgui-demo.h"
 #endif
@@ -51,9 +53,17 @@ namespace DemoActions {
     constexpr CE::Input::ActionId WheelY{9};
     constexpr CE::Input::ActionId GamepadA{11};
     constexpr CE::Input::ActionId QuitGame{13};
+    constexpr CE::Input::ActionId ToggleSamples{14};
+    constexpr CE::Input::ActionId PauseAnimations{15};
+    constexpr CE::Input::ActionId ReplayAttack{16};
 } // namespace DemoActions
 
 class Game : public CE::GFramework::AbstractGame {
+    struct Materials {
+        std::shared_ptr<const CE::Assets::Material> text;
+        std::shared_ptr<const CE::Assets::Material> images;
+    };
+
     CE::Input::CaptureLease events_;
 #ifdef CHERYL_DEMO_TGUI
     std::unique_ptr<DemoUi> ui_;
@@ -70,6 +80,7 @@ class Game : public CE::GFramework::AbstractGame {
 #endif
     CE::Engine::EngineContext& engine_;
     CE::Camera2D camera_;
+    DemoAssets assets_;
     std::filesystem::path asset_root_;
     bool load_all_assets_;
     CE::Text::FontSelection font_selection_;
@@ -84,7 +95,8 @@ class Game : public CE::GFramework::AbstractGame {
     std::string requested_hud_;
     float requested_width_ = 0;
     std::shared_ptr<const CE::Assets::Material> font_shader_;
-    std::future<std::shared_ptr<const CE::Assets::Material>> pending_shader_;
+    std::shared_ptr<const CE::Assets::Material> image_shader_;
+    std::future<Materials> pending_shader_;
     std::string reload_error_;
     glm::vec2 pan_{0.0f, 0.0f};
     float mouse_x_ = 0.0f;
@@ -123,8 +135,12 @@ public:
         const auto shader2d = asset_root_ / "shaders" / "shader2d";
         auto& resources = engine_.resources();
         if (load_all_assets_) {
-            CE::Assets::Loader loader(asset_root_);
-            loader.load_assets(resources);
+            try {
+                CE::Assets::Loader loader(asset_root_);
+                loader.load_assets(resources);
+            } catch (const std::exception& error) {
+                std::cerr << "Optional full asset load failed; continuing with available demo samples: " << error.what() << '\n';
+            }
         }
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
         fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
@@ -132,8 +148,15 @@ public:
         target_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
             CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_)), resources
         ));
-        CE::Assets::MaterialMgr::get().load_material(shader2d, resources, font_recipe(shader2d));
-        font_shader_ = CE::Assets::MaterialMgr::get().get_asset(shader2d);
+        auto& materials = CE::Assets::MaterialMgr::get();
+        materials.load_material(shader2d, resources, material_recipe(shader2d, CE::Assets::PrimitiveTopology::Triangles));
+        font_shader_ = materials.get_asset(shader2d);
+        // The same shader sources need a separate material/cache key for the
+        // four-vertex tile/sprite strips; text retains its triangle pipeline.
+        const auto image_key = std::filesystem::path(shader2d.string() + "-strips");
+        materials.load_material(image_key, resources, material_recipe(shader2d, CE::Assets::PrimitiveTopology::TriangleStrip));
+        image_shader_ = materials.get_asset(image_key);
+        assets_.load(asset_root_, resources, *fonts_);
 
         auto& input = engine_.input();
         auto& bindings = input.bindings();
@@ -144,6 +167,9 @@ public:
         (void)bindings.bind_button({keyboard, gainput::KeyD}, DemoActions::Right);
         (void)bindings.bind_button({keyboard, gainput::KeyR}, DemoActions::Reset);
         (void)bindings.bind_button({keyboard, gainput::KeyQ}, DemoActions::QuitGame);
+        (void)bindings.bind_button({keyboard, gainput::KeyF7}, DemoActions::ToggleSamples);
+        (void)bindings.bind_button({keyboard, gainput::KeyP}, DemoActions::PauseAnimations);
+        (void)bindings.bind_button({keyboard, gainput::KeySpace}, DemoActions::ReplayAttack);
 
         const auto mouse = input.mouse_id();
         (void)bindings.bind_axis({mouse, gainput::MouseAxisX}, DemoActions::MouseX);
@@ -193,9 +219,11 @@ public:
         pending_text_upload_ = {};
         hud_text_.reset();
         target_text_.reset();
+        assets_.reset();
         text_workers_.reset();
         fonts_.reset();
         pending_shader_ = {};
+        image_shader_.reset();
         font_shader_.reset();
     }
 
@@ -205,10 +233,12 @@ public:
         }
         if (pending_shader_.valid() && pending_shader_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
             try {
-                font_shader_ = pending_shader_.get();
+                auto materials = pending_shader_.get();
+                font_shader_ = std::move(materials.text);
+                image_shader_ = std::move(materials.images);
                 reload_error_.clear();
             } catch (const std::exception& error) {
-                reload_error_ = error.what(); // Keep the previous complete material generation.
+                reload_error_ = error.what(); // Keep both previous material generations.
             }
         }
         const auto& actions = tick.input;
@@ -217,6 +247,13 @@ public:
             pan_ = {0.0f, 0.0f};
             camera_.set_view_matrix(glm::mat4(1.0f));
         }
+        if (actions.button(DemoActions::ToggleSamples).pressed())
+            assets_.toggle_visible();
+        if (actions.button(DemoActions::PauseAnimations).pressed())
+            assets_.toggle_pause();
+        if (actions.button(DemoActions::ReplayAttack).pressed())
+            assets_.replay_attack();
+        assets_.advance(std::chrono::duration<double>{tick.delta_seconds});
         mouse_x_ = actions.axis(DemoActions::MouseX).current;
         mouse_y_ = actions.axis(DemoActions::MouseY).current;
         clicks_ += actions.button(DemoActions::Click).press_count;
@@ -230,12 +267,17 @@ public:
             if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
                 button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
                 const auto key = asset_root_ / "shaders" / "shader2d";
-                const auto builder = font_recipe(key);
-                pending_shader_ = engine_.platform_dispatcher().submit([key, builder](CE::Engine::EngineContext& platform) {
-                    auto& materials = CE::Assets::MaterialMgr::get();
-                    materials.reload_material(key, platform.resources(), builder);
-                    return materials.get_asset(key);
-                });
+                const auto image_key = std::filesystem::path(key.string() + "-strips");
+                const auto text_builder = material_recipe(key, CE::Assets::PrimitiveTopology::Triangles);
+                const auto image_builder = material_recipe(key, CE::Assets::PrimitiveTopology::TriangleStrip);
+                pending_shader_ = engine_.platform_dispatcher().submit(
+                    [key, image_key, text_builder, image_builder](CE::Engine::EngineContext& platform) {
+                        auto& materials = CE::Assets::MaterialMgr::get();
+                        materials.reload_material(key, platform.resources(), text_builder);
+                        materials.reload_material(image_key, platform.resources(), image_builder);
+                        return Materials{materials.get_asset(key), materials.get_asset(image_key)};
+                    }
+                );
             }
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
             if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
@@ -323,6 +365,9 @@ public:
             pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}};
         CE::RenderAPIs::DrawStyle2D text;
         text.material = font_shader_;
+        CE::RenderAPIs::DrawStyle2D images;
+        images.material = image_shader_;
+        assets_.write(pass, images, text, context);
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)
         );
@@ -348,6 +393,7 @@ private:
             "Esc: release focus  Q: quit while gameplay has focus\nReload: {}",
             mouse_x_, mouse_y_, clicks_, wheel_, gamepad_presses_, reload_error_
         );
+        hud += '\n' + assets_.status();
 #ifdef CHERYL_DEMO_TGUI
         hud += std::format("\nF2: TGUI text focus  F3: hide/show TGUI\nTGUI: {}", ui_->error());
 #endif
@@ -414,14 +460,15 @@ private:
         }
     }
 
-    CE::Assets::MaterialMgr::Builder font_recipe(const std::filesystem::path& key) const {
-        return [key](CE::Assets::ResourceProvider& provider) {
+    CE::Assets::MaterialMgr::Builder material_recipe(const std::filesystem::path& key, const CE::Assets::PrimitiveTopology topology) const {
+        return [key, topology](CE::Assets::ResourceProvider& provider) {
             using namespace CE::Assets;
             auto* native = dynamic_cast<OpenGLResourceProvider*>(&provider);
             if (!native)
                 throw CE::Exceptions::invalid_args(CE_HERE, "The GLFW demo requires an OpenGL material provider");
             PipelineDefinition definition;
             definition.program_sources = {key.string() + ".vert", key.string() + ".frag"};
+            definition.topology = topology;
             definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
                 {"view", ParameterType::Mat4, true, ParameterSemantic::View},
                 {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
