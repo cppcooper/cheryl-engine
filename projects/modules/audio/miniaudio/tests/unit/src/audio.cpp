@@ -9,6 +9,7 @@
 #include <future>
 #include <limits>
 #include <memory>
+#include <numbers>
 #include <vector>
 
 namespace {
@@ -248,6 +249,8 @@ TEST(audio_decode, limits) {
     EXPECT_EQ(clip.frame_count(), 128);
     EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::decode_file(fixture.file(), {0})), CE::Exceptions::invalid_args);
     EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::decode_file({})), CE::Exceptions::invalid_args);
+    const std::filesystem::path nul_path(std::string("sound\0.wav", 10));
+    EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::decode_file(nul_path)), CE::Exceptions::invalid_args);
     EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::decode_file(fixture.file().parent_path() / "missing.wav")),
         CE::Exceptions::runtime_exception);
     {
@@ -257,6 +260,42 @@ TEST(audio_decode, limits) {
         corrupt.close();
     }
     EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::decode_file(fixture.file())), CE::Exceptions::runtime_exception);
+}
+
+TEST(audio_decode, codecs) {
+    for (const char* name : {"tones.flac", "tones.mp3"}) {
+        const auto file = std::filesystem::path(CHERYL_AUDIO_TEST_FIXTURES) / name;
+        const auto clip = CE::Audio::Miniaudio::decode_file(file);
+        ASSERT_EQ(clip.format(), (CE::Audio::Format{2, 48000}));
+        ASSERT_GT(clip.frame_count(), 45000);
+        ASSERT_LT(clip.frame_count(), 53000);
+        EXPECT_TRUE(std::ranges::all_of(clip.samples(), [](float value) { return std::isfinite(value); }));
+        // Ignore codec priming and end padding; inspect a central 0.8-second span.
+        for (std::size_t channel = 0; channel < 2; ++channel) {
+            double power = 0;
+            unsigned int crossings = 0;
+            constexpr std::size_t first = 4800;
+            constexpr std::size_t last = 43200;
+            for (std::size_t frame = first; frame < last; ++frame) {
+                const float sample = clip.samples()[frame * 2 + channel];
+                power += static_cast<double>(sample) * sample;
+                if (clip.samples()[(frame - 1) * 2 + channel] < 0 && sample >= 0)
+                    ++crossings;
+            }
+            EXPECT_NEAR(std::sqrt(power / (last - first)), 0.25 / std::sqrt(2.0), 0.02);
+            EXPECT_NEAR(crossings / 0.8, channel == 0 ? 440 : 660, 5);
+        }
+        if (file.extension() == ".flac") {
+            EXPECT_EQ(clip.frame_count(), 48000);
+            for (std::size_t frame = 0; frame < 256; ++frame) {
+                for (std::size_t channel = 0; channel < 2; ++channel) {
+                    const double frequency = channel == 0 ? 440 : 660;
+                    const auto expected = 0.25 * std::sin(2 * std::numbers::pi * frequency * frame / 48000);
+                    EXPECT_NEAR(clip.samples()[frame * 2 + channel], expected, 1.0 / 32768);
+                }
+            }
+        }
+    }
 }
 
 TEST(audio_stream, controls) {

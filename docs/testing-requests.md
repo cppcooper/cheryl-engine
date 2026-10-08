@@ -13,6 +13,7 @@ meaningful coverage limits.
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
 | [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready; audio-only assembly, no device or display |
+| [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready after TR10 builds the consumer; requires audible stereo output |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -305,10 +306,64 @@ one-shots, differing source/output rates, independent systems, simultaneous
 producers and handles surviving close/destruction. Decode cases use isolated
 generated PCM16 WAVs, byte-budget boundaries, missing/corrupt paths and owned data
 after file removal. Short buffered WAV streams exercise controls and opening failure
-without disrupting existing playback. They do not establish sustained streaming,
-FLAC/MP3 codec coverage, device routing or audible/native shutdown.
+without disrupting existing playback. Owned FLAC/MP3 fixtures verify decoded format,
+finite PCM, duration, independent channel frequencies and levels; FLAC has exact
+frame-count/lossless checks. No encoder is needed for these committed fixtures.
+These cases do not establish sustained streaming, device routing or audible/native shutdown.
 
 Standalone entry points and supplied-SDK variants remain separate composition
 coverage in the [owner guide](../projects/modules/audio/miniaudio/README.md).
 Native audio observation is the next QA action after this build; source/static
 inspection does not establish executable acceptance.
+
+## TR11: QA native audio and streaming
+
+**Platform:** Linux, independently of X11/Wayland and graphical runtime modes.
+**Readiness:** ready after TR10 builds the same consumer. **Prerequisites:** a
+working native audio backend/server/device and audible stereo headphones or
+speakers. The consumer supplies its own 20-second WAV, longer than miniaudio's
+two one-second stream pages; no recorded media or external encoder is needed.
+If stereo output or a usable device is unavailable, this request is blocked for
+that environment; the next action is to provide it. Offline success does not
+replace these observations.
+
+Reuse the TR10 build without rebuilding. Run each launch, complete the checks,
+then type `q` before starting the next. Device selection must name a real backend
+and fail explicitly when none can initialize; `offline`/Null is not native acceptance.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device --producers
+)
+```
+
+- Listen past the initial two seconds. The generated stream alternates left/right
+  once per second and cycles through 220/440/660/880 Hz; it continues for 20 seconds
+  without dropouts or becoming silent when terminal input is idle. Check left/right
+  with stereo output, rather than a mono speaker configuration.
+- Enter `p`, wait, then `r`: the stream pauses and continues its previous sequence.
+  In the producer launch, its short two-channel effect continues every two seconds
+  while music is paused. Enter `e` repeatedly: three distinct overlapping effects
+  finish after their handles are discarded, without cutting off music.
+- Enter `v 0`, then `v 0.5`: music alone mutes/restores. Enter `m 0`, then `m 0.5`:
+  all output mutes/restores while playback time continues. An invalid gain such as
+  `v -1` reports a command error and preserves the previous gain/playback.
+- Enter `s`, then `r`: stopped music remains stopped. Enter `x`: it restarts at
+  the initial low left-channel tone rather than replaying an old cached segment.
+  Leave looping off for a full 20-second playback; `t` reports `Finished` and `r`
+  leaves it finished. Enter `l`, then `x`, and listen through the 20-second boundary:
+  playback loops and remains `Playing` without a multi-second gap or stale segment.
+- In both launches, close with `q` while music/effects are active, then relaunch.
+  Shutdown joins the producer, releases the device without hanging or trailing
+  playback, and reports the surviving music handle as `Closed` after destruction.
+  Relaunch obtains usable output again. Audible artifact/latency observations are
+  separate from the sample-level offline regressions.
+
+Report the revision, backend, device/server, launch variants, missing observations
+and errors. This baseline covers native output and sustained WAV streaming;
+whole-clip FLAC/MP3 decoding is in TR10. Native compressed-file streaming/seek/loop,
+standalone and supplied-SDK variants, device hotplug and other platforms retain
+their separate coverage limits in the [owner guide](../projects/modules/audio/miniaudio/README.md).

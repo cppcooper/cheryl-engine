@@ -56,9 +56,9 @@ order admitted by the system's control lock, not a deterministic simulation cloc
   - [x] Implement native playback, streamed voices and synchronized controls.
   - [x] Cover failure cleanup, independent cursors, retained one-shots and shutdown
     with handles surviving their system through source regressions.
-- [ ] Add an independent consumer/observation harness for native audio and stream
+- [x] Add an independent consumer/observation harness for native audio and stream
   QA; document application lifecycle and dependency selection.
-- [ ] Reconcile the testing queue with batched Linux automation and audible QA.
+- [x] Reconcile the testing queue with batched Linux automation and audible QA.
 - [ ] Accept Linux automation and native sound observations through user-run work.
 
 At the contract boundary, revise dependent work if the chosen backend cannot
@@ -66,6 +66,10 @@ preserve ownership or control semantics. At the offline/native boundary, do not
 count a successful device-free mixer as hardware output acceptance. Streaming
 acceptance requires a file longer than its decode-ahead window and actual end,
 restart and loop observations; a short cached clip does not establish it.
+The native baseline uses the consumer's owned 20-second WAV. Whole-clip FLAC/MP3
+regressions use owned short fixtures; compressed-file streaming/seek/loop coverage
+requires a stable long fixture when selected. Standalone and supplied-SDK
+configuration acceptance also remains separate from the initial root assembly.
 
 Spatial audio, effects graphs, capture, device enumeration/hotplug, custom codecs,
 Studio-style authoring and all additional platform acceptance remain later work.

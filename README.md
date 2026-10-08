@@ -321,7 +321,7 @@ point with `CHERYL_REPOSITORY_ROOT` supplied; see
 | `consumer-module-opengl` | `cheryl-opengl-consumer` | OpenGL. |
 | `consumer-module-ui-tgui` | `cheryl-ui-tgui-consumer` | TGUI. |
 | `consumer-module-ui-rmlui` | `cheryl-ui-rmlui-consumer` | RmlUi. |
-| `consumer-module-audio-miniaudio` | `cheryl-audio-miniaudio-consumer` | Audio; offline consumer by default. |
+| `consumer-module-audio-miniaudio` | `cheryl-audio-miniaudio-consumer` | Audio; offline by default, `--device` selects audible stream/control QA. |
 
 #### Header probes
 

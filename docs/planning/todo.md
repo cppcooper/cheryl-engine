@@ -27,9 +27,9 @@ Unresolved artwork metadata is tracked separately in
 
 ## Gameplay and presentation facilities
 
-- Integrate optional miniaudio audio output through neutral owned clips and voice
-  controls, with overlapping effects and streamed music. The
-  [audio plan](audio-integration.md) owns development and Linux acceptance; FMOD
+- Accept implemented optional miniaudio audio output through neutral owned clips
+  and voice controls, with overlapping effects and streamed music. The
+  [audio plan](audio-integration.md) owns source progress and Linux acceptance; FMOD
   remains a later optional backend.
 - Accept the implemented CPU tile selector, Tileset animation substitution and
   resolved-cell submission through the pending Linux request. Sampling and boundary

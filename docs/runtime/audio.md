@@ -64,7 +64,8 @@ this contract does not add audio to the runtime's existing adapter teardown.
 The [integration plan](../planning/audio-integration.md) owns backend development
 and pending Linux acceptance. The
 [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
-decode, explicit device/offline output and streamed playback.
+decode, explicit device/offline output and streamed playback. Its independent
+consumer provides native observation without a game, window or graphics module.
 
 World, entity and collision organization belongs
 to the game or its application-selected modules. FMOD is a later optional backend;

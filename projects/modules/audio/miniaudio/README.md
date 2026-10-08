@@ -75,9 +75,29 @@ short-stream and lifetime regressions. `all-audio-miniaudio` and the root `all-t
 reuse those case objects. `consumer-module-audio-miniaudio` supplies an independent
 audio consumer and SDK-free first-include probe. None requires a display or device.
 
+The consumer defaults to `--offline`. Its `--device` mode opens native output and
+generates its own 20-second stereo WAV: left/right alternate each second, and pitch
+steps through 220/440/660/880 Hz. It requires no external media. `--producers` adds
+a background sound-effect producer while terminal commands control the stream;
+maintenance continues while stdin waits. `--stream=FILE` selects another stable
+WAV/FLAC/MP3 source. The consumer settles its producer before closing output and
+then observes a handle surviving destruction.
+
+| Command | Action |
+| --- | --- |
+| `p`, `r` | Pause and resume music. |
+| `s`, `x` | Stop and restart from the beginning. |
+| `l` | Toggle looping. |
+| `e` | Submit three overlapping short effects without retaining handles. |
+| `v VALUE`, `m VALUE` | Music or master volume, in `[0, 1]`. |
+| `t`, `q` | Observe state or close output. |
+
 Linux automation and audible native/long-stream acceptance remain pending in the
 [testing queue](../../../../docs/testing-requests.md). Short-stream offline cases
 use an initially buffered WAV and do not establish sustained decode-ahead, native
-latency, audible channel routing or device shutdown. Built-in FLAC/MP3 codec
-acceptance needs independent fixtures. Other platforms remain deferred under the
+latency, audible channel routing or device shutdown. Owned
+[codec fixtures](tests/fixtures/README.md) cover whole-clip FLAC/MP3 decoding;
+the native QA baseline uses a long WAV and does not establish compressed-stream
+seek/loop behavior. Supplied-SDK and standalone configurations remain unaccepted
+composition variants until explicitly selected and built. Other platforms remain deferred under the
 [platform plan](../../../../docs/planning/platform-acceptance.md).
