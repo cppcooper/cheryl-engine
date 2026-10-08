@@ -233,14 +233,32 @@ namespace CE::UI::RmlUi {
     }
 
     void Session::handle_input(const std::span<const Input::InputRecord> records, const bool pointer_selected) {
+        handle_input(records, pointer_selected, {});
+    }
+
+    void Session::handle_input(
+        const std::span<const Input::InputRecord> records,
+        bool pointer_selected,
+        const std::function<bool(const Input::InputRecord&)>& before_record
+    ) {
         auto& state = owner();
+        const auto focus_epoch = state.focus_epoch;
+        const auto leave_unselected_pointer = [&] {
+            if ((!pointer_selected || !state.pointer_view) && state.pointer_active) {
+                state.context->ProcessMouseLeave();
+                state.pointer_active = false;
+            }
+        };
         for (const auto& record : records) {
+            if (before_record)
+                pointer_selected = before_record(record);
+            leave_unselected_pointer();
             const auto* button = std::get_if<Input::ButtonEvent>(&record.data);
             if (button && (record.device_kind == Input::DeviceKind::Keyboard || record.device_kind == Input::DeviceKind::Mouse))
                 state.modifier_state = button->modifiers;
             const bool keyboard = record.is_text() || record.device_kind == Input::DeviceKind::Keyboard;
             if (keyboard) {
-                if (record.target != state.target || state.focus_epoch == 0 || record.focus_epoch != state.focus_epoch)
+                if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;
                 if (const auto* text = std::get_if<Input::TextEvent>(&record.data)) {
                     if (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF))
@@ -282,10 +300,7 @@ namespace CE::UI::RmlUi {
                 }
             }
         }
-        if ((!pointer_selected || !state.pointer_view) && state.pointer_active) {
-            state.context->ProcessMouseLeave();
-            state.pointer_active = false;
-        }
+        leave_unselected_pointer();
         // Drain poll-latched records before acknowledging preemption. Releasing
         // this stale lease cannot erase another adapter's newer focus request.
         if (state.focus.epoch() != 0 && !state.focus.owns_focus())

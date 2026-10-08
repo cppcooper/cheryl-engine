@@ -9,6 +9,7 @@
 
 #include <TGUI/Backend/Window/BackendGui.hpp>
 
+#include <functional>
 #include <memory>
 #include <span>
 
@@ -57,6 +58,14 @@ namespace CE::UI::TGUI {
         // Deliver keyboard/text only for this session's requested focus epoch.
         // The application explicitly selects pointer delivery for this call.
         void handle_input(std::span<const Input::InputRecord> records, bool pointer_selected);
+        // Run application controls before each record and return its pointer
+        // selection. Keyboard/text retain the entry epoch throughout the batch;
+        // preempted focus is released only after all records have been handled.
+        void handle_input(
+            std::span<const Input::InputRecord> records,
+            bool pointer_selected,
+            const std::function<bool(const Input::InputRecord&)>& before_record
+        );
         [[nodiscard]] RecordedScene record();
 
         // After the runtime joins simulation, final teardown may run on platform.

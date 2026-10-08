@@ -140,7 +140,7 @@ struct DemoRmlUi::State {
 
     void handle_input(const CE::GFramework::TickContext& tick) {
         using namespace CE::Input;
-        for (const auto& record : tick.input.records()) {
+        session->handle_input(tick.input.records(), visible, [&](const InputRecord& record) {
             const auto* button = std::get_if<ButtonEvent>(&record.data);
             if (button && record.device_kind == DeviceKind::Keyboard && button->phase == ButtonPhase::Press) {
                 if (button->key == KeyboardKey::F4 && visible) {
@@ -174,10 +174,8 @@ struct DemoRmlUi::State {
                 } else
                     session->release_keyboard_focus();
             }
-            session->handle_input(std::span{&record, 1}, visible);
-        }
-        if (tick.input.records().empty())
-            session->handle_input({}, visible);
+            return visible;
+        });
     }
 };
 

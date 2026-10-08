@@ -9,6 +9,7 @@
 #include <RmlUi/Core/Context.h>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <span>
 
@@ -57,6 +58,14 @@ namespace CE::UI::RmlUi {
         void release_keyboard_focus();
         [[nodiscard]] bool owns_keyboard_focus() const;
         void handle_input(std::span<const Input::InputRecord> records, bool pointer_selected);
+        // Run application controls before each record and return its pointer
+        // selection. Keyboard/text retain the entry epoch throughout the batch;
+        // preempted focus is released only after all records have been handled.
+        void handle_input(
+            std::span<const Input::InputRecord> records,
+            bool pointer_selected,
+            const std::function<bool(const Input::InputRecord&)>& before_record
+        );
         [[nodiscard]] RecordedScene record();
 
         // After simulation has joined, release external element/listener/resource

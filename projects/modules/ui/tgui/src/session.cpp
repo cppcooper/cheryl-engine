@@ -293,14 +293,25 @@ namespace CE::UI::TGUI {
     }
 
     void Session::handle_input(const std::span<const Input::InputRecord> records, const bool pointer_selected) {
+        handle_input(records, pointer_selected, {});
+    }
+
+    void Session::handle_input(
+        const std::span<const Input::InputRecord> records,
+        bool pointer_selected,
+        const std::function<bool(const Input::InputRecord&)>& before_record
+    ) {
         auto& state = owner();
+        const auto focus_epoch = state.focus_epoch;
         for (const auto& record : records) {
+            if (before_record)
+                pointer_selected = before_record(record);
             if (const auto* button = std::get_if<Input::ButtonEvent>(&record.data);
                 button && (record.device_kind == Input::DeviceKind::Keyboard || record.device_kind == Input::DeviceKind::Mouse))
                 state.gui.set_modifiers(button->modifiers);
             const bool keyboard = record.is_text() || record.device_kind == Input::DeviceKind::Keyboard;
             if (keyboard) {
-                if (record.target != state.target || state.focus_epoch == 0 || record.focus_epoch != state.focus_epoch)
+                if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;
             } else if (record.device_kind != Input::DeviceKind::Mouse || !pointer_selected || !state.pointer_view)
                 continue;
