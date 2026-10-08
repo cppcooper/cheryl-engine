@@ -7,6 +7,13 @@ contracts. The [application guide](../development/consuming-engine.md#game-hooks
 shows composition and game hooks; [architecture validation](../development/architecture-validation.md)
 describes isolation and integration checks.
 
+Applications may use [command-line startup](../development/consuming-engine.md#command-line-startup)
+to validate execution, polling, timing and backend options before constructing a
+context. The result owns that context and supplies the runtime configuration;
+`GameRuntime::run()` still owns adapter/game initialization and shutdown.
+Startup support is separate from the Engine and OpenGL libraries and does not
+select a backend dynamically.
+
 | Boundary | Contract |
 | --- | --- |
 | CPU asset data | Vertex layouts, typed manifests, grid generation, and owned RGBA decoding have no graphics-context dependency. `Loader::prepare()` runs independently of a provider. |

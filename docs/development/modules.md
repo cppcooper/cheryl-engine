@@ -11,6 +11,11 @@ events, assets and utilities remain within the one Engine library. Platform owne
 implement display/window/input contracts, graphics owners implement rendering and
 resources, UI owners consume neutral contracts, and audio owners implement playback.
 
+Command-line bootstrap uses the separate `Cheryl::Startup` and
+`Cheryl::OpenGL::Startup` support targets. They add CLI11 and backend argument
+definitions to applications that select them; Engine and OpenGL do not depend
+back on those targets. See [startup composition](consuming-engine.md#command-line-startup).
+
 ```mermaid
 flowchart LR
     Application --> Engine

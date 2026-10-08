@@ -41,6 +41,37 @@ System OpenGL development files and Python/Jinja2 for GLAD are required. Native
 window/input dependencies follow the selected Native GLFW configuration; see the
 [dependency table](../../../../docs/development/building.md#system-dependencies).
 
+## Command-line startup
+
+Link `Cheryl::OpenGL::Startup` and include `cheryl/backends/opengl/startup.h` for
+`CE::Engine::make_glfw_opengl_startup`. This separate support library has build
+target `module_opengl_startup` and output name `cheryl-module-opengl-startup`.
+It links `Cheryl::Startup` and `Cheryl::OpenGL`; the ordinary OpenGL target does
+not link back to startup. The
+[application guide](../../../../docs/development/consuming-engine.md#command-line-startup)
+owns common parsing, configuration and result-lifetime semantics.
+
+The default-input overload takes a description, `GlfwOpenGLConfig` and
+`RuntimeConfiguration`, each with a default, and is available with
+`CHERYL_NATIVE_INPUT`. The explicit-input overload takes `iInputSystem&` first
+and borrows it through context teardown. Both use the existing
+`make_glfw_opengl_context` assembly factory after validation.
+
+| Backend argument | Effect |
+| --- | --- |
+| `--window-width=N` | Sets positive logical window width; the factory default is 1280. |
+| `--window-height=N` | Sets positive logical window height; the factory default is 720. |
+| `--window-title=TEXT` | Overrides the title; an empty configured title keeps the randomized title behavior. |
+| `--swap-interval=N` | Sets a nonnegative presentation swap interval; the factory default is 1. |
+| `--input-diagnostics` | Available only with the default owned native input. Requires compiled TRACE logging and enables controller diagnostics in the OS-platform logger. |
+
+Help and invalid configuration return before GLFW/window construction.
+`--input-diagnostics` sets the OS-platform file/logger gates to TRACE while
+retaining the console preset, then enables the owned input adapter's gamepad
+diagnostics. It is absent from the borrowed-input overload. The
+[native diagnostics guide](../../platform/native-glfw/README.md#controller-diagnostics)
+describes those records and their limits.
+
 ## Engine contracts
 
 | Engine contract | Implementation | Responsibility |

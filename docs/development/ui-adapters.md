@@ -105,6 +105,13 @@ delivery; a later lease can preempt an earlier one. Drain already collected
 poll-latched records before releasing a preempted lease. Observe modifier releases
 even when the corresponding keyboard record is not selected for widget delivery.
 
+Give each session the complete tick batch once and hold its entry focus epoch
+through delivery. Use the session's `before_record` callback for application focus
+and visibility controls before each native event; its return selects pointer
+delivery for that record. New leases affect future polls, while collected records
+retain their earlier targets/epochs. A sequence of one-record calls changes the
+preemption boundary and can discard an earlier owner's still-pending text.
+
 Use the pointer coordinates recorded with each button or scroll event. A current
 cursor sample must not relocate an earlier click. Pointer delivery is explicitly
 selected by the application; keyboard focus alone does not imply pointer capture,

@@ -73,13 +73,22 @@ toolkit loop. `record()` returns owned CPU data for the uploader below.
 
 `request_keyboard_focus` acquires routed focus and Text capture; release drops
 those leases and unfocuses widgets. Keyboard/text delivery requires this session's
-target and latest requested epoch. A newer lease with the same target rejects
-obsolete epochs. On external preemption, already collected records drain before
+target and requested epoch saved at call entry. A newer lease with the same target
+rejects obsolete epochs. On external preemption, already collected records drain before
 the session releases its old lease; that release cannot erase the newer owner.
 The complete stream updates modifier snapshots, including unselected releases.
 The caller explicitly selects pointer delivery; pointer capture, modal arbitration
 and controller navigation are not implied. A routed keyboard lease does not
 fabricate an OS window-focus event.
+
+Pass the complete immutable tick record batch once, including empty batches that
+acknowledge external preemption. The three-argument `handle_input` overload calls
+`before_record(record)` before each delivery and uses the returned pointer-selection
+value for that record. Application focus/show/hide controls can run there while
+keyboard/text selection retains the entry epoch throughout the batch. New polls
+observe new leases; splitting a batch into individual calls would change its epoch
+and preemption boundaries. The two-argument overload retains constant pointer
+selection. See the [adapter routing guide](../../../../docs/development/ui-adapters.md#routing-and-unavailable-services).
 
 `capabilities()` reports the input source's committed-text/focus support and
 unavailable OS clipboard, cursor and IME services. Clipboard calls reject; standard

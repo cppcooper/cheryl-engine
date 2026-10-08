@@ -23,16 +23,22 @@ failure, and earlier font collections remain usable. Allocation failures propaga
 System discovery uses the existing
 [root traversal](file-and-font-discovery.md#system-font-candidates), but family
 selection inspects font metadata rather than guessing from filenames. Family names
-compare ASCII letters without case; regular faces precede bold/italic faces, with
-path/face order breaking ties. Discovery is best effort. Set `system_directories`
+compare ASCII letters without case. Selection first prefers faces that are neither
+bold-flagged nor heavier than Medium (weight 500), then upright faces, then the
+declared OpenType weight closest to Regular (400). When numeric weight metadata
+is absent, the bold flag supplies a 700/400 weight estimate. Sorted path/face order
+breaks ties. Discovery is best effort. Set `system_directories`
 to an explicit root list for application-controlled inventory, or an empty list for
 no installed-font search; unset uses the system roots. Keep environment/files stable
 during loading. A snapshot no longer needs those files afterward.
 
 With `automatic_system_fonts`, append available Arial, Segoe UI, Helvetica, Noto Sans,
-DejaVu Sans and Liberation Sans families in that order. These are common preferences,
-not fonts guaranteed to exist across operating systems or regions. Repeated path/face
-entries are deduplicated. The terminal fallback is always an
+DejaVu Sans and Liberation Sans families in that order, skipping a family if its
+best available face is bold-flagged or heavier than 500. Explicit preferred file
+and family sources remain unrestricted by this automatic-weight limit; explicit
+families use the same ranking but can select a heavy face when no lighter one exists.
+These preferences are not guaranteed to exist across operating systems or regions.
+Repeated path/face entries are deduplicated. The terminal fallback is always an
 [embedded, licensed DejaVu Sans](../../assets/fonts/README.md) face independent of the
 application's fonts, UI modules and installed inventory. The fallback covers the
 initial alphabets and contains a visible U+FFFD replacement; it cannot supply the

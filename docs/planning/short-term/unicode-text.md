@@ -1,8 +1,10 @@
 # Unicode text layout and native acceptance
 
-Source implementation, Linux Release Engine-only regressions/header probes and
-native demo compilation are accepted. Linux appearance and replacement observations
-remain pending. The [Unicode service](../../assets/text-layout.md) owns the current
+The Unicode service is implemented, with initial Linux Release Engine-only
+regressions/header probes and native demo compilation accepted. The subsequent
+font-weight selection change still needs compilation and dedicated
+regressions; Linux appearance and replacement observations remain pending.
+The [Unicode service](../../assets/text-layout.md) owns the current
 font, layout and resource contracts; legacy Font/STBFont/FFont and toolkit text APIs
 retain their own roles.
 
@@ -33,6 +35,13 @@ single atlas/geometry pair cannot represent that fallback model.
 - [x] Accept Linux Release Engine-only decoder, selection, shaping/bidi/wrapping,
   resource/submission and header coverage.
 - [x] Compile the native Linux/X11/OpenGL demo with HID and both UI adapters disabled.
+- [x] Rank installed faces by declared weight/style and exclude heavy automatic defaults.
+- [ ] Repeat existing font/layout/resource checks at the current source through
+  [TR13](../../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions).
+- [ ] Supply licensed style/weight fixtures and dedicated regressions for the
+  automatic limit, heavy-only family skipping and unrestricted explicit preferences
+  in separately authorized testing phases. Existing family cases cover baseline
+  discovery/order rather than those numeric-weight boundaries.
 - [ ] Accept sequential/concurrent visual, fallback and replacement observations
   through [TR9](../../testing-requests.md#tr9-qa-unicode-text-rendering).
 
@@ -41,7 +50,8 @@ single atlas/geometry pair cannot represent that fallback model.
 Observe supported glyphs and combining marks, mixed/pure RTL with natural digit
 order, width changes without split graphemes, explicit file/family and embedded
 fallback selection, and retained text through rapid replacement/shutdown.
-Use the queued launch variants and report unavailable layouts or preferences;
+Refresh the toolkit-free demo using the queue's shared preparation, then use its
+launch variants and report unavailable layouts or preferences;
 automatic absence proves graceful fallback, not successful family loading.
 Scalar editing does not establish a grapheme/bidi caret contract. A skipped/native
 unselected run leaves appearance pending even when CPU checks pass.

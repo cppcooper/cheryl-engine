@@ -15,6 +15,7 @@ separate from source completion.
 | Engine + Native GLFW + OpenGL | OpenGL consumer/probes, module implementation cases and selected owner/combined runner registration are correct. Native startup, presentation, retained-resource cleanup, input backpressure and concurrent shutdown require their explicit opt-ins. |
 | Standalone and supplied targets | Each module reuses one Engine; OpenGL reuses one Native GLFW. Dependency bootstrapping does not recursively enable root modules, tests or demo. Consumers link their actual owners and CTest discovers module-local cases. |
 | Crash bootstrap | An Engine-only consumer referencing no Engine entry point receives the automatic bootstrap object. Check the consumer's actual `NDEBUG` scope independently of exception/explicit traces or standalone Backward tests. |
+| Startup support | Explicitly compile `cengine_startup` in Engine-only composition and `module_opengl_startup` through the native demo. Plain Engine/OpenGL links remain free of CLI11 usage requirements; help/invalid options return before backend construction. Support headers and parser/factory behavior still need dedicated probes/regressions. |
 
 Controlled Engine tests establish runtime, publication and failure behavior against
 predictable dependencies. Implementing modules own checks of their actual behavior
@@ -106,6 +107,15 @@ caller's working directory:
     -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
+
+Current font-style selection changes need the queued
+[TR13](../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions) rerun.
+The existing `font_selection.families` fixture establishes basic discovery and
+ordering; it does not cover declared-weight ranking or heavy-only automatic
+exclusion. Those fixture/case gaps remain in the
+[Unicode plan](../planning/short-term/unicode-text.md#progress). Startup and UI
+callback/placeholder regression gaps are in the
+[roadmap checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
 
 ### Typed events
 

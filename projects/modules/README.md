@@ -1,7 +1,7 @@
 # Module roles and engine contracts
 
 Modules are grouped by the engine role they provide. Each concrete owner defines
-one selected library, its public headers, dependencies and tests. The role folders
+its primary library, public headers, dependencies and tests. The role folders
 organize those owners; engine interfaces remain in `projects/engine/`.
 
 ```text
@@ -32,6 +32,13 @@ OpenGL requires Native GLFW. Each UI owner links only Engine and its own toolkit
 either or both can be selected. Disable all module selection options for
 Engine alone. Link the public targets to inherit their include directories and
 dependency requirements; each owner also supplies a standalone CMake entry point.
+
+Command-line applications can also link `Cheryl::Startup` or
+`Cheryl::OpenGL::Startup`. These are support libraries registered by Engine and
+OpenGL respectively, with build targets `cengine_startup` and
+`module_opengl_startup`. They keep CLI11 outside plain Engine/OpenGL consumers'
+public requirements. The [application guide](../../docs/development/consuming-engine.md#command-line-startup)
+describes their use.
 
 An owner can fulfill several related contracts. Native GLFW couples display and
 input lifetimes; OpenGL couples rendering and resource ownership with its context.

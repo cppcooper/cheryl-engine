@@ -9,15 +9,17 @@ meaningful coverage limits.
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Deferred; blocked on backend work and an observation harness |
-| [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready; reuse the accepted native build; requires a display |
+| [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready with demo rebuilt for the current source; requires a display |
 | [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready; reuse the accepted audio build; requires audible stereo output |
-| [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready; reuse the accepted native build; artwork checks require the three sample images |
+| [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready with demo rebuilt for the current source; artwork checks require the three sample images |
+| [TR13](#tr13-automated-startup-compilation-and-existing-regressions) | Automated | Linux | Ready with Cheryl-owned dependencies; new targeted regression cases remain unimplemented |
+| [TR14](#tr14-qa-startup-and-ui-interaction) | QA | Linux/X11 | Ready after TR13 builds the UI demo; requires a display |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
-the starting directory afterward. The runtime QA requests reuse executables from
-the accepted Linux Release selections. Reusable configuration and regression
-procedures remain in the
+the starting directory afterward. Reuse the Linux Release build selections, but
+refresh affected executables for the current source before using earlier acceptance
+as evidence. Reusable configuration and regression procedures remain in the
 [Engine guide](development/architecture-validation.md#engine-asset-and-text-regressions),
 [controller guide](development/native-desktop-checks.md#linux-controller-automation)
 and [audio guide](../projects/modules/audio/miniaudio/README.md#repeating-root-assembly-validation).
@@ -31,6 +33,29 @@ Reuse these build directories when the source, compiler and configuration match.
 Stop on a command failure. A skipped or unavailable observation leaves that
 coverage pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
+
+## Shared native demo preparation
+
+TR9 and TR12 use the toolkit-free `build/testing-native-linux` configuration in
+the [native guide](development/native-desktop-checks.md#linux-controller-automation):
+Linux Release, developer logging, GLFW/X11/OpenGL, native input, HID off and both
+UI adapters off. If that matching configuration already exists, update only the
+demo once for both requests:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/testing-native-linux --target demo --parallel
+)
+```
+
+If the directory is absent or its options differ, use the native guide's explicit
+CMake configuration first; select only `demo` when preparing these QA runs.
+Existing controller regression results need no rerun solely for startup/UI changes.
+TR13 uses a separate UI-enabled directory so the toolkit-free F2 probe remains
+available for TR9. A demo built before the startup changes does not establish
+acceptance of the current implementation.
 
 ## TR6: QA HID lifecycle and notification observations
 
@@ -59,10 +84,12 @@ instructions. Windows notification observations are in the
 ## TR9: QA Unicode text rendering
 
 **Platform/prerequisites:** Linux/GLFW/X11/OpenGL, a usable display/driver, and the
-accepted `build/testing-native-linux/demo` with both UI adapters and HID disabled.
+`build/testing-native-linux/demo` rebuilt for the current source, with both UI
+adapters and HID disabled.
 The checked-in shaders/font fixture and embedded font are available; no controller,
 installed font, full image tree, clipboard or IME service is required. Close each run
-before the next. Reuse that matching build.
+before the next. Use the shared native preparation above and the font regressions
+in TR13; reuse the matching refreshed build.
 Press F7 to hide the new tile/sprite samples when they overlap the long text preview;
 their appearance and animation belong to TR12.
 
@@ -88,6 +115,11 @@ explicit family selections. Common-family automatic runs can legitimately select
 only the embedded fallback when none are installed. This establishes graceful
 absence, while isolated `font_selection.families` cases establish discovery metadata
 and ordering. Missing font preferences are not proof of successfully loading them.
+Automatic discovery must avoid bold-flagged and heavier-than-Medium defaults;
+explicit family/file preferences remain unrestricted. Report unexpectedly heavy
+automatic HUD text with the selected font inventory. Isolated weight-selection
+regressions still need fixtures/cases as identified in the
+[Unicode plan](planning/short-term/unicode-text.md#progress).
 
 - Inspect English, French accents and `e`+combining acute, German umlauts/`ß`, and
   Russian glyphs. Accents stay with their base and glyph masks are upright, with
@@ -174,8 +206,8 @@ their separate coverage limits in the [owner guide](../projects/modules/audio/mi
 
 ## TR12: QA demo tiles and sprites
 
-**Platform:** Linux/GLFW/X11/OpenGL. **Readiness:** ready with the accepted native
-demo build; reuse it with both UI adapters and HID disabled. **Prerequisites:** a
+**Platform:** Linux/GLFW/X11/OpenGL. **Readiness:** ready after the shared native
+demo preparation; use it with both UI adapters and HID disabled. **Prerequisites:** a
 usable display/driver and the tracked bootstrap assets. Present/partial-artwork
 observations also need the three images in the
 [demo sample table](../projects/apps/demo/README.md#tile-and-sprite-samples), placed
@@ -188,7 +220,8 @@ the checkout's files. Each launch is interactive: complete the relevant observat
 and close it before the next. It runs sequential variable timing and concurrent
 16 ms fixed timing, and exercises empty package trees both normally and with
 `--full-assets`. It prints blocked artwork cases when source images are unavailable.
-The temporary roots are removed after the launches; no rebuild is needed.
+The temporary roots are removed after the launches; no additional rebuild is needed
+after the shared preparation.
 
 ```sh
 (
@@ -276,3 +309,141 @@ Report the revision, launch cases/modes, visible failures, stderr diagnostics an
 blocked/skipped observations. This accepts the sample application, not a world/map
 API or physical GPU retirement. Wider platform testing remains deferred in the
 [platform plan](planning/long-term/platform-acceptance.md).
+
+## TR13: Automated startup compilation and existing regressions
+
+**Platform:** Linux. **Readiness:** ready to compile the current source and run existing
+checks with Cheryl-owned dependencies. **Prerequisites:** the compiler/system
+dependencies in the [build guide](development/building.md), initialized pinned
+submodules including CLI11, TGUI and RmlUi, and the SDK sample font or an explicit
+`CHERYL_RMLUI_TEST_FONT`. No display, controller, installed font or audio device is
+needed for the executed consumers/CPU cases. Native QA follows in TR14.
+
+The first selection preserves Engine-only isolation and explicitly compiles common
+startup support. The second compiles the updated native demo, both sessions and the
+generated RmlUi correction, then runs each focused owner/coexistence case once.
+Reuse either matching directory; build the listed targets together rather than
+running the same cases through owner and assembly aggregates.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-engine -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON
+  cmake --build build/testing-engine --parallel --target \
+    cengine_startup tests-engine consumer-cengine
+  ./build/testing-engine/cheryl-consumer
+  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^tests-engine\.(font_selection|text_layout|text_resources)\.'
+
+  cmake -S . -B build/testing-native-ui -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
+    -DCHERYL_TGUI_SOURCE="$PWD/extern/tgui" \
+    -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui" \
+    -DCHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
+  cmake --build build/testing-native-ui --parallel --target \
+    demo tests-ui-tgui tests-ui-rmlui tests-ui-coexist \
+    consumer-module-ui-tgui consumer-module-ui-rmlui
+  ./build/testing-native-ui/cheryl-ui-tgui-consumer
+  ./build/testing-native-ui/cheryl-ui-rmlui-consumer
+  ctest --test-dir build/testing-native-ui --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^(tests-ui-(tgui|rmlui)\.|tests-ui-coexist\.)'
+)
+```
+
+Confirm the Engine-only final links exclude native/graphics/toolkit owners and
+plain Engine consumers do not inherit CLI11. In the native/UI compile inventory,
+Core must compile the generated `rmlui-fixes/WidgetTextInput.cpp` rather than its
+unguarded original. The startup libraries compile through their explicit target
+and the demo; current consumer header probes do not cover their public headers.
+
+Existing cases cover baseline font discovery/layout/resources and session routing,
+editing, lifetime and coexistence. They do not directly exercise Startup's parser/
+backend factory, numeric font-weight limits, placeholder hit-testing, or the new
+`before_record` overload. Dedicated regressions remain unimplemented in the
+[startup/UI checklist](planning/develop-review-and-development-plan.md#startup-and-ui-follow-up)
+and [Unicode plan](planning/short-term/unicode-text.md#progress); a passing run does
+not close those gaps. Supplied RmlUi target/package acceptance is blocked until a
+corrected dependency and consuming host are available. The next action is to
+provide them and check correction declarations under the
+[module contract](../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract),
+including rejection without a declaration. Owned-source success does not establish
+those supplied paths or standalone composition.
+
+Report revision, configuration, selections, compile/link failures, case failures
+and skips. Preserve TR9/TR12/TR14 native observations separately.
+
+## TR14: QA startup and UI interaction
+
+**Platform:** Linux/GLFW/X11/OpenGL in sequential and concurrent runtime modes.
+**Readiness:** ready after TR13 builds the updated UI demo.
+**Prerequisites:** a usable display/driver and both adapters with tracked demo
+documents/images/font available. No package artwork or controller is required.
+Use a separate mouse or disable touchpad suppression while typing when checking
+simultaneous keyboard/pointer behavior. Reuse `build/testing-native-ui` and close
+each interactive launch before the next.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  env -u DISPLAY -u WAYLAND_DISPLAY ./build/testing-native-ui/demo --help
+  ./build/testing-native-ui/demo --window-width=1440 --window-height=900 \
+    --window-title='Cheryl startup QA' --swap-interval=0 assets
+  ./build/testing-native-ui/demo --concurrent --fixed-step-ms=16 --worker-count=2
+  ./build/testing-native-ui/demo --concurrent --max-updates=5 --input-unlimited
+)
+```
+
+- Help succeeds with no display and lists Engine, Backend and Application options,
+  including window settings, workers, positional assets and font preferences.
+  Independently repeat the executable with an unknown option, a missing numeric
+  value, `--fixed-step-ms=0`, `--max-fixed-updates=0`, `--input-capacity=0`,
+  `--worker-count=0`, `--window-width=0` and `--text-direction=invalid`. Each must
+  return nonzero with a parsing/validation diagnostic before attempting GLFW.
+  An excessive `--recovery-prefix` must also reject. These intentionally failing
+  launches are separate from the successful `set -e` block.
+- The configured title/dimensions appear, the positional asset root loads tracked
+  resources, and normal and concurrent fixed runs retain input/rendering/shutdown.
+  The finite launch reports five completed updates and exits normally. Help and
+  finite-run success do not prove all parser precedence/runtime-policy combinations;
+  dedicated Startup regressions remain pending.
+- The RmlUi field begins empty with a muted placeholder. Click its left, middle
+  and right, type text, clear it and click again: no crash or invalid caret/selection,
+  and the hint never becomes editable content. F4 focuses the actual field even
+  after using another RmlUi control; pressing it again releases the field's focus.
+  List items occupy separate vertical rows, with working scrolling and clipping.
+- Follow the [demo interaction sequence](../projects/apps/demo/README.md#interaction-checks)
+  in both modes. Switch repeatedly between F2/F4 and pointer focus while typing,
+  then use Escape and F3/F6 hide/show controls. Pending old-owner records retain
+  their poll routing; subsequent polls reach the new owner. Check for lost or
+  duplicated text, stale native focus, leaked WASD camera actions while editing,
+  and pointer delivery to hidden views. Rapid physical input supplements rather
+  than deterministically covers the missing same-batch regression cases.
+- Close during active UI uploads/replacements and relaunch without cleanup errors
+  or hangs. Native alpha/image orientation, resize/hit positions and retained scenes
+  must still satisfy the demo sequence. These observations do not reproduce the
+  unmodified upstream defect or replace the investigation's sanitizer evidence.
+
+Report revision, launches, actions, diagnostics and unavailable observations.
+Builtin Unicode appearance and package artwork retain TR9 and TR12 acceptance.

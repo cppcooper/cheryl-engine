@@ -2,8 +2,8 @@
 
 ## Repeatable sequence
 
-Use the normal build's existing `demo` executable. Run it once with no arguments,
-then repeat with `--concurrent`. Keep the run interactive by omitting
+Use a `demo` executable refreshed for the current source. Run it once with no
+arguments, then repeat with `--concurrent`. Keep the run interactive by omitting
 `--max-updates`; that option is only for finite automation. The automated normal
 configuration uses GLFW's X11 backend with Wayland disabled.
 
@@ -14,10 +14,12 @@ In each mode, check these observations:
    and smaller sizes, then maximize and restore. The HUD and camera-target text
    remain correctly placed; rendering and WASD/R, click and wheel input remain
    responsive during resizing, without hangs or deferred native errors.
-2. Press F2, type ASCII text, move the caret and use Backspace/Delete. Text focus
-   prevents those keystrokes from moving the camera. Enter/Esc releases focus.
-   The builtin HUD now uses the Unicode text service. Its selected multilingual,
-   bidi/fallback and wrapping observations are pending separately in
+2. In a toolkit-free build, press F2, type ASCII text, move the caret and use
+   Backspace/Delete. Text focus prevents those keystrokes from moving the camera;
+   Enter/Esc releases it. With UI adapters selected, use their
+   [interaction sequence](../../projects/apps/demo/README.md#interaction-checks);
+   Escape releases UI focus. The builtin HUD uses the Unicode text service. Its
+   multilingual, bidi/fallback and wrapping observations are pending separately in
    [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering); this existing input
    sequence alone does not establish them. Probe editing still uses logical scalars.
 3. Test shader reload using copied assets. From the repository root, run
@@ -49,8 +51,10 @@ covering controls, reordered slots, hats, disconnect/reconnect and legacy mappin
 Its syscall wrappers apply process-wide, so keep that runner separate from owner
 aggregates. Automation does not establish HID readiness or physical reports.
 
-Reuse the matching `build/testing-native-linux` directory and its demo for pending
-text and artwork observations. When source or configuration requires new coverage,
+Reuse the matching `build/testing-native-linux` directory and refresh its demo for
+pending text/artwork observations; the queue's
+[shared preparation](../testing-requests.md#shared-native-demo-preparation) builds
+only that target. When controller source or configuration requires new coverage,
 this procedure batches the relevant targets and exports the owned Gainput manager's
 compiler command. With HID disabled its HID macro arguments must be absent; inspect
 the printed result. Physical observations use the following controller checks.

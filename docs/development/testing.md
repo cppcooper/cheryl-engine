@@ -85,5 +85,11 @@ cannot prove that boundary. See [independent consumers](consuming-engine.md#inde
 
 An empty selection, skipped case or missing device leaves that coverage pending.
 Report the revision, configuration, platform and unavailable observations. The
-[testing queue](../testing-requests.md) tracks remaining QA; owning plans track
+[testing queue](../testing-requests.md) tracks pending checks and QA; owning plans track
 implementation progress. Durable limitations belong in the relevant subject guide.
+
+The queue separates compilation and existing regressions from native observations.
+The [roadmap](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up)
+and [Unicode plan](../planning/short-term/unicode-text.md#progress) track dedicated
+cases/probes missing for the recent startup, font and UI changes. Compiling startup
+through the demo and passing baseline suites cannot close those gaps.

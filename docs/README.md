@@ -7,7 +7,7 @@ Choose an entry point for the work you are doing:
 | Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
 | Write a game | [Application composition and game hooks](development/consuming-engine.md), then [demo](../projects/apps/demo/README.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
-| Run checks | [Test selection](development/testing.md) and [pending QA](testing-requests.md) |
+| Run checks | [Test selection](development/testing.md) and [pending checks and QA](testing-requests.md) |
 | Extend the repository | [Module authoring](development/modules.md), [UI adapters](development/ui-adapters.md) and [contributing](development/contributing.md) |
 | Pick up planned work | [Planning catalogue](planning/README.md) |
 
@@ -70,11 +70,12 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 - [C++ code style](development/code-style.md)
 - [Architecture validation procedures](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)
-- [Consuming the engine](development/consuming-engine.md)
+- [Consuming the engine and command-line startup](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
 - [Module index and owner guides](../projects/modules/README.md)
 - [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
 - [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
+- [RmlUi placeholder investigation and contribution guidance](external-work/rmlui-placeholder-issue.md)
 - [Writing a UI adapter](development/ui-adapters.md)
 - [Neutral UI consumer checks](development/architecture-validation.md#neutral-ui-consumer)
 - [Desktop smoke checks](development/native-desktop-checks.md)

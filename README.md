@@ -71,8 +71,10 @@ the public aliases to inherit headers and dependencies.
 | Build target | Public alias | Purpose |
 | --- | --- | --- |
 | `cengine` | `Cheryl::Engine` | Neutral engine contracts and implementation. |
+| `cengine_startup` | `Cheryl::Startup` | Optional command-line parsing, validated configuration and custom backend startup. |
 | `module_native_glfw` | `Cheryl::NativeGLFW` | Display, windows and optional input. |
 | `module_opengl` | `Cheryl::OpenGL` | Rendering, context, presentation and resources; requires Native GLFW. |
+| `module_opengl_startup` | `Cheryl::OpenGL::Startup` | GLFW/OpenGL command-line startup; includes common Startup and OpenGL requirements. |
 | `module_ui_tgui` | `Cheryl::UI::TGUI` | TGUI widgets and retained scene bridge. |
 | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | RML/RCSS documents and retained scene bridge. |
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
@@ -101,7 +103,7 @@ With tests enabled, build and run the combined GoogleTest runner for selected ow
 The [test guide](docs/development/testing.md) explains focused runners, aggregates,
 CTest selection, consumers and environment opt-ins. Native graphics and real-font
 checks need their stated prerequisites; skipped cases leave that coverage pending.
-The [testing queue](docs/testing-requests.md) contains outstanding user-run QA.
+The [testing queue](docs/testing-requests.md) contains pending automated checks and QA.
 
 ## Repository architecture
 
@@ -125,7 +127,7 @@ for the steps required to add an owner.
 | **CMake configuration** and **builds** | [Options and defaults](docs/development/building.md#configuration-options), [build configurations](docs/development/building.md#build-configurations) and [engine-only builds](docs/development/building.md#engine-only-configuration) |
 | Dependencies                           | [SDK selection and toolchain settings](docs/development/building.md#dependency-and-toolchain-settings), [system requirements](docs/development/building.md#system-dependencies) and [public headers and link requirements](docs/development/consuming-engine.md#dependencies-and-headers) |
 | Targets and artifacts                  | [Module targets and aliases](projects/modules/README.md), [test targets](docs/development/testing.md#runner-selection) and [artifact name definitions](cmake/CherylOutputs.cmake) |
-| Writing a game                         | [Application composition](docs/development/consuming-engine.md), [game hooks and ownership](docs/development/consuming-engine.md#game-hooks-and-ownership) and [minimal native application](docs/development/consuming-engine.md#minimal-native-application) |
+| Writing a game                         | [Application composition and startup](docs/development/consuming-engine.md), [game hooks and ownership](docs/development/consuming-engine.md#game-hooks-and-ownership) and [minimal native application](docs/development/consuming-engine.md#minimal-native-application) |
 | Adding a module                        | [Module authoring](docs/development/modules.md#add-a-module), [standalone composition](docs/development/modules.md#standalone-modules) and [UI adapters](docs/development/ui-adapters.md) |
 | Platform and graphics APIs             | [Native GLFW](projects/modules/platform/native-glfw/README.md) and [OpenGL](projects/modules/graphics/opengl/README.md) |
 | UI APIs                                | [TGUI](projects/modules/ui/tgui/README.md) and [RmlUi](projects/modules/ui/rmlui/README.md) |

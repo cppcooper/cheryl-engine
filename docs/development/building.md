@@ -9,7 +9,8 @@ link Cheryl targets instead of copying include and link settings.
 
 Pass settings as `-DNAME=value`. These defaults apply to a fresh root configuration;
 existing build directories and IDE profiles retain their cache. Native options
-are declared only when Native GLFW is selected.
+are declared only when Native GLFW is selected; the RmlUi verification option is
+declared only when RmlUi is selected.
 
 | Option | Default | Effect |
 | --- | --- | --- |
@@ -17,6 +18,7 @@ are declared only when Native GLFW is selected.
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
 | `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects RmlUi independently; can coexist with TGUI. |
+| `CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED` | `OFF` | Attests that a supplied RmlUi library includes the placeholder hit-testing correction. Set only after verification; Cheryl-owned source builds declare their correction automatically. |
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
@@ -90,7 +92,7 @@ its text dependencies:
 | `CHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine` | Supplies shared helpers and Engine bootstrapping for standalone modules/consumers. Root configuration sets it automatically. |
 | `CHERYL_NATIVE_GLFW_SOURCE=/path/to/native-glfw` | Supplies Native GLFW to standalone OpenGL when its target is absent. |
 | `CHERYL_TGUI_SOURCE`, `TGUI_DIR` | Selects a TGUI 1.13.0 source tree or exact package with custom/FreeType support. |
-| `CHERYL_RMLUI_SOURCE`, `RmlUi_DIR` | Selects a RmlUi 6.3 source tree or exact package with the stock FreeType engine. |
+| `CHERYL_RMLUI_SOURCE`, `RmlUi_DIR` | Selects a RmlUi 6.3 source tree or exact package with stock FreeType and the required [placeholder correction](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
 | `CHERYL_MINIAUDIO_SOURCE` | Overrides pinned miniaudio source; a supplied miniaudio target takes precedence. |
 | `CHERYL_RMLUI_TEST_FONT=/path/to/font.ttf` | Supplies a real font fixture when the selected SDK's sample font is unavailable. |
 
@@ -99,6 +101,13 @@ guides document selection order and feature requirements. Owned source dependenc
 are pinned in [.gitmodules](../../.gitmodules); initialize the recorded revisions.
 The first HID-enabled configuration fetches hidapi 0.15.0 and needs network access
 or a prepared FetchContent cache. UI dependency selection performs no download.
+
+Engine configuration registers `Cheryl::Startup`, reusing `CLI11::CLI11` or adding
+the pinned `extern/cli11` source. OpenGL registers `Cheryl::OpenGL::Startup`.
+These support libraries are excluded from the default build unless a consumer
+links them or names their build targets; the demo links OpenGL startup. Plain
+Engine/OpenGL targets do not acquire CLI11 usage requirements. See
+[application startup](consuming-engine.md#command-line-startup).
 
 ## System dependencies
 
@@ -131,6 +140,7 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 | Python cannot import `jinja2` | Install it in the selected interpreter or set `Python_EXECUTABLE`. |
 | GLFW cannot find Wayland tools/libraries | Install the requirements or set `GLFW_BUILD_WAYLAND=OFF`. |
 | CMake 4 rejects an old dependency policy | Set `CMAKE_POLICY_VERSION_MINIMUM=3.5`. |
+| Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or provide verified target/configuration metadata according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
 | Standard C++ headers cannot find `math.h` or `stdlib.h` | Inspect stale compiler discovery before editing includes; see [recovery](consuming-engine.md#standard-headers-in-an-existing-build). |
 
 Successful configuration/build does not establish native platform coverage. The

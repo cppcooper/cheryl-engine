@@ -22,8 +22,70 @@ target_link_libraries(application PRIVATE Cheryl::Engine)
 For native graphics, enable Native GLFW, OpenGL and native input, then link
 `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`. Select and link
 `Cheryl::UI::TGUI`, `Cheryl::UI::RmlUi` or `Cheryl::Audio::Miniaudio` when needed.
+For command-line startup, link `Cheryl::OpenGL::Startup`; it supplies the common
+startup target and the native/graphics targets transitively.
 Consumers obtain C++23, includes, logging policy and SDK requirements through
 targets rather than compiling Engine sources or repeating dependency lists.
+
+## Command-line startup
+
+[`CE::Engine::Startup`](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h)
+owns CLI11 parsing and validates execution, input polling and simulation timing
+before invoking a selected backend factory. Link `Cheryl::Startup` for a custom
+backend or `Cheryl::OpenGL::Startup` for the
+[GLFW/OpenGL factory and options](../../projects/modules/graphics/opengl/README.md#command-line-startup).
+The support targets expose CLI11 in their public headers; linking Engine or OpenGL
+alone retains their direct context/runtime construction APIs without that public
+dependency.
+
+Create startup on the platform owner, register application options with
+`add_application_options`, then call `initialize(argc, argv)` once. Option-definition
+callbacks run immediately; any values bound to the parser must remain at a stable
+address through initialization. Startup itself cannot be copied or moved because
+its callbacks bind its configuration.
+
+Help and parse/configuration errors produce a `StartupResult` with no engine.
+Return its `exit_code` when `should_start()` is false; help succeeds and invalid
+arguments fail before native context construction. A successful result owns the
+`EngineContext` and the parsed `RuntimeConfiguration`. Construct the game from that
+context, then call `result.make_runtime(game)` to apply its run mode, polling and
+timing together. Keep the result and game alive through runtime destruction;
+`make_runtime` requires an lvalue result. Backend construction failures propagate,
+and `run()` retains the runtime's existing initialization/cleanup contract.
+
+`StartupConfiguration` supplies application defaults through `execution` and
+`runtime`. The common Engine options override those defaults:
+
+| Argument | Effect |
+| --- | --- |
+| `--concurrent` | Selects a separate simulation owner thread. |
+| `--fixed` | Selects fixed-step simulation. |
+| `--fixed-step-ms=N` | Selects fixed simulation and sets its positive step in milliseconds. |
+| `--variable-interval-ms=N` | Sets variable-update spacing; zero permits unpaced updates. |
+| `--max-fixed-updates=N` | Sets a positive limit on ordinary fixed updates per scheduler turn. |
+| `--variable-catch-up` | Selects fixed simulation with bounded variable catch-up recovery. |
+| `--recovery-prefix=N` | Sets the fixed-update prefix before recovery, at most `max_fixed_updates`. |
+| `--recovery-cap-ms=N` | Caps the recovery duration; zero removes the cap. |
+| `--input-unlimited` | Selects unlimited completed polls between simulation updates. |
+| `--input-capacity=N` | Selects finite input polling with a positive completed-poll capacity. |
+| `--input-spacing-ms=N` | Sets minimum spacing between completed polls; zero removes the delay. |
+| `--worker-count=N` | Sets capacity for the lazily created Engine CPU pool, separate from the simulation thread. Owned capacity must be positive; an injected shared pool retains its own capacity. |
+
+Numeric values are nonnegative and must satisfy the linked
+[timing](../runtime/simulation-timing.md) and
+[polling](../runtime/input-state-model.md#polling-backlog-and-scheduling) contracts.
+Option callbacks apply in parse order: `--input-unlimited --input-capacity=4`
+selects finite polling; reversing them selects unlimited polling. Without overrides,
+the default configuration is sequential variable simulation, lockstep polling and
+one lazy CPU worker.
+
+A custom `StartupBackend` provides a required `create(ExecutionOptions)` factory,
+optional Backend argument definitions and optional validation. The factory must
+return an owned context; a null result fails startup. Backend selection is currently
+programmatic. CLI backend selection, application-preference/build-default resolution
+and runtime-loaded discovery remain unimplemented at the selection point after
+parsing. [The demo option helper](../../projects/apps/demo/src/demo-options.cpp)
+shows application-specific registration without duplicating the engine parser.
 
 ## Game hooks and ownership
 
@@ -52,7 +114,7 @@ With Native GLFW, OpenGL and native input enabled, this opens a window and stops
 when Escape is pressed. It submits no draws yet:
 
 ```cpp
-#include <cheryl/backends/opengl/glfw-backend.h>
+#include <cheryl/backends/opengl/startup.h>
 #include <cheryl/core/controls/input-interface.h>
 #include <cheryl/core/game-framework/abstract-game.h>
 #include <cheryl/core/game-framework/game-runtime.h>
@@ -76,15 +138,22 @@ public:
     void deinit() override {}
 };
 
-int main() {
-    auto engine = CE::Engine::make_glfw_opengl_context({.title = "My game"});
-    Game game(*engine);
-    CE::GFramework::GameRuntime runtime(*engine, game);
+int main(int argc, char** argv) {
+    auto startup = CE::Engine::make_glfw_opengl_startup("My game", {.title = "My game"});
+    auto result = startup.initialize(argc, argv);
+    if (!result.should_start())
+        return result.exit_code;
+    Game game(*result.engine);
+    auto runtime = result.make_runtime(game);
     runtime.run();
+    return result.exit_code;
 }
 ```
 
-Pass `RunMode::Concurrent` as the third runtime argument to select the worker.
+Link this example to `Cheryl::OpenGL::Startup`. Pass `--concurrent` to select the
+simulation worker, or use the common timing/polling options above. Applications
+that construct `GameRuntime` directly can still pass `RunMode::Concurrent` as its
+third argument.
 Keep native binding IDs inside bootstrap; gameplay reads semantic `ActionId`s.
 Never change bindings or query a live window from concurrent `update()`.
 
@@ -113,6 +182,7 @@ entities, collision and mechanics belong to the game or its selected modules.
 | Backward::Interface | Engine public trace/resolver requirements; its own global signal-handler object is not linked. |
 | STB and JSON | Engine private implementation include directories. |
 | FreeType, HarfBuzz, ICU uc/i18n | Engine private font/layout implementation and link requirements; no library-native types appear in public headers. |
+| CLI11 | Startup support's public parsing API; reuse `CLI11::CLI11` or initialize the pinned `extern/cli11` source. Plain Engine/OpenGL consumers do not inherit CLI11 headers or linkage. |
 | GLFW | Native GLFW private implementation requirement, also used privately by the OpenGL context binding. |
 | Gainput | Native GLFW public requirement when `CHERYL_NATIVE_INPUT` is enabled; its types occur in that owner's headers. |
 | X11 | Native input's Linux dependency; OpenGL acceptance also uses it for explicitly selected X11 scenarios. |

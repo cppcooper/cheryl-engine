@@ -37,6 +37,32 @@ module/demo/test selection in its local scope. Consumer/header checks are select
 through `CHERYL_BUILD_CONSUMER_TESTS` at the root or by configuring the consumer
 entry point independently.
 
+## Placeholder dependency contract
+
+The selected RmlUi 6.3 Core must include the empty-value correction in
+`WidgetTextInput::CalculateCharacterIndex`. Uncorrected code forms a range into
+the empty editable value using the displayed placeholder's line length.
+
+When Cheryl creates Core from `CHERYL_RMLUI_SOURCE` or the bundled source, its
+[helper](cmake/RmlUi.cmake) compiles a generated copy of `WidgetTextInput.cpp` with
+an early `GetValue().empty()` return. It excludes the original translation unit,
+preserves its include directory and leaves the dependency checkout unchanged.
+An already guarded source is reused; an unrecognized entry/source layout rejects
+configuration. The helper then marks the concrete Core target with
+`CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE`.
+
+Existing targets and installed packages bypass that helper. They must supply the
+same target property or the consumer must set
+`CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=ON` after verifying the actual library
+contains the correction. Neither declaration patches a supplied binary or proves
+its runtime behavior. Missing declarations reject configuration with the source,
+property and verification alternatives. Supplied dependency targets remain unchanged.
+
+The [placeholder investigation](../../../../docs/external-work/rmlui-placeholder-issue.md)
+preserves the source diagnosis, unmodified-upstream reproduction requirements and
+contribution guidance. The downstream correction still needs runtime acceptance;
+the existing session tests do not establish placeholder hit-testing safety.
+
 ## Input identities
 
 `keyboard_key` maps portable physical keyboard identities to RmlUi keys; unknown
@@ -118,8 +144,17 @@ authoring/input changes before rendering without advancing the clock again.
 The session holds Events capture. `request_keyboard_focus` acquires Text capture
 and a keyboard routing lease for its target.
 `handle_input` observes modifier snapshots but delivers keyboard/text only for its
-requested epoch. Poll-latched records drain before focus preemption clears native
-editing. Pointer delivery is caller-selected; mouse buttons and fractional wheel
+target and requested epoch saved at call entry. Pass the complete immutable tick
+record batch once: poll-latched records drain before external focus preemption
+clears native editing, including when the batch is empty.
+
+The three-argument overload calls `before_record(record)` before each delivery
+and uses its return value as that record's pointer selection. Application controls
+can request focus or show/hide a view in that callback without changing the entry
+epoch used to select keyboard/text for the rest of the batch. Future polls observe
+the new routing lease; existing records retain their original targets/epochs.
+The two-argument overload keeps a constant pointer selection. Unselected pointer
+delivery sends mouse-leave when necessary. Mouse buttons and fractional wheel
 input apply their observation-time coordinates before delivery. Physical keys,
 repeats and releases stay independent of committed Unicode text.
 
@@ -184,7 +219,10 @@ Run the focused checks:
 `all-tests` runner. It checks poll-latched text delivery, focus preemption and
 stale-lease release across both native toolkits, distinct alpha passes, and frames
 retained through independent toolkit/provider teardown. Do not run both runners
-for the same cases. Reuse the accepted TGUI suite unless changes affect its paths.
+for the same cases. Run the affected TGUI session checks as well when shared
+routing/session paths change. Current build/regression and native interaction work
+is queued in [TR13](../../../../docs/testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions)
+and [TR14](../../../../docs/testing-requests.md#tr14-qa-startup-and-ui-interaction).
 
 An independently configured consumer establishes standalone source composition
 and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
@@ -232,6 +270,7 @@ The [demo guide](../../../apps/demo/README.md#interaction-checks) retains select
 platform limits.
 
 For a toolkit upgrade, recheck Core/FreeType feature metadata, premultiplied file
-and generated images, font-byte lifetime and retained frames through teardown.
+and generated images, font-byte lifetime, placeholder correction/declarations and
+retained frames through teardown.
 Accept changed behavior independently before extending native consumers or the
 cross-toolkit coexistence suite.

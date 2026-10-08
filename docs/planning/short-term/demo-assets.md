@@ -15,8 +15,9 @@ owns controls, selected images and the implemented application flow.
   resolved resources in both modes and releasing them during owner teardown.
 - [x] Document controls/assets and add shared Linux build/QA procedures.
 - [ ] Accept appearance, timing, controls, missing/partial artwork and shutdown in
-  [TR12](../../testing-requests.md#tr12-qa-demo-tiles-and-sprites), reusing the matching
-  native Linux/X11 build with both UI adapters and HID disabled.
+  [TR12](../../testing-requests.md#tr12-qa-demo-tiles-and-sprites), using the updated
+  native Linux/X11 demo with both UI adapters and HID disabled. The queue's shared
+  preparation refreshes it after startup changes.
 
 ## Remaining acceptance
 

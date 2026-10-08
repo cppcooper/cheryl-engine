@@ -6,7 +6,7 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 ## Short term
 
-Complete the remaining observations for these implemented facilities. Each owning
+Complete the remaining checks and observations for these implemented facilities. Each owning
 plan retains its checklist until acceptance is complete:
 
 | Task | Owning plan | Remaining acceptance |
@@ -14,10 +14,39 @@ plan retains its checklist until acceptance is complete:
 | Unicode layout and glyph resources | [Unicode text](short-term/unicode-text.md) | Native appearance, font selection, wrapping and replacement in both runtime modes |
 | Audio playback | [Audio integration](short-term/audio-integration.md) | Audible native output and sustained WAV streaming |
 | Demo tile/sprite showcase | [Demo assets](short-term/demo-assets.md) | Artwork, playback, optional-load failures and shader replacement |
+| Startup and UI updates | [Checklist below](#startup-and-ui-follow-up) | Compile and check the latest changes, add missing cases and observe native CLI/focus/placeholder behavior |
 
 The [testing queue](../testing-requests.md) owns launch commands and prerequisites.
 CPU checks cannot replace these native observations. Reuse the matching accepted
-builds when their source and configuration still agree.
+builds when their source and configuration still agree; refresh demos for the
+recent startup changes before using older results as evidence for the current source.
+
+### Startup and UI follow-up
+
+The [application guide](../development/consuming-engine.md#command-line-startup)
+owns startup/result lifetimes and option semantics; the UI guides own
+[batch routing](../development/ui-adapters.md#routing-and-unavailable-services) and
+[RmlUi correction declarations](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract).
+Font-weight acceptance remains with the Unicode plan rather than this checklist.
+
+- [x] Add common/backend startup support and migrate the demo's application options.
+- [x] Preserve session entry epochs across complete input batches with per-record controls.
+- [x] Correct RmlUi field focus, placeholder markup and vertical list rows; apply the
+  downstream source guard and require correction declarations for supplied Core.
+- [ ] Compile the current selections and repeat existing affected checks through
+  [TR13](../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions).
+- [ ] Add dedicated Startup parser/factory and support-header probes, callback/batch
+  routing cases and placeholder hit-testing regressions in separately authorized
+  testing phases. Existing suites do not exercise these new paths directly.
+- [ ] Accept native startup/field/focus/list observations through
+  [TR14](../testing-requests.md#tr14-qa-startup-and-ui-interaction).
+- [ ] Obtain a corrected supplied RmlUi target/package and consuming host, then
+  accept declaration/rejection behavior independently of Cheryl-owned source.
+
+The [upstream investigation](../external-work/rmlui-placeholder-issue.md) retains
+the unmodified reproduction, sanitizer and submission prerequisites. Downstream
+demo success does not close that work. Dynamic backend selection remains outside
+the current programmatic startup contract and has no selected implementation phase.
 
 ### Deferred HID integration
 

@@ -1,6 +1,7 @@
 # Cheryl Engine demo
 
-The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`.
+The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW`, `Cheryl::OpenGL` and
+`Cheryl::OpenGL::Startup` for shared command-line bootstrap.
 Selecting `Cheryl::UI::TGUI` adds a panel on the right; selecting
 `Cheryl::UI::RmlUi` adds an independent native-document view on the left. Each has
 live counters, a camera-reset button, an editable field, a scrolling list,
@@ -79,7 +80,7 @@ A positional argument selects another root:
 | P | Pauses/resumes all sample animations while gameplay owns keyboard input. |
 | Space | Replays the sample's nonlooping Swordsman attack while gameplay owns keyboard input. If paused, it holds the first frame until resumed. |
 | F2 | Toggles TGUI text focus when its panel is visible, or the text probe when both adapters are disabled. |
-| F4 | Toggles RmlUi text focus when its view is visible. |
+| F4 | Focuses the RmlUi text field when its view is visible; releases focus when that field already owns it. |
 | Escape | Releases keyboard focus. |
 | Q | Requests orderly runtime shutdown while gameplay owns keyboard input; closing the window also exits. |
 | Enter | Releases focus in the toolkit-free text probe. |
@@ -96,26 +97,25 @@ remain unavailable. Both views read the same immutable records with distinct foc
 targets. Clicking a panel or pressing its focus key preempts the previous keyboard
 owner. Pointer delivery is selected for each visible view and does not suppress
 gameplay mouse State. The demo does not add pointer capture or modal arbitration.
+Focus changes affect subsequent polls. Already collected keyboard/text records
+keep their original target and epoch while each view drains the complete batch.
 
 ## Command-line options
+
+Startup groups help into Engine, Backend and Application options. Use `--help`
+to show the selected options; help and invalid configuration return before a
+native context is created. The
+[Engine option reference](../../../docs/development/consuming-engine.md#command-line-startup)
+owns `--concurrent`, timing, input polling and `--worker-count`. The
+[GLFW/OpenGL reference](../../modules/graphics/opengl/README.md#command-line-startup)
+owns window dimensions/title, swap interval and `--input-diagnostics`.
+The demo's [option helper](src/demo-options.cpp) registers these Application options:
 
 | Argument | Effect |
 | --- | --- |
 | `/path/to/assets` | Replaces the default asset root. |
 | `--full-assets` | Attempts the whole manifest/image tree; failure reports to stderr and startup continues with available samples. |
-| `--concurrent` | Runs simulation on its separate owner thread. |
 | `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
-| `--fixed` | Selects fixed-step simulation. |
-| `--fixed-step-ms=N` | Selects fixed simulation and sets its step in milliseconds. |
-| `--variable-interval-ms=N` | Sets the variable-update interval in milliseconds. |
-| `--max-fixed-updates=N` | Limits ordinary fixed updates per scheduler turn. |
-| `--variable-catch-up` | Selects fixed simulation with variable catch-up recovery. |
-| `--recovery-prefix=N` | Sets the fixed-update prefix before recovery. |
-| `--recovery-cap-ms=N` | Caps the recovery update's simulated duration. |
-| `--input-unlimited` | Removes the finite pending-input-poll admission limit. |
-| `--input-capacity=N` | Selects finite input polling with the given backlog capacity. |
-| `--input-spacing-ms=N` | Sets the minimum input-poll spacing in milliseconds. |
-| `--input-diagnostics` | Enables controller callback/sample TRACE records in `logs/os-platform.log`; requires compiled TRACE logging. |
 | `--unicode-text` | Shows accented Latin, Cyrillic, mixed/pure RTL, missing-glyph and wrapping examples in the builtin HUD. |
 | `--builtin-font` | Disables automatic installed-family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
 | `--font=/path/to/font.ttf` | Appends an application file to the ordered preferred font sources; repeat as needed. Invalid files fail startup. |
@@ -207,7 +207,9 @@ scene and appears in the HUD. Frame preparation appends TGUI, then RmlUi, after
 the world/HUD pass; it never traverses live widgets. Teardown follows simulation
 join and releases application-held widgets/elements/listeners before their toolkit
 globals. Both adapters remain independent; their app views share only the status
-model and generic shader assets, with distinct alpha pipelines.
+model and generic shader assets, with distinct alpha pipelines. Each view delivers
+the complete input batch once through its session's control callback, retaining
+the entry keyboard epoch while visibility controls select pointer delivery per record.
 
 The demo uses the adapter's [typed layout](../../modules/ui/tgui/README.md#typed-layout).
 The panel anchors to the window's top-right with a 24-unit inset. Its width follows
@@ -236,8 +238,11 @@ scrolling uses that same normal clipping behavior.
 RmlUi authors its view in [demo.rml](../../../assets/ui/demo.rml) using native RCSS.
 Its panel has a 24-unit top-left inset, width of 34% bounded to 360–600 units and
 height of 75% bounded to 500–800 units. Flex layout keeps the header, field and
-image row at native sizes while the list fills the middle. Smaller windows can
-clip the minimum-sized panel. The bottom-left tooltip opens toward the window
+image row at native sizes while the list fills the middle. List items explicitly
+use block layout, placing each row on its own line in the vertical scroll region.
+The initially empty field displays native placeholder help; clearing an edited
+value restores that help. Smaller windows can clip the minimum-sized panel.
+The bottom-left tooltip opens toward the window
 interior. No Cheryl layout string parser is involved.
 
 The initial RmlUi image has red/green upper quadrants and blue/yellow lower
@@ -251,7 +256,7 @@ Repeat this sequence in normal and `--concurrent` modes, without `--max-updates`
 1. Check label/font appearance, panel transparency, overlap and clipping.
 2. Click each field or use F2/F4. Type, move the caret and delete text; typing WASD
    should edit text without moving the camera. Switch between adapters while
-   editing and check that only the new owner receives subsequent text. Press
+   editing and check that subsequent polls route text to the new owner. Press
    Escape, then check camera input and Q shutdown. Gamepad A should still update
    its gameplay counter while a field owns keyboard focus.
 3. Scroll the list, reset the camera and change the image. Confirm counters and
