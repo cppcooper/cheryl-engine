@@ -215,13 +215,14 @@ For commits created by the agent, use:
 
 Apply this identity per Git command using `git -c`. Do not modify the user's global Git configuration or the repository's local Git configuration.
 
-Commit messages must follow the project's convention and begin with one of:
+Commit messages must follow the project's convention and begin with a third-person singular present-tense verb, such as:
 
 - `Adds`
 - `Updates`
 - `Revises`
 - `Deletes`
 - `Fixes`
+- `Requires`
 
 Use detailed commit messages appropriate to the completed development unit.
 
