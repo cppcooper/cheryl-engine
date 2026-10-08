@@ -76,6 +76,14 @@ set(LINKAGE_PUBLIC_LIB_MODULE_UI_RMLUI
         RmlUi::Core
 )
 
+# Audio module
+###############
+set(LINKAGE_PUBLIC_LIB_MODULE_AUDIO_MINIAUDIO
+        Cheryl::Engine)
+
+set(LINKAGE_PRIVATE_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK
+        Threads::Threads)
+
 # Demo composition
 ###################
 set(LINKAGE_COMPOSITION_APP_DEMO_BASE
@@ -132,6 +140,8 @@ set(LINKAGE_PUBLIC_TEST_MODULE_UI_TGUI
 
 set(LINKAGE_PUBLIC_TEST_MODULE_UI_RMLUI
         Cheryl::UI::RmlUi)
+set(LINKAGE_PUBLIC_TEST_MODULE_AUDIO_MINIAUDIO
+        Cheryl::Audio::Miniaudio)
 
 # Acceptance tests
 ###################
@@ -178,3 +188,5 @@ set(LINKAGE_PRIVATE_TEST_CONSUMER_MODULE_UI_TGUI
 
 set(LINKAGE_PRIVATE_TEST_CONSUMER_MODULE_UI_RMLUI
         Cheryl::UI::RmlUi)
+set(LINKAGE_PRIVATE_TEST_CONSUMER_MODULE_AUDIO_MINIAUDIO
+        Cheryl::Audio::Miniaudio)

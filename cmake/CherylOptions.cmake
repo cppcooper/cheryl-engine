@@ -13,6 +13,8 @@ option(CHERYL_BUILD_UI_TGUI
         "Build the optional TGUI UI integration" ON)
 option(CHERYL_BUILD_UI_RMLUI
         "Build the optional RmlUi UI integration" ON)
+option(CHERYL_BUILD_AUDIO_MINIAUDIO
+        "Build the optional miniaudio playback integration" OFF)
 
 option(CHERYL_BUILD_DEMO
         "Build the windowed demonstration application" ON)

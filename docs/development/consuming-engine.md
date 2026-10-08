@@ -34,6 +34,7 @@ repeat another owner's include/dependency list.
 | X11 | Native input's Linux dependency; OpenGL acceptance also uses it for explicitly selected X11 scenarios. |
 | GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
 | GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
+| miniaudio | Optional audio module's private implementation/link requirement; public Engine and module audio headers expose no SDK types. |
 
 Engine type introspection uses CTTI 1.1's `name_of` and `type_id_of` APIs.
 Singleton diagnostics and `TYPENAME`/`TYPENAMEOF` keep fully qualified names as

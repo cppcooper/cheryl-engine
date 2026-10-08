@@ -32,7 +32,7 @@ contracts they validate explicitly.
 
 Module owners are grouped by contract role: `platform/` contains display/window/input
 implementations, `graphics/` contains rendering/presentation/resource implementations
-and `ui/` contains optional toolkit consumers.
+`ui/` contains optional toolkit consumers and `audio/` contains audio backends.
 [The module index](../../projects/modules/README.md) maps those roles to engine
 interfaces; each owner's README maps its concrete types to the contracts it fulfills.
 
@@ -43,6 +43,7 @@ interfaces; each owner's README maps its concrete types to the contracts it fulf
 | `Cheryl::OpenGL` | `projects/modules/graphics/opengl/` | Engine, Native GLFW, OpenGL and generated GLAD. The entire backend, context binding and factories stay together. |
 | `Cheryl::UI::TGUI` | `projects/modules/ui/tgui/` | Engine and TGUI 1.13.0 custom backend with FreeType only. Owns input translation and retained render/resource bridges. |
 | `Cheryl::UI::RmlUi` | `projects/modules/ui/rmlui/` | Engine and RmlUi 6.3 Core with FreeType. Owns native document sessions and premultiplied retained rendering. |
+| `Cheryl::Audio::Miniaudio` | `projects/modules/audio/miniaudio/` | Engine and private miniaudio 0.11.25 source or supplied target. Owns decoding, mixing, native output and streamed playback; no window/graphics dependency. |
 
 ```mermaid
 flowchart LR
@@ -93,8 +94,14 @@ because they have few callers.
 ## Select an assembly
 
 The root selects Native GLFW, OpenGL, TGUI and RmlUi by default. Set
-`CHERYL_BUILD_NATIVE_GLFW=OFF`, `CHERYL_BUILD_OPENGL=OFF` and
-`CHERYL_BUILD_UI_TGUI=OFF` and `CHERYL_BUILD_UI_RMLUI=OFF` for Engine alone.
+`CHERYL_BUILD_AUDIO_MINIAUDIO=ON` to add the optional audio backend and link
+`Cheryl::Audio::Miniaudio`. Its [owner guide](../../projects/modules/audio/miniaudio/README.md)
+defines SDK selection and output modes. Audio defaults to `OFF` and has no native
+window or graphics dependency.
+
+Set `CHERYL_BUILD_NATIVE_GLFW=OFF`, `CHERYL_BUILD_OPENGL=OFF`,
+`CHERYL_BUILD_UI_TGUI=OFF`, `CHERYL_BUILD_UI_RMLUI=OFF` and
+`CHERYL_BUILD_AUDIO_MINIAUDIO=OFF` for Engine alone.
 Select Native GLFW with `CHERYL_BUILD_NATIVE_GLFW=ON` and
 `CHERYL_BUILD_OPENGL=OFF`; no Cheryl OpenGL/GLAD discovery occurs in that assembly.
 OpenGL requires Native GLFW. The demo is selected only with OpenGL and native input.
@@ -215,6 +222,7 @@ Each owner also provides a complete GoogleTest runner under its `tests/all-tests
 | `all-opengl` | OpenGL mock cases and, when native input is selected, native graphics acceptance cases. |
 | `all-ui-tgui` | The selected TGUI module's cases. |
 | `all-ui-rmlui` | The selected RmlUi module's cases. |
+| `all-audio-miniaudio` | The selected miniaudio module's device-free decode, mixing, voice and stream cases. |
 | `all-tests` in `projects/tests/` | Every selected owner's GoogleTest cases, plus assembly coexistence checks when both UI owners are selected. |
 
 These aggregates are explicitly buildable. `CHERYL_BUILD_ALL_TESTS=ON` includes

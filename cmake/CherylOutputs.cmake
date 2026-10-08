@@ -8,6 +8,8 @@ set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)
 set(OUTPUT_LIB_MODULE_OPENGL cheryl-module-opengl)
 set(OUTPUT_LIB_MODULE_UI_TGUI cheryl-module-ui-tgui)
 set(OUTPUT_LIB_MODULE_UI_RMLUI cheryl-module-ui-rmlui)
+set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO cheryl-module-audio-miniaudio)
+set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK cheryl-miniaudio-sdk)
 
 # OpenGL support
 set(OUTPUT_LIB_MODULE_OPENGL_S_GL46 gl46)
@@ -21,6 +23,7 @@ set(OUTPUT_TEST_ALL_MODULE_NATIVE_GLFW tests-all-native-glfw)
 set(OUTPUT_TEST_ALL_MODULE_OPENGL tests-all-opengl)
 set(OUTPUT_TEST_ALL_MODULE_UI_TGUI tests-all-ui-tgui)
 set(OUTPUT_TEST_ALL_MODULE_UI_RMLUI tests-all-ui-rmlui)
+set(OUTPUT_TEST_ALL_MODULE_AUDIO_MINIAUDIO tests-all-audio-miniaudio)
 set(OUTPUT_TEST_ALL_TESTS tests-all)
 
 # Unit tests
@@ -31,6 +34,7 @@ set(OUTPUT_TEST_NATIVE_JOYSTICK tests-native-joystick)
 set(OUTPUT_TEST_MODULE_OPENGL tests-opengl)
 set(OUTPUT_TEST_MODULE_UI_TGUI tests-ui-tgui)
 set(OUTPUT_TEST_MODULE_UI_RMLUI tests-ui-rmlui)
+set(OUTPUT_TEST_MODULE_AUDIO_MINIAUDIO tests-audio-miniaudio)
 
 # Acceptance tests
 set(OUTPUT_TEST_ACCEPTANCE_ENGINE tests-acceptance-engine)
@@ -50,3 +54,4 @@ set(OUTPUT_TEST_CONSUMER_MODULE_NATIVE_GLFW cheryl-native-glfw-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_OPENGL cheryl-opengl-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_UI_TGUI cheryl-ui-tgui-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_UI_RMLUI cheryl-ui-rmlui-consumer)
+set(OUTPUT_TEST_CONSUMER_MODULE_AUDIO_MINIAUDIO cheryl-audio-miniaudio-consumer)

@@ -34,3 +34,6 @@
 [submodule "extern/rmlui"]
 	path = extern/rmlui
 	url = https://github.com/mikke89/RmlUi.git
+[submodule "extern/miniaudio"]
+	path = extern/miniaudio
+	url = https://github.com/mackron/miniaudio.git

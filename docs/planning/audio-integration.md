@@ -50,11 +50,11 @@ order admitted by the system's control lock, not a deterministic simulation cloc
   lifetime/concurrency contract and module-selection boundary.
 - [x] Add immutable clips and backend-neutral playback/system contracts, focused
   validation regressions and Engine first-include probes.
-- [ ] Add the selected optional backend with pinned dependency provenance, private
+- [x] Add the selected optional backend with pinned dependency provenance, private
   SDK implementation, standalone/root composition and owner-local tests.
-  - [ ] Implement CPU file decode, clip voices and explicit offline mixing.
-  - [ ] Implement native playback, streamed voices and synchronized controls.
-  - [ ] Prove failure cleanup, independent cursors, retained one-shots and shutdown
+  - [x] Implement CPU file decode, clip voices and explicit offline mixing.
+  - [x] Implement native playback, streamed voices and synchronized controls.
+  - [x] Cover failure cleanup, independent cursors, retained one-shots and shutdown
     with handles surviving their system through source regressions.
 - [ ] Add an independent consumer/observation harness for native audio and stream
   QA; document application lifecycle and dependency selection.

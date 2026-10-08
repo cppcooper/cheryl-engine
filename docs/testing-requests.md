@@ -12,6 +12,7 @@ meaningful coverage limits.
 | [TR7](#tr7-automated-engine-asset-preparation) | Automated | Linux | Ready; reuse the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
+| [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready; audio-only assembly, no device or display |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -109,6 +110,7 @@ unrelated typed-event acceptance needs no rerun.
     -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=OFF
@@ -259,3 +261,54 @@ skips/unavailable input layouts. Finite runs and successful CPU checks do not es
 these visual observations. If using an existing toolkit-enabled build as well,
 check the builtin HUD with overlapping views hidden and verify normal view startup;
 toolkit text shaping/fallback remains its own service, outside this builtin scope.
+
+## TR10: Automated audio module
+
+**Platform:** Linux. **Readiness:** ready with the new pinned miniaudio submodule
+initialized and the Engine prerequisites listed above. No output device, audio
+server, display, controller or installed media is needed. This is an audio-only
+root assembly with Engine and the optional audio owner; use a separate directory
+to preserve TR7's Engine-only selection. Reuse it when its toolchain matches.
+
+Build the owner regressions and independent consumer/header probe together.
+Run only the owner prefix, avoiding its aggregate runner and TR7's clip cases.
+The consumer mixes offline PCM; a successful run does not establish audible output.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-audio -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=ON -DCHERYL_MINIAUDIO_SOURCE= \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+    -DCHERYL_BUILD_DEMO=OFF
+  cmake --build build/testing-audio --parallel "$(nproc)" --target \
+    tests-audio-miniaudio consumer-module-audio-miniaudio
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer
+  ctest --test-dir build/testing-audio --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_decode|audio_stream)\.'
+)
+```
+
+Acceptance: the implementation, private SDK, consumer and public-header probe
+compile without new warnings; all selected cases pass without skips. PCM cases
+verify audible sample values offline, overlapping/master gains, mute,
+pause/resume/stop/restart, independent clip cursors, loops/end state, retained
+one-shots, differing source/output rates, independent systems, simultaneous
+producers and handles surviving close/destruction. Decode cases use isolated
+generated PCM16 WAVs, byte-budget boundaries, missing/corrupt paths and owned data
+after file removal. Short buffered WAV streams exercise controls and opening failure
+without disrupting existing playback. They do not establish sustained streaming,
+FLAC/MP3 codec coverage, device routing or audible/native shutdown.
+
+Standalone entry points and supplied-SDK variants remain separate composition
+coverage in the [owner guide](../projects/modules/audio/miniaudio/README.md).
+Native audio observation is the next QA action after this build; source/static
+inspection does not establish executable acceptance.

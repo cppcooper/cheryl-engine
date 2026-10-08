@@ -62,6 +62,10 @@ system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
 
 The [integration plan](../planning/audio-integration.md) owns backend development
-and pending Linux acceptance. World, entity and collision organization belongs
+and pending Linux acceptance. The
+[miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
+decode, explicit device/offline output and streamed playback.
+
+World, entity and collision organization belongs
 to the game or its application-selected modules. FMOD is a later optional backend;
 Studio authoring formats/capabilities require a separate contract.

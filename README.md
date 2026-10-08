@@ -58,6 +58,7 @@ Reload CMake after changing module selection to expose the selected targets.
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects the TGUI adapter independently of native/graphics modules. |
 | `CHERYL_BUILD_UI_RMLUI` | `ON` | Selects the independent RmlUi adapter; can coexist with TGUI. |
+| `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects optional miniaudio decoding, native output and streamed playback. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` when OpenGL and native input are selected. |
 | `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes owner aggregates and `all-tests` in the default build and CTest discovery. Requires tests. |
@@ -89,6 +90,7 @@ Useful dependency and toolchain settings:
 | `CHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0` | Selects a TGUI source tree instead of the bundled submodule. |
 | `TGUI_DIR=/path/to/TGUI/cmake/package` | Selects an exact TGUI 1.13.0 package with the required custom/FreeType features. |
 | `CHERYL_RMLUI_SOURCE=/path/to/RmlUi-6.3` | Selects a RmlUi source tree instead of the bundled submodule. |
+| `CHERYL_MINIAUDIO_SOURCE=/path/to/miniaudio` | Overrides the pinned miniaudio source; a supplied miniaudio target takes precedence. |
 | `RmlUi_DIR=/path/to/RmlUi/cmake/package` | Selects an exact RmlUi 6.3 package with the stock FreeType font engine. |
 | `CHERYL_RMLUI_TEST_FONT=/path/to/font.ttf` | Supplies a real font fixture for RmlUi checks when the selected SDK's sample font is unavailable. |
 
@@ -229,6 +231,8 @@ standalone archive or executable.
 | `module_opengl` | `Cheryl::OpenGL` | `cheryl-module-opengl` | `CHERYL_BUILD_OPENGL`: graphics, context and resources; [owner guide](projects/modules/graphics/opengl/README.md). |
 | `module_ui_tgui` | `Cheryl::UI::TGUI` | `cheryl-module-ui-tgui` | `CHERYL_BUILD_UI_TGUI`: TGUI adapter; [owner guide](projects/modules/ui/tgui/README.md). |
 | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | `cheryl-module-ui-rmlui` | `CHERYL_BUILD_UI_RMLUI`: RmlUi adapter; [owner guide](projects/modules/ui/rmlui/README.md). |
+| `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | `cheryl-module-audio-miniaudio` | `CHERYL_BUILD_AUDIO_MINIAUDIO`: audio output/decoding; [owner guide](projects/modules/audio/miniaudio/README.md). |
+| `module_audio_miniaudio_sdk` | — | `cheryl-miniaudio-sdk` | Private SDK support when the audio owner does not reuse a supplied miniaudio target. |
 | `gl46` | — | `gl46` | OpenGL's generated GLAD support library. |
 
 ### Applications
@@ -256,6 +260,7 @@ These focused runners join the default build and CTest discovery:
 | `tests-opengl` | `tests-opengl` | Mock OpenGL checks. |
 | `tests-ui-tgui` | `tests-ui-tgui` | TGUI input, recording, session and controlled runtime checks. |
 | `tests-ui-rmlui` | `tests-ui-rmlui` | RmlUi input, recording, session and controlled runtime checks. |
+| `tests-audio-miniaudio` | `tests-audio-miniaudio` | Device-free audio decode, PCM mixing, controls, short streams and lifetime checks. |
 
 #### Aggregate tests
 
@@ -270,6 +275,7 @@ objects, so choose one runner or CTest prefix for overlapping cases.
 | `all-opengl` | `tests-all-opengl` | OpenGL mock and selected native acceptance cases. |
 | `all-ui-tgui` | `tests-all-ui-tgui` | All TGUI cases. |
 | `all-ui-rmlui` | `tests-all-ui-rmlui` | All RmlUi cases. |
+| `all-audio-miniaudio` | `tests-all-audio-miniaudio` | All miniaudio owner cases. |
 | `all-tests` | `tests-all` | All selected owners' GoogleTests and assembly coexistence cases. |
 
 #### Acceptance tests
@@ -315,6 +321,7 @@ point with `CHERYL_REPOSITORY_ROOT` supplied; see
 | `consumer-module-opengl` | `cheryl-opengl-consumer` | OpenGL. |
 | `consumer-module-ui-tgui` | `cheryl-ui-tgui-consumer` | TGUI. |
 | `consumer-module-ui-rmlui` | `cheryl-ui-rmlui-consumer` | RmlUi. |
+| `consumer-module-audio-miniaudio` | `cheryl-audio-miniaudio-consumer` | Audio; offline consumer by default. |
 
 #### Header probes
 
@@ -328,6 +335,7 @@ executable. Their selection follows the corresponding consumer.
 | `consumer-module-headers--opengl` | OpenGL public contracts. |
 | `consumer-module-headers--ui-tgui` | TGUI public contracts. |
 | `consumer-module-headers--ui-rmlui` | RmlUi public contracts. |
+| `consumer-module-headers-audio-miniaudio` | SDK-free miniaudio adapter contract. |
 
 #### Test support
 
@@ -359,6 +367,7 @@ where supported by their [composition contract](docs/development/modules.md).
 | GLAD | [Dav1dde/glad](https://github.com/Dav1dde/glad), `extern/glad` | OpenGL entry-point generation using the pinned specification. |
 | TGUI | [texus/TGUI](https://github.com/texus/TGUI), `extern/tgui` | Optional TGUI 1.13.0 custom backend and toolkit widgets. |
 | RmlUi | [mikke89/RmlUi](https://github.com/mikke89/RmlUi), `extern/rmlui` | Optional RmlUi 6.3 Core with native RML/RCSS authoring. |
+| miniaudio | [mackron/miniaudio](https://github.com/mackron/miniaudio), `extern/miniaudio` | Optional audio owner; pinned 0.11.25 source with Unlicense/MIT No Attribution options. |
 | GoogleTest | [google/googletest](https://github.com/google/googletest), `extern/googletest` | Test runners; discovered when tests are enabled. |
 | hidapi | [libusb/hidapi](https://github.com/libusb/hidapi), fetched by Gainput | HID controller support. Gainput fetches `hidapi-0.15.0` during configuration when enabled. |
 
@@ -425,6 +434,10 @@ target_link_libraries(game PRIVATE Cheryl::Engine)
 For native graphics, enable Native GLFW and OpenGL and link
 `Cheryl::Engine Cheryl::NativeGLFW Cheryl::OpenGL`. Enable and add
 `Cheryl::UI::TGUI` or `Cheryl::UI::RmlUi` for toolkit UI, or select both.
+For audio, select `CHERYL_BUILD_AUDIO_MINIAUDIO=ON` and link
+`Cheryl::Audio::Miniaudio`; it has no window or graphics dependency. The
+[audio contract](docs/runtime/audio.md) defines application ownership and shutdown.
+
 Engine never depends on those integrations.
 The OpenGL implementation, context and resources stay together in one module.
 
@@ -442,6 +455,7 @@ projects/
     graphics/opengl/            # Entire OpenGL backend and context
     ui/tgui/                    # Toolkit adapter and module tests
     ui/rmlui/                   # Independent native-document adapter and tests
+    audio/miniaudio/            # Optional audio output, decoding and tests
   apps/demo/                    # Native application and optional UI views
   tests/                        # Cross-project checks and all-tests assembly
   dependency-checks/backward-cpp/
