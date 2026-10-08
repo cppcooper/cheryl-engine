@@ -1,19 +1,18 @@
 #include <assets/types/2d/unicode-text.h>
 #include <assets/submission/draw2d.h>
 #include <backends/opengl/resource-provider.h>
-#include <backends/opengl/glfw-backend.h>
+#include <backends/opengl/startup.h>
 #include <core/controls/input-interface.h>
-#include <core/controls/input-system.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/game-framework/game-runtime.h>
-#include <core/logging.h>
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/material-mgr.h>
 #include <internals/exceptions.h>
 
+#include <CLI/CLI.hpp>
 #include <ext/matrix_transform.hpp>
 #include <gainput/gainput.h>
 
@@ -26,7 +25,6 @@
 #include "rmlui-demo.h"
 #endif
 
-#include <charconv>
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
@@ -514,97 +512,72 @@ private:
 #endif
 };
 
-using CE::GFramework::GameRuntime;
-
 int main(const int argc, char** argv) {
     std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
     bool load_all_assets = false;
-    bool input_diagnostics = false;
     bool unicode_preview = false;
     CE::Text::FontSelection font_selection;
     CE::Text::LayoutOptions text_options;
     unsigned int max_updates = 0;
-    auto mode = CE::GFramework::RunMode::Sequential;
-    CE::Input::PollingOptions polling;
-    CE::GFramework::SimulationTimingOptions timing;
-    const auto number = [](const std::string_view text) {
-        unsigned int value = 0;
-        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-        if (error != std::errc{} || end != text.data() + text.size())
-            throw CE::Exceptions::invalid_args(CE_HERE, "Timing and polling options require a nonnegative integer");
-        return value;
-    };
-    for (int i = 1; i < argc; ++i) {
-        const std::string_view argument(argv[i]);
-        if (std::string_view(argv[i]) == "--full-assets")
-            load_all_assets = true;
-        else if (std::string_view(argv[i]) == "--concurrent")
-            mode = CE::GFramework::RunMode::Concurrent;
-        else if (argument == "--input-unlimited")
-            polling.policy = CE::Input::PollingPolicy::Unlimited;
-        else if (argument == "--input-diagnostics")
-            input_diagnostics = true;
-        else if (argument == "--unicode-text")
-            unicode_preview = true;
-        else if (argument == "--builtin-font")
-            font_selection.automatic_system_fonts = false;
-        else if (argument.starts_with("--font="))
-            font_selection.preferred.push_back(CE::Text::FontFile{std::filesystem::path(argument.substr(7))});
-        else if (argument.starts_with("--font-family="))
-            font_selection.preferred.push_back(CE::Text::SystemFontFamily{std::string(argument.substr(14))});
-        else if (argument.starts_with("--text-direction=")) {
-            const auto direction = argument.substr(17);
-            if (direction == "auto")
-                text_options.direction = CE::Text::ParagraphDirection::Automatic;
-            else if (direction == "ltr")
-                text_options.direction = CE::Text::ParagraphDirection::LeftToRight;
-            else if (direction == "rtl")
-                text_options.direction = CE::Text::ParagraphDirection::RightToLeft;
-            else
-                throw CE::Exceptions::invalid_args(CE_HERE, "--text-direction accepts auto, ltr or rtl");
-        }
-        else if (argument.starts_with("--max-updates="))
-            max_updates = number(argument.substr(std::string_view("--max-updates=").size()));
-        else if (argument == "--fixed")
-            timing.mode = CE::GFramework::SimulationMode::Fixed;
-        else if (argument == "--variable-catch-up") {
-            timing.mode = CE::GFramework::SimulationMode::Fixed;
-            timing.recovery = CE::GFramework::LagRecovery::VariableCatchUp;
-        } else if (argument.starts_with("--fixed-step-ms=")) {
-            timing.mode = CE::GFramework::SimulationMode::Fixed;
-            timing.fixed_step = std::chrono::milliseconds(number(argument.substr(std::string_view("--fixed-step-ms=").size())));
-        } else if (argument.starts_with("--variable-interval-ms="))
-            timing.variable_interval =
-                std::chrono::milliseconds(number(argument.substr(std::string_view("--variable-interval-ms=").size())));
-        else if (argument.starts_with("--max-fixed-updates="))
-            timing.max_fixed_updates = number(argument.substr(std::string_view("--max-fixed-updates=").size()));
-        else if (argument.starts_with("--recovery-prefix="))
-            timing.fixed_updates_before_recovery = number(argument.substr(std::string_view("--recovery-prefix=").size()));
-        else if (argument.starts_with("--recovery-cap-ms="))
-            timing.recovery_cap = std::chrono::milliseconds(number(argument.substr(std::string_view("--recovery-cap-ms=").size())));
-        else if (argument.starts_with("--input-capacity=")) {
-            polling.policy = CE::Input::PollingPolicy::Finite;
-            polling.capacity = number(argument.substr(std::string_view("--input-capacity=").size()));
-        } else if (argument.starts_with("--input-spacing-ms="))
-            polling.spacing = std::chrono::milliseconds(number(argument.substr(std::string_view("--input-spacing-ms=").size())));
-        else
-            asset_root = argv[i];
-    }
-    if (input_diagnostics) {
-        if constexpr (!ctlog::enabled(ctlog::TRACE_))
-            throw CE::Exceptions::invalid_args(CE_HERE, "--input-diagnostics requires a build with TRACE logging");
-        auto config = CE::LogConfig::for_logger(CE::platformlog);
-        config.logger_level = config.file_level = spdlog::level::trace;
-        CE::Logger<CE::platformlog>::initialize(spdlog::file_event_handlers{}, config);
-    }
-    auto engine = CE::Engine::make_glfw_opengl_context();
-    if (input_diagnostics)
-        dynamic_cast<CE::Input::InputSystem&>(engine->input()).set_gamepad_diagnostics(true);
-    Game game(*engine, asset_root, load_all_assets, std::move(font_selection), std::move(text_options), unicode_preview);
-    GameRuntime game_runtime(*engine, game, mode, polling, timing);
+    auto startup = CE::Engine::make_glfw_opengl_startup("Cheryl demo");
+    startup.add_application_options([&](CLI::App& options) {
+        options
+            .add_option_function<std::string>(
+                "assets", [&asset_root](const std::string& path) { asset_root = std::filesystem::path(path); }, "Asset root"
+            )
+            ->type_name("PATH")
+            ->default_str(asset_root.string())
+            ->trigger_on_parse();
+        options.add_flag("--full-assets", load_all_assets, "Load all available assets")->trigger_on_parse();
+        options.add_flag("--unicode-text", unicode_preview, "Show the Unicode text preview")->trigger_on_parse();
+        options
+            .add_flag_callback(
+                "--builtin-font", [&font_selection] { font_selection.automatic_system_fonts = false; },
+                "Disable automatic system font discovery"
+            )
+            ->disable_flag_override()
+            ->trigger_on_parse();
+        options
+            .add_option_function<std::string>(
+                "--font",
+                [&font_selection](const std::string& path) {
+                    font_selection.preferred.push_back(CE::Text::FontFile{std::filesystem::path(path)});
+                },
+                "Preferred font file; repeat to add ordered fallbacks"
+            )
+            ->trigger_on_parse();
+        options
+            .add_option_function<std::string>(
+                "--font-family",
+                [&font_selection](const std::string& family) { font_selection.preferred.push_back(CE::Text::SystemFontFamily{family}); },
+                "Preferred system font family; repeat to add ordered fallbacks"
+            )
+            ->trigger_on_parse();
+        options
+            .add_option_function<std::string>(
+                "--text-direction",
+                [&text_options](const std::string& direction) {
+                    text_options.direction = direction == "auto"  ? CE::Text::ParagraphDirection::Automatic
+                                             : direction == "ltr" ? CE::Text::ParagraphDirection::LeftToRight
+                                                                  : CE::Text::ParagraphDirection::RightToLeft;
+                },
+                "Paragraph direction"
+            )
+            ->check(CLI::IsMember({"auto", "ltr", "rtl"}))
+            ->trigger_on_parse();
+        options.add_option("--max-updates", max_updates, "Stop after this many demo updates; zero runs until stopped")
+            ->check(CLI::NonNegativeNumber)
+            ->trigger_on_parse();
+    });
+    auto result = startup.initialize(argc, argv);
+    if (!result.should_start())
+        return result.exit_code;
+    Game game(*result.engine, asset_root, load_all_assets, std::move(font_selection), std::move(text_options), unicode_preview);
+    auto game_runtime = result.make_runtime(game);
     if (max_updates != 0)
         game.stop_after_updates(max_updates, [&game_runtime] { game_runtime.stop(); });
     game_runtime.run();
     if (max_updates != 0)
         std::cout << "Completed " << game.completed_updates() << " demo updates\n";
+    return result.exit_code;
 }

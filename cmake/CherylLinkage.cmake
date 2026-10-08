@@ -100,6 +100,7 @@ set(LINKAGE_COMPOSITION_APP_DEMO_BASE
         Cheryl::Engine
         Cheryl::NativeGLFW
         Cheryl::OpenGL
+        Cheryl::OpenGL::Startup
 )
 
 set(LINKAGE_COMPOSITION_APP_DEMO_UI_TGUI
