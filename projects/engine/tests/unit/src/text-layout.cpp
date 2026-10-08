@@ -70,6 +70,10 @@ TEST(text_layout, bidi) {
     EXPECT_EQ(visual_sources(mixed), (std::vector<std::size_t>{0, 1, 3, 2, 4, 5}));
     const auto override = layout_text(collection, utf8(u8"\u202eABC\u202c"));
     EXPECT_EQ(visual_sources(override), (std::vector<std::size_t>{3, 2, 1}));
+    ASSERT_EQ(override.glyphs().size(), 3u);
+    EXPECT_EQ(override.glyphs()[2].source, (SourceRange{3, 1, 1, 1}));
+    ASSERT_EQ(override.lines().size(), 1u);
+    EXPECT_EQ(override.lines()[0].source, (SourceRange{0, 9, 0, 5}));
 
     LayoutOptions options;
     options.direction = ParagraphDirection::RightToLeft;
@@ -79,6 +83,55 @@ TEST(text_layout, bidi) {
     EXPECT_TRUE(explicit_rtl.lines()[0].right_to_left);
     EXPECT_EQ(visual_sources(explicit_rtl), (std::vector<std::size_t>{0, 1, 2})); // Latin keeps its natural run direction.
     EXPECT_FLOAT_EQ(explicit_rtl.glyphs()[0].x, 500 - explicit_rtl.lines()[0].width);
+}
+
+TEST(text_layout, bidi_controls) {
+    const auto collection = fonts();
+    const auto plain = layout_text(collection, "ABC");
+    ASSERT_EQ(plain.glyphs().size(), 3u);
+    ASSERT_EQ(plain.lines().size(), 1u);
+    for (const auto sample : {u8"\u202aABC\u202c", u8"\u202bABC\u202c", u8"\u202dABC\u202c",
+                             u8"\u2066ABC\u2069", u8"\u2067ABC\u2069", u8"\u2068ABC\u2069",
+                             u8"\u200eABC", u8"\u200fABC", u8"\u061cABC"}) {
+        const auto source = utf8(sample);
+        const auto shaped = layout_text(collection, source);
+        SCOPED_TRACE(static_cast<std::uint32_t>(shaped.scalars()[0].value));
+        ASSERT_EQ(visual_sources(shaped), (std::vector<std::size_t>{1, 2, 3}));
+        EXPECT_EQ(shaped.glyphs()[0].source, (SourceRange{shaped.scalars()[0].byte_count, 1, 1, 1}));
+        for (std::size_t index = 0; index < plain.glyphs().size(); ++index) {
+            EXPECT_EQ(shaped.glyphs()[index].id, plain.glyphs()[index].id);
+            EXPECT_FALSE(shaped.glyphs()[index].missing);
+        }
+        ASSERT_EQ(shaped.lines().size(), 1u);
+        EXPECT_EQ(shaped.lines()[0].source, (SourceRange{0, source.size(), 0, shaped.scalars().size()}));
+        EXPECT_FLOAT_EQ(shaped.lines()[0].width, plain.lines()[0].width);
+    }
+
+    const auto nested = layout_text(collection, utf8(u8"\u202e\u202eABC\u202c\u202c"));
+    EXPECT_EQ(visual_sources(nested), (std::vector<std::size_t>{4, 3, 2}));
+
+    const auto controls = utf8(u8"\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069");
+    const auto empty = layout_text(collection, controls);
+    EXPECT_TRUE(empty.glyphs().empty());
+    ASSERT_EQ(empty.lines().size(), 1u);
+    EXPECT_FLOAT_EQ(empty.lines()[0].width, 0);
+    EXPECT_EQ(empty.lines()[0].source, (SourceRange{0, controls.size(), 0, 12}));
+}
+
+TEST(text_layout, joiner) {
+    const auto collection = fonts();
+    const auto ligature = layout_text(collection, "fi");
+    ASSERT_EQ(ligature.glyphs().size(), 1u);
+    const auto separated = layout_text(collection, utf8(u8"f\u200ci"));
+    ASSERT_EQ(separated.glyphs().size(), 2u);
+    EXPECT_EQ(separated.glyphs()[0].source, (SourceRange{0, 4, 0, 2}));
+    EXPECT_EQ(separated.glyphs()[1].source, (SourceRange{4, 1, 2, 1}));
+    const auto first = layout_text(collection, "f");
+    const auto second = layout_text(collection, "i");
+    ASSERT_EQ(first.glyphs().size(), 1u);
+    ASSERT_EQ(second.glyphs().size(), 1u);
+    EXPECT_EQ(separated.glyphs()[0].id, first.glyphs()[0].id);
+    EXPECT_EQ(separated.glyphs()[1].id, second.glyphs()[0].id);
 }
 
 TEST(text_layout, fallback) {

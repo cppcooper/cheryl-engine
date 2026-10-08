@@ -211,7 +211,10 @@ namespace CE::Text {
                 } else {
                     for (auto index = segment.begin; index < segment.end; ++index) {
                         const auto scalar = scalars_[index].value;
-                        if (scalar == 0x2028)
+                        // ICU already resolved bidi controls. HarfBuzz's ignorable removal
+                        // would merge their clusters into visible glyphs, losing source indices.
+                        // Keep shaping controls such as joiners and variation selectors.
+                        if (scalar == 0x2028 || u_hasBinaryProperty(static_cast<UChar32>(scalar), UCHAR_BIDI_CONTROL))
                             continue;
                         const auto repeat = scalar == '\t' ? 4 : 1;
                         for (int count = 0; count < repeat; ++count)

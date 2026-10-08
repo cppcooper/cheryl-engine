@@ -243,6 +243,9 @@ Complete these coherent units in dependency order:
 - [x] Integrate the builtin demo through dispatcher uploads, preserving working ASCII
   consumers. Provide multilingual, combining, bidi, fallback, wrapping, upload-failure
   and retained-generation regressions and a runnable Linux visual observation harness.
+- [x] Correct the bidi-control source mapping reported by TR7, preserving ICU direction
+  resolution and shaping-relevant joiners/variation selectors. Add focused source-range
+  regressions and reconcile the existing acceptance request.
 - [ ] Accept decoder/font selection, multilingual/shaping/bidi/wrapping, resource
   failure/retention and header probes through
   [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation); compile the

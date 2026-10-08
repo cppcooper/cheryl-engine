@@ -9,7 +9,7 @@ meaningful coverage limits.
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Deferred; blocked on backend work and an observation harness |
-| [TR7](#tr7-automated-engine-asset-preparation) | Automated | Linux | Ready; reuse the existing Engine-only build |
+| [TR7](#tr7-automated-engine-asset-preparation) | Automated | Linux | Ready for retest; rebuild the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
 | [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready; audio-only assembly, no device or display |
@@ -87,7 +87,12 @@ font bytes after deleting their original file. Layout cases cover accented Latin
 Cyrillic, composed/decomposed clusters and ligatures, mixed bidi/overrides/numbers,
 explicit RTL leading alignment, whole-grapheme replacement, embedded NUL/malformed
 source ranges, hard/soft breaks, bidi across wrapped lines, indivisible overflow
-and concurrent owned layouts.
+and concurrent owned layouts. Retest the reported `text_layout.bidi` override source
+mapping after rebuilding: RLO + `ABC` + PDF produces visual scalar offsets `{3, 2, 1}`
+while its line retains both controls. Additional cases cover embeddings, isolates,
+direction marks, nested overrides, control-only lines and ZWNJ preventing a ligature.
+The reported failure does not identify the tested revision, configuration or remaining
+case results; the full request remains pending until those scopes are established.
 The Engine requires FreeType, HarfBuzz and ICU uc/i18n development headers/libraries
 even with both UI modules disabled. Reconfigure the
 matching existing build to pick up that dependency and the embedded font source.

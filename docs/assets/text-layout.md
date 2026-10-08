@@ -65,9 +65,12 @@ before visual run shaping, and applies line direction after breaking. Direction 
 automatic (first strong character, otherwise LTR), explicit LTR or explicit RTL.
 Latin/digits retain their natural run direction in an RTL paragraph. Unicode overrides,
 isolates and default-ignorable formatting participate in bidi without drawing visible
-replacement boxes. With a width, RTL paragraphs align to its right edge; without a
-width, visual lines start at local X=0. CR/LF/CRLF and Unicode paragraph separators
-start paragraphs; U+2028 forces a line within its existing paragraph.
+replacement boxes. ICU resolves bidi controls before shaping; those controls stay
+in the owned scalar records and line ranges but are omitted from the shaping buffer
+so their removal cannot replace a visible glyph's source index. Joiners and variation
+selectors remain available to HarfBuzz. With a width, RTL paragraphs align to its
+right edge; without a width, visual lines start at local X=0. CR/LF/CRLF and Unicode
+paragraph separators start paragraphs; U+2028 forces a line within its existing paragraph.
 
 ICU [grapheme boundaries](https://unicode-org.github.io/icu/userguide/boundaryanalysis/)
 define fallback units. Select the first face covering all visible scalars of each
