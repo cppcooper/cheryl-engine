@@ -1,13 +1,9 @@
 # Logging acceptance
 
 Logging acceptance covers owned destinations, queue loss, callback reentry,
-retained resources and supported teardown. The original U5 normal/sandbox matrix
-and supplementary ASan/UBSan acceptance precede module extraction; its record is
-available with `git show f03d2f8:docs/planning/develop-review-and-development-plan.md`.
-That history does not establish a changed target graph or exhaustive concurrency.
-The current procedures below require explicit build/test authorization under AGENTS.md.
+retained resources and supported teardown.
 
-Configure separate normal/sandbox directories for each row. Use Release as the
+Configure a separate directory for each row. Use Release as the
 build configuration for this matrix so profile changes remain independent of the
 Debug sanitizer configuration. The Engine-only selection below avoids unrelated
 native/display prerequisites; use the
@@ -21,20 +17,25 @@ native/display prerequisites; use the
 | Minimal | release | 0x07 |
 | Disabled | release | 0 |
 
-For example, after authorization:
+For the developer row:
 
 ```sh
-cmake -S . -B build-log-sandbox-developer -DCMAKE_BUILD_TYPE=Release -G Ninja \
-  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
-  -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-  -DCHERYL_BUILD_DEMO=OFF \
-  -DCHERYL_SANDBOX_BUILD=ON -DCHERYL_LOG_PROFILE=developer
-cmake --build build-log-sandbox-developer --parallel \
-  --target tests-logging acceptance-logging
-python3 projects/engine/tests/logging-acceptance/logging.py build-log-sandbox-developer
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/log-developer -DCMAKE_BUILD_TYPE=Release -G Ninja \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_DEMO=OFF \
+    -DCHERYL_SANDBOX_BUILD=OFF -DCHERYL_LOG_PROFILE=developer
+  cmake --build build/log-developer --parallel \
+    --target tests-logging acceptance-logging
+  python3 projects/engine/tests/logging-acceptance/logging.py build/log-developer
+)
 ```
 
 The runner accepts multiple build directories and runs them serially. It neither
@@ -60,7 +61,7 @@ checks shared loss output, and verifies the fatal case's deliberate exit code.
 Timeouts and nonzero results are failures, not accepted limitations. Native GPU or
 real-font fixtures are not prerequisites for this logging matrix.
 
-After the matrix, run relevant concurrency cases under the separately authorized
+For concurrency changes, run relevant cases under separate
 sanitizer configurations. Debug currently enables ASan/UBSan. A TSan configuration
 must disable that combination before enabling TSan; adding it is a separate build
 configuration task, not a reason to combine incompatible sanitizers. Source-only

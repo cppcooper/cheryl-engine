@@ -40,27 +40,9 @@ its own context is current. Actual-context checks also apply to uploads and draw
 operations. Runtime architecture and application APIs are described in
 [runtime-architecture.md](../runtime/runtime-architecture.md).
 
-## Legacy FFont layout contract
+## Legacy font resources
 
-FFont is deprecated in favor of STBFont with a supplied font file. Its existing
-const CPU layout and typed bank selection remain available to legacy consumers.
-Text placement and rotation belong to the submission's model instead of mutable
-font print state.
-
-| Behavior | Contract |
-| --- | --- |
-| Glyph selection | Printable ASCII selects glyph `letter - 32`; typed alternate-bank selection adds 128. Both banks retain their own immutable widths. |
-| Pen advance | Glyph/space width is divided by 128, then multiplied by DrawStyle2D.scale during submission. Space advances without a packet. |
-| Newline | Reset local x and subtract 1/128 from local y; submission applies the caller's scale and model to every line. |
-| Rotation | One caller model controls all glyphs/lines. Newlines follow the model's local axes. |
-| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont uses a four-space advance. |
-| State and lifetime | Layout does not store caller text/format. Each resolved glyph packet retains geometry, material and any supplied atlas binding. |
-
-Recording submission cases cover banks/widths, whitespace/fallback, and transformed
-multiline layout; real native cases also check retained FFont packets and atlas rows.
-See [architecture-validation.md](../development/architecture-validation.md) for those scopes.
-Those fixtures use synthetic metrics/artwork; they do not recover the original
-font's unavailable atlas. The [deprecation and migration decision](../resources/legacy-ffont.md)
-closes the required semantic format recovery work.
-Unicode shaping remains unfinished in
-[todo.md](../planning/todo.md).
+FFont keeps its typed alternate bank and normalized metrics; STBFont uses a baked
+ASCII atlas. Their [migration and metric contract](../resources/legacy-ffont.md)
+remains distinct from the [Unicode service](../assets/text-layout.md), whose retained
+pages pair shaped placements with immutable resource generations.

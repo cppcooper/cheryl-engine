@@ -11,14 +11,29 @@ printable-ASCII geometry, advances, line height, and an alpha atlas. System-font
 discovery only helps locate a default; it does not restrict this loader. A bundled
 font uses the same entry point. FontMgr::load_assets accepts supplied paths too,
 currently loading them at size 32 and selecting the first published path as its
-default. Collection loading currently selects face zero. Unicode shaping remains
-separate work in the develop plan's U11.
+default. Collection loading selects face zero. The separate
+[Unicode service](../assets/text-layout.md) supports shaped text and fallback while
+preserving legacy font interfaces.
 
 FFont's normalized advances and 1/128 local newline step differ from STBFont's
 baked advances and line height. Callers migrating their text must choose the font
 size and draw scale deliberately. An alternate bank has no STBFont equivalent;
 select a suitable separate font instead. STBFont currently rejects that legacy
 layout option. Deprecation does not silently reinterpret existing layout calls.
+
+## Legacy layout
+
+| Behavior | Contract |
+| --- | --- |
+| Glyph selection | Printable ASCII selects glyph `letter - 32`; typed alternate-bank selection adds 128. Both banks retain their own immutable widths. |
+| Pen advance | Glyph/space width is divided by 128, then multiplied by DrawStyle2D.scale during submission. Space advances without a packet. |
+| Newline | Reset local x and subtract 1/128 from local y; submission applies the caller's scale and model to every line. |
+| Rotation | One caller model controls all glyphs/lines. Newlines follow the model's local axes. |
+| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont uses a four-space advance. |
+| State and lifetime | Layout does not store caller text/format. Each resolved glyph packet retains geometry, material and any supplied atlas binding. |
+
+Synthetic recording/native fixtures check those metrics and atlas rows; they do
+not recover the original artwork.
 
 ## Recovered evidence and preserved legacy behavior
 
@@ -44,7 +59,5 @@ not recovery of the original font.
 
 Semantic width limits, explicit byte order, exact-size/trailing-data policy, and
 atlas validation remain unverified legacy limitations. Reconstructing them or
-inventing a replacement metrics format is no longer required U3 work. Existing
-complete-read regression sources remain relevant; their recent changes have not
-been compiled or run. Future class removal or migration of the bank option
-requires a separate scope decision.
+inventing a replacement metrics format would require a separate compatibility
+decision, as would class removal or migration of the bank option.

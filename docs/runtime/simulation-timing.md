@@ -84,12 +84,16 @@ The demo accepts `--fixed`, `--fixed-step-ms=N`, `--variable-interval-ms=N`,
 `--recovery-cap-ms=N`, independently of its polling switches. For example:
 
 ```sh
-demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 --recovery-prefix=2 --recovery-cap-ms=100
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/release/demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 --recovery-prefix=2 --recovery-cap-ms=100
+)
 ```
 
 Scheduler and tick-input regressions use explicit clocks. Recording and native
 runtime cases exercise both modes, bounded recovery, slow updates/presentation,
-full polling backlogs, and ordered input without replay. Executed scopes and
+full polling backlogs, and ordered input without replay. Procedures and
 platform limits are in [architecture-validation.md](../development/architecture-validation.md).
 
 A profiling-based optimization configurer remains unfinished in [todo.md](../planning/todo.md).

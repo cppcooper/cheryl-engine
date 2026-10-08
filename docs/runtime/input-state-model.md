@@ -131,7 +131,12 @@ auto focus = input.routing().focus(textbox_id); // Retain these handles while ac
 // On blur: focus.reset(); text.reset(); events.reset();
 ```
 
-The demo requests Events for its F2 focus toggle and requests Text while its textbox is focused. It edits Unicode scalar values with Backspace/Delete, arrows, Home/End, and exits focus with Enter/Escape. WASD gameplay is gated while typing; gamepad input and fractional scroll remain available. Its existing font atlas is ASCII, so the preview displays one `?` for each unsupported scalar. Text capture and storage retain the actual Unicode scalar; font shaping and grapheme-aware editing remain separate work.
+The toolkit-free demo probe requests Events for F2 and Text while focused. It edits
+logical Unicode scalars with Backspace/Delete, arrows and Home/End, releasing focus
+with Enter/Escape. WASD is gated while controller/scroll input remains available.
+Its preview uses the [Unicode text service](../assets/text-layout.md); capture and
+editing remain independent of font coverage. Grapheme/bidi caret behavior and IME
+need separate editing contracts.
 
 Generic [state utilities](utility-contracts.md) are independent of input. They
 define sampled state, synchronized value/revision storage, immediate observation
@@ -142,4 +147,5 @@ controllers or simulation threads.
 
 GLFW callback work catches its first failure and reports it from `update()` instead of unwinding through the C callback stack. Runtime cleanup detaches callbacks, clears focus and pending capture, and tears down rendering after a poll/worker failure. Already delivered immutable handles remain valid. Capacity limits completed polls, not records inside one pump; an OS pump can deliver many records, all retained when their channels were active. At shutdown the runtime discards pending input after stopping/joining simulation; it does not perform an extra final update.
 
-Recorded validation scopes are in [architecture-validation.md](../development/architecture-validation.md).
+Validation procedures and coverage limits are in
+[architecture-validation.md](../development/architecture-validation.md).

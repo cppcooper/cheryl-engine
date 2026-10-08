@@ -75,8 +75,7 @@ already queued device output cannot be withdrawn.
 
 ## Repeating root-assembly validation
 
-The Linux Release root assembly accepts the offline owner regressions and independent
-consumer/header checks. Reuse `build/testing-audio` when its toolchain matches; it
+Reuse `build/testing-audio` when its toolchain matches; it
 keeps the optional owner separate from Engine-only and native/graphics selections.
 Initialize the pinned SDK and Engine prerequisites from
 [setup](../../../../README.md#setup). These commands need CMake 3.28 or newer, Ninja
@@ -84,9 +83,7 @@ and a C++23 toolchain, and preserve the caller's working directory.
 
 Rerun cases only when related source/configuration changes invalidate their evidence.
 The complete owner selection below includes decode, mixing and short-stream cases;
-narrow it for a focused change and avoid repeating cases through aggregates. CTest
-runs before the consumer so its diagnostics remain visible on failure. The consumer
-prints startup, mismatch/closure failures and successful completion.
+narrow it for a focused change and avoid repeating cases through aggregates.
 
 ```sh
 (

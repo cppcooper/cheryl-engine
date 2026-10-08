@@ -41,8 +41,8 @@ context/lifetime cases in [architecture-validation.md](architecture-validation.m
 
 ## Linux controller automation
 
-Linux Release automation accepts the mapper and synthetic joystick regressions,
-native consumer/header checks and compilation of the demo with GLFW/X11, OpenGL,
+The Linux Release selection covers mapper and synthetic joystick regressions,
+native consumer/header checks and the demo with GLFW/X11, OpenGL,
 native input, owned static Gainput, HID disabled and both UI adapters disabled.
 The synthetic runner supplies kernel mappings/events to the actual pad implementation,
 covering controls, reordered slots, hats, disconnect/reconnect and legacy mappings.

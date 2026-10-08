@@ -9,45 +9,43 @@ be selected.
 
 ## Setup
 
-From the repository root, with the [dependencies](../../../README.md#dependencies)
+From the repository root, with the [dependencies](../../../docs/development/building.md#system-dependencies)
 initialized, configure the demo:
 
 ```sh
-cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
+)
 ```
 
 Build its target:
 
 ```sh
-cmake --build build/release --target demo --parallel
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/release --target demo --parallel
+)
 ```
 
 Run in sequential or concurrent mode:
 
 ```sh
-./build/release/demo
-./build/release/demo --concurrent
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/release/demo
+  ./build/release/demo --concurrent
+)
 ```
 
-| Target | Executable | Requirements |
-| --- | --- | --- |
-| `demo` | `demo` | Demo selection, OpenGL and native input enabled. |
-
-| CMake option | Root default | Effect |
-| --- | --- | --- |
-| `CHERYL_BUILD_DEMO` | `ON` | Selects the demo target when its requirements are enabled. |
-| `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Supplies display/windows and native input. |
-| `CHERYL_BUILD_OPENGL` | `ON` | Supplies graphics/context/resources; requires Native GLFW. |
-| `CHERYL_NATIVE_INPUT` | `ON` | Supplies the demo's Gainput-backed input implementation. |
-| `CHERYL_BUILD_UI_TGUI` | `ON` | Adds the right-hand TGUI panel. |
-| `CHERYL_BUILD_UI_RMLUI` | `ON` | Adds the left-hand RmlUi view. |
-
-Reload CMake after changing a cached selection. Disabling both adapters retains
-the toolkit-free F2 text-input probe. The build supplies `CHERYL_DEMO_TGUI=1` and
-`CHERYL_DEMO_RMLUI=1` for selected UI targets; `CHERYL_SOURCE_DIR` supplies the
-default asset root. See the root [setup guide](../../../README.md#setup) for clone,
-submodule updates, common configurations, all tests and
-[compile-time macro tables](../../../README.md#compile-time-options-macros).
+The demo requires Native GLFW, OpenGL and native input. TGUI is selected by
+default; enable `CHERYL_BUILD_UI_RMLUI=ON` for the left-hand view. Disable both
+adapters for the toolkit-free F2 text probe. Reload CMake after changing cached
+selections; the [build guide](../../../docs/development/building.md) owns option
+defaults and dependency settings.
 
 The builtin HUD selects optional system/application fonts and always retains an
 embedded fallback; it can start without an installed system font. RmlUi keeps its
@@ -63,7 +61,11 @@ and expected paths. The default asset root is the checkout's `assets/`.
 A positional argument selects another root:
 
 ```sh
-./build/release/demo --concurrent /path/to/assets
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/release/demo --concurrent /path/to/assets
+)
 ```
 
 ## Controls
@@ -269,16 +271,10 @@ desktop's touchpad "Disable while typing" setting. That setting can suppress
 touchpad motion after key presses; see
 [libinput's behavior](https://wayland.freedesktop.org/libinput/doc/latest/palm-detection.html#disable-while-typing).
 
-Both adapters' controlled runtime and independent consumer/header proofs, and
-their coexistence proof, are accepted. Native appearance, alpha/image orientation,
-fonts, focus switching, scrolling, image replacement, resizing/clipping and shutdown
-are accepted from the user's manual demo report in sequential and concurrent modes.
-The changed builtin text path and font bootstrap have separate pending
-[Unicode acceptance](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering);
-earlier toolkit reports do not establish that new coverage.
 The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
-desktop scale. It does not establish per-window scale transitions, other platforms,
-IME or physical GPU resource retirement.
+desktop scale. Per-window scale transitions, other platforms, IME and physical GPU resource
+retirement need separate observations. Toolkit checks do not establish the pending
+[builtin Unicode rendering](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering).
 
 Reuse accepted coverage unless related source changes require a rerun. The
 [focused acceptance procedure](../../modules/ui/rmlui/README.md#acceptance-procedure)

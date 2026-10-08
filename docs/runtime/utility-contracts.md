@@ -53,6 +53,11 @@ through invocation and capture destruction.
 
 ## Timing and numeric helpers
 
+Engine type introspection uses CTTI 1.1's `name_of` and `type_id_of` APIs.
+`TYPENAME`/`TYPENAMEOF` return fully qualified names as `std::string_view`;
+the expression-name macro preserves `decltype` qualifiers without evaluating its
+argument. Value type IDs apply decay; explicit type IDs preserve the supplied type.
+
 `DeltaTime` samples its clock once per call, returns elapsed seconds and starts
 the next interval at that sample. `elapsed()` only observes; `checkin()` resets.
 It is caller-owned and unsynchronized. The default steady clock is monotonic;

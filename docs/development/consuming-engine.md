@@ -11,16 +11,100 @@ set(CHERYL_BUILD_TESTS OFF)
 set(CHERYL_BUILD_DEMO OFF)
 set(CHERYL_BUILD_NATIVE_GLFW OFF)
 set(CHERYL_BUILD_OPENGL OFF)
+set(CHERYL_BUILD_UI_TGUI OFF)
+set(CHERYL_BUILD_UI_RMLUI OFF)
+set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 add_executable(application main.cpp)
 target_link_libraries(application PRIVATE Cheryl::Engine)
 ```
 
-For native graphics, enable both modules and link `Cheryl::Engine`,
-`Cheryl::NativeGLFW` and `Cheryl::OpenGL`. This is the migration from the former
-combined engine archive. Consumers obtain C++23, includes, logging policy and SDK
-usage requirements through those targets; they do not compile engine sources or
-repeat another owner's include/dependency list.
+For native graphics, enable Native GLFW, OpenGL and native input, then link
+`Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`. Select and link
+`Cheryl::UI::TGUI`, `Cheryl::UI::RmlUi` or `Cheryl::Audio::Miniaudio` when needed.
+Consumers obtain C++23, includes, logging policy and SDK requirements through
+targets rather than compiling Engine sources or repeating dependency lists.
+
+## Game hooks and ownership
+
+Implement `CE::GFramework::AbstractGame` and lend it, with an `EngineContext`, to
+`GameRuntime`. Keep both alive through `run()` returning or throwing. The selected
+factory assembles display, window, input, presentation, renderer and resources;
+`run()` initializes those adapters before calling the game.
+
+| Hook | Owner | Responsibility |
+| --- | --- | --- |
+| `init()` | Platform/graphics | Bind actions and create initial resources after adapter startup. |
+| `update(tick)` | Simulation | Advance game state using `delta_seconds` and the tick's input/copy of window sizes. |
+| `prepare_render_frame(writer) const` | Simulation | Resolve complete ordered passes/packets; publish no borrowed game state. |
+| `quiesce()` | Platform after simulation joins | Stop external producers and invalidate borrowed listeners; keep their dependencies alive. |
+| `deinit()` | Platform/graphics | Release application resources after accepted work settles and frames recycle. |
+
+Sequential mode runs all hooks on the calling thread. Concurrent mode gives
+update/frame preparation to one simulation worker; platform polling, uploads and
+presentation remain on the caller. Cleanup pairs with attempted initialization,
+so hooks must tolerate partial startup. The [frame boundary](../runtime/runtime-frame-boundary.md)
+defines shutdown and failure ordering.
+
+### Minimal native application
+
+With Native GLFW, OpenGL and native input enabled, this opens a window and stops
+when Escape is pressed. It submits no draws yet:
+
+```cpp
+#include <cheryl/backends/opengl/glfw-backend.h>
+#include <cheryl/core/controls/input-interface.h>
+#include <cheryl/core/game-framework/abstract-game.h>
+#include <cheryl/core/game-framework/game-runtime.h>
+#include <gainput/gainput.h>
+
+class Game final : public CE::GFramework::AbstractGame {
+    CE::Engine::EngineContext& engine_;
+    static constexpr CE::Input::ActionId quit_{1};
+
+public:
+    explicit Game(CE::Engine::EngineContext& engine) : engine_(engine) {}
+    void init() override {
+        auto& input = engine_.input();
+        static_cast<void>(input.bindings().bind_button({input.keyboard_id(), gainput::KeyEscape}, quit_));
+    }
+    void update(const CE::GFramework::TickContext& tick) override {
+        if (tick.input.button(quit_).pressed())
+            tick.request_stop();
+    }
+    void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter&) const override {}
+    void deinit() override {}
+};
+
+int main() {
+    auto engine = CE::Engine::make_glfw_opengl_context({.title = "My game"});
+    Game game(*engine);
+    CE::GFramework::GameRuntime runtime(*engine, game);
+    runtime.run();
+}
+```
+
+Pass `RunMode::Concurrent` as the third runtime argument to select the worker.
+Keep native binding IDs inside bootstrap; gameplay reads semantic `ActionId`s.
+Never change bindings or query a live window from concurrent `update()`.
+
+To add presentation, follow [asset loading](../assets/asset-loading.md) and
+[pipeline/material construction](../rendering/pipelines-and-materials.md#native-bootstrap-and-binding)
+in `init()`, then use CPU submission helpers in frame preparation. For later
+replacements, prepare owned data on [workers](../runtime/worker-execution.md),
+[submit upload](../runtime/thread-dispatch.md) to platform and adopt only a ready
+complete result during update. Keep the prior generation while work is pending.
+The [demo implementation](../../projects/apps/demo/src/main.cpp) shows that flow.
+
+Use [input actions and focus](../runtime/input-state-model.md) for controls,
+[simulation timing](../runtime/simulation-timing.md) for fixed/variable policies,
+and [asset playback](../assets/asset-values-and-playback.md) for per-entity cursors.
+The [Unicode service](../assets/text-layout.md) prepares retained text; UI adapters
+keep their toolkit authoring APIs. [Audio](../runtime/audio.md) is separately
+application-owned and needs its producers settled before closure. World storage,
+entities, collision and mechanics belong to the game or its selected modules.
+
+## Dependencies and headers
 
 | Requirement | Target scope and reason |
 | --- | --- |
@@ -35,12 +119,6 @@ repeat another owner's include/dependency list.
 | GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
 | GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
 | miniaudio | Optional audio module's private implementation/link requirement; public Engine and module audio headers expose no SDK types. |
-
-Engine type introspection uses CTTI 1.1's `name_of` and `type_id_of` APIs.
-Singleton diagnostics and `TYPENAME`/`TYPENAMEOF` keep fully qualified names as
-`std::string_view`; the expression-name macro preserves `decltype` qualifiers and
-does not evaluate its argument. Value type IDs apply decay; explicit type IDs
-preserve the supplied type.
 
 The Engine umbrellas and granular contracts are neutral. Concrete window/input
 headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
@@ -58,7 +136,10 @@ unreferenced archive initializer. Installation follows the bootstrap object's
 Exception and explicit stack capture remain available through the existing bounded
 capture/fallback implementation in all builds. The legacy global trace resolver and
 `Cheryl::SignalHandlers` target remain available; the demo needs only the selected
-engine/module targets. See [the module guide](modules.md#crash-and-exception-traces).
+engine/module targets. `NDEBUG` controls signal bootstrap installation, not explicit
+trace capture. The legacy `ST_ON_SIGNALS` definition exposes the `sh` declaration
+through `core/logging.h`; it does not change installation scope. See the
+[signal procedure](architecture-validation.md#manual-acceptance-drivers).
 
 ## Independent consumers and header probes
 
@@ -69,17 +150,21 @@ header leakage. Standalone bootstrapping selects Engine only in a local scope.
 
 [Native GLFW consumer](../../projects/modules/platform/native-glfw/tests/consumer/CMakeLists.txt)
 and [OpenGL consumer](../../projects/modules/graphics/opengl/tests/consumer/CMakeLists.txt)
-link their actual module with seven/twelve first-include probes respectively. They
+link their actual module with first-include probes. They
 reference real implementation symbols without requiring a display at execution.
 `CHERYL_BUILD_CONSUMER_TESTS=ON` adds consumers for the selected root assembly.
 
-After explicit build/test authorization, the engine-only consumer entry point is:
+The Engine-only consumer entry point is:
 
 ```sh
-cmake -S projects/engine/tests/consumer -B build-consumer-engine -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD"
-cmake --build build-consumer-engine --target consumer-cengine --parallel
-./build-consumer-engine/cheryl-consumer
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/engine/tests/consumer -B build-consumer-engine -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD"
+  cmake --build build-consumer-engine --target consumer-cengine --parallel
+  ./build-consumer-engine/cheryl-consumer
+)
 ```
 
 Standalone consumer entry points require
@@ -96,17 +181,16 @@ independent graph, consumer and runner checks and their coverage limits.
 
 ## Standard headers in an existing build
 
-An existing CLion profile can retain failed C++ compiler ABI discovery. In the
-reported configuration, CMake's generated `CMakeCXXCompiler.cmake` recorded
-`CMAKE_CXX_ABI_COMPILED FALSE` and empty implicit include directories. This caused
-the X11 dependency's `/usr/include` to become an explicit `-isystem` argument;
-GCC 16 then failed to resolve `math.h` or `stdlib.h` through `#include_next` in its
+An existing CMake/CLion profile can retain failed C++ compiler ABI discovery. Check
+whether generated `CMakeCXXCompiler.cmake` records
+`CMAKE_CXX_ABI_COMPILED FALSE` and empty implicit include directories. This can turn
+the X11 dependency's `/usr/include` into an explicit `-isystem` argument;
+GCC can then fail to resolve `math.h` or `stdlib.h` through `#include_next` in
 C++ standard headers.
 
 Refresh compiler discovery and regenerate the build files while preserving the
 profile/toolchain settings. CMake normally filters its
 [detected implicit include directories](https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_IMPLICIT_INCLUDE_DIRECTORIES.html)
 from explicit compiler arguments. Reload CMake in CLion after repairing an existing
-build externally. The recorded recovery refreshed only generated C++ compiler
-metadata, preserving cache options and compiled objects; a full cache reset must
-retain the intended configuration options too.
+build externally. Preserve intended profile/toolchain/cache settings when resetting
+generated discovery metadata or creating a fresh build directory.

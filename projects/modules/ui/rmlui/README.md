@@ -3,13 +3,7 @@
 `Cheryl::UI::RmlUi` is the optional, independently selected RmlUi 6.3 owner.
 It links `Cheryl::Engine` and `RmlUi::Core` with the stock FreeType font engine.
 The module provides native document sessions, portable input translation, CPU
-recording and retained scene upload. Independent consumer/header composition,
-controlled sequential/concurrent runtime behavior and assembly coexistence are
-accepted. The [demo guide](../../../apps/demo/README.md#interaction-checks) records
-the native proof's coverage limits.
-
-The [requirements](../../../../docs/development/rmlui-adapter-requirements.md) define
-the selected rendering/font/lifetime scope. The
+recording and retained scene upload. The
 [adapter-author guide](../../../../docs/development/ui-adapters.md) describes the
 engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 
@@ -17,7 +11,7 @@ engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 
 Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,
 `tests-ui-rmlui` and `all-ui-rmlui` when tests are selected. The root option defaults
-to `ON`; TGUI and RmlUi can be selected separately or together. The module library's
+to `OFF`; TGUI and RmlUi can be selected separately or together. The module library's
 output name is `cheryl-module-ui-rmlui`.
 
 ```cmake
@@ -147,27 +141,43 @@ and both UI adapters selected. `demo` also requires native input. From the repos
 root:
 
 ```sh
-git submodule update --init extern/rmlui
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  git submodule update --init extern/rmlui
+)
 ```
 
 ```sh
-cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON -G Ninja \
-  -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON -G Ninja \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+)
 ```
 
 ```sh
-cmake --build build/debug --parallel \
-  --target demo all-ui-rmlui tests-ui-coexist tests-engine tests-native-glfw
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/debug --parallel \
+    --target demo all-ui-rmlui tests-ui-coexist tests-engine tests-native-glfw
+)
 ```
 
-After the build, run these focused checks when the machine has cooled:
+Run the focused checks:
 
 ```sh
-./build/debug/tests-all-ui-rmlui
-./build/debug/tests-ui-coexist
-./build/debug/tests-engine \
-  --gtest_filter='runtime_contract.*:input_capture.portable_buttons:tick_context.unbound_stop'
-./build/debug/tests-native-glfw --gtest_filter='glfw_bindings.portable_*'
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/debug/tests-all-ui-rmlui
+  ./build/debug/tests-ui-coexist
+  ./build/debug/tests-engine \
+    --gtest_filter='runtime_contract.*:input_capture.portable_buttons:tick_context.unbound_stop'
+  ./build/debug/tests-native-glfw --gtest_filter='glfw_bindings.portable_*'
+)
 ```
 
 `tests-ui-coexist` belongs to `projects/tests/`, and also joins the combined
@@ -181,18 +191,30 @@ and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
 after the root checks settle, so any fixes precede a separate compilation:
 
 ```sh
-cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
-  -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
+)
 ```
 
 ```sh
-cmake --build build/rmlui-consumer --parallel \
-  --target consumer-module-ui-rmlui
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/rmlui-consumer --parallel \
+    --target consumer-module-ui-rmlui
+)
 ```
 
 ```sh
-./build/rmlui-consumer/cheryl-ui-rmlui-consumer
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/rmlui-consumer/cheryl-ui-rmlui-consumer
+)
 ```
 
 Verify that `consumer-module-ui-rmlui` depends on
@@ -206,6 +228,10 @@ Follow the [demo procedure](../../../apps/demo/README.md#interaction-checks) in
 normal and `--concurrent` modes for native alpha/orientation, fonts, focus,
 scrolling, bounded resize/DPI, image replacement and shutdown. Controlled cases
 do not establish compositor behavior, physical input or GPU resource retirement.
-Report skipped/unselected checks separately. The selected native demo checks are
-accepted from the user's manual report in both runtime modes; the
-[demo guide](../../../apps/demo/README.md#interaction-checks) retains their limits.
+The [demo guide](../../../apps/demo/README.md#interaction-checks) retains selected
+platform limits.
+
+For a toolkit upgrade, recheck Core/FreeType feature metadata, premultiplied file
+and generated images, font-byte lifetime and retained frames through teardown.
+Accept changed behavior independently before extending native consumers or the
+cross-toolkit coexistence suite.

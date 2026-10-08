@@ -43,11 +43,8 @@ FFont retains its deprecated byte-oriented contract. See
 
 The separate [Unicode layout API](text-layout.md) supplies owned font selection,
 shaping, bidi, source-cluster ranges and optional wrapping for the selected initial
-scope. Retained glyph generations remain in the active
-[Unicode task](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
-The legacy ASCII atlas does not establish multilingual glyph
-coverage, combining-mark placement, bidi order or grapheme-aware editing. Decoder,
-STBFont and CPU submission regressions plus neutral probes are accepted in the Linux
-Release Engine-only assembly. Reusable
+scope, including immutable retained glyph generations. The legacy ASCII atlas
+does not establish multilingual glyph
+coverage, combining-mark placement, bidi order or grapheme-aware editing. Reusable
 [asset/text checks](../development/architecture-validation.md#engine-asset-and-text-regressions)
 remain separate from native rendering and editing acceptance.

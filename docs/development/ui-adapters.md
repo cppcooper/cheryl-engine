@@ -140,8 +140,6 @@ owns that cross-project proof. The [demo](../../projects/apps/demo/README.md)
 selects either adapter or both and supplies separate focus controls. Each module's
 standalone consumer and implementation checks remain independent.
 
-The initial independent module/consumer/header, controlled runtime and coexistence
-proofs are accepted. The [demo interaction guide](../../projects/apps/demo/README.md#interaction-checks)
-owns the user-reported native acceptance and selected-platform limits. Reuse accepted
-coverage unless changes affect it; a new backend, platform or supplied package needs
-its own applicable proof.
+The [demo interaction guide](../../projects/apps/demo/README.md#interaction-checks)
+owns native observations and selected-platform limits. A new backend, platform or
+supplied package needs its own applicable proof.

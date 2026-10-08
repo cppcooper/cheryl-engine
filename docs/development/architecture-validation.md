@@ -26,55 +26,43 @@ the same cases through every aggregate.
 
 ## Repeating validation
 
-Builds and tests require explicit authorization under `AGENTS.md`. Use CMake 3.28
-or newer, Ninja and a C++23 toolchain. Engine always requires FreeType, HarfBuzz and
-ICU uc/i18n development libraries, including when both UI modules are disabled.
-Initialize pinned dependencies with `git submodule update --init --recursive`.
-OpenGL's GLAD generator
-needs Jinja2 in the Python interpreter selected by CMake; set `Python_EXECUTABLE` if
-another interpreter supplies it. Native Linux checks need the selected GLFW/X11
-platform dependencies; OpenGL checks additionally need OpenGL development libraries.
-CMake 4 hosts can require `CMAKE_POLICY_VERSION_MINIMUM=3.5` for pinned dependencies.
-Compiler-discovery recovery is documented in
-[consuming the engine](consuming-engine.md#standard-headers-in-an-existing-build).
+Use the toolchain and selected-owner prerequisites in the [build guide](building.md).
+An existing combined build cannot prove Engine-only isolation. Use a fresh directory
+when an independent graph is needed, and inspect target dependencies, compilation
+inventories and final links. Reuse matching compiled targets for unaffected checks.
 
-Reuse current execution evidence and compiled targets when their source, options
-and link closure still match the required selection. An existing combined build
-cannot prove Engine-only isolation. Use fresh directories when an independent graph
-is needed, and inspect target dependencies, compilation inventories and final link
-commands before execution. A stale source inventory, unselected check or missing
-prerequisite is not executable acceptance.
-
-Combine needed build targets into as few invocations as practical. User-run builds
-use normal priority and Ninja's native parallelism; agent-run work follows the
-resource-sharing limits in `AGENTS.md`. Tests that share mutable files need isolated
-working directories before parallel execution. A compiler cache can
-reuse identical compilation across selections. `CMAKE_CXX_SCAN_FOR_MODULES=OFF`
-avoids unnecessary language-module scanning: Cheryl's integration modules are
-ordinary libraries. Keep GoogleTest discovery at `PRE_TEST` so building a runner
-does not execute its cases. Do not repeat passing checks unless a relevant change
-or failure invalidates their evidence.
+Batch required build targets and select each case once. Use isolated working
+directories for checks that share mutable files. `CMAKE_CXX_SCAN_FOR_MODULES=OFF`
+avoids C++ language-module scanning; Cheryl integration modules are libraries.
+`CMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST` keeps case discovery out of
+build execution. [Runner selection](testing.md) explains focused and aggregate
+registration.
 
 ### Engine only
 
 A fresh Release configuration provides a neutral graph without sandbox mode:
 
 ```sh
-cmake -S . -B build-validation-release -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-  -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-  -DCHERYL_LOG_PROFILE=developer \
-  -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-  -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-  -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
-  -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
-cmake --build build-validation-release --parallel --target \
-  consumer-cengine tests-engine tests-logging \
-  acceptance-logging acceptance-signal
-./build-validation-release/cheryl-consumer
-./build-validation-release/tests-engine
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build-validation-release -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
+  cmake --build build-validation-release --parallel --target \
+    consumer-cengine tests-engine tests-logging \
+    acceptance-logging acceptance-signal
+  ./build-validation-release/cheryl-consumer
+  ./build-validation-release/tests-engine
+)
 ```
 
 Consumers depend on their first-include probes; no separate probe build is needed.
@@ -83,7 +71,7 @@ focused logging cases, so they need no additional unit run.
 
 ### Engine asset and text regressions
 
-The Linux Release Engine-only selection accepts neutral clip, tile selection/animation,
+The Linux Release Engine-only selection covers neutral clip, tile selection/animation,
 manifest, UTF-8, legacy scalar fallback, owned font selection/layout and text-resource
 regressions plus public first-include probes. It uses immutable synthetic resources,
 the bundled font and isolated discovery roots; no display, installed font, controller
@@ -124,13 +112,17 @@ caller's working directory:
 For Engine-only typed-event checks, enable `CHERYL_BUILD_ACCEPTANCE_TESTS` alongside
 the unit and consumer selections above and add `acceptance-engine` to the needed
 build targets. The consumer and first-include probes cover the neutral typed API.
-Run the unit and acceptance cases once each after an authorized build:
+Run the focused unit and acceptance selections:
 
 ```sh
-./build-validation-release/cheryl-consumer
-./build-validation-release/tests-engine --gtest_filter=typed_events.*
-./build-validation-release/tests-acceptance-engine \
-  --gtest_filter='typed_events.*:event_delivery.runtime_owner_threads'
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build-validation-release/cheryl-consumer
+  ./build-validation-release/tests-engine --gtest_filter=typed_events.*
+  ./build-validation-release/tests-acceptance-engine \
+    --gtest_filter='typed_events.*:event_delivery.runtime_owner_threads'
+)
 ```
 
 The [unit cases](../../projects/engine/tests/unit/src/typed-events.cpp) cover exact
@@ -145,15 +137,18 @@ Select Native GLFW + OpenGL with native input and OpenGL acceptance enabled for 
 native resize bridge. With a usable display, run its focused owner cases:
 
 ```sh
-CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-acceptance-opengl \
-  --gtest_filter='native_opengl.resize_events:native_opengl.typed_resize_failure:native_opengl.resize_callback_failure'
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-acceptance-opengl \
+    --gtest_filter='native_opengl.resize_events:native_opengl.typed_resize_failure:native_opengl.resize_callback_failure'
+)
 ```
 
 These cases invoke the actual registered C callback to check unchanged-size
 suppression, saved observations across nested resize delivery, legacy-before-typed
 offers and native failure consumption. They do not establish compositor-generated
-resize delivery. Skipped native cases leave that callback coverage unaccepted;
-Linux/X11 callback and desktop coverage is accepted. Remaining Windows execution
+resize delivery. Skipped native cases leave that callback coverage pending. Windows execution
 is shelved in the [platform plan](../planning/platform-acceptance.md).
 
 ### Native, OpenGL and standalone composition
@@ -208,18 +203,41 @@ owns root `enable_testing()` policy. Verify actual consumer links, local CTest
 registration, one target per owner and no duplicate dependency bootstrap directories.
 Source-target composition does not prove installed/imported package support.
 
-When combined-assembly evidence is missing, select `CHERYL_BUILD_ALL_TESTS=ON`
-in the root build and use its `all-tests` runner. Current combined/demo evidence
-can supply that coverage; run only missing owner, native or fixture checks rather
-than rebuilding the full assembly solely to repeat it.
+### Neutral UI consumer
+
+`ui_probe.retained_scene` uses Engine alone with controlled display, input, resources
+and rendering in both runtime modes. It checks ordered colored/clipped packets,
+keyboard/text focus with controller gameplay, queued immutable image replacement
+and retained resources through teardown. It supplies synthetic ASCII metrics to
+legacy STBFont, so it needs no host font and does not establish Unicode appearance.
+
+With the Engine-only configuration above and acceptance selected, run:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build-validation-release --parallel --target acceptance-engine
+  ./build-validation-release/tests-acceptance-engine --gtest_filter='ui_probe.*:runtime_adapter.*'
+)
+```
+
+The separate `native_opengl.ui_clipping_color` case checks real straight-alpha
+pixels and scaled clipping. Use the native opt-in below. Neither controlled proof
+establishes toolkit behavior, physical DPI/compositor behavior or IME; selected
+adapters own their checks.
 
 ## Native and fixture checks
 
 Native OpenGL cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display:
 
 ```sh
-CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-all-opengl \
-  --gtest_filter=native_opengl.*
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  CHERYL_NATIVE_GL_TESTS=1 ./build-opengl-module/tests-all-opengl \
+    --gtest_filter=native_opengl.*
+)
 ```
 
 [Native cases](../../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp)
@@ -258,10 +276,14 @@ assessing acceptance instead of treating a partial aggregate as complete coverag
 Drivers execute previously built targets and never configure or build:
 
 ```sh
-python3 projects/engine/tests/logging-acceptance/logging.py build-validation-release
-python3 projects/engine/tests/signal-acceptance/signals.py \
-  --release-build build-validation-release --debug-build build-validation-debug
-python3 projects/tests/diagnostics.py build-combined
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 projects/engine/tests/logging-acceptance/logging.py build-validation-release
+  python3 projects/engine/tests/signal-acceptance/signals.py \
+    --release-build build-validation-release --debug-build build-validation-debug
+  python3 projects/tests/diagnostics.py build-combined
+)
 ```
 
 The logging procedure and compile-profile matrix are in
@@ -291,5 +313,5 @@ Sanitizers supplement selected checks; TSan requires a configuration without the
 Debug ASan/UBSan combination and cannot be inferred from those runs.
 
 Keep source completion distinct from executable acceptance and unavailable-host
-coverage. Existing feature/resource work remains in [todo.md](../planning/todo.md);
+coverage. Unresolved work remains in the [planning catalogue](../planning/README.md);
 this guide is a reusable procedure, not an execution journal.

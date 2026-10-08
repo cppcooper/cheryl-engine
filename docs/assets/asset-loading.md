@@ -94,6 +94,6 @@ The [asset value and playback contract](asset-values-and-playback.md) defines di
 construction limits, borrowed metadata, lookup failure and submission ownership.
 
 Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
-Manifest, preparation/upload, and runtime-adapter regressions belong to the
-aggregated `all-tests` target. Recorded build and execution scopes are in
-[architecture-validation.md](../development/architecture-validation.md).
+Use the owning focused runners or `all-tests` for regressions;
+[architecture validation](../development/architecture-validation.md) describes
+selection and coverage limits.

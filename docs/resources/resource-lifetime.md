@@ -78,7 +78,7 @@ dependencies, then cancels remaining platform work, recycles frames, and cleans 
 the game before stopping input and graphics. Renderer maintenance runs independently
 of new frames, before bounded idle waits and while accepted work settles. Owned input is
 destroyed before the provider, renderer, surface, and display. The platform
-context must outlive its renderer. Recorded execution scopes are in
+context must outlive its renderer. Validation procedures and coverage limits are in
 [architecture-validation.md](../development/architecture-validation.md).
 
 The resource-by-resource ownership trace, explicit residency policy, 10 ms idle

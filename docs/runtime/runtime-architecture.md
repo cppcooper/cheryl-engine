@@ -3,8 +3,9 @@
 The selected backend is composed through `EngineContext`; `GameRuntime` uses its
 display, window, input, presentation, renderer, and resource contracts. The current
 GLFW/OpenGL implementation and the in-memory integration probe follow those same
-contracts. The architecture is implemented; recorded build, regression, and native
-acceptance results are in [architecture-validation.md](../development/architecture-validation.md).
+contracts. The [application guide](../development/consuming-engine.md#game-hooks-and-ownership)
+shows composition and game hooks; [architecture validation](../development/architecture-validation.md)
+describes isolation and integration checks.
 
 | Boundary | Contract |
 | --- | --- |
@@ -78,9 +79,13 @@ Failed upload may leave completed cache entries while published metadata stays a
 its previous successful snapshot. Material recipe reload has a separate successful-
 replacement contract that preserves retained generations.
 
-Tile-map neighbor selection and application meanings for views/orientations remain
-gameplay work. Input and the demo editor retain committed Unicode scalars; the fonts
-render printable ASCII, and the editor supplies no grapheme/IME contract. Audio,
-networking, world/physics systems, text shaping, automatic cache eviction, and advanced worker topology
-are separate extensions. Concrete unfinished work is in [todo.md](../planning/todo.md) and
-[asset-manifest-todo.md](../planning/asset-manifest-todo.md).
+The [tile selector](../assets/asset-values-and-playback.md#tile-selection) resolves
+declared rules; the game supplies neighborhoods and their meanings. The
+[Unicode service](../assets/text-layout.md) supplies shaping, bidi, fallback and
+wrapping alongside legacy ASCII font APIs. Committed text and the demo's scalar
+editor do not provide grapheme-aware editing or IME. Optional
+[audio](audio.md) is application-owned outside the runtime adapter graph.
+
+World/physics, networking, automatic cache eviction and advanced worker topology
+remain consumer-driven extensions. The [planning catalogue](../planning/README.md)
+tracks unresolved work and artwork metadata requirements.

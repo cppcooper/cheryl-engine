@@ -137,12 +137,16 @@ payloads. A separate process verifies actual asset, shader reflection and memory
 ownership records use their named files, without initializing the legacy destination:
 
 ```sh
-python3 projects/tests/diagnostics.py path/to/developer-build
-python3 projects/tests/diagnostics.py path/to/off-build --info-stripped
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 projects/tests/diagnostics.py path/to/developer-build
+  python3 projects/tests/diagnostics.py path/to/off-build --info-stripped
+)
 ```
 
-It uses previously built tests and requires explicit test authorization under
-AGENTS.md. Recording tests cover capability rejection and callback ownership;
+It uses previously built tests. Recording tests cover capability rejection and
+callback ownership;
 native_opengl.debug_output separately exercises a real supported context when
 CHERYL_NATIVE_GL_TESTS=1.
 

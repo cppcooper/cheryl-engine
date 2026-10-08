@@ -99,7 +99,7 @@ renderer destruction, `abandon()` invalidates every registration without a nativ
 delete or later query of the destroyed context. Late foreign-thread release is safe
 for those invalidated handles.
 
-Recorded validation covers strong residency, cache-domain rebinding, idle maintenance,
+Validation procedures covers strong residency, cache-domain rebinding, idle maintenance,
 recording failure/recovery/abandonment, real selected-context restoration, retained
 frame pixels and native deletion before window destruction. Hardware context loss
 and reset recovery remain outside those executed scopes. See

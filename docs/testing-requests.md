@@ -12,7 +12,6 @@ meaningful coverage limits.
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready; reuse the accepted native build; requires a display |
 | [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready; reuse the accepted audio build; requires audible stereo output |
 | [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready; reuse the accepted native build; artwork checks require the three sample images |
-| [TR13](#tr13-qa-cmake-option-diagnostics) | QA | Linux | Ready; configure only; requires the Engine and bundled GLFW prerequisites |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -32,102 +31,6 @@ Reuse these build directories when the source, compiler and configuration match.
 Stop on a command failure. A skipped or unavailable observation leaves that
 coverage pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
-
-## TR13: QA CMake option diagnostics
-
-**Platform/prerequisites:** Linux, CMake 3.28 or newer, Ninja, a C++23 toolchain,
-initialized pinned submodules, and the Engine's FreeType, HarfBuzz and ICU
-development libraries. The bundled GLFW null platform needs no display or native
-input device. **Readiness:** ready. **Scope:** observe grouped option names/values,
-alphabetical ordering, boolean aliases, inactive module cache entries and
-prerequisite diagnostics during configuration, plus green/red labels and plain
-output controls. Color observations require an ANSI-capable terminal. No project
-build targets or executable tests are needed.
-
-Use the separate `build/testing-cmake-options` and
-`build/testing-cmake-options-native` directories so these option changes do not
-alter the accepted runtime QA builds. Matching existing Ninja directories can be
-reused; the commands explicitly restore the required selections.
-Inspect each configure's console output before the next command. The final
-configuration intentionally fails and its conditional checks that failure.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  env NO_COLOR=0 CLICOLOR=0 CLICOLOR_FORCE=1 \
-    cmake -S . -B build/testing-cmake-options -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DWARN=OFF -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=OFF \
-    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
-    -DCHERYL_BUILD_TESTS=OFF -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
-    -DCHERYL_BUILD_ALL_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
-    -DCHERYL_BUILD_DEMO=ON \
-    -DCHERYL_NATIVE_INPUT=OFF -DCHERYL_NATIVE_NULL_PLATFORM=ON
-  env NO_COLOR=1 CLICOLOR_FORCE=1 \
-    cmake -S . -B build/testing-cmake-options -G Ninja \
-    -DWARN=YES -DCHERYL_BUILD_NATIVE_GLFW=OFF \
-    -DCHERYL_BUILD_TESTS=YES -DCHERYL_BUILD_DEMO=OFF \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
-  env NO_COLOR=0 CLICOLOR=0 CLICOLOR_FORCE=0 \
-    cmake -S projects/modules/platform/native-glfw \
-    -B build/testing-cmake-options-native -G Ninja \
-    -DCHERYL_REPOSITORY_ROOT="$PWD" \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DWARN=OFF -DCHERYL_SANDBOX_BUILD=ON \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
-    -DCHERYL_BUILD_ALL_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
-    -DCHERYL_NATIVE_INPUT=OFF -DCHERYL_NATIVE_NULL_PLATFORM=ON
-  if cmake -S . -B build/testing-cmake-options -G Ninja \
-    -DWARN=ON -DCHERYL_BUILD_OPENGL=ON; then
-    printf '%s\n' 'Expected OpenGL without Native GLFW to fail configuration.' >&2
-    exit 1
-  fi
-)
-```
-
-- Each configure prints one header/footer and each declared option once with its
-  stored value. The `configured:` heading precedes `default:`. Rows have three
-  spaces after `--`, a bracketed value, then a tab before the option name. Within
-  each section, all true values precede all false values, with names alphabetical
-  within each state, including selected module options. `YES` sorts with `ON`.
-- The first configure forces color despite `CLICOLOR=0`: true values are green
-  and false values red. Option names, headings and the footer retain the terminal's
-  ordinary color. The second configure's option rows are plain because `NO_COLOR`
-  takes precedence over forced color. The standalone configure's rows are plain
-  because `CLICOLOR=0` disables automatic color and forcing is inactive.
-- In the first configure, OpenGL and TGUI selection, tests, both broader test
-  flags, native input and the null platform appear in the configured group.
-  Native GLFW, demo, audio, consumer, sandbox and warning options appear in the
-  default group. RmlUi follows its declared default in `CherylOptions.cmake`:
-  the requested `OFF` value is default when that declaration is `OFF`, and
-  configured when it is `ON`.
-- The first configure warns that the demo needs OpenGL/native input and that each
-  broader test flag needs tests. Each warning offers enabling the missing options
-  or disabling the dependent flag. Configuration still succeeds.
-- In the second configure, the configured group names `WARN`, Native GLFW,
-  OpenGL, TGUI and demo selection; RmlUi follows its declared default as above.
-  `CHERYL_BUILD_TESTS=YES` matches its `ON` default and appears as `[YES]` in the
-  default group. The cached native input/null-platform options are omitted from both
-  groups because Native GLFW is unselected. No prerequisite warnings remain.
-- In the standalone Native GLFW configure, `CHERYL_BUILD_TESTS` appears once
-  because it differs from the module's `OFF` default. The native input and null
-  platform values match their sandbox defaults and appear in the default group. The
-  existing sandbox deprecation message is expected; no missing-prerequisite
-  warning appears for the enabled aggregate flag. Engine bootstrapping also
-  reports its non-default root selections.
-- The last configure fails with the existing helpful OpenGL/Native GLFW error,
-  before dependency discovery. No project build or executable test run is part
-  of this request. Runtime acceptance is outside this console check.
-
-Report the tested revision and any unexpected option lines, duplicate lines,
-missing or misleading warnings, or configuration failures.
 
 ## TR6: QA HID lifecycle and notification observations
 

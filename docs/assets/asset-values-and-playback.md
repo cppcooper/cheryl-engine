@@ -193,8 +193,7 @@ if (const auto* cell = std::get_if<CE::Assets::CellIndex>(&selection))
 
 The selection result owns only a cell/failure value. The resulting packet copies
 draw state and retains graphics resources; it carries no sampler, live world or
-clock. Selection, animation, Tileset integration and CPU submission regressions plus
-first-include probes are accepted in the Linux Release Engine-only assembly. Reusable
+clock. Reusable
 [CPU checks](../development/architecture-validation.md#engine-asset-and-text-regressions)
 do not establish artwork appearance, missing metadata or a world/map API.
 

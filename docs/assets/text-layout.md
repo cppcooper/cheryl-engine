@@ -135,8 +135,6 @@ HUD/camera text, prepares replacements on a CPU worker and uploads through the
 platform dispatcher. Its preview supports builtin-only, automatic, explicit file/
 family and paragraph-direction choices. Linux visual/upload acceptance remains in
 [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering).
-Font selection, layout, resource/submission regressions and neutral header probes
-are accepted in the Linux Release Engine-only assembly; the native demo compiles
-with GLFW/X11/OpenGL, HID disabled and both UI adapters disabled. Reusable
+Reusable
 [CPU checks](../development/architecture-validation.md#engine-asset-and-text-regressions)
 do not establish native appearance or other-platform coverage.

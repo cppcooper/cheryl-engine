@@ -28,18 +28,26 @@ From the repository root, a standalone build can bootstrap an explicit Engine
 checkout without selecting other integration owners:
 
 ```sh
-cmake -S projects/modules/platform/native-glfw -B build/native-module -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_REPOSITORY_ROOT="$PWD"
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/platform/native-glfw -B build/native-module -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCHERYL_REPOSITORY_ROOT="$PWD"
+)
 ```
 
 ```sh
-cmake --build build/native-module --target module_native_glfw --parallel
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/native-module --target module_native_glfw --parallel
+)
 ```
 
 On Linux, bundled GLFW enables both X11 and Wayland; use
-`GLFW_BUILD_WAYLAND=OFF` for X11 only. See the root
-[dependency table](../../../../README.md#dependencies) for system requirements and
+`GLFW_BUILD_WAYLAND=OFF` for X11 only. See the
+[build guide](../../../../docs/development/building.md) for system requirements and
 Gainput's optional HID fetch.
 
 ## Engine contracts
@@ -49,16 +57,6 @@ Gainput's optional HID fetch.
 | [`CE::iDisplaySystem`](../../../engine/include/cheryl/core/display/display-system-interface.h) | [`CE::DisplaySystem`](include/cheryl/core/display/display-system.h) | Monitor snapshots, owned windows and active-window selection. |
 | [`CE::iWindow`](../../../engine/include/cheryl/core/display/window-interface.h) | [`CE::Window`](include/cheryl/core/display/window.h) | Window sizes/modes, resizing, cursor visibility and deferred callback failures. |
 | [`CE::Input::iInputSystem`](../../../engine/include/cheryl/core/controls/input-interface.h) | [`CE::Input::InputSystem`](include/cheryl/core/controls/input-system.h) | Device bindings and published State/Events/Text polls with capture and focus routing. Selected by `CHERYL_NATIVE_INPUT`. |
-
-The existing directory structure follows those contract areas:
-
-```text
-include/cheryl/core/display/   # Concrete display/window headers
-include/cheryl/core/controls/  # Concrete input and mapping headers
-src/core/display/             # Window/display implementation and GLFW diagnostics
-src/core/controls/            # Native input collection and mappings
-tests/                       # Implementation cases and consumer/header probes
-```
 
 The graphics owner selects its window client API and supplies rendering and
 presentation. GLFW/OpenGL context selection, buffer swapping and the native graphics
@@ -104,9 +102,7 @@ window. Detachment clears window state while retaining devices and ownership.
 Each `Update` receives elapsed steady-clock seconds between attached polls; time
 spent detached does not enter that interval.
 
-Linux owner-policy and native attachment/destruction checks are accepted, alongside
-mapper/synthetic joystick regressions and native consumer/header checks with HID
-disabled. Reusable controller automation is in the
+Reusable controller automation with HID disabled is in the
 [desktop guide](../../../../docs/development/native-desktop-checks.md#linux-controller-automation);
 Windows acceptance is shelved in the
 [platform plan](../../../../docs/planning/platform-acceptance.md).
@@ -116,7 +112,7 @@ It forwards `newValue` as the current axis state; the elapsed-time argument does
 not scale that value. Externally driven devices retain their callback-order state
 without replaying Gainput notifications.
 
-Target selection, standalone paths and validation status are in
+Target selection and standalone paths are in
 [the module guide](../../../../docs/development/modules.md).
 
 ## Linux controller mapping
@@ -240,8 +236,9 @@ Inspect the compiler command for Gainput's own `GainputInputManager.cpp`, not th
 adapter's compile definitions, when checking the HID guard. A returned initialization
 call or continuing poll heartbeat cannot establish enumeration, device-open success
 or notification registration. Those observations still need hooks in Gainput.
-The [testing queue](../../../../docs/testing-requests.md) supplies the build inspection
-and short Bluetooth capture; controller/HID acceptance remains separate.
+The [desktop guide](../../../../docs/development/native-desktop-checks.md#linux-controller-automation)
+supplies build inspection and Bluetooth capture procedures; HID observations
+remain blocked in the [testing queue](../../../../docs/testing-requests.md).
 
 ## Checks
 

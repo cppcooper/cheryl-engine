@@ -4,14 +4,11 @@
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
 owns the custom backend, GUI, FreeType fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
-application materials. Independent module/consumer/header composition and the
-initial sequential/concurrent widget and lifetime proof are accepted.
+application materials.
 
 The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
 and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
-headers expose TGUI's native GUI/widget API; Engine headers never include TGUI. The
-[requirements](../../../../docs/development/tgui-adapter-requirements.md) define the
-materials, font ownership, upload/lifetime and platform decisions for the adapter.
+headers expose TGUI's native GUI/widget API; Engine headers never include TGUI.
 The [adapter-author guide](../../../../docs/development/ui-adapters.md) describes
 the engine boundaries used by independently implemented UI modules.
 
@@ -27,8 +24,8 @@ the engine boundaries used by independently implemented UI modules.
 ## Selection and dependency
 
 At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently of
-native/graphics selection. Set it to `OFF` to omit the target and its toolkit/font
-dependencies. Link the application to
+native/graphics selection. Set it to `OFF` to omit the toolkit; Engine retains its
+own text dependencies. Link the application to
 `Cheryl::UI::TGUI`; its Engine and toolkit requirements propagate through the target.
 The build target is `module_ui_tgui`, with output name `cheryl-module-ui-tgui`.
 
@@ -261,37 +258,50 @@ packets into owned retained frames and release them after toolkit/game/provider
 teardown. Window reads and uploads require the platform owner; GUI recording and
 frame preparation require the simulation owner. Renderer observations coordinate
 replacement and shutdown, with a bounded window deadline rather than sleeps.
-Both runtime cases are accepted as part of the complete module suite. They do not
-establish native GPU resource retirement or compositor behavior.
-
-Independent consumer/header composition and native appearance, interaction,
-resize/clipping and shutdown are accepted within the selected desktop proof.
-The native report includes the existing 125% desktop scale; it does not establish
-per-window scale transitions or other platforms. Reuse accepted coverage unless
-related source changes require a rerun. A root build does not establish standalone
-composition.
+These cases do not establish native GPU resource retirement or compositor behavior.
+The [demo interaction guide](../../../apps/demo/README.md#interaction-checks)
+owns native observations and platform limits. A root build does not establish
+standalone composition.
 
 From the repository root, configure the focused checks in a standalone source
 composition:
 
 ```sh
-cmake -S projects/modules/ui/tgui -B build/ui-tgui -G Ninja \
-  -DCHERYL_REPOSITORY_ROOT="$PWD" \
-  -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
-  -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/ui/tgui -B build/ui-tgui -G Ninja \
+    -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
+)
 ```
 
 ```sh
-cmake --build build/ui-tgui --parallel \
-  --target tests-ui-tgui consumer-module-ui-tgui
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/ui-tgui --parallel \
+    --target tests-ui-tgui consumer-module-ui-tgui
+)
 ```
 
 ```sh
-./build/ui-tgui/tests-ui-tgui
-./build/ui-tgui/cheryl-ui-tgui-consumer
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/ui-tgui/tests-ui-tgui
+  ./build/ui-tgui/cheryl-ui-tgui-consumer
+)
 ```
 
-For RmlUi-specific changes, use its
-[focused batch](../rmlui/README.md#acceptance-procedure). Reuse existing directories
-and avoid repeating the accepted TGUI suite or neutral rendering probe unless the
-changes affect those contracts.
+## Toolkit upgrades
+
+Review the pinned toolkit's [render target](https://github.com/texus/TGUI/blob/v1.13.0/include/TGUI/Backend/Renderer/BackendRenderTarget.hpp),
+[texture](https://github.com/texus/TGUI/blob/v1.13.0/include/TGUI/Backend/Renderer/BackendTexture.hpp),
+[FreeType backend](https://github.com/texus/TGUI/blob/v1.13.0/src/Backend/Font/FreeType/BackendFontFreeType.cpp)
+and [global lifetime](https://github.com/texus/TGUI/blob/v1.13.0/src/Backend/Window/Backend.cpp)
+when upgrading. Recheck unindexed glyph geometry, clip rounding, atlas replacement,
+clipboard suppression and teardown before native consumers depend on new behavior.
+The [upstream backend guide](https://tgui.eu/tutorials/latest-stable/backends/)
+explains feature selection; supplied targets must retain the custom/FreeType scope.

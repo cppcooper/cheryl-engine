@@ -128,10 +128,8 @@ Recipes use typed C++ definitions and explicit bootstrap/build APIs. There is no
 pipeline/material definition-file parser in manifest 1.0; a future parser would
 produce these types separately from generic manifest discovery.
 
-Common regressions exercise a two-image effect with time/color/intensity, copied
-inputs, type/required/optional validation, immutable generations, failed replacement,
-and independent unit selection. Recorded native state/reload, retained-packet, and
-font execution scopes are in [architecture-validation.md](../development/architecture-validation.md).
+Use [architecture validation](../development/architecture-validation.md) for native
+state/reload, retained-packet and fixture checks.
 
 ## Native bootstrap and binding
 
@@ -197,9 +195,10 @@ Their [asset/playback contract](../assets/asset-values-and-playback.md) defines
 metadata and glyph units, direct-construction limits and image-key insertion.
 Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
 FFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
-place and rotate text through DrawStyle2D.model_matrix. New fonts use STBFont with
-a supplied system or bundled font file. ASCII fallback is explicit; Unicode shaping
-remains separate. See [FFont deprecation](../resources/legacy-ffont.md).
+place and rotate text through DrawStyle2D.model_matrix. Legacy STBFont uses a supplied
+font file and an ASCII atlas. The [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
+provides retained shaped glyph pages through its `RenderedText` submission overload.
+See [FFont deprecation](../resources/legacy-ffont.md).
 
 ### Frame storage and writers
 

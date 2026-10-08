@@ -86,10 +86,11 @@ already loaded entries. The first successful publication when no default exists
 selects the default; later loads do not replace it. A later failure retains earlier
 cache publications and their default selection.
 
-New fonts use `STBFont` at size 32 with printable ASCII and collection face zero.
-Discovery includes collection paths, but the current font API does not select other
-collection faces. Filename selection does not establish Unicode layout, shaping or
-fallback coverage; those remain separate development requirements.
+FontMgr loads `STBFont` at size 32 with printable ASCII and collection face zero.
+Discovery includes collection paths, but this legacy API does not select other
+faces. The separate [Unicode service](text-layout.md#font-selection) selects family
+metadata, collection faces and whole-grapheme fallback; the filename heuristic
+does not establish those capabilities.
 
 `default_font()` returns a shared retained handle or `nullptr` before the first load
 and after `clear_assets()`. Clearing removes cache/default ownership while callers'

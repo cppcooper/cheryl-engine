@@ -26,7 +26,7 @@ worker completion, pending native callback, frame recycling, game cleanup, input
 shutdown, or renderer cleanup. Reports run outside scheduler and collection locks.
 Shutdown continues its existing order; reporting does not change ownership or
 replace the first failure. Repeated failures in a shutdown pump can produce repeated
-records; ordinary category/rate configuration remains U5 logging work.
+records; ordinary category/rate configuration follows the [logging contract](logging.md).
 
 `Diagnostics::report_failure` is the emergency path for cleanup, logger destruction,
 and fatal internal release failures. It writes a bounded 1024-byte record using C

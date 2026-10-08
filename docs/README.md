@@ -1,12 +1,18 @@
 # Cheryl Engine documentation
 
-Start with [runtime architecture and backend boundaries](runtime/runtime-architecture.md)
-for an overview of the engine and application APIs. The documents below cover
-individual systems, development practices, and unfinished work.
+Choose an entry point for the work you are doing:
 
-For [setup and build options](../README.md#setup) and
-[grouped targets/output filenames](../README.md#targets), start with the root README.
-For a running application and controls, use the [demo guide](../projects/apps/demo/README.md).
+| Task | Start here |
+| --- | --- |
+| Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
+| Write a game | [Application composition and game hooks](development/consuming-engine.md), then [demo](../projects/apps/demo/README.md) |
+| Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
+| Run checks | [Test selection](development/testing.md) and [pending QA](testing-requests.md) |
+| Extend the repository | [Module authoring](development/modules.md), [UI adapters](development/ui-adapters.md) and [contributing](development/contributing.md) |
+| Pick up planned work | [Planning catalogue](planning/README.md) |
+
+The system references below describe API contracts, ownership, units and failure
+behavior. Read the relevant subject rather than the whole documentation tree.
 
 ## Contents
 
@@ -58,30 +64,25 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 ## Development
 
 - [Pending automated and QA testing requests](testing-requests.md)
+- [Build reference](development/building.md)
+- [Test selection](development/testing.md)
+- [Contributing](development/contributing.md)
 - [C++ code style](development/code-style.md)
-- [Recorded validation and repeatable commands](development/architecture-validation.md)
+- [Architecture validation procedures](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)
 - [Consuming the engine](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
 - [Module index and owner guides](../projects/modules/README.md)
 - [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
 - [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
-- [TGUI requirements and decisions](development/tgui-adapter-requirements.md)
-- [RmlUi requirements and decisions](development/rmlui-adapter-requirements.md)
 - [Writing a UI adapter](development/ui-adapters.md)
-- [Neutral UI probe](development/ui-probe.md)
+- [Neutral UI consumer checks](development/architecture-validation.md#neutral-ui-consumer)
 - [Desktop smoke checks](development/native-desktop-checks.md)
 
 ## Planning
 
-- [Short-, mid- and long-term planning catalogue](planning/README.md)
-- [Development roadmap](planning/develop-review-and-development-plan.md)
-- [Debug build output console plan](planning/debug-console.md)
-- [Audio integration plan](planning/audio-integration.md)
-- [Long-term engine and integration plans](planning/long-term-plan.md)
-- [Deferred multi-platform acceptance](planning/platform-acceptance.md)
-- [Unfinished engine work](planning/todo.md)
-- [Unresolved asset-manifest metadata](planning/asset-manifest-todo.md)
+- [Planning catalogue](planning/README.md): horizons, owning plans and prerequisites.
+- [Development roadmap](planning/develop-review-and-development-plan.md): active sequencing.
 
 Keep new documents in the matching topic folder and add them to this index. Use
 lowercase, hyphenated filenames, with `README.md` reserved for documentation

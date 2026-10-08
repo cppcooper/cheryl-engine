@@ -10,6 +10,8 @@ display and window, and lends the window to its presentation context. The displa
 owns the GLFW library lifetime; renderer initialization makes the context current
 and loads OpenGL entry points before game initialization uploads assets.
 
+## Input and owner threads
+
 Each platform poll produces a timestamped `ActionSnapshot`. Each independently
 scheduled `update()` consumes the complete pending batch in one `TickInput`.
 Input supplies edges, counts, and observed hold durations; it never subdivides
@@ -47,6 +49,9 @@ Game cleanup is paired with attempted initialization, including partial failure;
 cleanup preserves the first failure while still shutting down both adapters and
 reports subsequent failures with phase context. See [failure-reporting.md](failure-reporting.md)
 for deferred native callback checks and the bounded emergency reporting contract.
+
+## Queued preparation and stop requests
+
 `engine.platform_dispatcher().submit(work)` transfers owned request data to the platform
 thread, where graphics is current. The result is a future: inspect readiness from
 `update()`, then publish the resulting handle through the next render frame. Do not
@@ -73,6 +78,8 @@ A copied `tick.runtime_stop` retains only stop state and remains safe after runt
 destruction; do not retain the tick itself or its borrowed input view. Manually
 constructed ticks default to no runtime stop source; `request_stop()` then throws
 `failed_operation`. Tests or another scheduler can supply a source explicitly.
+
+## Frame publication and recycling
 
 `AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
 the final useful update of a bounded batch when a slot is free. If all slots are occupied, the update still
@@ -104,7 +111,8 @@ Cached sprite/tileset assets have no mutable selected cell. Graphic/Tile/Font
 immediate drawing and DrawInfo/iDraw/Draw2D are retired; submission helpers select
 ranges and const Font layout supplies glyph placements. Deprecated FFont retains
 its typed alternate-bank option without stored print state or unchecked formatting
-pointers. New fonts use STBFont with a supplied font file; see
+pointers. Legacy font-file loading uses STBFont; shaped text uses the separate
+[Unicode service](../assets/text-layout.md). See
 [FFont deprecation](../resources/legacy-ffont.md).
 
 OpenGLRenderer consumes authored packet order, checks its native pipeline domain,
@@ -147,7 +155,7 @@ continues. UI code reads ordered text/editing records during simulation; it is
 never invoked by a platform callback. Enter/Escape releases focus.
 
 Input capture/routing contracts are described in
-[input-state-model.md](input-state-model.md); recorded execution scopes are in
+[input-state-model.md](input-state-model.md); validation procedures and coverage limits are in
 [architecture-validation.md](../development/architecture-validation.md).
 
 Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied custom
@@ -155,6 +163,8 @@ pass/material/draw values without common code selecting native uniform names.
 GLSLPipelineBindings owns explicit backend mappings. MaterialMgr builds complete
 recipe replacements before publishing; retained frame owners keep old generations
 and failed builders leave the prior entry intact. See [pipelines-and-materials.md](../rendering/pipelines-and-materials.md).
+
+## Cache and native resource lifetime
 
 Asset-manager lookups copy published handles under shared locks; publication and
 clearing use unique locks. Asset construction and removed-handle destruction run
@@ -179,21 +189,9 @@ and closes their lifetime before releasing it. Retained handles reject use after
 closure without querying the borrowed context. If destructor cleanup cannot
 recover the context, it invalidates handles without OpenGL calls; platform context
 destruction releases remaining native resources. The context outlives its renderer.
-Recorded build and native acceptance scopes are in
+Native and fixture check procedures are in
 [architecture-validation.md](../development/architecture-validation.md).
 
-### Saved platform submission endpoints
-
-`engine.platform_dispatcher().submission()` returns a copyable endpoint which
-owns submission state, not a borrowed dispatcher or EngineContext pointer.
-It can be captured by a delivery adapter. After shutdown or dispatcher destruction
-it throws `failed_operation` on submission; it cannot access destroyed resources.
-Accepted requests retain FIFO enqueue order and execute only on the owner thread.
-Posting on that thread still defers work. Requests posted during a detached drain
-belong to a later drain, and nested drains cannot bypass that boundary.
-
-A future reports callback failures. Unexecuted requests are destroyed outside
-queue locks on the platform before game/resource cleanup, making their futures
-report `broken_promise`. Do not wait on a platform future from the platform thread,
-or block a simulation update on platform work. Wake callbacks retain scheduler
-state because a producer can notify immediately after the queue closes.
+Saved platform endpoints own submission state and reject safely after service
+closure. FIFO batches, cancellation, future ownership and deadlock constraints are
+specified in [thread dispatch](thread-dispatch.md).

@@ -102,8 +102,8 @@ platform dependencies while this work finishes, then closes platform requests an
 recycles retained frames before application/resource cleanup. Outside runtime,
 the owner must service any such dependencies before waiting for group drainage.
 
-Recorded worker validation covers caps, weighted shares, capture release before
+Worker regression coverage covers caps, weighted shares, capture release before
 drain completion, saved-handle rejection, mask switching/revalidation, actual
 inherited restrictions and kernel rejection, plus controlled affinity and
 thread-start failures. See [architecture-validation.md](../development/architecture-validation.md)
-for executed scopes and host limits.
+for procedures and host limits.

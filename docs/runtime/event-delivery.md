@@ -152,7 +152,7 @@ request. After publication, unentered callable destruction abandons the stream
 outside producer posting locks. This permits error-sink redispatch and capture-
 destructor reentry without running another listener's cancellation under that lock.
 
-[Recorded validation](../development/architecture-validation.md) includes controlled pump rejection,
+[Validation procedures](../development/architecture-validation.md) includes controlled pump rejection,
 concurrent producers, payload-copy invalidation, native-policy suppression, and
 reentrant recovery. Typed identity/ownership, compile-time constraints, waits,
 queued failure/error-sink lifetime and worker FIFO have additional regression

@@ -19,19 +19,27 @@ From the repository root, a standalone build reuses supplied Engine/Native GLFW
 targets or bootstraps the explicitly selected owners:
 
 ```sh
-cmake -S projects/modules/graphics/opengl -B build/opengl-module -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCHERYL_REPOSITORY_ROOT="$PWD" \
-  -DCHERYL_NATIVE_GLFW_SOURCE="$PWD/projects/modules/platform/native-glfw"
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/graphics/opengl -B build/opengl-module -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCHERYL_NATIVE_GLFW_SOURCE="$PWD/projects/modules/platform/native-glfw"
+)
 ```
 
 ```sh
-cmake --build build/opengl-module --target module_opengl --parallel
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/opengl-module --target module_opengl --parallel
+)
 ```
 
 System OpenGL development files and Python/Jinja2 for GLAD are required. Native
 window/input dependencies follow the selected Native GLFW configuration; see the
-[dependency table](../../../../README.md#dependencies).
+[dependency table](../../../../docs/development/building.md#system-dependencies).
 
 ## Engine contracts
 

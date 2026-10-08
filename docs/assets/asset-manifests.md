@@ -84,7 +84,9 @@ eight-neighbor rules declare one to eight unique directions. Runtime connectivit
 and boundary policies are defined by the
 [tile selector](asset-values-and-playback.md#tile-selection).
 
-The Puny World manifest is transcribed from the author-supplied `punyworld-overworld-tiles.tsx`. The corresponding source-bundle PNG was verified byte-for-byte against the upstream PNG, so its 70 animated targets, 280 timed frames, 168 corner-Wang assignments, and 45 edge-Wang assignments preserve the upstream tile IDs exactly.
+The Puny World manifest uses the author-supplied `punyworld-overworld-tiles.tsx`
+and matching PNG tile IDs. Keep artwork and metadata revisions together when
+changing that manifest; a different sheet layout cannot preserve those IDs.
 
 ## Runtime implementation
 
@@ -94,8 +96,6 @@ substitution are implemented. See
 [asset-loading.md](asset-loading.md) for the runtime entry point, validation/load
 order, retrieval APIs and per-entity sprite playback. Sampling, deterministic
 selection and simulation-time substitution follow the
-[tile selection contract](asset-values-and-playback.md#tile-selection). Manifest/selection
-regressions and public header probes are accepted in the Linux Release Engine-only
-assembly. Reusable checks are in the
+[tile selection contract](asset-values-and-playback.md#tile-selection). Reusable checks are in the
 [validation guide](../development/architecture-validation.md#engine-asset-and-text-regressions);
 source rule acceptance does not supply missing artwork metadata.

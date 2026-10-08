@@ -1,9 +1,9 @@
 # Consumer resource contract
 
-The library-neutral UI submission/input probe uses
-one active cache/provider and rendering window, immutable CPU-created images,
-expanded triangles, and the existing printable-ASCII font atlas. These choices
-require explicit resource contracts, rather than new domains or mutable textures.
+Resource consumers share one active cache/provider domain. UI recording uses
+immutable CPU-created images and expanded triangles; Unicode text publishes
+message-specific immutable glyph pages. These consumers use the following
+publication and lifetime contract.
 
 | Requirement | Selected treatment |
 | --- | --- |

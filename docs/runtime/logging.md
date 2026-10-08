@@ -269,41 +269,11 @@ External native owners must not continue producing after facade teardown.
 Final facade destruction belongs to the logging owner, outside the async backend;
 sink/file callbacks must not close, destroy, or wait for their logger/pool.
 
-## Acceptance boundaries
+## Validation
 
-Regression sources cover all direct severity paths under the selected profile,
-disabled argument side effects, independent sink filtering, enclosing if/else,
-lazy argument failures, stream emission failures, and suppressed partial streams.
-A first-include translation unit preserves the mask across block.h inclusion.
-Runtime configuration sources cover published defaults, independent memory presets,
-custom append/rotation settings, level restoration, relative-path stability after a
-scoped working-directory change, and invalid settings with zero file-open side effects.
-The host-pool source case constructs a separate pool owner even if the singleton
-already exists, catching the previous replacement of the host's global pool.
-Saturation sources hold a backend operation while another logger fills the shared
-queue. They cover DiscardNew returns/loss counts, lost flush requests, accepted
-record ordering, mixed per-Log policies, retained selection after reopen, and Block
-waiting for capacity. Invalid policy values reject before file/registry effects.
-The held-backend release guard runs before producer joins and logger cleanup on
-assertion failure. The blocking case includes a bounded scheduling observation;
-isolated processes provide the timeout and fault-injection acceptance boundary.
-Additional sources cover independently throwing close handlers, startup exceptions
-with failing cleanup, non-standard file formatters, standard console formatters,
-continued healthy-destination output, cumulative failure counts, and close/reopen
-recovery. The [logging acceptance guide](../development/logging-acceptance.md)
-defines the profile/sanitizer procedures and retained coverage limits. Further build/test runs require the
-authorization specified by AGENTS.md.
-
-The standalone `acceptance-logging` target and
-[logging.py](../../projects/engine/tests/logging-acceptance/logging.py) run fault, failed rotation, full-queue
-native reentry, discarded record/flush, retained clone, named category routing,
-static teardown, and fatal
-callback destruction scenarios in independent processes with a 30-second timeout.
-The runner uses already-built binaries, runs logging.* regressions serially in
-temporary working directories, verifies final file content/order and loss reports,
-and expects the defined fatal ownership case to exit 86 through a test terminate
-handler. It performs no configuration/build. See
-[logging-acceptance.md](../development/logging-acceptance.md) for the profile matrix
-and the authorization gate. Named-routing acceptance replaces the application's
-default logger, verifies formatted/stream/direct engine writes stay in their own
-files, and checks independent filtering and closed/reopened category behavior.
+The [logging acceptance guide](../development/logging-acceptance.md) owns the
+compile-profile matrix and fault/queue/teardown procedures. It runs already-built
+focused cases and isolated processes with bounded timeouts, including named routing,
+recursive submission, retained owners and fatal callback destruction. These checks
+cover defined scenarios; they do not prove every concurrent interleaving. Sanitizer
+configurations supplement that scope.

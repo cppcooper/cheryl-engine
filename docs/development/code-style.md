@@ -15,13 +15,22 @@ The root `.clang-format` is the formatting authority for C and C++ code. It bega
 Format individual files with:
 
 ```sh
-clang-format -i path/to/file.cpp
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  clang-format -i path/to/file.cpp
+)
 ```
 
-To restrict formatting to lines changed from a base revision, use:
+To restrict formatting to uncommitted lines changed from `HEAD`, use the following
+command. Substitute another base revision when needed:
 
 ```sh
-git clang-format <base-revision>
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  git clang-format HEAD
+)
 ```
 
 ## Code conventions

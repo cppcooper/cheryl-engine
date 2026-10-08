@@ -25,7 +25,7 @@ modules/
 | [ui/rmlui](ui/rmlui/README.md) | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | `CHERYL_BUILD_UI_RMLUI` | Native document sessions, routed input and premultiplied retained rendering through Engine contracts. |
 | [audio/miniaudio](audio/miniaudio/README.md) | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | `CHERYL_BUILD_AUDIO_MINIAUDIO` | [`audio`](../engine/include/cheryl/audio): immutable `Clip`, synchronized `Voice` and application-owned `System`. |
 
-Native GLFW, OpenGL, TGUI and RmlUi are selected by default.
+Native GLFW, OpenGL and TGUI are selected by default. RmlUi defaults to `OFF`.
 Miniaudio is independently selectable and defaults to `OFF`; it links only Engine
 and its private SDK, with no window or graphics requirement.
 OpenGL requires Native GLFW. Each UI owner links only Engine and its own toolkit;
@@ -40,5 +40,5 @@ an implemented module needs it.
 
 Selection, standalone composition and test ownership are described in
 [the module guide](../../docs/development/modules.md).
-The root README lists [all target groups](../../README.md#targets), including
-support libraries, test types and output filenames.
+The [test guide](../../docs/development/testing.md) lists runner groups and
+selection rules.

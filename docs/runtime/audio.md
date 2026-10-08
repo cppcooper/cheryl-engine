@@ -61,8 +61,7 @@ and leaves surviving handles safe. A system cannot reopen; construct another
 system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
 
-Neutral clip/header coverage and Linux root-assembly decode/mixing/control/short-stream
-automation are accepted; audible native output and sustained streaming remain in the
+Audible native output and sustained streaming remain in the
 [integration plan](../planning/audio-integration.md). The
 [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
 decode, explicit device/offline output and streamed playback. Its independent
