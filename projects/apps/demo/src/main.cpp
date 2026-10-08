@@ -520,7 +520,11 @@ int main(const int argc, char** argv) {
     if (!result.should_start())
         return result.exit_code;
     Game game(
-        *result.engine, options.asset_root, options.load_all_assets, std::move(options.font_selection), std::move(options.text_options),
+        *result.engine,
+        options.asset_root,
+        options.load_all_assets,
+        std::move(options.font_selection),
+        std::move(options.text_options),
         options.unicode_preview
     );
     auto game_runtime = result.make_runtime(game);
