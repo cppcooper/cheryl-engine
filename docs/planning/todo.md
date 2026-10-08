@@ -27,6 +27,10 @@ Unresolved artwork metadata is tracked separately in
 
 ## Gameplay and presentation facilities
 
+- Integrate optional miniaudio audio output through neutral owned clips and voice
+  controls, with overlapping effects and streamed music. The
+  [audio plan](audio-integration.md) owns development and Linux acceptance; FMOD
+  remains a later optional backend.
 - Accept the implemented CPU tile selector, Tileset animation substitution and
   resolved-cell submission through the pending Linux request. Sampling and boundary
   policies, seeded weighted candidates and simulation-owned time follow the
@@ -54,7 +58,7 @@ Unresolved artwork metadata is tracked separately in
   batching or sorting. Authored packet order remains the baseline.
 - Add a profiling-based timing adviser only from measured workload data; it must not
   silently replace explicit fixed-step, input-retention or recovery policy.
-- Treat 3D, topology/NUMA adapters, audio, networking, world/entity/physics,
+- Treat 3D, topology/NUMA adapters, networking, world/entity/physics,
   serialization, additional graphics backends and broader platform/device support as
   separate consumer-driven work in the [long-term plan](long-term-plan.md), alongside
   deferred Steam API/Input and optional input composition.

@@ -115,7 +115,17 @@ language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
 possible [nearer text follow-on](develop-review-and-development-plan.md#u11-follow-on--color-emoji).
 Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
-3D, topology/NUMA adapters, audio, networking, world/entity/physics, serialization,
+Audio's first miniaudio backend is selected in the short-term
+[audio plan](audio-integration.md). A later FMOD backend may implement the same
+ordinary playback contract; Studio events, banks and adaptive authoring require
+their own scope and SDK/deployment requirements.
+
+World, entities, collision and game mechanics wait for a game consumer. The game
+can consume Cheryl as a Git submodule and supply its own optional modules from
+the start, or implement its features directly. Do not plan on a later extraction
+or game refactor as a prerequisite for starting development.
+
+3D, topology/NUMA adapters, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
 work. Placeholders do not imply supported facilities. Establish scope, prerequisites,
 ownership and acceptance before promoting any candidate into the development roadmap.

@@ -66,6 +66,10 @@ labels, declared bit order, diagonal gating, outside/unknown policies, missing r
 weighted seeded repeatability, large finite weights and malformed direct rules,
 one-time target substitution, caller-owned phases, original/resolved grid bounds and
 packet resource retention without native binding or world resampling.
+Audio clip cases cover owned immutable PCM, mono/stereo frame counts and duration,
+shared copies, preserved move sources, invalid formats/incomplete frames, non-finite
+samples and normalized gain validation. The new audio contracts also have neutral
+first-include probes; these do not establish a mixer or native output.
 Encoding cases cover valid scalar ranges, byte offsets, embedded NUL/BOM,
 maximal-subpart replacement, truncated prefixes, forbidden encodings and preservation
 of valid successor bytes. Owned records survive source mutation/destruction.
@@ -112,12 +116,12 @@ unrelated typed-event acceptance needs no rerun.
     tests-engine consumer-headers-cengine
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
 Acceptance: the implementation and public header probes compile without new warnings,
-and all selected `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
+and all selected `audio_clip.*`, `tile_selection.*`, `tileset_selection.*`, `tile_animation.*`,
 `asset_manifest.*`, `utf8.*`, `stbfont.*`, `font_selection.*`, `text_layout.*`, `text_resources.*`
 and the four selected `asset_submission` cases
 pass without skips. Legacy STBFont cases establish scalar fallback over its ASCII atlas;

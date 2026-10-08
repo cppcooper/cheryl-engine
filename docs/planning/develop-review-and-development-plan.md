@@ -7,7 +7,8 @@ choose and sequence future work: prerequisites, unresolved work, discovery bound
 and acceptance still required.
 
 The [planning catalogue](README.md) groups short-, mid- and long-term work. This
-roadmap owns short-term Unicode text work and Linux acceptance, and mid-term feature
+roadmap links the short-term [audio integration](audio-integration.md) and owns
+Unicode text work and Linux acceptance, and mid-term feature
 prerequisites;
 multi-platform acceptance and consumer-selected extensions are deferred to the
 [long-term plan](long-term-plan.md).
