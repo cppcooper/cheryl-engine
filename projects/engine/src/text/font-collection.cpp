@@ -5,8 +5,12 @@
 #include <core/resources/fileio/fonts-system.h>
 #include <internals/exceptions.h>
 
+#include FT_TRUETYPE_TABLES_H
+
 #include <algorithm>
 #include <array>
+#include <compare>
+#include <cstdlib>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -19,6 +23,8 @@ namespace CE::Text {
         using namespace Detail;
         constexpr std::array<std::string_view, 6> automatic_families{
             "Arial", "Segoe UI", "Helvetica", "Noto Sans", "DejaVu Sans", "Liberation Sans"};
+        constexpr int regular_font_weight = 400;
+        constexpr int maximum_automatic_font_weight = 500; // Medium; exclude Semibold and heavier defaults.
 
         std::string family_key(const std::string_view name) {
             std::string result(name);
@@ -52,10 +58,28 @@ namespace CE::Text {
                 index, static_cast<std::uint32_t>(face->num_glyphs), false};
         }
 
+        struct StyleScore {
+            bool heavy{};
+            bool italic{};
+            int weight_distance{};
+
+            [[nodiscard]] auto operator<=>(const StyleScore&) const = default;
+        };
+
+        StyleScore style_score(FT_Face face) {
+            const bool bold = (face->style_flags & FT_STYLE_FLAG_BOLD) != 0;
+            int weight = bold ? 700 : regular_font_weight;
+            if (const auto* table = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2)); table && table->usWeightClass)
+                weight = table->usWeightClass;
+            // Black and Light faces can both lack the bold flag; rank their declared weights around Regular.
+            return {bold || weight > maximum_automatic_font_weight, (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0,
+                std::abs(weight - regular_font_weight)};
+        }
+
         struct Candidate {
             FontFaceData data;
             FontFaceInfo info;
-            int style_score{};
+            StyleScore style_score;
         };
 
         std::map<std::string, Candidate> discover_families(
@@ -90,8 +114,7 @@ namespace CE::Text {
                     const auto key = family_key(face->family_name ? face->family_name : "");
                     if (std::ranges::find(requested, key) == requested.end())
                         continue;
-                    const int score = ((face->style_flags & FT_STYLE_FLAG_BOLD) ? 1 : 0) +
-                                      ((face->style_flags & FT_STYLE_FLAG_ITALIC) ? 1 : 0);
+                    const auto score = style_score(face.get());
                     const auto old = result.find(key);
                     if (old != result.end() && old->second.style_score <= score)
                         continue; // Equal styles keep sorted path/face order.
@@ -182,7 +205,7 @@ namespace CE::Text {
         if (selection.automatic_system_fonts) {
             for (const auto name : automatic_families) {
                 const auto entry = installed.find(family_key(name));
-                if (entry != installed.end())
+                if (entry != installed.end() && !entry->second.style_score.heavy)
                     append_face(*result, entry->second.data, entry->second.info);
             }
         }
