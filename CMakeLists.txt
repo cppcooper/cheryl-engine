@@ -8,6 +8,7 @@ project(cheryl
 
 # Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
 include(cmake/CherylOptions.cmake)
+cheryl_configure_root_options()
 include(cmake/CherylTargets.cmake)
 include(cmake/CherylOutputs.cmake)
 include(cmake/CherylLinkage.cmake)
@@ -38,9 +39,6 @@ endif()
 
 add_subdirectory(projects/engine)
 
-if(CHERYL_BUILD_OPENGL AND NOT CHERYL_BUILD_NATIVE_GLFW)
-    message(FATAL_ERROR "Cheryl OpenGL requires Native GLFW; enable CHERYL_BUILD_NATIVE_GLFW or disable CHERYL_BUILD_OPENGL")
-endif()
 if(CHERYL_BUILD_NATIVE_GLFW)
     add_subdirectory(projects/modules/platform/native-glfw)
 endif()
@@ -70,3 +68,5 @@ endif()
 if(CHERYL_BUILD_DEMO AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
     add_subdirectory(projects/apps/demo)
 endif()
+
+cheryl_check_option_requirements()

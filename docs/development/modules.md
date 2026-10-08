@@ -93,6 +93,21 @@ because they have few callers.
 
 ## Select an assembly
 
+During configuration, [CherylOptions.cmake](../../cmake/CherylOptions.cmake) prints
+the names of Cheryl boolean options whose effective values differ from their
+declared defaults. Each option appears once, using its first declaration's default
+for the selected root or standalone entry point. Equivalent boolean spellings such
+as `YES` and `ON` compare equally. Default-valued options, undeclared options from
+unselected modules and non-boolean settings are omitted. Native defaults still
+follow the deprecated sandbox selection when it is used.
+
+Configuration warns when `CHERYL_BUILD_ALL_TESTS` or
+`CHERYL_BUILD_ACCEPTANCE_TESTS` is enabled without `CHERYL_BUILD_TESTS`, or when
+`CHERYL_BUILD_DEMO` is enabled without Native GLFW, OpenGL or native input. The
+warning names the missing prerequisites and explains how to enable them or disable
+the dependent option. OpenGL without Native GLFW remains a fatal configuration
+error and is checked before dependency discovery.
+
 The root selects Native GLFW, OpenGL, TGUI and RmlUi by default. Set
 `CHERYL_BUILD_AUDIO_MINIAUDIO=ON` to add the optional audio backend and link
 `Cheryl::Audio::Miniaudio`. Its [owner guide](../../projects/modules/audio/miniaudio/README.md)

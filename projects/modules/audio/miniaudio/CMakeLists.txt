@@ -7,7 +7,7 @@ endif()
 if(TARGET Cheryl::Audio::Miniaudio)
     return()
 endif()
-option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
 
 set(CHERYL_MINIAUDIO_SOURCE "" CACHE PATH "Miniaudio 0.11.25 source directory, overriding the pinned submodule")

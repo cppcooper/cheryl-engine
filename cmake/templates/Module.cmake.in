@@ -3,7 +3,7 @@ include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(@MODULE_NAME@ VERSION ${VERSION_PROJECT_MODULE_@MODULE_ID@} LANGUAGES CXX)
 endif()
-option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
 
 file(GLOB_RECURSE module_sources CONFIGURE_DEPENDS

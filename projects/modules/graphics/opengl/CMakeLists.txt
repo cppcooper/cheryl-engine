@@ -7,7 +7,7 @@ endif()
 if(TARGET Cheryl::OpenGL)
     return()
 endif()
-option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module(REQUIRES_NATIVE)
 get_target_property(CHERYL_NATIVE_INPUT Cheryl::NativeGLFW CHERYL_NATIVE_INPUT)
 

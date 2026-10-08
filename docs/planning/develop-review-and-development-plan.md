@@ -86,6 +86,18 @@ that cannot safely be inferred from the assets is tracked in
 
 ## Remaining roadmap
 
+### CMake option diagnostics
+
+- [x] Share boolean option declarations and non-default reporting through
+  `CherylOptions.cmake`, preserving root, standalone and sandbox defaults.
+- [x] Name missing prerequisites for enabled demo/test options and retain the
+  fatal OpenGL/Native GLFW constraint.
+- [ ] Accept configure-output observations in
+  [TR13](../testing-requests.md#tr13-qa-cmake-option-diagnostics).
+
+The [module guide](../development/modules.md#select-an-assembly) owns the resulting
+configuration contract. This work requires configuration observations only.
+
 ### Deferred HID integration
 
 Gainput backend work remains deferred at the `d94c60f` code baseline. The

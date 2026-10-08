@@ -7,7 +7,7 @@ endif()
 if(TARGET Cheryl::UI::RmlUi)
     return()
 endif()
-option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
 
 if(NOT TARGET RmlUi::Core)

@@ -12,10 +12,11 @@ meaningful coverage limits.
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready; reuse the accepted native build; requires a display |
 | [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready; reuse the accepted audio build; requires audible stereo output |
 | [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready; reuse the accepted native build; artwork checks require the three sample images |
+| [TR13](#tr13-qa-cmake-option-diagnostics) | QA | Linux | Ready; configure only; requires the Engine and bundled GLFW prerequisites |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
-the starting directory afterward. The ready QA requests reuse executables from
+the starting directory afterward. The runtime QA requests reuse executables from
 the accepted Linux Release selections. Reusable configuration and regression
 procedures remain in the
 [Engine guide](development/architecture-validation.md#engine-asset-and-text-regressions),
@@ -31,6 +32,84 @@ Reuse these build directories when the source, compiler and configuration match.
 Stop on a command failure. A skipped or unavailable observation leaves that
 coverage pending. Report the request ID, tested revision, platform, failures and skips;
 successful automation does not establish the separate QA observations.
+
+## TR13: QA CMake option diagnostics
+
+**Platform/prerequisites:** Linux, CMake 3.28 or newer, Ninja, a C++23 toolchain,
+initialized pinned submodules, and the Engine's FreeType, HarfBuzz and ICU
+development libraries. The bundled GLFW null platform needs no display or native
+input device. **Readiness:** ready. **Scope:** observe non-default option names,
+boolean aliases, inactive module cache entries and prerequisite diagnostics during
+configuration. No project build targets or executable tests are needed.
+
+Use the separate `build/testing-cmake-options` and
+`build/testing-cmake-options-native` directories so these option changes do not
+alter the accepted runtime QA builds. Matching existing Ninja directories can be
+reused; the commands explicitly restore the required selections.
+Inspect each configure's console output before the next command. The final
+configuration intentionally fails and its conditional checks that failure.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-cmake-options -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DWARN=OFF -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_TESTS=OFF -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
+    -DCHERYL_BUILD_ALL_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=ON \
+    -DCHERYL_NATIVE_INPUT=OFF -DCHERYL_NATIVE_NULL_PLATFORM=ON
+  cmake -S . -B build/testing-cmake-options -G Ninja \
+    -DWARN=YES -DCHERYL_BUILD_NATIVE_GLFW=OFF \
+    -DCHERYL_BUILD_TESTS=YES -DCHERYL_BUILD_DEMO=OFF \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
+  cmake -S projects/modules/platform/native-glfw \
+    -B build/testing-cmake-options-native -G Ninja \
+    -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DWARN=OFF -DCHERYL_SANDBOX_BUILD=ON \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=OFF \
+    -DCHERYL_BUILD_ALL_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+    -DCHERYL_NATIVE_INPUT=OFF -DCHERYL_NATIVE_NULL_PLATFORM=ON
+  if cmake -S . -B build/testing-cmake-options -G Ninja \
+    -DWARN=ON -DCHERYL_BUILD_OPENGL=ON; then
+    printf '%s\n' 'Expected OpenGL without Native GLFW to fail configuration.' >&2
+    exit 1
+  fi
+)
+```
+
+- In the first configure, `Configured Cheryl option:` lines name only OpenGL,
+  TGUI and RmlUi selection, tests, both broader test flags, native input and the
+  null platform. Each appears once. The default-valued Native GLFW, demo, audio,
+  consumer, sandbox and warning options produce no such line.
+- The first configure warns that the demo needs OpenGL/native input and that each
+  broader test flag needs tests. Each warning offers enabling the missing options
+  or disabling the dependent flag. Configuration still succeeds.
+- In the second configure, non-default lines name `WARN`, Native GLFW, OpenGL,
+  TGUI, RmlUi and demo selection. `CHERYL_BUILD_TESTS=YES` matches its `ON` default,
+  so it is omitted. The cached native input/null-platform options are omitted
+  because Native GLFW is unselected. No prerequisite warnings remain.
+- In the standalone Native GLFW configure, `CHERYL_BUILD_TESTS` appears once
+  because it differs from the module's `OFF` default. The native input and null
+  platform values match their sandbox defaults and produce no option line. The
+  existing sandbox deprecation message is expected; no missing-prerequisite
+  warning appears for the enabled aggregate flag. Engine bootstrapping also
+  reports its non-default root selections.
+- The last configure fails with the existing helpful OpenGL/Native GLFW error,
+  before dependency discovery. No project build or executable test run is part
+  of this request. Runtime acceptance is outside this console check.
+
+Report the tested revision and any unexpected option lines, duplicate lines,
+missing or misleading warnings, or configuration failures.
 
 ## TR6: QA HID lifecycle and notification observations
 
