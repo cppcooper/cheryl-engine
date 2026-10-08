@@ -36,6 +36,8 @@ target_link_libraries(${TARGET_LIB_MODULE_OPENGL}
     PUBLIC ${LINKAGE_PUBLIC_LIB_MODULE_OPENGL}
     PRIVATE ${LINKAGE_PRIVATE_LIB_MODULE_OPENGL})
 
+add_subdirectory(support/startup EXCLUDE_FROM_ALL)
+
 if(CHERYL_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

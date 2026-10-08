@@ -29,6 +29,11 @@ set(LINKAGE_PUBLIC_LIB_ENGINE_S_SIGNAL_HANDLERS
         Backward::Interface
 )
 
+set(LINKAGE_PUBLIC_LIB_ENGINE_S_STARTUP
+        Cheryl::Engine
+        CLI11::CLI11
+)
+
 # Native GLFW module
 #####################
 set(LINKAGE_PUBLIC_LIB_MODULE_NATIVE_GLFW
@@ -60,6 +65,11 @@ set(LINKAGE_PUBLIC_LIB_MODULE_OPENGL
 set(LINKAGE_PRIVATE_LIB_MODULE_OPENGL
         glfw
         OpenGL::GL
+)
+
+set(LINKAGE_PUBLIC_LIB_MODULE_OPENGL_S_STARTUP
+        Cheryl::Startup
+        Cheryl::OpenGL
 )
 
 # TGUI module

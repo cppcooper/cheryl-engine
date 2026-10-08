@@ -6,6 +6,7 @@ set(TARGET_LIB_ENGINE cengine)
 # Engine support
 set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
 set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
+set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
 
 # Modules
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
@@ -16,6 +17,7 @@ set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO module_audio_miniaudio)
 
 # Module support
 set(TARGET_LIB_MODULE_OPENGL_S_GL46 gl46)
+set(TARGET_LIB_MODULE_OPENGL_S_STARTUP module_opengl_startup)
 set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK module_audio_miniaudio_sdk)
 
 # Applications

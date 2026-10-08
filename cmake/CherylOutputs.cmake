@@ -3,6 +3,9 @@
 # Engine
 set(OUTPUT_LIB_ENGINE cheryl-engine)
 
+# Engine support
+set(OUTPUT_LIB_ENGINE_S_STARTUP cheryl-engine-startup)
+
 # Modules
 set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)
 set(OUTPUT_LIB_MODULE_OPENGL cheryl-module-opengl)
@@ -12,6 +15,7 @@ set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO cheryl-module-audio-miniaudio)
 
 # Module support
 set(OUTPUT_LIB_MODULE_OPENGL_S_GL46 gl46)
+set(OUTPUT_LIB_MODULE_OPENGL_S_STARTUP cheryl-module-opengl-startup)
 set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK cheryl-miniaudio-sdk)
 
 # Applications
