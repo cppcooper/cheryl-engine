@@ -13,10 +13,10 @@ set(TARGET_LIB_MODULE_OPENGL module_opengl)
 set(TARGET_LIB_MODULE_UI_TGUI module_ui_tgui)
 set(TARGET_LIB_MODULE_UI_RMLUI module_ui_rmlui)
 set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO module_audio_miniaudio)
-set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK module_audio_miniaudio_sdk)
 
-# OpenGL support
+# Module support
 set(TARGET_LIB_MODULE_OPENGL_S_GL46 gl46)
+set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK module_audio_miniaudio_sdk)
 
 # Applications
 set(TARGET_APP_DEMO demo)

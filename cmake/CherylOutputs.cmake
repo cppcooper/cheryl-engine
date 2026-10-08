@@ -9,10 +9,10 @@ set(OUTPUT_LIB_MODULE_OPENGL cheryl-module-opengl)
 set(OUTPUT_LIB_MODULE_UI_TGUI cheryl-module-ui-tgui)
 set(OUTPUT_LIB_MODULE_UI_RMLUI cheryl-module-ui-rmlui)
 set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO cheryl-module-audio-miniaudio)
-set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK cheryl-miniaudio-sdk)
 
-# OpenGL support
+# Module support
 set(OUTPUT_LIB_MODULE_OPENGL_S_GL46 gl46)
+set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK cheryl-miniaudio-sdk)
 
 # Applications
 set(OUTPUT_APP_DEMO demo)
