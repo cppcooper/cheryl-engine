@@ -38,9 +38,11 @@ successful automation does not establish the separate QA observations.
 **Platform/prerequisites:** Linux, CMake 3.28 or newer, Ninja, a C++23 toolchain,
 initialized pinned submodules, and the Engine's FreeType, HarfBuzz and ICU
 development libraries. The bundled GLFW null platform needs no display or native
-input device. **Readiness:** ready. **Scope:** observe non-default option names,
-boolean aliases, inactive module cache entries and prerequisite diagnostics during
-configuration. No project build targets or executable tests are needed.
+input device. **Readiness:** ready. **Scope:** observe grouped option names/values,
+alphabetical ordering, boolean aliases, inactive module cache entries and
+prerequisite diagnostics during configuration, plus green/red labels and plain
+output controls. Color observations require an ANSI-capable terminal. No project
+build targets or executable tests are needed.
 
 Use the separate `build/testing-cmake-options` and
 `build/testing-cmake-options-native` directories so these option changes do not
@@ -53,7 +55,8 @@ configuration intentionally fails and its conditional checks that failure.
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-cmake-options -G Ninja \
+  env NO_COLOR=0 CLICOLOR=0 CLICOLOR_FORCE=1 \
+    cmake -S . -B build/testing-cmake-options -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
@@ -65,11 +68,13 @@ configuration intentionally fails and its conditional checks that failure.
     -DCHERYL_BUILD_ALL_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=ON \
     -DCHERYL_NATIVE_INPUT=OFF -DCHERYL_NATIVE_NULL_PLATFORM=ON
-  cmake -S . -B build/testing-cmake-options -G Ninja \
+  env NO_COLOR=1 CLICOLOR_FORCE=1 \
+    cmake -S . -B build/testing-cmake-options -G Ninja \
     -DWARN=YES -DCHERYL_BUILD_NATIVE_GLFW=OFF \
     -DCHERYL_BUILD_TESTS=YES -DCHERYL_BUILD_DEMO=OFF \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
-  cmake -S projects/modules/platform/native-glfw \
+  env NO_COLOR=0 CLICOLOR=0 CLICOLOR_FORCE=0 \
+    cmake -S projects/modules/platform/native-glfw \
     -B build/testing-cmake-options-native -G Ninja \
     -DCHERYL_REPOSITORY_ROOT="$PWD" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -87,20 +92,33 @@ configuration intentionally fails and its conditional checks that failure.
 )
 ```
 
-- In the first configure, `Configured Cheryl option:` lines name only OpenGL,
-  TGUI and RmlUi selection, tests, both broader test flags, native input and the
-  null platform. Each appears once. The default-valued Native GLFW, demo, audio,
-  consumer, sandbox and warning options produce no such line.
+- Each configure prints one header/footer and each declared option once with its
+  stored value. The `configured:` heading precedes `default:`. Rows have three
+  spaces after `--`, a bracketed value, then a tab before the option name. Within
+  each section, all true values precede all false values, with names alphabetical
+  within each state, including selected module options. `YES` sorts with `ON`.
+- The first configure forces color despite `CLICOLOR=0`: true values are green
+  and false values red. Option names, headings and the footer retain the terminal's
+  ordinary color. The second configure's option rows are plain because `NO_COLOR`
+  takes precedence over forced color. The standalone configure's rows are plain
+  because `CLICOLOR=0` disables automatic color and forcing is inactive.
+- In the first configure, OpenGL and TGUI selection, tests, both broader test
+  flags, native input and the null platform appear in the configured group.
+  Native GLFW, demo, audio, consumer, sandbox and warning options appear in the
+  default group. RmlUi follows its declared default in `CherylOptions.cmake`:
+  the requested `OFF` value is default when that declaration is `OFF`, and
+  configured when it is `ON`.
 - The first configure warns that the demo needs OpenGL/native input and that each
   broader test flag needs tests. Each warning offers enabling the missing options
   or disabling the dependent flag. Configuration still succeeds.
-- In the second configure, non-default lines name `WARN`, Native GLFW, OpenGL,
-  TGUI, RmlUi and demo selection. `CHERYL_BUILD_TESTS=YES` matches its `ON` default,
-  so it is omitted. The cached native input/null-platform options are omitted
-  because Native GLFW is unselected. No prerequisite warnings remain.
+- In the second configure, the configured group names `WARN`, Native GLFW,
+  OpenGL, TGUI and demo selection; RmlUi follows its declared default as above.
+  `CHERYL_BUILD_TESTS=YES` matches its `ON` default and appears as `[YES]` in the
+  default group. The cached native input/null-platform options are omitted from both
+  groups because Native GLFW is unselected. No prerequisite warnings remain.
 - In the standalone Native GLFW configure, `CHERYL_BUILD_TESTS` appears once
   because it differs from the module's `OFF` default. The native input and null
-  platform values match their sandbox defaults and produce no option line. The
+  platform values match their sandbox defaults and appear in the default group. The
   existing sandbox deprecation message is expected; no missing-prerequisite
   warning appears for the enabled aggregate flag. Engine bootstrapping also
   reports its non-default root selections.

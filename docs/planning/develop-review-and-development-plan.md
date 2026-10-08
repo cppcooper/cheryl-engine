@@ -90,6 +90,10 @@ that cannot safely be inferred from the assets is tracked in
 
 - [x] Share boolean option declarations and non-default reporting through
   `CherylOptions.cmake`, preserving root, standalone and sandbox defaults.
+- [x] Print all declared boolean options once, grouping non-default values before
+  defaults, then true before false, with names alphabetical within each state.
+- [x] Color bracketed true/false values green/red, retaining tabbed rows and
+  honoring summary color environment controls.
 - [x] Name missing prerequisites for enabled demo/test options and retain the
   fatal OpenGL/Native GLFW constraint.
 - [ ] Accept configure-output observations in
@@ -97,6 +101,9 @@ that cannot safely be inferred from the assets is tracked in
 
 The [module guide](../development/modules.md#select-an-assembly) owns the resulting
 configuration contract. This work requires configuration observations only.
+
+Discovered follow-up: reconcile the README and module guide's default-selection
+descriptions with the pre-existing RmlUi default edit when that edit is finalized.
 
 ### Deferred HID integration
 

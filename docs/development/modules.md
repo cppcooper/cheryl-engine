@@ -94,12 +94,23 @@ because they have few callers.
 ## Select an assembly
 
 During configuration, [CherylOptions.cmake](../../cmake/CherylOptions.cmake) prints
-the names of Cheryl boolean options whose effective values differ from their
-declared defaults. Each option appears once, using its first declaration's default
-for the selected root or standalone entry point. Equivalent boolean spellings such
-as `YES` and `ON` compare equally. Default-valued options, undeclared options from
-unselected modules and non-boolean settings are omitted. Native defaults still
-follow the deprecated sandbox selection when it is used.
+each declared Cheryl boolean option's name and value in one summary at the end of
+the top-level configuration. The `configured:` section lists options that differ
+from their defaults, followed by `default:`. Both use indented bracketed values
+followed by a tab. Within each section, true values appear before false values,
+with option names alphabetical within each state. True values are green and false
+values red in ANSI-capable terminals, with the color reset before each option
+name. Color is enabled for a nonempty, non-`dumb` `TERM` or an active
+`CLICOLOR_FORCE`. An active `NO_COLOR` disables summary color even when forced;
+otherwise `CLICOLOR=0` disables automatic color. `NO_COLOR` and `CLICOLOR_FORCE`
+are active when nonempty and different from `0`. Each option appears once, using
+its first declaration's default and effective value for the selected root or
+standalone entry point. Equivalent boolean spellings such as `YES` and `ON`
+compare equally and retain their stored spelling in the brackets. Undeclared
+options from unselected modules and
+non-boolean settings are omitted. Native defaults still follow the deprecated
+sandbox selection when it is used. An invalid OpenGL/Native GLFW selection prints
+the options collected so far before its fatal diagnostic.
 
 Configuration warns when `CHERYL_BUILD_ALL_TESTS` or
 `CHERYL_BUILD_ACCEPTANCE_TESTS` is enabled without `CHERYL_BUILD_TESTS`, or when
