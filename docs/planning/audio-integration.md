@@ -60,6 +60,13 @@ order admitted by the system's control lock, not a deterministic simulation cloc
   QA; document application lifecycle and dependency selection.
 - [x] Reconcile the testing queue with batched Linux automation and audible QA.
 - [ ] Accept Linux automation and native sound observations through user-run work.
+  - [x] Accept neutral clip/header coverage in the Engine-only assembly and the
+    root audio owner's WAV/FLAC/MP3 decode cases.
+  - [ ] Retest corrected offline mixing/control/stream cases, empty/retired graph
+    silence and consumer/header checks through
+    [TR10](../testing-requests.md#tr10-automated-audio-module).
+  - [ ] Accept audible native output and long-stream observations through
+    [TR11](../testing-requests.md#tr11-qa-native-audio-and-streaming).
 
 At the contract boundary, revise dependent work if the chosen backend cannot
 preserve ownership or control semantics. At the offline/native boundary, do not

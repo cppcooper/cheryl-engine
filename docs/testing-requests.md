@@ -12,7 +12,7 @@ meaningful coverage limits.
 | [TR7](#tr7-automated-engine-asset-preparation) | Automated | Linux | Ready for retest; rebuild the existing Engine-only build |
 | [TR8](#tr8-automated-controller-diagnostic-build) | Automated | Linux/X11 | Ready; configure the existing native build with HID disabled |
 | [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready after TR8 builds the changed demo; requires a display |
-| [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready; audio-only assembly, no device or display |
+| [TR10](#tr10-automated-audio-module) | Automated | Linux | Ready for retest; offline mix/stream cases and consumer/header checks |
 | [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready after TR10 builds the consumer; requires audible stereo output |
 | [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready after TR8; present/partial-artwork checks require the three sample images |
 
@@ -275,15 +275,22 @@ toolkit text shaping/fallback remains its own service, outside this builtin scop
 
 ## TR10: Automated audio module
 
-**Platform:** Linux. **Readiness:** ready with the new pinned miniaudio submodule
+**Platform:** Linux. **Readiness:** ready for retest with the pinned miniaudio submodule
 initialized and the Engine prerequisites listed above. No output device, audio
 server, display, controller or installed media is needed. This is an audio-only
 root assembly with Engine and the optional audio owner; use a separate directory
 to preserve TR7's Engine-only selection. Reuse it when its toolchain matches.
 
-Build the owner regressions and independent consumer/header probe together.
-Run only the owner prefix, avoiding its aggregate runner and TR7's clip cases.
+Build the changed owner regressions and independent consumer/header probe together.
+Run only the pending mixing/stream cases under the owner prefix, avoiding its aggregate
+runner and Engine's accepted clip cases. Decode cases are accepted separately in the
+[owner guide](../projects/modules/audio/miniaudio/README.md#acceptance-boundaries).
 The consumer mixes offline PCM; a successful run does not establish audible output.
+Run CTest before the consumer so a failed consumer cannot hide the regression output.
+The consumer prints startup and failure diagnostics; `set -e` stops the block when
+either check fails. Rebuild before retrying the leading-frame/cursor, end/loop and
+retired-voice failures; the new silence case also covers an initially empty graph
+and playback after retirement.
 
 ```sh
 (
@@ -302,23 +309,21 @@ The consumer mixes offline PCM; a successful run does not establish audible outp
     -DCHERYL_BUILD_DEMO=OFF
   cmake --build build/testing-audio --parallel "$(nproc)" --target \
     tests-audio-miniaudio consumer-module-audio-miniaudio
-  ./build/testing-audio/cheryl-audio-miniaudio-consumer
   ctest --test-dir build/testing-audio --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_decode|audio_stream)\.'
+    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_stream)\.'
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --offline
 )
 ```
 
 Acceptance: the implementation, private SDK, consumer and public-header probe
 compile without new warnings; all selected cases pass without skips. PCM cases
 verify audible sample values offline, overlapping/master gains, mute,
-pause/resume/stop/restart, independent clip cursors, loops/end state, retained
-one-shots, differing source/output rates, independent systems, simultaneous
-producers and handles surviving close/destruction. Decode cases use isolated
-generated PCM16 WAVs, byte-budget boundaries, missing/corrupt paths and owned data
-after file removal. Short buffered WAV streams exercise controls and opening failure
-without disrupting existing playback. Owned FLAC/MP3 fixtures verify decoded format,
-finite PCM, duration, independent channel frequencies and levels; FLAC has exact
-frame-count/lossless checks. No encoder is needed for these committed fixtures.
+pause/resume/stop/restart, independent clip cursors, loops/end state after buffered PCM
+drains, retained one-shots, empty/retired graph silence, differing source/output rates,
+independent systems, simultaneous producers and handles surviving close/destruction.
+Short buffered WAV streams exercise controls and opening failure without disrupting
+existing playback. The independent consumer reports completed offline PCM and
+closed-handle checks; a silent or unsuccessful exit leaves its acceptance pending.
 These cases do not establish sustained streaming, device routing or audible/native shutdown.
 
 Standalone entry points and supplied-SDK variants remain separate composition

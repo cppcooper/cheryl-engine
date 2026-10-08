@@ -60,13 +60,18 @@ backend selection and throws when device initialization fails. `backend_name`
 identifies the selected native backend. Offline output uses `open_offline`, opens
 no device and reports `offline`; `render` alone advances its clock. Native systems
 reject manual mixing. Offline output spans contain complete interleaved frames.
+Successful renders fill the whole span, including silence before playback or after
+voice retirement, and advance the clock by the requested frame count. Voices bypass
+pitch processing at matching sample rates; differing source rates still use the
+SDK's rate conversion. Cheryl exposes no pitch or spatialization control.
 
 File stream opening waits for initial readiness; subsequent decode-ahead uses the
 SDK's resource-manager worker. Keep the file and its contents stable until playback
 ends. Restart prepares a fresh node and cursor to discard processing caches;
 for streams it reopens the file. Preparation failure preserves the previous voice.
 A native start failure leaves it stopped. Control changes take effect at backend
-processing boundaries and already queued device output cannot be withdrawn.
+processing boundaries. Buffered decoded PCM can delay a looping-policy change;
+already queued device output cannot be withdrawn.
 
 ## Acceptance boundaries
 
@@ -92,10 +97,13 @@ then observes a handle surviving destruction.
 | `v VALUE`, `m VALUE` | Music or master volume, in `[0, 1]`. |
 | `t`, `q` | Observe state or close output. |
 
-Linux automation and audible native/long-stream acceptance remain pending in the
-[testing queue](../../../../docs/testing-requests.md). Short-stream offline cases
-use an initially buffered WAV and do not establish sustained decode-ahead, native
-latency, audible channel routing or device shutdown. Owned
+Linux root-assembly WAV/FLAC/MP3 decode regressions are accepted; offline mixing,
+controls, streams, consumer/header checks and audible native/long-stream acceptance
+remain pending in the [testing queue](../../../../docs/testing-requests.md). WAV
+coverage uses generated PCM16 fixtures, byte-budget boundaries, missing/corrupt
+paths and owned PCM after source-file removal. Short-stream offline cases use an
+initially buffered WAV and do not establish sustained decode-ahead, native latency,
+audible channel routing or device shutdown. Owned
 [codec fixtures](tests/fixtures/README.md) cover whole-clip FLAC/MP3 decoding;
 the native QA baseline uses a long WAV and does not establish compressed-stream
 seek/loop behavior. Supplied-SDK and standalone configurations remain unaccepted

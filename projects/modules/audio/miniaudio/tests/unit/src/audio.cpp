@@ -42,6 +42,30 @@ TEST(audio_mix, offline) {
     expect_samples(output, 0.25f);
 }
 
+TEST(audio_mix, silence) {
+    auto system = System::open_offline();
+    std::array<float, 128> output{};
+    output.fill(1);
+    system->render(output);
+    expect_samples(output, 0);
+
+    auto voice = system->play(constant(0.25f, 1));
+    system->render(output);
+    expect_samples(std::span(output).first(2), 0.25f);
+    expect_samples(std::span(output).subspan(2), 0);
+    EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
+    voice.reset();
+    system->maintain();
+    output.fill(1);
+    system->render(output);
+    expect_samples(output, 0);
+
+    auto next = system->play(constant(0.5f));
+    system->render(output);
+    expect_samples(output, 0.5f);
+    EXPECT_EQ(next->snapshot().state, PlaybackState::Playing);
+}
+
 TEST(audio_mix, gain) {
     auto system = System::open_offline();
     const auto clip = constant();
@@ -114,7 +138,9 @@ TEST(audio_mix, end_loop) {
     expect_samples(output, 0.125f);
     EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
     voice->set_looping(false);
-    system->render(output);
+    // Previously buffered looping PCM can drain before the new policy reaches EOF.
+    for (int block = 0; block < 8 && voice->snapshot().state == PlaybackState::Playing; ++block)
+        system->render(output);
     EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
     voice->resume();
     EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);

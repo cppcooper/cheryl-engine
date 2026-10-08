@@ -28,16 +28,23 @@ namespace {
     using CE::Audio::Miniaudio::System;
 
     int offline() {
+        std::cout << "Audio consumer: checking offline PCM and closed handles.\n" << std::flush;
         auto system = CE::Audio::Miniaudio::System::open_offline();
         const auto clip = CE::Audio::Clip::from_samples({2, 48000}, std::vector<float>(2048, 0.25f));
         auto voice = system->play(clip, {.volume = 0.5f});
         std::array<float, 128> output{};
         system->render(output);
-        if (!std::ranges::all_of(output, [](float sample) { return std::abs(sample - 0.125f) < 0.00001f; }))
+        const auto mismatch = std::ranges::find_if(output, [](float sample) { return !(std::abs(sample - 0.125f) < 0.00001f); });
+        if (mismatch != output.end()) {
+            std::cerr << "Audio consumer: offline sample " << mismatch - output.begin()
+                      << " expected 0.125, got " << *mismatch << ".\n";
             return 1;
+        }
         system->close();
-        if (voice->snapshot().state != CE::Audio::PlaybackState::Closed)
+        if (voice->snapshot().state != CE::Audio::PlaybackState::Closed) {
+            std::cerr << "Audio consumer: surviving voice did not report Closed after system closure.\n";
             return 1;
+        }
         std::cout << "Audio consumer: offline PCM and closed-handle checks completed.\n";
         return 0;
     }

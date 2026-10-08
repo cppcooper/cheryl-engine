@@ -100,8 +100,11 @@ namespace CE::Audio::Miniaudio::Detail {
         config.sampleRate = clip.format().sample_rate;
         check(ma_audio_buffer_init(&config, &data->buffer), "Initialize audio clip cursor");
         data->buffer_initialized = true;
+        // Pitch control is not exposed. Avoid its resampler latency at matching rates;
+        // miniaudio still enables rate conversion when the source rate differs.
+        constexpr auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
         check(
-            ma_sound_init_from_data_source(&system.engine, &data->buffer, MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, &data->sound),
+            ma_sound_init_from_data_source(&system.engine, &data->buffer, flags, nullptr, &data->sound),
             "Initialize audio clip voice"
         );
         data->sound_initialized = true;
@@ -111,7 +114,7 @@ namespace CE::Audio::Miniaudio::Detail {
     [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const std::filesystem::path& file) {
         auto data = std::make_shared<VoiceData>();
         data->file = file;
-        constexpr auto flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT | MA_SOUND_FLAG_NO_SPATIALIZATION;
+        constexpr auto flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT | MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
         #if defined(_WIN32)
             check(ma_sound_init_from_file_w(&system.engine, file.c_str(), flags, nullptr, nullptr, &data->sound),
                 "Open streamed audio voice");
@@ -355,8 +358,15 @@ namespace CE::Audio::Miniaudio {
             return;
         ma_uint64 frames_read = 0;
         const auto frame_count = output.size() / state_->output.channels;
+        const auto first_frame = ma_engine_get_time_in_pcm_frames(&state_->engine);
         Detail::check(ma_engine_read_pcm_frames(&state_->engine, output.data(), frame_count, &frames_read), "Mix offline audio");
-        if (frames_read != frame_count)
-            throw Exceptions::runtime_exception(CE_HERE, "Offline audio mixer returned incomplete output");
+        if (frames_read > frame_count)
+            throw Exceptions::runtime_exception(CE_HERE, "Offline audio mixer exceeded the requested frame count");
+        if (frames_read < frame_count) {
+            // A graph without active inputs returns a successful short read. Silence
+            // fills the requested interval and still advances the offline clock.
+            std::ranges::fill(output.subspan(static_cast<std::size_t>(frames_read) * state_->output.channels), 0.0f);
+            Detail::check(ma_engine_set_time_in_pcm_frames(&state_->engine, first_frame + frame_count), "Advance offline audio clock");
+        }
     }
 }
