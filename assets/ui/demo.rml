@@ -25,7 +25,7 @@
     input:focus { border-width: 1px; border-color: #89d8ef; }
     #scroll { flex-grow: 1; flex-basis: 0; min-height: 80px; overflow: auto;
               margin: 12px 0; padding: 6px; background-color: #354d65b0; }
-    .row { padding: 7px; margin-bottom: 4px; background-color: #6098b477; }
+    .row { display: block; padding: 7px; margin-bottom: 4px; background-color: #6098b477; }
     scrollbarvertical { width: 12px; }
     scrollbarvertical slidertrack { background-color: #182b3c; }
     scrollbarvertical sliderbar { min-height: 20px; background-color: #73a5b9; }
