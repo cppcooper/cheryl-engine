@@ -99,6 +99,16 @@ omit/replace/test benefit; a seam alone does not justify it.
 
 ## Other engine extensions
 
+Add a built-in graphical developer console as the engine's own graphical interface.
+Its scope consists of that console, with the renderer supplying its rendering;
+other application UI remains consumer-owned. It supplies eventual in-app console
+output, including in Release, where the native Debug terminal does not exist.
+Establish scrolling/history, input routing and command requirements before
+implementation. Until then, Release uses its existing logging destinations. The
+planned [Debug output console](debug-console.md) uses a native terminal and can
+provide diagnostics independently of game rendering; closing it leaves the
+application running.
+
 After the initial [Unicode layout task](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources),
 consider wider CJK/script acceptance when a consumer establishes its required fonts,
 language-specific shaping, line-breaking and coverage fixtures. Color emoji is a

@@ -75,6 +75,7 @@ For a running application and controls, use the [demo guide](../projects/apps/de
 
 - [Short-, mid- and long-term planning catalogue](planning/README.md)
 - [Development roadmap](planning/develop-review-and-development-plan.md)
+- [Debug build output console plan](planning/debug-console.md)
 - [Long-term engine and integration plans](planning/long-term-plan.md)
 - [Deferred multi-platform acceptance](planning/platform-acceptance.md)
 - [Unfinished engine work](planning/todo.md)

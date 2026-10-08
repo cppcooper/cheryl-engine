@@ -9,6 +9,12 @@ Unresolved artwork metadata is tracked separately in
 
 ## Validation and integration
 
+- Provide Debug graphical applications with a native terminal window streaming
+  engine/game/module logs and stdout/stderr. Preserve the existing terminal connection
+  for CTest and GoogleTest reports. Close the terminal after normal shutdown and
+  retain it after a crash; manually closing it leaves the application running.
+  Non-Debug builds keep their existing output destinations. The
+  [console plan](debug-console.md) owns remaining transport design and development.
 - Accept the Linux joystick mapping correction's automated regressions with HID
   disabled. Gainput backend implementation and HID-specific QA remain deferred at
   the pinned baseline. Outstanding prerequisites and execution
@@ -33,6 +39,9 @@ Unresolved artwork metadata is tracked separately in
   shaped glyph resources and demo replacement path. Source completion and acceptance are tracked in
   [U11](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
   IME/editing is a separate consumer requirement unless selected UI work needs it.
+- Add the engine's built-in graphical developer console in future work, including
+  an in-app output destination for Release. Its UI and command requirements belong
+  to the [long-term plan](long-term-plan.md#other-engine-extensions).
 - Add broader pointer capture, modal/controller routing or optional platform services
   only for an explicit consumer contract. Current adapters cover rectangular clipping,
   colored geometry and routed committed text; their
