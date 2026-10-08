@@ -12,11 +12,11 @@
 #include <core/resources/asset-management/material-mgr.h>
 #include <internals/exceptions.h>
 
-#include <CLI/CLI.hpp>
 #include <ext/matrix_transform.hpp>
 #include <gainput/gainput.h>
 
 #include "asset-demo.h"
+#include "demo-options.h"
 
 #ifdef CHERYL_DEMO_TGUI
 #include "tgui-demo.h"
@@ -513,71 +513,21 @@ private:
 };
 
 int main(const int argc, char** argv) {
-    std::filesystem::path asset_root = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets";
-    bool load_all_assets = false;
-    bool unicode_preview = false;
-    CE::Text::FontSelection font_selection;
-    CE::Text::LayoutOptions text_options;
-    unsigned int max_updates = 0;
+    DemoOptions options;
     auto startup = CE::Engine::make_glfw_opengl_startup("Cheryl demo");
-    startup.add_application_options([&](CLI::App& options) {
-        options
-            .add_option_function<std::string>(
-                "assets", [&asset_root](const std::string& path) { asset_root = std::filesystem::path(path); }, "Asset root"
-            )
-            ->type_name("PATH")
-            ->default_str(asset_root.string())
-            ->trigger_on_parse();
-        options.add_flag("--full-assets", load_all_assets, "Load all available assets")->trigger_on_parse();
-        options.add_flag("--unicode-text", unicode_preview, "Show the Unicode text preview")->trigger_on_parse();
-        options
-            .add_flag_callback(
-                "--builtin-font", [&font_selection] { font_selection.automatic_system_fonts = false; },
-                "Disable automatic system font discovery"
-            )
-            ->disable_flag_override()
-            ->trigger_on_parse();
-        options
-            .add_option_function<std::string>(
-                "--font",
-                [&font_selection](const std::string& path) {
-                    font_selection.preferred.push_back(CE::Text::FontFile{std::filesystem::path(path)});
-                },
-                "Preferred font file; repeat to add ordered fallbacks"
-            )
-            ->trigger_on_parse();
-        options
-            .add_option_function<std::string>(
-                "--font-family",
-                [&font_selection](const std::string& family) { font_selection.preferred.push_back(CE::Text::SystemFontFamily{family}); },
-                "Preferred system font family; repeat to add ordered fallbacks"
-            )
-            ->trigger_on_parse();
-        options
-            .add_option_function<std::string>(
-                "--text-direction",
-                [&text_options](const std::string& direction) {
-                    text_options.direction = direction == "auto"  ? CE::Text::ParagraphDirection::Automatic
-                                             : direction == "ltr" ? CE::Text::ParagraphDirection::LeftToRight
-                                                                  : CE::Text::ParagraphDirection::RightToLeft;
-                },
-                "Paragraph direction"
-            )
-            ->check(CLI::IsMember({"auto", "ltr", "rtl"}))
-            ->trigger_on_parse();
-        options.add_option("--max-updates", max_updates, "Stop after this many demo updates; zero runs until stopped")
-            ->check(CLI::NonNegativeNumber)
-            ->trigger_on_parse();
-    });
+    options.register_with(startup);
     auto result = startup.initialize(argc, argv);
     if (!result.should_start())
         return result.exit_code;
-    Game game(*result.engine, asset_root, load_all_assets, std::move(font_selection), std::move(text_options), unicode_preview);
+    Game game(
+        *result.engine, options.asset_root, options.load_all_assets, std::move(options.font_selection), std::move(options.text_options),
+        options.unicode_preview
+    );
     auto game_runtime = result.make_runtime(game);
-    if (max_updates != 0)
-        game.stop_after_updates(max_updates, [&game_runtime] { game_runtime.stop(); });
+    if (options.max_updates != 0)
+        game.stop_after_updates(options.max_updates, [&game_runtime] { game_runtime.stop(); });
     game_runtime.run();
-    if (max_updates != 0)
+    if (options.max_updates != 0)
         std::cout << "Completed " << game.completed_updates() << " demo updates\n";
     return result.exit_code;
 }
