@@ -29,8 +29,8 @@ Complete one coherent application unit in this order:
   static checks without configuring, compiling, testing or launching the project.
 - [ ] Accept native appearance, timing, controls, partial/missing artwork startup
   and shutdown through user-run Linux/X11
-  [TR12](../testing-requests.md#tr12-qa-demo-tiles-and-sprites), reusing the
-  [TR8 build](../testing-requests.md#tr8-automated-controller-diagnostic-build).
+  [TR12](../testing-requests.md#tr12-qa-demo-tiles-and-sprites), reusing the accepted
+  `build/testing-native-linux` build with both UI adapters and HID disabled.
 
 **Acceptance:** available samples render upright with intact colors/transparency;
 static samples stay fixed while authored clips advance, pause and replay correctly.

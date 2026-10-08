@@ -47,5 +47,7 @@ scope. Retained glyph generations remain in the active
 [Unicode task](../planning/develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
 The legacy ASCII atlas does not establish multilingual glyph
 coverage, combining-mark placement, bidi order or grapheme-aware editing. Decoder,
-STBFont and submission regression sources plus neutral probes have pending Linux acceptance in
-[TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
+STBFont and CPU submission regressions plus neutral probes are accepted in the Linux
+Release Engine-only assembly. Reusable
+[asset/text checks](../development/architecture-validation.md#engine-asset-and-text-regressions)
+remain separate from native rendering and editing acceptance.

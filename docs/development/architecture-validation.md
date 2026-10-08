@@ -26,8 +26,11 @@ the same cases through every aggregate.
 
 ## Repeating validation
 
-Builds and tests require explicit authorization under `AGENTS.md`. Initialize pinned
-dependencies with `git submodule update --init --recursive`. OpenGL's GLAD generator
+Builds and tests require explicit authorization under `AGENTS.md`. Use CMake 3.28
+or newer, Ninja and a C++23 toolchain. Engine always requires FreeType, HarfBuzz and
+ICU uc/i18n development libraries, including when both UI modules are disabled.
+Initialize pinned dependencies with `git submodule update --init --recursive`.
+OpenGL's GLAD generator
 needs Jinja2 in the Python interpreter selected by CMake; set `Python_EXECUTABLE` if
 another interpreter supplies it. Native Linux checks need the selected GLFW/X11
 platform dependencies; OpenGL checks additionally need OpenGL development libraries.
@@ -77,6 +80,44 @@ cmake --build build-validation-release --parallel --target \
 Consumers depend on their first-include probes; no separate probe build is needed.
 Use the logging and Release signal drivers below. The logging driver also executes
 focused logging cases, so they need no additional unit run.
+
+### Engine asset and text regressions
+
+The Linux Release Engine-only selection accepts neutral clip, tile selection/animation,
+manifest, UTF-8, legacy scalar fallback, owned font selection/layout and text-resource
+regressions plus public first-include probes. It uses immutable synthetic resources,
+the bundled font and isolated discovery roots; no display, installed font, controller
+or audio device is needed. These CPU cases do not establish native text rendering,
+artwork appearance, device output or other platforms.
+
+Reuse `build/testing-engine` when its toolchain/configuration matches. When a relevant
+change requires a rerun, batch the runner and public probes and select only the
+affected cases; avoid repeating them through aggregates. This complete focused
+selection is reusable from any directory inside the checkout and preserves the
+caller's working directory:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-engine -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=OFF
+  cmake --build build/testing-engine --parallel "$(nproc)" --target \
+    tests-engine consumer-headers-cengine
+  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error \
+    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+)
+```
 
 ### Typed events
 

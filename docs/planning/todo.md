@@ -15,11 +15,10 @@ Unresolved artwork metadata is tracked separately in
   retain it after a crash; manually closing it leaves the application running.
   Non-Debug builds keep their existing output destinations. The
   [console plan](debug-console.md) owns remaining transport design and development.
-- Accept the Linux joystick mapping correction's automated regressions with HID
-  disabled. Gainput backend implementation and HID-specific QA remain deferred at
-  the pinned baseline. Outstanding prerequisites and execution
-  are tracked in the
-  [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety).
+- Gainput backend implementation and HID-specific QA remain deferred at the code
+  baseline; Linux joystick automation and Bluetooth DualSense QA with HID disabled
+  are accepted. Outstanding prerequisites are tracked in
+  [HID integration](develop-review-and-development-plan.md#deferred-hid-integration).
 - Windows native ownership, resize/typed-event, desktop and controller acceptance,
   Windows HID notifications and macOS/Wayland/other-platform coverage are shelved in
   the [long-term platform plan](platform-acceptance.md). Linux/X11 typed-event and
@@ -30,20 +29,15 @@ Unresolved artwork metadata is tracked separately in
 - Accept the demo's optional static/animated tile and sprite showcase, including
   missing/partial-artwork startup, simulation-owned playback and retained rendering.
   The [demo plan](demo-assets.md) owns source progress and Linux acceptance.
-- Accept implemented optional miniaudio audio output through neutral owned clips
-  and voice controls, with overlapping effects and streamed music. The
-  [audio plan](audio-integration.md) owns source progress and Linux acceptance; FMOD
+- Accept audible native miniaudio output and long-stream playback; neutral owned
+  clips and root-assembly decode/mixing/control/short-stream automation are accepted. The
+  [audio plan](audio-integration.md) owns remaining Linux observations; FMOD
   remains a later optional backend.
-- Accept the implemented CPU tile selector, Tileset animation substitution and
-  resolved-cell submission through the pending Linux request. Sampling and boundary
-  policies, seeded weighted candidates and simulation-owned time follow the
-  [tile selection contract](../assets/asset-values-and-playback.md#tile-selection);
-  executable acceptance remains in the
-  [active task](develop-review-and-development-plan.md#u10--deterministic-tile-selection).
-- Accept the implemented [UTF-8 decoder and STBFont scalar fallback](../assets/text-encoding.md),
-  and the [owned font collection/embedded fallback](../assets/text-layout.md).
-  Accept the implemented accented Latin/Cyrillic, bidi, width-constrained wrapping,
-  shaped glyph resources and demo replacement path. Source completion and acceptance are tracked in
+- Accept native accented Latin/Cyrillic, bidi, width-constrained wrapping, shaped
+  glyph resources and demo replacement observations. CPU decoder/scalar fallback,
+  owned font selection/layout and resource/submission regressions are accepted;
+  their contracts are in [text encoding](../assets/text-encoding.md) and
+  [Unicode layout](../assets/text-layout.md). Remaining observations are tracked in
   [U11](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources).
   IME/editing is a separate consumer requirement unless selected UI work needs it.
 - Add the engine's built-in graphical developer console in future work, including

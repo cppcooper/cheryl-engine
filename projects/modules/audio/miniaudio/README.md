@@ -73,6 +73,44 @@ A native start failure leaves it stopped. Control changes take effect at backend
 processing boundaries. Buffered decoded PCM can delay a looping-policy change;
 already queued device output cannot be withdrawn.
 
+## Repeating root-assembly validation
+
+The Linux Release root assembly accepts the offline owner regressions and independent
+consumer/header checks. Reuse `build/testing-audio` when its toolchain matches; it
+keeps the optional owner separate from Engine-only and native/graphics selections.
+Initialize the pinned SDK and Engine prerequisites from
+[setup](../../../../README.md#setup). These commands need CMake 3.28 or newer, Ninja
+and a C++23 toolchain, and preserve the caller's working directory.
+
+Rerun cases only when related source/configuration changes invalidate their evidence.
+The complete owner selection below includes decode, mixing and short-stream cases;
+narrow it for a focused change and avoid repeating cases through aggregates. CTest
+runs before the consumer so its diagnostics remain visible on failure. The consumer
+prints startup, mismatch/closure failures and successful completion.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-audio -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=ON -DCHERYL_MINIAUDIO_SOURCE= \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+    -DCHERYL_BUILD_DEMO=OFF
+  cmake --build build/testing-audio --parallel "$(nproc)" --target \
+    tests-audio-miniaudio consumer-module-audio-miniaudio
+  ctest --test-dir build/testing-audio --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^tests-audio-miniaudio\.(audio_mix|audio_decode|audio_stream)\.'
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --offline
+)
+```
+
 ## Acceptance boundaries
 
 `tests-audio-miniaudio` owns offline PCM, mixing/control, owned-source, file decode,
@@ -97,9 +135,9 @@ then observes a handle surviving destruction.
 | `v VALUE`, `m VALUE` | Music or master volume, in `[0, 1]`. |
 | `t`, `q` | Observe state or close output. |
 
-Linux root-assembly WAV/FLAC/MP3 decode regressions are accepted; offline mixing,
-controls, streams, consumer/header checks and audible native/long-stream acceptance
-remain pending in the [testing queue](../../../../docs/testing-requests.md). WAV
+Linux Release root-assembly WAV/FLAC/MP3 decoding, offline mixing/control/short-stream
+regressions and consumer/header checks are accepted. Audible native/long-stream
+observations remain pending in the [testing queue](../../../../docs/testing-requests.md). WAV
 coverage uses generated PCM16 fixtures, byte-budget boundaries, missing/corrupt
 paths and owned PCM after source-file removal. Short-stream offline cases use an
 initially buffered WAV and do not establish sustained decode-ahead, native latency,

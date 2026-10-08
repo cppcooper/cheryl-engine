@@ -62,9 +62,8 @@ order admitted by the system's control lock, not a deterministic simulation cloc
 - [ ] Accept Linux automation and native sound observations through user-run work.
   - [x] Accept neutral clip/header coverage in the Engine-only assembly and the
     root audio owner's WAV/FLAC/MP3 decode cases.
-  - [ ] Retest corrected offline mixing/control/stream cases, empty/retired graph
-    silence and consumer/header checks through
-    [TR10](../testing-requests.md#tr10-automated-audio-module).
+  - [x] Accept corrected offline mixing/control/stream cases, empty/retired graph
+    silence and consumer/header checks in the Linux Release root audio assembly.
   - [ ] Accept audible native output and long-stream observations through
     [TR11](../testing-requests.md#tr11-qa-native-audio-and-streaming).
 

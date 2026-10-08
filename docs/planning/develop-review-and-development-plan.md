@@ -21,7 +21,7 @@ the [testing request queue](../testing-requests.md).
 
 The short-term [demo asset showcase](demo-assets.md) supplies visible static and
 animated tile/sprite observations while retaining startup without package images;
-its Linux QA reuses the pending native demo build.
+its Linux QA reuses the accepted native demo build.
 
 ## Current baseline
 
@@ -60,6 +60,10 @@ rather than the earlier implementation journal:
   Linux/X11 acceptance is complete; the named/`std::any` API retains its architectural
   role. Serialization/versioned protocols remain separate consumer requirements.
 - Deprecated legacy FFont behavior: [legacy-ffont.md](../resources/legacy-ffont.md).
+- CPU tile selection/animation, manifest and retained submission contracts:
+  [asset values and playback](../assets/asset-values-and-playback.md). The Linux
+  Engine-only regressions and header probes are accepted; artwork metadata remains
+  separate from rule selection.
 
 The current selected architecture has one neutral `Cheryl::Engine`, optional Native
 GLFW, whole OpenGL and independent TGUI/RmlUi modules, owner-local tests, and
@@ -82,46 +86,9 @@ that cannot safely be inferred from the assets is tracked in
 
 ## Remaining roadmap
 
-### Native input lifetime safety
+### Deferred HID integration
 
-Keep the supported default to one initialized native input owner. Accept the pending
-Linux joystick regressions with HID disabled, using the current contract in the
-[native module guide](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
-
-- [x] Guard process-wide ownership without disrupting an existing adapter or leaking
-  ownership when initialization throws.
-- [x] Reject reattachment to a different Windows notification window while retaining
-  devices and same-window reattachment.
-- [x] Add owner-policy and native integration regressions; document supported lifetime.
-- [x] Accept native owner-policy acquisition, failed initialization and window
-  compatibility cases on Linux through user-run testing.
-- [x] Accept native owner rejection, attachment/destruction and reattachment
-  regressions on Linux through user-run native OpenGL acceptance.
-- [x] Accept native consumer/header probes on Linux through user-run testing.
-- [x] Add opt-in controller diagnostics before changing the backend:
-  - [x] Report Gainput initialization, callback device IDs and sampled pad state
-    without changing mapping or recording keyboard/text input.
-  - [x] Add a demo launch option for TRACE file logging and document its scope.
-  - [x] Submit a compiler-command check and short Bluetooth controller capture in
-    the testing queue; distinguish callback evidence from HID backend readiness.
-- [x] Inspect sequential/concurrent Bluetooth traces and the dependency compiler
-  command. Axis-only delivery to pad `2` with the HID runtime compiled out identifies
-  the Linux joystick translation as the cause of the original Cross-button failure.
-- [ ] Correct the Linux joystick path independently of the unresolved HID path:
-  - [x] Use kernel button/axis maps for controllers outside the existing legacy
-    dialects, retaining created device IDs and state updates.
-  - [x] Clear held state and close the descriptor on disconnect; rebuild mappings
-    when the joystick reconnects.
-  - [x] Add isolated synthetic-device regressions for button actions, sticks/hats,
-    remapping and reconnection without requiring a controller or HID startup.
-  - [x] Submit the focused build/regressions and Bluetooth Cross/reconnect QA.
-  - [x] Accept Bluetooth DualSense physical controller QA with HID disabled: mapped
-    buttons/axes, A press behavior, off-center disconnect/reconnect, startup with
-    the controller attached and attachment after startup in both runtime modes.
-  - [ ] Accept the build/regressions through
-    [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build).
-
-Gainput backend work remains deferred at the detached `d94c60f` pin. The
+Gainput backend work remains deferred at the `d94c60f` code baseline. The
 [submodule handoff](../../extern/gainput/TODO.md#ordered-implementation) owns the
 backend sequence, followed by adaptive-trigger output and its Cheryl consumer
 contract. When scheduled, work in the existing submodule from Cheryl and retain
@@ -153,46 +120,10 @@ Cheryl's submodule URL selects the user's personal Gainput fork. New submodule
 commits remain local until explicitly authorized publication; update the parent
 gitlink and keep pending source acceptance distinct from remote availability.
 
-### U10 — Deterministic tile selection
-
-Source implementation is complete; Linux executable acceptance remains pending.
-Use stable metadata and the
-[tile selection contract](../assets/asset-values-and-playback.md#tile-selection).
-The consumer owns world coordinates and supplies shared Wang edge/corner labels or
-bitmask cell terrain, a stable per-location seed and simulation-owned animation time.
-Mixed cell terrain does not imply a Wang labeling rule. Selection has no UI or batching
-prerequisite and must complete before publishing a world/map API that depends on it.
-
-- [x] Add stateless tile-animation cell lookup from nonnegative elapsed milliseconds,
-  with caller-owned phase, exact frame boundaries, looping and nonlooping behavior,
-  invalid-timeline checks and source regressions.
-  The [tile timing contract](../assets/asset-values-and-playback.md#tile-playback-and-rules)
-  defines current behavior.
-- [x] Accept tile-animation timing and neutral header probes in the Linux Engine-only
-  assembly through user-run testing.
-- [x] Settle sampling sites, connectivity, boundary policies, deterministic seed and
-  simulation-owned phase before introducing the selector API.
-- [x] Implement CPU-only Wang/bitmask selection, explicit failure results and weighted
-  candidates; add focused regressions and a neutral first-include header probe.
-  Reject malformed direct rule metadata needed by the selected query, and align
-  manifest/schema validation with the four-neighbor cardinal-only contract.
-- [x] Integrate selection and one-time animated-target substitution with Tileset;
-  validate original and resolved grid cells, and cover passing the resulting cell
-  to existing CPU submission without retaining or resampling the world.
-- [x] Publish durable selection contracts and reconcile the aggregated Linux Engine
-  request after each source unit. Keep artwork metadata prerequisites separate.
-- [ ] Accept deterministic, sampling/boundary, invalid-rule, missing-rule, animation
-  and CPU submission regressions plus public header probes through user-run
-  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
-
-**Acceptance:** boundary/missing-rule cases and identical samples/seed/time resolve
-deterministically without graphics-thread world access. Missing artwork semantics
-remain blocked on [asset-manifest-todo.md](asset-manifest-todo.md); sheet dimensions
-cannot supply them. This work has no UI or batching prerequisite.
-
 ### U11 — Unicode text layout and glyph resources
 
-Source implementation is complete; executable and native acceptance remain pending.
+Source implementation, Linux Engine-only regressions/header probes and native demo
+compilation are accepted; native appearance and replacement observations remain pending.
 The builtin demo uses the separate
 [Unicode text service](../assets/text-layout.md), while existing STBFont/FFont
 consumers and toolkit layout services retain their own APIs. The legacy Font interface
@@ -243,15 +174,15 @@ Complete these coherent units in dependency order:
 - [x] Integrate the builtin demo through dispatcher uploads, preserving working ASCII
   consumers. Provide multilingual, combining, bidi, fallback, wrapping, upload-failure
   and retained-generation regressions and a runnable Linux visual observation harness.
-- [x] Correct the bidi-control source mapping reported by TR7, preserving ICU direction
+- [x] Correct the bidi-control source mapping, preserving ICU direction
   resolution and shaping-relevant joiners/variation selectors. Add focused source-range
   regressions and reconcile the existing acceptance request.
-- [ ] Accept decoder/font selection, multilingual/shaping/bidi/wrapping, resource
-  failure/retention and header probes through
-  [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation); compile the
-  changed demo in the batched
-  [TR8](../testing-requests.md#tr8-automated-controller-diagnostic-build), then accept
-  Linux sequential/concurrent visual, fallback and replacement observations through
+- [x] Accept decoder/font selection, multilingual/shaping/bidi/wrapping, resource
+  failure/retention and header probes in the Linux Release Engine-only assembly.
+- [x] Compile the changed demo in the Linux Release GLFW/X11/OpenGL assembly with
+  native input, HID disabled and both UI adapters disabled.
+- [ ] Accept Linux sequential/concurrent visual, fallback and replacement observations
+  through
   [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering).
 
 **Discovery boundary:** font selection must establish real coverage and the bundled
@@ -320,8 +251,8 @@ scope and prerequisites before this work enters the development sequence.
 
 Future adapter work follows the neutral contract/probe -> selected toolkit
 requirements -> consumer-required Engine changes -> independent adapter proof order
-in the [adapter-author guide](../development/ui-adapters.md). U10 retains Linux
-acceptance while U11 begins with the builtin font consumer's UTF-8 foundation.
+in the [adapter-author guide](../development/ui-adapters.md). CPU tile/text and Linux
+controller automation are accepted; U11 retains the builtin font consumer's native QA.
 Gainput backend work remains deferred at its pin;
 U12 follows measurements and settled render semantics. U14 remains consumer-driven.
 

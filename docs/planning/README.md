@@ -5,7 +5,7 @@ consumer requirements and prerequisites are settled.
 
 | Horizon | Scope | Owning documents |
 | --- | --- | --- |
-| Short term | Demo tile/sprite showcase, audio integration, Unicode text and pending Linux asset/native acceptance | [Demo assets](demo-assets.md), [Audio](audio-integration.md), [Unicode task](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources), [tile acceptance](develop-review-and-development-plan.md#u10--deterministic-tile-selection), [native lifetime task](develop-review-and-development-plan.md#native-input-lifetime-safety) |
+| Short term | Demo tile/sprite, Unicode text and audio native observations; deferred HID integration | [Demo assets](demo-assets.md), [Audio](audio-integration.md), [Unicode task](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources), [HID integration](develop-review-and-development-plan.md#deferred-hid-integration) |
 | Mid term | Possible color-emoji follow-on after Unicode acceptance; measured optimization after workload evidence | [Text follow-on](develop-review-and-development-plan.md#u11-follow-on--color-emoji), [optimization](develop-review-and-development-plan.md#u12--measured-optimization-facilities) |
 | Long term | Multi-platform acceptance, additional dungeon asset manifests, Steam API/Steam Input, optional input composition and consumer-selected extensions | [Long-term plan](long-term-plan.md), [deferred platform acceptance](platform-acceptance.md) |
 

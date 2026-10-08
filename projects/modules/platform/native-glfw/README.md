@@ -104,9 +104,10 @@ window. Detachment clears window state while retaining devices and ownership.
 Each `Update` receives elapsed steady-clock seconds between attached polls; time
 spent detached does not enter that interval.
 
-Linux owner-policy and native attachment/destruction checks are accepted. Linux
-controller integration remains in the
-[development roadmap](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety);
+Linux owner-policy and native attachment/destruction checks are accepted, alongside
+mapper/synthetic joystick regressions and native consumer/header checks with HID
+disabled. Reusable controller automation is in the
+[desktop guide](../../../../docs/development/native-desktop-checks.md#linux-controller-automation);
 Windows acceptance is shelved in the
 [platform plan](../../../../docs/planning/platform-acceptance.md).
 
@@ -171,8 +172,8 @@ HID device visibility and access also require observation in the user's desktop
 session; successful Linux joystick reads do not establish HID access.
 The [Gainput handoff](../../../../extern/gainput/TODO.md) owns the deferred backend
 correction and adaptive-trigger sequence. The
-[native input task](../../../../docs/planning/develop-review-and-development-plan.md#native-input-lifetime-safety)
-tracks Cheryl's lifetime and observation acceptance.
+[HID integration](../../../../docs/planning/develop-review-and-development-plan.md#deferred-hid-integration)
+tracks Cheryl's remaining lifetime and observation requirements.
 
 ### HID capability and platform scope
 

@@ -39,6 +39,70 @@ console error and your GPU/driver if known. Screenshots are optional; a short te
 report is enough to begin investigation. These observations complement the automated
 context/lifetime cases in [architecture-validation.md](architecture-validation.md).
 
+## Linux controller automation
+
+Linux Release automation accepts the mapper and synthetic joystick regressions,
+native consumer/header checks and compilation of the demo with GLFW/X11, OpenGL,
+native input, owned static Gainput, HID disabled and both UI adapters disabled.
+The synthetic runner supplies kernel mappings/events to the actual pad implementation,
+covering controls, reordered slots, hats, disconnect/reconnect and legacy mappings.
+Its syscall wrappers apply process-wide, so keep that runner separate from owner
+aggregates. Automation does not establish HID readiness or physical reports.
+
+Reuse the matching `build/testing-native-linux` directory and its demo for pending
+text and artwork observations. When source or configuration requires new coverage,
+this procedure batches the relevant targets and exports the owned Gainput manager's
+compiler command. With HID disabled its HID macro arguments must be absent; inspect
+the printed result. Physical observations use the following controller checks.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-native-linux -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
+    -DCHERYL_BUILD_DEMO=ON
+  cmake --build build/testing-native-linux --parallel "$(nproc)" --target \
+    consumer-module-native-glfw tests-native-glfw tests-native-joystick demo
+  ./build/testing-native-linux/cheryl-native-glfw-consumer
+  printf 'Native GLFW consumer passed.\n'
+  ctest --test-dir build/testing-native-linux --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^(tests-native-glfw\.input_mapper\.|tests-native-joystick\.linux_joystick\.)'
+  python3 - <<'PY'
+import json
+from pathlib import Path
+import shlex
+
+build = Path('build/testing-native-linux')
+source = Path('extern/gainput/lib/source/gainput/GainputInputManager.cpp').resolve()
+entries = json.loads((build / 'compile_commands.json').read_text())
+matches = [entry for entry in entries
+           if (Path(entry['directory']) / entry['file']).resolve() == source]
+if len(matches) != 1:
+    raise SystemExit('Expected one owned Gainput manager compiler command.')
+entry = matches[0]
+arguments = entry.get('arguments') or shlex.split(entry['command'])
+command = entry.get('command') or shlex.join(arguments)
+output = build / 'gainput-manager-command.txt'
+output.write_text(command + '\n')
+macro_arguments = [argument for argument in arguments if 'GAINPUT_ENABLE_HID' in argument]
+print('Gainput manager HID macro arguments:', macro_arguments or '(none)')
+print('Saved compiler command:', output)
+PY
+)
+```
+
 ## Linux joystick controller checks
 
 Use the existing `build/testing-native-linux/demo` with developer logging, native

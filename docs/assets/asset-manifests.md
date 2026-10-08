@@ -94,5 +94,8 @@ substitution are implemented. See
 [asset-loading.md](asset-loading.md) for the runtime entry point, validation/load
 order, retrieval APIs and per-entity sprite playback. Sampling, deterministic
 selection and simulation-time substitution follow the
-[tile selection contract](asset-values-and-playback.md#tile-selection); Linux
-executable acceptance remains in [TR7](../testing-requests.md#tr7-automated-engine-asset-preparation).
+[tile selection contract](asset-values-and-playback.md#tile-selection). Manifest/selection
+regressions and public header probes are accepted in the Linux Release Engine-only
+assembly. Reusable checks are in the
+[validation guide](../development/architecture-validation.md#engine-asset-and-text-regressions);
+source rule acceptance does not supply missing artwork metadata.
