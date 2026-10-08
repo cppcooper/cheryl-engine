@@ -9,6 +9,14 @@ application.
 The default assembly includes Native GLFW, OpenGL, TGUI and the windowed demo.
 RmlUi and miniaudio are independently selectable and default to `OFF`.
 
+## Contents
+
+- [Documentation and development](#documentation-and-development)
+- [Setup](#setup)
+- [Targets](#targets)
+- [Tests](#tests)
+- [Repository architecture](#repository-architecture)
+
 ## Setup
 
 You need Git, CMake 3.28 or newer, Ninja, and a C++23 compiler and standard library
@@ -110,8 +118,26 @@ for the steps required to add an owner.
 
 ## Documentation and development
 
-- [Documentation index](docs/README.md): entry points and system references.
-- [Runtime architecture](docs/runtime/runtime-architecture.md): ownership, threading and backend boundaries.
-- [Writing an application](docs/development/consuming-engine.md): linking, game hooks and a minimal native example.
-- [Contributing](docs/development/contributing.md): change scope, style, tests and documentation.
-- [Planning catalogue](docs/planning/README.md): unresolved work and its prerequisites.
+| Topic | Documentation |
+| --- | --- |
+| Complete documentation index | [All guides and system references](docs/README.md) |
+| Engine architecture | [Runtime ownership and backend boundaries](docs/runtime/runtime-architecture.md), [frame lifecycle](docs/runtime/runtime-frame-boundary.md) and [module roles](projects/modules/README.md) |
+| CMake configuration and builds | [Options and defaults](docs/development/building.md#configuration-options), [build configurations](docs/development/building.md#build-configurations) and [engine-only builds](docs/development/building.md#engine-only-configuration) |
+| Dependencies | [SDK selection and toolchain settings](docs/development/building.md#dependency-and-toolchain-settings), [system requirements](docs/development/building.md#system-dependencies) and [public headers and link requirements](docs/development/consuming-engine.md#dependencies-and-headers) |
+| Targets and artifacts | [Module targets and aliases](projects/modules/README.md), [test targets](docs/development/testing.md#runner-selection) and [artifact name definitions](cmake/CherylOutputs.cmake) |
+| Writing a game | [Application composition](docs/development/consuming-engine.md), [game hooks and ownership](docs/development/consuming-engine.md#game-hooks-and-ownership) and [minimal native application](docs/development/consuming-engine.md#minimal-native-application) |
+| Adding a module | [Module authoring](docs/development/modules.md#add-a-module), [standalone composition](docs/development/modules.md#standalone-modules) and [UI adapters](docs/development/ui-adapters.md) |
+| Platform and graphics APIs | [Native GLFW](projects/modules/platform/native-glfw/README.md) and [OpenGL](projects/modules/graphics/opengl/README.md) |
+| UI APIs | [TGUI](projects/modules/ui/tgui/README.md) and [RmlUi](projects/modules/ui/rmlui/README.md) |
+| Audio APIs | [Engine audio contracts](docs/runtime/audio.md) and [miniaudio integration](projects/modules/audio/miniaudio/README.md) |
+| Input, timing and concurrency | [Input state and events](docs/runtime/input-state-model.md), [simulation timing](docs/runtime/simulation-timing.md) and [thread dispatch](docs/runtime/thread-dispatch.md) |
+| Assets and text | [Asset loading](docs/assets/asset-loading.md), [manifest format](docs/assets/asset-manifests.md) and [Unicode text layout](docs/assets/text-layout.md) |
+| Rendering and resources | [Pipelines and materials](docs/rendering/pipelines-and-materials.md), [resource lifetime](docs/resources/resource-lifetime.md) and [consumer resource contracts](docs/resources/consumer-resource-contract.md) |
+| Logging and crash handling | [Compile-time logging policy](docs/runtime/logging.md#compile-policy), [runtime logging](docs/runtime/logging.md#runtime-settings-and-ownership) and [crash bootstrap and exception traces](docs/development/consuming-engine.md#crash-and-exception-traces) |
+| Demo | [Controls](projects/apps/demo/README.md#controls), [command-line options](projects/apps/demo/README.md#command-line-options) and [asset packages](docs/assets/catalog.md) |
+| Automated tests | [Runners and CTest selection](docs/development/testing.md), [acceptance checks](docs/development/testing.md#acceptance-and-consumers) and [logging acceptance](docs/development/logging-acceptance.md) |
+| Consumers and header probes | [Selection and targets](docs/development/testing.md#acceptance-and-consumers) and [independent consumer builds](docs/development/consuming-engine.md#independent-consumers-and-header-probes) |
+| Architecture validation and QA | [Validation procedures](docs/development/architecture-validation.md), [desktop checks](docs/development/native-desktop-checks.md) and [pending testing requests](docs/testing-requests.md) |
+| Troubleshooting | [Build and dependency issues](docs/development/building.md#troubleshooting) and [compiler discovery and standard headers](docs/development/consuming-engine.md#standard-headers-in-an-existing-build) |
+| Contributing | [Development workflow](docs/development/contributing.md), [C++ style](docs/development/code-style.md) and [agent instructions](AGENTS.md) |
+| Planning | [Planning catalogue](docs/planning/README.md) and [development roadmap](docs/planning/develop-review-and-development-plan.md) |
