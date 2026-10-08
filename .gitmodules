@@ -37,3 +37,6 @@
 [submodule "extern/miniaudio"]
 	path = extern/miniaudio
 	url = https://github.com/mackron/miniaudio.git
+[submodule "extern/cli11"]
+	path = extern/cli11
+	url = https://github.com/CLIUtils/CLI11.git
