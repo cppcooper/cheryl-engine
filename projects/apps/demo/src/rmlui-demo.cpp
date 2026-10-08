@@ -144,11 +144,15 @@ struct DemoRmlUi::State {
             const auto* button = std::get_if<ButtonEvent>(&record.data);
             if (button && record.device_kind == DeviceKind::Keyboard && button->phase == ButtonPhase::Press) {
                 if (button->key == KeyboardKey::F4 && visible) {
-                    if (session->owns_keyboard_focus())
+                    if (session->owns_keyboard_focus() && session->context().GetFocusElement() == field)
                         session->release_keyboard_focus();
                     else {
-                        session->request_keyboard_focus();
-                        field->Focus();
+                        if (!session->owns_keyboard_focus())
+                            session->request_keyboard_focus();
+                        if (!field->Focus(true)) {
+                            session->release_keyboard_focus();
+                            throw CE::Exceptions::failed_operation(CE_HERE, "Cannot focus the demo RmlUi text input");
+                        }
                     }
                 } else if (button->key == KeyboardKey::F6) {
                     visible = !visible;
