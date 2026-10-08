@@ -69,18 +69,19 @@ is 368×384 pixels, with twenty-three columns and twenty-four rows of 16-pixel c
 This source PNG matches the existing sheet. The separate 0x72 packages below have
 their own layouts and future manifests.
 
-## Downloaded packages awaiting manifests
+## Packages awaiting manifests
 
-These source packages are saved locally under the ignored `asset-downloads/` tree,
-outside `assets/` because the loader discovers PNGs recursively. The ZIPs remain
-unextracted. `asset-downloads/0x72/sources.json` records their source pages, filenames,
-sizes and SHA-256 hashes. Local downloads are not included in Git.
+These packages need separate manifests for their layouts. Keep original downloads
+in a staging directory outside `assets/`, where the loader discovers PNGs recursively.
+The ignored `asset-downloads/0x72/` tree is suitable for local staging. A local
+`sources.json`, when available, records source pages, filenames, sizes and hashes;
+downloads and provenance records are not included in Git.
 
-| Package and author page | Directory under `asset-downloads/0x72/` | Saved files |
+| Package and author page | Staging directory under `asset-downloads/0x72/` | Source files |
 | --- | --- | --- |
 | [16x16 Dungeon Tileset — 0x72](https://0x72.itch.io/16x16-dungeon-tileset) | `16x16-dungeon-tileset/` | `0x72_16x16DungeonTileset.v5.zip` |
 | [16x16 DungeonTileset II — 0x72](https://0x72.itch.io/dungeontileset-ii) | `dungeontileset-ii/` | `0x72_DungeonTilesetII_v1.7.zip`, `pumpkin_dude.png`, `doc.png` |
 
 Unpacking these packages and writing a manifest for each belongs to the
-[long-term asset task](../planning/long-term-plan.md#additional-dungeon-asset-manifests).
+[long-term asset task](../planning/long-term/README.md#additional-dungeon-asset-manifests).
 The extension and remix links on their author pages are separate candidate packages.

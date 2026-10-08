@@ -4,9 +4,9 @@ The initial rendering scope is accented Latin (including English, French and Ger
 Russian/Cyrillic, mixed paragraph direction and optional width-constrained wrapping.
 Glyph coverage and shaping are font/script concerns rather than a separate renderer
 for every language. Color emoji is a possible
-[next text batch](../planning/develop-review-and-development-plan.md#u11-follow-on--color-emoji);
+[next text batch](../planning/mid-term/README.md#color-emoji);
 wider CJK/script acceptance remains in the
-[long-term plan](../planning/long-term-plan.md#other-engine-extensions).
+[long-term plan](../planning/long-term/README.md#other-engine-extensions).
 Display source maps do not establish caret movement, selection or IME/preedit.
 
 ## Font selection

@@ -15,10 +15,10 @@ consumer applications, with the demo as an initial integration consumer.
 
 This task is a development plan. Implementation, scheduling and the remaining
 details below are open. Native acceptance follows the selected platform scope; existing
-[multi-platform testing deferrals](platform-acceptance.md) remain in place.
+[multi-platform testing deferrals](../long-term/platform-acceptance.md) remain in place.
 
 The engine's built-in graphical developer console is future work in the
-[long-term plan](long-term-plan.md#other-engine-extensions). It supplies the eventual
+[long-term plan](../long-term/README.md#other-engine-extensions). It supplies the eventual
 in-app console, including in Release. That console is the engine's own graphical
 interface; the renderer supplies rendering, while application UI remains owned by
 consumers. Console UI, input routing and command execution belong to that later work.
@@ -43,14 +43,14 @@ design below.
 
 ## Current foundation
 
-The [console sink](../../projects/engine/include/cheryl/core/logging/osink.h) writes
+The [console sink](../../../projects/engine/include/cheryl/core/logging/osink.h) writes
 to `std::cout` and `std::cerr`. Required
-[failure reporting](../runtime/failure-reporting.md) also writes directly to stderr.
-The [demo entry point](../../projects/apps/demo/src/main.cpp) has no explicit
+[failure reporting](../../runtime/failure-reporting.md) also writes directly to stderr.
+The [demo entry point](../../../projects/apps/demo/src/main.cpp) has no explicit
 console-window setup. A logger-only viewer would therefore leave other process
 output outside the required coverage.
 
-The [shared test entry point](../../projects/engine/tests/support/gtest-main.cpp)
+The [shared test entry point](../../../projects/engine/tests/support/gtest-main.cpp)
 runs GoogleTest and tested engine/module code in the same process. Their ordinary
 stdout/stderr writes therefore share destinations and carry no producer identity.
 
@@ -104,7 +104,7 @@ depend on creating a desktop terminal.
 
 1. Resolve terminal availability, platform scope, disconnect handling and crash
    detection under the selected lifetime contract. Choose the owner
-   using the existing [module boundary criteria](../development/modules.md#module-boundary-criteria).
+   using the existing [module boundary criteria](../../development/modules.md#module-boundary-criteria).
    Keep process-wide stream ownership separate from individual engine contexts.
 2. Prove the smallest startup path for both stdout and stderr, including C stdio,
    C++ streams and native stream writes. Establish flushing, encoding and handling
@@ -122,7 +122,7 @@ depend on creating a desktop terminal.
    Establish startup before their first engine diagnostics and retain the output
    destination until producers and logging workers finish. Preserve configured file
    logging and severity filters.
-5. Document the resulting contract and extend [testing requests](../testing-requests.md)
+5. Document the resulting contract and extend [testing requests](../../testing-requests.md)
    once runnable source and observation paths exist. Batch related build targets and
    keep source completion distinct from executable and native acceptance.
 
@@ -148,5 +148,5 @@ capture assertions, death tests, parallel runs and unattended execution retain t
 defined behavior. Verify framework messages outside the normal result printer
 separately; a passing result-printer prototype does not establish complete separation.
 
-Planning alone adds no executable acceptance request. Builds, compilation and tests
-continue to require the repository's explicit authorization.
+Add an executable acceptance request once the selected source and observation paths
+are ready.

@@ -157,4 +157,4 @@ concurrent producers, payload-copy invalidation, native-policy suppression, and
 reentrant recovery. Typed identity/ownership, compile-time constraints, waits,
 queued failure/error-sink lifetime and worker FIFO have additional regression
 coverage. Linux/X11 typed-event and resize acceptance is complete. Remaining Windows
-acceptance is shelved in the [platform plan](../planning/platform-acceptance.md).
+acceptance is shelved in the [platform plan](../planning/long-term/platform-acceptance.md).

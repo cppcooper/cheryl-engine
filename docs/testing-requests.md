@@ -24,7 +24,7 @@ and [audio guide](../projects/modules/audio/miniaudio/README.md#repeating-root-a
 Builtin demo text has an embedded fallback and needs no installed font. Display,
 audio output, artwork and Python requirements are specified by each QA request.
 Windows, macOS, Wayland and other platform acceptance are deferred to the
-[long-term platform plan](planning/platform-acceptance.md); TR3–TR5 and the Windows
+[long-term platform plan](planning/long-term/platform-acceptance.md); TR3–TR5 and the Windows
 portion of TR6 are retained there, outside this active queue.
 
 Reuse these build directories when the source, compiler and configuration match.
@@ -54,7 +54,7 @@ The eventual QA request needs:
 
 Keep this Linux request blocked until the harness has runnable setup/launch
 instructions. Windows notification observations are in the
-[deferred platform plan](planning/platform-acceptance.md#deferred-hid-lifecycle-and-windows-notifications).
+[deferred platform plan](planning/long-term/platform-acceptance.md#deferred-hid-lifecycle-and-windows-notifications).
 
 ## TR9: QA Unicode text rendering
 
@@ -247,7 +247,7 @@ PY
   source size, intact colors/transparent backgrounds and no joined adjacent-cell
   geometry. The current provider uses linear magnification; softened pixel edges
   reflect that policy. Report neighboring-cell color leakage separately for the
-  [sampling follow-on](planning/long-term-plan.md#other-engine-extensions).
+  [sampling follow-on](planning/long-term/README.md#other-engine-extensions).
   Static grass, sword and frozen Swordsman do not animate.
 - Watch the three animated tiles use their respective 400/200/100 ms frame durations
   and loop. The sprite top row walks south/north/east; the bottom row walks west,
@@ -275,4 +275,4 @@ PY
 Report the revision, launch cases/modes, visible failures, stderr diagnostics and
 blocked/skipped observations. This accepts the sample application, not a world/map
 API or physical GPU retirement. Wider platform testing remains deferred in the
-[platform plan](planning/platform-acceptance.md).
+[platform plan](planning/long-term/platform-acceptance.md).

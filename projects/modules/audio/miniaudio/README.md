@@ -143,4 +143,4 @@ audible channel routing or device shutdown. Owned
 the native QA baseline uses a long WAV and does not establish compressed-stream
 seek/loop behavior. Supplied-SDK and standalone configurations remain unaccepted
 composition variants until explicitly selected and built. Other platforms remain deferred under the
-[platform plan](../../../../docs/planning/platform-acceptance.md).
+[platform plan](../../../../docs/planning/long-term/platform-acceptance.md).

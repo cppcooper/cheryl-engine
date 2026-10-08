@@ -2,7 +2,7 @@
 
 Windows, macOS, Wayland and other platform acceptance are long-term work. These
 procedures preserve unresolved coverage; they are outside the active
-[testing queue](../testing-requests.md). Resume them only when platform testing is
+[testing queue](../../testing-requests.md). Resume them only when platform testing is
 scheduled, reconcile the current source/targets/configuration first, then restore
 ready requests to that queue. Linux/X11 is the current short-term platform.
 
@@ -51,21 +51,29 @@ try {
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON `
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON `
     -DCHERYL_BUILD_DEMO=ON
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   cmake --build build/testing-native-windows --parallel ([Environment]::ProcessorCount) --target `
     consumer-cengine consumer-module-native-glfw tests-engine acceptance-engine `
     tests-native-glfw acceptance-opengl demo
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ./build/testing-native-windows/cheryl-consumer.exe
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ./build/testing-native-windows/cheryl-native-glfw-consumer.exe
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^tests-engine\.(tile_animation|typed_events)\.'
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^acceptance-engine\.(typed_events\.|event_delivery\.runtime_owner_threads$)'
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error -R '^tests-native-glfw\.input_lifetime\.'
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   $env:CHERYL_NATIVE_GL_TESTS = '1'
   ctest --test-dir build/testing-native-windows --parallel ([Environment]::ProcessorCount) --output-on-failure `
     --no-tests=error `
     -R '^acceptance-opengl\.native_opengl\.(input_owner|input_window|input_reattach|resize_events|typed_resize_failure|resize_callback_failure)$'
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   Remove-Item Env:CHERYL_NATIVE_GL_TESTS
 } finally {
   Pop-Location
@@ -92,7 +100,9 @@ if ($LASTEXITCODE -ne 0) { throw "Cannot locate the checkout root." }
 Push-Location -LiteralPath $cherylRoot -ErrorAction Stop
 try {
   ./build/testing-native-windows/demo.exe
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
   ./build/testing-native-windows/demo.exe --concurrent
+  if ($LASTEXITCODE -ne 0) { throw "Cheryl command failed; stop before dependent checks." }
 } finally {
   Pop-Location
 }
@@ -109,7 +119,7 @@ try {
   normally. Report the platform and mode for any failure.
 
 This request does not establish per-window scale transitions or GPU reset recovery.
-The reusable [desktop checks](../development/native-desktop-checks.md) retain the
+The reusable [desktop checks](../../development/native-desktop-checks.md) retain the
 Linux resize procedure.
 
 ## TR5: QA controller reports and reconnection
@@ -139,7 +149,7 @@ or establish the Windows notification route.
 
 **QA — Windows; deferred and blocked on an observation harness.** Preserve the
 single initialized native-owner contract. The Linux portion of TR6 remains in the
-[active queue](../testing-requests.md#tr6-qa-hid-lifecycle-and-notification-observations).
+[active queue](../../testing-requests.md#tr6-qa-hid-lifecycle-and-notification-observations).
 Windows needs a supported physical HID controller and a harness that observes:
 
 - HID initialization, enumeration/open and actual HID report delivery independently
@@ -160,7 +170,7 @@ DirectInput fallback and notification corrections accompany future platform work
 macOS needs source/dependency selection and native/HID fallback ownership resolved
 before desktop and USB/Bluetooth controller acceptance. The current Apple source
 selection omits the shared HID runtime/parsers. Preserve the
-[native module's capability limits](../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope)
+[native module's capability limits](../../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope)
 until those configurations are implemented and accepted.
 
 Full Wayland and other operating systems need their own runtime acceptance for
@@ -168,5 +178,5 @@ input, rendering, UI coexistence, resizing and shutdown in sequential/concurrent
 modes and normal/sandbox configurations. Establish machines, fixtures and native
 observation requirements when activating each platform; do not infer acceptance
 from Linux/X11 or software-driver execution. Reuse the
-[architecture procedures](../development/architecture-validation.md) and the
-[desktop checks](../development/native-desktop-checks.md) where applicable.
+[architecture procedures](../../development/architecture-validation.md) and the
+[desktop checks](../../development/native-desktop-checks.md) where applicable.

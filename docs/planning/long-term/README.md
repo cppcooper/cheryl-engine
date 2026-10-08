@@ -8,11 +8,11 @@ Multi-platform testing is also shelved; Linux/X11 remains the active short-term
 platform.
 
 Use the current ownership, lifetime, selection and standalone contracts in the
-[module guide](../development/modules.md). Its
-[module boundary criteria](../development/modules.md#module-boundary-criteria)
+[module guide](../../development/modules.md). Its
+[module boundary criteria](../../development/modules.md#module-boundary-criteria)
 govern new owners. Reusable isolation/composition procedures and native/fixture
 coverage limits are in
-[architecture validation](../development/architecture-validation.md).
+[architecture validation](../../development/architecture-validation.md).
 
 ## Multi-platform acceptance
 
@@ -72,7 +72,7 @@ a concrete consumer requirement. Coordinate process-wide Gainput HID collection,
 shutdown and notification ownership before supporting them; independent `Init`/`Exit`
 calls cannot establish that behavior. Preserve one collection path per effective
 controller. The current
-[native adapter lifetime](../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
+[native adapter lifetime](../../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
 permits one initialized owner and retains its original Windows notification window.
 If a consumer requires explicit HID startup-failure reporting, change the dependency
 contract before relying on it: the selected Gainput `Init` currently discards the HID
@@ -87,7 +87,7 @@ authoring API. Similarity to existing bridges does not require shared widgets.
 Each toolkit remains independently selectable and depends on neutral Engine
 contracts; toolkit code must not become an Engine dependency. TGUI and RmlUi
 establish the current boundary in the
-[adapter-author guide](../development/ui-adapters.md).
+[adapter-author guide](../../development/ui-adapters.md).
 
 ### Additional graphics backends
 
@@ -105,25 +105,25 @@ other application UI remains consumer-owned. It supplies eventual in-app console
 output, including in Release, where the native Debug terminal does not exist.
 Establish scrolling/history, input routing and command requirements before
 implementation. Until then, Release uses its existing logging destinations. The
-planned [Debug output console](debug-console.md) uses a native terminal and can
+planned [Debug output console](../unscheduled/debug-console.md) uses a native terminal and can
 provide diagnostics independently of game rendering; closing it leaves the
 application running.
 
-After the initial [Unicode layout task](develop-review-and-development-plan.md#u11--unicode-text-layout-and-glyph-resources),
+After the initial [Unicode layout task](../short-term/unicode-text.md),
 consider wider CJK/script acceptance when a consumer establishes its required fonts,
 language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
-possible [nearer text follow-on](develop-review-and-development-plan.md#u11-follow-on--color-emoji).
+possible [nearer text follow-on](../mid-term/README.md#color-emoji).
 Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
 Audio's first miniaudio backend is selected in the short-term
-[audio plan](audio-integration.md). A later FMOD backend may implement the same
+[audio plan](../short-term/audio-integration.md). A later FMOD backend may implement the same
 ordinary playback contract; Studio events, banks and adaptive authoring require
 their own scope and SDK/deployment requirements.
 
 Selectable image filtering and atlas isolation need a consumer contract. The
 OpenGL provider currently gives RGBA images linear magnification and generated
 mipmaps; grid UVs address cell edges without padding. The
-[demo samples](../../projects/apps/demo/README.md#tile-and-sprite-samples) expose
+[demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples) expose
 that baseline. Use their observations to establish nearest/linear, mipmap and wrap
 requirements, per-image/per-binding ownership and atlas-edge behavior before adding
 a sampler API; avoid mutating shared cached textures from demo frame preparation.
@@ -138,17 +138,21 @@ device-loss recovery and broader OS/device validation remain separate consumer-d
 work. Placeholders do not imply supported facilities. Establish scope, prerequisites,
 ownership and acceptance before promoting any candidate into the development roadmap.
 
+Broader pointer capture, modal/controller routing and clipboard/cursor/IME services
+need explicit consumer requirements under the [UI capability boundaries](../../development/ui-adapters.md#routing-and-unavailable-services).
+Installed/exported packaging remains separate work from supported build-tree composition.
+
 Native monitor hotplug and per-window scale/change reporting need explicit consumers.
 Settle refreshed inventory identity, native-handle invalidation and existing-window
 rebinding before adding hotplug support; monitor scale alone does not satisfy a
 per-window service. The current
-[display/window contract](../runtime/display-and-window-contract.md) defines the
+[display/window contract](../../runtime/display-and-window-contract.md) defines the
 construction-time inventory and copied-size capability limits.
 
 ## Additional dungeon asset manifests
 
 Prepare one manifest for each of the two 0x72 dungeon packages in the
-[download catalog](../assets/catalog.md#downloaded-packages-awaiting-manifests) when
+[download catalog](../../assets/catalog.md#packages-awaiting-manifests) when
 this long-term task becomes active. Keep the original downloads available for source
 comparison. Preserve the existing Buch dungeon image and manifest; the added packages
 need distinct namespaces and image directories.
@@ -162,20 +166,11 @@ Handle one package per coherent development unit:
    semantics rather than inferring them from dimensions alone.
 3. Write a separate JSON manifest covering the selected package images and add its
    final locations and manifest link to the catalog. Use the current
-   [manifest format](../assets/asset-manifests.md) and
-   [loading validation contract](../assets/asset-loading.md).
+   [manifest format](../../assets/asset-manifests.md) and
+   [loading validation contract](../../assets/asset-loading.md).
 
 **Acceptance:** the catalog identifies each package revision, and its manifest uses
 valid image paths and grids; slices and animations match that revision. Schema/source checks and
-authorized loader execution establish their respective coverage. Package acquisition
+loader execution establish their respective coverage. Package acquisition
 does not establish manifest or runtime acceptance. Community extension/remix packs
 remain separate candidates outside these two manifests.
-
-## Development boundary
-
-Module work preserves owner lifetimes and dependency direction. A future owner uses
-neutral Engine contracts; Engine must not acquire that integration as a dependency.
-
-Build/configuration/compiler/test execution follows [AGENTS.md](../../AGENTS.md)
-and requires explicit authorization. Planning/source inspection does not imply
-executable acceptance.

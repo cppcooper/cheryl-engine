@@ -149,7 +149,7 @@ These cases invoke the actual registered C callback to check unchanged-size
 suppression, saved observations across nested resize delivery, legacy-before-typed
 offers and native failure consumption. They do not establish compositor-generated
 resize delivery. Skipped native cases leave that callback coverage pending. Windows execution
-is shelved in the [platform plan](../planning/platform-acceptance.md).
+is shelved in the [platform plan](../planning/long-term/platform-acceptance.md).
 
 ### Native, OpenGL and standalone composition
 

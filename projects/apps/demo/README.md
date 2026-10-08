@@ -164,7 +164,7 @@ Separate triangle-strip image and triangle text materials share `shader2d` sourc
 and straight-alpha blending. Images inherit the OpenGL provider's linear
 magnification and generated mipmaps, so enlarged pixel edges can look softened.
 Selectable filtering and atlas isolation are
-[follow-on work](../../../docs/planning/long-term-plan.md#other-engine-extensions).
+[follow-on work](../../../docs/planning/long-term/README.md#other-engine-extensions).
 F5 adopts both replacement handles together; a failed
 replacement keeps the current pair. Teardown releases the application-held samples
 and labels on the platform owner after simulation joins.

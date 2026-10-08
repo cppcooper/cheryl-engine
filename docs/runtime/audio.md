@@ -62,7 +62,7 @@ system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
 
 Audible native output and sustained streaming remain in the
-[integration plan](../planning/audio-integration.md). The
+[integration plan](../planning/short-term/audio-integration.md). The
 [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
 decode, explicit device/offline output and streamed playback. Its independent
 consumer provides native observation without a game, window or graphics module.

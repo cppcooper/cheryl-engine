@@ -105,7 +105,7 @@ spent detached does not enter that interval.
 Reusable controller automation with HID disabled is in the
 [desktop guide](../../../../docs/development/native-desktop-checks.md#linux-controller-automation);
 Windows acceptance is shelved in the
-[platform plan](../../../../docs/planning/platform-acceptance.md).
+[platform plan](../../../../docs/planning/long-term/platform-acceptance.md).
 
 The input mapper uses Gainput's five-argument `OnDeviceButtonFloat` callback.
 It forwards `newValue` as the current axis state; the elapsed-time argument does

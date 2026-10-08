@@ -96,6 +96,6 @@ runtime cases exercise both modes, bounded recovery, slow updates/presentation,
 full polling backlogs, and ordered input without replay. Procedures and
 platform limits are in [architecture-validation.md](../development/architecture-validation.md).
 
-A profiling-based optimization configurer remains unfinished in [todo.md](../planning/todo.md).
+A profiling-based optimization configurer remains unfinished in the [mid-term plan](../planning/mid-term/README.md#measured-optimization).
 It must preserve explicit timing/input configuration, rather than silently replacing
 fixed delta, changing input history, or introducing interpolation.

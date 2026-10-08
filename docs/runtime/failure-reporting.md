@@ -56,5 +56,6 @@ noexcept can terminate before a surrounding reporting guard can run.
 Regression sources cover resize listener capture/consumption, stopping during a
 failed pump, procedure lookup plus release failure, primary-plus-cleanup failure,
 bounded trace reuse, owned fallback storage, and bounded emergency records. These
-have not been compiled or executed as part of this work. Isolated allocation-failure
-acceptance and authorized native/sanitizer runs remain in the development plan.
+are finite failure scenarios; isolated allocation-failure and native/sanitizer
+acceptance retain separate coverage. Use [architecture validation](../development/architecture-validation.md)
+for reusable procedures and platform limits.
