@@ -29,7 +29,7 @@ In each mode, check these observations:
    asset root without a flag. While the demo stays running, press Esc to leave text
    editing, then F5 with valid shaders. Reload should succeed. Append
    `this is not valid GLSL;` to the copied
-   `/tmp/cheryl-reload-assets/shaders/shader2d.frag` and save. Press F5 again: the
+   `/tmp/cheryl-reload-assets/graphics/shaders/shader2d.frag` and save. Press F5 again: the
    demo's `Reload:` status must show an error while the previous text/material
    remains visible. Remove the invalid line, save and press F5: the error clears.
    Repeat with `/path/to/demo --concurrent /tmp/cheryl-reload-assets`.

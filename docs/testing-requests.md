@@ -38,7 +38,8 @@ TR9 and TR12 use the toolkit-free `build/testing-native-linux` configuration in
 the [native guide](development/native-desktop-checks.md#linux-controller-automation):
 Linux Release, developer logging, GLFW/X11/OpenGL, native input, HID off and both
 UI adapters off. If that matching configuration already exists, update only the
-demo once for both requests:
+demo once for both requests. The TR9 launch block includes this refresh; use the
+following block when running TR12 independently:
 
 ```sh
 (
@@ -54,6 +55,10 @@ Existing controller regression results need no rerun solely for startup/UI chang
 The accepted UI-enabled `build/testing-native-ui` directory is separate; rebuilding
 it does not refresh the toolkit-free F2 probe used by TR9. A demo built before the
 startup or asset-layout changes does not establish current native acceptance.
+
+The positional asset root is `assets`. The demo resolves shaders under
+`graphics/shaders/` within that root. TR12's temporary roots preserve the same
+directory layout, including the `graphics/` directory.
 
 ## TR6: QA HID lifecycle and notification observations
 
@@ -85,9 +90,10 @@ instructions. Windows notification observations are in the
 `build/testing-native-linux/demo` rebuilt for the current source, with both UI
 adapters and HID disabled.
 **Readiness:** refresh the toolkit-free demo through the shared preparation before
-retrying. The previous executable requested `assets/shaders/shader2d.vert`; current
-source and tracked shaders use `assets/graphics/shaders/shader2d.vert`. That failed
-launch establishes no visual acceptance.
+retrying. The launch block below rebuilds the demo before selecting `assets` as its
+root; current source loads `assets/graphics/shaders/shader2d.vert` and
+`assets/graphics/shaders/shader2d.frag`. The previous launch used outdated shader
+paths and establishes no visual acceptance.
 The checked-in shaders/font fixture and embedded font are available; no controller,
 installed font, full image tree, clipboard or IME service is required. Close each run
 before the next. Existing font/layout/resource checks are accepted; their reusable
@@ -100,15 +106,16 @@ their appearance and animation belong to TR12.
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-native-linux/demo --unicode-text --builtin-font
-  ./build/testing-native-linux/demo --unicode-text --builtin-font --concurrent
-  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl
-  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl --concurrent
-  ./build/testing-native-linux/demo --unicode-text
-  ./build/testing-native-linux/demo --unicode-text --concurrent
-  ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf
+  cmake --build build/testing-native-linux --target demo --parallel
+  ./build/testing-native-linux/demo --unicode-text --builtin-font assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text assets
+  ./build/testing-native-linux/demo --unicode-text --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf assets
   env XDG_DATA_HOME="$PWD/assets" ./build/testing-native-linux/demo \
-    --unicode-text --builtin-font '--font-family=DejaVu Sans'
+    --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
 )
 ```
 
@@ -281,8 +288,8 @@ each interactive launch before the next.
   env -u DISPLAY -u WAYLAND_DISPLAY ./build/testing-native-ui/demo --help
   ./build/testing-native-ui/demo --window-width=1440 --window-height=900 \
     --window-title='Cheryl startup QA' --swap-interval=0 assets
-  ./build/testing-native-ui/demo --concurrent --fixed-step-ms=16 --worker-count=2
-  ./build/testing-native-ui/demo --concurrent --max-updates=5 --input-unlimited
+  ./build/testing-native-ui/demo --concurrent --fixed-step-ms=16 --worker-count=2 assets
+  ./build/testing-native-ui/demo --concurrent --max-updates=5 --input-unlimited assets
 )
 ```
 
