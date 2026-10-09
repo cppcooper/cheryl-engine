@@ -1,9 +1,0 @@
-{
-  "$schema": "../../schemas/graphics-manifests-1.0.schema.json",
-  "version": "1.0",
-  "manifests": [
-    "dungeon_tiles.json",
-    "magecity.json",
-    "punyworld-overworld.json"
-  ]
-}
