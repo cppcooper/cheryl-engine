@@ -60,8 +60,10 @@ property and verification alternatives. Supplied dependency targets remain uncha
 
 The [placeholder investigation](../../../../docs/external-work/rmlui-placeholder-issue.md)
 preserves the source diagnosis, unmodified-upstream reproduction requirements and
-contribution guidance. The downstream correction still needs runtime acceptance;
-the existing session tests do not establish placeholder hit-testing safety.
+contribution guidance. The Cheryl-owned correction has accepted placeholder
+hit-testing observations in the Linux/X11/OpenGL demo; existing session tests do
+not directly exercise that correction. Supplied targets/packages still require
+independent host acceptance and correction declarations.
 
 ## Input identities
 
@@ -223,7 +225,9 @@ for the same cases. Run the affected TGUI session checks as well when shared
 routing/session paths change. The accepted root selections and remaining dedicated
 regression limits are in the
 [UI validation guide](../../../../docs/development/ui-adapters.md#repeating-linux-root-validation).
-Native interaction remains in [TR14](../../../../docs/testing-requests.md#tr14-qa-startup-and-ui-interaction).
+Native interaction is accepted in the selected Linux root composition; the
+[demo procedure](../../../apps/demo/README.md#startup-and-ui-validation) preserves
+its scope and reusable observations.
 
 An independently configured consumer establishes standalone source composition
 and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it

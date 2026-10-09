@@ -1,10 +1,11 @@
 # Unicode text layout and native acceptance
 
-Complete the initial grayscale [Unicode scope](../../assets/text-layout.md),
-including Latin/Cyrillic, paragraph direction, fallback and local-width wrapping.
-The subject guide owns the font, layout and resource contracts and the rationale
-for a separate service. Color emoji, wider CJK acceptance and editing/IME remain
-outside this task.
+The initial grayscale [Unicode scope](../../assets/text-layout.md#native-acceptance-scope)
+has an accepted Linux native baseline for appearance, alignment, fallback and
+local-width wrapping. Dedicated font-style/weight fixtures and regressions remain
+unfinished below. The subject guide owns font, layout and resource contracts and
+the rationale for a separate service. Color emoji, wider CJK acceptance and
+editing/IME remain outside this task.
 
 ## Progress
 
@@ -33,8 +34,8 @@ outside this task.
   automatic limit, heavy-only family skipping and unrestricted explicit preferences
   in separately authorized testing phases. Existing family cases cover baseline
   discovery/order rather than those numeric-weight boundaries.
-- [ ] Accept sequential/concurrent visual, fallback and replacement observations
-  through [TR9](../../testing-requests.md#tr9-qa-unicode-text-rendering).
+- [x] Accept reported sequential/concurrent visual, fallback and replacement
+  observations within the [native scope](../../assets/text-layout.md#native-acceptance-scope).
 
 Possible [color emoji and measured layout/cache work](../mid-term/README.md)
 follow this task without changing its acceptance scope.

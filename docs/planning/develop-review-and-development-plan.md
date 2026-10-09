@@ -6,13 +6,11 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 ## Short term
 
-Close acceptance for [Unicode](short-term/unicode-text.md),
-[demo assets](short-term/demo-assets.md) and the startup/UI checklist below.
-These tasks retain their own progress until
-accepted. Their observations can proceed independently with matching builds;
-refresh the toolkit-free demo once for Unicode/assets, and reuse the accepted
-UI assembly for TR14. The
-[testing queue](../testing-requests.md) owns launch commands and prerequisites.
+Complete the remaining [Unicode font-selection regressions](short-term/unicode-text.md)
+and startup/UI checklist below. The
+[testing queue](../testing-requests.md) owns pending acceptance and prerequisites;
+the [demo guide](../../projects/apps/demo/README.md#repeating-native-qa) preserves
+reusable native procedures and the limits of accepted observations.
 Existing regressions do not close the dedicated-case gaps listed in the plans.
 
 ### Startup and UI follow-up
@@ -32,8 +30,9 @@ Font-weight acceptance remains with the Unicode plan rather than this checklist.
 - [ ] Add dedicated Startup parser/factory and support-header probes, callback/batch
   routing cases and placeholder hit-testing regressions in separately authorized
   testing phases. Existing suites do not exercise these new paths directly.
-- [ ] Accept native startup/field/focus/list observations through
-  [TR14](../testing-requests.md#tr14-qa-startup-and-ui-interaction).
+- [x] Accept Linux native startup/field/focus/list observations in the selected
+  root composition; [demo QA](../../projects/apps/demo/README.md#startup-and-ui-validation)
+  retains the procedure and coverage limits.
 - [ ] Obtain a corrected supplied RmlUi target/package and consuming host, then
   accept declaration/rejection behavior independently of Cheryl-owned source.
 
@@ -66,8 +65,8 @@ when selecting extensions.
 
 ## Later work
 
-Use the [horizon catalogue](README.md) to select a follow-on. Color emoji waits for
-Unicode acceptance; optimization waits for workload evidence and compatibility/order
+Use the [horizon catalogue](README.md) to select a follow-on. Color emoji remains
+unselected; optimization waits for workload evidence and compatibility/order
 decisions. Platform, Steam and optional-module work requires a named consumer and
 resolved prerequisites. The unscheduled Debug terminal needs transport/platform
 decisions before implementation.

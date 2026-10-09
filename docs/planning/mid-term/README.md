@@ -6,8 +6,9 @@ yet; promote one coherent unit when its prerequisites and scope are settled.
 
 ## Color emoji
 
-Select required color-font formats, fonts and emoji sequences after the initial
-[Unicode task](../short-term/unicode-text.md). Establish RGBA page orientation,
+Select required color-font formats, fonts and emoji sequences beyond the accepted
+initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope).
+Establish RGBA page orientation,
 material/alpha handling and sequence/fallback policy while preserving source clusters
 and immutable generations. Keep grayscale text independently usable. Color glyphs
 and sequence appearance need their own CPU/native acceptance.

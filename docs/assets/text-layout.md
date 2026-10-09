@@ -144,8 +144,23 @@ upload, binding or drawing.
 The [demo](../../projects/apps/demo/README.md#builtin-unicode-text) submits immutable
 HUD/camera text, prepares replacements on a CPU worker and uploads through the
 platform dispatcher. Its preview supports builtin-only, automatic, explicit file/
-family and paragraph-direction choices. Linux visual/upload acceptance remains in
-[TR9](../testing-requests.md#tr9-qa-unicode-text-rendering).
-Reusable
+family and paragraph-direction choices. The demo guide preserves
+[native preview procedures](../../projects/apps/demo/README.md#unicode-preview-validation).
+
+## Native acceptance scope
+
+Linux/GLFW/X11/OpenGL sequential/concurrent preview appearance, wrapping, paragraph
+alignment and resource replacement/shutdown are accepted for the initial grayscale
+scope. Similar output across runtime/font variants is compatible with the same
+effective glyph faces and placements. Right-aligned Latin under explicit RTL and
+unchanged Hebrew-only output between automatic/RTL modes match the direction
+contract above; this native report does not independently confirm Hebrew glyph order.
+The accepted [CPU bidi case](../../projects/engine/tests/unit/src/text-layout.cpp)
+checks Hebrew/mixed visual source order and preserves Latin order under explicit RTL.
+Alignment alone is not proof of every bidi sequence.
+
+Dedicated numeric font-weight/style fixtures remain in the
+[Unicode plan](../planning/short-term/unicode-text.md#progress). Color/CJK rendering,
+grapheme/bidi editing, IME and additional platforms retain separate scope. Reusable
 [CPU checks](../development/architecture-validation.md#engine-asset-and-text-regressions)
-do not establish native appearance or other-platform coverage.
+and these Linux observations do not establish other-platform coverage.

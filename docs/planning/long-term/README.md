@@ -116,7 +116,7 @@ planned [Debug output console](../unscheduled/debug-console.md) uses a native te
 provide diagnostics independently of game rendering; closing it leaves the
 application running.
 
-After the initial [Unicode layout task](../short-term/unicode-text.md),
+Beyond the initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope),
 consider wider CJK/script acceptance when a consumer establishes its required fonts,
 language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
 possible [nearer text follow-on](../mid-term/README.md#color-emoji).

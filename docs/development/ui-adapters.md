@@ -206,6 +206,9 @@ Corrected supplied RmlUi targets/packages require an independent consuming host
 and declaration/rejection checks under the
 [module contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract).
 Owned-source success does not establish those supplied paths or standalone
-composition. Native startup, focus, hit-testing and shutdown observations remain
-in [TR14](../testing-requests.md#tr14-qa-startup-and-ui-interaction); Unicode and
-package artwork have their separate QA requests.
+composition. Native startup, focus, placeholder hit-testing, layout and shutdown
+observations are accepted in the selected Linux root composition. The
+[demo guide](../../projects/apps/demo/README.md#startup-and-ui-validation) retains
+the reusable native procedure. Builtin Unicode and sample artwork keep their own
+coverage limits there; dedicated deterministic cases and supplied dependencies
+remain outside that native baseline.

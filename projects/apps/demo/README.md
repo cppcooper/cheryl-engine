@@ -170,8 +170,14 @@ F5 adopts both replacement handles together; a failed
 replacement keeps the current pair. Teardown releases the application-held samples
 and labels on the platform owner after simulation joins.
 
-Native appearance, animation and optional-artwork acceptance is pending in
-[TR12](../../../docs/testing-requests.md#tr12-qa-demo-tiles-and-sprites).
+Linux/GLFW/X11/OpenGL native sample appearance, animation, pause/resume and
+missing/partial-artwork behavior are accepted in sequential and concurrent modes.
+This baseline supplies no fresh invalid-shader retention/recovery observation for
+the two sample materials. Closing during an interactive desktop resize was also
+not established because the close attempt was blocked until resizing ended; this
+does not identify which component delayed input. Shader-failure and simultaneous
+close/resize coverage remain separate from normal rendering and orderly shutdown.
+Reusable procedures are below in [native QA](#repeating-native-qa).
 
 ## Builtin Unicode text
 
@@ -191,8 +197,13 @@ generations and never discovers fonts, shapes, rasterizes or uploads. Shutdown
 settles/cancels context work before releasing application-held text/resources.
 
 For an interactive preview, use `--unicode-text --builtin-font`, then repeat with
-`--concurrent` and `--text-direction=rtl`. Full Linux visual/upload acceptance is
-pending in [TR9](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering).
+`--concurrent` and `--text-direction=rtl`. Linux native appearance, wrapping,
+alignment and resource-replacement/shutdown observations are accepted. RTL selects
+paragraph direction rather than reversing every string: Latin retains its natural
+order and aligns right, while the Hebrew-only paragraph already resolves RTL in
+automatic mode. The [text guide](../../../docs/assets/text-layout.md#native-acceptance-scope)
+owns bidi proof and remaining coverage limits; [native QA](#unicode-preview-validation)
+preserves the reusable launch variants.
 Color emoji and wider CJK acceptance remain outside this batch. The missing-glyph
 example exercises replacement rather than Chinese-language coverage.
 
@@ -279,9 +290,239 @@ touchpad motion after key presses; see
 
 The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
 desktop scale. Per-window scale transitions, other platforms, IME and physical GPU resource
-retirement need separate observations. Toolkit checks do not establish the pending
-[builtin Unicode rendering](../../../docs/testing-requests.md#tr9-qa-unicode-text-rendering).
+retirement need separate observations. Native startup, field/placeholder focus,
+list layout and UI interaction are accepted in the selected Linux root composition.
+Dedicated parser/factory, support-header, callback/batch and placeholder regressions
+remain in the [owning plan](../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
+Builtin Unicode keeps its separate [coverage scope](../../../docs/assets/text-layout.md#native-acceptance-scope).
 
 Reuse accepted coverage unless related source changes require a rerun. The
 [focused acceptance procedure](../../modules/ui/rmlui/README.md#acceptance-procedure)
 batches RmlUi and coexistence checks in one parallel build.
+
+## Repeating native QA
+
+Reuse accepted coverage unless related source or configuration changes invalidate
+it. Select the affected observations below; shader failure injection is a targeted
+check for changes to compilation, material replacement or retention. Linux/X11
+results do not establish Wayland, other platforms or physical GPU retirement.
+
+### Native QA preparation
+
+The Unicode and sample procedures use `build/testing-native-linux`: Linux Release,
+developer logging, GLFW/X11/OpenGL, native input, HID off and both UI adapters off.
+Use the [native guide's configuration](../../../docs/development/native-desktop-checks.md#linux-controller-automation)
+if that directory is absent or differs; user-run CMake configuration selects Ninja.
+For a matching build, refresh only the demo once for both procedures:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/testing-native-linux --target demo --parallel
+)
+```
+
+The startup/UI procedure uses the separate `build/testing-native-ui` directory.
+Refresh affected targets with the [UI procedure](../../../docs/development/ui-adapters.md#repeating-linux-root-validation)
+when needed. Rebuilding one directory does not refresh the other. Each launch
+selects `assets` as the root; the demo resolves `graphics/shaders/` beneath it.
+Temporary sample roots preserve that layout. Close each interactive launch before
+the next. The builtin Unicode preview needs no installed font or package artwork.
+
+### Unicode preview validation
+
+The sequential and concurrent variants should render the same text. Font-selection
+variants can also look alike when they select the same face or embedded fallback.
+Explicit RTL sets paragraph direction: Latin and digits keep their natural order,
+while Latin paragraphs align right. The Hebrew-only paragraph already resolves RTL
+in automatic mode, so its order need not change between automatic and explicit RTL.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-native-linux/demo --unicode-text --builtin-font assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --text-direction=rtl --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text assets
+  ./build/testing-native-linux/demo --unicode-text --concurrent assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf assets
+  env XDG_DATA_HOME="$PWD/assets" ./build/testing-native-linux/demo \
+    --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
+)
+```
+
+The `XDG_DATA_HOME` launch supplies a controlled family-discovery root containing
+the repository font. Installed DejaVu Sans candidates can precede it; either is a
+valid explicit family selection. Automatic discovery can use only the embedded
+fallback when preferred families are absent. Successful fallback alone does not
+prove discovery; controlled CPU cases establish its metadata and ordering. Numeric
+font-weight limits still need the [dedicated fixtures](../../../docs/planning/short-term/unicode-text.md#progress).
+
+- Inspect English, French accents and `e`+combining acute, German umlauts/`ß`, and
+  Russian glyphs. Accents stay with their base and glyph masks are upright, with
+  no per-byte replacements, solid rectangles or atlas bleed. In builtin-only runs,
+  the Chinese missing-glyph example is one visible replacement; color/CJK rendering
+  is outside acceptance.
+- In automatic direction, the Hebrew-only line begins at the right of the available
+  width; its letters read right to left while `123` remains left to right. The mixed
+  Hebrew/English line preserves both run directions. Explicit RTL aligns the Latin
+  paragraphs to the right without reversing their letters or numbers.
+- Resize narrower/wider, maximize and restore while moving the mouse or entering
+  text. The wrap sample and HUD follow the framebuffer width with 24-pixel margins;
+  accents/whole graphemes remain together, hard breaks remain, and updates settle
+  without blank text, corrupted old frames, hangs or native errors. Ordinary glyph
+  overhang is separate from measured line advance; a too-wide indivisible grapheme
+  can overflow and is not silently split.
+- Use F2 and committed text input for supported accents/Cyrillic where keyboard
+  layouts allow, then Enter/Esc to release focus. Text focus still prevents WASD
+  from panning; the unfocused camera/input controls and F5 shader replacement remain
+  usable. The probe edits logical scalars, so grapheme/bidi caret behavior is not
+  part of this preview scope. Static samples establish display independently of typing.
+- Close during rapid resizing/text/counter changes in sequential and concurrent
+  modes. Worker preparation and platform uploads settle/cancel without stale
+  callbacks, deadlocks or cleanup errors. Failure-injection/retained-generation
+  behavior is covered separately by accepted `text_resources.replacement` CPU checks.
+
+### Tile and sprite validation
+
+The procedure stages tracked assets and the three images from the sample table in
+temporary roots, preserving checkout files. It covers sequential variable timing
+and concurrent 16 ms fixed timing, missing metadata/images, selected/partial
+artwork and a corrupt weapon image. Artwork cases are blocked when their source
+images are absent; place them according to the [catalog](../../../docs/assets/catalog.md).
+Missing-artwork startup does not count as rendered-artwork acceptance.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 - <<'PY'
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+
+checkout = Path.cwd()
+demo = checkout / 'build/testing-native-linux/demo'
+assets = checkout / 'assets'
+images = [Path('graphics/tilesets/punyworld-overworld-tileset.png'),
+          Path('graphics/MiniWorldSprites/Objects/SwordShort.png'),
+          Path('graphics/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
+tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', 'assets/']).decode().split('\0')
+cases = [('missing-images', []), ('missing-manifests', [])]
+missing = [str(path) for path in images if not (assets / path).is_file()]
+if missing:
+    print('BLOCKED: present/partial/broken-image observations need:', ', '.join(missing), flush=True)
+else:
+    cases += [('selected-images', images), ('tiles-only', images[:1]),
+              ('sprites-only', images[1:]), ('broken-weapon', images)]
+
+with tempfile.TemporaryDirectory(prefix='cheryl-demo-assets-') as workspace:
+    for name, selected in cases:
+        root = Path(workspace) / name
+        for file in filter(None, tracked):
+            relative = Path(file).relative_to('assets')
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(checkout / file, destination)
+        for image in selected:
+            destination = root / image
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(assets / image, destination)
+        if name == 'missing-manifests':
+            for manifest in ['graphics/MiniWorldSprites/atlas.json',
+                             'graphics/tilesets/punyworld-overworld.json']:
+                (root / manifest).unlink()
+        if name == 'broken-weapon':
+            (root / images[1]).write_bytes(b'invalid PNG fixture')
+        variants = [[], ['--full-assets']] if name == 'missing-images' else [[]]
+        for options in variants:
+            for mode in [[], ['--concurrent', '--fixed-step-ms=16']]:
+                arguments = [str(demo), '--builtin-font', *mode, *options, str(root)]
+                print('QA:', name, ' '.join(arguments), flush=True)
+                subprocess.run(arguments, check=True)
+PY
+)
+```
+
+- In `selected-images`, all three asset statuses are ready despite unrelated
+  package sheets being absent. Inspect four upright, labeled groups at three times
+  source size, intact colors/transparent backgrounds and no joined adjacent-cell
+  geometry. The current provider uses linear magnification; softened pixel edges
+  reflect that policy. Report neighboring-cell color leakage separately for the
+  [sampling follow-on](../../../docs/planning/long-term/README.md#other-engine-extensions).
+  Static grass, sword and frozen Swordsman do not animate.
+- Watch the three animated tiles use their respective 400/200/100 ms frame durations
+  and loop. The sprite top row walks south/north/east; the bottom row walks west,
+  idles south and attacks south. Walk/idle loop; attack reaches its final frame and
+  holds until Space restarts it. Observe for several cycles in both runtime variants.
+- Press P: all changing frames freeze. Wait, then resume: playback continues without
+  jumping over the paused time. While paused, Space resets attack to its first frame
+  and holds it until resume. F7 hides/shows all samples and labels while hidden
+  playback keeps advancing; WASD/R moves/restores the world samples while the HUD
+  stays fixed. Text focus suppresses P/Space/F7 gameplay actions.
+- In missing-image and missing-manifest roots, the HUD reports skipped samples,
+  diagnostics report each failed optional load without repeating every frame, and
+  text/input/camera/F5/shutdown still work. `--full-assets` failure also preserves
+  startup. In `tiles-only` and `sprites-only`, available groups render and animate
+  while absent groups skip. In `broken-weapon`, only the weapon skips; tiles and
+  Swordsman remain functional. These are separate observations from missing-image
+  acceptance.
+
+For changes affecting shader replacement, use the
+[targeted reload sequence](../../../docs/development/native-desktop-checks.md#repeatable-sequence)
+with the printed temporary root's `graphics/shaders/shader2d.frag`. Both old
+materials must remain usable on failure and recover after restoration; the HUD
+reports then clears the error. This is separate from normal sample regression QA.
+
+### Startup and UI validation
+
+Use the UI-enabled build with the tracked documents/images/font and a usable
+display. Package artwork and controllers are optional. The help launch requires
+no display; the interactive variants check normal and concurrent fixed operation,
+and the final launch exits after five updates.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  env -u DISPLAY -u WAYLAND_DISPLAY ./build/testing-native-ui/demo --help
+  ./build/testing-native-ui/demo --window-width=1440 --window-height=900 \
+    --window-title='Cheryl startup QA' --swap-interval=0 assets
+  ./build/testing-native-ui/demo --concurrent --fixed-step-ms=16 --worker-count=2 assets
+  ./build/testing-native-ui/demo --concurrent --max-updates=5 --input-unlimited assets
+)
+```
+
+- Help succeeds with no display and lists Engine, Backend and Application options,
+  including window settings, workers, positional assets and font preferences.
+  Independently repeat the executable with an unknown option, a missing numeric
+  value, `--fixed-step-ms=0`, `--max-fixed-updates=0`, `--input-capacity=0`,
+  `--worker-count=0`, `--window-width=0` and `--text-direction=invalid`. Each must
+  return nonzero with a parsing/validation diagnostic before attempting GLFW.
+  An excessive `--recovery-prefix` must also reject. These intentionally failing
+  launches are separate from the successful `set -e` block.
+- The configured title/dimensions appear, the positional asset root loads tracked
+  resources, and normal and concurrent fixed runs retain input/rendering/shutdown.
+  The finite launch reports five completed updates and exits normally. Help and
+  finite-run success do not prove all parser precedence/runtime-policy combinations;
+  dedicated Startup regressions remain pending.
+- The RmlUi field begins empty with a muted placeholder. Click its left, middle
+  and right, type text, clear it and click again: no crash or invalid caret/selection,
+  and the hint never becomes editable content. F4 focuses the actual field even
+  after using another RmlUi control; pressing it again releases the field's focus.
+  List items occupy separate vertical rows, with working scrolling and clipping.
+- Follow the [demo interaction sequence](#interaction-checks)
+  in both modes. Switch repeatedly between F2/F4 and pointer focus while typing,
+  then use Escape and F3/F6 hide/show controls. Pending old-owner records retain
+  their poll routing; subsequent polls reach the new owner. Check for lost or
+  duplicated text, stale native focus, leaked WASD camera actions while editing,
+  and pointer delivery to hidden views. Rapid physical input supplements rather
+  than deterministically covers the missing same-batch regression cases.
+- Close during active UI uploads/replacements and relaunch without cleanup errors
+  or hangs. Native alpha/image orientation, resize/hit positions and retained scenes
+  must still satisfy the demo sequence. These observations do not reproduce the
+  unmodified upstream defect or replace the investigation's sanitizer evidence.

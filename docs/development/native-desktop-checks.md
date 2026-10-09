@@ -19,8 +19,8 @@ In each mode, check these observations:
    Enter/Esc releases it. With UI adapters selected, use their
    [interaction sequence](../../projects/apps/demo/README.md#interaction-checks);
    Escape releases UI focus. The builtin HUD uses the Unicode text service. Its
-   multilingual, bidi/fallback and wrapping observations are pending separately in
-   [TR9](../testing-requests.md#tr9-qa-unicode-text-rendering); this existing input
+   multilingual, bidi/fallback and wrapping scope is maintained in the
+   [demo procedure](../../projects/apps/demo/README.md#unicode-preview-validation); this existing input
    sequence alone does not establish them. Probe editing still uses logical scalars.
 3. Test shader reload using copied assets. From the repository root, run
    `cp -a assets/. /tmp/cheryl-reload-assets`, then launch
@@ -52,8 +52,8 @@ Its syscall wrappers apply process-wide, so keep that runner separate from owner
 aggregates. Automation does not establish HID readiness or physical reports.
 
 Reuse the matching `build/testing-native-linux` directory and refresh its demo for
-pending text/artwork observations; the queue's
-[shared preparation](../testing-requests.md#shared-native-demo-preparation) builds
+targeted text/artwork observations; the demo's
+[QA preparation](../../projects/apps/demo/README.md#native-qa-preparation) builds
 only that target. When controller source or configuration requires new coverage,
 this procedure batches the relevant targets and exports the owned Gainput manager's
 compiler command. With HID disabled its HID macro arguments must be absent; inspect
