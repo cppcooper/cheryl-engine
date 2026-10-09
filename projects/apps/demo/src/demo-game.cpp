@@ -115,8 +115,15 @@ public:
         CE::Text::LayoutOptions text_options,
         bool unicode_preview
     )
-    : engine_(engine), camera_(), assets_(), audio_(engine), asset_root_(std::move(asset_root)), load_all_assets_(load_all_assets), font_selection_(std::move(fonts)),
-      text_options_(std::move(text_options)), unicode_preview_(unicode_preview) {}
+    : engine_(engine),
+      camera_(),
+      assets_(),
+      audio_(engine),
+      asset_root_(std::move(asset_root)),
+      load_all_assets_(load_all_assets),
+      font_selection_(std::move(fonts)),
+      text_options_(std::move(text_options)),
+      unicode_preview_(unicode_preview) {}
 
     void stop_after_updates(const std::uint64_t count, std::function<void()> stop) {
         if (count == 0 || !stop)
@@ -185,7 +192,9 @@ public:
         (void)bindings.bind_axis({mouse, gainput::MouseAxisY}, DemoActions::MouseY);
         (void)bindings.bind_button({mouse, gainput::MouseButtonLeft}, DemoActions::Click);
         (void)bindings.bind_axis(
-            {mouse, CE::Input::MouseControl::ScrollY}, DemoActions::WheelY, {1.0f, 0.0f, CE::Input::AxisKind::Relative}
+            {mouse, CE::Input::MouseControl::ScrollY},
+            DemoActions::WheelY,
+            {1.0f, 0.0f, CE::Input::AxisKind::Relative}
         );
         (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
         events_ = input.capture(CE::Input::InputMode::Events);
@@ -315,7 +324,7 @@ public:
                             text_.erase(--caret_, 1);
                         break;
                     case gainput::KeyDelete:
-                        if (caret_ < text_.size())
+                        if (caret_<text_.size())
                             text_.erase(caret_, 1);
                         break;
                     case gainput::KeyLeft:
@@ -323,7 +332,7 @@ public:
                             --caret_;
                         break;
                     case gainput::KeyRight:
-                        if (caret_ < text_.size())
+                        if (caret_<text_.size())
                             ++caret_;
                         break;
                     case gainput::KeyHome:
@@ -346,7 +355,8 @@ public:
 
         const glm::vec2 movement{
             static_cast<float>(tick.button_simulation_seconds(DemoActions::Right) - tick.button_simulation_seconds(DemoActions::Left)),
-            static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) - tick.button_simulation_seconds(DemoActions::Down))};
+            static_cast<float>(tick.button_simulation_seconds(DemoActions::Up) - tick.button_simulation_seconds(DemoActions::Down))
+        };
         if (glm::length(movement) > 0.0f) {
             // Scale the observed down-time fraction by this update's simulation
             // delta. A completed observed tap still contributes after release.
@@ -374,7 +384,8 @@ public:
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
         const CE::Assets::SubmissionContext2D context{
-            pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}};
+            pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}
+        };
         CE::RenderAPIs::DrawStyle2D text;
         text.material = font_shader_;
         CE::RenderAPIs::DrawStyle2D images;
@@ -483,12 +494,15 @@ private:
             definition.program_sources = {key.string() + ".vert", key.string() + ".frag"};
             definition.topology = topology;
             definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-                {"view", ParameterType::Mat4, true, ParameterSemantic::View},
-                {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-                {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-                {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}};
+                                     {"view", ParameterType::Mat4, true, ParameterSemantic::View},
+                                     {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+                                     {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
+                                     {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}
+            };
             const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
-                {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
+                                                 {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}
+                }
+            };
             return native->build_material({native->build_pipeline(std::move(definition), bindings), {}});
         };
     }
@@ -550,8 +564,8 @@ DemoGame::DemoGame(
     const bool unicode_preview
 )
 : game_state_(std::make_unique<GameState>(
-      engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview
-  )) {}
+    engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview
+)) {}
 
 DemoGame::~DemoGame() = default;
 
