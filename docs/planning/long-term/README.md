@@ -122,8 +122,9 @@ language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
 possible [nearer text follow-on](../mid-term/README.md#color-emoji).
 Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
-Audio's first miniaudio backend is selected in the short-term
-[audio plan](../short-term/audio-integration.md). A later FMOD backend may implement the same
+The [miniaudio module](../../../projects/modules/audio/miniaudio/README.md)
+implements ordinary playback with an accepted Linux root-assembly WAV baseline.
+A later FMOD backend may implement the same
 ordinary playback contract; Studio events, banks and adaptive authoring require
 their own scope and SDK/deployment requirements. Spatial audio, effects graphs,
 capture, device enumeration/hotplug and custom codecs also need separately selected

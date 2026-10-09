@@ -27,8 +27,8 @@ outside this task.
   resource/submission and header coverage.
 - [x] Compile the native Linux/X11/OpenGL demo with HID and both UI adapters disabled.
 - [x] Rank installed faces by declared weight/style and exclude heavy automatic defaults.
-- [ ] Repeat existing font/layout/resource checks at the current source through
-  [TR13](../../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions).
+- [x] Accept existing font/layout/resource checks after the font-style selection changes
+  in the Linux Release Engine-only selection.
 - [ ] Supply licensed style/weight fixtures and dedicated regressions for the
   automatic limit, heavy-only family skipping and unrestricted explicit preferences
   in separately authorized testing phases. Existing family cases cover baseline

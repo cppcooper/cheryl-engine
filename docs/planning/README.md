@@ -8,7 +8,7 @@ and [testing requests](../testing-requests.md) contains pending user-run accepta
 
 | Folder | Scope and owning plans |
 | --- | --- |
-| `short-term/` | [Unicode text](short-term/unicode-text.md), [audio](short-term/audio-integration.md), [demo assets](short-term/demo-assets.md), [indexed material loading](short-term/indexed-material-loading.md) and [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up) |
+| `short-term/` | [Unicode text](short-term/unicode-text.md), [demo assets](short-term/demo-assets.md), [indexed material loading](short-term/indexed-material-loading.md) and [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up) |
 | `mid-term/` | [Color emoji and measured optimization](mid-term/README.md), gated by initial acceptance and workload evidence |
 | `long-term/` | [Consumer-selected extensions](long-term/README.md), [deferred platform acceptance](long-term/platform-acceptance.md) and [unresolved artwork metadata](long-term/asset-manifest-metadata.md) |
 | `unscheduled/` | [Debug output console](unscheduled/debug-console.md): requirements selected, implementation schedule unset |

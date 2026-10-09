@@ -220,9 +220,10 @@ Run the focused checks:
 stale-lease release across both native toolkits, distinct alpha passes, and frames
 retained through independent toolkit/provider teardown. Do not run both runners
 for the same cases. Run the affected TGUI session checks as well when shared
-routing/session paths change. Current build/regression and native interaction work
-is queued in [TR13](../../../../docs/testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions)
-and [TR14](../../../../docs/testing-requests.md#tr14-qa-startup-and-ui-interaction).
+routing/session paths change. The accepted root selections and remaining dedicated
+regression limits are in the
+[UI validation guide](../../../../docs/development/ui-adapters.md#repeating-linux-root-validation).
+Native interaction remains in [TR14](../../../../docs/testing-requests.md#tr14-qa-startup-and-ui-interaction).
 
 An independently configured consumer establishes standalone source composition
 and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it

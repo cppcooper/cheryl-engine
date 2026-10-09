@@ -1,19 +1,19 @@
 # Asset package catalog
 
 This catalog lists the artwork packages referenced by the checked-in JSON manifests
-in `assets/`, with download sources and image placement. The manifests are tracked;
-their package images are supplied separately. Download the named files from the
+in `assets/graphics/`, with download sources and image placement. The manifests are
+tracked; their package images are supplied separately. Download the named files from the
 author pages below, then extract or copy the images into the expected locations.
 
 ## Located packages
 
 | Package and author page | Download | Tracked manifests |
 | --- | --- | --- |
-| [Mini World Sprites — Shade, octoshrimpy](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `MiniWorldSprites.zip` | [atlas.json](../../assets/atlas.json), [buildings-colored.json](../../assets/buildings-colored.json), [buildings-orc.json](../../assets/buildings-orc.json) |
-| [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/character-customizer.json) |
-| [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/punyworld-overworld.json) |
-| [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/magecity.json) |
-| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | `dungeon_tiles.png` | [dungeon_tiles.json](../../assets/dungeon_tiles.json) |
+| [Mini World Sprites — Shade, octoshrimpy](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `MiniWorldSprites.zip` | [atlas.json](../../assets/graphics/MiniWorldSprites/atlas.json), [buildings-colored.json](../../assets/graphics/MiniWorldSprites/buildings-colored.json), [buildings-orc.json](../../assets/graphics/MiniWorldSprites/Buildings/Enemy/Orc/buildings-orc.json) |
+| [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/graphics/char-customizer/character-customizer.json) |
+| [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/graphics/tilesets/punyworld-overworld.json) |
+| [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/graphics/tilesets/magecity.json) |
+| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | `dungeon_tiles.png` | [dungeon_tiles.json](../../assets/graphics/tilesets/dungeon_tiles.json) |
 
 The three MiniWorld sprite/building manifests share one archive. Character Customizer
 is a separate archive on the same page. That page also offers `MiniworldGuide.docx`
@@ -21,14 +21,14 @@ for the artwork's animation documentation.
 
 ## Image placement
 
-All paths below are relative to the checkout's `assets/` directory. Preserve case,
-spaces and accented filenames when extracting; avoid adding an extra archive-wrapper
-directory between `assets/` and the paths in the manifests.
+All paths below are relative to the checkout's `assets/graphics/` directory. Preserve
+case, spaces and accented filenames when extracting; avoid adding an extra archive-wrapper
+directory between `assets/graphics/` and the paths in the manifests.
 
 ### MiniWorld sprites
 
-Place the archive's `MiniWorldSprites/` tree under `assets/`, preserving its internal
-directories. `atlas.json` references individual sheets in `Animals/`, `Buildings/`,
+Place the archive's `MiniWorldSprites/` tree under `assets/graphics/`, preserving its
+internal directories. `atlas.json` references individual sheets in `Animals/`, `Buildings/`,
 `Characters/`, `Ground/`, `Miscellaneous/`, `Nature/`, `Objects/` and `User Interface/`.
 The other two manifests reference these combined sheets from the same package:
 
@@ -72,7 +72,7 @@ their own layouts and future manifests.
 ## Packages awaiting manifests
 
 These packages need separate manifests for their layouts. Keep original downloads
-in a staging directory outside `assets/`, where the loader discovers PNGs recursively.
+in a staging directory outside the runtime asset roots.
 The ignored `asset-downloads/0x72/` tree is suitable for local staging. A local
 `sources.json`, when available, records source pages, filenames, sizes and hashes;
 downloads and provenance records are not included in Git.

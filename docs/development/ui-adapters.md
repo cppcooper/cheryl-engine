@@ -150,3 +150,62 @@ standalone consumer and implementation checks remain independent.
 The [demo interaction guide](../../projects/apps/demo/README.md#interaction-checks)
 owns native observations and selected-platform limits. A new backend, platform or
 supplied package needs its own applicable proof.
+
+## Repeating Linux root validation
+
+Reuse `build/testing-native-ui` when its source, toolchain and configuration match.
+This Linux Release selection compiles both adapters, their consumers/probes, the
+coexistence suite, OpenGL startup support and the UI-enabled demo with Cheryl-owned
+TGUI/RmlUi dependencies. It uses GLFW/X11/OpenGL with HID disabled. Initialize the
+pinned dependencies from the [build guide](building.md); RmlUi cases also require
+the SDK sample font or an explicit `CHERYL_RMLUI_TEST_FONT`. The executed consumers
+and controlled cases require no display or audio device.
+
+Build needed targets together and select each owner/coexistence case once. These
+commands preserve the caller's working directory; narrow the selection when only
+one owner is affected. A matching compiled build can be reused without rebuilding.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-native-ui -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
+    -DCHERYL_TGUI_SOURCE="$PWD/extern/tgui" \
+    -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui" \
+    -DCHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
+  cmake --build build/testing-native-ui --parallel --target \
+    demo tests-ui-tgui tests-ui-rmlui tests-ui-coexist \
+    consumer-module-ui-tgui consumer-module-ui-rmlui
+  ./build/testing-native-ui/cheryl-ui-tgui-consumer
+  ./build/testing-native-ui/cheryl-ui-rmlui-consumer
+  ctest --test-dir build/testing-native-ui --parallel "$(nproc)" --output-on-failure \
+    --no-tests=error -R '^(tests-ui-(tgui|rmlui)\.|tests-ui-coexist\.)'
+)
+```
+
+Inspect the compile inventory when the RmlUi correction changes: Core must compile
+the generated `rmlui-fixes/WidgetTextInput.cpp` rather than the unguarded original.
+The existing root session/editing/lifetime/coexistence cases are accepted, but do
+not directly exercise Startup's parser/backend factory, support headers, the new
+`before_record` overload or placeholder hit-testing. These gaps remain in the
+[owning checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up);
+font-weight fixture gaps remain in the [Unicode plan](../planning/short-term/unicode-text.md#progress).
+Corrected supplied RmlUi targets/packages require an independent consuming host
+and declaration/rejection checks under the
+[module contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract).
+Owned-source success does not establish those supplied paths or standalone
+composition. Native startup, focus, hit-testing and shutdown observations remain
+in [TR14](../testing-requests.md#tr14-qa-startup-and-ui-interaction); Unicode and
+package artwork have their separate QA requests.

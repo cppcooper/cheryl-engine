@@ -7,11 +7,11 @@ Current architecture and API contracts live in the [subject guides](../README.md
 ## Short term
 
 Close acceptance for [Unicode](short-term/unicode-text.md),
-[audio](short-term/audio-integration.md) and [demo assets](short-term/demo-assets.md),
-and the startup/UI checklist below. These tasks retain their own progress until
+[demo assets](short-term/demo-assets.md) and the startup/UI checklist below.
+These tasks retain their own progress until
 accepted. Their observations can proceed independently with matching builds;
-refresh the toolkit-free demo once for Unicode/assets, and compile the updated
-UI assembly through TR13 before TR14. The
+refresh the toolkit-free demo once for Unicode/assets, and reuse the accepted
+UI assembly for TR14. The
 [testing queue](../testing-requests.md) owns launch commands and prerequisites.
 Existing regressions do not close the dedicated-case gaps listed in the plans.
 
@@ -27,8 +27,8 @@ Font-weight acceptance remains with the Unicode plan rather than this checklist.
 - [x] Preserve session entry epochs across complete input batches with per-record controls.
 - [x] Correct RmlUi field focus, placeholder markup and vertical list rows; apply the
   downstream source guard and require correction declarations for supplied Core.
-- [ ] Compile the current selections and repeat existing affected checks through
-  [TR13](../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions).
+- [x] Compile Engine-only/native UI selections and accept existing font/layout/resource
+  and session/coexistence checks with Cheryl-owned dependencies.
 - [ ] Add dedicated Startup parser/factory and support-header probes, callback/batch
   routing cases and placeholder hit-testing regressions in separately authorized
   testing phases. Existing suites do not exercise these new paths directly.

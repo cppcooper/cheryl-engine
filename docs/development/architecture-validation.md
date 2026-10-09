@@ -91,7 +91,7 @@ caller's working directory:
   cd "$(git rev-parse --show-toplevel)"
   cmake -S . -B build/testing-engine -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
     -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
@@ -101,15 +101,16 @@ caller's working directory:
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=OFF
   cmake --build build/testing-engine --parallel "$(nproc)" --target \
-    tests-engine consumer-headers-cengine
+    cengine_startup tests-engine consumer-cengine
+  ./build/testing-engine/cheryl-consumer
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
     -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
-Current font-style selection changes need the queued
-[TR13](../testing-requests.md#tr13-automated-startup-compilation-and-existing-regressions) rerun.
+Existing font/layout/resource regressions are accepted in the Linux Release
+Engine-only selection; startup support and the independent consumer also compile.
 The existing `font_selection.families` fixture establishes basic discovery and
 ordering; it does not cover declared-weight ranking or heavy-only automatic
 exclusion. Those fixture/case gaps remain in the

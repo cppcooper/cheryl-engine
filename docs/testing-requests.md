@@ -9,11 +9,9 @@ meaningful coverage limits.
 | Request | Type | Platform | Status |
 | --- | --- | --- | --- |
 | [TR6](#tr6-qa-hid-lifecycle-and-notification-observations) | QA | Linux/X11 | Deferred; blocked on backend work and an observation harness |
-| [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Ready with demo rebuilt for the current source; requires a display |
-| [TR11](#tr11-qa-native-audio-and-streaming) | QA | Linux | Ready; reuse the accepted audio build; requires audible stereo output |
+| [TR9](#tr9-qa-unicode-text-rendering) | QA | Linux/X11 | Needs toolkit-free demo refresh; visual QA pending |
 | [TR12](#tr12-qa-demo-tiles-and-sprites) | QA | Linux/X11 | Ready with demo rebuilt for the current source; artwork checks require the three sample images |
-| [TR13](#tr13-automated-startup-compilation-and-existing-regressions) | Automated | Linux | Ready with Cheryl-owned dependencies; new targeted regression cases remain unimplemented |
-| [TR14](#tr14-qa-startup-and-ui-interaction) | QA | Linux/X11 | Ready after TR13 builds the UI demo; requires a display |
+| [TR14](#tr14-qa-startup-and-ui-interaction) | QA | Linux/X11 | Ready with the accepted UI demo build; requires a display |
 
 Each command block locates the checkout root with Git and runs there, so it can
 be launched from `docs/` or any other directory inside this checkout. It restores
@@ -53,9 +51,9 @@ demo once for both requests:
 If the directory is absent or its options differ, use the native guide's explicit
 CMake configuration first; select only `demo` when preparing these QA runs.
 Existing controller regression results need no rerun solely for startup/UI changes.
-TR13 uses a separate UI-enabled directory so the toolkit-free F2 probe remains
-available for TR9. A demo built before the startup changes does not establish
-acceptance of the current implementation.
+The accepted UI-enabled `build/testing-native-ui` directory is separate; rebuilding
+it does not refresh the toolkit-free F2 probe used by TR9. A demo built before the
+startup or asset-layout changes does not establish current native acceptance.
 
 ## TR6: QA HID lifecycle and notification observations
 
@@ -86,10 +84,15 @@ instructions. Windows notification observations are in the
 **Platform/prerequisites:** Linux/GLFW/X11/OpenGL, a usable display/driver, and the
 `build/testing-native-linux/demo` rebuilt for the current source, with both UI
 adapters and HID disabled.
+**Readiness:** refresh the toolkit-free demo through the shared preparation before
+retrying. The previous executable requested `assets/shaders/shader2d.vert`; current
+source and tracked shaders use `assets/graphics/shaders/shader2d.vert`. That failed
+launch establishes no visual acceptance.
 The checked-in shaders/font fixture and embedded font are available; no controller,
 installed font, full image tree, clipboard or IME service is required. Close each run
-before the next. Use the shared native preparation above and the font regressions
-in TR13; reuse the matching refreshed build.
+before the next. Existing font/layout/resource checks are accepted; their reusable
+procedure and remaining fixture limits are in the
+[Engine guide](development/architecture-validation.md#engine-asset-and-text-regressions).
 Press F7 to hide the new tile/sprite samples when they overlap the long text preview;
 their appearance and animation belong to TR12.
 
@@ -152,58 +155,6 @@ these visual observations. If using an existing toolkit-enabled build as well,
 check the builtin HUD with overlapping views hidden and verify normal view startup;
 toolkit text shaping/fallback remains its own service, outside this builtin scope.
 
-## TR11: QA native audio and streaming
-
-**Platform:** Linux, independently of X11/Wayland and graphical runtime modes.
-**Readiness:** ready with the accepted audio consumer build. **Prerequisites:** a
-working native audio backend/server/device and audible stereo headphones or
-speakers. The consumer supplies its own 20-second WAV, longer than miniaudio's
-two one-second stream pages; no recorded media or external encoder is needed.
-If stereo output or a usable device is unavailable, this request is blocked for
-that environment; the next action is to provide it. Offline success does not
-replace these observations.
-
-Reuse the matching `build/testing-audio` build. Run each launch, complete the checks,
-then type `q` before starting the next. Device selection must name a real backend
-and fail explicitly when none can initialize; `offline`/Null is not native acceptance.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device
-  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device --producers
-)
-```
-
-- Listen past the initial two seconds. The generated stream alternates left/right
-  once per second and cycles through 220/440/660/880 Hz; it continues for 20 seconds
-  without dropouts or becoming silent when terminal input is idle. Check left/right
-  with stereo output, rather than a mono speaker configuration.
-- Enter `p`, wait, then `r`: the stream pauses and continues its previous sequence.
-  In the producer launch, its short two-channel effect continues every two seconds
-  while music is paused. Enter `e` repeatedly: three distinct overlapping effects
-  finish after their handles are discarded, without cutting off music.
-- Enter `v 0`, then `v 0.5`: music alone mutes/restores. Enter `m 0`, then `m 0.5`:
-  all output mutes/restores while playback time continues. An invalid gain such as
-  `v -1` reports a command error and preserves the previous gain/playback.
-- Enter `s`, then `r`: stopped music remains stopped. Enter `x`: it restarts at
-  the initial low left-channel tone rather than replaying an old cached segment.
-  Leave looping off for a full 20-second playback; `t` reports `Finished` and `r`
-  leaves it finished. Enter `l`, then `x`, and listen through the 20-second boundary:
-  playback loops and remains `Playing` without a multi-second gap or stale segment.
-- In both launches, close with `q` while music/effects are active, then relaunch.
-  Shutdown joins the producer, releases the device without hanging or trailing
-  playback, and reports the surviving music handle as `Closed` after destruction.
-  Relaunch obtains usable output again. Audible artifact/latency observations are
-  separate from the sample-level offline regressions.
-
-Report the revision, backend, device/server, launch variants, missing observations
-and errors. This baseline covers native output and sustained WAV streaming;
-whole-clip FLAC/MP3 decoding is accepted in the root assembly. Native compressed-file
-streaming/seek/loop, standalone and supplied-SDK variants, device hotplug and other platforms retain
-their separate coverage limits in the [owner guide](../projects/modules/audio/miniaudio/README.md).
-
 ## TR12: QA demo tiles and sprites
 
 **Platform:** Linux/GLFW/X11/OpenGL. **Readiness:** ready after the shared native
@@ -236,9 +187,9 @@ import tempfile
 checkout = Path.cwd()
 demo = checkout / 'build/testing-native-linux/demo'
 assets = checkout / 'assets'
-images = [Path('tilesets/punyworld-overworld-tileset.png'),
-          Path('MiniWorldSprites/Objects/SwordShort.png'),
-          Path('MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
+images = [Path('graphics/tilesets/punyworld-overworld-tileset.png'),
+          Path('graphics/MiniWorldSprites/Objects/SwordShort.png'),
+          Path('graphics/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
 tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', 'assets/']).decode().split('\0')
 cases = [('missing-images', []), ('missing-manifests', [])]
 missing = [str(path) for path in images if not (assets / path).is_file()]
@@ -261,7 +212,8 @@ with tempfile.TemporaryDirectory(prefix='cheryl-demo-assets-') as workspace:
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(assets / image, destination)
         if name == 'missing-manifests':
-            for manifest in ['atlas.json', 'punyworld-overworld.json']:
+            for manifest in ['graphics/MiniWorldSprites/atlas.json',
+                             'graphics/tilesets/punyworld-overworld.json']:
                 (root / manifest).unlink()
         if name == 'broken-weapon':
             (root / images[1]).write_bytes(b'invalid PNG fixture')
@@ -299,7 +251,7 @@ PY
   Swordsman remain functional. These are separate observations from missing-image
   acceptance.
 - Use F5 in both runtime variants: text and samples keep working after replacement.
-  To observe failure retention, edit only a printed temporary root's `shaders/shader2d.frag`
+  To observe failure retention, edit only a printed temporary root's `graphics/shaders/shader2d.frag`
   in another terminal to invalid GLSL, press F5, restore it from the checkout and
   press F5 again. Both old materials remain usable on failure and both recover;
   the HUD reports then clears the error. Close while animations and replacements
@@ -310,93 +262,12 @@ blocked/skipped observations. This accepts the sample application, not a world/m
 API or physical GPU retirement. Wider platform testing remains deferred in the
 [platform plan](planning/long-term/platform-acceptance.md).
 
-## TR13: Automated startup compilation and existing regressions
-
-**Platform:** Linux. **Readiness:** ready to compile the current source and run existing
-checks with Cheryl-owned dependencies. **Prerequisites:** the compiler/system
-dependencies in the [build guide](development/building.md), initialized pinned
-submodules including CLI11, TGUI and RmlUi, and the SDK sample font or an explicit
-`CHERYL_RMLUI_TEST_FONT`. No display, controller, installed font or audio device is
-needed for the executed consumers/CPU cases. Native QA follows in TR14.
-
-The first selection preserves Engine-only isolation and explicitly compiles common
-startup support. The second compiles the updated native demo, both sessions and the
-generated RmlUi correction, then runs each focused owner/coexistence case once.
-Reuse either matching directory; build the listed targets together rather than
-running the same cases through owner and assembly aggregates.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-engine -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
-    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
-    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=OFF \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON
-  cmake --build build/testing-engine --parallel --target \
-    cengine_startup tests-engine consumer-cengine
-  ./build/testing-engine/cheryl-consumer
-  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-engine\.(font_selection|text_layout|text_resources)\.'
-
-  cmake -S . -B build/testing-native-ui -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
-    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
-    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
-    -DCHERYL_TGUI_SOURCE="$PWD/extern/tgui" \
-    -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui" \
-    -DCHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=OFF \
-    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
-  cmake --build build/testing-native-ui --parallel --target \
-    demo tests-ui-tgui tests-ui-rmlui tests-ui-coexist \
-    consumer-module-ui-tgui consumer-module-ui-rmlui
-  ./build/testing-native-ui/cheryl-ui-tgui-consumer
-  ./build/testing-native-ui/cheryl-ui-rmlui-consumer
-  ctest --test-dir build/testing-native-ui --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^(tests-ui-(tgui|rmlui)\.|tests-ui-coexist\.)'
-)
-```
-
-Confirm the Engine-only final links exclude native/graphics/toolkit owners and
-plain Engine consumers do not inherit CLI11. In the native/UI compile inventory,
-Core must compile the generated `rmlui-fixes/WidgetTextInput.cpp` rather than its
-unguarded original. The startup libraries compile through their explicit target
-and the demo; current consumer header probes do not cover their public headers.
-
-Existing cases cover baseline font discovery/layout/resources and session routing,
-editing, lifetime and coexistence. They do not directly exercise Startup's parser/
-backend factory, numeric font-weight limits, placeholder hit-testing, or the new
-`before_record` overload. Dedicated regressions remain unimplemented in the
-[startup/UI checklist](planning/develop-review-and-development-plan.md#startup-and-ui-follow-up)
-and [Unicode plan](planning/short-term/unicode-text.md#progress); a passing run does
-not close those gaps. Supplied RmlUi target/package acceptance is blocked until a
-corrected dependency and consuming host are available. The next action is to
-provide them and check correction declarations under the
-[module contract](../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract),
-including rejection without a declaration. Owned-source success does not establish
-those supplied paths or standalone composition.
-
-Report revision, configuration, selections, compile/link failures, case failures
-and skips. Preserve TR9/TR12/TR14 native observations separately.
-
 ## TR14: QA startup and UI interaction
 
 **Platform:** Linux/GLFW/X11/OpenGL in sequential and concurrent runtime modes.
-**Readiness:** ready after TR13 builds the updated UI demo.
+**Readiness:** ready with the accepted Linux native/UI build. Refresh affected
+targets through the [UI validation procedure](development/ui-adapters.md#repeating-linux-root-validation)
+if source or configuration changes invalidate that build.
 **Prerequisites:** a usable display/driver and both adapters with tracked demo
 documents/images/font available. No package artwork or controller is required.
 Use a separate mouse or disable touchpad suppression while typing when checking

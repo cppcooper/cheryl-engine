@@ -142,13 +142,14 @@ samples with F7 when inspecting a long Unicode HUD.
 
 | Group | Samples | Optional image relative to the asset root |
 | --- | --- | --- |
-| Static tiles | A 3×2 Puny World patch using cells 0, 1, 2, 27, 28 and 29. | `tilesets/punyworld-overworld-tileset.png` |
-| Animated tiles | Puny World targets 309, 314 and 324, left to right, using their declared 400, 200 and 100 ms frame durations. | `tilesets/punyworld-overworld-tileset.png` |
-| Static sprites | A short sword and a frozen cyan Swordsman, both using cell 0. | `MiniWorldSprites/Objects/SwordShort.png`; Swordsman image below |
-| Animated sprites | Top row: south, north and east walk. Bottom row: west walk, south idle and south attack. Walking and idle loop; attack holds its last frame until Space replays it. | `MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png` |
+| Static tiles | A 3×2 Puny World patch using cells 0, 1, 2, 27, 28 and 29. | `graphics/tilesets/punyworld-overworld-tileset.png` |
+| Animated tiles | Puny World targets 309, 314 and 324, left to right, using their declared 400, 200 and 100 ms frame durations. | `graphics/tilesets/punyworld-overworld-tileset.png` |
+| Static sprites | A short sword and a frozen cyan Swordsman, both using cell 0. | `graphics/MiniWorldSprites/Objects/SwordShort.png`; Swordsman image below |
+| Animated sprites | Top row: south, north and east walk. Bottom row: west walk, south idle and south attack. Walking and idle loop; attack holds its last frame until Space replays it. | `graphics/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png` |
 
-The samples use `punyworld-overworld.json` and `atlas.json` for grids, pivots and
-authored clips. Only these selected entries/images are loaded by default; unrelated
+The samples use `graphics/tilesets/punyworld-overworld.json` and
+`graphics/MiniWorldSprites/atlas.json` for grids, pivots and authored clips.
+Only these selected entries/images are loaded by default; unrelated
 absent sheets do not suppress available samples. The HUD reports each selected
 asset as ready or skipped. A failed MiniWorld manifest skips both its sprite samples,
 while a failed individual image skips only that entry. No replacement package artwork

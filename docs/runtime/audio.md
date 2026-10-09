@@ -61,11 +61,12 @@ and leaves surviving handles safe. A system cannot reopen; construct another
 system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
 
-Audible native output and sustained streaming remain in the
-[integration plan](../planning/short-term/audio-integration.md). The
-[miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
+The [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
 decode, explicit device/offline output and streamed playback. Its independent
 consumer provides native observation without a game, window or graphics module.
+Linux root-assembly native stereo output and sustained WAV streaming are accepted;
+the module guide owns reusable validation and compressed-stream, composition and
+platform coverage limits.
 
 World, entity and collision organization belongs
 to the game or its application-selected modules. FMOD is a later optional backend;

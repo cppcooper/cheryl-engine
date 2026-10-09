@@ -19,6 +19,9 @@ assemblies until their applications select audio. It has a standalone entry poin
 set `CHERYL_REPOSITORY_ROOT` to an absolute checkout path before adding the owner.
 It reuses `Cheryl::Engine` or bootstraps Engine through the common module helper.
 
+Miniaudio is selected for its available source, permissive licensing and support
+for decoding, mixing and streaming.
+
 The owner reuses a supplied `miniaudio::miniaudio` or `miniaudio` target. Otherwise
 it uses `CHERYL_MINIAUDIO_SOURCE` or the pinned `extern/miniaudio` submodule at
 0.11.25 (`9634bedb5b5a2ca38c1ee7108a9358a4e233f14d`). Supplied dependencies must
@@ -118,29 +121,79 @@ audio consumer and SDK-free first-include probe. None requires a display or devi
 The consumer defaults to `--offline`. Its `--device` mode opens native output and
 generates its own 20-second stereo WAV: left/right alternate each second, and pitch
 steps through 220/440/660/880 Hz. It requires no external media. `--producers` adds
-a background sound-effect producer while terminal commands control the stream;
-maintenance continues while stdin waits. `--stream=FILE` selects another stable
-WAV/FLAC/MP3 source. The consumer settles its producer before closing output and
+an independent 200 ms, 440 Hz two-channel effect every two seconds. It continues
+after music pauses or stops; music commands and `v` control only the stream, while
+`m` controls all output. Maintenance continues while stdin waits. `--stream=FILE`
+selects another stable WAV/FLAC/MP3 source. The consumer settles its producer before closing output and
 then observes a handle surviving destruction.
 
 | Command | Action |
 | --- | --- |
 | `p`, `r` | Pause and resume music. |
-| `s`, `x` | Stop and restart from the beginning. |
+| `s`, `x` | Stop and restart music from the beginning. |
 | `l` | Toggle looping. |
 | `e` | Submit three overlapping short effects without retaining handles. |
 | `v VALUE`, `m VALUE` | Music or master volume, in `[0, 1]`. |
 | `t`, `q` | Observe state or close output. |
 
 Linux Release root-assembly WAV/FLAC/MP3 decoding, offline mixing/control/short-stream
-regressions and consumer/header checks are accepted. Audible native/long-stream
-observations remain pending in the [testing queue](../../../../docs/testing-requests.md). WAV
-coverage uses generated PCM16 fixtures, byte-budget boundaries, missing/corrupt
-paths and owned PCM after source-file removal. Short-stream offline cases use an
-initially buffered WAV and do not establish sustained decode-ahead, native latency,
+regressions, consumer/header checks and native stereo output/sustained WAV streaming
+are accepted. Native acceptance covers music/effect controls, independent producers,
+loop/restart and shutdown/relaunch. WAV coverage uses generated PCM16 fixtures,
+byte-budget boundaries, missing/corrupt paths and owned PCM after source-file removal.
+Short-stream offline cases use an initially buffered WAV and do not establish
+sustained decode-ahead, native latency,
 audible channel routing or device shutdown. Owned
 [codec fixtures](tests/fixtures/README.md) cover whole-clip FLAC/MP3 decoding;
 the native QA baseline uses a long WAV and does not establish compressed-stream
 seek/loop behavior. Supplied-SDK and standalone configurations remain unaccepted
 composition variants until explicitly selected and built. Other platforms remain deferred under the
 [platform plan](../../../../docs/planning/long-term/platform-acceptance.md).
+
+## Repeating native WAV validation
+
+Reuse the matching `build/testing-audio` consumer from the root-assembly procedure
+above. Native checks require a working audio backend/server/device and audible
+stereo output; no display or external media is needed. The generated 20-second WAV
+exceeds the SDK's two one-second stream pages. Offline success does not establish
+audible channel routing, sustained decode-ahead or device shutdown. If stereo
+output or a usable device is unavailable, provide it before requesting native
+acceptance. A real backend must be reported; offline/Null is outside native scope.
+
+Run each launch, complete the observations, then enter `q` before the next launch:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device
+  ./build/testing-audio/cheryl-audio-miniaudio-consumer --device --producers
+)
+```
+
+- Listen past the initial two seconds. The generated stream alternates left/right
+  once per second and cycles through 220/440/660/880 Hz; it continues for 20 seconds
+  without dropouts or becoming silent when terminal input is idle. Check left/right
+  with stereo output, rather than a mono speaker configuration.
+- Enter `p`, wait, then `r`: the stream pauses and continues its previous sequence.
+  In the producer launch, an independent 200 ms, 440 Hz two-channel effect continues
+  every two seconds while music is paused or stopped. Music commands and `v` affect
+  only the stream; `m` affects all output. Enter `e` repeatedly: three distinct
+  overlapping effects finish after their handles are discarded, without cutting off music.
+- Enter `v 0`, then `v 0.5`: music alone mutes/restores. Enter `m 0`, then `m 0.5`:
+  all output mutes/restores while playback time continues. An invalid gain such as
+  `v -1` reports a command error and preserves the previous gain/playback.
+- Enter `s`, then `r`: stopped music remains stopped. Enter `x`: it restarts at
+  the initial low left-channel tone rather than replaying an old cached segment.
+  Leave looping off for a full 20-second playback; `t` reports `Finished` and `r`
+  leaves it finished. Enter `l`, then `x`, and listen through the 20-second boundary:
+  playback loops and remains `Playing` without a multi-second gap or stale segment.
+- In both launches, close with `q` while music/effects are active, then relaunch.
+  Shutdown joins the producer, releases the device without hanging or trailing
+  playback, and reports the surviving music handle as `Closed` after destruction.
+  Relaunch obtains usable output again. Audible artifact/latency observations are
+  separate from the sample-level offline regressions.
+
+These observations cover the generated long WAV. Native compressed-stream seek/loop
+requires a stable long FLAC or MP3 fixture when selected. Standalone and supplied-SDK
+composition, device hotplug and other platforms retain separate acceptance requirements.
