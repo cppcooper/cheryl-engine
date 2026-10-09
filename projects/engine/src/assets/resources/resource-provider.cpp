@@ -13,6 +13,11 @@ namespace CE::Assets {
         return create_image(decode_image(file));
     }
 
+    std::shared_ptr<const Sampler> ResourceProvider::create_sampler(const SamplerOptions& options) {
+        validate_sampler_options(options);
+        throw Exceptions::failed_operation(CE_HERE, "Resource provider does not support image samplers");
+    }
+
     std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(std::span<const Vertex2DColor>, PrimitiveTopology) {
         throw Exceptions::failed_operation(CE_HERE, "Resource provider does not support colored 2D geometry");
     }

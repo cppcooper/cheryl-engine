@@ -1,6 +1,7 @@
 #include <backends/opengl/pipeline.h>
 
 #include <backends/opengl/texture.h>
+#include <backends/opengl/sampler.h>
 #include <backends/opengl/vertex-array-object.h>
 #include <internals/exceptions.h>
 
@@ -65,6 +66,8 @@ namespace CE::Assets {
                         glUniformMatrix4fv(location, 1, GL_FALSE, &item[0][0]);
                     else {
                         item.image->bind(item.unit);
+                        if (item.sampler)
+                            item.sampler->bind(item.unit);
                         glUniform1i(location, static_cast<GLint>(item.unit));
                     }
                 },
@@ -148,6 +151,14 @@ namespace CE::Assets {
             if (!texture || texture->resource_domain() != resource_domain())
                 throw Exceptions::invalid_args(CE_HERE, "Sampler image does not belong to the pipeline's native domain: " + key);
             texture->require_binding(binding->unit);
+            if (binding->sampler) {
+                const auto* sampler = dynamic_cast<const OpenGLSampler*>(binding->sampler.get());
+                if (!sampler || sampler->resource_domain() != resource_domain())
+                    throw Exceptions::invalid_args(CE_HERE, "Sampler does not belong to the pipeline's native domain: " + key);
+                sampler->require_binding(binding->unit);
+                if (sampler->options().mipmaps != MipmapFilter::None && !texture->has_complete_mipmaps())
+                    throw Exceptions::invalid_args(CE_HERE, "Sampler requires a complete image mipmap chain: " + key);
+            }
         }
     }
 

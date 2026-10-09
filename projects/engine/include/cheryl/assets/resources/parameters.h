@@ -1,6 +1,7 @@
 #pragma once
 
 #include "image.h"
+#include "sampler.h"
 #include "shader.h"
 
 #include <glm.hpp>
@@ -19,9 +20,11 @@ namespace CE::Assets {
     struct ImageBinding {
         std::shared_ptr<const Image> image;
         std::uint32_t unit = 0;
+        // Absence selects the image's immutable default sampling.
+        std::shared_ptr<const Sampler> sampler = {};
     };
 
-    // Values/keys are owned; copying a sampler retains its immutable image. CPU
+    // Values/keys are owned; copying a binding retains its image and sampler. CPU
     // validation/resolution requires stable inputs but no graphics context.
     using ParameterValue = std::variant<float, int, unsigned int, bool, glm::vec2, glm::vec3, glm::vec4, glm::mat4, ImageBinding>;
     using ParameterSet = std::map<std::string, ParameterValue, std::less<>>;

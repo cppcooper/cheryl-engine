@@ -89,6 +89,9 @@ namespace CE::RenderAPIs {
             case GLResourceKind::ShaderStage:
                 glDeleteShader(id);
                 break;
+            case GLResourceKind::Sampler:
+                glDeleteSamplers(1, &id);
+                break;
         }
     }
 
@@ -96,7 +99,7 @@ namespace CE::RenderAPIs {
         const std::lock_guard lock(mutex_);
         require_current_locked();
         if (kind != GLResourceKind::Texture && kind != GLResourceKind::Buffer && kind != GLResourceKind::VertexArray &&
-            kind != GLResourceKind::Program && kind != GLResourceKind::ShaderStage)
+            kind != GLResourceKind::Program && kind != GLResourceKind::ShaderStage && kind != GLResourceKind::Sampler)
             throw Exceptions::invalid_args(CE_HERE, "Unknown OpenGL resource kind");
         if (!id)
             throw Exceptions::failed_operation(CE_HERE, "OpenGL failed to create a resource");

@@ -14,6 +14,7 @@ namespace CE::Assets {
     private:
         RenderAPIs::OpenGLHandle handle_;
         std::uint32_t binding_unit_limit_ = 0;
+        bool mipmap_complete_ = false;
 
     public:
         std::int32_t width{};
@@ -42,6 +43,7 @@ namespace CE::Assets {
         }
         void bind(std::uint32_t unit) const override;
         void require_binding(std::uint32_t unit) const;
+        [[nodiscard]] bool has_complete_mipmaps() const noexcept { return mipmap_complete_; }
         [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return handle_.resource_domain(); }
         // Select the requested unit explicitly and require this texture's live context.
         void unbind(std::uint32_t unit) const;

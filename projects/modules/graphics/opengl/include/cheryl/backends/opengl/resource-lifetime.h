@@ -17,7 +17,7 @@ namespace CE::RenderAPIs {
         struct LifetimeAccess;
     }
 
-    enum class GLResourceKind { Texture, Buffer, VertexArray, Program, ShaderStage };
+    enum class GLResourceKind { Texture, Buffer, VertexArray, Program, ShaderStage, Sampler };
 
     struct NativeResourceStats {
         Diagnostics::DomainId domain = 0;

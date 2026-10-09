@@ -1,5 +1,6 @@
 #include <backends/opengl/texture.h>
 #include "upload-check.h"
+#include "sampling-internal.h"
 #include <internals.h>
 
 #include <assets/resources/decoded-image.h>
@@ -28,15 +29,6 @@ namespace CE::Assets {
                 throw;
             }
         }
-
-        std::uint32_t texture_unit_limit() {
-            GLint maximum_units = 0;
-            glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maximum_units);
-            RenderAPIs::require_no_gl_error("OpenGL texture binding-limit query failed");
-            if (maximum_units <= 0)
-                throw Exceptions::failed_operation(CE_HERE, "Current context reports no texture binding units");
-            return static_cast<std::uint32_t>(maximum_units);
-        }
     }
 
     void upload(const unsigned char* bits, int width, int height, bool use_mipmaps, bool pixelate, GLint wrap_opt, GLenum fmt) {
@@ -57,20 +49,20 @@ namespace CE::Assets {
             bits = bottom_up.data();
         }
 
-        // Apply anisotropic filtering only for supported color textures; the red-only
-        // font atlas uses swizzle and unpack-alignment handling below.
-        if (fmt != GL_RED && GLAD_GL_EXT_texture_filter_anisotropic) {
-            GLfloat largest_supported_anisotropy = 0;
-            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &largest_supported_anisotropy);
-            RenderAPIs::require_no_gl_error("OpenGL anisotropy-limit query failed");
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, largest_supported_anisotropy);
+        // Color images default to maximum available anisotropy. Pixelated images
+        // and the base-level red font atlas explicitly use isotropic filtering.
+        if (RenderAPIs::SamplingDetail::anisotropy_supported()) {
+            const auto anisotropy = fmt == GL_RED || pixelate ? 1 : RenderAPIs::SamplingDetail::maximum_anisotropy();
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
         }
 
         // Set sampling and wrap policy before uploading pixels; atlas textures
         // disable mipmaps while sprite textures may generate them afterward.
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_opt);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_opt);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, use_mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+        const auto minification =
+            use_mipmaps ? (pixelate ? GL_NEAREST_MIPMAP_NEAREST : GL_LINEAR_MIPMAP_LINEAR) : (pixelate ? GL_NEAREST : GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minification);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, pixelate ? GL_NEAREST : GL_LINEAR);
         RenderAPIs::require_no_gl_error("OpenGL texture sampling configuration failed");
 
@@ -108,9 +100,10 @@ namespace CE::Assets {
         width = static_cast<int>(pixels.size.width);
         height = static_cast<int>(pixels.size.height);
         handle_ = create_texture_handle(std::move(lifetime));
-        binding_unit_limit_ = texture_unit_limit();
+        binding_unit_limit_ = RenderAPIs::SamplingDetail::binding_unit_limit();
         bind(0);
         upload(pixels.rgba.data(), width, height, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
+        mipmap_complete_ = use_mipmaps || (width == 1 && height == 1);
         unbind(0);
     }
 
@@ -130,9 +123,10 @@ namespace CE::Assets {
         // The font path supplies an already baked alpha atlas; upload() applies
         // its one-channel swizzle without running a file decoder.
         handle_ = create_texture_handle(std::move(lifetime));
-        binding_unit_limit_ = texture_unit_limit();
+        binding_unit_limit_ = RenderAPIs::SamplingDetail::binding_unit_limit();
         bind(0);
         upload(bitmap_data, width, height, use_mipmaps, pixelate, wrap_opt, fmt);
+        mipmap_complete_ = use_mipmaps || (width == 1 && height == 1);
         unbind(0);
     }
 
@@ -147,11 +141,13 @@ namespace CE::Assets {
         const auto id = handle_.id();
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, id);
+        glBindSampler(unit, 0);
     }
 
     void Texture::unbind(const std::uint32_t unit) const {
         require_binding(unit);
         glActiveTexture(GL_TEXTURE0 + unit);
         glBindTexture(GL_TEXTURE_2D, 0);
+        glBindSampler(unit, 0);
     }
 }

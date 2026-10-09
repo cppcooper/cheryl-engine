@@ -3,6 +3,7 @@
 #include "decoded-image.h"
 #include "geometry2d.h"
 #include "image.h"
+#include "sampler.h"
 #include "shader.h"
 
 #include <assets/types/primitives/vertex.h>
@@ -44,6 +45,9 @@ namespace CE::Assets {
         // Creates a fresh immutable image from owned top-to-bottom RGBA pixels.
         // Caller retains/reuses the input; failure publishes no cache entry here.
         [[nodiscard]] virtual std::shared_ptr<Image> create_image(const DecodedImage& image) = 0;
+        // Optional immutable sampling override. Unsupported backends reject;
+        // MaximumSupported anisotropy may resolve to isotropic filtering.
+        [[nodiscard]] virtual std::shared_ptr<const Sampler> create_sampler(const SamplerOptions& options);
         // One alpha byte per pixel in the font baker's row/UV order; dimensions must
         // be nonzero and match the span. Copies input before returning on the upload owner.
         [[nodiscard]] virtual std::shared_ptr<Image> create_font_atlas(std::span<const unsigned char> alpha, PixelSize size) = 0;

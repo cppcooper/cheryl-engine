@@ -4,6 +4,7 @@
 
 #include <backends/opengl/glslprogram.h>
 #include <backends/opengl/renderer.h>
+#include <backends/opengl/sampler.h>
 #include <backends/opengl/texture.h>
 #include <backends/opengl/vertex-array-object.h>
 #include <internals/exceptions.h>
@@ -36,6 +37,20 @@ namespace CE::Assets {
             renderer_.resources(), alpha.data(), static_cast<int>(size.width), static_cast<int>(size.height), false, false,
             GL_CLAMP_TO_EDGE, GL_RED
         );
+    }
+
+    std::shared_ptr<const Sampler> OpenGLResourceProvider::create_sampler(const SamplerOptions& options) {
+        const auto lifetime = renderer_.resources();
+        lifetime->require_current();
+        validate_sampler_options(options);
+        std::erase_if(samplers_, [](const auto& entry) { return entry.second.expired(); });
+        if (const auto found = samplers_.find(options); found != samplers_.end()) {
+            if (auto sampler = found->second.lock())
+                return sampler;
+        }
+        auto sampler = std::make_shared<OpenGLSampler>(lifetime, options);
+        samplers_.insert_or_assign(options, sampler);
+        return sampler;
     }
 
     std::shared_ptr<Geometry2D>
