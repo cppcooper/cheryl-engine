@@ -37,10 +37,10 @@ resolve the smallest demonstrated seam first.
 | Toolkit need | Cheryl contract | Adapter responsibility |
 | --- | --- | --- |
 | Draw geometry and clipping | [Render submission](../rendering/pipelines-and-materials.md) | Record ordered, owned colored triangles and logical rectangular clips. Match the toolkit's alpha convention to the supplied material. |
-| Images and font atlases | [Consumer resources](../resources/consumer-resource-contract.md) | Copy CPU pixels into immutable generations; publish provider-owned resources on the platform owner. Resolve font ownership and sampling before exposing textures. |
+| Images and font atlases | [Immutable resource publication](../resources/resource-residency.md#immutable-resource-publication) | Copy CPU pixels into immutable generations; publish provider-owned resources on the platform owner. Resolve font ownership and sampling before exposing textures. |
 | Keyboard, pointer and text | [Input records and focus](../runtime/input-state-model.md) | Translate portable identities and committed text without native input APIs, invented characters or modification of another reader's records. |
 | Time, size and OS services | [Runtime ticks](../runtime/runtime-frame-boundary.md) and capability reporting | Use copied window/framebuffer dimensions and explicit simulation time; report unavailable clipboard, cursor and IME services. |
-| Queued upload and retained playback | [Thread dispatch](../runtime/thread-dispatch.md) and [resource lifetime](../resources/resource-lifetime.md) | Send owned preparation through platform submission and retain complete published scenes through replacement and teardown. |
+| Queued upload and retained playback | [Thread dispatch](../runtime/thread-dispatch.md) and [native retirement](../resources/resource-residency.md#native-retirement-and-maintenance) | Send owned preparation through platform submission and retain complete published scenes through replacement and teardown. |
 
 The application supplies backend-appropriate pipelines and materials. An adapter
 validates their vertex layout, topology, alpha/depth/culling state, projection

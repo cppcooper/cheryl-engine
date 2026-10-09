@@ -6,20 +6,14 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 ## Short term
 
-Complete the remaining checks and observations for these implemented facilities. Each owning
-plan retains its checklist until acceptance is complete:
-
-| Task | Owning plan | Remaining acceptance |
-| --- | --- | --- |
-| Unicode layout and glyph resources | [Unicode text](short-term/unicode-text.md) | Native appearance, font selection, wrapping and replacement in both runtime modes |
-| Audio playback | [Audio integration](short-term/audio-integration.md) | Audible native output and sustained WAV streaming |
-| Demo tile/sprite showcase | [Demo assets](short-term/demo-assets.md) | Artwork, playback, optional-load failures and shader replacement |
-| Startup and UI updates | [Checklist below](#startup-and-ui-follow-up) | Compile and check the latest changes, add missing cases and observe native CLI/focus/placeholder behavior |
-
-The [testing queue](../testing-requests.md) owns launch commands and prerequisites.
-CPU checks cannot replace these native observations. Reuse the matching accepted
-builds when their source and configuration still agree; refresh demos for the
-recent startup changes before using older results as evidence for the current source.
+Close acceptance for [Unicode](short-term/unicode-text.md),
+[audio](short-term/audio-integration.md) and [demo assets](short-term/demo-assets.md),
+and the startup/UI checklist below. These tasks retain their own progress until
+accepted. Their observations can proceed independently with matching builds;
+refresh the toolkit-free demo once for Unicode/assets, and compile the updated
+UI assembly through TR13 before TR14. The
+[testing queue](../testing-requests.md) owns launch commands and prerequisites.
+Existing regressions do not close the dedicated-case gaps listed in the plans.
 
 ### Startup and UI follow-up
 
@@ -72,15 +66,8 @@ when selecting extensions.
 
 ## Later work
 
-[Mid-term work](mid-term/README.md) covers possible color emoji after Unicode
-acceptance and measured render/text/timing optimization. Collect workload evidence
-and settle compatibility/order semantics before introducing caches or batching.
-
-[Long-term work](long-term/README.md) covers deferred platforms, manifests, Steam
-API/Input and consumer-selected facilities. Steam transport and SDK-free preparation
-have no short- or mid-term scheduling commitment.
-
-The [Debug output console](unscheduled/debug-console.md) has selected requirements
-but no implementation schedule. Resolve transport and platform prerequisites before
-adding dependent integration work. Its native terminal is separate from the later
-built-in graphical console.
+Use the [horizon catalogue](README.md) to select a follow-on. Color emoji waits for
+Unicode acceptance; optimization waits for workload evidence and compatibility/order
+decisions. Platform, Steam and optional-module work requires a named consumer and
+resolved prerequisites. The unscheduled Debug terminal needs transport/platform
+decisions before implementation.

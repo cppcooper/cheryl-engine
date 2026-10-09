@@ -19,16 +19,6 @@ owns controls, selected images and the implemented application flow.
   native Linux/X11 demo with both UI adapters and HID disabled. The queue's shared
   preparation refreshes it after startup changes.
 
-## Remaining acceptance
-
-Available samples must render upright with intact colors/transparency; static
-samples remain fixed while declared clips advance, pause and replay correctly.
-Absent/broken optional artwork must leave the remaining demo operational, including
-`--full-assets`. Observe shader-pair replacement and failure retention while samples
-are active. Sequential variable and concurrent fixed modes retain simulation-owned
-playback and immutable frames. Empty-artwork startup does not accept rendering.
-
-The current provider supplies linear magnification and mipmaps. Selectable filtering
-and atlas isolation remain a [consumer-driven follow-on](../long-term/README.md#other-engine-extensions);
-these observations establish the baseline for that contract. Bootstrap shaders and
-selected UI resources retain their requirements. Other platforms remain deferred.
+TR12 owns appearance, playback, partial-artwork and shader-replacement observations.
+Its sampling observations inform the later
+[filtering/atlas-isolation contract](../long-term/README.md#other-engine-extensions).

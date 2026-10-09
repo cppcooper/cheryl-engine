@@ -184,100 +184,25 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 
 *92 entries.*
 
-## Comprehensive architecture report
+## Assessment and direction
 
-**Foundational architecture maturity: approximately 85% — qualitative estimate**
+The review's qualitative estimate of foundational architecture maturity is
+approximately **85%**. It concerns established engine foundations, not completion
+of the roadmap, and is not calculated from feature counts, coverage or test results.
+The implemented facilities support a desktop 2D consumer; higher-level game services
+remain consumer-selected. Close the pending acceptance work, then use a small real
+game to establish which extensions and performance changes warrant shared ownership.
 
-```text
-█████████████████░░░  ~85%
-```
+The [runtime architecture](runtime/runtime-architecture.md) explains system composition;
+[subject guides](README.md) own detailed contracts. The
+[roadmap](planning/develop-review-and-development-plan.md) owns sequencing,
+[long-term plans](planning/long-term/README.md) retain platform/consumer prerequisites,
+and the [testing queue](testing-requests.md) owns pending executable acceptance.
 
-*The indicator estimates maturity of the established engine foundations, not completion of all roadmap features. It is not calculated from the number of table rows, code coverage, or test pass rates.*
+## Status maintenance
 
-### Scope and reconciliation
-
-This inventory reconciles the earlier code-area inventory and the subsequent status-grouped classification. It retains distinct, actionable capabilities while collapsing synonymous references to the same contract or subsystem. The four tables contain 8 partial/QA entries, 19 deferred entries, 22 not-implemented entries, and 92 implemented entries: 141 distinct feature records in total. Table 4 is grouped by area but remains one table.
-
-Classification was corrected where a lower-level implementation and a higher-level missing feature had been treated as the same item. CPU Wang/bitmask autotiling is implemented; a persistent tilemap/world framework is not. Shared asset caches and explicit shader/material replacement are implemented; automatic GPU-residency budgets, independent simultaneous provider domains and atomic manifest hot reload are not. Basic native controller input is partial because HID integration is unfinished, whereas the remaining Gainput HID backend work is explicitly deferred/blocked. Native Unicode output, audible playback and the asset showcase have source implementations but are not fully accepted, so their end-to-end QA appears only in Table 1.
-
-Potentially redundant earlier entries such as “OpenGL integration” versus “OpenGL renderer,” and “GLFW window management” versus “native GLFW adapter,” were folded into the best explanatory owner. Separate interfaces remain distinct when their contracts differ: for example, WorkerPool versus WorkerGroup, action binding versus immutable snapshots, shader programs versus pipeline/material recipes, and audio abstraction versus codec decoding. The reviewed branch is an architectural snapshot, not a promise that all features function on every platform.
-
-### Executive assessment
-
-Cheryl is a modular C++23 engine focused on desktop 2D game development. It is beyond the prototype stage in the foundations: game/session lifecycles, simulation scheduling, input snapshots, multi-owner dispatch, CPU render-frame publication, OpenGL drawing, asset/resource lifetimes, Unicode shaping, toolkit UI bridges and independent audio services all have concrete code. This is more substantial than a thin wrapper over GLFW and OpenGL.
-
-The principal unfinished work is concentrated at subsystem boundaries: hardware-specific controller reports, native display/audio acceptance, performance optimizations and cross-platform deployment. Higher-level game services—physics, ECS, world management, networking and serialization—remain consumer-defined or absent. Their absence should not automatically be treated as a flaw in the engine foundation; deciding which belong inside Cheryl requires an actual game consumer and stable contract.
-
-### Runtime architecture and lifecycle contracts
-
-EngineContext owns a selected graph of display, presentation, renderer, resource and input adapters and treats a run as a single session. AbstractGame supplies initialization, update, render-frame preparation, quiescence and destruction hooks; GameRuntime orchestrates them and preserves ownership boundaries. In sequential mode the platform and simulation share a caller; in concurrent mode one simulation worker prepares frames while the platform thread remains responsible for native event polling and graphics.
-
-The concurrent runtime publishes completed render frames rather than asking the graphics thread to inspect mutable game objects. This is an important correctness feature: simulation can advance while a prior immutable frame is in use, and a late frame can be superseded without copying live objects across threads. The frame system keeps storage for reuse and reclaims retained resources on the proper owner. SimulationScheduler independently selects fixed or variable time steps, enforces bounded recovery and reports dropped time to the tick context.
-
-WorkerPool supports shared physical execution capacity and fair work groups with explicit limits, weights and priorities. PlatformDispatcher and SimulationDispatcher make cross-thread work ownership explicit instead of implicitly allowing GPU uploads or game callbacks anywhere. Linux CPU-affinity configuration is present, but topology-aware placement and cross-OS equivalence are not. Runtime and worker diagnostics provide counters suited to later performance work; they are observations, not performance guarantees.
-
-### Input semantics, event delivery and platform constraints
-
-The input design separates device collection, semantic bindings, observation history and simulation consumption. Applications bind logical actions to buttons, chords and analog axes; immutable per-poll snapshots preserve transitions. PollingBacklog supports bounded and unbounded polling policies, and InputAccumulator produces TickInput from completed polls. Ordered InputRecord data supports keyboard, pointer and committed text, while capture/focus leases route ownership between gameplay and UI.
-
-This model is more robust than reading keyboard state once per frame: short press/release transitions can survive between simulation updates, and observation time remains distinct from selected simulation delta. The model does not by itself imply that every physical device or OS feature is integrated. Current native code uses GLFW and Gainput; HID reporting and lifecycle evidence are explicitly blocked, while generalized multi-provider composition is a later architectural extension.
-
-Display APIs expose monitor enumeration, framebuffer/logical dimensions, window resizing and normal/borderless/fullscreen modes. Present limitations include one active rendering window and absent clipboard, IME preedit and generalized pointer capture/cursor styling in toolkit sessions. Those are discrete integration gaps, not deficiencies in button-action snapshots.
-
-### Rendering model, resource ownership and performance
-
-The neutral renderer consumes ordered RenderPass and DrawPacket2D values. The packet resolves geometry, material, vertex range, clipping and parameter values before playback, allowing simulation-side frame assembly with no live sprite/camera inspection by OpenGL. Camera2D and Camera3D provide matrix semantics; only the 2D asset/render pipeline is complete. The placeholder mesh header makes it inappropriate to call Cheryl a full 3D engine.
-
-The OpenGL module supplies context management, GL function loading, shader compilation, material/pipeline state, textures, colored and UV geometry, clipping and render-frame playback. ResourceProvider separates transient CPU buffers from backend uploads. Shared retained handles allow a published frame to use older shader/material generations while replacement generations are introduced. Deferred GPU retirement respects context lifetime and owner-thread constraints.
-
-Performance enhancements are intentionally postponed: current playback preserves authored order rather than optimistically sorting, and no draw-packet batching or automatic GPU residency eviction is provided. These are good candidates for profiling-driven work only after representative games establish state-switch, draw and publication costs. As implemented, safe ordering and resource lifetime are prioritized over speculative throughput optimizations.
-
-### Asset pipeline, animation, tiles and text
-
-The asset path begins with backend-independent manifests, schemas and parsed definitions. Loader prepares validated manifests and decoded images on CPU, then serializes upload/publication through the provider owner. Texture, sprite, tileset, shader and material managers handle cached resources, with the important limitation of one active global provider/cache domain. There is no general atomic hot-reload transaction, multi-domain cache isolation or automatic memory-budget eviction.
-
-Sprite assets include named clips, facings, pivots, views and playback cursors. Tilesets support indexed cells, static and animated targets, and independent animation resolution. Wang and bitmask autotiling is real implemented CPU selection—including weighted alternatives and caller-sampled terrain—but it does not instantiate or persist a tilemap world. This distinction helps prevent unnecessary expansion of the asset-layer contract.
-
-Unicode work includes UTF-8 scalar mapping, font-file and installed-font discovery, fallback collections, HarfBuzz shaping, ICU bidirectional/grapheme logic, grayscale glyph atlas preparation and upload into retained draw resources. That is meaningful implementation depth. TR9 nonetheless requires visible QA for glyph appearance, wrapping, fallback and replacement in both runtime modes. Color emoji and large reusable glyph caches are intentionally later work.
-
-### UI and audio integration
-
-TGUI and RmlUi are independent modules that adapt native toolkit authoring into Cheryl scene recordings, with selected input focus and controlled platform-side upload. Both support useful widget/document authoring without making the neutral engine depend on a specific toolkit. They differ in content and alpha semantics: TGUI integrates its widget backend, while RmlUi integrates RML/RCSS documents and premultiplied scene rendering. Both constrain OS clipboard and cursor integration, and RmlUi reports unsupported advanced effects.
-
-Audio follows a separate module boundary from rendering. The neutral Clip, Voice and System interfaces model PCM storage, voice playback and system lifecycle. miniaudio provides WAV/FLAC/MP3 decoding, native or offline systems, streaming, looping, volume control and synchronized voice state. The source includes focused tests for offline mixing and decoding, but a successful offline mixer does not certify live sound output; TR11 still asks for audible native and sustained streaming observations.
-
-### Build system, consumers and verification confidence
-
-The root CMake configuration selects native GLFW, OpenGL and TGUI by default, with RmlUi and miniaudio opt-in. Public target aliases give consumers named library identities, while each module owns its SDK dependencies and build tests. Neutral engine headers are checked against accidental native SDK leakage. The current supported integration mechanism is source/build-tree composition with add_subdirectory; installed find_package(Cheryl) distribution is not implemented.
-
-GoogleTest unit/aggregate targets, CTest registration, consumer header probes, native OpenGL acceptance tests and cross-UI coexistence checks exist in the repository. Source presence is evidence of test infrastructure and intended coverage, not proof of a passing build at this commit. This review deliberately did not compile code or run tests. The active acceptance queue is narrower: TR6 for HID is blocked; TR9 Unicode, TR11 audio and TR12 demo assets are ready for user-run native QA. Documentation and code agree on that distinction.
-
-### Platform readiness and product direction
-
-Linux/X11 is the active native acceptance platform, not a guarantee that every GLFW-supported operating system is already accepted. Windows, macOS and Wayland validation have been moved out of the near-term gate. Android and iOS require platform lifecycle, window/input, rendering and distribution adapters that do not exist in this branch. Console support would add proprietary SDK/toolchain constraints beyond the current freely selectable module graph.
-
-Mobile should be viewed as a platform-product milestone rather than a simple cross-compile exercise. The existing neutral runtime, input interfaces and render/resource contracts provide useful seams, but touch and lifecycle behavior, graphics context choice, suspend/resume, application assets and packaging all need consumer-proven integration. A future console-specific binary module could similarly preserve neutral public contracts while isolating proprietary SDK code, but this is an architectural option, not implemented functionality.
-
-### Priorities, dependencies and risks
-
-First, close the finite existing QA items with evidence: glyph/text rendering in both runtime modes, audible audio/streaming and the sprite/tile showcase. These observations test the actual consumer path and can expose integration bugs that unit tests will not. Resolve Gainput HID as a separately planned backend task rather than conflating it with generic action mapping. Native tests should remain tied to the reviewed source/configuration and their known platform assumptions.
-
-Second, exercise the engine through a small real 2D game rather than extending abstractions on speculation. Such a consumer can validate asset layout, input capture/focus, scene publication, audio ownership, and the suitability of current world/gameplay organization. It will also give representative data for batching, glyph caches, update pacing and graphics-resource policy. Introduce ECS, physics or world facilities only when their reusable contracts are established by more than their presence in a feature checklist.
-
-Third, define mobile/other platform work as isolated milestones: selected backend and device target; input/window/lifecycle integration; end-to-end demo acceptance; reproducible consumer build; eventual store packaging. Avoid presenting deferred Windows/Wayland QA or the existence of a perspective camera as proof of production readiness on those platforms or for 3D games.
-
-### Conclusion
-
-Cheryl already has a coherent 2D engine foundation with especially explicit contracts around scheduling, input snapshots, retained render frames, resource ownership and modular native SDK integration. The substantial work left is best understood as acceptance, selected capability development and deployment reach—not as an incomplete basic engine loop.
-
-The actionable interpretation of the four tables is to retain proven engine interfaces, finish visible/hardware acceptance, then let one or more real game consumers establish which extensions deserve shared engine ownership. This preserves the value of the existing architecture without mistaking long-term optional features for prerequisites to shipping a small desktop game.
-
-### Source references and review limits
-
-Primary evidence: public headers and corresponding implementation files under projects/engine and projects/modules; root and module CMake configuration; demo and test sources; docs/testing-requests.md; planning/long-term and planning/mid-term guidance. Each inventory row links to a repository-relative source file or directory. The exact audited branch head is 65be712f03019e50f0c86524f4e64c131926756d (8 October 2026).
-
-Implementation statuses describe source-backed capabilities and explicit code-contract limitations. They do not establish that native functionality was compiled, run or accepted on untested operating systems. This review made no repository changes and did not compile or execute tests. Updating this Markdown file in the repository is a separate documentation change.
-
-### Status maintenance
-
-Update this inventory when the **implementation or acceptance status** of an entry changes. Prefer current source behavior over potentially outdated prose, and link any changes in platform/native acceptance to [`testing-requests.md`](testing-requests.md) and the appropriate planning document. Keep planned work in [`planning/`](planning/) rather than treating this inventory as an authoritative task queue. When conducting a new complete review, update the baseline commit/date and re-evaluate the qualitative maturity estimate.
+Update an entry when its implementation or acceptance changes, checking current
+source and linking the relevant request or owning plan. Keep planned work in
+[planning/](planning/README.md). For a complete new review, update the baseline/date
+and reconsider the qualitative estimate; for a narrower update, identify its scope
+rather than implying the whole inventory was re-reviewed.

@@ -18,10 +18,8 @@ details below are open. Native acceptance follows the selected platform scope; e
 [multi-platform testing deferrals](../long-term/platform-acceptance.md) remain in place.
 
 The engine's built-in graphical developer console is future work in the
-[long-term plan](../long-term/README.md#other-engine-extensions). It supplies the eventual
-in-app console, including in Release. That console is the engine's own graphical
-interface; the renderer supplies rendering, while application UI remains owned by
-consumers. Console UI, input routing and command execution belong to that later work.
+[long-term plan](../long-term/README.md#other-engine-extensions), which owns its
+in-app rendering, input and command scope, including Release use.
 
 Preserve the terminal connection used to launch tests: CTest and GoogleTest progress
 and results stay on that existing runner output destination. Create a separate
@@ -81,44 +79,30 @@ their source test. Apply the Debug-only eligibility rule. Discovery and
 unattended/headless runs need a defined path that does not
 depend on creating a desktop terminal.
 
-## Remaining design work
-
-- Native terminal availability: choose the first implementation platform and
-  establish any host terminal dependency before choosing the implementation owner.
-- Output routing: preserve the existing test terminal and create the separate engine
-  destination. Settle any additional mirroring to IDE capture, redirected files or pipes.
-- Test viewing: one shared console or separate consoles, activation for interactive
-  test runs, and collection of engine diagnostics when no desktop viewer is available.
-- Viewer disconnects and availability: choose the output destination after manual
-  closure, any reopening behavior, and the path when the window cannot be created.
-  Closing the viewer leaves the application running; normal application shutdown
-  closes it, and a crash retains an open viewer. Define how normal failed test
-  results and handled startup errors differ from crashes before choosing an
-  exit-status or disconnect-based detection scheme.
-- Configuration: derive native-terminal eligibility from the actual Debug build
-  configuration, independently of logging severity. Define any Debug-only controls
-  for automated or interactive consumers. Non-Debug builds retain their current
-  output destinations and create no native terminal.
-
 ## Ordered work
 
-1. Resolve terminal availability, platform scope, disconnect handling and crash
-   detection under the selected lifetime contract. Choose the owner
+1. Select the first platform and host terminal dependency. Resolve the output path
+   after manual closure, reopening and unavailable-viewer behavior. Distinguish
+   normal failed tests/handled startup errors from crashes before selecting
+   exit-status or disconnect-based detection. Choose the owner
    using the existing [module boundary criteria](../../development/modules.md#module-boundary-criteria).
    Keep process-wide stream ownership separate from individual engine contexts.
 2. Prove the smallest startup path for both stdout and stderr, including C stdio,
    C++ streams and native stream writes. Establish flushing, encoding and handling
    of pre-existing output destinations. Begin with the owned engine logging
    destination, then prove direct-write coverage, preserved test reports, discovery
-   and existing stream-capture behavior before extending the integration.
+   and existing stream-capture behavior before extending the integration. Settle
+   mirroring to IDE capture, files and pipes, shared/separate test viewers,
+   interactive activation and diagnostic collection without a desktop viewer.
 3. Complete ownership and failure behavior: partial initialization, concurrent
    writers, window closure, startup failure and final diagnostic draining. Close
    the viewer after normal shutdown and retain it after a crash, independently of
    cleanup in the crashed process. A retained viewer must not hold test-report
    capture channels open or delay CTest completion. Keep
    emergency reporting independent of the ordinary logging backend and game loop.
-4. Integrate Debug-only activation and the existing non-Debug output path into the
-   engine facility and its demo/test consumers.
+4. Derive activation from the actual Debug configuration independently of severity;
+   define Debug controls for automated/interactive consumers. Integrate activation
+   and the existing non-Debug output path into the engine and its demo/test consumers.
    Establish startup before their first engine diagnostics and retain the output
    destination until producers and logging workers finish. Preserve configured file
    logging and severity filters.
@@ -147,6 +131,3 @@ console and GoogleTest reports remain on the original runner channel. Discovery,
 capture assertions, death tests, parallel runs and unattended execution retain their
 defined behavior. Verify framework messages outside the normal result printer
 separately; a passing result-printer prototype does not establish complete separation.
-
-Add an executable acceptance request once the selected source and observation paths
-are ready.

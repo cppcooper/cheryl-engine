@@ -9,6 +9,11 @@ wider CJK/script acceptance remains in the
 [long-term plan](../planning/long-term/README.md#other-engine-extensions).
 Display source maps do not establish caret movement, selection or IME/preedit.
 
+The service pairs face-qualified glyph placements with complete immutable page
+generations. Legacy `Font` exposes one atlas/geometry pair, which cannot represent
+that fallback model; its STBFont/FFont interfaces and toolkit-owned text retain
+their separate roles.
+
 ## Font selection
 
 `CE::Text::FontCollection::load(selection)` creates an immutable CPU snapshot of font

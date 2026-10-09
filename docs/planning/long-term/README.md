@@ -24,6 +24,13 @@ testing queue. Resume each platform only when testing is scheduled; reconcile it
 dependency/toolchain configuration and observation harness before reactivating
 requests. Linux source development and Linux/X11 acceptance proceed independently.
 
+Mobile and console work requires a selected platform consumer before scheduling.
+For mobile, establish the backend/device target, touch and window lifecycle,
+suspend/resume, graphics context, asset delivery and packaging, then require an
+end-to-end demo and reproducible consumer build before store deployment. A console
+owner must isolate proprietary SDK/toolchain code behind neutral contracts. These
+are selection prerequisites; no mobile or console module is implemented.
+
 ## Steam API and input integration
 
 Steam services and Steam Input may initially share one application-facing module.
@@ -118,7 +125,9 @@ Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 Audio's first miniaudio backend is selected in the short-term
 [audio plan](../short-term/audio-integration.md). A later FMOD backend may implement the same
 ordinary playback contract; Studio events, banks and adaptive authoring require
-their own scope and SDK/deployment requirements.
+their own scope and SDK/deployment requirements. Spatial audio, effects graphs,
+capture, device enumeration/hotplug and custom codecs also need separately selected
+consumer requirements.
 
 Selectable image filtering and atlas isolation need a consumer contract. The
 OpenGL provider currently gives RGBA images linear magnification and generated
@@ -148,6 +157,18 @@ rebinding before adding hotplug support; monitor scale alone does not satisfy a
 per-window service. The current
 [display/window contract](../../runtime/display-and-window-contract.md) defines the
 construction-time inventory and copied-size capability limits.
+
+### Residency accounting
+
+Before adding automatic budgets or eviction, assign allocations domain-qualified
+identities and account once for staging, live native storage, pending retirement
+and externally pinned generations. Distinguish upload-byte estimates from actual
+backend allocation, and advisory budgets from enforceable admission limits.
+Settle owner-thread admission and independent provider/cache ownership before
+allowing multiple domains. Eviction must preserve in-flight frames and avoid
+counting shared images/materials repeatedly. The current
+[residency contract](../../resources/resource-residency.md) supplies strong ownership
+and explicit clear/replacement/teardown; cache counts do not provide byte budgets.
 
 ## Additional dungeon asset manifests
 

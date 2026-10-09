@@ -80,7 +80,7 @@ inspection and does not try another candidate if later loading fails.
 
 [FontMgr](../../projects/engine/include/cheryl/core/resources/asset-management/font-mgr.h)
 loads on the active provider's loading owner under the
-[consumer resource contract](../resources/consumer-resource-contract.md). It uses
+[cache ownership contract](../resources/resource-residency.md#cache-ownership). It uses
 lexically normalized paths as cache keys, processes the supplied order and retains
 already loaded entries. The first successful publication when no default exists
 selects the default; later loads do not replace it. A later failure retains earlier

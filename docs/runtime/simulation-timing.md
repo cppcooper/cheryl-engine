@@ -12,6 +12,7 @@ Its delta is the full elapsed time between selected updates, including time spen
 updating, preparing a frame, or waiting. A zero variable interval permits unpaced
 updates. The independent fixed step defaults to 16,666,667 ns, the nearest integer
 nanosecond to 1/60 second. Input polling spacing/capacity remain separate options.
+Runtime observation and simulation clocks start after game initialization.
 Sequential execution still shares a thread with presentation, so blocking graphics
 or simulation can delay eligible polls; concurrent execution can poll during an update.
 
@@ -79,9 +80,8 @@ explicitly. Clock inputs moving backwards, negative pacing/caps, nonpositive fix
 steps, zero fixed-update limits, and prefixes larger than the limit are rejected
 before runtime initialization. Clock-range overflow is rejected or deadlines saturate.
 
-The demo accepts `--fixed`, `--fixed-step-ms=N`, `--variable-interval-ms=N`,
-`--max-fixed-updates=N`, `--variable-catch-up`, `--recovery-prefix=N`, and
-`--recovery-cap-ms=N`, independently of its polling switches. For example:
+The [startup option reference](../development/consuming-engine.md#command-line-startup)
+maps these policies to the demo's timing switches. For example:
 
 ```sh
 (
@@ -96,6 +96,5 @@ runtime cases exercise both modes, bounded recovery, slow updates/presentation,
 full polling backlogs, and ordered input without replay. Procedures and
 platform limits are in [architecture-validation.md](../development/architecture-validation.md).
 
-A profiling-based optimization configurer remains unfinished in the [mid-term plan](../planning/mid-term/README.md#measured-optimization).
-It must preserve explicit timing/input configuration, rather than silently replacing
-fixed delta, changing input history, or introducing interpolation.
+A possible timing adviser remains in the
+[mid-term plan](../planning/mid-term/README.md#measured-optimization).

@@ -1,5 +1,7 @@
 # Resource residency and maintenance
 
+## Cache ownership
+
 `AssetCacheContext` is the shared provider/loading-owner guard used by all asset
 caches. It allows one active provider domain and one loading owner at a time.
 It protects publication and teardown, rather than implementing a cache eviction
@@ -15,7 +17,28 @@ a new provider can bind the global domain. Externally retained logical assets
 continue to exist independently; their native handles still belong to the old
 renderer/context lifetime and cannot be used after that lifetime closes.
 
-The ownership audit follows these paths:
+## Immutable resource publication
+
+`ResourceProvider::create_image` copies owned RGBA pixels into a new backend handle.
+Changed images or geometry use fresh immutable handles and replacement materials
+or frames. Published packets retain their selected geometry, material, program and
+image generations; replacing a cache entry releases only that cache's old owner.
+There is no in-place texture update or dynamic atlas-growth API. UI recordings use
+owned CPU images and expanded triangles; the
+[Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
+publishes complete message-specific glyph-page generations after successful upload.
+Neither requires a shared glyph-residency cache.
+
+Colored geometry uploads use `Vertex2DColor` and a `Position3UV2Color4` pipeline.
+A provider that does not implement that overload rejects it explicitly; `Vertex2D`
+retains its existing layout. The
+[render contract](../rendering/pipelines-and-materials.md#frame-and-recipe-integration)
+defines layout and alpha validation. Generic asset batches follow the separate
+[partial-publication and retry contract](../assets/asset-loading.md#publication-and-retry).
+
+## Native retirement and maintenance
+
+Strong owners and their native retirement paths are:
 
 | Resource | Strong logical ownership | Native retirement |
 | --- | --- | --- |
@@ -62,6 +85,8 @@ rejected by pipeline/geometry/image domain checks before binding; another native
 context's resources are rejected as well. One context being current does not make
 another context's IDs valid. Native pipeline/geometry/image domain validation preserves these guards.
 
+## Failure and recovery
+
 Native creation guards retain an untracked ID until registration succeeds.
 Program linking then transfers ownership to an OpenGLHandle before constructing
 the logical GLSLProgram, so later allocation failure has only one retirement
@@ -99,7 +124,12 @@ renderer destruction, `abandon()` invalidates every registration without a nativ
 delete or later query of the destroyed context. Late foreign-thread release is safe
 for those invalidated handles.
 
-Validation procedures covers strong residency, cache-domain rebinding, idle maintenance,
+Cache entry counts do not measure physical residency bytes. Shared images, staging
+pixels, mipmaps, programs and pending retirement have different owners and lifetimes;
+future budgets require the [accounting plan](../planning/long-term/README.md#residency-accounting)
+before introducing eviction.
+
+Validation procedures cover strong residency, cache-domain rebinding, idle maintenance,
 recording failure/recovery/abandonment, real selected-context restoration, retained
 frame pixels and native deletion before window destruction. Hardware context loss
 and reset recovery remain outside those executed scopes. See

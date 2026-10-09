@@ -28,16 +28,8 @@ to the application.
   - [ ] Accept audible output and long-stream observations through
     [TR11](../../testing-requests.md#tr11-qa-native-audio-and-streaming).
 
-## Remaining acceptance and boundaries
-
-Use the consumer's owned 20-second stereo WAV, longer than its decode-ahead window.
-Observe actual channel routing, continuing playback while stdin is idle, controls,
-end/restart/loop, overlapping discarded-handle effects and shutdown with producers.
-Device-free mixing and short cached streams do not establish those observations.
-Compressed-stream seek/loop needs a stable long fixture when selected; standalone,
-supplied-SDK and additional platform variants retain separate coverage limits.
-
-Spatial audio, effects graphs, capture, device enumeration/hotplug and custom codecs
-remain later consumer-selected work. A future FMOD backend can implement ordinary
-playback; Studio event/bank authoring requires a separate capability and deployment
-scope in the [long-term plan](../long-term/README.md#other-engine-extensions).
+TR11 owns the native fixture, observations and launch procedure. Compressed-stream
+seek/loop needs a stable long fixture when selected; standalone, supplied-SDK and
+additional-platform coverage remain separate in the module guide.
+Extensions beyond ordinary playback belong to the
+[long-term plan](../long-term/README.md#other-engine-extensions).

@@ -196,6 +196,16 @@ headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Exist
 each target's public roots. Installed/exported `find_package` distribution remains
 separate work.
 
+`<assets.h>` and `<core.h>` expose no Glad types; concrete OpenGL resources are
+opt-in through `<backends/opengl.h>`. Portable asset values and primitives live in
+`assets/types/`, with shared 2D bases under `assets/types/2d/base/`. CPU geometry
+builders live in `assets/geometry/`, parsed grids/clips/manifests in
+`assets/definitions/`, and neutral upload/resource interfaces in `assets/resources/`.
+`core/rendering/` owns renderer contracts, frame submissions and resolved packets.
+Common submission uses public parameter keys; the
+[backend mapping](../rendering/pipelines-and-materials.md#native-bootstrap-and-binding)
+owns native uniform names and graphics types.
+
 ## Crash and exception traces
 
 `Cheryl::Engine` delivers the automatic crash bootstrap.

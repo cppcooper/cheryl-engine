@@ -53,20 +53,8 @@ configures that cadence independently of polling. In sequential mode the same bo
 thread. Owner callbacks execute without the scheduler lock, permitting `stop()`
 and further platform/simulation submissions.
 
-Simulation shutdown cancels its pending batch on the simulation owner before
-publishing worker completion. Initialization failure before owner binding cancels
-on the initializing thread. The platform joins simulation before game cleanup.
-Runtime stopping closes context CPU groups, stops/cancels simulation work,
-and pumps platform requests while joining simulation and settling CPU work. A
-worker awaiting accepted platform completion therefore cannot strand the owner
-in a blocking join. After CPU groups settle, remaining platform requests cancel
-before game/resource cleanup. A bounded 1 ms shutdown wait observes CPU completion
-without making workers retain a borrowed runtime notification callback.
-
-`game.quiesce()` runs on the platform after simulation joins and before accepted
-CPU work finishes. Stop external producers and invalidate borrowed event
-registrations there; do not block on callbacks/jobs that still require platform
-dispatch. Keep their targets/resources alive until `deinit()`. This hook also
-pairs with attempted initialization so partial startup can stop its producers.
-Only context-created worker groups are closed; an injected root's unrelated
-application groups are untouched. Cleanup preserves the original failure.
+The runtime's [shutdown sequence](runtime-frame-boundary.md#shutdown) coordinates
+queue cancellation, simulation joining, producer quiescence and accepted CPU/platform
+dependencies. Keep callback targets alive through that sequence; do not wait on work
+requiring the current owner. Saved endpoints reject after closure without extending
+adapter lifetime.

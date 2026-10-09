@@ -39,7 +39,7 @@ validates its selected geometry/material/range. Read-only resource metadata can 
 used during frame preparation. Binding, drawing, linking and uploading obey the
 selected backend's owner/current-context rules. Logical handles can outlive cache
 or backend teardown, but cannot perform native operations through a closed domain.
-See the [consumer resource contract](../resources/consumer-resource-contract.md).
+See [resource ownership and retirement](../resources/resource-residency.md).
 
 `Graphic::from_image()` rejects a null or zero-sized image, then uploads a six-vertex
 whole-image quad on the provider owner. The caller must use a compatible image and

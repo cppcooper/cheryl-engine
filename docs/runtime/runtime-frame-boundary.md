@@ -57,14 +57,9 @@ thread, where graphics is current. The result is a future: inspect readiness fro
 `update()`, then publish the resulting handle through the next render frame. Do not
 block simulation on it or capture live simulation objects in platform callbacks.
 The queue drains FIFO batches before polling, including while the input backlog
-is full; nested requests wait for the next batch. Each failure reaches its own
-future. Shutdown closes context worker acceptance and stops simulation while pumping
-platform requests needed by accepted work. Once simulation and CPU work settle,
-remaining platform requests cancel before frame/game cleanup; their futures report
-`broken_promise`. A shared scheduler wake remains valid through concurrent submit
-and close without retaining the runtime itself. F5 in the demo queues a material recipe
-reload and adopts its immutable generation during a later update. Failure retains
-the old material and reports its error in the overlay.
+is full; nested requests wait for the next batch. Futures, cancellation and saved
+submission endpoints follow the [dispatcher contract](thread-dispatch.md).
+Accepted dependencies settle under the [shutdown sequence](#shutdown) below.
 Callbacks must preserve the session's current graphics context. Backend resource
 guards reject another context even when it is selected on the correct thread.
 Game code calls `tick.request_stop()` to request graceful shutdown from `update()`.
@@ -103,95 +98,42 @@ written and one is being rendered.
 Text strings may still allocate, and the final release of a GPU-backed handle
 must occur on the graphics thread or through backend-managed deferred destruction.
 
-The cached `Sprite` now owns immutable clip definitions and grid resources.
-An entity keeps its sprite handle and its own SpriteAnimation playback value,
-advances it using simulation time, and resolves animation.cell() before publishing.
-The playback value aliases the shared definition without retaining GPU resources.
-Cached sprite/tileset assets have no mutable selected cell. Graphic/Tile/Font
-immediate drawing and DrawInfo/iDraw/Draw2D are retired; submission helpers select
-ranges and const Font layout supplies glyph placements. Deprecated FFont retains
-its typed alternate-bank option without stored print state or unchecked formatting
-pointers. Legacy font-file loading uses STBFont; shaped text uses the separate
-[Unicode service](../assets/text-layout.md). See
-[FFont deprecation](../resources/legacy-ffont.md).
+At each concurrent render handoff, platform claims the newest completed slot.
+If simulation supersedes a waiting frame, platform recycles that older slot before
+lending it out again. Rendering consumes authored packet order and complete
+validated pipeline state. The [render contract](../rendering/pipelines-and-materials.md)
+owns packet resolution and writer rules; [asset playback](../assets/asset-values-and-playback.md)
+and [Unicode text](../assets/text-layout.md) resolve their values before publication.
 
-OpenGLRenderer consumes authored packet order, checks its native pipeline domain,
-and applies complete validated pipeline state/parameters/geometry for every draw.
-GPU handles are
-retired through the renderer's context-owned release queue. Sequential runtime
-polls when eligible and starts the independent observation/simulation clocks after
-initialization. It prepares one frame after a bounded update batch and retains it
-until replacement or shutdown. It tears down game, input, and graphics even
-after a loop failure. Concurrent runtime uses configurable lockstep (default), finite-capacity, or
-unlimited polling, with a minimum completion-to-next-poll spacing. Full batches
-pause polling while rendering continues. Every completed poll counts, including
-unchanged samples; the worker takes the entire batch at a cycle boundary and
-wakes polling into an empty backlog. Renderer retirement maintenance runs after platform work
-and before waiting, even without a new frame; idle waits are bounded to 10 ms.
-[Resource residency](../resources/resource-residency.md) describes the bound and ownership trace. Each selected update consumes fresh input;
-held State persists and transient input is not repeated. Both runtime modes use
-the same timing configuration, including fixed steps and capped VariableCatchUp. The worker publishes a prepared slot without copying
-it. If it supersedes a waiting frame, the platform thread recycles the older
-slot before lending it out again. At each render handoff the platform thread
-claims the newest completed slot. Shutdown joins the worker and recycles all
-frames before releasing the graphics context, including after either thread
-throws.
+Polling admission and fresh-batch consumption follow the
+[input contract](input-state-model.md#polling-backlog-and-scheduling). Frame
+preparation occurs once after a bounded update batch under the
+[timing policy](simulation-timing.md). Retirement maintenance runs independently
+of new frames under the [residency contract](../resources/resource-residency.md#native-retirement-and-maintenance).
+The [demo guide](../../projects/apps/demo/README.md) owns its options, controls and
+application bootstrap.
 
-The demo uses the same `EngineContext` and frame commands. It starts in
-sequential mode; `--concurrent` selects the worker and latest-frame handoff.
-`--full-assets` additionally loads the asset tree. Font selection and the 2D shader
-recipe remain explicit application bootstrap in either path.
+## Shutdown
 
-The demo accepts `--input-capacity=N` (finite polling), `--input-unlimited`, and
-`--input-spacing-ms=N` in either runtime mode. These alter polling eligibility,
-not the simulation schedule. The platform thread still shares polling with
-presentation, so a blocking present can delay an eligible poll.
+Stopping closes context CPU-group acceptance and stops simulation. Simulation
+cancels its pending dispatcher work on its owner before publishing completion;
+initialization failure before owner binding cancels on the initializing thread.
+Platform keeps pumping accepted dependencies while joining simulation, so an
+accepted callback awaiting platform work cannot strand it in a blocking join.
 
-The demo's F2 textbox exercises independently requested Events/Text capture and
-keyboard focus in either runtime mode. Focus is latched on the platform at poll
-start; pending records retain their original target through the worker handoff.
-Exclusive focus gates gameplay keyboard State while controller/mouse input
-continues. UI code reads ordered text/editing records during simulation; it is
-never invoked by a platform callback. Enter/Escape releases focus.
+After simulation joins, `game.quiesce()` stops external producers and invalidates
+borrowed event registrations while their targets/resources remain alive. Do not
+block this hook on work that still needs platform dispatch. It pairs with attempted
+game initialization, including partial startup. Accepted CPU work then settles
+while platform continues servicing dependencies; bounded 1 ms shutdown waits
+observe completion without borrowed runtime wake callbacks in workers. Only
+context-created groups close; an injected pool's unrelated groups remain open.
+An owned root joins before game/resource cleanup.
 
-Input capture/routing contracts are described in
-[input-state-model.md](input-state-model.md); validation procedures and coverage limits are in
-[architecture-validation.md](../development/architecture-validation.md).
-
-Material contracts resolve ShaderPass/ShaderDraw engine semantics and copied custom
-pass/material/draw values without common code selecting native uniform names.
-GLSLPipelineBindings owns explicit backend mappings. MaterialMgr builds complete
-recipe replacements before publishing; retained frame owners keep old generations
-and failed builders leave the prior entry intact. See [pipelines-and-materials.md](../rendering/pipelines-and-materials.md).
-
-## Cache and native resource lifetime
-
-Asset-manager lookups copy published handles under shared locks; publication and
-clearing use unique locks. Asset construction and removed-handle destruction run
-outside those locks. Provider binding serializes loads to the first loading
-thread and rejects another provider until teardown finishes. Teardown marks the
-binding as releasing before clearing caches, so reentrant deleters cannot refill
-them. Retained external handles survive cache clearing; their backend lifetime
-still governs use and final release. CPU preparation does not bind these caches.
-
-Owned `Loader` instances prepare manifests and decoded RGBA pixels without the
-provider, rescanning their immutable roots each time. Upload consumes those owned
-pixels on the loading/platform thread and publishes a retained metadata snapshot
-after success. Geometry upload accepts a transient vertex span and copies it
-before returning. Use context-owned WorkerGroups to prepare owned data, then submit upload through
-saved platform endpoints. Accepted group work settles during runtime shutdown;
-independently owned workers require application lifetime coordination. See
-[asset-loading.md](../assets/asset-loading.md).
-
-OpenGL resource operations require a live owner thread and the selected current
-context. Renderer shutdown first restores that context, deletes tracked handles,
-and closes their lifetime before releasing it. Retained handles reject use after
-closure without querying the borrowed context. If destructor cleanup cannot
-recover the context, it invalidates handles without OpenGL calls; platform context
-destruction releases remaining native resources. The context outlives its renderer.
-Native and fixture check procedures are in
-[architecture-validation.md](../development/architecture-validation.md).
-
-Saved platform endpoints own submission state and reject safely after service
-closure. FIFO batches, cancellation, future ownership and deadlock constraints are
-specified in [thread dispatch](thread-dispatch.md).
+Remaining platform requests cancel, all retained frames recycle on graphics,
+and `game.deinit()` runs before input and graphics shutdown. Preserve the first
+failure while completing cleanup; report later failures with phase context through
+[failure reporting](failure-reporting.md). Owned input detaches before window
+destruction, and the context must outlive its renderer. External logical handles
+follow the [native lifetime contract](../resources/resource-residency.md): they can
+survive for destruction/CPU inspection but cannot draw through a closed domain.

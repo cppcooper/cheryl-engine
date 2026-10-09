@@ -74,8 +74,9 @@ make_worker_group() is first called. Groups obtained there belong to that
 context's shutdown domain. Shutdown closes/drains those groups and joins an owned
 root; unrelated groups on an injected pool remain open. A saved context group
 rejects after context shutdown, while separately owned physical pools remain
-independent. Do not destroy a context from one of its jobs. Runtime shutdown pumps platform dispatch while accepted work finishes,
-then joins an owned root before game/resource cleanup.
+independent. Do not destroy a context from one of its jobs. The runtime's
+[shutdown sequence](runtime-frame-boundary.md#shutdown) settles accepted
+dependencies before game/resource cleanup.
 
 The normal GLFW/OpenGL factory forwards `GlfwOpenGLConfig::execution` to the
 context. Set `config.execution.worker_count` or `config.execution.shared_pool`
@@ -97,10 +98,8 @@ auto result = group.submit([] { return prepare_owned_asset_data(); });
 ```
 
 The CPU list must come from the pool's advertised eligible set; it does not reserve
-those cores. Quiesce producers before context shutdown. Runtime pumps accepted
-platform dependencies while this work finishes, then closes platform requests and
-recycles retained frames before application/resource cleanup. Outside runtime,
-the owner must service any such dependencies before waiting for group drainage.
+those cores. Outside runtime, the owner must quiesce producers and service accepted
+platform dependencies before waiting for group drainage.
 
 Worker regression coverage covers caps, weighted shares, capture release before
 drain completion, saved-handle rejection, mask switching/revalidation, actual

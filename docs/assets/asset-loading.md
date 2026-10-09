@@ -54,11 +54,25 @@ platform dispatcher remains available. Any final unexecuted upload is cancelled
 before resource teardown, so its future reports failure instead of hanging.
 Use platform submission endpoints rather than borrowed dispatcher pointers.
 
-`load_assets(provider)` is the synchronous convenience path. Preparation failure
-changes no caches or published metadata. Upload failure may retain already-created
-cache entries, but metadata stays at the previous successful snapshot. Repeated
-loads preserve existing asset keys; this is not an atomic asset hot-reload API.
-Readers retain old metadata snapshots even after another upload or loader destruction.
+## Publication and retry
+
+`PreparedAssets` owns decoded pixels and definitions, with no provider or native
+handles. Preparation failure changes no caches or published metadata. Upload
+consumes the supplied value on the provider's loading owner; moving it into a
+request transfers that ownership. Retry needs a fresh preparation or a preserved
+copy. Pending platform requests can cancel before execution under the
+[dispatcher contract](../runtime/thread-dispatch.md); executing uploads have no
+rollback or mid-batch cancellation contract.
+
+Each created cache entry can become visible before the next entry is created.
+Upload failure preserves completed entries and the last successful metadata
+snapshot. Allocation of that final snapshot can fail even after all entries exist.
+Retry skips existing keys rather than replacing them, so published manifests
+describe submitted definitions rather than an atomic view of current caches.
+Changed files under the same keys do not provide hot reload. Readers retain old
+metadata snapshots after another upload or loader destruction.
+
+`load_assets(provider)` is the synchronous prepare/upload convenience path.
 Construct separate loaders for separate roots. Legacy `Loader::get(root)` remains
 available but rejects a different root after its first initialization; `get()` only
 retrieves an already-initialized singleton.

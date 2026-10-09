@@ -9,9 +9,9 @@ decision does not remove the Font resource/layout interface.
 STBFont::load_font(path, font_size, provider) reads the supplied font file and bakes
 printable-ASCII geometry, advances, line height, and an alpha atlas. System-font
 discovery only helps locate a default; it does not restrict this loader. A bundled
-font uses the same entry point. FontMgr::load_assets accepts supplied paths too,
-currently loading them at size 32 and selecting the first published path as its
-default. Collection loading selects face zero. The separate
+font uses the same entry point. The
+[FontMgr guide](../assets/file-and-font-discovery.md#fontmgr-loading-and-default-lifetime)
+owns collection-face, default selection and loading policy. The separate
 [Unicode service](../assets/text-layout.md) supports shaped text and fallback while
 preserving legacy font interfaces.
 

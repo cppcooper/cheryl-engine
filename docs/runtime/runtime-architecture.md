@@ -34,24 +34,10 @@ Construct an owned `Loader(root)` for each root. `manifests()` returns a retaine
 immutable snapshot; singleton compatibility rejects a different root after its
 first initialization.
 
-Shader-cache loading only links and publishes explicit programs. Frame preparation
-resolves pass cameras and draw/material parameters into owned packets. MaterialMgr
-publishes complete recipes after successful construction; existing frames retain
-old generations and failures preserve the previous entry. Immediate draw APIs are
-retired. OpenGLResourceProvider builds typed pipelines/materials through explicit
-backend mappings; common submission never binds native resources.
-
-Backend providers implement `create_image(DecodedImage)` and
-`upload_geometry(span<const Vertex2D>, topology)`. The shared-pointer/count
-geometry overload remains a synchronous compatibility wrapper. An OpenGL context
-adapter also implements `is_current()`; thread identity alone cannot establish
-that its context is selected.
-
-Generic asset loading does not choose a host font or infer shader recipes. Those
-are application bootstrap choices. Sprite/tileset definitions and image upload
-remain generic. CPU preparation and upload are described in
-[asset-loading.md](../assets/asset-loading.md); runtime ownership and frame handoff are in
-[runtime-frame-boundary.md](runtime-frame-boundary.md).
+The [loading guide](../assets/asset-loading.md) owns preparation/publication and
+application bootstrap; the [render guide](../rendering/pipelines-and-materials.md)
+owns program/material construction and packet resolution. Optional
+[audio](audio.md) is application-owned outside the runtime adapter graph.
 
 ## Execution and shutdown
 
@@ -69,30 +55,12 @@ thread remains separate from that general CPU capacity. See
 [thread-dispatch.md](thread-dispatch.md), [event-delivery.md](event-delivery.md), and
 [worker-execution.md](worker-execution.md).
 
-Runtime shutdown closes context worker submissions, stops simulation, and pumps
-accepted platform dependencies while simulation joins. The game then quiesces its
-external producers while targets remain alive. Accepted CPU work settles before
-remaining platform requests cancel, frames recycle, and game/input/graphics cleanup
-runs. An injected pool's unrelated application groups remain open. Cleanup preserves
-the first failure, including after partial initialization, and reports later cleanup
-failures with phase context. Native callback and emergency fallback boundaries are
-documented in [failure-reporting.md](failure-reporting.md).
+The [frame boundary](runtime-frame-boundary.md#shutdown) owns shutdown ordering,
+including producer quiescence and accepted-work completion. Native callback and
+emergency fallback boundaries are in [failure-reporting.md](failure-reporting.md).
 
 ## Current limits
 
-Singleton asset caches support one active provider/loading-owner domain. Repeated
-generic loads preserve existing keys; upload is not an atomic hot-reload transaction.
-Failed upload may leave completed cache entries while published metadata stays at
-its previous successful snapshot. Material recipe reload has a separate successful-
-replacement contract that preserves retained generations.
-
-The [tile selector](../assets/asset-values-and-playback.md#tile-selection) resolves
-declared rules; the game supplies neighborhoods and their meanings. The
-[Unicode service](../assets/text-layout.md) supplies shaping, bidi, fallback and
-wrapping alongside legacy ASCII font APIs. Committed text and the demo's scalar
-editor do not provide grapheme-aware editing or IME. Optional
-[audio](audio.md) is application-owned outside the runtime adapter graph.
-
-World/physics, networking, automatic cache eviction and advanced worker topology
-remain consumer-driven extensions. The [planning catalogue](../planning/README.md)
-tracks unresolved work and artwork metadata requirements.
+The [status inventory](../STATUS.md) records source-backed capabilities and known
+gaps at its review baseline. The [planning catalogue](../planning/README.md) links
+their owning plans; each subject guide defines its current capability limits.

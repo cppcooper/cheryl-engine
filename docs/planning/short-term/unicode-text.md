@@ -1,19 +1,10 @@
 # Unicode text layout and native acceptance
 
-The Unicode service is implemented, with initial Linux Release Engine-only
-regressions/header probes and native demo compilation accepted. The subsequent
-font-weight selection change still needs compilation and dedicated
-regressions; Linux appearance and replacement observations remain pending.
-The [Unicode service](../../assets/text-layout.md) owns the current
-font, layout and resource contracts; legacy Font/STBFont/FFont and toolkit text APIs
-retain their own roles.
-
-The selected scope is English, accented Latin including French/German,
-Russian/Cyrillic, automatic/explicit paragraph direction, mixed runs and optional
-local-width wrapping. Color emoji, wider CJK acceptance and grapheme/bidi editing
-or IME are outside this task. The separate run service pairs face-qualified glyph
-placements with complete immutable page generations; the legacy Font interface's
-single atlas/geometry pair cannot represent that fallback model.
+Complete the initial grayscale [Unicode scope](../../assets/text-layout.md),
+including Latin/Cyrillic, paragraph direction, fallback and local-width wrapping.
+The subject guide owns the font, layout and resource contracts and the rationale
+for a separate service. Color emoji, wider CJK acceptance and editing/IME remain
+outside this task.
 
 ## Progress
 
@@ -44,17 +35,6 @@ single atlas/geometry pair cannot represent that fallback model.
   discovery/order rather than those numeric-weight boundaries.
 - [ ] Accept sequential/concurrent visual, fallback and replacement observations
   through [TR9](../../testing-requests.md#tr9-qa-unicode-text-rendering).
-
-## Remaining acceptance
-
-Observe supported glyphs and combining marks, mixed/pure RTL with natural digit
-order, width changes without split graphemes, explicit file/family and embedded
-fallback selection, and retained text through rapid replacement/shutdown.
-Refresh the toolkit-free demo using the queue's shared preparation, then use its
-launch variants and report unavailable layouts or preferences;
-automatic absence proves graceful fallback, not successful family loading.
-Scalar editing does not establish a grapheme/bidi caret contract. A skipped/native
-unselected run leaves appearance pending even when CPU checks pass.
 
 Possible [color emoji and measured layout/cache work](../mid-term/README.md)
 follow this task without changing its acceptance scope.

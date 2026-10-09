@@ -4,6 +4,7 @@ Choose an entry point for the work you are doing:
 
 | Task | Start here |
 | --- | --- |
+| Check implemented, partial or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
 | Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
 | Write a game | [Application composition and game hooks](development/consuming-engine.md), then [demo](../projects/apps/demo/README.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
@@ -13,15 +14,6 @@ Choose an entry point for the work you are doing:
 
 The system references below describe API contracts, ownership, units and failure
 behavior. Read the relevant subject rather than the whole documentation tree.
-
-## Contents
-
-- [Runtime](#runtime)
-- [Assets](#assets)
-- [Rendering](#rendering)
-- [Resources](#resources)
-- [Development](#development)
-- [Planning](#planning)
 
 ## Runtime
 
@@ -52,13 +44,11 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 ## Rendering
 
 - [Pipelines, materials, and render submission](rendering/pipelines-and-materials.md)
-- [Asset and renderer header boundaries](rendering/asset-render-boundaries.md)
 
 ## Resources
 
-- [Resource residency and maintenance](resources/resource-residency.md)
-- [Consumer resource contract](resources/consumer-resource-contract.md)
-- [Resource lifetime and reservation](resources/resource-lifetime.md)
+- [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
+- [CPU memory lifetime and reservation](resources/resource-lifetime.md)
 - [FFont deprecation and font-file migration](resources/legacy-ffont.md)
 
 ## Development
