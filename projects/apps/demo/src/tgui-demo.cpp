@@ -32,11 +32,11 @@ namespace {
         definition.topology = PrimitiveTopology::Triangles;
         definition.state = {BlendMode::StraightAlpha, DepthMode::Disabled, false, CullMode::None};
         definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection}};
-        definition.program_sources = {root / "shaders/tgui.vert", root / "shaders/tgui-solid.frag"};
+        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
         const GLSLPipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
         CE::UI::TGUI::Materials result;
         result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
-        definition.program_sources[1] = root / "shaders/tgui-textured.frag";
+        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
         definition.parameters.push_back({"image", ParameterType::Sampler2D});
         const GLSLPipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
         result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
@@ -70,7 +70,7 @@ namespace {
     }
 }
 
-struct DemoUi::State {
+struct DemoUi::TguiState {
     CE::Input::iInputSystem& input;
     CE::Engine::PlatformDispatcher::Submission platform;
     CE::UI::TGUI::SceneUploader uploader;
@@ -89,7 +89,7 @@ struct DemoUi::State {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    State(CE::Engine::EngineContext& engine, const std::filesystem::path& root)
+    TguiState(CE::Engine::EngineContext& engine, const std::filesystem::path& root)
     : input(engine.input()),
       platform(engine.platform_dispatcher().submission()),
       uploader(engine.resources()),
@@ -241,41 +241,41 @@ struct DemoUi::State {
 };
 
 DemoUi::DemoUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root)
-: state_(std::make_unique<State>(engine, asset_root)) {}
+: tgui_state_(std::make_unique<TguiState>(engine, asset_root)) {}
 
 DemoUi::~DemoUi() = default;
 
 bool DemoUi::update(const CE::GFramework::TickContext& tick, const DemoUiStatus& status) {
-    auto& state = *state_;
-    if (!state.session)
-        state.create_widgets(tick);
+    auto& tgui = *tgui_state_;
+    if (!tgui.session)
+        tgui.create_widgets(tick);
     else
-        state.session->set_view(tick.logical_size, tick.framebuffer_size);
-    state.handle_input(tick);
-    state.session->update_time(tick.delta_seconds);
-    state.status_label->setText(
+        tgui.session->set_view(tick.logical_size, tick.framebuffer_size);
+    tgui.handle_input(tick);
+    tgui.session->update_time(tick.delta_seconds);
+    tgui.status_label->setText(
         std::format(
             "Updates: {}   Camera: {:.0f}, {:.0f}\nClicks: {}   Wheel: {:.2f}\nGamepad A: {} presses", status.updates, status.pan_x,
             status.pan_y, status.clicks, status.wheel, status.gamepad_presses
         )
     );
     try {
-        if (CE::UI::TGUI::adopt_scene(state.pending, state.scene))
-            state.upload_error.clear();
+        if (CE::UI::TGUI::adopt_scene(tgui.pending, tgui.scene))
+            tgui.upload_error.clear();
         // No queue growth: keep one complete scene while its replacement waits.
-        if (!state.pending.valid())
-            state.pending = state.uploader.submit(state.platform, state.session->record(), state.materials);
+        if (!tgui.pending.valid())
+            tgui.pending = tgui.uploader.submit(tgui.platform, tgui.session->record(), tgui.materials);
     } catch (const std::exception& error) {
-        state.upload_error = error.what(); // The last complete scene remains usable.
+        tgui.upload_error = error.what(); // The last complete scene remains usable.
     }
-    return std::exchange(state.reset_requested, false);
+    return std::exchange(tgui.reset_requested, false);
 }
 
 void DemoUi::write(CE::RenderAPIs::RenderFrameWriter& frame) const {
-    if (state_->visible)
-        state_->scene.write(frame);
+    if (tgui_state_->visible)
+        tgui_state_->scene.write(frame);
 }
 
 std::string_view DemoUi::error() const {
-    return state_->upload_error;
+    return tgui_state_->upload_error;
 }

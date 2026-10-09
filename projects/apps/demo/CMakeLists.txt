@@ -16,6 +16,11 @@ set_target_properties(${TARGET_APP_DEMO} PROPERTIES
 target_compile_definitions(${TARGET_APP_DEMO} PRIVATE CHERYL_SOURCE_DIR="${CHERYL_REPOSITORY_ROOT}")
 target_link_libraries(${TARGET_APP_DEMO} PRIVATE ${LINKAGE_COMPOSITION_APP_DEMO_BASE})
 
+if(TARGET Cheryl::Audio::Miniaudio)
+    target_compile_definitions(${TARGET_APP_DEMO} PRIVATE CHERYL_DEMO_AUDIO=1)
+    target_link_libraries(${TARGET_APP_DEMO} PRIVATE Cheryl::Audio::Miniaudio)
+endif()
+
 if(TARGET Cheryl::UI::TGUI)
     target_compile_definitions(${TARGET_APP_DEMO} PRIVATE CHERYL_DEMO_TGUI=1)
     target_link_libraries(${TARGET_APP_DEMO} PRIVATE ${LINKAGE_COMPOSITION_APP_DEMO_UI_TGUI})

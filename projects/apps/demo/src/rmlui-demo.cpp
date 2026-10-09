@@ -29,11 +29,11 @@ namespace {
         definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection}};
         // These application shaders multiply vertex/image RGBA for both toolkits.
         // RmlUi's pipeline preserves its premultiplied output through blending.
-        definition.program_sources = {root / "shaders/tgui.vert", root / "shaders/tgui-solid.frag"};
+        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
         const GLSLPipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
         CE::UI::RmlUi::Materials result;
         result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
-        definition.program_sources[1] = root / "shaders/tgui-textured.frag";
+        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
         definition.parameters.push_back({"image", ParameterType::Sampler2D});
         const GLSLPipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
         result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
@@ -57,7 +57,7 @@ namespace {
     }
 }
 
-struct DemoRmlUi::State {
+struct DemoRmlUi::RmlUiState {
     CE::Input::iInputSystem& input;
     CE::Engine::PlatformDispatcher::Submission platform;
     CE::UI::RmlUi::SceneUploader uploader;
@@ -79,7 +79,7 @@ struct DemoRmlUi::State {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    State(CE::Engine::EngineContext& engine, const std::filesystem::path& root, std::filesystem::path font)
+    RmlUiState(CE::Engine::EngineContext& engine, const std::filesystem::path& root, std::filesystem::path font)
     : input(engine.input()),
       platform(engine.platform_dispatcher().submission()),
       uploader(engine.resources()),
@@ -87,7 +87,7 @@ struct DemoRmlUi::State {
       root(root),
       font(std::move(font)) {}
 
-    ~State() {
+    ~RmlUiState() {
         // Runtime has joined simulation. Listeners use SDK observer storage and
         // must detach/die while Core still lives, before final session teardown.
         if (document) {
@@ -110,7 +110,7 @@ struct DemoRmlUi::State {
         if (!session->load_font(font, "demo"))
             throw CE::Exceptions::failed_operation(CE_HERE, "Cannot load the demo RmlUi font");
         session->set_view(tick.logical_size, tick.framebuffer_size);
-        const auto source = (root / "ui/demo.rml").u8string();
+        const auto source = (root / "graphics/ui/demo.rml").u8string();
         document = session->context().LoadDocument(Rml::String(source.begin(), source.end()));
         if (!document)
             throw CE::Exceptions::failed_operation(CE_HERE, "Cannot load the demo RML document");
@@ -180,36 +180,36 @@ struct DemoRmlUi::State {
 };
 
 DemoRmlUi::DemoRmlUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root, std::filesystem::path font)
-: state_(std::make_unique<State>(engine, asset_root, std::move(font))) {}
+: rmlui_state_(std::make_unique<RmlUiState>(engine, asset_root, std::move(font))) {}
 
 DemoRmlUi::~DemoRmlUi() = default;
 
 bool DemoRmlUi::update(const CE::GFramework::TickContext& tick, const DemoUiStatus& status) {
-    auto& state = *state_;
-    if (!state.session)
-        state.create_widgets(tick);
+    auto& rmlui = *rmlui_state_;
+    if (!rmlui.session)
+        rmlui.create_widgets(tick);
     else
-        state.session->set_view(tick.logical_size, tick.framebuffer_size);
-    state.session->update_time(tick.delta_seconds);
-    state.handle_input(tick);
-    state.status_label->SetInnerRML(
+        rmlui.session->set_view(tick.logical_size, tick.framebuffer_size);
+    rmlui.session->update_time(tick.delta_seconds);
+    rmlui.handle_input(tick);
+    rmlui.status_label->SetInnerRML(
         std::format("Updates: {}<br/>Camera: {:.0f}, {:.0f} — Clicks: {}", status.updates, status.pan_x, status.pan_y, status.clicks)
     );
     try {
-        if (CE::UI::RmlUi::adopt_scene(state.pending, state.scene))
-            state.upload_error.clear();
-        if (!state.pending.valid())
-            state.pending = state.uploader.submit(state.platform, state.session->record(), state.materials);
+        if (CE::UI::RmlUi::adopt_scene(rmlui.pending, rmlui.scene))
+            rmlui.upload_error.clear();
+        if (!rmlui.pending.valid())
+            rmlui.pending = rmlui.uploader.submit(rmlui.platform, rmlui.session->record(), rmlui.materials);
     } catch (const std::exception& error) {
-        state.upload_error = error.what();
+        rmlui.upload_error = error.what();
     }
-    return std::exchange(state.reset_requested, false);
+    return std::exchange(rmlui.reset_requested, false);
 }
 
 void DemoRmlUi::write(CE::RenderAPIs::RenderFrameWriter& frame) const {
-    if (state_->visible)
-        state_->scene.write(frame);
+    if (rmlui_state_->visible)
+        rmlui_state_->scene.write(frame);
 }
 std::string_view DemoRmlUi::error() const {
-    return state_->upload_error;
+    return rmlui_state_->upload_error;
 }

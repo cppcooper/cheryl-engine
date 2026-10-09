@@ -15,8 +15,8 @@ namespace CE::Engine {
 
 // Independent application presentation with native RML/RCSS documents.
 class DemoRmlUi final {
-    struct State;
-    std::unique_ptr<State> state_;
+    struct RmlUiState;
+    std::unique_ptr<RmlUiState> rmlui_state_;
 
 public:
     DemoRmlUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root, std::filesystem::path font);

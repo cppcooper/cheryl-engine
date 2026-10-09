@@ -16,8 +16,8 @@ namespace CE::Engine {
 
 // Application-owned presentation; Game keeps only neutral status and actions.
 class DemoUi final {
-    struct State;
-    std::unique_ptr<State> state_;
+    struct TguiState;
+    std::unique_ptr<TguiState> tgui_state_;
 
 public:
     // Build application materials on platform, without creating toolkit objects.
