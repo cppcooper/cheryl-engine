@@ -2,40 +2,50 @@
 
 **Review baseline:** [`65be712f`](https://github.com/cppcooper/cheryl-engine/commit/65be712f03019e50f0c86524f4e64c131926756d) on branch [`engine-foundations-and-consumer-facilities`](https://github.com/cppcooper/cheryl-engine/tree/engine-foundations-and-consumer-facilities) · **Reviewed:** 2026-10-08
 
-> **Scope:** Source-code inspection of the engine, backend modules, build configuration, demo, and test sources. No compilation, tests, hardware QA, or deployment checks were performed as part of this review. These classifications are a snapshot at the reviewed commit, **not automatically updated release guarantees**.
+> **Original review scope:** Source-code inspection of the engine, backend modules, build configuration, demo, and test sources. No compilation, tests, hardware QA, or deployment checks were performed as part of that review. The inventory starts at the reviewed commit, with the focused reconciliation below; classifications are **not automatically updated release guarantees**.
 
-**Classification:** **Partial / QA pending** = implemented functionality with known limitations or outstanding native acceptance; **Deferred** = deliberately postponed, unselected, or blocked work; **Not implemented** = no complete functional implementation identified; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
+**Focused update:** 2026-10-09 — Reconciles the selected integration priorities,
+window/HID/RmlUi extension deferrals and recorded Linux QA acceptance. The original
+source-review baseline and qualitative estimate remain unchanged; this is not a
+complete new review, build or test run.
 
-The following **four tables** comprise 141 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
+**Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = nearest scheduled work awaiting design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work; **Not implemented** = no complete functional implementation identified; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
-## 1. Partial / QA pending
+The following **five tables** comprise 139 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
 
-| Feature / integration | Status | Description / scope                                                                                                                                                        | Investigate |
-| --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| Worker CPU placement | Partial | Linux CPU affinity, required/preferred policies and fallback behavior are implemented; automatic cache-domain discovery and NUMA/NUCA placement are absent.                   | [worker-affinity.cpp](../projects/engine/src/core/engine/worker-affinity.cpp) |
-| Native controller input | Partial | Gainput-driven gamepad collection exists, but complete HID detection, reports and lifecycle behavior are not accepted; that backend work is listed separately as deferred. | [input-system.cpp](../projects/modules/platform/native-glfw/src/core/controls/input-system.cpp) |
-| Active rendering windows | Partial | A display may own several windows, but switching the active rendering window is explicitly rejected.                                                                       | [display-system.cpp](../projects/modules/platform/native-glfw/src/core/display/display-system.cpp) |
-| TGUI texture sampling | Partial | Recorded UI scenes and textures work; nearest-neighbor texture/font sampling is rejected under the present provider contract.                                              | [rendering.cpp](../projects/modules/ui/tgui/src/rendering.cpp) |
-| RmlUi rendering effects | Partial | Core scene recording and rectangular clipping exist; advanced effects are not an exposed capability in the current adapter.                                                | [session.h](../projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h) |
-| Unicode rendering acceptance | QA pending at review | At the review baseline, native appearance, wrapping and replacement remained unobserved; the text guide owns current accepted scope and bidi coverage limits.               | [text guide](assets/text-layout.md#native-acceptance-scope) |
-| Native audio acceptance | QA pending at review | At the review baseline, audible stereo output and sustained WAV streaming remained unobserved; the module guide owns current acceptance scope.                            | [audio guide](../projects/modules/audio/miniaudio/README.md#acceptance-boundaries) |
-| Sprite/tile showcase acceptance | QA pending at review | At the review baseline, native sample rendering/playback and optional-load behavior needed QA; the demo guide owns current acceptance and shader/resize coverage limits.    | [demo guide](../projects/apps/demo/README.md#tile-and-sprite-samples) |
-
-*8 entries.*
-
-## 2. Deferred
+## 1. Partial
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
-| Gainput HID backend | Blocked · TR6 | Complete backend initialization, device identity, retained HID reports and lifecycle notification ownership; establish a reliable observation harness. | [HID roadmap](planning/develop-review-and-development-plan.md) |
+| Worker CPU placement | Partial · near term | Linux CPU affinity, required/preferred policies and fallback behavior exist. Automatic cache/node discovery and NUMA/NUCA integration remain absent; CPU, memory and cache-locality scope needs design. | [NUMA/NUCA roadmap](planning/develop-review-and-development-plan.md#numa-and-nuca), [worker contract](runtime/worker-execution.md) |
+| TGUI texture sampling | Partial · near term | Recorded scenes and textures work; nearest texture/font sampling rejects under the current provider contract. Complete backend sampling and integrate toolkit smoothing with retained scenes. | [sampling roadmap](planning/develop-review-and-development-plan.md#texture-sampling-and-tgui), [rendering.cpp](../projects/modules/ui/tgui/src/rendering.cpp) |
+
+*2 entries.*
+
+## 2. Planned
+
+| Feature / integration | Status | Description / scope | Investigate |
+| --- | --- | --- | --- |
+| Shader manifest schema and indexed material loading | Planned · near term | Define versioned shader/material documents and CPU recipes using graphics-index selection, backend-owned construction and failure-safe explicit reload; format/provider design remains open. | [indexed-material-loading.md](planning/short-term/indexed-material-loading.md) |
+| Render batching | Planned · near term | Measure draw/state-switch overhead and batch compatible contiguous packets, including sampling and immutable resource generations, while preserving authored order. | [batching roadmap](planning/develop-review-and-development-plan.md#render-batching) |
+| External Debug terminal | Planned · near term | Native Debug output viewer with startup/shutdown/crash lifetime and preserved test-runner output; platform, transport and ownership decisions remain open. | [debug-console.md](planning/short-term/debug-console.md) |
+
+*3 entries.*
+
+## 3. Deferred
+
+| Feature / integration | Status | Description / scope | Investigate |
+| --- | --- | --- | --- |
+| Multiple active rendering windows | Deferred | A display can own several windows, but switching the selected rendering window rejects. Multiple active contexts/presentation and their ownership require a separately selected extension. | [window plan](planning/long-term/README.md#multiple-active-rendering-windows) |
+| Gainput HID backend | Deferred · blocked TR6 | Backend initialization, device identity, retained reports and lifecycle notifications remain unfinished. HID acceptance is deferred with backend work and the observation harness. | [HID plan](planning/long-term/README.md#deferred-hid-integration) |
+| RmlUi rendering effects | Deferred | Core document/font/input/clipping and retained-upload integration exists. Masks, transforms, layers, filters, custom shaders and repeating texture coordinates remain unsupported extensions. | [UI extension plan](planning/long-term/README.md#ui-adapters) |
 | Windows native acceptance | Deferred | Verify GLFW/Gainput input, resize/events, controller behavior and HID notifications on Windows; some guarded platform-specific code already exists. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
 | macOS native acceptance | Deferred | Validate dependency configuration, windowing, input and graphics behavior on macOS. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
 | Wayland native acceptance | Deferred | Verify GLFW Wayland windows, focus, input and OpenGL presentation; X11 is the active desktop acceptance path. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
 | Alternative graphics APIs | Deferred | No selected Vulkan, Metal or Direct3D renderer; future modules should test existing neutral graphics/resource contracts. | [README.md](planning/long-term/README.md) |
-| Render batching | Deferred | Measure state-switch and draw overhead; batch compatible contiguous draw packets with generation-aware compatibility keys. | [README.md](planning/mid-term/README.md) |
 | Reorder-safe render sorting | Deferred | Sorting is not performed; a future policy must identify explicitly reorderable regions and preserve required authored draw order. | [README.md](planning/mid-term/README.md) |
 | Text shaping/glyph optimization | Deferred | Profile paragraph shaping, glyph preparation and upload before adding caches or accelerated line fitting. | [README.md](planning/mid-term/README.md) |
-| Color emoji glyphs | Deferred | Specify accepted color-font formats, RGBA page handling, material semantics and multi-codepoint fallback after grayscale Unicode QA. | [README.md](planning/mid-term/README.md) |
+| Color emoji glyphs | Deferred | Specify accepted color-font formats, RGBA page handling, material semantics and multi-codepoint fallback beyond the accepted initial grayscale scope. | [README.md](planning/mid-term/README.md) |
 | Adaptive timing adviser | Deferred | Potential profiling-driven timing recommendations without changing explicit simulation/input policy or silently retiming updates. | [README.md](planning/mid-term/README.md) |
 | Steam API services | Deferred | Define application-scoped service session, callback scheduling, SDK selection and integration requirements from a real consumer. | [README.md](planning/long-term/README.md) |
 | Steam Input | Deferred | Define controller ownership, device selection and native/Steam interaction; prove SDK-free input policies before transport. | [README.md](planning/long-term/README.md) |
@@ -43,13 +53,12 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 | Multiple native input owners | Deferred | Generalize beyond one Gainput-initialized owner and coordinate native notification-window lifetime where demanded by consumers. | [README.md](planning/long-term/README.md) |
 | Additional UI toolkit modules | Deferred | Add another toolkit only for a demonstrated consumer requirement; preserve neutral Engine contracts and toolkit-owned widget APIs. | [README.md](planning/long-term/README.md) |
 | Alternative audio SDK (e.g., FMOD) | Deferred / unselected | No alternative audio module is selected; the audio contracts admit replacement implementations when a consumer justifies one. | [audio/](../projects/modules/audio/) |
-| External Debug terminal | Planned · unscheduled | Developer-facing native terminal/logging interface is scoped separately from the eventual in-game graphical console. | [debug-console.md](planning/unscheduled/debug-console.md) |
 | In-game developer console | Deferred | Graphical command/output panel, history, scrolling and input routing are described as a future engine-owned facility. | [README.md](planning/long-term/README.md) |
 | Expanded manifest families | Deferred | Broader declarative asset formats remain long-term until a specific application requires their semantics. | [README.md](planning/long-term/README.md) |
 
 *19 entries.*
 
-## 3. Not implemented
+## 4. Not implemented
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
@@ -78,7 +87,7 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 
 *22 entries.*
 
-## 4. Implemented
+## 5. Implemented
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
@@ -109,6 +118,7 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 | Capture leases | Implemented | RAII capture subscriptions for ordered events and committed text. | [input-capture.h](../projects/engine/include/cheryl/core/controls/input-capture.h) |
 | Keyboard focus routing | Implemented | Focus IDs, exclusive routing and epoch-aware leases for UI/gameplay consumers. | [input-routing.h](../projects/engine/include/cheryl/core/controls/input-routing.h) |
 | GLFW keyboard/mouse adapter | Implemented | Collects GLFW events and maps Gainput/native observations to Cheryl records. | [input-system.cpp](../projects/modules/platform/native-glfw/src/core/controls/input-system.cpp) |
+| Native controller input (non-HID) | Implemented | Gainput-driven gamepad collection, retained-state and disconnect reconciliation exist; the Linux joystick path has an accepted HID-disabled baseline. | [native module](../projects/modules/platform/native-glfw/README.md#controller-backend-limits) |
 | Display/monitor abstraction | Implemented | Monitor enumeration, primary selection, logical and framebuffer sizes and content scale. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
 | GLFW window modes | Implemented | Native resizing, normal/borderless/fullscreen transitions, close detection and cursor visibility. | [window.cpp](../projects/modules/platform/native-glfw/src/core/display/window.cpp) |
 | **Rendering** | | | |
@@ -149,7 +159,7 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 | System font discovery | Implemented | Searches font roots and selects installed font-file candidates. | [fonts-system.h](../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h) |
 | **Ui and audio** | | | |
 | TGUI UI bridge | Implemented | Owns toolkit session, widget APIs, input translation, CPU scene recording and scene upload. | [tgui/](../projects/modules/ui/tgui/) |
-| RmlUi UI bridge | Implemented | Owns document/context session, keyboard/pointer input, UI geometry capture and scene upload. | [rmlui/](../projects/modules/ui/rmlui/) |
+| RmlUi UI bridge | Implemented | Owns native documents/fonts, keyboard/text/pointer input, rectangular clipping and retained scene uploads. Core integration is sufficient to defer further extensions. | [rmlui/](../projects/modules/ui/rmlui/) |
 | Nonblocking UI scene adoption | Implemented | Uploads recorded UI resources on graphics owner and adopts completed scene futures without blocking update. | [scene.h](../projects/modules/ui/tgui/include/cheryl/ui/tgui/scene.h) |
 | Audio Clip/Voice/System API | Implemented | Backend-neutral immutable PCM clips, synchronized voice control and independent audio lifecycle. | [system.h](../projects/engine/include/cheryl/audio/system.h) |
 | WAV/FLAC/MP3 decoding | Implemented | miniaudio-based CPU decode with supported-format checks and bounded output size. | [decode.cpp](../projects/modules/audio/miniaudio/src/decode.cpp) |
@@ -173,16 +183,16 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 | Named library target aliases | Implemented | Consistent identities such as Cheryl::Engine, Cheryl::NativeGLFW and Cheryl::Audio::Miniaudio. | [CherylTargets.cmake](../cmake/CherylTargets.cmake) |
 | Standalone module composition | Implemented | Module entry points assemble their local dependency graph without requiring every other module. | [CherylModules.cmake](../cmake/CherylModules.cmake) |
 | Build-tree consumers | Implemented | Embeddable source consumers can use add_subdirectory() and target-linked Engine/module libraries. | [consuming-engine.md](development/consuming-engine.md) |
-| GoogleTest suites | Implemented · not run | Engine/module unit, suite, aggregate and optional acceptance runners are declared and have test source. | [CherylTests.cmake](../cmake/CherylTests.cmake) |
-| CTest discovery | Implemented · not run | Selected GoogleTest runners are registered with CTest using test discovery. | [CherylTests.cmake](../cmake/CherylTests.cmake) |
-| OpenGL native acceptance sources | Implemented · not run | Existing tests exercise clipping, resource lifetime, input recovery, renderer shutdown and failure paths. | [native-opengl.cpp](../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp) |
-| Cross-UI integration test | Implemented · not run | Source/target for a consumer linking both TGUI and RmlUi modules. | [ui-coexist/](../projects/tests/ui-coexist/) |
-| Consumer header probes | Implemented · not run | Checks selected public API headers and detects accidental native GL/GLFW leakage into neutral includes. | [CherylConsumers.cmake](../cmake/CherylConsumers.cmake) |
+| GoogleTest suites | Implemented | Engine/module unit, suite, aggregate and optional acceptance runners are declared and have test source; subject guides own configuration-specific acceptance. | [CherylTests.cmake](../cmake/CherylTests.cmake) |
+| CTest discovery | Implemented | Selected GoogleTest runners are registered with CTest using test discovery. | [CherylTests.cmake](../cmake/CherylTests.cmake) |
+| OpenGL native acceptance sources | Implemented | Existing tests exercise clipping, resource lifetime, input recovery, renderer shutdown and failure paths; source presence does not establish every native path. | [native-opengl.cpp](../projects/modules/graphics/opengl/tests/acceptance/src/native-opengl.cpp) |
+| Cross-UI integration test | Implemented | Source/target for a consumer linking both TGUI and RmlUi modules; the UI guide records selected root-composition acceptance. | [UI validation](development/ui-adapters.md#repeating-linux-root-validation) |
+| Consumer header probes | Implemented | Checks selected public API headers and detects accidental native GL/GLFW leakage into neutral includes. | [CherylConsumers.cmake](../cmake/CherylConsumers.cmake) |
 | Native demo application | Implemented | Runnable composition example for input, camera, asset drawing, text and optional UI toolkits. | [main.cpp](../projects/apps/demo/src/main.cpp) |
 | Debug sanitizers | Implemented | Non-MSVC Debug configuration enables address/undefined-behavior sanitizers. | [CMakeLists.txt](../CMakeLists.txt) |
 | Third-party dependency wiring | Implemented | Pinned submodules plus FreeType, HarfBuzz, ICU, GLM, STB, JSON, spdlog, backward-cpp, CTTI and CLI11. | [CherylDependencies.cmake](../cmake/CherylDependencies.cmake) |
 
-*92 entries.*
+*93 entries.*
 
 ## Assessment and direction
 
@@ -190,8 +200,17 @@ The review's qualitative estimate of foundational architecture maturity is
 approximately **85%**. It concerns established engine foundations, not completion
 of the roadmap, and is not calculated from feature counts, coverage or test results.
 The implemented facilities support a desktop 2D consumer; higher-level game services
-remain consumer-selected. Close the pending acceptance work, then use a small real
-game to establish which extensions and performance changes warrant shared ownership.
+remain consumer-selected. The nearest selected integrations are texture sampling/TGUI
+and NUMA/NUCA, followed by shader manifests, batching and the external Debug terminal.
+
+Recorded Linux acceptance covers the initial
+[Unicode scope](assets/text-layout.md#native-acceptance-scope),
+[audio baseline](../projects/modules/audio/miniaudio/README.md#acceptance-boundaries)
+and [sprite/tile samples](../projects/apps/demo/README.md#tile-and-sprite-samples),
+as well as the selected startup/UI composition. Their guides retain meaningful
+coverage limits, including bidi observations, compressed streaming, shader-failure
+recovery and simultaneous close/resize. Dedicated new regressions and supplied-SDK
+composition gaps remain in their owning plans; they are not blanket pending QA.
 
 The [runtime architecture](runtime/runtime-architecture.md) explains system composition;
 [subject guides](README.md) own detailed contracts. The

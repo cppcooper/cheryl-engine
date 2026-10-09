@@ -57,7 +57,9 @@ stores no unit. Asset submission selects the requested key/unit explicitly.
 Two material recipes can retain the same image with different unit requests
 without mutating each other's recipe or the cached image. Sampling/filter/wrap
 policy remains the image's existing upload policy; per-material sampler objects
-are a separate extension, not claimed by this foundation.
+are not supplied by this foundation. The
+[near-term sampling/TGUI workstream](../planning/develop-review-and-development-plan.md#texture-sampling-and-tgui)
+owns the pending image-versus-binding sampling contract.
 
 ## Frame and recipe integration
 

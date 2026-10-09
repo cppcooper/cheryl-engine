@@ -7,6 +7,12 @@ recording and retained scene upload. The
 [adapter-author guide](../../../../docs/development/ui-adapters.md) describes the
 engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 
+This core integration is sufficient for the selected Linux root-composition scope.
+Further rendering effects and OS services are
+[deferred extensions](../../../../docs/planning/long-term/README.md#ui-adapters).
+Dedicated regression and supplied-Core acceptance gaps remain in the
+[startup/UI follow-up](../../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
+
 ## Selection and dependency
 
 Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,

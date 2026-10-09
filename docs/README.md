@@ -4,7 +4,7 @@ Choose an entry point for the work you are doing:
 
 | Task | Start here |
 | --- | --- |
-| Check implemented, partial or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
+| Check implemented, partial, planned or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
 | Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
 | Write a game | [Application composition and game hooks](development/consuming-engine.md), then [demo](../projects/apps/demo/README.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |

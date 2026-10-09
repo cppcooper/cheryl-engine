@@ -190,6 +190,8 @@ this policy, including its mipmap filtering. Nearest sampling and
 `setSmooth(false)` reject before changing an adapter texture. Supporting another
 policy requires a neutral provider contract; silently accepting an unsupported
 toolkit setting would change appearance.
+Completing that backend contract and TGUI texture/font smoothing integration is
+[near-term work](../../../../docs/planning/develop-review-and-development-plan.md#texture-sampling-and-tgui).
 
 `RenderTarget` receives a view, viewport and target extent in logical window units.
 Supply copied framebuffer/logical ratios through `set_pixel_scale` for toolkit

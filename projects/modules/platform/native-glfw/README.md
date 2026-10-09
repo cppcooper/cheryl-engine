@@ -168,7 +168,7 @@ HID device visibility and access also require observation in the user's desktop
 session; successful Linux joystick reads do not establish HID access.
 The [Gainput handoff](../../../../extern/gainput/TODO.md) owns the deferred backend
 correction and adaptive-trigger sequence. The
-[HID integration](../../../../docs/planning/develop-review-and-development-plan.md#deferred-hid-integration)
+[HID integration](../../../../docs/planning/long-term/README.md#deferred-hid-integration)
 tracks Cheryl's remaining lifetime and observation requirements.
 
 ### HID capability and platform scope

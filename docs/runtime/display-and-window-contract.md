@@ -48,6 +48,8 @@ title uses a generated title. Successful creation does not make the window activ
 window and repeated selection of that window. It rejects a foreign window or replacing
 the selected one. Selection does not make a graphics context current or establish
 renderer/resource-domain switching.
+Multiple active rendering windows and selection switching are
+[deferred extensions](../planning/long-term/README.md#multiple-active-rendering-windows).
 
 ## Sizes, modes and observation
 

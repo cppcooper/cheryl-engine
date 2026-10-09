@@ -1,14 +1,16 @@
-# Indexed graphics material loading
+# Shader/material manifests and indexed loading
 
 ## Goal and scope
 
-Make material loading follow the same explicit, automated discovery and loading
-flow as sprites and tilesets: discover files, select graphics definition documents
+Define a versioned shader manifest schema and make shader/material loading follow
+the same explicit discovery and loading flow as sprites and tilesets: discover files,
+select graphics definition documents
 through `graphics-manifests.json`, prepare owned CPU recipes, then construct and
 publish resources on the active backend's loading owner.
 
-This plan records deferred work for a later discussion. It does not authorize
-implementation, builds, test execution or broader documentation maintenance.
+This is a [near-term design unit](../develop-review-and-development-plan.md#nearest-planned-work).
+Shader/material document identity and backend construction remain open design
+decisions; scheduling does not approve them or authorize implementation/execution.
 Keep manual material-builder APIs available to applications that do not opt into
 automated loading. Audio and font loading are outside this extension.
 
@@ -25,6 +27,7 @@ File discovery and indexed graphics loading were introduced in `5953fe2` and
 - Index references resolve relative to their index through exact registered
   paths. Repeated references are parsed once; indexes cannot reference indexes.
   Selected documents currently use the sprite/tileset asset-manifest 1.0 format.
+  The existing graphics-index and asset schemas do not define shader/program recipes.
 - The demo still constructs two material recipes in
   [demo-game.cpp](../../../projects/apps/demo/src/demo-game.cpp), synthesizes shader
   filenames and downcasts the provider to OpenGL. The recipes share shader sources
@@ -61,13 +64,17 @@ reload system.
 Resolve these contracts in discussion before extending schemas or public APIs:
 
 1. **Document format and dispatch.** Decide between extending the existing asset
-   definition format and introducing a material-specific format. Specify version
-   compatibility and how already-index-selected documents choose their parser.
+   definition format and introducing shader/material-specific formats. Specify
+   whether independently identified shader/program documents are referenced by
+   materials or one definition format owns both recipes. Define the shader manifest
+   schema, version compatibility and how already-index-selected documents choose
+   their parser.
    Keep graphics indexes as selection documents; do not add asset-type tags to
    them merely to duplicate a definition document's identity. Clarify the role of
    `$schema`: the existing leaf parser treats it as a format marker, not a schema
    file to fetch at runtime.
-2. **Recipe contents and identity.** Define material identifiers/cache keys,
+2. **Recipe contents and identity.** Define shader/program and material identities,
+   cache keys and reference ownership where separate documents are selected,
    explicit shader stages, topology/layout/state, parameter contracts and supported
    defaults. Define duplicate-ID behavior and how two materials share sources
    without colliding. Decide how backend-specific binding names are represented;
@@ -94,7 +101,8 @@ change materially.
 
 ## Implementation order after approval
 
-1. Define the versioned schema, identifiers and CPU-only prepared recipe types.
+1. Define the approved versioned shader/material schema, identifiers and CPU-only
+   prepared recipe types.
    Add definitions for the two demo materials under `assets/graphics/shaders/`
    and select them through a local graphics index.
 2. Extend indexed document dispatch and recipe parsing. Resolve registered shader
@@ -110,17 +118,18 @@ change materially.
    Keep `main.cpp` illustrative; isolate material-example orchestration in a
    focused header/translation unit only if it makes the example clearer.
 
-Before implementation, inspect the shared working tree again. Existing changes
-in `demo-game.cpp` and `templates/singleton.h` are user work; do not overwrite them
-or treat unfinished singleton changes as a foundation for this extension.
+Before implementation, inspect the shared working tree again and preserve unrelated
+changes. Do not treat unfinished user work as a stable foundation for the extension.
 
-## Deferred validation and acceptance
+## Validation and acceptance phases
 
-Test design, test implementation and test execution remain separate phases
-requiring authorization. Do not update the testing-request queue as part of this
-plan. Carry the following requirements into those phases:
+Follow the [work-mode progression](../develop-review-and-development-plan.md#work-mode-progression):
+test design, test implementation, execution and verification are separate phases.
+Build/test execution and testing-request maintenance require their own authorization.
+Carry the following requirements into those phases:
 
-- Parser/registry coverage: valid and invalid recipes, duplicate identities,
+- Parser/registry coverage: valid and invalid shader/material recipes and versions,
+  selected document dispatch, duplicate identities and program references if selected,
   exact-path resolution with duplicate basenames, missing shader references,
   repeated index references and malformed unlisted JSON remaining unopened.
 - Preparation/upload coverage: no runtime mutations on preparation failure,

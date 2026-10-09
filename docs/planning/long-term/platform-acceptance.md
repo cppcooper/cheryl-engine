@@ -1,7 +1,8 @@
 # Deferred platform acceptance
 
-Windows, macOS, Wayland and other platform acceptance are long-term work. These
-procedures preserve unresolved coverage; they are outside the active
+HID acceptance on Linux and Windows, plus Windows, macOS, Wayland and other
+platform acceptance, are long-term work. These procedures preserve unresolved
+coverage; they are outside the active
 [testing queue](../../testing-requests.md). Resume them only when platform testing is
 scheduled, reconcile the current source/targets/configuration first, then restore
 ready requests to that queue. Linux/X11 is the current short-term platform.
@@ -147,9 +148,31 @@ or establish the Windows notification route.
 
 ## Deferred HID lifecycle and Windows notifications
 
-**QA — Windows; deferred and blocked on an observation harness.** Preserve the
-single initialized native-owner contract. The Linux portion of TR6 remains in the
-[active queue](../../testing-requests.md#tr6-qa-hid-lifecycle-and-notification-observations).
+**TR6 · QA — Linux/X11 and Windows; deferred and blocked on backend work and an
+observation harness.** Preserve the
+[single initialized native-owner contract](../../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
+The [HID plan](README.md#deferred-hid-integration) owns backend corrections.
+Successful Gainput initialization does not prove HID readiness: HID can be compiled
+out, and the dependency discards its initialization return code when enabled.
+The demo counter and opt-in controller trace observe Gainput callbacks and sampled
+pad state, not backend readiness or enumeration/open results.
+
+### Linux USB and Bluetooth
+
+The eventual Linux request requires:
+
+- A supported physical HID controller and explicit evidence of HID report delivery
+  over USB and Bluetooth, independently of keyboard/mouse or joydev input.
+- Report continuity after a second owner is rejected, after detach/same-window
+  reattachment, and after destruction permits a replacement owner in one process.
+- Initialization outcome, enumeration/open, selected report source and
+  disconnect/reconnect observations; successful initialization alone is insufficient.
+
+Expose these observations without changing the single-owner lifetime contract.
+Supply runnable setup/launch instructions before reactivating the request.
+
+### Windows notifications
+
 Windows needs a supported physical HID controller and a harness that observes:
 
 - HID initialization, enumeration/open and actual HID report delivery independently
@@ -160,9 +183,9 @@ Windows needs a supported physical HID controller and a harness that observes:
   replacement-window attachment and cleanup at destruction. Fallback reconnect
   polling does not establish the notification route.
 
-The demo counter and controller trace do not establish these stages. Supply runnable
-setup/launch instructions before reactivating QA. The Gainput handoff's shared
-identity and lifetime contract remains applicable; Windows-specific dependency,
+Supply runnable setup/launch instructions before reactivating Windows QA.
+The Gainput handoff's shared identity and lifetime contract remains applicable;
+Windows-specific dependency,
 DirectInput fallback and notification corrections accompany future platform work.
 
 ## Other platform configurations

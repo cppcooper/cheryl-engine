@@ -1,4 +1,4 @@
-# Debug build output console
+# External Debug terminal
 
 ## Target and status
 
@@ -13,8 +13,9 @@ control window eligibility: selecting developer logging in a Release build must
 not create the native terminal. Treat this as an engine facility available to
 consumer applications, with the demo as an initial integration consumer.
 
-This task is a development plan. Implementation, scheduling and the remaining
-details below are open. Native acceptance follows the selected platform scope; existing
+This task is selected in the [nearest planned work](../develop-review-and-development-plan.md#nearest-planned-work).
+Platform, transport and process/output ownership remain open design decisions;
+implementation has not started. Native acceptance follows the selected platform scope; existing
 [multi-platform testing deferrals](../long-term/platform-acceptance.md) remain in place.
 
 The engine's built-in graphical developer console is future work in the
@@ -79,21 +80,28 @@ their source test. Apply the Debug-only eligibility rule. Discovery and
 unattended/headless runs need a defined path that does not
 depend on creating a desktop terminal.
 
-## Ordered work
+## Investigation and design checkpoint
 
-1. Select the first platform and host terminal dependency. Resolve the output path
-   after manual closure, reopening and unavailable-viewer behavior. Distinguish
-   normal failed tests/handled startup errors from crashes before selecting
-   exit-status or disconnect-based detection. Choose the owner
-   using the existing [module boundary criteria](../../development/modules.md#module-boundary-criteria).
-   Keep process-wide stream ownership separate from individual engine contexts.
-2. Prove the smallest startup path for both stdout and stderr, including C stdio,
-   C++ streams and native stream writes. Establish flushing, encoding and handling
-   of pre-existing output destinations. Begin with the owned engine logging
-   destination, then prove direct-write coverage, preserved test reports, discovery
-   and existing stream-capture behavior before extending the integration. Settle
-   mirroring to IDE capture, files and pipes, shared/separate test viewers,
-   interactive activation and diagnostic collection without a desktop viewer.
+Investigate the first platform's host terminal dependencies and output channels.
+At the design checkpoint, select platform, viewer transport and ownership using the
+[module boundary criteria](../../development/modules.md#module-boundary-criteria).
+Keep process-wide stream ownership separate from individual engine contexts.
+Resolve output after manual closure, reopening and unavailable-viewer behavior.
+Distinguish normal failed tests/handled startup errors from crashes before selecting
+exit-status or disconnect-based detection.
+
+Settle flushing, encoding, pre-existing output destinations and mirroring to IDE
+capture, files and pipes. Choose shared/separate test viewers, producer/report routing,
+interactive activation and diagnostic collection without a desktop viewer. Resolve
+the discovery/capture/death-test boundaries above before dependent implementation.
+
+## Implementation order after design approval
+
+1. Implement the owned engine logging destination and the smallest startup path
+   for both stdout and stderr. Keep the original test-report connection available.
+2. Implement agreed direct-write routing for C stdio, C++ streams and native writes,
+   including test-report separation. Complete this boundary before extending the
+   integration; result-printer routing alone does not cover framework messages.
 3. Complete ownership and failure behavior: partial initialization, concurrent
    writers, window closure, startup failure and final diagnostic draining. Close
    the viewer after normal shutdown and retain it after a crash, independently of
@@ -106,9 +114,16 @@ depend on creating a desktop terminal.
    Establish startup before their first engine diagnostics and retain the output
    destination until producers and logging workers finish. Preserve configured file
    logging and severity filters.
-5. Document the resulting contract and extend [testing requests](../../testing-requests.md)
-   once runnable source and observation paths exist. Batch related build targets and
-   keep source completion distinct from executable and native acceptance.
+
+## Validation and documentation phases
+
+Follow the [work-mode progression](../develop-review-and-development-plan.md#work-mode-progression).
+Design coverage from the acceptance scope below before implementation; add automated
+cases and observation harnesses in the separate test-implementation phase. Build/test
+execution requires explicit authorization. Batch related targets and distinguish
+source completion from executable/native acceptance, including prototype validation.
+Reconcile resulting contracts and [testing requests](../../testing-requests.md) in
+separately authorized documentation maintenance once runnable observation paths exist.
 
 ## Acceptance
 

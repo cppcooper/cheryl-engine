@@ -247,7 +247,7 @@ a relative inset, and its text stays centered. The tooltip button anchors to the
 window's bottom-right. Panel children are clipped to the parent's content area;
 scrolling uses that same normal clipping behavior.
 
-RmlUi authors its view in [demo.rml](../../../assets/ui/demo.rml) using native RCSS.
+RmlUi authors its view in [demo.rml](../../../assets/graphics/ui/demo.rml) using native RCSS.
 Its panel has a 24-unit top-left inset, width of 34% bounded to 360–600 units and
 height of 75% bounded to 500–800 units. Flex layout keeps the header, field and
 image row at native sizes while the list fills the middle. List items explicitly
@@ -453,7 +453,7 @@ PY
   source size, intact colors/transparent backgrounds and no joined adjacent-cell
   geometry. The current provider uses linear magnification; softened pixel edges
   reflect that policy. Report neighboring-cell color leakage separately for the
-  [sampling follow-on](../../../docs/planning/long-term/README.md#other-engine-extensions).
+  [sampling workstream](../../../docs/planning/develop-review-and-development-plan.md#texture-sampling-and-tgui).
   Static grass, sword and frozen Swordsman do not animate.
 - Watch the three animated tiles use their respective 400/200/100 ms frame durations
   and loop. The sprite top row walks south/north/east; the bottom row walks west,

@@ -1,9 +1,10 @@
 # Long-term engine and integration plans
 
-Engine and module extensions are deferred until a named application consumer
-establishes their scope and prerequisites. Additional asset manifests below are also
-deferred to the long term. Steam API services, Steam Input and their SDK-free
-preparation are outside the short- and mid-term development sequence.
+Selected integration deferrals and consumer-driven extensions live here. Unselected
+engine and module extensions need a named application consumer to establish scope
+and prerequisites. Additional asset manifests below are also deferred to the long
+term. Steam API services, Steam Input and their SDK-free preparation are outside
+the short- and mid-term development sequence.
 Multi-platform testing is also shelved; Linux/X11 remains the active short-term
 platform.
 
@@ -19,7 +20,7 @@ coverage limits are in
 The [deferred platform plan](platform-acceptance.md) owns Windows native input,
 typed-event/resize, desktop and controller acceptance, Windows HID notification
 observations, and macOS/Wayland/other-platform prerequisites. It preserves the
-Windows TR3–TR5 procedures and deferred Windows portion of TR6 outside the active
+Windows TR3–TR5 procedures and Linux/Windows TR6 outside the active
 testing queue. Resume each platform only when testing is scheduled; reconcile its
 dependency/toolchain configuration and observation harness before reactivating
 requests. Linux source development and Linux/X11 acceptance proceed independently.
@@ -30,6 +31,45 @@ suspend/resume, graphics context, asset delivery and packaging, then require an
 end-to-end demo and reproducible consumer build before store deployment. A console
 owner must isolate proprietary SDK/toolchain code behind neutral contracts. These
 are selection prerequisites; no mobile or console module is implemented.
+
+## Deferred native integration
+
+### Multiple active rendering windows
+
+Multiple active rendering windows and switching the selected rendering window are
+deferred. The [display/window contract](../../runtime/display-and-window-contract.md)
+allows a display to own several windows but permits one active rendering selection;
+replacement of that selection rejects. Window ownership alone does not establish
+multiple graphics contexts, presentation surfaces or independent resource domains.
+
+Before reactivating this extension, select a consumer and resolve graphics/context
+ownership, presentation, per-window input and size routing, resource sharing and
+in-flight frame/teardown lifetimes. Keep broader native input ownership separately
+scoped rather than assuming each additional window needs another initialized
+Gainput owner.
+
+### Deferred HID integration
+
+Gainput HID backend work remains deferred at the `d94c60f` code baseline. The
+[submodule handoff](../../../extern/gainput/TODO.md#ordered-implementation) owns its
+input/adaptive-trigger sequence. Enabling HID requires compiler-definition,
+report identity/retained-state and source-selection corrections together, preserving
+one initialized native owner and one report source per controller.
+
+The Gainput-driven non-HID controller path remains usable. Linux joystick
+acceptance uses HID disabled and does not establish USB/HID report delivery.
+[TR6](platform-acceptance.md#deferred-hid-lifecycle-and-windows-notifications)
+preserves Linux USB/Bluetooth lifecycle and Windows notification requirements
+outside the active testing queue. Backend work and an observation harness must be
+ready before reactivating it. Successful Gainput `Init` and the demo trace do not
+establish HID readiness: the dependency discards HID initialization's return code,
+so explicit startup-failure reporting requires a contract change if selected.
+
+Broader native ownership requires a consumer case. Battery and touch/motion
+exposure remain separate from the handoff's initial scope; use the
+[native capability limits](../../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope)
+when selecting extensions. Windows/macOS source, fallback and notification work
+remains with the deferred platform scope.
 
 ## Steam API and input integration
 
@@ -81,13 +121,26 @@ calls cannot establish that behavior. Preserve one collection path per effective
 controller. The current
 [native adapter lifetime](../../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping)
 permits one initialized owner and retains its original Windows notification window.
-If a consumer requires explicit HID startup-failure reporting, change the dependency
-contract before relying on it: the selected Gainput `Init` currently discards the HID
-initialization return code. Ownership checks do not supply that missing readiness signal.
+Explicit HID startup-failure reporting follows the
+[deferred HID contract](#deferred-hid-integration); ownership checks do not supply
+the missing readiness signal.
 
 ## Other optional modules
 
 ### UI adapters
+
+The RmlUi core integration supplies native documents/fonts, keyboard/text/pointer
+input, rectangular clipping, retained CPU/GPU scenes and lifecycle handling. Its
+selected Linux root-composition baseline is sufficient to defer further integration
+extensions. Existing dedicated regressions and supplied-Core acceptance remain in
+the [startup/UI follow-up](../develop-review-and-development-plan.md#startup-and-ui-follow-up).
+
+RmlUi masks, nonidentity transforms, offscreen layers, filters, custom shaders and
+repeating texture coordinates remain deferred and reject publication under the
+[current recording contract](../../../projects/modules/ui/rmlui/README.md#recording-and-publication).
+Clipboard, cursor styling, IME and controller navigation also need separately
+selected consumer requirements. Resolve transform/clipping, resource lifetime and
+capability/failure contracts before promoting advanced effects.
 
 Select another toolkit only for a concrete application need and preserve its native
 authoring API. Similarity to existing bridges does not require shared widgets.
@@ -112,7 +165,7 @@ other application UI remains consumer-owned. It supplies eventual in-app console
 output, including in Release, where the native Debug terminal does not exist.
 Establish scrolling/history, input routing and command requirements before
 implementation. Until then, Release uses its existing logging destinations. The
-planned [Debug output console](../unscheduled/debug-console.md) uses a native terminal and can
+near-term [Debug output console](../short-term/debug-console.md) uses a native terminal and can
 provide diagnostics independently of game rendering; closing it leaves the
 application running.
 
@@ -130,20 +183,24 @@ their own scope and SDK/deployment requirements. Spatial audio, effects graphs,
 capture, device enumeration/hotplug and custom codecs also need separately selected
 consumer requirements.
 
-Selectable image filtering and atlas isolation need a consumer contract. The
-OpenGL provider currently gives RGBA images linear magnification and generated
-mipmaps; grid UVs address cell edges without padding. The
-[demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples) expose
-that baseline. Use their observations to establish nearest/linear, mipmap and wrap
-requirements, per-image/per-binding ownership and atlas-edge behavior before adding
-a sampler API; avoid mutating shared cached textures from demo frame preparation.
+Selectable image filtering and TGUI sampling are now
+[near-term work](../develop-review-and-development-plan.md#texture-sampling-and-tgui).
+That design owns nearest/linear, mipmap/wrap, image/binding ownership and required
+atlas-edge behavior. Additional atlas padding or repacking remains separate unless
+needed for the selected sampling contract. Current grid UVs address cell edges
+without padding; the [demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples)
+retain the baseline observations.
 
 World, entities, collision and game mechanics wait for a game consumer. The game
 can consume Cheryl as a Git submodule and supply its own optional modules from
 the start, or implement its features directly. Do not plan on a later extraction
 or game refactor as a prerequisite for starting development.
 
-3D, topology/NUMA adapters, networking, world/entity/physics, serialization,
+NUMA/NUCA integration is selected in the
+[near-term roadmap](../develop-review-and-development-plan.md#numa-and-nuca), with
+topology, CPU/memory placement and hardware-capability decisions still open.
+
+3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
 work. Placeholders do not imply supported facilities. Establish scope, prerequisites,
 ownership and acceptance before promoting any candidate into the development roadmap.
