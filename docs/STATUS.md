@@ -10,16 +10,16 @@ The following **four tables** comprise 141 distinct entries. Links are relative 
 
 ## 1. Partial / QA pending
 
-| Feature / integration | Status | Description / scope | Investigate |
-| --- | --- | --- | --- |
-| Worker CPU placement | Partial | Linux CPU affinity, required/preferred policies and fallback behavior are implemented; automatic cache-domain discovery and NUMA placement are absent. | [worker-affinity.cpp](../projects/engine/src/core/engine/worker-affinity.cpp) |
+| Feature / integration | Status | Description / scope                                                                                                                                                        | Investigate |
+| --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
+| Worker CPU placement | Partial | Linux CPU affinity, required/preferred policies and fallback behavior are implemented; automatic cache-domain discovery and NUMA/NUCA placement are absent.                   | [worker-affinity.cpp](../projects/engine/src/core/engine/worker-affinity.cpp) |
 | Native controller input | Partial | Gainput-driven gamepad collection exists, but complete HID detection, reports and lifecycle behavior are not accepted; that backend work is listed separately as deferred. | [input-system.cpp](../projects/modules/platform/native-glfw/src/core/controls/input-system.cpp) |
-| Active rendering windows | Partial | A display may own several windows, but switching the active rendering window is explicitly rejected. | [display-system.cpp](../projects/modules/platform/native-glfw/src/core/display/display-system.cpp) |
-| TGUI texture sampling | Partial | Recorded UI scenes and textures work; nearest-neighbor texture/font sampling is rejected under the present provider contract. | [rendering.cpp](../projects/modules/ui/tgui/src/rendering.cpp) |
-| RmlUi rendering effects | Partial | Core scene recording and rectangular clipping exist; advanced effects are not an exposed capability in the current adapter. | [session.h](../projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h) |
-| Unicode rendering acceptance | QA pending · TR9 | UTF-8, shaping, bidirectional layout, font fallback and grayscale glyph upload are implemented; native appearance, wrapping and replacement still require display QA. | [testing-requests.md](testing-requests.md#tr9-qa-unicode-text-rendering) |
-| Native audio acceptance | QA pending · TR11 | The miniaudio module implements device playback, streaming and controls; audible stereo output and sustained WAV streaming remain to be observed. | [testing-requests.md](testing-requests.md#tr11-qa-native-audio-and-streaming) |
-| Sprite/tile showcase acceptance | QA pending · TR12 | Static and animated assets are exercised by demo code; artwork-dependent rendering, playback, optional-load behavior and shader replacement need QA. | [testing-requests.md](testing-requests.md#tr12-qa-demo-tiles-and-sprites) |
+| Active rendering windows | Partial | A display may own several windows, but switching the active rendering window is explicitly rejected.                                                                       | [display-system.cpp](../projects/modules/platform/native-glfw/src/core/display/display-system.cpp) |
+| TGUI texture sampling | Partial | Recorded UI scenes and textures work; nearest-neighbor texture/font sampling is rejected under the present provider contract.                                              | [rendering.cpp](../projects/modules/ui/tgui/src/rendering.cpp) |
+| RmlUi rendering effects | Partial | Core scene recording and rectangular clipping exist; advanced effects are not an exposed capability in the current adapter.                                                | [session.h](../projects/modules/ui/rmlui/include/cheryl/ui/rmlui/session.h) |
+| Unicode rendering acceptance | QA pending · TR9 | UTF-8, shaping, bidirectional layout, font fallback and grayscale glyph upload are implemented; native appearance, wrapping and replacement still require display QA.      | [testing-requests.md](testing-requests.md#tr9-qa-unicode-text-rendering) |
+| Native audio acceptance | QA pending · TR11 | The miniaudio module implements device playback, streaming and controls; audible stereo output and sustained WAV streaming remain to be observed.                          | [testing-requests.md](testing-requests.md#tr11-qa-native-audio-and-streaming) |
+| Sprite/tile showcase acceptance | QA pending · TR12 | Static and animated assets are exercised by demo code; artwork-dependent rendering, playback, optional-load behavior and shader replacement need QA.                       | [testing-requests.md](testing-requests.md#tr12-qa-demo-tiles-and-sprites) |
 
 *8 entries.*
 
