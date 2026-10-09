@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -8,8 +9,8 @@ using f_ext = std::string;
 using fspath = std::filesystem::path;
 
 /** Incremental file index by extension beneath explicitly supplied directories.
- * There is no refresh/removal or internal synchronization. Loader performs its
- * own fresh scan for each preparation rather than retaining this index.
+ * There is no refresh/removal or internal synchronization. Construct a new
+ * manager to rescan a previously indexed root.
  */
 class FileMgr {
 public:
@@ -33,6 +34,10 @@ public:
      * Serialize this lookup with all other access; insertion can allocate/throw.
      */
     const std::vector<fspath>& get_files_of_type(f_ext extension);
+
+    // Borrow all extension buckets without inserting missing keys. Serialize
+    // access with directory indexing; the manager owns the returned index.
+    [[nodiscard]] const std::unordered_map<f_ext, std::vector<fspath>>& files_by_type() const noexcept { return mapped_files; }
 
 private:
     std::unordered_set<std::filesystem::path> directories;

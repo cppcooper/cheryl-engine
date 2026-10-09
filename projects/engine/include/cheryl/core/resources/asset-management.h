@@ -7,3 +7,4 @@
 #include "asset-management/tileset-mgr.h"
 #include "asset-management/manifest-loader.h"
 #include "asset-management/asset-loader.h"
+#include "asset-management/file-registry.h"

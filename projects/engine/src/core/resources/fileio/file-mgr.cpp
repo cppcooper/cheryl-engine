@@ -16,8 +16,7 @@ void FileMgr::search_directory(const fs::path& directory) {
     if (dir_exists(directory) && !directories.contains(directory)) {
         directories.emplace(directory);
         fs::recursive_directory_iterator recursive_iter(directory);
-        // Append this walk to the independent index. Loader discovers assets
-        // with its own fresh scan and does not consume these buckets.
+        // One recursive walk supplies every extension bucket to asset loading.
         for (auto& entry : recursive_iter) {
             const fs::path& p = entry.path().filename();
             if (entry.is_regular_file()) {
