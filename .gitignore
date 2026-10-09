@@ -1,7 +1,7 @@
-cmake-build*/
+/extern/
 build/
 builds/
-/extern/
+cmake-build*/
 
 .git/
 .idea/
@@ -10,15 +10,21 @@ builds/
 notes/
 
 *.tar.gz
+*.zip
 *.log
 *.png
-!/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png
-!/assets/ui/quadrants.png
-!/assets/ui/quadrants-alt.png
-assets/**/*.txt
-assets/**/*.xcf
-assets/**/*.docx
-/asset-downloads/
+*.wav
 
-/cheryl/
-bb-key
+assets/**
+!assets/**/
+!assets/**/*.rml
+!assets/**/*.json
+!assets/**/*.frag
+!assets/**/*.vert
+!assets/fonts/*
+assets/sfx
+assets/graphics/**/*.txt
+
+!assets/graphics/ui/quadrants.png
+!assets/graphics/ui/quadrants-alt.png
+!/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png

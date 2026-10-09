@@ -1,0 +1,34 @@
+{
+  "packages": [
+    {
+      "source": "https://0x72.itch.io/16x16-dungeon-tileset",
+      "files": [
+        {
+          "name": "0x72_16x16DungeonTileset.v5.zip",
+          "bytes": 154394,
+          "sha256": "4749333cf50b35c025d889bc9ae63e61b101c5f1d226ce742bdc6106a01cf984"
+        }
+      ]
+    },
+    {
+      "source": "https://0x72.itch.io/dungeontileset-ii",
+      "files": [
+        {
+          "name": "pumpkin_dude.png",
+          "bytes": 1169,
+          "sha256": "85d180f0a42d3a0bbcf14c1bce08d6b77bea6217013a73aa0235f8c9f8efdf17"
+        },
+        {
+          "name": "doc.png",
+          "bytes": 1066,
+          "sha256": "2bb0c93615ac1a9c99e0f32be98d2d8e48fa78d7c4449627b3980dc9a849276e"
+        },
+        {
+          "name": "0x72_DungeonTilesetII_v1.7.zip",
+          "bytes": 416379,
+          "sha256": "a5b23341ebc831d7798bfb9666d864a08c079bb7aed18e3cf023a27d517c1512"
+        }
+      ]
+    }
+  ]
+}
