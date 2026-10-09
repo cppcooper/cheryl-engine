@@ -103,6 +103,10 @@ set(LINKAGE_COMPOSITION_APP_DEMO_BASE
         Cheryl::OpenGL::Startup
 )
 
+set(LINKAGE_COMPOSITION_APP_DEMO_AUDIO
+        Cheryl::Audio::Miniaudio
+)
+
 set(LINKAGE_COMPOSITION_APP_DEMO_UI_TGUI
         Cheryl::UI::TGUI
 )

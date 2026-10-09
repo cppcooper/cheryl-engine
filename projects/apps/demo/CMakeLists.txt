@@ -18,7 +18,7 @@ target_link_libraries(${TARGET_APP_DEMO} PRIVATE ${LINKAGE_COMPOSITION_APP_DEMO_
 
 if(TARGET Cheryl::Audio::Miniaudio)
     target_compile_definitions(${TARGET_APP_DEMO} PRIVATE CHERYL_DEMO_AUDIO=1)
-    target_link_libraries(${TARGET_APP_DEMO} PRIVATE Cheryl::Audio::Miniaudio)
+    target_link_libraries(${TARGET_APP_DEMO} PRIVATE ${LINKAGE_COMPOSITION_APP_DEMO_AUDIO})
 endif()
 
 if(TARGET Cheryl::UI::TGUI)
