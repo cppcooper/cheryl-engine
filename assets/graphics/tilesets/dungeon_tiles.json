@@ -1,8 +1,8 @@
 {
   "$schema": "./schemas/asset-manifest-1.0.schema.json",
   "version": "1.0",
-  "namespace": "character-customizer",
-  "texture": "char-customizer/Character-Customizer-Photoshop.png",
+  "namespace": "dungeon",
+  "texture": "dungeon_tiles.png",
   "defaults": {
     "sprite": {
       "pivot": {
@@ -17,9 +17,9 @@
       }
     }
   },
-  "sprites": {
-    "character_customizer_flattened": {
-      "description": "Flattened export of the layered character customizer artwork.",
+  "tilesets": {
+    "dungeon": {
+      "description": "The complete 23-column by 24-row Buch dungeon sheet.",
       "grid": {
         "origin": {
           "x": 0,
@@ -33,8 +33,8 @@
           "x": 0,
           "y": 0
         },
-        "rows": 20,
-        "columns": 5,
+        "rows": 24,
+        "columns": 23,
         "cell_order": "row-major"
       }
     }

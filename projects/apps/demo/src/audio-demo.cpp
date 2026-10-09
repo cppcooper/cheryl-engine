@@ -3,9 +3,11 @@
 #ifdef CHERYL_DEMO_AUDIO
 #include <backends/miniaudio.h>
 #include <core/engine/engine-context.h>
+#include <core/resources/asset-management/file-registry.h>
 
 #include <exception>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #endif
 
@@ -26,26 +28,24 @@ DemoAudio::DemoAudio(CE::Engine::EngineContext& engine) : audio_state_(std::make
 
 DemoAudio::~DemoAudio() = default;
 
-void DemoAudio::load(const std::filesystem::path& asset_root) {
+void DemoAudio::load() {
 #ifdef CHERYL_DEMO_AUDIO
     try {
+        auto& registry = CE::Assets::FileRegistry::get();
+        const auto music = registry.get_file_named("Fair_Fight_(Battle).wav");
+        const auto click = registry.get_file_named("UIClick_INTERFACE-Strong Click 2_HY_PC-004.wav");
+        if (!music || !click)
+            throw std::runtime_error("The demo music or click effect was not found in the asset tree");
         audio_state_->system = CE::Audio::Miniaudio::System::open_device();
         audio_state_->system->set_volume(0.35f);
-        audio_state_->music = audio_state_->system->stream(
-            asset_root / "sfx/Minifantasy_ForgottenPlains_Music/Music/Fair_Fight_(Battle).wav",
-            {.volume = 0.5f, .looping = true}
-        );
-        audio_state_->click = CE::Audio::Miniaudio::decode_file(
-            asset_root / "sfx/Helton Yan's Pixel Combat - Single Files/UIClick_INTERFACE-Strong Click 2_HY_PC-004.wav"
-        );
+        audio_state_->music = audio_state_->system->stream(*music, {.volume = 0.5f, .looping = true});
+        audio_state_->click = CE::Audio::Miniaudio::decode_file(*click);
         audio_state_->status = "music playing";
     } catch (const std::exception& error) {
         audio_state_->status = std::string("unavailable: ") + error.what();
         audio_state_->music.reset();
         audio_state_->system.reset();
     }
-#else
-    static_cast<void>(asset_root);
 #endif
 }
 

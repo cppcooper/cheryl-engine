@@ -18,7 +18,7 @@ void DemoOptions::register_with(CE::Engine::Startup& startup) {
             ->type_name("PATH")
             ->default_str(asset_root.string())
             ->trigger_on_parse();
-        options.add_flag("--full-assets", load_all_assets, "Load all available assets")->trigger_on_parse();
+        options.add_flag("--full-assets", load_all_assets, "Load all discovered images and indexed graphics assets")->trigger_on_parse();
         options.add_flag("--unicode-text", unicode_preview, "Show the Unicode text preview")->trigger_on_parse();
         options
             .add_flag_callback(

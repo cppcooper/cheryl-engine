@@ -1,16 +1,17 @@
 #include <assets/resources/resource-provider.h>
 #include <core/resources/asset-management/asset-loader.h>
+#include <core/resources/asset-management/file-registry.h>
 #include <core/resources/asset-management/manifest-loader.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
+#include <core/resources/fileio/file-mgr.h>
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
 #include <chrono>
 #include <optional>
 
 #include <algorithm>
-#include <cctype>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -20,9 +21,22 @@ namespace CE::Assets {
     namespace {
         namespace fs = std::filesystem;
 
-        std::string lowercase(std::string value) {
-            std::ranges::transform(value, value.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return value;
+        FileMgr discover_files(const fs::path& root) {
+            const auto absolute_root = fs::absolute(root).lexically_normal();
+            if (!fs::is_directory(absolute_root))
+                throw Exceptions::runtime_exception(CE_HERE, "Asset root is not a directory: " + root.string());
+            return FileMgr(absolute_root);
+        }
+
+        std::shared_ptr<const FileRegistry> prepare_file_registry(const FileMgr& files) {
+            auto registry = std::make_shared<FileRegistry>();
+            for (const auto& [extension, paths] : files.files_by_type()) {
+                // PNGs enter the typed image cache; other files remain paths for
+                // JSON loading, audio playback or application-specific consumers.
+                if (extension != ".png")
+                    registry->register_files(paths);
+            }
+            return registry;
         }
 
         void register_id(std::unordered_map<std::string, fs::path>& ids, const std::string& id, const fs::path& source) {
@@ -63,16 +77,9 @@ namespace CE::Assets {
             CE_LOG_ERROR(CE::assetlog, "subsystem=assets domain={} operation=prepare outcome=failed", result.batch);
         };
         try {
-            if (!fs::is_directory(root_path_))
-                throw Exceptions::runtime_exception(CE_HERE, "Asset root is not a directory: " + root_path_.string());
-            std::vector<fs::path> documents;
-            // A fresh scan sees added files; schema files below the root are not manifests.
-            for (const auto& entry : fs::directory_iterator(root_path_))
-                if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".json")
-                    documents.push_back(entry.path().lexically_normal());
-            std::ranges::sort(documents);
-            for (const auto& document : documents)
-                result.manifests.push_back(ManifestLoader::load(document));
+            auto files = discover_files(root_path_);
+            result.files = prepare_file_registry(files);
+            result.manifests = ManifestLoader::load_graphics(*result.files);
 
             std::unordered_map<std::string, fs::path> ids;
             std::unordered_set<fs::path> images;
@@ -86,9 +93,8 @@ namespace CE::Assets {
                     images.insert(tileset.texture);
                 }
             }
-            for (const auto& entry : fs::recursive_directory_iterator(root_path_))
-                if (entry.is_regular_file() && lowercase(entry.path().extension().string()) == ".png")
-                    images.insert(entry.path().lexically_normal());
+            for (const auto& image : files.get_files_of_type(".png"))
+                images.insert(image.lexically_normal());
             std::vector<fs::path> ordered(images.begin(), images.end());
             std::ranges::sort(ordered);
             std::unordered_map<fs::path, PixelSize> dimensions;
@@ -185,6 +191,8 @@ namespace CE::Assets {
             AssetCacheContext::verify_provider(provider);
             before = publications();
             verified = true;
+            if (prepared.files)
+                FileRegistry::get().register_files(*prepared.files);
             for (const auto& image : prepared.images) {
                 TextureMgr::get().load_asset(image.key, image.pixels, provider);
                 ++observed.images_completed;
@@ -206,5 +214,14 @@ namespace CE::Assets {
     void Loader::load_assets(ResourceProvider& provider) {
         AssetCacheContext::verify_provider(provider);
         upload(prepare(), provider);
+    }
+
+    void Loader::register_files() const {
+        try {
+            const auto files = discover_files(root_path_);
+            FileRegistry::get().register_files(*prepare_file_registry(files));
+        } catch (const fs::filesystem_error& error) {
+            throw Exceptions::runtime_exception(CE_HERE, error.what());
+        }
     }
 }

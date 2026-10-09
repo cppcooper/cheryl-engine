@@ -2,7 +2,7 @@
   "$schema": "./schemas/asset-manifest-1.0.schema.json",
   "version": "1.0",
   "namespace": "punyworld",
-  "texture": "tilesets/punyworld-overworld-tileset.png",
+  "texture": "punyworld-overworld-tileset.png",
   "defaults": {
     "sprite": {
       "pivot": {

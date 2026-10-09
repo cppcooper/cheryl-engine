@@ -2,7 +2,7 @@
   "$schema": "./schemas/asset-manifest-1.0.schema.json",
   "version": "1.0",
   "namespace": "miniworld-buildings-colored",
-  "texture": "MiniWorldSprites/ColoredBuildingsPreview.png",
+  "texture": "ColoredBuildingsPreview.png",
   "defaults": {
     "sprite": {
       "pivot": {

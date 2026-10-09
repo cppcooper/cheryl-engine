@@ -2,7 +2,7 @@
   "$schema": "./schemas/asset-manifest-1.0.schema.json",
   "version": "1.0",
   "namespace": "magecity",
-  "texture": "tilesets/magecity.png",
+  "texture": "magecity.png",
   "defaults": {
     "sprite": {
       "pivot": {

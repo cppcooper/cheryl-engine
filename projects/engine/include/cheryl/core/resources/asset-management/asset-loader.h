@@ -10,6 +10,7 @@
 #include <vector>
 
 namespace CE::Assets {
+    class FileRegistry;
     struct ResourceProvider;
     // Owns decoded staging pixels. No provider/native/cache handle is retained.
     struct PreparedImage {
@@ -20,6 +21,8 @@ namespace CE::Assets {
         std::vector<AssetManifest> manifests;
         std::vector<PreparedImage> images;
         Diagnostics::DomainId batch = Diagnostics::next_domain_id();
+        // Immutable, batch-owned discovery; preparation never changes the runtime registry.
+        std::shared_ptr<const FileRegistry> files;
     };
 
     struct UploadStats {
@@ -36,6 +39,7 @@ namespace CE::Assets {
      * CPU preparation changes no caches and can run on workers. Upload/publication
      * must be serialized on the active provider's loading owner. Relative roots
      * are interpreted against the working directory at preparation time.
+     * Automatic discovery uses normalized absolute file/image keys.
      * This loader does not create a separate provider domain or atomic hot reload.
      */
     struct Loader final : Singleton_CTS<Loader> {
@@ -62,6 +66,9 @@ namespace CE::Assets {
          */
         void upload(PreparedAssets prepared, ResourceProvider& provider);
         void load_assets(ResourceProvider& provider);
+        // Discover and register unmanaged paths without parsing JSON, decoding
+        // images or requiring a provider. Manual asset loading can use this path.
+        void register_files() const;
         // Last upload attempt, including partial publication. Observation only;
         // no upload/rollback ordering guarantee beyond the loading-owner contract.
         [[nodiscard]] UploadStats diagnostics() const;

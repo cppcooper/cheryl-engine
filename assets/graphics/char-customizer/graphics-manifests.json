@@ -1,0 +1,7 @@
+{
+  "$schema": "../../schemas/graphics-manifests-1.0.schema.json",
+  "version": "1.0",
+  "manifests": [
+    "character-customizer.json"
+  ]
+}

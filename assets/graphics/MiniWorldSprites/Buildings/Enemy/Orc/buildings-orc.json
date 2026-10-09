@@ -1,8 +1,8 @@
 {
   "$schema": "./schemas/asset-manifest-1.0.schema.json",
   "version": "1.0",
-  "namespace": "dungeon",
-  "texture": "tilesets/dungeon_tiles.png",
+  "namespace": "miniworld-buildings-orc",
+  "texture": "AllBuildings-Preview.png",
   "defaults": {
     "sprite": {
       "pivot": {
@@ -18,12 +18,30 @@
     }
   },
   "tilesets": {
-    "dungeon": {
-      "description": "The complete 23-column by 24-row Buch dungeon sheet.",
+    "orc_buildings_32x32": {
       "grid": {
         "origin": {
           "x": 0,
           "y": 0
+        },
+        "frame": {
+          "width": 32,
+          "height": 32
+        },
+        "spacing": {
+          "x": 0,
+          "y": 0
+        },
+        "rows": 2,
+        "columns": 8,
+        "cell_order": "row-major"
+      }
+    },
+    "orc_buildings_16x16": {
+      "grid": {
+        "origin": {
+          "x": 0,
+          "y": 64
         },
         "frame": {
           "width": 16,
@@ -33,8 +51,8 @@
           "x": 0,
           "y": 0
         },
-        "rows": 24,
-        "columns": 23,
+        "rows": 8,
+        "columns": 16,
         "cell_order": "row-major"
       }
     }

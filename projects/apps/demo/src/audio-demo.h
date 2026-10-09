@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <filesystem>
 #include <memory>
 #include <string_view>
 
@@ -21,7 +20,7 @@ public:
     DemoAudio(const DemoAudio&) = delete;
     DemoAudio& operator=(const DemoAudio&) = delete;
 
-    void load(const std::filesystem::path& asset_root);
+    void load();
     void update();
     void play_click();
     [[nodiscard]] std::string_view status() const;

@@ -129,15 +129,25 @@ public:
 
     void init() override {
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
+        asset_root_ = std::filesystem::absolute(asset_root_).lexically_normal();
 
         const auto shader2d = asset_root_ / "graphics" / "shaders" / "shader2d";
         auto& resources = engine_.resources();
+        CE::Assets::Loader loader(asset_root_);
+        bool files_registered = false;
         if (load_all_assets_) {
             try {
-                CE::Assets::Loader loader(asset_root_ / "graphics");
                 loader.load_assets(resources);
+                files_registered = true;
             } catch (const std::exception& error) {
                 std::cerr << "Optional full asset load failed; continuing with available demo samples: " << error.what() << '\n';
+            }
+        }
+        if (!files_registered) {
+            try {
+                loader.register_files();
+            } catch (const std::exception& error) {
+                std::cerr << "Asset file discovery failed; continuing with manual demo samples: " << error.what() << '\n';
             }
         }
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
@@ -155,7 +165,7 @@ public:
         materials.load_material(image_key, resources, material_recipe(shader2d, CE::Assets::PrimitiveTopology::TriangleStrip));
         image_shader_ = materials.get_asset(image_key);
         assets_.load(asset_root_, resources, *fonts_);
-        audio_.load(asset_root_);
+        audio_.load();
 
         auto& input = engine_.input();
         auto& bindings = input.bindings();
