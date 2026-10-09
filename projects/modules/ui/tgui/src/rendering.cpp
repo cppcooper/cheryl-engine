@@ -61,8 +61,6 @@ namespace CE::UI::TGUI {
     }
 
     bool Texture::loadTextureOnly(const tgui::Vector2u size, const std::uint8_t* pixels, const bool smooth) {
-        if (!smooth)
-            throw Exceptions::invalid_args(CE_HERE, "TGUI nearest sampling is not supported by the current provider contract");
         const auto width = static_cast<std::size_t>(size.x);
         const auto height = static_cast<std::size_t>(size.y);
         if (!pixels || width == 0 || height == 0 || width > maximum_size_ || height > maximum_size_ ||
@@ -82,8 +80,6 @@ namespace CE::UI::TGUI {
     }
 
     void Texture::setSmooth(const bool smooth) {
-        if (!smooth)
-            throw Exceptions::invalid_args(CE_HERE, "TGUI nearest sampling requires a new provider sampling contract");
         tgui::BackendTexture::setSmooth(smooth);
     }
 
@@ -254,6 +250,7 @@ namespace CE::UI::TGUI {
             if (!owned || !owned->snapshot())
                 throw Exceptions::invalid_args(CE_HERE, "TGUI recording needs a loaded Cheryl texture");
             draw.texture = owned->snapshot();
+            draw.smooth = owned->isSmooth();
         }
         if (!drawable() || clip_rectangle_.left == clip_rectangle_.right || clip_rectangle_.top == clip_rectangle_.bottom)
             return;

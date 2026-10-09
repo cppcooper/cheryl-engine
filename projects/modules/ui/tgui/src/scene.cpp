@@ -7,6 +7,7 @@
 #include <internals/exceptions.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -62,6 +63,7 @@ namespace CE::UI::TGUI {
         const Diagnostics::DomainId domain;
         const std::thread::id owner;
         std::map<std::weak_ptr<const Assets::DecodedImage>, std::weak_ptr<const Assets::Image>, std::owner_less<>> images;
+        std::array<std::weak_ptr<const Assets::Sampler>, 2> samplers;
 
         explicit State(const Assets::ResourceProvider& provider)
         : domain(provider.diagnostic_id()), owner(std::this_thread::get_id()) {}
@@ -90,6 +92,19 @@ namespace CE::UI::TGUI {
             style.material = draw.texture ? materials.textured : materials.solid;
             style.clip = draw.clip;
             if (draw.texture) {
+                auto& cached_sampler = state_->samplers[draw.smooth ? 1 : 0];
+                auto sampler = cached_sampler.lock();
+                if (!sampler) {
+                    Assets::SamplerOptions options;
+                    options.minification = draw.smooth ? Assets::ImageFilter::Linear : Assets::ImageFilter::Nearest;
+                    options.magnification = options.minification;
+                    options.mipmaps = Assets::MipmapFilter::None;
+                    options.anisotropy = Assets::ImageAnisotropy::Disabled;
+                    sampler = provider.create_sampler(options);
+                    if (!sampler || sampler->options() != options)
+                        throw Exceptions::failed_operation(CE_HERE, "TGUI sampler upload returned missing or incompatible metadata");
+                    cached_sampler = sampler;
+                }
                 const std::weak_ptr<const Assets::DecodedImage> generation = draw.texture;
                 auto& cached = state_->images[generation];
                 auto image = cached.lock();
@@ -100,7 +115,9 @@ namespace CE::UI::TGUI {
                         throw Exceptions::failed_operation(CE_HERE, "TGUI image upload returned missing or incompatible metadata");
                     cached = image;
                 }
-                style.parameters.emplace(materials.image_parameter, Assets::ImageBinding{std::move(image), materials.image_unit});
+                style.parameters.emplace(
+                    materials.image_parameter, Assets::ImageBinding{std::move(image), materials.image_unit, std::move(sampler)}
+                );
             }
             auto geometry = provider.upload_geometry(draw.vertices, Assets::PrimitiveTopology::Triangles);
             auto packet = RenderAPIs::resolve_draw_packet(

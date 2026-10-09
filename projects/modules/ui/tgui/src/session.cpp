@@ -19,16 +19,6 @@ namespace CE::UI::TGUI {
     namespace {
         std::mutex backend_mutex;
 
-        class SmoothedFont final : public tgui::BackendFontFreeType {
-        public:
-            void setSmooth(const bool smooth) override {
-                // FreeType changes its own flag before calling the texture.
-                if (!smooth)
-                    throw Exceptions::invalid_args(CE_HERE, "TGUI nearest font sampling is unavailable");
-                tgui::BackendFontFreeType::setSmooth(smooth);
-            }
-        };
-
         class Backend final : public tgui::Backend {
         public:
             void setMouseCursorStyle(tgui::Cursor::Type, const std::uint8_t*, tgui::Vector2u, tgui::Vector2u) override {}
@@ -54,7 +44,7 @@ namespace CE::UI::TGUI {
                     throw Exceptions::failed_operation(CE_HERE, "TGUI already has an active backend/session");
                 backend_ = std::make_shared<Backend>();
                 backend_->setRenderer(std::make_shared<Renderer>(options.maximum_texture_size));
-                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<SmoothedFont>>());
+                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<tgui::BackendFontFreeType>>());
                 backend_->setFontScale(options.font_scale);
                 tgui::setBackend(backend_);
             }

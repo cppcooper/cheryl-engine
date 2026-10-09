@@ -14,9 +14,8 @@
 #include <vector>
 
 namespace CE::UI::TGUI {
-    // CPU-only toolkit objects. Use these on the simulation/UI owner. The
-    // application supplies a supported bound and a provider whose default RGBA
-    // sampling is smoothed and clamp-to-edge. Nearest sampling is rejected.
+    // CPU-only toolkit objects on the simulation/UI owner. Recordings copy
+    // smoothing independently of immutable pixel snapshots for platform upload.
     class Texture final : public tgui::BackendTexture {
         const unsigned int maximum_size_;
         std::shared_ptr<const Assets::DecodedImage> snapshot_;
@@ -41,6 +40,7 @@ namespace CE::UI::TGUI {
         std::vector<Vertex2DColor> vertices;
         std::shared_ptr<const Assets::DecodedImage> texture;
         RenderAPIs::ClipRegion2D clip;
+        bool smooth = true;
     };
 
     // No toolkit objects or borrowed vertex/pixel data cross the upload boundary.
