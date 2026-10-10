@@ -13,8 +13,8 @@ namespace CE::Assets {
         std::vector<AssetManifest> assets;
         std::vector<ShaderAssetManifest> shaders;
     };
-    /** Parse sprite/tileset manifests into backend-independent definitions. Texture paths are
-     * manifest-relative in 1.0/1.1 and graphics-root-relative in 1.2. Duplicate IDs across
+    /** Parse version 2.0 sprite/tileset manifests into backend-independent definitions.
+     * Texture paths resolve from the enclosing graphics directory. Duplicate IDs across
      * documents and image bounds are checked by Loader after it has collected the full asset set.
      */
     struct ManifestLoader {
@@ -24,7 +24,7 @@ namespace CE::Assets {
         [[nodiscard]] static ShaderAssetManifest parse_shader(std::istream& input, const std::filesystem::path& source);
 
         // Open only registered graphics-manifests.json indexes and the graphics
-        // documents they list. References are index-relative exact registered
+        // documents they list. References are graphics-relative exact registered
         // paths; repeated references are parsed once across the entire batch.
         [[nodiscard]] static std::vector<AssetManifest> load_graphics(const FileRegistry& files);
         // Empty selection uses every registered index. Explicit indexes permit a

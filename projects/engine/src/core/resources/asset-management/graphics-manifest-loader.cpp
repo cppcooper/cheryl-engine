@@ -19,7 +19,7 @@ namespace CE::Assets {
 
         [[noreturn]] void fail(const fs::path& source, const std::string_view location, const std::string_view message) {
             throw Exceptions::runtime_exception(
-                CE_HERE, "Graphics manifest index '" + source.string() + "' at " + std::string(location) + ": " + std::string(message)
+                CE_HERE, "Graphics manifest '" + source.string() + "' at " + std::string(location) + ": " + std::string(message)
             );
         }
 
@@ -46,8 +46,9 @@ namespace CE::Assets {
                 if (index.contains("$schema") && (!index.at("$schema").is_string() || index.at("$schema").get<std::string>().empty()))
                     fail(source, "$.$schema", "expected a nonempty schema identifier");
                 const auto& version = required(index, "version", source);
-                if (!version.is_string() || version.get<std::string>() != "1.0")
-                    fail(source, "$.version", "expected graphics index version '1.0'");
+                if (!version.is_string() || version.get<std::string>() != "2.0")
+                    fail(source, "$.version", "expected graphics index version '2.0'");
+                static_cast<void>(ManifestDetail::graphics_directory(source));
                 if (!required(index, "manifests", source).is_array())
                     fail(source, "$.manifests", "expected an array of relative JSON paths");
                 return index;
@@ -60,22 +61,44 @@ namespace CE::Assets {
             if (!value.is_string() || value.get<std::string>().empty())
                 fail(source, location, "expected a nonempty relative JSON path");
             const auto text = value.get<std::string>();
-            if (text.find('\\') != std::string::npos || text.find(':') != std::string::npos)
-                fail(source, location, "use a relative path with forward slashes");
-            const fs::path relative(text);
-            if (relative.is_absolute() || relative.has_root_name() || relative.has_root_directory())
-                fail(source, location, "absolute document paths are not allowed");
-            auto extension = relative.extension().string();
+            const auto path = ManifestDetail::graphics_path(source, text, location);
+            auto extension = path.extension().string();
             std::ranges::transform(extension, extension.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
             if (extension != ".json")
                 fail(source, location, "referenced graphics documents must be JSON files");
-            const auto document = files.get_file_at(source.parent_path() / relative);
+            const auto document = files.get_file_at(path);
             if (!document)
                 fail(source, location, "referenced document is not registered: '" + text + "'");
             if (document->filename() == "graphics-manifests.json")
                 fail(source, location, "reference graphics definitions, not another graphics index");
             return *document;
         }
+    }
+
+    fs::path ManifestDetail::graphics_directory(const fs::path& source) {
+        auto directory = source.parent_path().lexically_normal();
+        while (!directory.empty()) {
+            if (directory.filename() == "graphics")
+                return directory;
+            const auto parent = directory.parent_path();
+            if (parent == directory)
+                break;
+            directory = parent;
+        }
+        fail(source, "$", "graphics documents must be located under a graphics directory");
+    }
+
+    fs::path ManifestDetail::graphics_path(const fs::path& source, const std::string_view reference, const std::string_view location) {
+        if (reference.empty() || reference.contains('\\') || reference.contains(':'))
+            fail(source, location, "expected a nonempty graphics-relative path with forward slashes");
+        const fs::path relative(reference);
+        if (relative.is_absolute() || relative.has_root_name() || relative.has_root_directory())
+            fail(source, location, "path must be relative to the enclosing graphics directory");
+        for (const auto& part : relative) {
+            if (part == "..")
+                fail(source, location, "path cannot traverse to a parent directory");
+        }
+        return (graphics_directory(source) / relative).lexically_normal();
     }
 
     std::vector<AssetManifest> ManifestLoader::load_graphics(const FileRegistry& files) {
@@ -103,9 +126,12 @@ namespace CE::Assets {
                 const auto root = ManifestDetail::read_document(input, document);
                 if (!root.is_object())
                     fail(document, "$", "expected a definition object");
-                if (!root.contains("asset_class"))
+                const auto& asset_class = required(root, "asset_class", document);
+                if (!asset_class.is_string())
+                    fail(document, "$.asset_class", "expected a graphics asset class string");
+                if (asset_class == "sprite-tileset")
                     result.assets.push_back(ManifestDetail::parse_asset(root, document));
-                else if (root.at("asset_class") == "shader")
+                else if (asset_class == "shader")
                     result.shaders.push_back(ManifestDetail::parse_shader(root, document));
                 else
                     fail(document, "$.asset_class", "unsupported graphics asset class");

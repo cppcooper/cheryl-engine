@@ -11,7 +11,7 @@
 #include <vector>
 
 namespace CE::Assets {
-    /** Owned CPU definitions. Parsed texture paths already include source.parent_path()
+    /** Owned CPU definitions. Parsed texture paths already include the graphics root
      * and lexical normalization; do not prepend the document directory again.
      * Loader validates cross-document IDs and image bounds before GPU construction.
      */

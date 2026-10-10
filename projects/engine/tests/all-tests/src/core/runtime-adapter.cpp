@@ -55,14 +55,14 @@ namespace {
         : root(
               std::filesystem::temp_directory_path() /
               ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
-                  std::to_string(next.fetch_add(1)))
+                  std::to_string(next.fetch_add(1))) / "graphics"
           ) {
             std::filesystem::create_directories(root);
         }
 
         ~TemporaryAssets() {
             std::error_code error;
-            std::filesystem::remove_all(root, error);
+            std::filesystem::remove_all(root.parent_path(), error);
         }
 
         void write_png(const std::string& name = "pixel.png") const {
@@ -77,10 +77,10 @@ namespace {
 
         void write_manifest(const std::string& name_space = "probe") const {
             std::string document =
-                R"JSON({"$schema":"./schemas/asset-manifest-1.0.schema.json","version":"1.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
+                R"JSON({"$schema":"../schemas/graphics/sprite-tileset-manifest-2.0.schema.json","asset_class":"sprite-tileset","version":"2.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
             document.replace(document.find("probe"), 5, name_space);
             std::ofstream(root / "probe.json") << document;
-            std::ofstream(root / "graphics-manifests.json") << R"JSON({"version":"1.0","manifests":["probe.json"]})JSON";
+            std::ofstream(root / "graphics-manifests.json") << R"JSON({"version":"2.0","manifests":["probe.json"]})JSON";
         }
     };
 

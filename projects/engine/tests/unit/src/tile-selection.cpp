@@ -260,14 +260,14 @@ TEST(tile_selection, invalid_wang) {
 
 TEST(tile_selection, manifest_order) {
     const auto parse = [](const std::string& type, const std::string& order) {
-        std::istringstream input(R"json({"$schema":"./schemas/asset-manifest-1.0.schema.json",
-          "version":"1.0","namespace":"test","texture":"sheet.png",
+        std::istringstream input(R"json({"$schema":"../schemas/graphics/sprite-tileset-manifest-2.0.schema.json",
+          "asset_class":"sprite-tileset","version":"2.0","namespace":"test","texture":"sheet.png",
           "defaults":{"sprite":{"pivot":{"x":0.5,"y":0.5}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},
           "tilesets":{"terrain":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":16,"height":16},
           "spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"},
           "autotiles":{"rule":{"type":")json" + type + R"json(","bit_order":)json" + order +
             R"json(,"cases":{"0":{"index":0}}}}}}})json");
-        return ManifestLoader::parse(input, "bitmask.json");
+        return ManifestLoader::parse(input, "graphics/bitmask.json");
     };
     EXPECT_THROW(static_cast<void>(parse("four-neighbor", R"(["north_east"])")), CE::Exceptions::runtime_exception);
     EXPECT_THROW(static_cast<void>(parse("four-neighbor", R"(["north","east","south","west","north_east"])")),

@@ -22,7 +22,7 @@ namespace {
     using namespace CE::Assets;
 
     fs::path asset_file(const std::string& name) {
-        const auto graphics = fs::path(CHERYL_SOURCE_DIR) / "assets" / "graphics";
+        const auto graphics = fs::path(CHERYL_SOURCE_DIR) / "assets" / "graphics" / "definitions";
         if (name == "atlas.json")
             return graphics / "MiniWorldSprites" / name;
         return graphics / "tilesets" / name;
@@ -194,8 +194,9 @@ TEST(asset_manifest, sprite_and_tileset_sheet) {
     // Define a minimal manifest with a sprite grid, explicit animation frames,
     // and a tileset whose neighbor bitmasks map to cells.
     std::istringstream input(R"json({
-      "$schema": "./schemas/asset-manifest-1.0.schema.json",
-      "version": "1.0",
+      "$schema": "../../schemas/graphics/sprite-tileset-manifest-2.0.schema.json",
+      "asset_class": "sprite-tileset",
+      "version": "2.0",
       "namespace": "test",
       "texture": "sheet.png",
       "defaults": {
@@ -246,11 +247,11 @@ TEST(asset_manifest, sprite_and_tileset_sheet) {
       }
     })json");
 
-    // Resolve paths relative to the manifest and cell coordinates within the grid.
-    const auto manifest = ManifestLoader::parse(input, "/tmp/assets/test.json");
+    // Resolve paths from graphics and cell coordinates within the grid.
+    const auto manifest = ManifestLoader::parse(input, "/tmp/assets/graphics/definitions/test.json");
     ASSERT_EQ(manifest.sprites.size(), std::size_t{1});
     const auto& sprite = manifest.sprites.front();
-    EXPECT_EQ(sprite.texture, fs::path("/tmp/assets/sheet.png"));
+    EXPECT_EQ(sprite.texture, fs::path("/tmp/assets/graphics/sheet.png"));
     EXPECT_EQ(sprite.orientations.at("east"), std::size_t{1});
     ASSERT_EQ(sprite.animations.size(), std::size_t{1});
     EXPECT_EQ(sprite.animations.front().frames[1].cell, std::size_t{3});
@@ -265,8 +266,9 @@ TEST(asset_manifest, sprite_and_tileset_sheet) {
 TEST(asset_manifest, invalid_cell_reference) {
     // Declare a one-cell grid but point the east orientation at cell index one.
     std::istringstream input(R"json({
-      "$schema": "./schemas/asset-manifest-1.0.schema.json",
-      "version": "1.0",
+      "$schema": "../../schemas/graphics/sprite-tileset-manifest-2.0.schema.json",
+      "asset_class": "sprite-tileset",
+      "version": "2.0",
       "namespace": "bad",
       "texture": "sheet.png",
       "defaults": {
@@ -290,7 +292,7 @@ TEST(asset_manifest, invalid_cell_reference) {
 
     // Parsing must reject the reference and identify its manifest in the error.
     try {
-        static_cast<void>(ManifestLoader::parse(input, "bad.json"));
+        static_cast<void>(ManifestLoader::parse(input, "graphics/definitions/bad.json"));
         FAIL() << "An out-of-range cell should throw";
     } catch (const CE::Exceptions::runtime_exception& error) {
         EXPECT_NE(std::string(error.what()).find("bad.json"), std::string::npos);

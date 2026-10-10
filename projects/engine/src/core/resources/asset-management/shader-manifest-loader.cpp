@@ -248,10 +248,11 @@ namespace CE::Assets {
         fields(root, source, "$", {"$schema", "asset_class", "version", "namespace", "programs", "materials"});
         if (text(required(root, "asset_class", source, "$"), source, "$.asset_class") != "shader")
             fail(source, "$.asset_class", "expected shader asset class");
-        if (text(required(root, "version", source, "$"), source, "$.version") != "1.0")
+        if (text(required(root, "version", source, "$"), source, "$.version") != "2.0")
             fail(source, "$.version", "unsupported shader asset version");
         if (root.contains("$schema"))
             static_cast<void>(text(root.at("$schema"), source, "$.$schema"));
+        static_cast<void>(ManifestDetail::graphics_directory(source));
         ShaderAssetManifest result;
         result.source = source;
         result.name_space = text(required(root, "namespace", source, "$"), source, "$.namespace");
@@ -277,11 +278,7 @@ namespace CE::Assets {
             fields(stages, source, location + ".stages", {"vertex", "fragment"});
             for (const auto& [name, stage] : {std::pair{"vertex", ShaderStage::Vertex}, std::pair{"fragment", ShaderStage::Fragment}}) {
                 const auto path = text(required(stages, name, source, location + ".stages"), source, location + ".stages." + name);
-                const fs::path relative(path);
-                if (relative.is_absolute() || relative.has_root_name() || relative.has_root_directory() ||
-                    path.find('\\') != std::string::npos || path.find(':') != std::string::npos)
-                    fail(source, location + ".stages." + name, "expected a relative path with forward slashes");
-                recipe.sources.push_back({stage, (source.parent_path() / relative).lexically_normal(), {}});
+                recipe.sources.push_back({stage, ManifestDetail::graphics_path(source, path, location + ".stages." + name), {}});
             }
             validate_shader_program(recipe);
             result.programs.push_back(std::move(recipe));

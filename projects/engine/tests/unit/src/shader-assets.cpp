@@ -28,7 +28,7 @@ namespace {
     namespace fs = std::filesystem;
 
     const std::string shader_json = R"JSON({
-      "asset_class":"shader","version":"1.0","namespace":"test",
+      "asset_class":"shader","version":"2.0","namespace":"test",
       "programs":[{"name":"program","stages":{"vertex":"shaders/source.vert","fragment":"shaders/source.frag"}}],
       "materials":[{"name":"images","program":"test:program","vertex_layout":"position3_uv2","topology":"triangle_strip",
         "parameters":[{"key":"image","type":"sampler2d"},{"key":"weight","type":"float","default":1.0}],
@@ -36,7 +36,8 @@ namespace {
     })JSON";
 
     const std::string grid_json = R"JSON({
-      "$schema":"./schemas/asset-manifest-1.1.schema.json","version":"1.1","namespace":"test",
+      "$schema":"../schemas/graphics/sprite-tileset-manifest-2.0.schema.json",
+      "asset_class":"sprite-tileset","version":"2.0","namespace":"test",
       "texture":"pixel.png","shader":"test:images",
       "defaults":{"sprite":{"pivot":{"x":0.5,"y":1}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},
       "sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}},
@@ -55,17 +56,17 @@ namespace {
         inline static std::atomic<unsigned int> next{0};
         const fs::path root = fs::temp_directory_path() /
             ("cheryl-shaders-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + '-' +
-             std::to_string(next.fetch_add(1)));
+             std::to_string(next.fetch_add(1))) / "graphics";
 
         TemporaryShaders() {
-            write("graphics-manifests.json", R"JSON({"version":"1.0","manifests":["shader.json"]})JSON");
+            write("graphics-manifests.json", R"JSON({"version":"2.0","manifests":["shader.json"]})JSON");
             write("shader.json", shader_json);
             write("shaders/source.vert", "original vertex");
             write("shaders/source.frag", "original fragment");
         }
         ~TemporaryShaders() {
             std::error_code error;
-            fs::remove_all(root, error);
+            fs::remove_all(root.parent_path(), error);
         }
         void write(const fs::path& relative, const std::string& bytes) const {
             fs::create_directories((root / relative).parent_path());
@@ -79,7 +80,7 @@ namespace {
                 fs::path(CHERYL_SOURCE_DIR) / "projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png", root / "pixel.png"
             );
             write("grid.json", grid_json);
-            write("graphics-manifests.json", R"JSON({"version":"1.0","manifests":["grid.json","shader.json","shader.json"]})JSON");
+            write("graphics-manifests.json", R"JSON({"version":"2.0","manifests":["grid.json","shader.json","shader.json"]})JSON");
         }
     };
 
@@ -288,7 +289,7 @@ TEST(shader_assets, owner_thread) {
 
 TEST(shader_assets, invalid_definitions) {
     for (const auto& document : {
-        changed(shader_json, "\"version\":\"1.0\"", "\"version\":\"2.0\""),
+        changed(shader_json, "\"version\":\"2.0\"", "\"version\":\"3.0\""),
         changed(shader_json, "\"fragment\":", "\"compute\":"),
         changed(shader_json, "\"name\":\"images\"", "\"name\":\"program\""),
         changed(
@@ -298,7 +299,7 @@ TEST(shader_assets, invalid_definitions) {
         changed(shader_json, "\"namespace\":\"test\"", "\"namespace\":\"test\",\"namespace\":\"other\"")}) {
         SCOPED_TRACE(document);
         std::istringstream input(document);
-        EXPECT_THROW(static_cast<void>(ManifestLoader::parse_shader(input, "invalid.json")), CE::Exceptions::runtime_exception);
+        EXPECT_THROW(static_cast<void>(ManifestLoader::parse_shader(input, "graphics/invalid.json")), CE::Exceptions::runtime_exception);
     }
 }
 
@@ -316,9 +317,9 @@ TEST(shader_assets, preparation_failure) {
     EXPECT_EQ(provider.program_builds, 1u);
     files.write("shader.json", shader_json);
     files.write("duplicate.json", shader_json);
-    files.write("graphics-manifests.json", R"JSON({"version":"1.0","manifests":["shader.json","duplicate.json"]})JSON");
+    files.write("graphics-manifests.json", R"JSON({"version":"2.0","manifests":["shader.json","duplicate.json"]})JSON");
     EXPECT_THROW(static_cast<void>(files.prepare()), CE::Exceptions::runtime_exception);
-    files.write("graphics-manifests.json", R"JSON({"version":"1.0","manifests":["shader.json"]})JSON");
+    files.write("graphics-manifests.json", R"JSON({"version":"2.0","manifests":["shader.json"]})JSON");
     files.write("shader.json", changed(shader_json, "\"asset_class\":\"shader\"", "\"asset_class\":\"unknown\""));
     EXPECT_THROW(static_cast<void>(files.prepare()), CE::Exceptions::runtime_exception);
     files.write("shader.json", shader_json);
@@ -370,13 +371,12 @@ TEST(shader_assets, asset_references) {
     files.write("grid.json", grid_json);
     files.write("shader.json", changed(shader_json, "\"topology\":\"triangle_strip\"", "\"topology\":\"triangles\""));
     EXPECT_THROW(static_cast<void>(files.prepare()), CE::Exceptions::invalid_args);
-    auto legacy = changed(grid_json, "asset-manifest-1.1", "asset-manifest-1.0");
-    legacy = changed(legacy, "\"version\":\"1.1\"", "\"version\":\"1.0\"");
+    const auto legacy = changed(grid_json, "\"version\":\"2.0\"", "\"version\":\"1.0\"");
     std::istringstream input(legacy);
-    EXPECT_THROW(static_cast<void>(ManifestLoader::parse(input, "legacy.json")), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(static_cast<void>(ManifestLoader::parse(input, "graphics/legacy.json")), CE::Exceptions::runtime_exception);
     auto entry_selection = changed(grid_json, "\"pixel\":{\"grid\":", "\"pixel\":{\"shader\":\"fx:images\",\"grid\":");
     std::istringstream modern(entry_selection);
-    const auto parsed = ManifestLoader::parse(modern, "modern.json");
+    const auto parsed = ManifestLoader::parse(modern, "graphics/modern.json");
     EXPECT_EQ(parsed.sprites.front().shader, "fx:images");
     EXPECT_EQ(parsed.tilesets.front().shader, "test:images");
 }
@@ -422,7 +422,7 @@ TEST(shader_assets, literal_types) {
         SCOPED_TRACE(literal.type);
         std::istringstream input(changed(shader_json, "\"type\":\"float\",\"default\":1.0",
             "\"type\":\"" + literal.type + "\",\"default\":" + literal.value));
-        const auto manifest = ManifestLoader::parse_shader(input, "literals.json");
+        const auto manifest = ManifestLoader::parse_shader(input, "graphics/literals.json");
         const auto& value = *manifest.materials.front().parameters.back().default_value;
         EXPECT_EQ(parameter_type(shader_parameter_value(value)), literal.expected);
         if (literal.expected == ParameterType::Mat4)
@@ -430,7 +430,9 @@ TEST(shader_assets, literal_types) {
     }
     for (const auto& value : {"1e300", "[1,2]", "\"image.png\""}) {
         std::istringstream input(changed(shader_json, "\"default\":1.0", std::string("\"default\":") + value));
-        EXPECT_THROW(static_cast<void>(ManifestLoader::parse_shader(input, "invalid-literal.json")), CE::Exceptions::runtime_exception);
+        EXPECT_THROW(
+            static_cast<void>(ManifestLoader::parse_shader(input, "graphics/invalid-literal.json")), CE::Exceptions::runtime_exception
+        );
     }
 }
 
@@ -461,7 +463,7 @@ TEST(shader_assets, selected_program_reference) {
     files.write("program.json", program_only);
     files.write("shader.json", material_only);
     EXPECT_THROW(static_cast<void>(files.prepare()), CE::Exceptions::runtime_exception);
-    files.write("graphics-manifests.json", R"JSON({"version":"1.0","manifests":["shader.json","program.json"]})JSON");
+    files.write("graphics-manifests.json", R"JSON({"version":"2.0","manifests":["shader.json","program.json"]})JSON");
     RecordingProvider provider;
     Loader(files.root).upload(files.prepare(), provider);
     EXPECT_EQ(provider.program_builds, 1u);
