@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <backends/opengl/pipeline.h>
 
 #include <filesystem>
@@ -18,13 +19,15 @@ namespace CE::Assets {
      * Calls require the rendering context current on the calling thread; CPU data is copied
      * during construction and need not outlive each call.
      */
-    class OpenGLResourceProvider final : public ResourceProvider {
+    class OpenGLResourceProvider final : public ResourceProvider, private ShaderAssetBuilder {
         RenderAPIs::OpenGLRenderer& renderer_;
         std::map<SamplerOptions, std::weak_ptr<const Sampler>> samplers_;
 
     public:
         explicit OpenGLResourceProvider(RenderAPIs::OpenGLRenderer& renderer)
         : renderer_(renderer) {}
+
+        [[nodiscard]] ShaderAssetBuilder* shader_asset_builder() noexcept override { return this; }
 
         [[nodiscard]] std::shared_ptr<Image> create_image(const DecodedImage& image) override;
         [[nodiscard]] std::shared_ptr<const Sampler> create_sampler(const SamplerOptions& options) override;
@@ -37,5 +40,13 @@ namespace CE::Assets {
         [[nodiscard]] std::shared_ptr<const GLSLPipeline>
         build_pipeline(PipelineDefinition definition, const GLSLPipelineBindings& bindings);
         [[nodiscard]] std::shared_ptr<const Material> build_material(MaterialDefinition definition);
+
+    private:
+        void validate_program(const ShaderProgramRecipe& recipe) const override;
+        void validate_material(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program) const override;
+        [[nodiscard]] std::shared_ptr<Shader> build_program(const ShaderProgramRecipe& recipe) override;
+        [[nodiscard]] std::shared_ptr<const Material> build_material(
+            const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program, const std::shared_ptr<Shader>& executable
+        ) override;
     };
 }

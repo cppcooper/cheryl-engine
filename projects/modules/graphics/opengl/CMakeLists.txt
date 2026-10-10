@@ -32,6 +32,8 @@ set_target_properties(${TARGET_LIB_MODULE_OPENGL} PROPERTIES
 target_include_directories(${TARGET_LIB_MODULE_OPENGL} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
+target_include_directories(${TARGET_LIB_MODULE_OPENGL} PRIVATE
+    "${CHERYL_REPOSITORY_ROOT}/extern/json/single_include")
 target_link_libraries(${TARGET_LIB_MODULE_OPENGL}
     PUBLIC ${LINKAGE_PUBLIC_LIB_MODULE_OPENGL}
     PRIVATE ${LINKAGE_PRIVATE_LIB_MODULE_OPENGL})

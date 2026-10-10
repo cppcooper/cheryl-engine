@@ -78,6 +78,13 @@ namespace CE::Assets {
         const auto* pipeline = dynamic_cast<const GLSLPipeline*>(definition.pipeline.get());
         if (!pipeline || pipeline->resource_domain() != renderer_.resources().get())
             throw Exceptions::invalid_args(CE_HERE, "Material requires a pipeline from this OpenGL provider's domain");
+        for (const auto& [key, sampling] : definition.sampling) {
+            static_cast<void>(key);
+            const auto* sampler = dynamic_cast<const OpenGLSampler*>(sampling.get());
+            if (!sampler || sampler->resource_domain() != renderer_.resources().get())
+                throw Exceptions::invalid_args(CE_HERE, "Material sampling requires this OpenGL provider's domain");
+            sampler->require_binding(0);
+        }
         auto material = std::make_shared<Material>(std::move(definition));
         pipeline->validate_resources(material->definition().defaults);
         return material;
