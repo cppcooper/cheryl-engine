@@ -1,13 +1,12 @@
 #include <assets/types/2d/unicode-text.h>
 #include <assets/submission/draw2d.h>
-#include <backends/opengl/resource-provider.h>
 #include <core/controls/input-interface.h>
 #include <core/display/window-interface.h>
 #include <core/engine/engine-context.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
-#include <core/resources/asset-management/material-mgr.h>
+#include <core/resources/asset-management/shader-asset-mgr.h>
 #include <internals/exceptions.h>
 
 #include <ext/matrix_transform.hpp>
@@ -138,7 +137,6 @@ public:
         camera_.set_framebuffer_size(engine_.window().framebuffer_size());
         asset_root_ = std::filesystem::absolute(asset_root_).lexically_normal();
 
-        const auto shader2d = asset_root_ / "graphics" / "shaders" / "shader2d";
         auto& resources = engine_.resources();
         CE::Assets::Loader loader(asset_root_);
         bool files_registered = false;
@@ -157,20 +155,15 @@ public:
                 std::cerr << "Asset file discovery failed; continuing with manual demo samples: " << error.what() << '\n';
             }
         }
+        auto materials = load_materials(asset_root_, resources, false);
+        font_shader_ = std::move(materials.text);
+        image_shader_ = std::move(materials.images);
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
         fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
         text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
         target_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
             CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_)), resources
         ));
-        auto& materials = CE::Assets::MaterialMgr::get();
-        materials.load_material(shader2d, resources, material_recipe(shader2d, CE::Assets::PrimitiveTopology::Triangles));
-        font_shader_ = materials.get_asset(shader2d);
-        // The same shader sources need a separate material/cache key for the
-        // four-vertex tile/sprite strips; text retains its triangle pipeline.
-        const auto image_key = std::filesystem::path(shader2d.string() + "-strips");
-        materials.load_material(image_key, resources, material_recipe(shader2d, CE::Assets::PrimitiveTopology::TriangleStrip));
-        image_shader_ = materials.get_asset(image_key);
         assets_.load(asset_root_, resources, *fonts_);
         audio_.load();
 
@@ -287,16 +280,9 @@ public:
             const auto* button = std::get_if<CE::Input::ButtonEvent>(&record.data);
             if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
                 button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
-                const auto key = asset_root_ / "graphics" / "shaders" / "shader2d";
-                const auto image_key = std::filesystem::path(key.string() + "-strips");
-                const auto text_builder = material_recipe(key, CE::Assets::PrimitiveTopology::Triangles);
-                const auto image_builder = material_recipe(key, CE::Assets::PrimitiveTopology::TriangleStrip);
                 pending_shader_ = engine_.platform_dispatcher().submit(
-                    [key, image_key, text_builder, image_builder](CE::Engine::EngineContext& platform) {
-                        auto& materials = CE::Assets::MaterialMgr::get();
-                        materials.reload_material(key, platform.resources(), text_builder);
-                        materials.reload_material(image_key, platform.resources(), image_builder);
-                        return Materials{materials.get_asset(key), materials.get_asset(image_key)};
+                    [root = asset_root_](CE::Engine::EngineContext& platform) {
+                        return load_materials(root, platform.resources(), true);
                     }
                 );
             }
@@ -484,27 +470,29 @@ private:
         }
     }
 
-    CE::Assets::MaterialMgr::Builder material_recipe(const std::filesystem::path& key, const CE::Assets::PrimitiveTopology topology) const {
-        return [key, topology](CE::Assets::ResourceProvider& provider) {
-            using namespace CE::Assets;
-            auto* native = dynamic_cast<OpenGLResourceProvider*>(&provider);
-            if (!native)
-                throw CE::Exceptions::invalid_args(CE_HERE, "The GLFW demo requires an OpenGL material provider");
-            PipelineDefinition definition;
-            definition.program_sources = {key.string() + ".vert", key.string() + ".frag"};
-            definition.topology = topology;
-            definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-                                     {"view", ParameterType::Mat4, true, ParameterSemantic::View},
-                                     {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-                                     {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-                                     {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}
-            };
-            const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
-                                                 {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}
-                }
-            };
-            return native->build_material({native->build_pipeline(std::move(definition), bindings), {}});
+    static Materials load_materials(const std::filesystem::path& root, CE::Assets::ResourceProvider& provider, const bool replace) {
+        using namespace CE::Assets;
+        Loader loader(root);
+        auto prepared = loader.prepare_graphics({"graphics/shaders/graphics-manifests.json"});
+        // Validate this selection before upload so removed definitions cannot be
+        // hidden by an older catalogue entry during an explicit reload.
+        const auto require = [&](const std::string& id, const PrimitiveTopology topology) {
+            for (const auto& manifest : prepared.shaders)
+                for (const auto& material : manifest.materials)
+                    if (material.id == id) {
+                        const auto image = std::ranges::find(material.parameters, "image", &ShaderParameter::key);
+                        if (material.vertex_layout != VertexLayout2D::Position3UV2 || material.topology != topology ||
+                            image == material.parameters.end() || image->type != ParameterType::Sampler2D)
+                            throw CE::Exceptions::invalid_args(CE_HERE, "Main demo shader recipe is incompatible: '" + id + "'");
+                        return;
+                    }
+            throw CE::Exceptions::invalid_args(CE_HERE, "Main demo shader definition is missing: '" + id + "'");
         };
+        require("main:text", PrimitiveTopology::Triangles);
+        require("main:images", PrimitiveTopology::TriangleStrip);
+        loader.upload(std::move(prepared), provider, replace);
+        auto& materials = ShaderAssetMgr::get();
+        return {materials.get_material("main:text"), materials.get_material("main:images")};
     }
 
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)

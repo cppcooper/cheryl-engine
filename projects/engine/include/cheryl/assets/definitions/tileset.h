@@ -72,7 +72,7 @@ namespace CE::Assets {
         std::unordered_map<std::string, CellIndex> orientations;
         std::unordered_map<std::string, TileAnimationDefinition> animations;
         std::unordered_map<std::string, AutotileDefinition> autotiles;
-        std::optional<std::string> shader;
+        std::optional<std::string> shader = {};
 
         [[nodiscard]] std::string id() const;
     };

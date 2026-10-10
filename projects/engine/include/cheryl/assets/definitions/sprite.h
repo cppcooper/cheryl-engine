@@ -21,7 +21,7 @@ namespace CE::Assets {
         std::unordered_map<std::string, CellIndex> orientations;
         std::optional<std::string> animation_profile;
         std::vector<SpriteAnimationDefinition> animations;
-        std::optional<std::string> shader;
+        std::optional<std::string> shader = {};
 
         [[nodiscard]] std::string id() const;
     };

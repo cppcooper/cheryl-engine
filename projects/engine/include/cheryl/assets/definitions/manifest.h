@@ -26,7 +26,7 @@ namespace CE::Assets {
         std::unordered_map<std::string, AnimationProfileDefinition> animation_profiles;
         std::vector<SpriteDefinition> sprites;
         std::vector<TilesetDefinition> tilesets;
-        std::optional<std::string> shader;
+        std::optional<std::string> shader = {};
 
         // Owned deduplicated entry paths, sprites then tilesets in first-reference
         // order. The manifest-level default is included only when an entry uses it.

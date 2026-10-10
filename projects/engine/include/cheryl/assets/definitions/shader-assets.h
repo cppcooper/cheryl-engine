@@ -30,7 +30,7 @@ namespace CE::Assets {
         ParameterType type = ParameterType::Float;
         bool required = true;
         ParameterSemantic semantic = ParameterSemantic::Custom;
-        std::optional<ShaderLiteral> default_value;
+        std::optional<ShaderLiteral> default_value = {};
     };
 
     struct ShaderMaterialRecipe {

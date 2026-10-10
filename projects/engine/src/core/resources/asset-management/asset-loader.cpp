@@ -263,8 +263,9 @@ namespace CE::Assets {
             if (completed) {
                 CE_LOG_INFO(
                     CE::assetlog,
-                    "subsystem=assets domain={} provider={} operation=upload_end images={} manifests={} publications={} duration_us={}",
-                    observed.batch, observed.provider, observed.images_completed, observed.manifests_completed, observed.publications,
+                    "subsystem=assets domain={} provider={} operation=upload_end images={} manifests={} shader_manifests={} publications={} replacements={} duration_us={}",
+                    observed.batch, observed.provider, observed.images_completed, observed.manifests_completed,
+                    observed.shader_manifests_completed, observed.publications, observed.replacements,
                     std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - started).count()
                 );
             } else {
@@ -273,9 +274,9 @@ namespace CE::Assets {
                 Diagnostics::report_outcome("assets", observed.batch, "upload", outcome, observed.publications + observed.replacements);
                 CE_LOG_ERROR(
                     CE::assetlog,
-                    "subsystem=assets domain={} provider={} operation=upload outcome={} images={} manifests={} publications={} count_available={}",
+                    "subsystem=assets domain={} provider={} operation=upload outcome={} images={} manifests={} shader_manifests={} publications={} replacements={} count_available={}",
                     observed.batch, observed.provider, outcome, observed.images_completed, observed.manifests_completed,
-                    observed.publications, observed.publication_count_available
+                    observed.shader_manifests_completed, observed.publications, observed.replacements, observed.publication_count_available
                 );
             }
         };
