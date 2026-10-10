@@ -33,13 +33,24 @@ namespace {
         void draw(std::size_t, std::size_t) const override {}
     };
 
+    struct MemorySampler final : CE::Assets::Sampler {
+        explicit MemorySampler(const CE::Assets::SamplerOptions options)
+        : Sampler(options, 1) {}
+        void bind(std::uint32_t) const override {}
+    };
+
     struct MemoryProvider final : CE::Assets::ResourceProvider {
         int image_uploads = 0;
+        int sampler_uploads = 0;
         int geometry_uploads = 0;
         int fail_geometry = 0;
         bool missing_image = false;
         bool wrong_size = false;
+        bool missing_sampler = false;
+        bool wrong_sampling = false;
+        bool unsupported_sampling = false;
         std::vector<std::weak_ptr<MemoryImage>> images;
+        std::vector<std::weak_ptr<const CE::Assets::Sampler>> samplers;
         std::vector<std::weak_ptr<MemoryGeometry>> geometry;
 
         std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& data) override {
@@ -51,6 +62,19 @@ namespace {
                 ++image->pixels.size.width;
             images.push_back(image);
             return image;
+        }
+        std::shared_ptr<const CE::Assets::Sampler> create_sampler(const CE::Assets::SamplerOptions& requested) override {
+            ++sampler_uploads;
+            if (unsupported_sampling)
+                return ResourceProvider::create_sampler(requested);
+            if (missing_sampler)
+                return {};
+            auto options = requested;
+            if (wrong_sampling)
+                options.mipmaps = CE::Assets::MipmapFilter::Linear;
+            auto sampler = std::make_shared<MemorySampler>(options);
+            samplers.push_back(sampler);
+            return sampler;
         }
         std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize) override {
             throw std::runtime_error("UI RGBA atlases use create_image");
@@ -122,11 +146,20 @@ TEST(ui_tgui_scene, complete_frame) {
     const auto image = texture();
     const auto scene = uploader.upload(provider, recording(image, 2), materials());
     EXPECT_EQ(provider.image_uploads, 1);
+    EXPECT_EQ(provider.sampler_uploads, 1);
     EXPECT_EQ(provider.geometry_uploads, 2);
     ASSERT_EQ(scene.draws().size(), 2u);
     const auto& binding = std::get<CE::Assets::ImageBinding>(scene.draws()[0].parameters.at("pixels"));
     EXPECT_EQ(binding.unit, 3u);
     EXPECT_EQ(binding.image, std::get<CE::Assets::ImageBinding>(scene.draws()[1].parameters.at("pixels")).image);
+    ASSERT_TRUE(binding.sampler);
+    EXPECT_EQ(binding.sampler, std::get<CE::Assets::ImageBinding>(scene.draws()[1].parameters.at("pixels")).sampler);
+    EXPECT_EQ(binding.sampler->options().minification, CE::Assets::ImageFilter::Linear);
+    EXPECT_EQ(binding.sampler->options().magnification, CE::Assets::ImageFilter::Linear);
+    EXPECT_EQ(binding.sampler->options().mipmaps, CE::Assets::MipmapFilter::None);
+    EXPECT_EQ(binding.sampler->options().wrap_u, CE::Assets::ImageWrap::ClampToEdge);
+    EXPECT_EQ(binding.sampler->options().wrap_v, CE::Assets::ImageWrap::ClampToEdge);
+    EXPECT_EQ(binding.sampler->options().anisotropy, CE::Assets::ImageAnisotropy::Disabled);
     CE::RenderAPIs::RenderFrame frame;
     CE::RenderAPIs::RenderFrameWriter writer(frame);
     scene.write(writer);
@@ -176,13 +209,82 @@ TEST(ui_tgui_scene, retained_frame) {
     scene.write(writer);
     const auto image_lifetime = provider.images[0];
     const auto geometry_lifetime = provider.geometry[0];
+    const auto sampler_lifetime = provider.samplers[0];
     image.reset();
     scene = Scene{};
     EXPECT_FALSE(image_lifetime.expired());
     EXPECT_FALSE(geometry_lifetime.expired());
+    EXPECT_FALSE(sampler_lifetime.expired());
     frame.recycle();
     EXPECT_TRUE(image_lifetime.expired());
     EXPECT_TRUE(geometry_lifetime.expired());
+    EXPECT_TRUE(sampler_lifetime.expired());
+}
+
+TEST(ui_tgui_scene, sampling_isolation) {
+    MemoryProvider provider;
+    SceneUploader uploader(provider);
+    const auto image = texture();
+    const auto selected = materials();
+    const auto smooth_recording = recording(image);
+    image->setSmooth(false);
+    const auto nearest_recording = recording(image);
+    const auto nearest = uploader.upload(provider, nearest_recording, selected);
+    const auto smooth = uploader.upload(provider, smooth_recording, selected);
+    const auto reused = uploader.upload(provider, nearest_recording, selected);
+    EXPECT_EQ(provider.image_uploads, 1);
+    EXPECT_EQ(provider.sampler_uploads, 2);
+    const auto& nearest_binding = std::get<CE::Assets::ImageBinding>(nearest.draws()[0].parameters.at("pixels"));
+    const auto& smooth_binding = std::get<CE::Assets::ImageBinding>(smooth.draws()[0].parameters.at("pixels"));
+    const auto& reused_binding = std::get<CE::Assets::ImageBinding>(reused.draws()[0].parameters.at("pixels"));
+    EXPECT_EQ(nearest_binding.image, smooth_binding.image);
+    EXPECT_EQ(nearest_binding.image, reused_binding.image);
+    ASSERT_TRUE(nearest_binding.sampler);
+    ASSERT_TRUE(smooth_binding.sampler);
+    EXPECT_NE(nearest_binding.sampler, smooth_binding.sampler);
+    EXPECT_EQ(nearest_binding.sampler, reused_binding.sampler);
+    EXPECT_EQ(nearest_binding.sampler->options().minification, CE::Assets::ImageFilter::Nearest);
+    EXPECT_EQ(nearest_binding.sampler->options().magnification, CE::Assets::ImageFilter::Nearest);
+    EXPECT_EQ(nearest_binding.sampler->options().mipmaps, CE::Assets::MipmapFilter::None);
+    EXPECT_FLOAT_EQ(nearest_binding.sampler->effective_anisotropy(), 1);
+    EXPECT_EQ(smooth_binding.sampler->options().minification, CE::Assets::ImageFilter::Linear);
+    EXPECT_EQ(smooth_binding.sampler->options().magnification, CE::Assets::ImageFilter::Linear);
+}
+
+TEST(ui_tgui_scene, sampling_failure) {
+    for (const int failure : {0, 1, 2}) {
+        SCOPED_TRACE(failure);
+        MemoryProvider provider;
+        SceneUploader uploader(provider);
+        const auto image = texture();
+        auto current = uploader.upload(provider, recording(image), materials());
+        const auto previous = current.draws()[0].geometry;
+        const auto old_sampler = std::get<CE::Assets::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler;
+        image->setSmooth(false);
+        provider.unsupported_sampling = failure == 0;
+        provider.missing_sampler = failure == 1;
+        provider.wrong_sampling = failure == 2;
+        std::promise<Scene> completion;
+        auto future = completion.get_future();
+        try {
+            completion.set_value(uploader.upload(provider, recording(image), materials()));
+        } catch (...) {
+            completion.set_exception(std::current_exception());
+        }
+        EXPECT_THROW(adopt_scene(future, current), CE::Exceptions::failed_operation);
+        EXPECT_EQ(current.draws()[0].geometry, previous);
+        EXPECT_EQ(std::get<CE::Assets::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler, old_sampler);
+        EXPECT_EQ(provider.image_uploads, 1);
+        EXPECT_EQ(provider.geometry_uploads, 1);
+        provider.unsupported_sampling = provider.missing_sampler = provider.wrong_sampling = false;
+        const auto retried = uploader.upload(provider, recording(image), materials());
+        EXPECT_EQ(provider.image_uploads, 1);
+        EXPECT_EQ(provider.sampler_uploads, 3);
+        EXPECT_EQ(
+            std::get<CE::Assets::ImageBinding>(retried.draws()[0].parameters.at("pixels")).sampler->options().magnification,
+            CE::Assets::ImageFilter::Nearest
+        );
+    }
 }
 
 TEST(ui_tgui_scene, failed_upload) {

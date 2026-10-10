@@ -40,6 +40,7 @@ namespace {
         CE::RenderAPIs::RenderFrame red_frame;
         CE::RenderAPIs::RenderFrame blue_frame;
         std::vector<std::weak_ptr<const CE::Assets::Image>> images;
+        std::vector<std::weak_ptr<const CE::Assets::Sampler>> samplers;
         std::vector<std::weak_ptr<const CE::Assets::Geometry2D>> geometry;
         bool input_attached = false;
         bool game_stopped = false;
@@ -127,6 +128,12 @@ namespace {
         void draw(std::size_t, std::size_t) const override {}
     };
 
+    struct MemorySampler final : CE::Assets::Sampler {
+        explicit MemorySampler(const CE::Assets::SamplerOptions options)
+        : Sampler(options, 1) {}
+        void bind(std::uint32_t) const override {}
+    };
+
     class Resources final : public CE::Assets::ResourceProvider {
         RuntimeState& state_;
 
@@ -138,6 +145,12 @@ namespace {
             auto image = std::make_shared<MemoryImage>(data);
             state_.images.push_back(image);
             return image;
+        }
+        std::shared_ptr<const CE::Assets::Sampler> create_sampler(const CE::Assets::SamplerOptions& options) override {
+            EXPECT_EQ(std::this_thread::get_id(), state_.platform);
+            auto sampler = std::make_shared<MemorySampler>(options);
+            state_.samplers.push_back(sampler);
+            return sampler;
         }
         std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize) override {
             throw std::logic_error("TGUI uploads RGBA font images");
@@ -353,17 +366,22 @@ namespace {
         // Toolkit, game and provider are gone; published packets still own their
         // memory resources until the retaining consumer releases both frames.
         EXPECT_FALSE(state.images.empty());
+        EXPECT_FALSE(state.samplers.empty());
         EXPECT_FALSE(state.geometry.empty());
         for (const auto& image : state.images)
             EXPECT_FALSE(image.expired());
         for (const auto& geometry : state.geometry)
             EXPECT_FALSE(geometry.expired());
+        for (const auto& sampler : state.samplers)
+            EXPECT_FALSE(sampler.expired());
         state.red_frame.recycle();
         state.blue_frame.recycle();
         for (const auto& image : state.images)
             EXPECT_TRUE(image.expired());
         for (const auto& geometry : state.geometry)
             EXPECT_TRUE(geometry.expired());
+        for (const auto& sampler : state.samplers)
+            EXPECT_TRUE(sampler.expired());
     }
 }
 

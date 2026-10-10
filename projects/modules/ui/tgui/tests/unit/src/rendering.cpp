@@ -77,12 +77,42 @@ TEST(ui_tgui_texture, sampling) {
     constexpr std::array<unsigned char, 4> pixels{255, 0, 0, 255};
     ASSERT_TRUE(texture.loadTextureOnly({1, 1}, pixels.data(), true));
     const auto saved = texture.snapshot();
-    EXPECT_THROW(texture.setSmooth(false), CE::Exceptions::invalid_args);
-    EXPECT_THROW(texture.loadTextureOnly({1, 1}, pixels.data(), false), CE::Exceptions::invalid_args);
+    texture.setSmooth(false);
     EXPECT_EQ(texture.snapshot(), saved);
-    EXPECT_TRUE(texture.isSmooth());
+    EXPECT_FALSE(texture.isSmooth());
     texture.setSmooth(true);
     EXPECT_EQ(texture.snapshot(), saved);
+    EXPECT_TRUE(texture.isSmooth());
+    ASSERT_TRUE(texture.loadTextureOnly({1, 1}, pixels.data(), false));
+    EXPECT_NE(texture.snapshot(), saved);
+    EXPECT_FALSE(texture.isSmooth());
+}
+
+TEST(ui_tgui_recording, retained_sampling) {
+    RenderTarget target;
+    configure(target);
+    auto texture = std::make_shared<Texture>(32);
+    constexpr std::array<unsigned char, 4> pixels{255, 0, 0, 255};
+    ASSERT_TRUE(texture->loadTextureOnly({1, 1}, pixels.data(), true));
+    const auto generation = texture->snapshot();
+    target.begin_recording();
+    draw(target, texture);
+    texture->setSmooth(false);
+    draw(target, texture);
+    const auto first = target.finish_recording();
+    texture->setSmooth(true);
+    target.begin_recording();
+    draw(target, texture);
+    const auto second = target.finish_recording();
+    texture.reset();
+    ASSERT_EQ(first.draws().size(), 2u);
+    ASSERT_EQ(second.draws().size(), 1u);
+    EXPECT_TRUE(first.draws()[0].smooth);
+    EXPECT_FALSE(first.draws()[1].smooth);
+    EXPECT_TRUE(second.draws()[0].smooth);
+    for (const auto& draw : first.draws())
+        EXPECT_EQ(draw.texture, generation);
+    EXPECT_EQ(second.draws()[0].texture, generation);
 }
 
 TEST(ui_tgui_recording, indices_transform) {

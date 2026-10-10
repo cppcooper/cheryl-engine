@@ -416,6 +416,103 @@ TEST(native_opengl, deferred_worker_release) {
     renderer.deinitialize();
 }
 
+TEST(native_opengl, texture_sampling) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    auto& resources = dynamic_cast<OpenGLResourceProvider&>(engine->resources());
+    renderer.initialize();
+    NativeShaderFiles files;
+    NativeShaderFiles::write(files.vertex, R"(#version 330 core
+layout(location = 0) in vec3 in_Position;
+layout(location = 1) in vec2 in_Texcoord;
+out vec2 uv;
+void main() { gl_Position = vec4(in_Position, 1.0); uv = in_Texcoord; }
+)");
+    NativeShaderFiles::write(files.fragment, R"(#version 330 core
+in vec2 uv;
+uniform sampler2D pixels;
+out vec4 color;
+void main() { color = texture(pixels, uv); }
+)");
+    PipelineDefinition definition;
+    definition.program_sources = files.stages();
+    definition.parameters = {{"image", ParameterType::Sampler2D}};
+    const auto pipeline = resources.build_pipeline(definition, {{{"image", "pixels"}}});
+    const auto image = resources.create_image(DecodedImage{{2, 1}, {255, 0, 0, 255, 0, 0, 255, 255}});
+    const auto geometry = [&](const float scale) {
+        // The center readback samples u=0.625 for both derivatives. Scale 1
+        // magnifies this two-texel image; scale 128 minifies it without mip access.
+        const auto left = 0.625f - scale * (32.5f / 64);
+        const std::array<CE::Vertex2D, 3> vertices{{
+            {-1, -1, 0, left, 0.5f}, {3, -1, 0, left + 2 * scale, 0.5f}, {-1, 3, 0, left, 0.5f}}};
+        return resources.upload_geometry(vertices, PrimitiveTopology::Triangles);
+    };
+    const std::array geometries{geometry(1), geometry(128)};
+    for (const auto minification : {ImageFilter::Nearest, ImageFilter::Linear}) {
+        for (const auto magnification : {ImageFilter::Nearest, ImageFilter::Linear}) {
+            SCOPED_TRACE(static_cast<int>(minification));
+            SCOPED_TRACE(static_cast<int>(magnification));
+            SamplerOptions options;
+            options.minification = minification;
+            options.magnification = magnification;
+            options.mipmaps = MipmapFilter::None;
+            options.anisotropy = ImageAnisotropy::Disabled;
+            const auto sampler = resources.create_sampler(options);
+            const auto material = resources.build_material({pipeline, {{"image", ImageBinding{image, 0, sampler}}}});
+            std::array<RenderFrame, 2> frames;
+            for (std::size_t i = 0; i < frames.size(); ++i) {
+                retain_draw(frames[i], geometries[i], material);
+                const auto pixel = draw_pixel(renderer, frames[i]);
+                const auto filter = i == 0 ? magnification : minification;
+                if (filter == ImageFilter::Nearest) {
+                    EXPECT_EQ(pixel, (std::array<unsigned char, 4>{0, 0, 255, 255}));
+                } else {
+                    EXPECT_NEAR(pixel[0], 64, 2);
+                    EXPECT_EQ(pixel[1], 0);
+                    EXPECT_NEAR(pixel[2], 191, 2);
+                    EXPECT_EQ(pixel[3], 255);
+                }
+            }
+            SamplerOptions different = options;
+            different.magnification = magnification == ImageFilter::Nearest ? ImageFilter::Linear : ImageFilter::Nearest;
+            const auto alternate = resources.create_sampler(different);
+            alternate->bind(0);
+            const auto retained = draw_pixel(renderer, frames[0]);
+            if (magnification == ImageFilter::Nearest)
+                EXPECT_EQ(retained, (std::array<unsigned char, 4>{0, 0, 255, 255}));
+            else
+                EXPECT_NEAR(retained[0], 64, 2);
+        }
+    }
+    const auto default_sampler = resources.create_sampler({});
+    default_sampler->bind(0);
+    GLint sampler_id = 0;
+    glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &sampler_id);
+    ASSERT_NE(sampler_id, 0);
+    if (GLAD_GL_VERSION_4_6 || GLAD_GL_ARB_texture_filter_anisotropic || GLAD_GL_EXT_texture_filter_anisotropic) {
+        GLfloat maximum = 0, effective = 0;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maximum);
+        glGetSamplerParameterfv(static_cast<GLuint>(sampler_id), GL_TEXTURE_MAX_ANISOTROPY, &effective);
+        EXPECT_FLOAT_EQ(effective, maximum);
+        EXPECT_FLOAT_EQ(default_sampler->effective_anisotropy(), maximum);
+    } else {
+        EXPECT_FLOAT_EQ(default_sampler->effective_anisotropy(), 1);
+    }
+    RenderFrame defaults;
+    const auto default_material = resources.build_material({pipeline, {{"image", ImageBinding{image, 0}}}});
+    retain_draw(defaults, geometries[0], default_material);
+    static_cast<void>(draw_pixel(renderer, defaults));
+    glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &sampler_id);
+    EXPECT_EQ(sampler_id, 0);
+    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+    defaults.recycle();
+    renderer.deinitialize();
+}
+
 TEST(native_opengl, debug_output) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
@@ -615,6 +712,11 @@ TEST(native_opengl, shutdown_before_late_release) {
     auto material = material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f})(engine->resources());
     auto geometry = fullscreen_triangle(engine->resources());
     auto image = engine->resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+    auto sampler = engine->resources().create_sampler({});
+    sampler->bind(2);
+    GLint sampler_id = 0;
+    glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &sampler_id);
+    ASSERT_NE(sampler_id, 0);
     const auto texture = bound_texture_id(*image);
     CE::RenderAPIs::RenderFrame frame;
     retain_draw(frame, geometry, material);
@@ -636,29 +738,36 @@ TEST(native_opengl, shutdown_before_late_release) {
     EXPECT_EQ(glIsVertexArray(vao), GL_FALSE);
     EXPECT_EQ(glIsBuffer(buffer), GL_FALSE);
     EXPECT_EQ(glIsTexture(texture), GL_FALSE);
+    EXPECT_EQ(glIsSampler(static_cast<GLuint>(sampler_id)), GL_FALSE);
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     EXPECT_THROW(renderer.render(frame), CE::Exceptions::failed_operation);
     EXPECT_THROW(pipeline.bind_parameters(material->resolve({}, {}, {}, {})), CE::Exceptions::failed_operation);
     EXPECT_THROW(geometry->bind(), CE::Exceptions::failed_operation);
     EXPECT_THROW(image->bind(0), CE::Exceptions::failed_operation);
+    EXPECT_THROW(sampler->bind(2), CE::Exceptions::failed_operation);
     glfwMakeContextCurrent(nullptr);
     engine.reset();
     EXPECT_THROW(pipeline.bind_parameters(material->resolve({}, {}, {}, {})), CE::Exceptions::failed_operation);
     EXPECT_THROW(geometry->bind(), CE::Exceptions::failed_operation);
     EXPECT_THROW(image->bind(0), CE::Exceptions::failed_operation);
+    EXPECT_THROW(sampler->bind(2), CE::Exceptions::failed_operation);
     frame.recycle();
     std::weak_ptr<const CE::Assets::Material> material_owner = material;
     std::weak_ptr<CE::Assets::Geometry2D> geometry_owner = geometry;
     std::weak_ptr<CE::Assets::Image> image_owner = image;
-    std::thread release([material = std::move(material), geometry = std::move(geometry), image = std::move(image)]() mutable {
+    std::weak_ptr<const CE::Assets::Sampler> sampler_owner = sampler;
+    std::thread release([material = std::move(material), geometry = std::move(geometry), image = std::move(image),
+                         sampler = std::move(sampler)]() mutable {
         material.reset();
         geometry.reset();
         image.reset();
+        sampler.reset();
     });
     release.join();
     EXPECT_TRUE(material_owner.expired());
     EXPECT_TRUE(geometry_owner.expired());
     EXPECT_TRUE(image_owner.expired());
+    EXPECT_TRUE(sampler_owner.expired());
 }
 
 TEST(native_opengl, rotated_legacy_text) {

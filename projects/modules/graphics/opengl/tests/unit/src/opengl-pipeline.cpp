@@ -1,5 +1,6 @@
 #include <backends/opengl/pipeline.h>
 #include <backends/opengl/texture.h>
+#include <backends/opengl/sampler.h>
 #include <backends/opengl/vertex-array-object.h>
 #include <backends/opengl/resource-lifetime-internal.h>
 #include <backends/opengl/renderer-internal.h>
@@ -16,6 +17,7 @@
 #include <functional>
 #include <future>
 #include <map>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -56,6 +58,11 @@ namespace {
         std::vector<GLSLVariable> attributes{{"in_Position", GL_FLOAT_VEC3, 1, 0}, {"in_Texcoord", GL_FLOAT_VEC2, 1, 1}};
         std::map<GLint, ParameterValue> writes;
         std::vector<std::pair<std::uint32_t, GLuint>> image_binds;
+        std::vector<std::pair<std::uint32_t, GLuint>> sampler_binds;
+        std::map<GLuint, std::map<GLenum, GLint>> sampler_parameters;
+        std::map<GLuint, GLfloat> sampler_anisotropy;
+        std::map<GLenum, GLint> image_parameters;
+        GLfloat image_anisotropy = 1;
         int uses = 0;
         std::map<GLenum, bool> enabled;
         std::array<GLenum, 4> blend_factors{};
@@ -73,6 +80,9 @@ namespace {
         int fail_buffer_upload = 0;
         bool fail_image_upload = false;
         bool fail_anisotropy_query = false;
+        GLfloat maximum_anisotropy = 16;
+        int anisotropy_queries = 0;
+        bool fail_sampler_parameters = false;
         std::optional<GLenum> fail_integer_query;
         int anisotropy_writes = 0;
         int image_uploads = 0;
@@ -192,6 +202,7 @@ namespace {
         static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) { generate(GLResourceKind::Texture, count, images); }
         static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) { generate(GLResourceKind::Buffer, count, images); }
         static void GLAD_API_PTR generate_arrays(GLsizei count, GLuint* images) { generate(GLResourceKind::VertexArray, count, images); }
+        static void GLAD_API_PTR generate_samplers(GLsizei count, GLuint* ids) { generate(GLResourceKind::Sampler, count, ids); }
         static void delete_ids(GLResourceKind kind, GLsizei count, const GLuint* ids) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->deleted.emplace_back(kind, ids[i]);
@@ -200,6 +211,7 @@ namespace {
         static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
         static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
         static void GLAD_API_PTR delete_program(GLuint id) { delete_ids(GLResourceKind::Program, 1, &id); }
+        static void GLAD_API_PTR delete_samplers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Sampler, count, ids); }
         static GLenum GLAD_API_PTR error_query() {
             const auto error = std::exchange(active_->error_, GL_NO_ERROR);
             if (error != GL_NO_ERROR && active_->lose_context_on_error)
@@ -208,6 +220,15 @@ namespace {
         }
         static void GLAD_API_PTR activate_image(GLenum unit) { active_->active_unit_ = unit - GL_TEXTURE0; }
         static void GLAD_API_PTR bind_image(GLenum, GLuint image) { active_->image_binds.emplace_back(active_->active_unit_, image); }
+        static void GLAD_API_PTR bind_sampler(GLuint unit, GLuint sampler) { active_->sampler_binds.emplace_back(unit, sampler); }
+        static void GLAD_API_PTR sampler_parameter(GLuint sampler, GLenum parameter, GLint value) {
+            active_->sampler_parameters[sampler][parameter] = value;
+            if (active_->fail_sampler_parameters)
+                active_->error_ = GL_OUT_OF_MEMORY;
+        }
+        static void GLAD_API_PTR sampler_anisotropy_parameter(GLuint sampler, GLenum, GLfloat value) {
+            active_->sampler_anisotropy[sampler] = value;
+        }
         static void GLAD_API_PTR integer_query(GLenum parameter, GLint* value) {
             if (active_->fail_integer_query == parameter) {
                 active_->error_ = GL_INVALID_OPERATION;
@@ -216,14 +237,18 @@ namespace {
             *value = parameter == GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ? 8 : active_->unpack_alignment;
         }
         static void GLAD_API_PTR anisotropy_query(GLenum, GLfloat* value) {
+            ++active_->anisotropy_queries;
             if (active_->fail_anisotropy_query) {
                 active_->error_ = GL_INVALID_ENUM;
                 return;
             }
-            *value = 16;
+            *value = active_->maximum_anisotropy;
         }
-        static void GLAD_API_PTR anisotropy_parameter(GLenum, GLenum, GLfloat) { ++active_->anisotropy_writes; }
-        static void GLAD_API_PTR image_parameter(GLenum, GLenum, GLint) {}
+        static void GLAD_API_PTR anisotropy_parameter(GLenum, GLenum, GLfloat value) {
+            ++active_->anisotropy_writes;
+            active_->image_anisotropy = value;
+        }
+        static void GLAD_API_PTR image_parameter(GLenum, GLenum parameter, GLint value) { active_->image_parameters[parameter] = value; }
         static void GLAD_API_PTR image_parameters(GLenum, GLenum, const GLint*) {}
         static void GLAD_API_PTR pixel_store(GLenum parameter, GLint value) {
             if (parameter == GL_UNPACK_ALIGNMENT)
@@ -316,6 +341,11 @@ namespace {
                 replace(glad_glGenTextures, generate_images);
                 replace(glad_glActiveTexture, activate_image);
                 replace(glad_glBindTexture, bind_image);
+                replace(glad_glGenSamplers, generate_samplers);
+                replace(glad_glDeleteSamplers, delete_samplers);
+                replace(glad_glBindSampler, bind_sampler);
+                replace(glad_glSamplerParameteri, sampler_parameter);
+                replace(glad_glSamplerParameterf, sampler_anisotropy_parameter);
                 replace(glad_glGetIntegerv, integer_query);
                 replace(glad_glGetFloatv, anisotropy_query);
                 replace(glad_glGetError, error_query);
@@ -330,6 +360,8 @@ namespace {
                 replace(glad_glDeleteVertexArrays, delete_arrays);
                 replace(glad_glDeleteProgram, delete_program);
                 replace(GLAD_GL_EXT_texture_filter_anisotropic, 0);
+                replace(GLAD_GL_ARB_texture_filter_anisotropic, 0);
+                replace(GLAD_GL_VERSION_4_6, 0);
                 replace(glad_glEnable, enable);
                 replace(glad_glBlendFunc, startup_blend);
                 replace(glad_glClearColor, clear_colour);
@@ -364,7 +396,14 @@ namespace {
         NativeProgramRecorder& operator=(const NativeProgramRecorder&) = delete;
 
         void pending_error(GLenum error) { error_ = error; }
-        void enable_anisotropy() { replace(GLAD_GL_EXT_texture_filter_anisotropic, 1); }
+        void enable_anisotropy(const int source = 0) {
+            if (source == 0)
+                replace(GLAD_GL_EXT_texture_filter_anisotropic, 1);
+            else if (source == 1)
+                replace(GLAD_GL_ARB_texture_filter_anisotropic, 1);
+            else
+                replace(GLAD_GL_VERSION_4_6, 1);
+        }
         void reject_registration(const int candidate) {
             entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
             lifetime_ = ResourceDetail::LifetimeAccess::create(
@@ -396,6 +435,14 @@ namespace {
             }
             const unsigned char pixels[]{255, 255, 255, 255};
             return std::make_shared<Texture>(domain, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+        }
+        std::shared_ptr<OpenGLSampler> sampler(const SamplerOptions& options, const bool another_domain = false) {
+            auto domain = lifetime_;
+            if (another_domain) {
+                domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+                other_domains_.push_back(domain);
+            }
+            return std::make_shared<OpenGLSampler>(domain, options);
         }
         std::shared_ptr<CE::VAO> geometry(bool another_domain = false) {
             auto domain = lifetime_;
@@ -867,6 +914,260 @@ TEST(opengl_texture, explicit_unbind_unit) {
     native.image_binds.clear();
     first->unbind(1);
     EXPECT_EQ(native.image_binds, (std::vector<std::pair<std::uint32_t, GLuint>>{{1, 0}}));
+}
+
+TEST(opengl_sampler, filter_modes) {
+    NativeProgramRecorder native;
+    const std::array<GLint, 6> expected{GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
+                                      GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR};
+    std::size_t index = 0;
+    for (const auto filter : {ImageFilter::Nearest, ImageFilter::Linear}) {
+        for (const auto mipmaps : {MipmapFilter::None, MipmapFilter::Nearest, MipmapFilter::Linear}) {
+            SamplerOptions options;
+            options.minification = filter;
+            options.magnification = filter;
+            options.mipmaps = mipmaps;
+            options.anisotropy = ImageAnisotropy::Disabled;
+            const auto sampler = native.sampler(options);
+            sampler->bind(3);
+            const auto id = native.sampler_binds.back().second;
+            const auto& parameters = native.sampler_parameters.at(id);
+            EXPECT_EQ(parameters.at(GL_TEXTURE_MIN_FILTER), expected[index++]);
+            EXPECT_EQ(parameters.at(GL_TEXTURE_MAG_FILTER), filter == ImageFilter::Nearest ? GL_NEAREST : GL_LINEAR);
+            EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_S), GL_CLAMP_TO_EDGE);
+            EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_T), GL_CLAMP_TO_EDGE);
+        }
+    }
+    EXPECT_EQ(native.anisotropy_queries, 0);
+    EXPECT_TRUE(native.sampler_anisotropy.empty());
+}
+
+TEST(opengl_sampler, independent_modes) {
+    NativeProgramRecorder native;
+    SamplerOptions options;
+    options.minification = ImageFilter::Nearest;
+    options.magnification = ImageFilter::Linear;
+    options.mipmaps = MipmapFilter::Linear;
+    options.wrap_u = ImageWrap::Repeat;
+    options.wrap_v = ImageWrap::MirroredRepeat;
+    options.anisotropy = ImageAnisotropy::Disabled;
+    const auto sampler = native.sampler(options);
+    sampler->bind(2);
+    const auto& parameters = native.sampler_parameters.at(native.sampler_binds.back().second);
+    EXPECT_EQ(parameters.at(GL_TEXTURE_MIN_FILTER), GL_NEAREST_MIPMAP_LINEAR);
+    EXPECT_EQ(parameters.at(GL_TEXTURE_MAG_FILTER), GL_LINEAR);
+    EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_S), GL_REPEAT);
+    EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_T), GL_MIRRORED_REPEAT);
+}
+
+TEST(opengl_sampler, anisotropy_defaults) {
+    for (const int support : {-1, 0, 1, 2}) {
+        SCOPED_TRACE(support);
+        NativeProgramRecorder native;
+        if (support >= 0)
+            native.enable_anisotropy(support);
+        const auto sampler = native.sampler({});
+        sampler->bind(0);
+        const auto id = native.sampler_binds.back().second;
+        EXPECT_FLOAT_EQ(sampler->effective_anisotropy(), support < 0 ? 1 : 16);
+        EXPECT_EQ(sampler->options().anisotropy, ImageAnisotropy::MaximumSupported);
+        EXPECT_EQ(native.anisotropy_queries, support < 0 ? 0 : 1);
+        if (support >= 0)
+            EXPECT_FLOAT_EQ(native.sampler_anisotropy.at(id), 16);
+        else
+            EXPECT_TRUE(native.sampler_anisotropy.empty());
+        static_cast<void>(native.image());
+        if (support >= 0)
+            EXPECT_FLOAT_EQ(native.image_anisotropy, 16);
+    }
+}
+
+TEST(opengl_sampler, anisotropy_disabled) {
+    NativeProgramRecorder native;
+    native.enable_anisotropy();
+    native.fail_anisotropy_query = true;
+    SamplerOptions options;
+    options.minification = options.magnification = ImageFilter::Nearest;
+    options.mipmaps = MipmapFilter::None;
+    options.anisotropy = ImageAnisotropy::Disabled;
+    const auto sampler = native.sampler(options);
+    sampler->bind(1);
+    EXPECT_FLOAT_EQ(sampler->effective_anisotropy(), 1);
+    EXPECT_FLOAT_EQ(native.sampler_anisotropy.at(native.sampler_binds.back().second), 1);
+    EXPECT_EQ(native.anisotropy_queries, 0);
+    const unsigned char pixels[]{255, 255, 255, 255};
+    const Texture image(native.lifetime(), pixels, 1, 1, true, true, GL_CLAMP_TO_EDGE, GL_RGBA);
+    EXPECT_EQ(native.image_parameters.at(GL_TEXTURE_MIN_FILTER), GL_NEAREST_MIPMAP_NEAREST);
+    EXPECT_EQ(native.image_parameters.at(GL_TEXTURE_MAG_FILTER), GL_NEAREST);
+    EXPECT_FLOAT_EQ(native.image_anisotropy, 1);
+    EXPECT_EQ(native.anisotropy_queries, 0);
+}
+
+TEST(opengl_sampler, cache_lifetime) {
+    NativeProgramRecorder native;
+    RecordingContext context(native);
+    OpenGLRenderer renderer(context);
+    RendererDetail::RendererAccess::set_native_loader(renderer, [](iOpenGLContext&) {});
+    renderer.initialize();
+    OpenGLResourceProvider provider(renderer);
+    auto first = provider.create_sampler({});
+    auto second = provider.create_sampler({});
+    EXPECT_EQ(first, second);
+    auto worker = std::async(std::launch::async, [&] {
+        EXPECT_THROW(static_cast<void>(provider.create_sampler({})), CE::Exceptions::failed_operation);
+    });
+    worker.get();
+    ASSERT_EQ(native.generated.size(), 1u);
+    const auto original = native.generated.front();
+    SamplerOptions nearest;
+    nearest.minification = nearest.magnification = ImageFilter::Nearest;
+    nearest.mipmaps = MipmapFilter::None;
+    nearest.anisotropy = ImageAnisotropy::Disabled;
+    const auto different = provider.create_sampler(nearest);
+    EXPECT_NE(first, different);
+    std::weak_ptr<const Sampler> retained = first;
+    first.reset();
+    second.reset();
+    EXPECT_TRUE(retained.expired());
+    renderer.maintain_resources();
+    EXPECT_EQ(native.deleted, (std::vector<std::pair<GLResourceKind, GLuint>>{original}));
+    const auto replacement = provider.create_sampler({});
+    EXPECT_EQ(native.generated.size(), 3u);
+    EXPECT_EQ(replacement->options(), SamplerOptions{});
+    renderer.deinitialize();
+    EXPECT_EQ(native.deleted.size(), 3u);
+    EXPECT_THROW(static_cast<void>(provider.create_sampler({})), CE::Exceptions::failed_operation);
+    EXPECT_THROW(replacement->bind(0), CE::Exceptions::failed_operation);
+}
+
+TEST(opengl_sampler, creation_failures) {
+    for (const int failure : {0, 1, 2, 3, 4, 5, 6}) {
+        SCOPED_TRACE(failure);
+        NativeProgramRecorder native;
+        if (failure == 0)
+            native.pending_error(GL_INVALID_OPERATION);
+        else if (failure == 1)
+            native.fail_generation = GLResourceKind::Sampler;
+        else if (failure == 2)
+            native.reject_registration(1);
+        else if (failure == 3)
+            native.fail_sampler_parameters = true;
+        else if (failure == 4)
+            native.fail_integer_query = GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS;
+        else {
+            native.enable_anisotropy();
+            native.fail_anisotropy_query = failure == 5;
+            native.maximum_anisotropy = std::numeric_limits<float>::quiet_NaN();
+        }
+        if (failure == 2)
+            EXPECT_THROW(static_cast<void>(native.sampler({})), std::bad_alloc);
+        else
+            EXPECT_THROW(static_cast<void>(native.sampler({})), CE::Exceptions::failed_operation);
+        EXPECT_TRUE(native.sampler_binds.empty());
+        native.collect();
+        EXPECT_EQ(native.deleted, native.generated);
+        EXPECT_EQ(native.generated.size(), failure == 0 || failure >= 5 ? 0u : 1u);
+    }
+}
+
+TEST(opengl_sampler, binding_guards) {
+    NativeProgramRecorder native;
+    const auto sampler = native.sampler({});
+    EXPECT_THROW(sampler->bind(8), invalid_args);
+    auto worker = std::async(std::launch::async, [&] {
+        EXPECT_THROW(sampler->bind(0), CE::Exceptions::failed_operation);
+    });
+    worker.get();
+    native.set_current(false);
+    EXPECT_THROW(sampler->bind(0), CE::Exceptions::failed_operation);
+    native.set_current(true);
+    native.lifetime()->shutdown();
+    EXPECT_THROW(sampler->bind(0), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(native.sampler_binds.empty());
+}
+
+TEST(opengl_pipeline, sampler_isolation) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
+    auto definition = time_definition();
+    definition.parameters = {{"image", ParameterType::Sampler2D}};
+    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
+    auto image = native.image();
+    SamplerOptions nearest;
+    nearest.minification = nearest.magnification = ImageFilter::Nearest;
+    nearest.mipmaps = MipmapFilter::None;
+    nearest.anisotropy = ImageAnisotropy::Disabled;
+    const auto first = native.sampler(nearest);
+    const auto second = native.sampler({});
+    const auto parameters = native.image_parameters;
+    const auto uploads = native.image_uploads;
+    native.sampler_binds.clear();
+    pipeline.bind_parameters({{"image", ImageBinding{image, 4, first}}});
+    ASSERT_EQ(native.sampler_binds.size(), 2u);
+    const auto nearest_id = native.sampler_binds.back().second;
+    pipeline.bind_parameters({{"image", ImageBinding{image, 4, second}}});
+    const auto smooth_id = native.sampler_binds.back().second;
+    pipeline.bind_parameters({{"image", ImageBinding{image, 4}}});
+    pipeline.bind_parameters({{"image", ImageBinding{image, 4, first}}});
+    EXPECT_NE(nearest_id, smooth_id);
+    EXPECT_EQ(
+        native.sampler_binds,
+        (std::vector<std::pair<std::uint32_t, GLuint>>{{4, 0}, {4, nearest_id}, {4, 0}, {4, smooth_id}, {4, 0}, {4, 0}, {4, nearest_id}})
+    );
+    EXPECT_EQ(native.image_uploads, uploads);
+    EXPECT_EQ(native.image_parameters, parameters);
+}
+
+TEST(opengl_pipeline, sampler_validation) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
+    auto definition = time_definition();
+    definition.parameters = {{"image", ParameterType::Sampler2D}};
+    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
+    const auto geometry = native.geometry();
+    const auto image = native.image();
+    const auto foreign = native.sampler({}, true);
+    const std::array<unsigned char, 16> pixels{};
+    const auto incomplete = std::make_shared<Texture>(native.lifetime(), pixels.data(), 2, 2, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+    const auto mipmapped = native.sampler({});
+    native.image_binds.clear();
+    native.sampler_binds.clear();
+    const auto state_changes = native.state_changes;
+    EXPECT_THROW(pipeline.draw(*geometry, 0, 3, {{"image", ImageBinding{image, 0, foreign}}}, {}), invalid_args);
+    EXPECT_THROW(pipeline.draw(*geometry, 0, 3, {{"image", ImageBinding{incomplete, 0, mipmapped}}}, {}), invalid_args);
+    EXPECT_EQ(native.uses, 0);
+    EXPECT_EQ(native.state_changes, state_changes);
+    EXPECT_TRUE(native.image_binds.empty());
+    EXPECT_TRUE(native.sampler_binds.empty());
+    EXPECT_TRUE(native.writes.empty());
+    EXPECT_TRUE(native.draws.empty());
+    SamplerOptions base_level;
+    base_level.mipmaps = MipmapFilter::None;
+    const auto nonmipmapped = native.sampler(base_level);
+    EXPECT_NO_THROW(pipeline.bind_parameters({{"image", ImageBinding{incomplete, 0, nonmipmapped}}}));
+    EXPECT_NO_THROW(pipeline.bind_parameters({{"image", ImageBinding{image, 0, mipmapped}}})); // A 1x1 image is already complete.
+}
+
+TEST(opengl_pipeline, sampler_reset) {
+    NativeProgramRecorder native;
+    native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
+    auto definition = time_definition();
+    definition.parameters = {{"image", ParameterType::Sampler2D, false}};
+    const auto image = native.image();
+    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage", ImageBinding{image, 4}}}});
+    SamplerOptions nearest;
+    nearest.minification = nearest.magnification = ImageFilter::Nearest;
+    nearest.mipmaps = MipmapFilter::None;
+    nearest.anisotropy = ImageAnisotropy::Disabled;
+    const auto sampler = native.sampler(nearest);
+    native.sampler_binds.clear();
+    pipeline.bind_parameters({{"image", ImageBinding{image, 4, sampler}}});
+    ASSERT_EQ(native.sampler_binds.size(), 2u);
+    EXPECT_NE(native.sampler_binds.back().second, 0u);
+    pipeline.bind_parameters({});
+    ASSERT_EQ(native.sampler_binds.size(), 3u);
+    EXPECT_EQ(native.sampler_binds.back(), (std::pair<std::uint32_t, GLuint>{4, 0}));
+    EXPECT_EQ(std::get<int>(native.writes.at(6)), 4);
 }
 
 TEST(opengl_upload, buffer_upload_failure) {

@@ -60,15 +60,26 @@ namespace {
         void bind() const override {}
         void draw(std::size_t, std::size_t) const override {}
     };
+    struct MemorySampler final : CE::Assets::Sampler {
+        explicit MemorySampler(const CE::Assets::SamplerOptions options)
+        : Sampler(options, 1) {}
+        void bind(std::uint32_t) const override {}
+    };
     class Provider final : public CE::Assets::ResourceProvider {
     public:
         std::vector<std::weak_ptr<Image>> images;
+        std::vector<std::weak_ptr<const CE::Assets::Sampler>> samplers;
         std::vector<std::weak_ptr<Geometry>> geometry;
 
         std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& pixels) override {
             auto image = std::make_shared<Image>(pixels);
             images.push_back(image);
             return image;
+        }
+        std::shared_ptr<const CE::Assets::Sampler> create_sampler(const CE::Assets::SamplerOptions& options) override {
+            auto sampler = std::make_shared<MemorySampler>(options);
+            samplers.push_back(sampler);
+            return sampler;
         }
         std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize) override {
             throw std::logic_error("Both toolkits publish owned RGBA atlases");
@@ -110,6 +121,7 @@ TEST(ui_coexist, focus_lifetime) {
     CE::UI::TGUI::RecordedScene retained_tgui;
     CE::UI::RmlUi::RecordedScene retained_rmlui;
     std::vector<std::weak_ptr<Image>> images;
+    std::vector<std::weak_ptr<const CE::Assets::Sampler>> samplers;
     std::vector<std::weak_ptr<Geometry>> geometry;
     {
         Provider provider;
@@ -176,7 +188,16 @@ TEST(ui_coexist, focus_lifetime) {
         EXPECT_EQ(frame.passes()[0].constraints.blend, CE::Assets::BlendMode::StraightAlpha);
         EXPECT_EQ(frame.passes()[1].constraints.blend, CE::Assets::BlendMode::PremultipliedAlpha);
         images = provider.images;
+        samplers = provider.samplers;
         geometry = provider.geometry;
+        for (std::size_t i = 0; i < frame.passes().size(); ++i) {
+            for (const auto& draw : frame.passes()[i].draws) {
+                if (const auto found = draw.parameters.find("image"); found != draw.parameters.end()) {
+                    const auto& binding = std::get<CE::Assets::ImageBinding>(found->second);
+                    EXPECT_EQ(static_cast<bool>(binding.sampler), i == 0);
+                }
+            }
+        }
 
         tgui_field.reset();
         tgui_session.reset();
@@ -190,15 +211,20 @@ TEST(ui_coexist, focus_lifetime) {
     }
     ASSERT_FALSE(images.empty());
     ASSERT_FALSE(geometry.empty());
+    ASSERT_FALSE(samplers.empty());
     EXPECT_FALSE(retained_tgui.draws().empty());
     EXPECT_FALSE(retained_rmlui.draws().empty());
     for (const auto& image : images)
         EXPECT_FALSE(image.expired());
     for (const auto& buffer : geometry)
         EXPECT_FALSE(buffer.expired());
+    for (const auto& sampler : samplers)
+        EXPECT_FALSE(sampler.expired());
     frame.recycle();
     for (const auto& image : images)
         EXPECT_TRUE(image.expired());
     for (const auto& buffer : geometry)
         EXPECT_TRUE(buffer.expired());
+    for (const auto& sampler : samplers)
+        EXPECT_TRUE(sampler.expired());
 }

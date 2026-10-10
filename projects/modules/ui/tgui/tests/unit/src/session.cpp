@@ -198,8 +198,21 @@ TEST(ui_tgui_session, font_generations) {
     const auto font = session.gui().getFont();
     ASSERT_TRUE(font.getBackendFont());
     EXPECT_TRUE(font.isSmooth());
-    EXPECT_THROW(font.getBackendFont()->setSmooth(false), CE::Exceptions::invalid_args);
-    EXPECT_TRUE(font.isSmooth());
+    font.getBackendFont()->setSmooth(false);
+    EXPECT_FALSE(font.isSmooth());
+    const auto nearest = session.record();
+    bool recorded_font = false;
+    for (const auto& draw : nearest.draws()) {
+        if (draw.texture) {
+            EXPECT_EQ(draw.texture, atlas);
+            EXPECT_FALSE(draw.smooth);
+            recorded_font = true;
+        }
+    }
+    EXPECT_TRUE(recorded_font);
+    for (const auto& draw : first.draws())
+        if (draw.texture)
+            EXPECT_TRUE(draw.smooth);
     for (char32_t code = U' '; code < 0x300; ++code)
         if (font.getBackendFont()->hasGlyph(code))
             static_cast<void>(font.getGlyph(code, 32, false));
@@ -209,7 +222,16 @@ TEST(ui_tgui_session, font_generations) {
     ASSERT_TRUE(texture->snapshot());
     EXPECT_NE(texture->snapshot(), atlas);
     EXPECT_GT(texture->snapshot()->rgba.size(), pixels.size());
+    EXPECT_FALSE(texture->isSmooth());
     EXPECT_EQ(atlas->rgba, pixels);
+    font.getBackendFont()->setSmooth(true);
+    const auto smooth = session.record();
+    for (const auto& draw : smooth.draws())
+        if (draw.texture)
+            EXPECT_TRUE(draw.smooth);
+    for (const auto& draw : nearest.draws())
+        if (draw.texture)
+            EXPECT_FALSE(draw.smooth);
 }
 
 TEST(ui_tgui_session, owner_teardown) {

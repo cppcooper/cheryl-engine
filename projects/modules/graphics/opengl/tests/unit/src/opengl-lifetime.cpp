@@ -67,6 +67,7 @@ namespace {
         decltype(glad_glDeleteVertexArrays) arrays_ = glad_glDeleteVertexArrays;
         decltype(glad_glDeleteProgram) programs_ = glad_glDeleteProgram;
         decltype(glad_glDeleteShader) shaders_ = glad_glDeleteShader;
+        decltype(glad_glDeleteSamplers) samplers_ = glad_glDeleteSamplers;
         inline static DeletionRecorder* active_ = nullptr;
 
     public:
@@ -84,6 +85,7 @@ namespace {
         static void GLAD_API_PTR arrays(const GLsizei count, const GLuint* ids) { record(GLResourceKind::VertexArray, count, ids); }
         static void GLAD_API_PTR program(const GLuint id) { record(GLResourceKind::Program, 1, &id); }
         static void GLAD_API_PTR shader(const GLuint id) { record(GLResourceKind::ShaderStage, 1, &id); }
+        static void GLAD_API_PTR samplers(const GLsizei count, const GLuint* ids) { record(GLResourceKind::Sampler, count, ids); }
 
     public:
         DeletionRecorder() {
@@ -93,6 +95,7 @@ namespace {
             glad_glDeleteVertexArrays = arrays;
             glad_glDeleteProgram = program;
             glad_glDeleteShader = shader;
+            glad_glDeleteSamplers = samplers;
         }
         ~DeletionRecorder() {
             glad_glDeleteTextures = textures_;
@@ -100,6 +103,7 @@ namespace {
             glad_glDeleteVertexArrays = arrays_;
             glad_glDeleteProgram = programs_;
             glad_glDeleteShader = shaders_;
+            glad_glDeleteSamplers = samplers_;
             active_ = nullptr;
         }
         DeletionRecorder(const DeletionRecorder&) = delete;
@@ -254,22 +258,25 @@ TEST(opengl_lifetime, failed_context_recovery) {
 }
 
 TEST(opengl_lifetime, worker_release_retirement) {
-    DeletionRecorder native;
-    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
-    auto handle = std::make_unique<OpenGLHandle>(lifetime, GLResourceKind::Texture, 41);
-    auto worker = std::async(std::launch::async, [handle = std::move(handle)]() mutable { handle.reset(); });
-    worker.get();
-    EXPECT_TRUE(native.deletions.empty());
-    EXPECT_EQ(lifetime->diagnostics().pending, 1u);
-    lifetime->collect();
-    ASSERT_EQ(native.deletions.size(), 1u);
-    EXPECT_EQ(native.deletions.front(), (std::pair{GLResourceKind::Texture, GLuint{41}}));
-    EXPECT_EQ(native.deletion_thread, std::this_thread::get_id());
-    EXPECT_EQ(lifetime->diagnostics().pending, 0u);
-    EXPECT_EQ(lifetime->diagnostics().deleted, 1u);
-    lifetime->collect();
-    lifetime->shutdown();
-    EXPECT_EQ(native.deletions.size(), 1u);
+    for (const auto kind : {GLResourceKind::Texture, GLResourceKind::Sampler}) {
+        SCOPED_TRACE(static_cast<int>(kind));
+        DeletionRecorder native;
+        auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+        auto handle = std::make_unique<OpenGLHandle>(lifetime, kind, 41);
+        auto worker = std::async(std::launch::async, [handle = std::move(handle)]() mutable { handle.reset(); });
+        worker.get();
+        EXPECT_TRUE(native.deletions.empty());
+        EXPECT_EQ(lifetime->diagnostics().pending, 1u);
+        lifetime->collect();
+        ASSERT_EQ(native.deletions.size(), 1u);
+        EXPECT_EQ(native.deletions.front(), (std::pair{kind, GLuint{41}}));
+        EXPECT_EQ(native.deletion_thread, std::this_thread::get_id());
+        EXPECT_EQ(lifetime->diagnostics().pending, 0u);
+        EXPECT_EQ(lifetime->diagnostics().deleted, 1u);
+        lifetime->collect();
+        lifetime->shutdown();
+        EXPECT_EQ(native.deletions.size(), 1u);
+    }
 }
 
 TEST(opengl_lifetime, retained_shutdown) {
@@ -379,12 +386,13 @@ TEST(opengl_lifetime, failed_shutdown_abandonment) {
         return current;
     });
     const std::vector<GLResourceKind> kinds{
-        GLResourceKind::Texture, GLResourceKind::Buffer, GLResourceKind::VertexArray, GLResourceKind::Program, GLResourceKind::ShaderStage};
+        GLResourceKind::Texture, GLResourceKind::Buffer, GLResourceKind::VertexArray, GLResourceKind::Program,
+        GLResourceKind::ShaderStage, GLResourceKind::Sampler};
     std::vector<std::unique_ptr<OpenGLHandle>> handles;
     GLuint id = 60;
     for (const auto kind : kinds)
         handles.push_back(std::make_unique<OpenGLHandle>(lifetime, kind, id++));
-    handles.front().reset(); // One pending retirement and four still-retained handles.
+    handles.front().reset(); // One pending retirement and the remaining handles retained.
     current = false;
     EXPECT_THROW(lifetime->shutdown(), failed_operation);
     lifetime->abandon(); // Context destruction owns native cleanup when recovery fails.
