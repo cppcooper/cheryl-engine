@@ -5,8 +5,11 @@
 #include <utility>
 
 namespace CE::Assets {
-    TileAnimation::TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture)
-    : Asset2D(geometry, texture),
+    TileAnimation::TileAnimation(
+        TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture,
+        std::shared_ptr<const Material> material
+    )
+    : Asset2D(geometry, texture, std::move(material)),
       Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
       definition_(std::move(definition)) {}
 
@@ -15,7 +18,7 @@ namespace CE::Assets {
     }
 
     Tileset::Tileset(TilesetData data)
-    : Asset2D(std::move(data.geometry), std::move(data.texture)), definition_(std::move(data.definition)) {
+    : Asset2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)), definition_(std::move(data.definition)) {
         // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
@@ -28,11 +31,11 @@ namespace CE::Assets {
         if (cell >= definition_.grid.cell_count()) {
             throw Exceptions::bad_request(CE_HERE, "Tileset cell is outside the grid");
         }
-        return Tile(cell, geometry, texture);
+        return Tile(cell, geometry, texture, material);
     }
 
     TileAnimation Tileset::animation(const std::string& name) const {
-        return TileAnimation(definition_.animations.at(name), geometry, texture);
+        return TileAnimation(definition_.animations.at(name), geometry, texture, material);
     }
 
     std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {

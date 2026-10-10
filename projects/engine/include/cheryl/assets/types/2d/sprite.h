@@ -16,6 +16,7 @@ namespace CE::Assets {
         shptr<Geometry2D> geometry;
         shptr<Image> texture;
         SpriteDefinition definition;
+        std::shared_ptr<const Material> material = {};
     };
 
     /** Independent cursor retaining shared immutable clip metadata, even after its

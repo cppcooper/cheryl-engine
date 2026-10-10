@@ -32,8 +32,11 @@ namespace CE::Assets {
             const RenderAPIs::DrawStyle2D& style,
             const SubmissionContext2D& context
         ) {
+            auto selected = style;
+            if (!selected.material)
+                selected.material = asset.material;
             return RenderAPIs::resolve_draw_packet(
-                asset.geometry, first, count, image_style(style, asset.texture, context), context.pass, context.parameters,
+                asset.geometry, first, count, image_style(selected, asset.texture, context), context.pass, context.parameters,
                 context.constraints
             );
         }
@@ -58,16 +61,15 @@ namespace CE::Assets {
     }
 
     RenderAPIs::DrawPacket2D resolve_tile(const Tile& tile, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context) {
-        const Asset2D asset(tile.geometry, tile.texture);
         return resolve_range(
-            asset, range_start(tile.cell(), VAONumbers::vertices_per_strip_quad), VAONumbers::vertices_per_strip_quad, style, context
+            tile, range_start(tile.cell(), VAONumbers::vertices_per_strip_quad), VAONumbers::vertices_per_strip_quad, style, context
         );
     }
 
     RenderAPIs::DrawPacket2D
     resolve_tile(const TileAnimation& animation, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context) {
         return resolve_tile(
-            Tile(animation.definition().frames.at(animation.index()).cell, animation.geometry, animation.texture), style, context
+            Tile(animation.definition().frames.at(animation.index()).cell, animation.geometry, animation.texture, animation.material), style, context
         );
     }
 

@@ -65,7 +65,7 @@ namespace CE::Assets {
     }
 
     Sprite::Sprite(SpriteData data)
-    : Asset2D(std::move(data.geometry), std::move(data.texture)),
+    : Asset2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)),
       definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
         const auto cell_count = definition_->grid.cell_count();
         if (cell_count == 0) {

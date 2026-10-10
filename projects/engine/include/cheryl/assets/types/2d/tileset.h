@@ -19,12 +19,13 @@ namespace CE::Assets {
         shptr<Geometry2D> geometry;
         shptr<Image> texture;
         TilesetDefinition definition;
+        std::shared_ptr<const Material> material = {};
     };
 
     struct Tile final : Asset2D,
                         Frame<Tile> {
-        explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture)
-        : Asset2D(geometry, texture), Frame(cell, 0, 1) {}
+        explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture, std::shared_ptr<const Material> material = {})
+        : Asset2D(geometry, texture, std::move(material)), Frame(cell, 0, 1) {}
 
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
@@ -39,7 +40,10 @@ namespace CE::Assets {
         TileAnimationDefinition definition_;
 
     public:
-        explicit TileAnimation(TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture);
+        explicit TileAnimation(
+            TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture,
+            std::shared_ptr<const Material> material = {}
+        );
 
         [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
