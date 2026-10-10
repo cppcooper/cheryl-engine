@@ -9,8 +9,7 @@ through `graphics-manifests.json`, prepare owned CPU recipes, then construct and
 publish resources on the active backend's loading owner.
 
 This is a [near-term design unit](../develop-review-and-development-plan.md#nearest-planned-work).
-Shader/material document identity and backend construction remain open design
-decisions; scheduling does not approve them or authorize implementation/execution.
+The document and construction contracts below are approved for source implementation.
 Keep manual material-builder APIs available to applications that do not opt into
 automated loading. Audio and font loading are outside this extension.
 
@@ -59,47 +58,66 @@ reload retains the previous material. Ordinary loading preserves existing keys.
 The loader remains incrementally publishing, not an atomic batch or implicit hot
 reload system.
 
-## Design checkpoint
+## Approved contracts and migration scope
 
-Resolve these contracts in discussion before extending schemas or public APIs:
+Shader and material name the same asset class. A single versioned definition
+document owns named executable-program recipes and named material recipes; this
+internal distinction permits sharing a program between different draw topologies
+without creating separate shader and material asset classes. Documents declare
+`asset_class: "shader"` and `version: "1.0"`; `$schema` is an editor hint, never
+fetched at runtime. Graphics indexes continue to select document paths only.
 
-1. **Document format and dispatch.** Decide between extending the existing asset
-   definition format and introducing shader/material-specific formats. Specify
-   whether independently identified shader/program documents are referenced by
-   materials or one definition format owns both recipes. Define the shader manifest
-   schema, version compatibility and how already-index-selected documents choose
-   their parser.
-   Keep graphics indexes as selection documents; do not add asset-type tags to
-   them merely to duplicate a definition document's identity. Clarify the role of
-   `$schema`: the existing leaf parser treats it as a format marker, not a schema
-   file to fetch at runtime.
-2. **Recipe contents and identity.** Define shader/program and material identities,
-   cache keys and reference ownership where separate documents are selected,
-   explicit shader stages, topology/layout/state, parameter contracts and supported
-   defaults. Define duplicate-ID behavior and how two materials share sources
-   without colliding. Decide how backend-specific binding names are represented;
-   keep their interpretation backend-owned. Defer features beyond the two demo
-   recipes unless required for a coherent format.
-3. **Backend construction seam.** Choose an optional provider capability or an
-   explicitly supplied backend recipe-builder adapter. Common loading must not
-   depend on OpenGL or require every existing provider to implement graphics
-   material creation. Unsupported recipes/backends must fail explicitly.
-4. **Prepared ownership and dependencies.** Choose whether preparation snapshots
-   shader bytes or retains resolved source paths. Current OpenGL builders reopen
-   shader paths during construction; byte snapshots require a corresponding
-   builder/source API. Define default-image dependencies if supported without
-   putting runtime image handles in prepared data.
-5. **Demo selection and reload.** Materials are required in both normal and
-   `--full-assets` modes. Choose a focused loading route that uses the same
-   definition format and backend construction without forcing the default demo
-   to decode every optional image. Define how F5 explicitly rereads/rebuilds the
-   selected material definitions while preserving failure-safe replacement.
+Definitions contain no image paths or default images. Texture definitions do not
+refer to shaders. Sprite and tileset declarations own both their texture and an
+optional qualified shader/material selection. Add this selection in asset-manifest
+1.1, preserving the existing 1.0 contract. Uploaded assets retain the selected
+material generation; an explicit draw-style material can override it. References
+must resolve within the selected preparation batch before native construction.
 
-Approval of these decisions should establish a bounded implementation phase,
-with a checkpoint if the schema, provider interface or demo-mode requirements
-change materially.
+Sampling remains engine-owned and anisotropic by default where supported.
+Ordinary material recipes omit sampling policy. An FX recipe may explicitly
+override sampling for a named sampler parameter without identifying an image;
+images continue to arrive through asset submission or draw parameters.
 
-## Implementation order after approval
+Use qualified `namespace:name` identities, exact document-relative source paths,
+owned shader-byte snapshots and CPU-only parameter literals. Reject duplicate
+identities, references of the wrong kind and unsupported versions. Keep backend
+bindings opaque to common loading. An optional provider-owned construction
+capability validates and builds the recipes; existing providers need not implement
+it, and manual material builders remain available.
+
+A named catalogue shares the existing provider/cache domain and retains each
+program's recipe together with its executable generation. Material construction
+uses the retained program generation, including on preserve-existing loads.
+Explicit replacement constructs candidates before publication. Batch publication
+remains incremental; the demo adopts its text/image pair only after both reloads
+succeed. Existing frames and assets retain their previous generations.
+
+Migrate only the main demo's text and image materials. Other checked-in shaders
+have unverified purposes or behavior and must not be indexed merely because they
+exist. Default startup selects the main shader index without decoding all optional
+images; full-assets startup and F5 use the same recipe interpretation.
+
+TGUI and RmlUi retain their current manual material construction in this unit.
+Future UI migration should target TGUI first. If RmlUi later migrates, preserve or
+add a separate manual-construction example showing how to add definitions and wire
+their parameters and backend bindings explicitly. Replacing both manual examples
+without that demonstration would lose an intentional integration example.
+
+The approved progression is test design, production implementation and test
+implementation, completing each mode before advancing. Build/test execution and
+general documentation synchronization remain separate authorization boundaries.
+
+Version 1 covers vertex/fragment programs, both existing 2D vertex layouts,
+triangles and triangle strips, current blend/depth/cull state, scalar/vector/matrix
+parameters and sampler contracts. Arrays, uniform blocks, additional shader stages
+and advanced FX are deferred. OpenGL interprets its own attribute/uniform binding
+payload and validates active reflection before publication.
+
+Stop for a decision if implementation materially invalidates these contracts or
+requires expanding the migration beyond the two main demo recipes.
+
+## Implementation order
 
 1. Define the approved versioned shader/material schema, identifiers and CPU-only
    prepared recipe types.
@@ -108,6 +126,8 @@ change materially.
 2. Extend indexed document dispatch and recipe parsing. Resolve registered shader
    paths, validate common recipe structure, reject collisions and preserve useful
    document/property locations in failures before native construction begins.
+   Extend sprite/tileset manifests and retained submission values with optional
+   shader selection, preserving independent texture and shader definitions.
 3. Implement the approved backend construction seam in the OpenGL module. Retain
    manual `MaterialMgr` builders and their candidate-before-publication behavior.
 4. Extend Loader preparation/upload, including dependency ordering, retained
