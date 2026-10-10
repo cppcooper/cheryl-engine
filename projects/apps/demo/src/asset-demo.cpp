@@ -76,7 +76,7 @@ void DemoAssets::load(
     // Parse package metadata independently. One package, sheet or clip failure
     // cannot suppress samples from a different available entry.
     tiles_ = optional_asset("Puny World tiles", [&]() -> std::shared_ptr<const CE::Assets::Tileset> {
-        const auto manifest = CE::Assets::ManifestLoader::load(root / "graphics/tilesets/punyworld-overworld.json");
+        const auto manifest = CE::Assets::ManifestLoader::load(root / "graphics/definitions/tilesets/punyworld-overworld.json");
         const auto& definition = entry(manifest.tilesets, "overworld");
         for (const auto cell : static_tiles)
             static_cast<void>(definition.grid.cell_rect(cell));
@@ -96,7 +96,7 @@ void DemoAssets::load(
         return tiles;
     });
     const auto miniworld = optional_asset("MiniWorld manifest", [&] {
-        return std::make_optional(CE::Assets::ManifestLoader::load(root / "graphics/MiniWorldSprites/atlas.json"));
+        return std::make_optional(CE::Assets::ManifestLoader::load(root / "graphics/definitions/MiniWorldSprites/atlas.json"));
     });
     if (miniworld) {
         weapon_ = optional_asset("static weapon", [&] { return load_sprite(*miniworld, "shortsword", provider); });

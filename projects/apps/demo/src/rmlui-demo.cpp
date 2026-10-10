@@ -123,7 +123,9 @@ struct DemoRmlUi::RmlUiState {
         reset_callback = std::make_unique<Callback>([this] { reset_requested = true; });
         image_callback = std::make_unique<Callback>([this] {
             alternate_image = !alternate_image;
-            picture->SetAttribute("src", std::string{alternate_image ? "quadrants-alt.png" : "quadrants.png"});
+            picture->SetAttribute(
+                "src", std::string{alternate_image ? "../textures/ui/quadrants-alt.png" : "../textures/ui/quadrants.png"}
+            );
         });
         element(*document, "reset").AddEventListener("click", reset_callback.get());
         element(*document, "change-image").AddEventListener("click", image_callback.get());
