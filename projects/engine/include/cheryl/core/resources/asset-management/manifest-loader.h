@@ -13,9 +13,9 @@ namespace CE::Assets {
         std::vector<AssetManifest> assets;
         std::vector<ShaderAssetManifest> shaders;
     };
-    /** Parse one schema 1.0 document into backend-independent definitions. Document-local
-     * references are checked here; duplicate IDs across documents and image bounds are checked
-     * by Loader after it has collected the full asset set.
+    /** Parse sprite/tileset manifests into backend-independent definitions. Texture paths are
+     * manifest-relative in 1.0/1.1 and graphics-root-relative in 1.2. Duplicate IDs across
+     * documents and image bounds are checked by Loader after it has collected the full asset set.
      */
     struct ManifestLoader {
         [[nodiscard]] static AssetManifest load(const std::filesystem::path& file);

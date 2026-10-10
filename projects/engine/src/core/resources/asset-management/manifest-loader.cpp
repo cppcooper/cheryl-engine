@@ -170,9 +170,27 @@ namespace CE::Assets {
             return {parse_component("x"), parse_component("y")};
         }
 
-        fs::path parse_texture_path(const json& value, const fs::path& source, const std::string_view location) {
+        fs::path texture_directory(const fs::path& source, const std::string_view version) {
+            auto directory = source.parent_path().lexically_normal();
+            if (version != "1.2")
+                return directory;
+            // Graphical manifests share this root regardless of collection nesting.
+            while (!directory.empty()) {
+                if (directory.filename() == "graphics")
+                    return directory;
+                const auto parent = directory.parent_path();
+                if (parent == directory)
+                    break;
+                directory = parent;
+            }
+            fail(source, "$", "asset manifest 1.2 must be located under a graphics directory");
+        }
+
+        fs::path parse_texture_path(
+            const json& value, const fs::path& source, const std::string_view location, const std::string_view version
+        ) {
             // Resolve only after rejecting absolute paths and parent traversal, so every
-            // accepted reference has a lexical path under the manifest's directory.
+            // accepted reference has a lexical path under its version's texture root.
             const auto text = read_string(value, source, location);
             if (text.contains('\\')) {
                 fail(source, location, "texture paths must use forward slashes");
@@ -186,7 +204,7 @@ namespace CE::Assets {
                     fail(source, location, "texture path cannot traverse to a parent directory");
                 }
             }
-            return (source.parent_path() / relative).lexically_normal();
+            return (texture_directory(source, version) / relative).lexically_normal();
         }
 
         GridDefinition parse_grid(const json& value, const fs::path& source, const std::string_view location) {
@@ -642,6 +660,8 @@ namespace CE::Assets {
         }
 
         class Parser {
+            fs::path source_;
+
         public:
             explicit Parser(fs::path source)
             : source_(std::move(source)) {}
@@ -657,7 +677,7 @@ namespace CE::Assets {
                 manifest.source = source_;
                 manifest.schema = read_string(required(root, "$schema", source_, "$"), source_, "$.$schema");
                 manifest.version = read_string(required(root, "version", source_, "$"), source_, "$.version");
-                if (manifest.version != "1.0" && manifest.version != "1.1") {
+                if (manifest.version != "1.0" && manifest.version != "1.1" && manifest.version != "1.2") {
                     fail(source_, "$.version", "unsupported asset manifest version '" + manifest.version + "'");
                 }
                 if (manifest.schema != "./schemas/asset-manifest-" + manifest.version + ".schema.json")
@@ -678,7 +698,7 @@ namespace CE::Assets {
                     parse_pivot(required(tileset_defaults, "pivot", source_, "$.defaults.tileset"), source_, "$.defaults.tileset.pivot");
 
                 if (root.contains("texture")) {
-                    manifest.texture = parse_texture_path(root.at("texture"), source_, "$.texture");
+                    manifest.texture = parse_texture_path(root.at("texture"), source_, "$.texture", manifest.version);
                 }
                 // Profile parsing establishes reusable offsets; entry parsing below
                 // expands them only after the referenced sprite grid is known.
@@ -700,14 +720,12 @@ namespace CE::Assets {
             }
 
         private:
-            fs::path source_;
-
             std::optional<std::string> entry_shader(const json& entry, const AssetManifest& manifest, const std::string_view location) const {
                 if (!entry.contains("shader"))
                     return manifest.shader;
                 const auto property = std::string(location) + ".shader";
-                if (manifest.version != "1.1")
-                    fail(source_, property, "shader selection requires asset manifest 1.1");
+                if (manifest.version == "1.0")
+                    fail(source_, property, "shader selection requires asset manifest 1.1 or later");
                 const auto id = read_string(entry.at("shader"), source_, property);
                 if (!is_shader_asset_id(id))
                     fail(source_, property, "expected a qualified shader namespace:name identifier");
@@ -716,7 +734,7 @@ namespace CE::Assets {
 
             fs::path entry_texture(const json& entry, const AssetManifest& manifest, const std::string_view location) const {
                 if (entry.contains("texture")) {
-                    return parse_texture_path(entry.at("texture"), source_, std::string(location) + ".texture");
+                    return parse_texture_path(entry.at("texture"), source_, std::string(location) + ".texture", manifest.version);
                 }
                 if (manifest.texture) {
                     return *manifest.texture;
