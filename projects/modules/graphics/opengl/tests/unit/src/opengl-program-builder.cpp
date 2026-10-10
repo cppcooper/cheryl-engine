@@ -49,6 +49,7 @@ namespace {
         std::vector<std::pair<GLResourceKind, GLuint>> generated;
         std::vector<std::pair<GLResourceKind, GLuint>> deletion_calls;
         std::vector<std::pair<GLResourceKind, GLuint>> destroyed;
+        std::vector<std::string> uploaded_sources;
         std::shared_ptr<OpenGLResourceLifetime> lifetime =
             std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [this] { return current; });
 
@@ -97,7 +98,12 @@ namespace {
             return id;
         }
         static GLuint GLAD_API_PTR create_shader(GLenum) { return active_->generate(GLResourceKind::ShaderStage, "create shader"); }
-        static void GLAD_API_PTR source(GLuint, GLsizei, const GLchar* const*, const GLint*) { (void)active_->reject("source"); }
+        static void GLAD_API_PTR source(GLuint, GLsizei count, const GLchar* const* strings, const GLint* lengths) {
+            if (active_->reject("source"))
+                return;
+            for (GLsizei i = 0; i < count; ++i)
+                active_->uploaded_sources.emplace_back(strings[i], static_cast<std::size_t>(lengths[i]));
+        }
         static void GLAD_API_PTR compile(GLuint) { (void)active_->reject("compile"); }
         static void GLAD_API_PTR shader_query(GLuint, GLenum parameter, GLint* value) {
             if (parameter == GL_COMPILE_STATUS) {
@@ -212,7 +218,7 @@ namespace {
         }
 
         static std::vector<std::filesystem::path> stages() {
-            const auto root = std::filesystem::path{CHERYL_SOURCE_DIR} / "assets/shaders";
+            const auto root = std::filesystem::path{CHERYL_SOURCE_DIR} / "assets/graphics/shaders";
             return {root / "shader2d.vert", root / "shader2d.frag"};
         }
 
@@ -229,6 +235,40 @@ namespace {
             EXPECT_TRUE(marked_stages_.empty());
         }
     };
+}
+
+TEST(opengl_program_builder, owned_sources) {
+    ProgramConstructionRecorder native;
+    const ShaderProgramRecipe recipe{"test:program",
+        {{ShaderStage::Vertex, "unavailable/vertex.glsl", std::string{"vertex\0snapshot", 15}},
+         {ShaderStage::Fragment, "unavailable/fragment.glsl", "fragment snapshot"}}};
+    auto program = ProgramDetail::link_owned_program(native.lifetime, recipe);
+    ASSERT_NE(program, nullptr);
+    EXPECT_EQ(native.uploaded_sources, (std::vector<std::string>{recipe.sources[0].bytes, recipe.sources[1].bytes}));
+    EXPECT_EQ(native.detach_calls, 2);
+    program.reset();
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
+}
+
+TEST(opengl_program_builder, owned_failure) {
+    const ShaderProgramRecipe recipe{"test:program",
+        {{ShaderStage::Vertex, "unavailable/vertex.glsl", "vertex snapshot"},
+         {ShaderStage::Fragment, "unavailable/fragment.glsl", "fragment snapshot"}}};
+    for (const std::string operation : {"source", "compile", "attach", "link", "detach", "link status"}) {
+        SCOPED_TRACE(operation);
+        ProgramConstructionRecorder native;
+        native.fail_operation = operation;
+        EXPECT_THROW(static_cast<void>(ProgramDetail::link_owned_program(native.lifetime, recipe)), failed_operation);
+        native.lifetime->collect();
+        native.expect_all_destroyed_once();
+    }
+    ProgramConstructionRecorder native;
+    auto memory = std::make_shared<CE::Testing::FailingMemoryResource>();
+    memory->reject_next();
+    EXPECT_THROW(static_cast<void>(ProgramDetail::link_owned_program(native.lifetime, recipe, memory)), std::bad_alloc);
+    native.lifetime->collect();
+    native.expect_all_destroyed_once();
 }
 
 TEST(opengl_program_builder, native_construction_failure) {

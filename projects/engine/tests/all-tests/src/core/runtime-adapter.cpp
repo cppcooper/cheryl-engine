@@ -80,6 +80,7 @@ namespace {
                 R"JSON({"$schema":"./schemas/asset-manifest-1.0.schema.json","version":"1.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
             document.replace(document.find("probe"), 5, name_space);
             std::ofstream(root / "probe.json") << document;
+            std::ofstream(root / "graphics-manifests.json") << R"JSON({"version":"1.0","manifests":["probe.json"]})JSON";
         }
     };
 

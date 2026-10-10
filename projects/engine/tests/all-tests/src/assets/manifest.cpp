@@ -3,6 +3,8 @@
 #include <assets/definitions/manifest.h>
 #include <assets/geometry/grid-geometry.h>
 #include <core/resources/asset-management/manifest-loader.h>
+#include <core/resources/asset-management/file-registry.h>
+#include <core/resources/fileio/file-mgr.h>
 #include <internals/exceptions.h>
 #include <math/anchor.h>
 
@@ -20,7 +22,10 @@ namespace {
     using namespace CE::Assets;
 
     fs::path asset_file(const std::string& name) {
-        return fs::path(CHERYL_SOURCE_DIR) / "assets" / name;
+        const auto graphics = fs::path(CHERYL_SOURCE_DIR) / "assets" / "graphics";
+        if (name == "atlas.json")
+            return graphics / "MiniWorldSprites" / name;
+        return graphics / "tilesets" / name;
     }
 }
 
@@ -112,21 +117,19 @@ TEST(asset_grid, image_too_small) {
 }
 
 TEST(asset_manifest, checked_in_manifests) {
-    // Discover the checked-in JSON manifests so each file exercises the parser.
-    std::vector<fs::path> manifests;
-    for (const auto& entry : fs::directory_iterator(fs::path(CHERYL_SOURCE_DIR) / "assets")) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            manifests.push_back(entry.path());
-        }
+    const FileMgr discovered(fs::path(CHERYL_SOURCE_DIR) / "assets");
+    FileRegistry files;
+    files.register_files(discovered.get_files_of_type(".json"));
+    const auto definitions = ManifestLoader::load_graphics_definitions(files);
+    ASSERT_EQ(definitions.assets.size(), std::size_t{7});
+    ASSERT_EQ(definitions.shaders.size(), std::size_t{1});
+    for (const auto& manifest : definitions.assets) {
+        SCOPED_TRACE(manifest.source.string());
+        EXPECT_NO_THROW(static_cast<void>(ManifestLoader::load(manifest.source)));
     }
-    std::ranges::sort(manifests);
-
-    // Scope failures to the offending path while checking the expected file set.
-    ASSERT_EQ(manifests.size(), std::size_t{7});
-    for (const auto& manifest : manifests) {
-        SCOPED_TRACE(manifest.string());
-        EXPECT_NO_THROW(static_cast<void>(ManifestLoader::load(manifest)));
-    }
+    ASSERT_EQ(definitions.shaders.front().materials.size(), 2u);
+    EXPECT_EQ(definitions.shaders.front().materials[0].id, "main:text");
+    EXPECT_EQ(definitions.shaders.front().materials[1].id, "main:images");
 }
 
 TEST(asset_manifest, profile_inheritance) {

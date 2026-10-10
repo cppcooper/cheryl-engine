@@ -498,6 +498,82 @@ namespace {
         definition.parameters = {{"time", ParameterType::Float, required}};
         return definition;
     }
+
+    ShaderProgramRecipe shader_program_recipe() {
+        return {"test:program", {{ShaderStage::Vertex, "prepared.vert", "vertex snapshot"},
+                                 {ShaderStage::Fragment, "prepared.frag", "fragment snapshot"}}};
+    }
+
+    ShaderMaterialRecipe shader_material_recipe() {
+        ShaderMaterialRecipe recipe;
+        recipe.id = "test:material";
+        recipe.program = "test:program";
+        recipe.parameters = {{"image", ParameterType::Sampler2D},
+                             {"weight", ParameterType::Float, true, ParameterSemantic::Custom, ShaderLiteral{1.0f}}};
+        recipe.bindings.emplace("opengl", R"JSON({"parameters":{"image":"uImage","weight":"uWeight"}})JSON");
+        return recipe;
+    }
+}
+
+TEST(opengl_shader_assets, cpu_validation) {
+    NativeProgramRecorder native;
+    RecordingContext context(native);
+    OpenGLRenderer renderer(context);
+    OpenGLResourceProvider provider(renderer);
+    auto* builder = provider.shader_asset_builder();
+    ASSERT_NE(builder, nullptr);
+    const auto program = shader_program_recipe();
+    auto recipe = shader_material_recipe();
+    EXPECT_NO_THROW(builder->validate_program(program));
+    EXPECT_NO_THROW(builder->validate_material(recipe, program));
+    recipe.bindings["opengl"] = R"JSON({"parameters":{"image":"same","weight":"same"}})JSON";
+    EXPECT_THROW(builder->validate_material(recipe, program), invalid_args);
+    recipe.bindings.clear();
+    EXPECT_THROW(builder->validate_material(recipe, program), invalid_args);
+    recipe = shader_material_recipe();
+    recipe.sampling.emplace("weight", SamplerOptions{});
+    EXPECT_THROW(builder->validate_material(recipe, program), invalid_args);
+    EXPECT_TRUE(native.generated.empty());
+}
+
+TEST(opengl_shader_assets, shared_program_and_sampling) {
+    NativeProgramRecorder native;
+    RecordingContext context(native);
+    OpenGLRenderer renderer(context);
+    RendererDetail::RendererAccess::set_native_loader(renderer, [](iOpenGLContext&) {});
+    renderer.initialize();
+    OpenGLResourceProvider provider(renderer);
+    const auto executable = std::make_shared<GLSLProgram>(OpenGLHandle(renderer.resources(), GLResourceKind::Program, 500));
+    native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 8}, {"uWeight", GL_FLOAT, 1, 9}};
+    const auto program = shader_program_recipe();
+    auto recipe = shader_material_recipe();
+    auto* builder = provider.shader_asset_builder();
+    const auto triangles = builder->build_material(recipe, program, executable);
+    recipe.topology = PrimitiveTopology::TriangleStrip;
+    SamplerOptions nearest;
+    nearest.minification = nearest.magnification = ImageFilter::Nearest;
+    nearest.mipmaps = MipmapFilter::None;
+    nearest.anisotropy = ImageAnisotropy::Disabled;
+    recipe.sampling.emplace("image", nearest);
+    const auto strips = builder->build_material(recipe, program, executable);
+    EXPECT_EQ(triangles->definition().pipeline->definition().topology, PrimitiveTopology::Triangles);
+    EXPECT_EQ(strips->definition().pipeline->definition().topology, PrimitiveTopology::TriangleStrip);
+    EXPECT_TRUE(triangles->definition().sampling.empty());
+    EXPECT_FALSE(strips->definition().defaults.contains("image"));
+    const auto image = provider.create_image(DecodedImage{{1, 1}, {255, 255, 255, 255}});
+    const ParameterSet draw{{"image", ImageBinding{image, 0}}};
+    const auto* pipeline = dynamic_cast<const GLSLPipeline*>(strips->definition().pipeline.get());
+    ASSERT_NE(pipeline, nullptr);
+    pipeline->bind_parameters(strips->resolve({}, {}, {}, draw));
+    ASSERT_FALSE(native.sampler_binds.empty());
+    EXPECT_NE(native.sampler_binds.back().second, 0u);
+    const auto* ordinary = dynamic_cast<const GLSLPipeline*>(triangles->definition().pipeline.get());
+    ASSERT_NE(ordinary, nullptr);
+    ordinary->bind_parameters(triangles->resolve({}, {}, {}, draw));
+    EXPECT_EQ(native.sampler_binds.back().second, 0u);
+    native.uniforms[0].type = GL_FLOAT;
+    EXPECT_THROW(static_cast<void>(builder->build_material(recipe, program, executable)), invalid_args);
+    renderer.deinitialize();
 }
 
 TEST(opengl_renderer, startup_failure) {
