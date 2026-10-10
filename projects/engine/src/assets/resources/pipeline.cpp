@@ -2,6 +2,7 @@
 
 #include <internals/exceptions.h>
 
+#include <algorithm>
 #include <utility>
 
 namespace CE::Assets {
@@ -54,6 +55,12 @@ namespace CE::Assets {
         if (!definition_.pipeline)
             throw Exceptions::invalid_args(CE_HERE, "Material requires a pipeline generation");
         validate_parameter_values(definition_.pipeline->definition().parameters, definition_.defaults);
+        for (const auto& [key, sampler] : definition_.sampling) {
+            const auto& parameters = definition_.pipeline->definition().parameters;
+            const auto found = std::ranges::find(parameters, key, &ParameterDefinition::key);
+            if (!sampler || found == parameters.end() || found->type != ParameterType::Sampler2D)
+                throw Exceptions::invalid_args(CE_HERE, "Material sampling override requires a sampler parameter");
+        }
     }
 
     ParameterSet Material::resolve(
@@ -62,8 +69,15 @@ namespace CE::Assets {
         const ParameterSet& pass_values,
         const ParameterSet& draw_values
     ) const {
-        return resolve_parameters(
+        auto result = resolve_parameters(
             definition_.pipeline->definition().parameters, pass_semantics, draw_semantics, pass_values, definition_.defaults, draw_values
         );
+        for (const auto& [key, sampler] : definition_.sampling)
+            if (const auto found = result.find(key); found != result.end()) {
+                auto& binding = std::get<ImageBinding>(found->second);
+                if (!binding.sampler)
+                    binding.sampler = sampler;
+            }
+        return result;
     }
 }

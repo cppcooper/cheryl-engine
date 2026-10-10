@@ -16,6 +16,7 @@
 #include <vector>
 
 namespace CE::Assets {
+    struct ShaderAssetBuilder;
     /** Creates resources in one selected backend domain. Uploads obey that
      * backend's owner-thread/current-context rules and copy transient CPU data
      * before returning; returned handles do not borrow pixel/vertex storage.
@@ -40,6 +41,8 @@ namespace CE::Assets {
         ResourceProvider& operator=(const ResourceProvider&) noexcept { return *this; }
         virtual ~ResourceProvider();
         [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
+        // Borrowed optional adapter; it cannot outlive this provider.
+        [[nodiscard]] virtual ShaderAssetBuilder* shader_asset_builder() noexcept { return nullptr; }
         // decode_image() is CPU-only; create_image() and other uploads obey backend thread affinity.
         [[nodiscard]] virtual std::shared_ptr<Image> load_image(const std::filesystem::path& file);
         // Creates a fresh immutable image from owned top-to-bottom RGBA pixels.

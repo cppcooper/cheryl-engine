@@ -49,6 +49,7 @@ namespace CE::Assets {
     struct MaterialDefinition {
         std::shared_ptr<const Pipeline> pipeline;
         ParameterSet defaults;
+        std::map<std::string, std::shared_ptr<const Sampler>, std::less<>> sampling;
     };
 
     // CPU-only structural validation; throws on empty paths, unsupported layout/

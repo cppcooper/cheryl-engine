@@ -3,6 +3,7 @@
 #include <core/resources/asset-management/font-mgr.h>
 #include <core/resources/asset-management/material-mgr.h>
 #include <core/resources/asset-management/shader-mgr.h>
+#include <core/resources/asset-management/shader-asset-mgr.h>
 #include <core/resources/asset-management/sprite-mgr.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
@@ -46,6 +47,8 @@ namespace CE::Assets {
         if (auto* manager = TilesetMgr::get_existing())
             manager->clear_assets();
         if (auto* manager = FontMgr::get_existing())
+            manager->clear_assets();
+        if (auto* manager = ShaderAssetMgr::get_existing())
             manager->clear_assets();
         if (auto* manager = ShaderMgr::get_existing())
             manager->clear_assets();
