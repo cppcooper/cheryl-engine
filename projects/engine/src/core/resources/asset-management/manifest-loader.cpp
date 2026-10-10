@@ -1,4 +1,5 @@
 #include <core/resources/asset-management/manifest-loader.h>
+#include "manifest-parser.h"
 
 #include <nlohmann/json.hpp>
 #include <internals/exceptions.h>
@@ -650,18 +651,19 @@ namespace CE::Assets {
                 // values unless their entry provides a more specific texture or pivot.
                 allow_only(
                     root, source_, "$",
-                    {"$schema", "version", "namespace", "texture", "defaults", "animation_profiles", "sprites", "tilesets"}
+                    {"$schema", "version", "namespace", "texture", "shader", "defaults", "animation_profiles", "sprites", "tilesets"}
                 );
                 AssetManifest manifest;
                 manifest.source = source_;
                 manifest.schema = read_string(required(root, "$schema", source_, "$"), source_, "$.$schema");
-                if (manifest.schema != "./schemas/asset-manifest-1.0.schema.json") {
-                    fail(source_, "$.$schema", "unsupported asset manifest schema");
-                }
                 manifest.version = read_string(required(root, "version", source_, "$"), source_, "$.version");
-                if (manifest.version != "1.0") {
+                if (manifest.version != "1.0" && manifest.version != "1.1") {
                     fail(source_, "$.version", "unsupported asset manifest version '" + manifest.version + "'");
                 }
+                if (manifest.schema != "./schemas/asset-manifest-" + manifest.version + ".schema.json")
+                    fail(source_, "$.$schema", "unsupported asset manifest schema");
+                if (root.contains("shader"))
+                    manifest.shader = entry_shader(root, manifest, "$");
                 manifest.name_space = read_identifier(required(root, "namespace", source_, "$"), source_, "$.namespace", true);
 
                 const auto& defaults = required(root, "defaults", source_, "$");
@@ -700,6 +702,18 @@ namespace CE::Assets {
         private:
             fs::path source_;
 
+            std::optional<std::string> entry_shader(const json& entry, const AssetManifest& manifest, const std::string_view location) const {
+                if (!entry.contains("shader"))
+                    return manifest.shader;
+                const auto property = std::string(location) + ".shader";
+                if (manifest.version != "1.1")
+                    fail(source_, property, "shader selection requires asset manifest 1.1");
+                const auto id = read_string(entry.at("shader"), source_, property);
+                if (!is_shader_asset_id(id))
+                    fail(source_, property, "expected a qualified shader namespace:name identifier");
+                return id;
+            }
+
             fs::path entry_texture(const json& entry, const AssetManifest& manifest, const std::string_view location) const {
                 if (entry.contains("texture")) {
                     return parse_texture_path(entry.at("texture"), source_, std::string(location) + ".texture");
@@ -721,7 +735,7 @@ namespace CE::Assets {
                     const auto location = "$.sprites." + name;
                     allow_only(
                         sprite, source_, location,
-                        {"description", "texture", "grid", "pivot", "views", "orientations", "animation_profile", "animations"}
+                        {"description", "texture", "shader", "grid", "pivot", "views", "orientations", "animation_profile", "animations"}
                     );
                     // Bind an entry to its effective texture and pivot before resolving
                     // anything that addresses cells within its grid.
@@ -736,6 +750,7 @@ namespace CE::Assets {
                         .orientations = {},
                         .animation_profile = std::nullopt,
                         .animations = {}};
+                    definition.shader = entry_shader(sprite, manifest, location);
                     // Named views and orientations are local to this grid, so reject
                     // out-of-range references while the owning entry is still in scope.
                     if (sprite.contains("views")) {
@@ -774,7 +789,7 @@ namespace CE::Assets {
                     const auto location = "$.tilesets." + name;
                     allow_only(
                         tileset, source_, location,
-                        {"description", "texture", "grid", "pivot", "views", "orientations", "animations", "autotiles"}
+                        {"description", "texture", "shader", "grid", "pivot", "views", "orientations", "animations", "autotiles"}
                     );
                     // Materialize the shared entry properties first; later tile rules
                     // can then resolve all targets and variants into this grid's indices.
@@ -789,6 +804,7 @@ namespace CE::Assets {
                         .orientations = {},
                         .animations = {},
                         .autotiles = {}};
+                    definition.shader = entry_shader(tileset, manifest, location);
                     if (tileset.contains("views")) {
                         definition.views = parse_views(tileset.at("views"), definition.grid, source_, location + ".views");
                     }
@@ -842,6 +858,10 @@ namespace CE::Assets {
         };
     }
 
+    AssetManifest ManifestDetail::parse_asset(const json& root, const std::filesystem::path& source) {
+        return Parser(source).parse(root);
+    }
+
     AssetManifest ManifestLoader::load(const std::filesystem::path& file) {
         std::ifstream stream(file);
         if (!stream.is_open()) {
@@ -852,7 +872,7 @@ namespace CE::Assets {
 
     AssetManifest ManifestLoader::parse(std::istream& input, const std::filesystem::path& source) {
         try {
-            return Parser(source).parse(json::parse(input));
+            return ManifestDetail::parse_asset(json::parse(input), source);
         } catch (const json::exception& error) {
             throw Exceptions::runtime_exception(CE_HERE, "Unable to parse asset manifest '" + source.string() + "': " + error.what());
         }

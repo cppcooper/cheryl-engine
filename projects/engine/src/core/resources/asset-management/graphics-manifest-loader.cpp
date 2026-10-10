@@ -1,5 +1,6 @@
 #include <core/resources/asset-management/manifest-loader.h>
 #include <core/resources/asset-management/file-registry.h>
+#include "manifest-parser.h"
 #include <internals/exceptions.h>
 
 #include <nlohmann/json.hpp>
@@ -78,15 +79,36 @@ namespace CE::Assets {
     }
 
     std::vector<AssetManifest> ManifestLoader::load_graphics(const FileRegistry& files) {
-        std::vector<AssetManifest> result;
+        return load_graphics_definitions(files).assets;
+    }
+
+    GraphicsDefinitions ManifestLoader::load_graphics_definitions(const FileRegistry& files, const std::vector<fs::path>& indexes) {
+        GraphicsDefinitions result;
         std::unordered_set<std::filesystem::path> loaded;
-        for (const auto& source : files.get_files_named("graphics-manifests.json")) {
+        const auto selected = indexes.empty() ? files.get_files_named("graphics-manifests.json") : indexes;
+        for (const auto& requested : selected) {
+            const auto registered = files.get_file_at(requested);
+            if (!registered || registered->filename() != "graphics-manifests.json")
+                fail(requested, "$", "selection must name a registered graphics-manifests.json index");
+            const auto& source = *registered;
             const auto index = read_index(source);
             const auto& documents = index.at("manifests");
             for (std::size_t i = 0; i < documents.size(); ++i) {
                 const auto document = registered_document(documents[i], source, "$.manifests[" + std::to_string(i) + "]", files);
-                if (loaded.emplace(document).second)
-                    result.push_back(load(document));
+                if (!loaded.emplace(document).second)
+                    continue;
+                std::ifstream input(document);
+                if (!input)
+                    fail(document, "$", "unable to open selected definition");
+                const auto root = ManifestDetail::read_document(input, document);
+                if (!root.is_object())
+                    fail(document, "$", "expected a definition object");
+                if (!root.contains("asset_class"))
+                    result.assets.push_back(ManifestDetail::parse_asset(root, document));
+                else if (root.at("asset_class") == "shader")
+                    result.shaders.push_back(ManifestDetail::parse_shader(root, document));
+                else
+                    fail(document, "$.asset_class", "unsupported graphics asset class");
             }
         }
         return result;

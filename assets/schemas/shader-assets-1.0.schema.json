@@ -1,0 +1,523 @@
+{
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asset_class": {
+      "const": "shader"
+    },
+    "version": {
+      "const": "1.0"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$"
+    },
+    "programs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/name"
+          },
+          "stages": {
+            "type": "object",
+            "properties": {
+              "vertex": {
+                "$ref": "#/$defs/source"
+              },
+              "fragment": {
+                "$ref": "#/$defs/source"
+              }
+            },
+            "required": [
+              "vertex",
+              "fragment"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "stages"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/material"
+      }
+    }
+  },
+  "required": [
+    "asset_class",
+    "version",
+    "namespace",
+    "programs",
+    "materials"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shader-assets-1.0.schema.json",
+  "title": "Cheryl Engine Shader/Material Assets 1.0",
+  "description": "One asset class containing shared program recipes and texture-independent material recipes. Matrix literals are column-major.",
+  "$comment": "IDs are unique across selected documents. References, parameter/default types and semantics, finite float ranges and active backend reflection are semantic checks. Sampling overrides target sampler keys and contain no image references.",
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]*:[a-z0-9][a-z0-9_-]*$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*[\\\\:]).+$"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "float",
+            "int",
+            "uint",
+            "bool",
+            "vec2",
+            "vec3",
+            "vec4",
+            "mat4",
+            "sampler2d"
+          ]
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "semantic": {
+          "enum": [
+            "custom",
+            "projection",
+            "view",
+            "model",
+            "alpha",
+            "scale"
+          ]
+        },
+        "default": {}
+      },
+      "required": [
+        "key",
+        "type"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "float"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "int"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "integer",
+                "minimum": -2147483648,
+                "maximum": 2147483647
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "uint"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "bool"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "vec2"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "vec3"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "vec4"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "mat4"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "type": "array",
+                "minItems": 16,
+                "maxItems": 16,
+                "items": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "sampler2d"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "default"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "sampling": {
+      "type": "object",
+      "properties": {
+        "minification": {
+          "enum": [
+            "nearest",
+            "linear"
+          ]
+        },
+        "magnification": {
+          "enum": [
+            "nearest",
+            "linear"
+          ]
+        },
+        "mipmaps": {
+          "enum": [
+            "none",
+            "nearest",
+            "linear"
+          ]
+        },
+        "wrap_u": {
+          "enum": [
+            "clamp_to_edge",
+            "repeat",
+            "mirrored_repeat"
+          ]
+        },
+        "wrap_v": {
+          "enum": [
+            "clamp_to_edge",
+            "repeat",
+            "mirrored_repeat"
+          ]
+        },
+        "anisotropy": {
+          "enum": [
+            "disabled",
+            "maximum_supported"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "material": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "program": {
+          "$ref": "#/$defs/id"
+        },
+        "vertex_layout": {
+          "enum": [
+            "position3_uv2",
+            "position3_uv2_color4"
+          ]
+        },
+        "topology": {
+          "enum": [
+            "triangles",
+            "triangle_strip"
+          ]
+        },
+        "state": {
+          "type": "object",
+          "properties": {
+            "blend": {
+              "enum": [
+                "opaque",
+                "straight_alpha",
+                "premultiplied_alpha",
+                "additive"
+              ]
+            },
+            "depth": {
+              "enum": [
+                "disabled",
+                "less",
+                "less_equal"
+              ]
+            },
+            "depth_write": {
+              "type": "boolean"
+            },
+            "cull": {
+              "enum": [
+                "none",
+                "front",
+                "back"
+              ]
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter"
+          }
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer",
+                "minimum": -2147483648,
+                "maximum": 2147483647
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967295
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "type": "number"
+                }
+              },
+              {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                }
+              },
+              {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {
+                  "type": "number"
+                }
+              },
+              {
+                "type": "array",
+                "minItems": 16,
+                "maxItems": 16,
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
+          }
+        },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/sampling"
+          }
+        },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "program",
+        "vertex_layout",
+        "topology",
+        "parameters",
+        "bindings"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "anyOf": [
+    {
+      "properties": {
+        "programs": {
+          "minItems": 1
+        }
+      }
+    },
+    {
+      "properties": {
+        "materials": {
+          "minItems": 1
+        }
+      }
+    }
+  ]
+}
