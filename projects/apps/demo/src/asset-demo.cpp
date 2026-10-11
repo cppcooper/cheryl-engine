@@ -70,7 +70,8 @@ namespace {
 void DemoAssets::load(
     const std::filesystem::path& root,
     CE::Assets::ResourceProvider& provider,
-    const CE::Text::FontCollection& fonts
+    const CE::Text::FontCollection& fonts,
+    const CE::Assets::TextRasterOptions raster_options
 ) {
     reset();
     // Parse package metadata independently. One package, sheet or clip failure
@@ -111,7 +112,7 @@ void DemoAssets::load(
     options.pixel_height = 20;
     for (std::size_t i = 0; i < labels_.size(); ++i)
         labels_[i] = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
-            CE::Assets::prepare_text(CE::Text::layout_text(fonts, headings[i], options)), provider
+            CE::Assets::prepare_text(CE::Text::layout_text(fonts, headings[i], options), raster_options), provider
         ));
 }
 
@@ -152,7 +153,8 @@ void DemoAssets::write(
             continue;
         auto label = text;
         label.model_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(columns[i], 188.0f, 0.0f));
-        pass.add(CE::Assets::resolve_text(*labels_[i], label, context));
+        pass.add(labels_[i]->has_positioned_runs() ? CE::Assets::resolve_text_runs(*labels_[i], label, context)
+                                                 : CE::Assets::resolve_text(*labels_[i], label, context));
     }
     if (tiles_) {
         for (std::size_t i = 0; i < static_tiles.size(); ++i) {

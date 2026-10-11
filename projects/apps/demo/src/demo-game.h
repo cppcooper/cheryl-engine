@@ -28,7 +28,8 @@ public:
         bool load_all_assets,
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
-        bool unicode_preview
+        bool unicode_preview,
+        bool text_runs
     );
     ~DemoGame() override;
     DemoGame(const DemoGame&) = delete;

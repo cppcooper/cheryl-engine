@@ -13,6 +13,7 @@ struct DemoOptions {
     std::filesystem::path asset_root;
     bool load_all_assets = false;
     bool unicode_preview = false;
+    bool text_runs = false;
     CE::Text::FontSelection font_selection;
     CE::Text::LayoutOptions text_options;
     unsigned int max_updates = 0;

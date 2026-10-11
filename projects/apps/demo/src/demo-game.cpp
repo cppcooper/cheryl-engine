@@ -83,6 +83,7 @@ class GameImpl : public CE::GFramework::AbstractGame {
     CE::Text::FontSelection font_selection_;
     CE::Text::LayoutOptions text_options_;
     bool unicode_preview_;
+    CE::Assets::TextRasterOptions raster_options_;
     std::optional<CE::Text::FontCollection> fonts_;
     std::optional<CE::Engine::WorkerGroup> text_workers_;
     std::shared_ptr<const CE::Assets::RenderedText> target_text_;
@@ -112,7 +113,8 @@ public:
         bool load_all_assets,
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
-        bool unicode_preview
+        bool unicode_preview,
+        bool text_runs
     )
     : engine_(engine),
       camera_(),
@@ -122,7 +124,8 @@ public:
       load_all_assets_(load_all_assets),
       font_selection_(std::move(fonts)),
       text_options_(std::move(text_options)),
-      unicode_preview_(unicode_preview) {}
+      unicode_preview_(unicode_preview),
+      raster_options_{.positioned_runs = text_runs} {}
 
     void stop_after_updates(const std::uint64_t count, std::function<void()> stop) {
         if (count == 0 || !stop)
@@ -162,9 +165,9 @@ public:
         fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
         text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
         target_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
-            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_)), resources
+            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_), raster_options_), resources
         ));
-        assets_.load(asset_root_, resources, *fonts_);
+        assets_.load(asset_root_, resources, *fonts_, raster_options_);
         audio_.load();
 
         auto& input = engine_.input();
@@ -209,7 +212,7 @@ public:
         auto options = hud_options();
         requested_width_ = *options.maximum_width;
         hud_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
-            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, requested_hud_, options)), resources
+            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, requested_hud_, options), raster_options_), resources
         ));
     }
 
@@ -380,12 +383,14 @@ public:
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)
         );
-        pass.add(CE::Assets::resolve_text(*target_text_, text, context));
+        pass.add(raster_options_.positioned_runs ? CE::Assets::resolve_text_runs(*target_text_, text, context)
+                                               : CE::Assets::resolve_text(*target_text_, text, context));
 
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
-        pass.add(CE::Assets::resolve_text(*hud_text_, text, context));
+        pass.add(raster_options_.positioned_runs ? CE::Assets::resolve_text_runs(*hud_text_, text, context)
+                                               : CE::Assets::resolve_text(*hud_text_, text, context));
 #ifdef CHERYL_DEMO_TGUI
         ui_->write(frame);
 #endif
@@ -461,8 +466,8 @@ private:
         requested_width_ = *options.maximum_width;
         try {
             pending_text_preparation_ = text_workers_->submit(
-                [fonts = *fonts_, message = std::move(message), options = std::move(options)] {
-                    return CE::Assets::prepare_text(CE::Text::layout_text(fonts, message, options));
+                [fonts = *fonts_, message = std::move(message), options = std::move(options), raster = raster_options_] {
+                    return CE::Assets::prepare_text(CE::Text::layout_text(fonts, message, options), raster);
                 }
             );
         } catch (const std::exception& error) {
@@ -538,9 +543,10 @@ struct DemoGame::GameState {
         const bool load_all_assets,
         CE::Text::FontSelection fonts,
         CE::Text::LayoutOptions text_options,
-        const bool unicode_preview
+        const bool unicode_preview,
+        const bool text_runs
     )
-    : game(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview) {}
+    : game(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs) {}
 };
 
 DemoGame::DemoGame(
@@ -549,10 +555,11 @@ DemoGame::DemoGame(
     const bool load_all_assets,
     CE::Text::FontSelection fonts,
     CE::Text::LayoutOptions text_options,
-    const bool unicode_preview
+    const bool unicode_preview,
+    const bool text_runs
 )
 : game_state_(std::make_unique<GameState>(
-    engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview
+    engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs
 )) {}
 
 DemoGame::~DemoGame() = default;

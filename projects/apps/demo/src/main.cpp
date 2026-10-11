@@ -20,7 +20,8 @@ int main(const int argc, char** argv) {
         options.load_all_assets,
         std::move(options.font_selection),
         std::move(options.text_options),
-        options.unicode_preview
+        options.unicode_preview,
+        options.text_runs
     );
     auto game_runtime = result.make_runtime(game);
     if (options.max_updates != 0)

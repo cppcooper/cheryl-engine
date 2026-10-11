@@ -31,7 +31,12 @@ class DemoAssets final {
     bool visible_ = true;
 
 public:
-    void load(const std::filesystem::path& root, CE::Assets::ResourceProvider& provider, const CE::Text::FontCollection& fonts);
+    void load(
+        const std::filesystem::path& root,
+        CE::Assets::ResourceProvider& provider,
+        const CE::Text::FontCollection& fonts,
+        CE::Assets::TextRasterOptions raster_options
+    );
     void reset();
     void toggle_pause() { paused_ = !paused_; }
     void toggle_visible() { visible_ = !visible_; }
