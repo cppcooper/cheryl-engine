@@ -43,10 +43,11 @@ Hard cache-domain/NUMA requests reject until a native topology adapter exists;
 manual CPU sets can already express a game's known locality domains. CPU affinity
 does not promise that data remains in L1/L2, and NUMA memory placement is separate.
 The [roadmap](../planning/develop-review-and-development-plan.md#numa-and-nuca)
-defers NUMA and gates NUCA/cache-locality integration on hardware/workload benefit,
-with optional compilation and simple caller configuration required for any selected
-policy. Automatic core/cache discovery and memory placement remain absent from the
-current affinity adapter.
+defers NUMA and selects general best-effort cache/core locality as the next worker
+integration. The [owning plan](../planning/short-term/worker-cache-locality.md)
+specifies optional Engine support targets, runtime hwloc discovery/placement and
+both C++ and JSON configuration. Those additions are planned; automatic core/cache
+discovery and memory placement remain absent from the current affinity adapter.
 
 The Linux adapter queries inherited pthread eligibility, sets and verifies the
 actual mask, and reports errors through job futures. The native mask is limited

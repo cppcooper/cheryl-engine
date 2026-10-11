@@ -159,3 +159,17 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 Successful configuration/build does not establish native platform coverage. The
 [test guide](testing.md) and [architecture validation](architecture-validation.md)
 describe the relevant checks and prerequisites.
+
+## Planned topology support and release automation
+
+The [worker cache-locality plan](../planning/short-term/worker-cache-locality.md#build-platforms-and-dependency-selection)
+requires optional hwloc support with runtime discovery, independently usable JSON
+loading and Engine-only builds without hwloc. These targets/options are not
+implemented yet. Their selection must not bake the build host's topology into
+artifacts or impose another platform SDK on ordinary Engine consumers.
+
+GitHub Actions for develop builds/tests and main versioned package preparation
+are the intended [follow-up after cache locality and batching](../planning/develop-review-and-development-plan.md#build-and-release-automation).
+The current project supplies build-tree targets; workflow and project
+install/export/package staging remain unimplemented. Selecting release platforms,
+toolchains and package contents belongs to that future phase.

@@ -201,11 +201,9 @@ preserve ordinary submission/completion behavior. Separate CPU-to-node mapping
 from allocation, first-touch and migration; single-node runs cannot establish
 multi-node acceptance.
 
-NUCA/cache-locality work remains [conditional in the roadmap](../develop-review-and-development-plan.md#numa-and-nuca).
-The current consumer machine has one shared L3 domain, so cache placement needs
-workload evidence before selecting integration. A future policy must offer simple
-workload configuration and report effective placement/fallback; topology does not
-prove a speedup or guarantee cache residency.
+General cache/core locality is selected near-term work in the
+[worker cache-locality plan](../short-term/worker-cache-locality.md), separately
+from the NUMA deferral. Topology does not prove a speedup or guarantee residency.
 
 3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
@@ -214,7 +212,9 @@ ownership and acceptance before promoting any candidate into the development roa
 
 Broader pointer capture, modal/controller routing and clipboard/cursor/IME services
 need explicit consumer requirements under the [UI capability boundaries](../../development/ui-adapters.md#routing-and-unavailable-services).
-Installed/exported packaging remains separate work from supported build-tree composition.
+Installed/exported packaging remains absent from supported build-tree composition.
+The intended [build/release automation follow-up](../develop-review-and-development-plan.md#build-and-release-automation)
+must settle package contents and consumption before selecting that implementation.
 
 Native monitor hotplug and per-window scale/change reporting need explicit consumers.
 Settle refreshed inventory identity, native-handle invalidation and existing-window

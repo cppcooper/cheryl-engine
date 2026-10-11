@@ -76,6 +76,8 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 - [Planning catalogue](planning/README.md): horizons, owning plans and prerequisites.
 - [Development roadmap](planning/develop-review-and-development-plan.md): active sequencing.
+- [Worker cache-locality plan](planning/short-term/worker-cache-locality.md): settled
+  support ownership, C++/JSON settings, platform constraints and implementation handoff.
 
 Keep new documents in the matching topic folder and add them to this index. Use
 lowercase, hyphenated filenames, with `README.md` reserved for documentation

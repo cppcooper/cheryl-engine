@@ -2,8 +2,9 @@
 
 Start with the [architecture overview](../runtime/runtime-architecture.md) and the
 guide for the subsystem you are changing. Choose the owning library before adding
-code: neutral contracts belong in Engine, SDK implementations in their modules,
-and game mechanics in the application. The [module guide](modules.md) explains
+code: neutral contracts belong in Engine, runtime integration SDKs in their
+modules, optional Engine helpers in support targets, and game mechanics in the
+application. The [module guide](modules.md) explains
 when a new owner is useful and how to compose it.
 
 Keep a change focused on its intended behavior. Preserve unrelated work in this

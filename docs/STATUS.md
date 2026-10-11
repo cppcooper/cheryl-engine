@@ -7,8 +7,9 @@
 **Documentation reconciliation:** 2026-10-10 — Updates sampling/TGUI, graphics
 manifests 2.0, main material loading, the optional Linux Debug terminal and recovered
 college/font assets through source baseline `695f966`. Reconciles the selected
-terminal → conditional NUCA/cache locality → batching order, NUMA deferral and
-pending acceptance. The original review
+terminal → worker cache locality → batching order, NUMA deferral, settled worker
+configuration/support ownership and pending acceptance. Records build/release
+automation as the intended later workstream. The original review
 baseline and qualitative estimate remain historical; this documentation pass does
 not claim a fresh review of every subsystem or new build/test/native results.
 
@@ -20,7 +21,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
-| Worker CPU placement | Partial · conditional follow-up | Linux CPU affinity, required/preferred policies and fallback behavior exist. NUMA is deferred; automatic core/cache discovery remains absent. NUCA/cache-locality integration requires workload evidence of benefit on the consumer hardware before selecting a policy. | [locality roadmap](planning/develop-review-and-development-plan.md#numa-and-nuca), [worker contract](runtime/worker-execution.md) |
+| Worker CPU placement | Partial · selected follow-up | Linux CPU affinity, required/preferred policies and fallback behavior exist. NUMA is deferred; automatic core/cache discovery remains absent. General best-effort placement is selected with optional Engine support targets and C++/JSON configuration; implementation has not begun. | [locality plan](planning/short-term/worker-cache-locality.md), [worker contract](runtime/worker-execution.md) |
 
 *1 entry.*
 
@@ -204,10 +205,12 @@ approximately **85%**. It concerns established engine foundations, not completio
 of the roadmap, and is not calculated from feature counts, coverage or test results.
 The implemented facilities support a desktop 2D consumer; higher-level game services
 remain consumer-selected. Terminal implementation and shader/sampling integration
-await executable/native acceptance. NUMA is deferred indefinitely; NUCA/cache-locality
-integration is conditional on workload evidence for the current single-L3 consumer
-hardware. Render batching is the next selected implementation subject, beginning
-with its design discussion.
+await executable/native acceptance. NUMA is deferred indefinitely; general
+cache/core locality is the next selected implementation, with its
+[design and handoff](planning/short-term/worker-cache-locality.md) settled. Render
+batching follows and requires a design discussion. GitHub Actions for develop
+builds/tests and main versioned package preparation are the intended
+[subsequent workstream](planning/develop-review-and-development-plan.md#build-and-release-automation).
 
 Recorded Linux acceptance covers the initial
 [Unicode scope](assets/text-layout.md#native-acceptance-scope),

@@ -8,14 +8,16 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 This roadmap owns priority order; the catalogue and status inventory link here.
 These priorities do not authorize implementation, builds or work-mode transitions.
-The selected order is terminal acceptance, a NUCA/cache-locality benefit gate,
-then render batching. NUMA is deferred indefinitely.
+Terminal source work is complete with acceptance pending. The selected engineering
+order is worker cache locality, then render batching; build/release automation is
+the intended follow-up. NUMA is deferred indefinitely.
 
 | Order | Work | Next phase and checkpoint |
 | --- | --- | --- |
 | 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
-| 2 | [Conditional NUCA/cache locality](#numa-and-nuca) | The current consumer machine exposes one shared L3 domain. Select integration only when workload evidence identifies a useful placement policy; no implementation is selected from topology alone. |
+| 2 | [Worker cache locality](short-term/worker-cache-locality.md) | Design choices are settled: general best-effort discovery/placement, optional Engine support targets, hwloc, and both C++ and JSON configuration. Implement the owning plan; no advance speedup demonstration on the current hardware is required. |
 | 3 | [Render batching](#render-batching) | Discuss the design with the project owner, using representative measurements and settled sampling/retention contracts to select compatibility and ordering rules. |
+| 4 | [Build/release automation](#build-and-release-automation) | After cache locality and batching, plan develop-branch build/test workflows and main-branch versioned package preparation. Settle supported platforms and package contents before implementation. |
 
 Sampling/TGUI integration and indexed shader/material loading are source-complete.
 Their contracts live in [rendering](../rendering/pipelines-and-materials.md),
@@ -33,38 +35,21 @@ back; automatic topology discovery and memory placement are absent.
 
 NUMA discovery and memory placement are deferred indefinitely by the project owner;
 no client/server split is scheduled. The [long-term scope](long-term/README.md#other-engine-extensions)
-retains the conditions for reopening it. This does not defer all ordinary CPU
-locality work: NUCA/cache-locality integration remains conditional on usefulness
-for the intended consumer hardware and workloads.
+retains the conditions for reopening it.
 
-The current Ryzen 7 7840HS exposes eight cores, sixteen hardware threads, one NUMA
-node and one 16 MiB L3 domain shared by all eligible CPUs. There is no alternative
-L3 domain for the scheduler to select on this machine. Per-core L1/L2 locality and
-contention between threads sharing a core remain possible workload concerns.
-[Topology descriptions](https://www.open-mpi.org/projects/hwloc/doc/v2.14.0/faq.html)
-do not establish a performance benefit or uniform internal cache latency. Linux
-exports core/cache topology through [sysfs](https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-system-cpu);
-`hwloc` can also describe it, but no package installation or Engine dependency is
-selected by this check.
+General best-effort cache/core locality is selected independently of a measured
+speedup on the current machine. The
+[worker cache-locality plan](short-term/worker-cache-locality.md) owns the settled
+design, source handoff, ordered implementation checklist and future acceptance.
+It covers reported L1/L2/L3 and other cache levels, optional hwloc support under
+`projects/engine/support/`, simple automatic/reuse/spread policies, and both typed
+C++ and JSON settings. The application identifies related work and owns its data;
+the facility does not promise cache residency or internal bank control.
 
-Do not make cache placement a prerequisite for batching without workload evidence.
-If a useful policy is identified, settle its configuration before implementation.
-Any selected facility must be compilable out through CMake without changing
-ordinary worker submission or completion semantics.
-
-Design workload-oriented defaults and configuration that a caller can use without
-knowing CPU/node/cache IDs. Keep explicit low-level policy available where needed,
-show requested/effective placement and fallback clearly, and preserve futures,
-closure and drainage. Settle eligible CPUs, required/preferred failures,
-capability reporting and unsupported-platform behavior before dependent code grows.
-
-Distinguish core/cache mapping and worker-group placement from memory allocation,
-first-touch or migration, which remain in the deferred NUMA scope. Affinity alone
-cannot guarantee cache residency or memory locality. Define NUCA in terms of
-discoverable locality and supported controls; identifying a shared cache does not
-expose control over its internal banks or data placement. Discovery and CPU placement
-are separate coherent implementation units. Identify deterministic policy/error
-coverage and representative workloads before acceptance.
+Implementation is the next phase when requested. Preserve existing submission,
+fairness, completion and shutdown contracts; use runtime capabilities rather than
+assuming every CPU/OS exposes the same topology or binding controls. Cache-locality
+performance measurements and render-batching design remain independent objectives.
 
 ### Render batching
 
@@ -77,6 +62,30 @@ resource lifetime; comparative measurements and visual/order/generation checks m
 justify the change. Report a different dominant bottleneck at the checkpoint rather
 than assuming batching is the next implementation. [Reorder-safe sorting](mid-term/README.md#reorder-safe-render-sorting)
 remains a separate later task.
+
+### Build and release automation
+
+The project owner's intended follow-up after cache locality and batching is GitHub
+Actions: `develop` builds and tests, while `main` prepares versioned release packages.
+No workflow exists in the inspected source, and this is a future workstream rather
+than authorization to configure CI, publish artifacts or run builds/tests now.
+
+Settle the OS/compiler/architecture matrix, package contents, version source and
+release trigger before implementation. Start from the accepted Linux composition;
+SDK portability alone does not establish Cheryl support on another platform.
+CI must provision a C++23 standard library with `std::format`, pinned submodules
+and the selected system dependencies described in the [build guide](../development/building.md).
+Include optional hwloc-enabled and disabled selections without depending on one
+runner's CPU/cache layout. Separate deterministic headless checks from real
+desktop/device acceptance; skipped native checks do not count as that coverage.
+
+The current consumer boundary is [build-tree composition](../development/consuming-engine.md).
+There is no project install/export/CPack pipeline. Decide whether the first package
+contains source, applications, SDK libraries or a combination before designing
+staging and consumption checks. Binary packages need explicit OS/architecture,
+compiler/ABI and configuration identities plus their dependency and license
+requirements. Keep runtime topology discovery independent of the machine producing
+the package, and do not promote unaccepted platform configurations into releases.
 
 ## Work-mode progression
 

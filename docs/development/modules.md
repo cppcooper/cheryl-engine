@@ -19,6 +19,13 @@ Command-line bootstrap uses the separate `Cheryl::Startup` and
 definitions to applications that select them; Engine and OpenGL do not depend
 back on those targets. See [startup composition](consuming-engine.md#command-line-startup).
 
+Optional Engine helpers can use `projects/engine/support/` without becoming runtime
+platform modules. Preserve the same dependency direction: selected support targets
+consume Engine; Engine does not acquire their SDKs or initialization as a reverse
+dependency. The selected [worker cache-locality plan](../planning/short-term/worker-cache-locality.md#ownership-and-composition)
+uses that boundary for topology and configuration helpers; its implementation is
+still pending. Neutral workers and scheduling remain in the one Engine library.
+
 ```mermaid
 flowchart LR
     Application --> Engine
