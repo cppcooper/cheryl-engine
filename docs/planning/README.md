@@ -9,9 +9,9 @@ and [testing requests](../testing-requests.md) contains pending user-run accepta
 
 | Folder | Scope and owning plans |
 | --- | --- |
-| `short-term/` | [Unicode font-selection regressions](short-term/unicode-text.md). The roadmap owns NUMA/NUCA, render batching and [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up); the testing queue owns pending terminal, sampling and shader acceptance. |
+| `short-term/` | [Unicode font-selection regressions](short-term/unicode-text.md). The roadmap owns conditional NUCA/cache locality, render batching and [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up); the testing queue owns pending terminal, sampling and shader acceptance. |
 | `mid-term/` | [Color emoji, reorder-safe sorting and measured text/timing optimization](mid-term/README.md), gated by selected scope and workload evidence |
-| `long-term/` | [Deferred integrations and consumer-selected extensions](long-term/README.md), [deferred HID/platform acceptance](long-term/platform-acceptance.md) and [unresolved artwork metadata](long-term/asset-manifest-metadata.md) |
+| `long-term/` | [Deferred integrations, NUMA and consumer-selected extensions](long-term/README.md), [deferred HID/platform acceptance](long-term/platform-acceptance.md) and [unresolved artwork metadata](long-term/asset-manifest-metadata.md) |
 
 The [native integration deferrals](long-term/README.md#deferred-native-integration)
 retain multiple active rendering windows, HID backend work and their prerequisites.

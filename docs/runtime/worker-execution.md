@@ -42,10 +42,11 @@ application state or establishing completion; closed-group drainage is the barri
 Hard cache-domain/NUMA requests reject until a native topology adapter exists;
 manual CPU sets can already express a game's known locality domains. CPU affinity
 does not promise that data remains in L1/L2, and NUMA memory placement is separate.
-The [near-term NUMA/NUCA workstream](../planning/develop-review-and-development-plan.md#numa-and-nuca)
-owns the hardware/workload-value checkpoint, optional compilation requirement,
-simple caller configuration and pending CPU/memory-placement decisions. None of
-those topology facilities is implemented by the current affinity adapter.
+The [roadmap](../planning/develop-review-and-development-plan.md#numa-and-nuca)
+defers NUMA and gates NUCA/cache-locality integration on hardware/workload benefit,
+with optional compilation and simple caller configuration required for any selected
+policy. Automatic core/cache discovery and memory placement remain absent from the
+current affinity adapter.
 
 The Linux adapter queries inherited pthread eligibility, sets and verifies the
 actual mask, and reports errors through job futures. The native mask is limited

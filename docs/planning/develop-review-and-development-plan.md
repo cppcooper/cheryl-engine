@@ -8,12 +8,13 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 This roadmap owns priority order; the catalogue and status inventory link here.
 These priorities do not authorize implementation, builds or work-mode transitions.
-The selected order is terminal acceptance, then NUMA/NUCA, then render batching.
+The selected order is terminal acceptance, a NUCA/cache-locality benefit gate,
+then render batching. NUMA is deferred indefinitely.
 
 | Order | Work | Next phase and checkpoint |
 | --- | --- | --- |
 | 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
-| 2 | [NUMA and NUCA integration](#numa-and-nuca) | Resolve hardware/workload value and scope, then settle an optional compile-time facility and a simple workload configuration interface before implementation. |
+| 2 | [Conditional NUCA/cache locality](#numa-and-nuca) | The current consumer machine exposes one shared L3 domain. Select integration only when workload evidence identifies a useful placement policy; no implementation is selected from topology alone. |
 | 3 | [Render batching](#render-batching) | Discuss the design with the project owner, using representative measurements and settled sampling/retention contracts to select compatibility and ordering rules. |
 
 Sampling/TGUI integration and indexed shader/material loading are source-complete.
@@ -30,12 +31,26 @@ The [worker contract](../runtime/worker-execution.md) supports explicit Linux CP
 affinity. Required cache-domain/NUMA requests reject and preferred requests fall
 back; automatic topology discovery and memory placement are absent.
 
-First resolve benefit on the intended consumer hardware/workloads. If the useful
-scope is limited to a future server build, defer NUMA indefinitely rather than
-requiring a server architecture now; no client/server split is scheduled. This is
-an unresolved scope checkpoint, not an already adopted blanket deferral. Evaluate
-cache-locality/NUCA needs separately. Any selected facility must be compilable out
-through CMake without changing ordinary worker submission or completion semantics.
+NUMA discovery and memory placement are deferred indefinitely by the project owner;
+no client/server split is scheduled. The [long-term scope](long-term/README.md#other-engine-extensions)
+retains the conditions for reopening it. This does not defer all ordinary CPU
+locality work: NUCA/cache-locality integration remains conditional on usefulness
+for the intended consumer hardware and workloads.
+
+The current Ryzen 7 7840HS exposes eight cores, sixteen hardware threads, one NUMA
+node and one 16 MiB L3 domain shared by all eligible CPUs. There is no alternative
+L3 domain for the scheduler to select on this machine. Per-core L1/L2 locality and
+contention between threads sharing a core remain possible workload concerns.
+[Topology descriptions](https://www.open-mpi.org/projects/hwloc/doc/v2.14.0/faq.html)
+do not establish a performance benefit or uniform internal cache latency. Linux
+exports core/cache topology through [sysfs](https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-system-cpu);
+`hwloc` can also describe it, but no package installation or Engine dependency is
+selected by this check.
+
+Do not make cache placement a prerequisite for batching without workload evidence.
+If a useful policy is identified, settle its configuration before implementation.
+Any selected facility must be compilable out through CMake without changing
+ordinary worker submission or completion semantics.
 
 Design workload-oriented defaults and configuration that a caller can use without
 knowing CPU/node/cache IDs. Keep explicit low-level policy available where needed,
@@ -43,12 +58,13 @@ show requested/effective placement and fallback clearly, and preserve futures,
 closure and drainage. Settle eligible CPUs, required/preferred failures,
 capability reporting and unsupported-platform behavior before dependent code grows.
 
-Distinguish CPU-to-node/cache mapping and worker-group placement from memory
-allocation, first-touch or migration. Affinity alone cannot guarantee cache residency
-or memory locality. Define NUCA in terms of discoverable locality and supported
-controls. Discovery, CPU placement and any selected memory integration are separate
-coherent implementation units. Single-node runs do not establish multi-node behavior;
-identify suitable hardware and deterministic policy/error coverage before acceptance.
+Distinguish core/cache mapping and worker-group placement from memory allocation,
+first-touch or migration, which remain in the deferred NUMA scope. Affinity alone
+cannot guarantee cache residency or memory locality. Define NUCA in terms of
+discoverable locality and supported controls; identifying a shared cache does not
+expose control over its internal banks or data placement. Discovery and CPU placement
+are separate coherent implementation units. Identify deterministic policy/error
+coverage and representative workloads before acceptance.
 
 ### Render batching
 

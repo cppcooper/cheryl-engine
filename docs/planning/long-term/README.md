@@ -194,11 +194,18 @@ can consume Cheryl as a Git submodule and supply its own optional modules from
 the start, or implement its features directly. Do not plan on a later extraction
 or game refactor as a prerequisite for starting development.
 
-NUMA/NUCA integration is selected in the
-[near-term roadmap](../develop-review-and-development-plan.md#numa-and-nuca), with
-hardware/workload benefit, optional compilation, caller configuration and CPU/memory
-placement scope still open. Server-only benefit would justify indefinite NUMA
-deferral; that checkpoint remains unresolved.
+NUMA discovery and memory placement are deferred indefinitely; no client/server
+architecture is scheduled. Reopen only for a consumer and hardware that justify
+multi-node locality. Any resumed facility must be optional at compile time and
+preserve ordinary submission/completion behavior. Separate CPU-to-node mapping
+from allocation, first-touch and migration; single-node runs cannot establish
+multi-node acceptance.
+
+NUCA/cache-locality work remains [conditional in the roadmap](../develop-review-and-development-plan.md#numa-and-nuca).
+The current consumer machine has one shared L3 domain, so cache placement needs
+workload evidence before selecting integration. A future policy must offer simple
+workload configuration and report effective placement/fallback; topology does not
+prove a speedup or guarantee cache residency.
 
 3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
