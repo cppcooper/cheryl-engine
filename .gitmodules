@@ -40,3 +40,6 @@
 [submodule "extern/cli11"]
 	path = extern/cli11
 	url = https://github.com/CLIUtils/CLI11.git
+[submodule "assets"]
+	path = assets
+	url = https://github.com/cppcooper/assets.git
