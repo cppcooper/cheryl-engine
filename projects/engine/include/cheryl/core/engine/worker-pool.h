@@ -1,5 +1,6 @@
 #pragma once
 #include <core/diagnostics.h>
+#include <core/engine/worker-topology.h>
 #include <chrono>
 
 #include <cstddef>
@@ -47,6 +48,14 @@ namespace CE::Engine {
         bool cache_topology = false;
         bool numa_placement = false;
         std::string limitations;
+        bool core_topology = false;
+    };
+
+    struct WorkerPoolOptions {
+        // Zero explicitly selects eligible physical cores, or eligible logical
+        // CPUs if core information is incomplete, or one thread if unknown.
+        std::size_t worker_count = 1;
+        std::shared_ptr<WorkerTopologyProvider> topology_provider;
     };
 
     struct WorkerGroupOptions {
@@ -146,10 +155,12 @@ namespace CE::Engine {
         std::mutex shutdown_mutex_;
 
         WorkerPool(std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter);
+        WorkerPool(WorkerPoolOptions options, WorkerDetail::WorkerNativeAdapter adapter);
 
     public:
         // Positive physical thread count; partial thread-start failure joins created threads.
         explicit WorkerPool(std::size_t worker_count = 1);
+        explicit WorkerPool(WorkerPoolOptions options);
         ~WorkerPool();
         WorkerPool(const WorkerPool&) = delete;
         WorkerPool& operator=(const WorkerPool&) = delete;
@@ -160,6 +171,7 @@ namespace CE::Engine {
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         // Owned startup snapshot, not a live query of changing OS eligibility.
         [[nodiscard]] WorkerCapabilities capabilities() const;
+        [[nodiscard]] WorkerTopology topology() const;
         [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept;
         // Explicit observer; constructors/shutdown do not log under an outer owner lock.
         void report_diagnostics() const noexcept;

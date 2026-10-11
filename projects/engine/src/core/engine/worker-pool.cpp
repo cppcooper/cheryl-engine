@@ -2,6 +2,7 @@
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
 #include "worker-affinity.h"
+#include "worker-topology-internal.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -30,12 +31,20 @@ namespace CE::Engine::WorkerDetail {
         std::size_t capacity = 0;
         WorkerCapabilities capabilities;
         WorkerNativeAdapter native;
+        std::shared_ptr<WorkerTopologyProvider> topology_provider;
+        WorkerTopology topology;
         bool accepting = true;
         const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
         mutable std::atomic<bool> reported_startup{false};
     };
 
     thread_local PoolState* current_pool = nullptr;
+
+    WorkerPoolOptions fixed_pool_options(const std::size_t worker_count) {
+        if (worker_count == 0)
+            throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
+        return WorkerPoolOptions{worker_count, {}};
+    }
 
     bool eligible(const GroupState& group, const PoolState& pool) {
         const auto cap = group.options.max_concurrency == 0 ? pool.capacity : group.options.max_concurrency;
@@ -57,7 +66,7 @@ namespace CE::Engine::WorkerDetail {
     }
 
     void run_worker(const std::shared_ptr<PoolState>& pool, const std::size_t worker_index, std::vector<unsigned int> current_mask) {
-        bool mask_known = true;
+        bool mask_known = !pool->topology_provider;
         current_pool = pool.get();
         while (true) {
             std::shared_ptr<GroupState> selected;
@@ -230,12 +239,36 @@ namespace CE::Engine {
     : WorkerPool(worker_count, WorkerDetail::native_worker_adapter()) {}
 
     WorkerPool::WorkerPool(const std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter)
+    : WorkerPool(WorkerDetail::fixed_pool_options(worker_count), std::move(adapter)) {}
+
+    WorkerPool::WorkerPool(WorkerPoolOptions options)
+    : WorkerPool(std::move(options), WorkerDetail::native_worker_adapter()) {}
+
+    WorkerPool::WorkerPool(WorkerPoolOptions options, WorkerDetail::WorkerNativeAdapter adapter)
     : state_(std::make_shared<WorkerDetail::PoolState>()) {
-        if (worker_count == 0)
-            throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
-        state_->capacity = worker_count;
         state_->native = std::move(adapter);
-        state_->capabilities = WorkerDetail::discover_capabilities(state_->native);
+        state_->topology_provider = std::move(options.topology_provider);
+        if (state_->topology_provider) {
+            state_->topology = WorkerDetail::prepare_topology(*state_->topology_provider);
+            const auto provider = state_->topology_provider;
+            state_->native.cpu_affinity = state_->topology.cpu_affinity;
+            state_->native.query_affinity = [provider] { return provider->current_thread_cpus(); };
+            state_->native.set_affinity = [provider](const std::vector<unsigned int>& cpus) { provider->bind_current_thread(cpus); };
+            state_->capabilities.available_cpus = state_->topology.eligible_cpus;
+            state_->capabilities.cpu_affinity = state_->topology.cpu_affinity;
+            state_->capabilities.cache_topology = !state_->topology.caches.empty();
+            state_->capabilities.core_topology = WorkerDetail::complete_core_topology(state_->topology);
+            state_->capabilities.limitations = state_->topology.limitations;
+        } else {
+            state_->capabilities = WorkerDetail::discover_capabilities(state_->native);
+            state_->topology.eligible_cpus = state_->capabilities.available_cpus;
+            state_->topology.cpu_affinity = state_->capabilities.cpu_affinity;
+            state_->topology.limitations = state_->capabilities.limitations;
+        }
+        const auto automatic_count = state_->capabilities.core_topology ? state_->topology.cores.size() :
+                                     std::max<std::size_t>(1, state_->capabilities.available_cpus.size());
+        const auto worker_count = options.worker_count == 0 ? automatic_count : options.worker_count;
+        state_->capacity = worker_count;
         try {
             workers_.reserve(worker_count);
             for (std::size_t i = 0; i < worker_count; ++i)
@@ -259,12 +292,20 @@ namespace CE::Engine {
         return std::unique_ptr<WorkerPool>(new WorkerPool(worker_count, std::move(adapter)));
     }
 
+    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(WorkerPoolOptions options, WorkerNativeAdapter adapter) {
+        return std::unique_ptr<WorkerPool>(new WorkerPool(std::move(options), std::move(adapter)));
+    }
+
     WorkerGroupPolicy WorkerGroup::policy() const {
         return group_->policy; // Policy is immutable after group publication.
     }
 
     WorkerCapabilities WorkerPool::capabilities() const {
         return state_->capabilities; // Inherited capability snapshot; restrictions may later change.
+    }
+
+    WorkerTopology WorkerPool::topology() const {
+        return state_->topology;
     }
 
     Diagnostics::DomainId WorkerPool::diagnostic_id() const noexcept {
