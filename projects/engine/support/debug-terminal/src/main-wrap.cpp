@@ -108,10 +108,11 @@ namespace CE::TerminalDetail {
             std::atomic<bool> finishing_ = false;
             bool stdout_owned_ = false;
             bool stderr_owned_ = false;
-            bool started_ = false;
+            bool committed_ = false;
 
         public:
             ~Session() { finish(); }
+            void commit() noexcept { committed_ = true; }
             [[nodiscard]] pid_t owner() const noexcept { return owner_; }
             [[nodiscard]] std::FILE* report(const bool error) const noexcept {
                 return error ? report_error_.get() : report_output_.get();
@@ -160,7 +161,6 @@ namespace CE::TerminalDetail {
                     throw std::runtime_error("Cannot configure live stdout capture");
                 if (!send_control(control_.get(), TerminalDetail::started))
                     native_failure("Start terminal output viewer");
-                started_ = true;
                 reaper_ = std::jthread([this](const std::stop_token stop) {
                     while (!stop.stop_requested()) {
                         int status = 0;
@@ -276,12 +276,23 @@ namespace CE::TerminalDetail {
                     reaper_.request_stop();
                     reaper_.join();
                 }
-                if (!started_ && viewer_ > 0) {
-                    static_cast<void>(::kill(viewer_, SIGTERM));
+                if (!committed_ && viewer_ > 0) {
                     int status = 0;
-                    static_cast<void>(::waitpid(viewer_, &status, WNOHANG));
+                    pid_t result;
+                    do {
+                        result = ::waitpid(viewer_, &status, WNOHANG);
+                    } while (result < 0 && errno == EINTR);
+                    if (result == 0) {
+                        if (::kill(viewer_, SIGKILL) == 0 || errno == ESRCH) {
+                            do {
+                                result = ::waitpid(viewer_, &status, 0);
+                            } while (result < 0 && errno == EINTR);
+                        } else if (report_error_.get()) {
+                            std::fputs("Cheryl Debug terminal: failed launcher could not be terminated.\n", report_error_.get());
+                        }
+                    }
                 }
-                if (!notified || !started_ || viewer_closed_.load(std::memory_order_relaxed)) {
+                if (!notified || !committed_ || viewer_closed_.load(std::memory_order_relaxed)) {
                     if (!output_path_.empty())
                         static_cast<void>(::unlink(output_path_.c_str()));
                     if (!socket_path_.empty())
@@ -306,6 +317,7 @@ namespace CE::TerminalDetail {
             // Lazy engine/logger owners registered later finish before this callback.
             if (std::atexit(finish_session) != 0)
                 throw std::runtime_error("Cannot register terminal shutdown");
+            candidate->commit();
             session.store(candidate.release(), std::memory_order_release);
         }
     }
