@@ -45,3 +45,6 @@ add_dependencies(cheryl-debug-terminal-bootstrap cheryl-debug-terminal-viewer)
 target_link_libraries(${TARGET_LIB_ENGINE} INTERFACE
     "$<${cheryl_terminal_enabled}:$<TARGET_OBJECTS:cheryl-debug-terminal-bootstrap>>")
 target_link_options(${TARGET_LIB_ENGINE} INTERFACE "$<${cheryl_terminal_enabled}:LINKER:--wrap=main>")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/GoogleTestOutput.cmake")
+cheryl_route_test_reports()

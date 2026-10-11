@@ -50,9 +50,12 @@ namespace {
         return result;
     }
 
-    bool drain(const int input) {
+    enum class Drain { empty, pending, closed };
+
+    Drain drain(const int input) {
         std::array<char, 8192> bytes{};
-        while (!closed) {
+        // Revisit control messages even while writers continuously extend the file.
+        for (int chunk = 0; chunk < 64 && !closed; ++chunk) {
             const auto count = ::read(input, bytes.data(), bytes.size());
             if (count < 0) {
                 if (errno == EINTR)
@@ -60,13 +63,13 @@ namespace {
                 CE::TerminalDetail::native_failure("Read captured output");
             }
             if (count == 0)
-                return true;
+                return Drain::empty;
             if (std::fwrite(bytes.data(), 1, static_cast<std::size_t>(count), stdout) != static_cast<std::size_t>(count))
-                return false;
+                return Drain::closed;
             if (std::fflush(stdout) != 0)
-                return false;
+                return Drain::closed;
         }
-        return false;
+        return closed ? Drain::closed : Drain::pending;
     }
 
     void remove_directory(const Options& options) noexcept {
@@ -104,11 +107,18 @@ namespace {
 
         bool retained = false;
         bool normal = false;
+        bool announced = false;
         while (!closed) {
-            if (!drain(output.get()))
+            const auto drained = drain(output.get());
+            if (drained == Drain::closed || (normal && drained == Drain::empty))
                 break;
-            pollfd channel{.fd = retained ? -1 : control.get(), .events = POLLIN, .revents = 0};
-            const int result = ::poll(&channel, 1, 50);
+            if (retained && drained == Drain::empty && !announced) {
+                std::printf("\n[Cheryl process ended without normal shutdown; close this window after inspection.]\n");
+                static_cast<void>(std::fflush(stdout));
+                announced = true;
+            }
+            pollfd channel{.fd = retained || normal ? -1 : control.get(), .events = POLLIN, .revents = 0};
+            const int result = ::poll(&channel, 1, drained == Drain::pending ? 0 : 50);
             if (result < 0) {
                 if (errno == EINTR)
                     continue;
@@ -118,14 +128,8 @@ namespace {
                 const auto received = ::recv(control.get(), &message, 1, MSG_DONTWAIT);
                 if (received == 1 && message == normal_exit) {
                     normal = true;
-                    static_cast<void>(drain(output.get()));
-                    break;
-                }
-                if (received == 0 || (received < 0 && errno != EINTR && errno != EAGAIN)) {
+                } else if (received == 0 || (received < 0 && errno != EINTR && errno != EAGAIN)) {
                     retained = true;
-                    static_cast<void>(drain(output.get()));
-                    std::printf("\n[Cheryl process ended without normal shutdown; close this window after inspection.]\n");
-                    static_cast<void>(std::fflush(stdout));
                 }
             }
         }

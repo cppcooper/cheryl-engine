@@ -26,6 +26,10 @@ namespace CE::Engine {
 
     void Startup::add_engine_options() {
         auto& options = *parser_.add_option_group("Engine");
+#if CHERYL_DEBUG_TERMINAL_AVAILABLE
+        options.add_flag("--debug-terminal", "Display the native output terminal (automatic in Debug)");
+        options.add_flag("--no-debug-terminal", "Use inherited output without a native terminal");
+#endif
         options
             .add_flag_callback(
                 "--concurrent", [this] { configuration_.runtime.mode = GFramework::RunMode::Concurrent; },

@@ -12,6 +12,7 @@ namespace CE::TerminalDetail {
         result.values.reserve(static_cast<std::size_t>(argc) + 1);
         result.values.push_back(argv[0]);
         bool application_arguments = false;
+        bool listing = false;
         for (int index = 1; index < argc; ++index) {
             if (!argv[index])
                 throw std::invalid_argument("Terminal arguments must not contain null strings");
@@ -23,16 +24,20 @@ namespace CE::TerminalDetail {
             } else {
                 result.values.push_back(argv[index]);
                 if (!application_arguments) {
-                    const bool listing = value.starts_with("--gtest_list_tests=") && value.substr(19) != "0" &&
-                                         value.substr(19) != "false";
-                    result.discovery |= value == "--help" || value == "-h" || value == "--help-all" || listing ||
-                                        value == "--gtest_list_tests" || value == "--gtest_help" ||
+                    if (value == "--gtest_list_tests")
+                        listing = true;
+                    else if (value.starts_with("--gtest_list_tests=")) {
+                        const auto option = value.substr(19);
+                        listing = option.empty() || (option.front() != '0' && option.front() != 'f' && option.front() != 'F');
+                    }
+                    result.discovery |= value == "--help" || value == "-h" || value == "--help-all" || value == "--gtest_help" ||
                                         value.starts_with("--gtest_internal_run_death_test=");
                     application_arguments = value == "--";
                 }
             }
         }
         result.values.push_back(nullptr);
+        result.discovery |= listing;
         result.enabled &= !result.discovery;
         return result;
     }

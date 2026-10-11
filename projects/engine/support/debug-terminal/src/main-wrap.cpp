@@ -19,6 +19,8 @@
 
 extern char** environ;
 extern "C" int __real_main(int argc, char** argv);
+extern "C" bool ce_debug_terminal_test_process() noexcept __attribute__((weak));
+extern "C" bool ce_debug_terminal_test_reports_routed() noexcept __attribute__((weak));
 
 namespace CE::TerminalDetail {
     namespace {
@@ -103,6 +105,7 @@ namespace CE::TerminalDetail {
             pid_t viewer_ = -1;
             std::jthread reaper_;
             std::atomic<bool> viewer_closed_ = false;
+            std::atomic<bool> finishing_ = false;
             bool stdout_owned_ = false;
             bool stderr_owned_ = false;
             bool started_ = false;
@@ -164,8 +167,11 @@ namespace CE::TerminalDetail {
                         const auto result = ::waitpid(viewer_, &status, WNOHANG);
                         if (result == viewer_ || (result < 0 && errno == ECHILD)) {
                             viewer_closed_.store(true, std::memory_order_relaxed);
-                            std::fprintf(report_error_.get(),
-                                "Cheryl Debug viewer closed; process output continues in %s until shutdown.\n", output_path_.c_str());
+                            if (!finishing_.load(std::memory_order_relaxed))
+                                std::fprintf(
+                                    report_error_.get(),
+                                    "Cheryl Debug viewer closed; process output continues in %s until shutdown.\n", output_path_.c_str()
+                                );
                             return;
                         }
                         std::this_thread::sleep_for(std::chrono::milliseconds(40));
@@ -250,6 +256,7 @@ namespace CE::TerminalDetail {
             void finish() noexcept {
                 if (::getpid() != owner_)
                     return;
+                finishing_.store(true, std::memory_order_relaxed);
                 try {
                     if (stdout_owned_ || stderr_owned_) {
                         std::cout.flush();
@@ -315,8 +322,12 @@ extern "C" int __wrap_main(const int argc, char** argv) {
     CE::TerminalDetail::Arguments arguments;
     try {
         arguments = CE::TerminalDetail::parse_arguments(argc, argv, CHERYL_TERMINAL_AUTOMATIC != 0);
-        if (arguments.enabled && !CE::TerminalDetail::discovery_environment() && CE::TerminalDetail::desktop_available())
+        if (arguments.enabled && !CE::TerminalDetail::discovery_environment() && CE::TerminalDetail::desktop_available()) {
+            if (ce_debug_terminal_test_process && ce_debug_terminal_test_process() &&
+                (!ce_debug_terminal_test_reports_routed || !ce_debug_terminal_test_reports_routed()))
+                throw std::runtime_error("The supplied GoogleTest target has no terminal report-routing capability");
             CE::TerminalDetail::begin_session();
+        }
     } catch (const std::exception& error) {
         std::fprintf(stderr, "Cheryl Debug terminal unavailable: %s. Using inherited output.\n", error.what());
     }
