@@ -7,9 +7,11 @@ set(TARGET_LIB_ENGINE cengine)
 set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
 set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
 set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
+set(TARGET_LIB_ENGINE_S_DEBUG_TERMINAL cengine_debug_terminal_startup)
 
 # Modules
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
+set(TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX module_debug_terminal_linux)
 set(TARGET_LIB_MODULE_OPENGL module_opengl)
 set(TARGET_LIB_MODULE_UI_TGUI module_ui_tgui)
 set(TARGET_LIB_MODULE_UI_RMLUI module_ui_rmlui)

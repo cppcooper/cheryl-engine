@@ -110,6 +110,12 @@ function(cheryl_configure_root_options)
 
     cheryl_option(CHERYL_BUILD_NATIVE_GLFW
             "Build the native GLFW window/input integration" ON)
+    set(cheryl_terminal_linux_default OFF)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set(cheryl_terminal_linux_default ON)
+    endif()
+    cheryl_option(CHERYL_BUILD_DEBUG_TERMINAL_LINUX
+            "Select the Linux Debug terminal module for applications and test runners" ${cheryl_terminal_linux_default})
     cheryl_option(CHERYL_SANDBOX_BUILD
             "Deprecated native GLFW null-platform selection without Gainput" OFF)
     cheryl_option(CHERYL_BUILD_OPENGL
@@ -139,5 +145,19 @@ function(cheryl_configure_root_options)
     if(CHERYL_BUILD_OPENGL AND NOT CHERYL_BUILD_NATIVE_GLFW)
         cheryl_print_options()
         message(FATAL_ERROR "Cheryl OpenGL requires Native GLFW; enable CHERYL_BUILD_NATIVE_GLFW or disable CHERYL_BUILD_OPENGL")
+    endif()
+endfunction()
+
+function(cheryl_debug_terminal_configuration result)
+    set(CHERYL_DEBUG_TERMINAL "AUTO" CACHE STRING "Native output terminal inclusion: AUTO (Debug only), ON, or OFF")
+    set_property(CACHE CHERYL_DEBUG_TERMINAL PROPERTY STRINGS AUTO ON OFF)
+    if(CHERYL_DEBUG_TERMINAL STREQUAL "AUTO")
+        set(${result} "$<CONFIG:Debug>" PARENT_SCOPE)
+    elseif(CHERYL_DEBUG_TERMINAL STREQUAL "ON")
+        set(${result} "1" PARENT_SCOPE)
+    elseif(CHERYL_DEBUG_TERMINAL STREQUAL "OFF")
+        set(${result} "0" PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "Unknown CHERYL_DEBUG_TERMINAL: ${CHERYL_DEBUG_TERMINAL}")
     endif()
 endfunction()

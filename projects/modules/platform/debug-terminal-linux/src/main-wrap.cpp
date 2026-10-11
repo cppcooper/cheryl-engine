@@ -1,3 +1,5 @@
+#include <core/debug-terminal/startup.h>
+
 #include "native.h"
 #include "terminal.h"
 
@@ -312,6 +314,11 @@ namespace CE::TerminalDetail {
         }
 
         void begin_session() {
+            if (!desktop_available())
+                return;
+            if (ce_debug_terminal_test_process && ce_debug_terminal_test_process() &&
+                (!ce_debug_terminal_test_reports_routed || !ce_debug_terminal_test_reports_routed()))
+                throw std::runtime_error("The supplied GoogleTest target has no terminal report-routing capability");
             auto candidate = std::make_unique<Session>();
             candidate->start();
             // Lazy engine/logger owners registered later finish before this callback.
@@ -331,19 +338,5 @@ extern "C" std::FILE* ce_debug_terminal_report_stream(const int error) noexcept 
 }
 
 extern "C" int __wrap_main(const int argc, char** argv) {
-    CE::TerminalDetail::Arguments arguments;
-    try {
-        arguments = CE::TerminalDetail::parse_arguments(argc, argv, CHERYL_TERMINAL_AUTOMATIC != 0);
-        if (arguments.enabled && !CE::TerminalDetail::discovery_environment() && CE::TerminalDetail::desktop_available()) {
-            if (ce_debug_terminal_test_process && ce_debug_terminal_test_process() &&
-                (!ce_debug_terminal_test_reports_routed || !ce_debug_terminal_test_reports_routed()))
-                throw std::runtime_error("The supplied GoogleTest target has no terminal report-routing capability");
-            CE::TerminalDetail::begin_session();
-        }
-    } catch (const std::exception& error) {
-        std::fprintf(stderr, "Cheryl Debug terminal unavailable: %s. Using inherited output.\n", error.what());
-    }
-    if (arguments.values.empty())
-        return __real_main(argc, argv);
-    return __real_main(static_cast<int>(arguments.values.size() - 1), arguments.values.data());
+    return CE::DebugTerminal::run(argc, argv, __real_main, CE::TerminalDetail::begin_session);
 }

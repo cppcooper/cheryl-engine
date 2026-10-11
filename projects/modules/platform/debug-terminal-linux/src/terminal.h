@@ -9,13 +9,6 @@ namespace CE::TerminalDetail {
     inline constexpr char started = 'S';
     inline constexpr char normal_exit = 'N';
 
-    struct Arguments {
-        bool enabled = false;
-        bool discovery = false;
-        std::vector<char*> values;
-    };
-
-    [[nodiscard]] Arguments parse_arguments(int argc, char** argv, bool automatic);
     [[nodiscard]] std::vector<std::string> viewer_arguments(
         const std::string& emulator,
         const std::filesystem::path& viewer,
@@ -24,5 +17,4 @@ namespace CE::TerminalDetail {
         unsigned long owner
     );
     [[nodiscard]] bool desktop_available() noexcept;
-    [[nodiscard]] bool discovery_environment() noexcept;
 }

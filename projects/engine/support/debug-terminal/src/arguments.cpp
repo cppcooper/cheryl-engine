@@ -1,10 +1,10 @@
-#include "terminal.h"
+#include "arguments.h"
 
 #include <cstdlib>
 #include <stdexcept>
 #include <string_view>
 
-namespace CE::TerminalDetail {
+namespace CE::DebugTerminal::Detail {
     Arguments parse_arguments(const int argc, char** argv, const bool automatic) {
         if (argc <= 0 || !argv || !argv[0])
             throw std::invalid_argument("Terminal startup requires an executable and argument array");
@@ -30,8 +30,8 @@ namespace CE::TerminalDetail {
                         const auto option = value.substr(19);
                         listing = option.empty() || (option.front() != '0' && option.front() != 'f' && option.front() != 'F');
                     }
-                    result.discovery |= value == "--help" || value == "-h" || value == "--help-all" || value == "--gtest_help" ||
-                                        value.starts_with("--gtest_internal_run_death_test=");
+                    result.help |= value == "--help" || value == "-h" || value == "--help-all" || value == "--gtest_help";
+                    result.discovery |= result.help || value.starts_with("--gtest_internal_run_death_test=");
                     application_arguments = value == "--";
                 }
             }
@@ -40,31 +40,6 @@ namespace CE::TerminalDetail {
         result.discovery |= listing;
         result.enabled &= !result.discovery;
         return result;
-    }
-
-    std::vector<std::string> viewer_arguments(
-        const std::string& emulator,
-        const std::filesystem::path& viewer,
-        const std::filesystem::path& socket,
-        const std::filesystem::path& output,
-        const unsigned long owner
-    ) {
-        std::vector<std::string> result;
-        if (emulator == "konsole")
-            result = {emulator, "--separate", "-e"};
-        else if (emulator == "xterm")
-            result = {emulator, "-T", "Cheryl Debug output", "-e"};
-        else
-            throw std::invalid_argument("Unsupported native terminal emulator");
-        result.insert(result.end(), {viewer.string(), "--socket", socket.string(), "--output", output.string(),
-                                       "--owner", std::to_string(owner)});
-        return result;
-    }
-
-    bool desktop_available() noexcept {
-        const char* display = std::getenv("DISPLAY");
-        const char* wayland = std::getenv("WAYLAND_DISPLAY");
-        return (display && *display) || (wayland && *wayland);
     }
 
     bool discovery_environment() noexcept {

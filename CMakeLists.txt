@@ -39,6 +39,13 @@ endif()
 
 add_subdirectory(projects/engine)
 
+if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
+    add_subdirectory(projects/modules/platform/debug-terminal-linux)
+    if(NOT TARGET Cheryl::DebugTerminal)
+        add_library(Cheryl::DebugTerminal ALIAS ${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX})
+    endif()
+endif()
+
 if(CHERYL_BUILD_NATIVE_GLFW)
     add_subdirectory(projects/modules/platform/native-glfw)
 endif()

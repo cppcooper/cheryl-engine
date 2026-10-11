@@ -5,9 +5,11 @@ set(OUTPUT_LIB_ENGINE cheryl-engine)
 
 # Engine support
 set(OUTPUT_LIB_ENGINE_S_STARTUP cheryl-engine-startup)
+set(OUTPUT_LIB_ENGINE_S_DEBUG_TERMINAL cheryl-debug-terminal-startup)
 
 # Modules
 set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)
+set(OUTPUT_LIB_MODULE_DEBUG_TERMINAL_LINUX cheryl-module-debug-terminal-linux)
 set(OUTPUT_LIB_MODULE_OPENGL cheryl-module-opengl)
 set(OUTPUT_LIB_MODULE_UI_TGUI cheryl-module-ui-tgui)
 set(OUTPUT_LIB_MODULE_UI_RMLUI cheryl-module-ui-rmlui)

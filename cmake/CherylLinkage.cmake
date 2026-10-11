@@ -96,11 +96,15 @@ set(LINKAGE_PRIVATE_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK
 
 # Demo composition
 ###################
+set(LINKAGE_COMPOSITION_DEBUG_TERMINAL
+        "$<TARGET_NAME_IF_EXISTS:Cheryl::DebugTerminal>")
+
 set(LINKAGE_COMPOSITION_APP_DEMO_BASE
         Cheryl::Engine
         Cheryl::NativeGLFW
         Cheryl::OpenGL
         Cheryl::OpenGL::Startup
+        ${LINKAGE_COMPOSITION_DEBUG_TERMINAL}
 )
 
 set(LINKAGE_COMPOSITION_APP_DEMO_AUDIO
@@ -122,7 +126,8 @@ set(LINKAGE_INTERFACE_LIB_TEST_SUPPORT
         gtest)
 
 set(LINKAGE_INTERFACE_LIB_TEST_MAIN
-        ${TARGET_LIB_TEST_SUPPORT})
+        ${TARGET_LIB_TEST_SUPPORT}
+        ${LINKAGE_COMPOSITION_DEBUG_TERMINAL})
 
 # Test infrastructure
 ######################
@@ -164,10 +169,12 @@ set(LINKAGE_PUBLIC_TEST_ACCEPTANCE_ENGINE
         Cheryl::Engine)
 
 set(LINKAGE_PRIVATE_TEST_ACCEPTANCE_ENGINE_LOGGING
-        Cheryl::Engine)
+        Cheryl::Engine
+        ${LINKAGE_COMPOSITION_DEBUG_TERMINAL})
 
 set(LINKAGE_PRIVATE_TEST_ACCEPTANCE_ENGINE_SIGNAL
-        Cheryl::Engine)
+        Cheryl::Engine
+        ${LINKAGE_COMPOSITION_DEBUG_TERMINAL})
 
 set(LINKAGE_PUBLIC_TEST_ACCEPTANCE_OPENGL
         Cheryl::OpenGL
