@@ -117,7 +117,7 @@ TEST(asset_grid, image_too_small) {
 }
 
 TEST(asset_manifest, checked_in_manifests) {
-    const FileMgr discovered(fs::path(CHERYL_SOURCE_DIR) / "assets");
+    FileMgr discovered(fs::path(CHERYL_SOURCE_DIR) / "assets");
     FileRegistry files;
     files.register_files(discovered.get_files_of_type(".json"));
     const auto definitions = ManifestLoader::load_graphics_definitions(files);
