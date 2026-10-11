@@ -355,6 +355,7 @@ TEST(shader_assets, asset_selection) {
     const TileAnimation animation(clip, tileset->geometry, tileset->texture, tileset->material);
     EXPECT_EQ(resolve_tile(animation, {}, context).material, selected);
     files.write("shader.json", changed(shader_json, "\"name\":\"images\"", "\"name\":\"second\""));
+    files.write("grid.json", changed(grid_json, "\"shader\":\"test:images\"", "\"shader\":\"test:second\""));
     loader.upload(files.prepare(), provider);
     CE::RenderAPIs::DrawStyle2D effect;
     effect.material = ShaderAssetMgr::get().get_material("test:second");

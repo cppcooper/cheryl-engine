@@ -121,7 +121,7 @@ TEST(asset_manifest, checked_in_manifests) {
     FileRegistry files;
     files.register_files(discovered.get_files_of_type(".json"));
     const auto definitions = ManifestLoader::load_graphics_definitions(files);
-    ASSERT_EQ(definitions.assets.size(), std::size_t{7});
+    ASSERT_EQ(definitions.assets.size(), std::size_t{11});
     ASSERT_EQ(definitions.shaders.size(), std::size_t{1});
     for (const auto& manifest : definitions.assets) {
         SCOPED_TRACE(manifest.source.string());
