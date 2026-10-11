@@ -36,6 +36,7 @@ if(NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(${TARGET_LIB_ENGINE} INTERFACE -fsanitize=address,undefined)
 endif()
 
+add_subdirectory(support/debug-terminal EXCLUDE_FROM_ALL)
 add_subdirectory(support/startup EXCLUDE_FROM_ALL)
 
 if(CHERYL_BUILD_TESTS)
