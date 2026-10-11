@@ -249,7 +249,7 @@ namespace {
             active_->image_anisotropy = value;
         }
         static void GLAD_API_PTR image_parameter(GLenum, GLenum parameter, GLint value) { active_->image_parameters[parameter] = value; }
-        static void GLAD_API_PTR image_parameters(GLenum, GLenum, const GLint*) {}
+        static void GLAD_API_PTR image_swizzle(GLenum, GLenum, const GLint*) {}
         static void GLAD_API_PTR pixel_store(GLenum parameter, GLint value) {
             if (parameter == GL_UNPACK_ALIGNMENT)
                 active_->unpack_alignment = value;
@@ -351,7 +351,7 @@ namespace {
                 replace(glad_glGetError, error_query);
                 replace(glad_glTexParameteri, image_parameter);
                 replace(glad_glTexParameterf, anisotropy_parameter);
-                replace(glad_glTexParameteriv, image_parameters);
+                replace(glad_glTexParameteriv, image_swizzle);
                 replace(glad_glPixelStorei, pixel_store);
                 replace(glad_glTexImage2D, upload_image);
                 replace(glad_glGenerateMipmap, mipmaps);
