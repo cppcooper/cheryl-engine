@@ -3,8 +3,9 @@
 Color emoji follows the accepted initial grayscale Unicode baseline. Sorting and
 text/timing optimization require representative workload evidence and settled
 contracts. These tasks have no active checklist yet; promote one coherent unit when
-its prerequisites and scope are settled. Contiguous render batching is now
-[near-term work](../develop-review-and-development-plan.md#render-batching).
+its prerequisites and scope are settled. Opt-in
+[positioned text runs](../../assets/text-layout.md#positioned-text-runs) already
+prepare glyph placements once and preserve contiguous page order.
 
 ## Color emoji
 
@@ -14,6 +15,17 @@ Establish RGBA page orientation,
 material/alpha handling and sequence/fallback policy while preserving source clusters
 and immutable generations. Keep grayscale text independently usable. Color glyphs
 and sequence appearance need their own CPU/native acceptance.
+
+## General render batching
+
+General contiguous packet merging remains distinct from positioned-text submission.
+Require representative update, draw/state-switch, publication and backlog evidence
+and a design discussion before selecting another implementation. Compatibility
+must include UI clipping, glyph pages, immutable sampling/resource generations,
+material/pipeline state, parameters/image units and geometry ranges/topology.
+Preserve authored order and in-flight lifetime; batching does not authorize sorting.
+Comparative CPU/native order/generation checks must justify the selected change.
+If another bottleneck dominates, report it before accumulating dependent work.
 
 ## Reorder-safe render sorting
 

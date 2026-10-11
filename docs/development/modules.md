@@ -22,9 +22,10 @@ back on those targets. See [startup composition](consuming-engine.md#command-lin
 Optional Engine helpers can use `projects/engine/support/` without becoming runtime
 platform modules. Preserve the same dependency direction: selected support targets
 consume Engine; Engine does not acquire their SDKs or initialization as a reverse
-dependency. The selected [worker cache-locality plan](../planning/short-term/worker-cache-locality.md#ownership-and-composition)
-uses that boundary for topology and configuration helpers; its implementation is
-still pending. Neutral workers and scheduling remain in the one Engine library.
+dependency. `Cheryl::WorkerTopology::Hwloc` and `Cheryl::WorkerTopology::Json`
+use that boundary for independently selected discovery/binding and configuration
+helpers. [Provider composition](../runtime/worker-execution.md#topology-providers-and-capacity)
+is application-owned; neutral workers and scheduling remain in the one Engine library.
 
 ```mermaid
 flowchart LR
@@ -128,8 +129,9 @@ This builds only the OpenGL owner and its dependencies:
 Other module directories are standalone source entry points too. Module-local
 checks use `CHERYL_BUILD_TESTS=ON` without enabling Engine's broader suites.
 Hosts own their root `enable_testing()` policy. Independent consumers use the
-owner's `tests/consumer/` entry point. Build-tree composition is supported;
-installed/exported package distribution remains future work.
+owner's `tests/consumer/` entry point. Prebuilt selected owners are also available
+through the [installed SDK](consuming-engine.md#prebuilt-development-sdks), which
+uses the same public aliases and its producer's compiled configuration.
 
 ## Add a module
 

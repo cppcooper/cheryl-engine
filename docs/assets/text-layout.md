@@ -141,11 +141,36 @@ Old submitted frames retain their resources, subject to the original backend dom
 remaining alive for native use. Submission performs no shaping, discovery, rasterization,
 upload, binding or drawing.
 
+### Positioned text runs
+
+Set `TextRasterOptions::positioned_runs = true` during `prepare_text()` to retain
+additional geometry with glyph placements baked into its vertices. Ordinary page
+geometry remains available for per-glyph submission; opting in trades preparation,
+upload and geometry storage for fewer per-frame packets. The extra geometry repeats
+quads in authored glyph order and records each contiguous atlas-page range. A page
+sequence A/B/A remains three runs rather than grouping both A ranges together.
+
+After upload, call `resolve_text_runs(rendered, style, context)` to emit one packet
+per run. Preparation must have opted in; an ordinary generation rejects this call.
+The image key/unit, immutable sampling, clipping, material and whole-text model/scale
+remain those selected by the caller. Packets retain the positioned geometry and
+matching atlas generation through replacement/release; empty text emits no draws.
+
+This overload requires a shader applying the common scale/model transform to the
+positioned vertices, without per-glyph or draw-identity semantics. The API cannot
+infer that contract from arbitrary shaders. Use `resolve_text()` for those shaders
+or when the original per-glyph raster evaluation is required: regrouping floating-point
+transforms can change coverage of exact boundary pixels. The default preparation
+and submission remain per glyph. This facility does not merge arbitrary frame
+packets, reorder draws or change either UI adapter's batching policy.
+
 The [demo](../../projects/apps/demo/README.md#builtin-unicode-text) submits immutable
 HUD/camera text, prepares replacements on a CPU worker and uploads through the
 platform dispatcher. Its preview supports builtin-only, automatic, explicit file/
 family and paragraph-direction choices. The demo guide preserves
 [native preview procedures](../../projects/apps/demo/README.md#unicode-preview-validation).
+Its `--text-runs` option selects positioned submission for builtin text and sample
+labels; toolkit-owned text keeps its separate path.
 
 ## Native acceptance scope
 
@@ -158,6 +183,13 @@ contract above; this native report does not independently confirm Hebrew glyph o
 The accepted [CPU bidi case](../../projects/engine/tests/unit/src/text-layout.cpp)
 checks Hebrew/mixed visual source order and preserves Latin order under explicit RTL.
 Alignment alone is not proof of every bidi sequence.
+
+Linux OpenGL run acceptance compares the test application's 64×64 backbuffers with
+`glReadPixels`, drawing the same retained generation through per-glyph and run paths.
+It covers nearest/linear sampling, clipping, signed scale/rotation, page transitions
+and replacement lifetime. It does not capture the desktop or other applications.
+These fixture comparisons and CPU submission measurements do not establish every
+boundary-pixel identity, physical-GPU timing or other-platform appearance.
 
 Dedicated numeric font-weight/style fixtures remain in the
 [Unicode plan](../planning/short-term/unicode-text.md#progress). Color/CJK rendering,

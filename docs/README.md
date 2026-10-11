@@ -27,7 +27,7 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 - [State, timing and math utilities](runtime/utility-contracts.md)
 - [Thread dispatch](runtime/thread-dispatch.md)
 - [Event buses and persistent registration](runtime/event-delivery.md)
-- [Worker pools and groups](runtime/worker-execution.md)
+- [Worker pools, topology providers and C++/JSON settings](runtime/worker-execution.md)
 - [Logging configuration and emission](runtime/logging.md)
 - [Subsystem diagnostics](runtime/subsystem-diagnostics.md)
 - [Linux Debug output terminal and process lifetime](../projects/modules/platform/debug-terminal-linux/README.md)
@@ -55,13 +55,13 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 ## Development
 
 - [Pending automated and QA testing requests](testing-requests.md)
-- [Build reference](development/building.md)
+- [Build reference, CI and SDK production](development/building.md)
 - [Test selection](development/testing.md)
 - [Contributing](development/contributing.md)
 - [C++ code style](development/code-style.md)
 - [Architecture validation procedures](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)
-- [Consuming the engine and command-line startup](development/consuming-engine.md)
+- [Source/SDK consumption and command-line startup](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
 - [Module index and owner guides](../projects/modules/README.md)
 - [Linux Debug terminal module](../projects/modules/platform/debug-terminal-linux/README.md)
@@ -76,8 +76,6 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 - [Planning catalogue](planning/README.md): horizons, owning plans and prerequisites.
 - [Development roadmap](planning/develop-review-and-development-plan.md): active sequencing.
-- [Worker cache-locality plan](planning/short-term/worker-cache-locality.md): settled
-  support ownership, C++/JSON settings, platform constraints and implementation handoff.
 
 Keep new documents in the matching topic folder and add them to this index. Use
 lowercase, hyphenated filenames, with `README.md` reserved for documentation

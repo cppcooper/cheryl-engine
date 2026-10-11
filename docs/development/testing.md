@@ -15,6 +15,7 @@ acceptance runners. Both require tests. Standalone module tests default to `OFF`
 | Owner | Focused build targets | Aggregate build target |
 | --- | --- | --- |
 | Engine | `tests-engine`, `tests-logging` | `all-engine` |
+| Worker support | `tests-worker-topology-json`, `tests-worker-topology-composition` when selected | Select focused prefixes independently. |
 | Native GLFW | `tests-native-glfw` | `all-native-glfw` |
 | OpenGL | `tests-opengl` | `all-opengl` |
 | TGUI | `tests-ui-tgui` | `all-ui-tgui` |
@@ -59,6 +60,7 @@ targets, and keep tests that share mutable files in isolated working directories
 | `acceptance-opengl` | `tests-acceptance-opengl` | Native graphics/runtime GoogleTests; requires native input selection. |
 | `acceptance-logging` | `tests-acceptance-engine-logging` | Fault/timeout/static-teardown driver via [logging acceptance](logging-acceptance.md). |
 | `acceptance-signal` | `tests-acceptance-engine-signal` | POSIX crash-bootstrap driver in Debug/Release. |
+| `acceptance-worker-topology-hwloc` | `tests-acceptance-worker-topology-hwloc` | Host topology/masks, inherited eligibility and CPU binding without memory placement; requires selected hwloc support and native capabilities. |
 | `backward-cpp` | `tests-dependency-backward-cpp` | Standalone dependency trace check. |
 
 Manual logging and signal drivers stay outside GoogleTest aggregates and CTest;
@@ -71,6 +73,27 @@ targets are `consumer-cengine` and `consumer-headers-cengine`; modules list thei
 consumer targets in their owner guides. Configure each `tests/consumer/` entry
 point independently to establish standalone composition; a root consumer alone
 cannot prove that boundary. See [independent consumers](consuming-engine.md#independent-consumers-and-header-probes).
+
+Selected worker support adds `consumer-worker-topology` and its neutral support-header
+probes; CTest registers that consumer under its exact target name without a suite
+suffix. The [worker procedure](architecture-validation.md#worker-topology-and-configuration)
+separates enabled/disabled dependency selections and controlled/native coverage.
+
+## CI and installed SDK checks
+
+[GitHub CI](building.md#github-ci-and-sdk-artifacts) selects owner prefixes rather
+than aggregate duplicates. Headless jobs select Engine, logging, Engine acceptance,
+JSON/composition and the worker consumer. Modules jobs additionally select Native
+GLFW, OpenGL, both UI owners, miniaudio and coexistence, and run their independent
+consumers. The demo compiles but is never run; the terminal is omitted.
+
+The module profile prepares a prebuilt SDK and independently builds its installed
+consumers/header probes after relocation. The
+[SDK procedure](architecture-validation.md#installed-sdk-consumers) preserves
+configuration, extraction and dependency prerequisites. These checks cover compiled
+library consumption, not desktop/GPU/device operation. Native OpenGL and hwloc
+acceptance runners are excluded from focused hosted CI selection. JUnit reports
+identify skipped fixtures/capabilities as unresolved coverage.
 
 ## Optional terminal probes
 

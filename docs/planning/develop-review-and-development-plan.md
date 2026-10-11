@@ -6,86 +6,35 @@ Current architecture and API contracts live in the [subject guides](../README.md
 
 ## Nearest planned work
 
-This roadmap owns priority order; the catalogue and status inventory link here.
-These priorities do not authorize implementation, builds or work-mode transitions.
-Terminal source work is complete with acceptance pending. The selected engineering
-order is worker cache locality, then render batching; build/release automation is
-the intended follow-up. NUMA is deferred indefinitely.
+This roadmap owns the nearest selected work; the catalogue and status inventory
+link here. Priorities do not authorize implementation, builds or mode transitions.
+The selected cache-locality → positioned-text → CI/SDK source work is complete.
+Its contracts live in the [worker guide](../runtime/worker-execution.md),
+[text guide](../assets/text-layout.md#positioned-text-runs) and
+[build/CI guide](../development/building.md#github-ci-and-sdk-artifacts).
 
-| Order | Work | Next phase and checkpoint |
-| --- | --- | --- |
-| 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
-| 2 | [Worker cache locality](short-term/worker-cache-locality.md) | Design choices are settled: general best-effort discovery/placement, optional Engine support targets, hwloc, and both C++ and JSON configuration. Implement the owning plan; no advance speedup demonstration on the current hardware is required. |
-| 3 | [Render batching](#render-batching) | Discuss the design with the project owner, using representative measurements and settled sampling/retention contracts to select compatibility and ordering rules. |
-| 4 | [Build/release automation](#build-and-release-automation) | After cache locality and batching, plan develop-branch build/test workflows and main-branch versioned package preparation. Settle supported platforms and package contents before implementation. |
+Remaining acceptance has independent prerequisites:
 
-Sampling/TGUI integration and indexed shader/material loading are source-complete.
-Their contracts live in [rendering](../rendering/pipelines-and-materials.md),
-[TGUI](../../projects/modules/ui/tgui/README.md#recording-and-publication) and
-[graphics manifests](../assets/asset-manifests.md). Only main text/image materials
-migrated; both UI adapters retain manual builders. Executable/native acceptance of
-these changes remains in the testing queue. The completed implementation plans are
-retired rather than retained as development journals.
+| Work | Next phase and checkpoint |
+| --- | --- |
+| Hosted CI and SDK artifacts | Reconcile the manifest-count fixture after the assets update, then run the exact Ubuntu/Windows jobs and verify the first successful main-push collection gate in [TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts). Local Linux checks do not establish hosted Windows support. |
+| Linux Debug terminal | Execute the configuration matrix [TR17](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix), then real-desktop [TR18](../testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop). Included builds must preserve runner reporting and viewer lifetime. |
+| Engine-only graph | Complete the independent Release compilation/link inspection in [TR15](../testing-requests.md#tr15-automated-engine-only-composition-graph); accepted behavioral tests need no blanket rerun. |
+| Demo material/artwork QA | Complete shader-pair failure/recovery and available artwork observations in [TR19](../testing-requests.md#tr19-qa-indexed-demo-materials-and-recovered-graphics). Missing images/showcase fixtures remain explicit blockers. |
 
-### NUMA and NUCA
+Sampling/TGUI and indexed shader/material loading have selected Linux CPU/backend
+and native pixel acceptance. Only main text/image materials migrated; both UI
+adapters retain [manual builders](../rendering/pipelines-and-materials.md#manual-material-construction).
+The reusable [graphics procedure](../development/architecture-validation.md#sampling-and-positioned-text)
+preserves coverage limits. Completed implementation plans are retired after their
+contracts and unresolved acceptance have moved to the subject guides/testing queue.
 
-The [worker contract](../runtime/worker-execution.md) supports explicit Linux CPU
-affinity. Required cache-domain/NUMA requests reject and preferred requests fall
-back; automatic topology discovery and memory placement are absent.
-
-NUMA discovery and memory placement are deferred indefinitely by the project owner;
-no client/server split is scheduled. The [long-term scope](long-term/README.md#other-engine-extensions)
-retains the conditions for reopening it.
-
-General best-effort cache/core locality is selected independently of a measured
-speedup on the current machine. The
-[worker cache-locality plan](short-term/worker-cache-locality.md) owns the settled
-design, source handoff, ordered implementation checklist and future acceptance.
-It covers reported L1/L2/L3 and other cache levels, optional hwloc support under
-`projects/engine/support/`, simple automatic/reuse/spread policies, and both typed
-C++ and JSON settings. The application identifies related work and owns its data;
-the facility does not promise cache residency or internal bank control.
-
-Implementation is the next phase when requested. Preserve existing submission,
-fairness, completion and shutdown contracts; use runtime capabilities rather than
-assuming every CPU/OS exposes the same topology or binding controls. Cache-locality
-performance measurements and render-batching design remain independent objectives.
-
-### Render batching
-
-This task requires a design discussion before implementation. Collect representative
-update, draw/state-switch, publication and backlog metrics to identify useful work.
-Include UI clipping, glyph pages, sampling, retained resource generations,
-parameters/image units, geometry ranges/topology and pipeline state in compatibility.
-Start with compatible contiguous packets, preserving authored order and in-flight
-resource lifetime; comparative measurements and visual/order/generation checks must
-justify the change. Report a different dominant bottleneck at the checkpoint rather
-than assuming batching is the next implementation. [Reorder-safe sorting](mid-term/README.md#reorder-safe-render-sorting)
-remains a separate later task.
-
-### Build and release automation
-
-The project owner's intended follow-up after cache locality and batching is GitHub
-Actions: `develop` builds and tests, while `main` prepares versioned release packages.
-No workflow exists in the inspected source, and this is a future workstream rather
-than authorization to configure CI, publish artifacts or run builds/tests now.
-
-Settle the OS/compiler/architecture matrix, package contents, version source and
-release trigger before implementation. Start from the accepted Linux composition;
-SDK portability alone does not establish Cheryl support on another platform.
-CI must provision a C++23 standard library with `std::format`, pinned submodules
-and the selected system dependencies described in the [build guide](../development/building.md).
-Include optional hwloc-enabled and disabled selections without depending on one
-runner's CPU/cache layout. Separate deterministic headless checks from real
-desktop/device acceptance; skipped native checks do not count as that coverage.
-
-The current consumer boundary is [build-tree composition](../development/consuming-engine.md).
-There is no project install/export/CPack pipeline. Decide whether the first package
-contains source, applications, SDK libraries or a combination before designing
-staging and consumption checks. Binary packages need explicit OS/architecture,
-compiler/ABI and configuration identities plus their dependency and license
-requirements. Keep runtime topology discovery independent of the machine producing
-the package, and do not promote unaccepted platform configurations into releases.
+NUMA discovery and memory placement remain [indefinitely deferred](long-term/README.md#other-engine-extensions).
+General packet batching and reorder-safe sorting require separate selection under
+the [mid-term scope](mid-term/README.md#general-render-batching).
+[Release publication](long-term/README.md#other-engine-extensions)
+remains a future decision: current SDK outputs are workflow artifacts and contain
+prebuilt development libraries/headers, not applications or a demo package.
 
 ## Work-mode progression
 
@@ -127,8 +76,10 @@ Font-weight acceptance remains with the Unicode plan rather than this checklist.
   downstream source guard and require correction declarations for supplied Core.
 - [x] Compile Engine-only/native UI selections and accept existing font/layout/resource
   and session/coexistence checks with Cheryl-owned dependencies.
-- [ ] Add dedicated Startup parser/factory and support-header probes, callback/batch
-  routing cases and placeholder hit-testing regressions in separately authorized
+- [x] Compile independent Engine/OpenGL Startup first-include probes through the
+  installed SDK consumer assembly.
+- [ ] Add dedicated Startup parser/factory, callback/batch routing and placeholder
+  hit-testing regressions in separately authorized
   testing phases. Existing suites do not exercise these new paths directly.
 - [x] Accept Linux native startup/field/focus/list observations in the selected
   root composition; [demo QA](../../projects/apps/demo/README.md#startup-and-ui-validation)

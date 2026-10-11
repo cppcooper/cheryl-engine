@@ -269,6 +269,11 @@ FFont keeps immutable width metrics and typed normal/alternate-bank layout; call
 place and rotate text through DrawStyle2D.model_matrix. Legacy STBFont uses a supplied
 font file and an ASCII atlas. The [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
 provides retained shaped glyph pages through its `RenderedText` submission overload.
+Opt-in [positioned text runs](../assets/text-layout.md#positioned-text-runs) prepare
+placements once and submit contiguous atlas-page ranges with a whole-text transform.
+They preserve order, clipping, sampling and retained generations. General packet
+merging and reorder-safe sorting remain separate extensions; the renderer still
+plays authored packets in order.
 See [FFont deprecation](../resources/legacy-ffont.md).
 
 ### Frame storage and writers

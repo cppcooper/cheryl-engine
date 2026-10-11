@@ -5,7 +5,10 @@ platform acceptance, are long-term work. These procedures preserve unresolved
 coverage; they are outside the active
 [testing queue](../../testing-requests.md). Resume them only when platform testing is
 scheduled, reconcile the current source/targets/configuration first, then restore
-ready requests to that queue. Linux/X11 is the current short-term platform.
+ready requests to that queue. Linux/X11 is the current native acceptance platform.
+Windows hosted compilation, focused tests and installed SDK consumption are active
+in [TR20](../../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts);
+that request does not activate the desktop/controller/HID procedures here.
 
 ## Scope and prerequisites
 
@@ -13,7 +16,8 @@ Windows acceptance includes native input ownership and consumer/header probes,
 typed-event and resize delivery, desktop resize, controller reports and HID
 notification lifetime. TR3–TR5 below retain their request IDs for later activation.
 They are **deferred**, and Windows dependency/toolchain configuration remains
-unaccepted. A configuration/build failure is an unresolved prerequisite, not an
+unaccepted until its hosted run; CI success alone does not accept native behavior.
+A configuration/build failure is an unresolved prerequisite, not an
 accepted or skipped case.
 
 Commands locate the checkout root with Git and preserve the caller's starting

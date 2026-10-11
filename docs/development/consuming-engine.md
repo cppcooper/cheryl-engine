@@ -1,7 +1,8 @@
 # Consuming the engine
 
-The supported packaging boundary is build-tree composition from a Cheryl checkout.
-`projects/engine/` owns the neutral `Cheryl::Engine` target, backed by the build
+Applications can compose source targets from a checkout or link a prebuilt
+[development SDK](#prebuilt-development-sdks). `projects/engine/` owns the neutral
+`Cheryl::Engine` target, backed by the build
 target `cengine` and archive output name `cheryl-engine`. Applications link selected
 integration targets explicitly; [the module guide](modules.md) describes ownership,
 standalone composition and tests.
@@ -27,6 +28,70 @@ For command-line startup, link `Cheryl::OpenGL::Startup`; it supplies the common
 startup target and the native/graphics targets transitively.
 Consumers obtain C++23, includes, logging policy and SDK requirements through
 targets rather than compiling Engine sources or repeating dependency lists.
+
+## Prebuilt development SDKs
+
+Extract an SDK and select its root through `CMAKE_PREFIX_PATH` or
+`Cheryl_DIR=<sdk>/lib/cmake/Cheryl`. No Cheryl implementation checkout is needed
+to consume it. Link the same public aliases as source consumers:
+
+```cmake
+cmake_minimum_required(VERSION 3.28)
+project(my_game LANGUAGES CXX)
+find_package(Cheryl 4 CONFIG REQUIRED)
+add_executable(my_game main.cpp)
+target_link_libraries(my_game PRIVATE Cheryl::Engine)
+# Add Cheryl::OpenGL::Startup or the selected module/support targets as needed.
+```
+
+For a Linux Release SDK, configure the application's directory as follows:
+
+```sh
+(
+  set -e
+  cd /path/to/my_game
+  cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH=/absolute/path/to/extracted-sdk
+  cmake --build build --parallel
+)
+```
+
+The SDK contains compiled Engine, Startup and selected module/topology libraries,
+their dependency libraries or headers, the crash-bootstrap object, public headers,
+CMake import/version files and licenses. `.h`/`.hpp` and required `.inl`/`.ipp`/`.tpp`
+files remain included. C/C++ implementation translation units, tests, artwork,
+applications and the demo are excluded. There is no separate demo package.
+Header-based dependencies such as miniaudio still require their public header.
+The [build guide](building.md#development-sdk-builds) describes production;
+`SDK-MANIFEST.json` records selected features, source/submodule revisions, OS,
+architecture, compiler/version, configuration, logging profile and native versions.
+
+Use a package compatible with the target OS/distribution, architecture, compiler,
+standard-library ABI and configuration. Windows CI SDKs use MSVC x64 RelWithDebInfo
+and the DLL CRT; Linux CI SDKs use Ubuntu 24.04 x64 GCC 14 Release. A locally built
+SDK's identity describes that local toolchain, not those hosted configurations.
+Imported logging definitions are fixed to the producer's compiled profile/mask;
+the application must not select contradictory definitions. Match MSVC runtime and
+configuration rather than mixing incompatible Debug/Release C++ binaries.
+
+| Native dependencies | Consumer requirements |
+| --- | --- |
+| Linux | Install compatible FreeType, HarfBuzz and ICU development/runtime packages; hwloc when selected, the producer's Backward resolver libraries, and X11/OpenGL when selected. Pinned C++ and selected integration dependencies are already supplied. |
+| Windows | The `dependencies/` prefix supplies pinned vcpkg headers, import libraries, CMake files, release DLLs and licenses. Keep it with the SDK; add its `bin/` directory to the application's DLL search path. The MSVC runtime remains a host requirement. |
+
+The package config discovers native libraries, checks the producer's ICU major
+version and requires the hwloc 2.5+ (2.x) API when that provider is included.
+Windows config prepends the bundled dependency prefix and exposes
+`Cheryl_RUNTIME_DIRECTORIES` for runtime-path setup; it does not deploy DLLs beside
+an application automatically. OpenGL still needs the host's graphics runtime.
+SDK relocation does not establish compatibility with another ABI or distribution.
+
+Local Linux installed-target consumers and first-include probes cover the selected
+SDK composition, including both Startup support headers. Hosted Linux toolchains
+and Windows build/SDK acceptance remain pending the first
+[CI run](building.md#github-ci-and-sdk-artifacts). Desktop, GPU and physical-device
+coverage remain separate. The SDK does not export the Linux Debug terminal;
+that module retains its source-composition path.
 
 ## Command-line startup
 
@@ -190,12 +255,12 @@ entities, collision and mechanics belong to the game or its selected modules.
 | GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
 | GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
 | miniaudio | Optional audio module's private implementation/link requirement; public Engine and module audio headers expose no SDK types. |
+| hwloc 2.5+ (2.x) | Optional WorkerTopology::Hwloc private SDK/final link requirement; Engine alone does not discover or link it. |
 
 The Engine umbrellas and granular contracts are neutral. Concrete window/input
 headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
 `cheryl/...` and legacy `core/...`/`assets/...` include spellings are preserved through
-each target's public roots. Installed/exported `find_package` distribution remains
-separate work.
+each target's public roots, including in the installed SDK.
 
 `<assets.h>` and `<core.h>` expose no Glad types; concrete OpenGL resources are
 opt-in through `<backends/opengl.h>`. Portable asset values and primitives live in

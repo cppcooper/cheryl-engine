@@ -35,7 +35,7 @@ In each mode, check these observations:
    reloads. The process exits normally without hanging or printing a cleanup error.
 
 This block uses the refreshed `build/testing-graphics/demo` from the
-[testing queue](../testing-requests.md#tr16-automated-opengl-sampling-owned-shaders-and-ui-composition),
+[demo QA preparation](../testing-requests.md#tr19-qa-indexed-demo-materials-and-recovered-graphics),
 or a matching native demo. It copies only shader/UI/font inputs, preserving the
 checkout and omitting the assets repository's Git metadata and bulk collections.
 Optional tile/sprite samples skip in this minimal root; that is not artwork QA.

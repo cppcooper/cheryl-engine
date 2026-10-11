@@ -3,7 +3,8 @@
 Use CMake 3.28 or newer, Ninja and a C++23 compiler/standard library with
 `std::format`. Initialize the pinned submodules as described in
 [setup](../../README.md#setup). Build-tree consumers use the same dependencies;
-link Cheryl targets instead of copying include and link settings.
+link Cheryl targets instead of copying include and link settings. Prebuilt consumers
+use the [SDK import targets](consuming-engine.md#prebuilt-development-sdks).
 
 ## Configuration options
 
@@ -28,6 +29,9 @@ declared only when RmlUi is selected.
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |
 | `CHERYL_BUILD_ACCEPTANCE_TESTS` | `OFF` | Includes acceptance runners in the default build; requires tests. |
 | `CHERYL_BUILD_CONSUMER_TESTS` | `OFF` | Adds selected owners' consumers and first-include probes independently of GoogleTest. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `OFF` | Selects optional runtime topology discovery and thread binding through hwloc. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `OFF` | Selects the versioned worker settings loader independently of hwloc. |
+| `CHERYL_BUILD_SDK` | `OFF` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input in Native GLFW. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW without X11/Wayland. Disable native input to omit Gainput/X11. |
 | `CHERYL_SANDBOX_BUILD` | `OFF` | Deprecated shorthand defaulting native input off and the null platform on. Prefer explicit options. |
@@ -80,6 +84,7 @@ its text dependencies:
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
     -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF
   cmake --build build/engine-only --target cengine --parallel
 )
@@ -99,6 +104,7 @@ its text dependencies:
 | `CHERYL_RMLUI_SOURCE`, `RmlUi_DIR` | Selects a RmlUi 6.3 source tree or exact package with stock FreeType and the required [placeholder correction](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
 | `CHERYL_MINIAUDIO_SOURCE` | Overrides pinned miniaudio source; a supplied miniaudio target takes precedence. |
 | `CHERYL_RMLUI_TEST_FONT=/path/to/font.ttf` | Supplies a real font fixture when the selected SDK's sample font is unavailable. |
+| `CHERYL_HWLOC_TARGET=existing_target` | Supplies a compatible hwloc 2.5+ (2.x) target when worker discovery/binding is selected; otherwise discovery checks supported config targets and pkg-config. |
 
 Modules reuse compatible supplied dependency targets where supported. Their owner
 guides document selection order and feature requirements. Owned source dependencies
@@ -129,6 +135,7 @@ Package names vary by operating system.
 | Requirement | Selection | Notes |
 | --- | --- | --- |
 | Threads | Engine | Discovered through `Threads::Threads`. |
+| hwloc 2.5+ (2.x) | WorkerTopology::Hwloc only | Runtime CPU/core/cache discovery and calling-thread binding; omitted configurations do not discover/download/link it. |
 | FreeType, HarfBuzz, ICU uc/i18n | Engine | Font inspection/rasterization, shaping, bidi and boundaries; required with UI disabled too. |
 | X11 and extensions | GLFW X11 / native Linux input | GLFW checks XRandR, Xinerama, XKB, Xcursor, XInput and X Shape headers. Gainput input also needs X11. |
 | Wayland, xkbcommon, `wayland-scanner` | Bundled GLFW Wayland | Linux GLFW enables X11 and Wayland by default. Disable Wayland for an X11-only build. |
@@ -160,16 +167,112 @@ Successful configuration/build does not establish native platform coverage. The
 [test guide](testing.md) and [architecture validation](architecture-validation.md)
 describe the relevant checks and prerequisites.
 
-## Planned topology support and release automation
+## Optional worker support
 
-The [worker cache-locality plan](../planning/short-term/worker-cache-locality.md#build-platforms-and-dependency-selection)
-requires optional hwloc support with runtime discovery, independently usable JSON
-loading and Engine-only builds without hwloc. These targets/options are not
-implemented yet. Their selection must not bake the build host's topology into
-artifacts or impose another platform SDK on ordinary Engine consumers.
+`CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=ON` adds `cengine_worker_topology_hwloc`
+(`Cheryl::WorkerTopology::Hwloc`); JSON selection adds `cengine_worker_topology_json`
+(`Cheryl::WorkerTopology::Json`). Both options default off. A plain Engine consumer
+needs neither support library. Selecting both also registers the explicitly
+buildable `example_worker_topology` shared-pool composition example.
+The [worker guide](../runtime/worker-execution.md) owns provider lifetime, placement
+policies, capacity and configuration semantics.
 
-GitHub Actions for develop builds/tests and main versioned package preparation
-are the intended [follow-up after cache locality and batching](../planning/develop-review-and-development-plan.md#build-and-release-automation).
-The current project supplies build-tree targets; workflow and project
-install/export/package staging remain unimplemented. Selecting release platforms,
-toolchains and package contents belongs to that future phase.
+hwloc selection reuses an explicit or compatible existing target, then an installed
+config package or pkg-config SDK. Missing/incompatible selection fails clearly;
+there is no implicit SDK download/install. Cross builds require a supplied target
+SDK or target-rooted pkg-config settings (`PKG_CONFIG_LIBDIR` and
+`PKG_CONFIG_SYSROOT_DIR`); do not resolve host libraries accidentally. Discovery
+occurs when the application creates its provider, never through `lstopo` at configure
+time. Builds do not bake host CPU/cache layout into artifacts or add `-march=native`.
+CPU vendor is not a CMake selection.
+
+## Development SDK builds
+
+SDK export is opt-in and requires Cheryl-owned builds of the pinned source
+dependencies; imported dependency targets are rejected by this packaging path.
+Ordinary source composition can still reuse supplied targets. Use a clean checkout
+with submodules at their recorded revisions for reproducible archives. The packager
+records the source commit and verifies recursive submodule HEADs against its gitlinks.
+
+Use a single-configuration Ninja build and select the modules/helpers to distribute.
+On Linux, this produces the default Native GLFW/OpenGL/TGUI libraries and common
+Startup support without building the demo or tests:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/sdk -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_INSTALL_LIBDIR=lib -DCHERYL_BUILD_SDK=ON \
+    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_WAYLAND=OFF
+  cmake --build build/sdk --target cheryl-sdk --parallel
+  python3 .github/ci/package.py --build-dir build/sdk --output build/packages
+)
+```
+
+The packaging tools use Python 3.12 or newer. `package.py` installs only the
+`CherylSDK` component, creates a Linux `.tar.gz` or Windows `.zip`, and writes
+`SHA256SUMS` plus `SDK-MANIFEST.json`. A direct
+`cmake --install build/sdk --component CherylSDK --prefix /absolute/sdk/prefix`
+installs the library/header/CMake component; Windows archive production additionally
+copies its native dependency prefix. Use `package.py` for the complete bundle.
+Archive names include the Cheryl version from
+[CherylVersions.cmake](../../cmake/CherylVersions.cmake), platform/distribution,
+architecture, compiler/version, configuration and commit ID.
+
+Windows CI builds through the pinned vcpkg manifest in [.github/ci](../../.github/ci/vcpkg.json)
+with the `x64-windows` triplet. Packaging copies release headers, import libraries,
+DLLs, CMake files and licenses from `build/ci/vcpkg_installed/x64-windows` into
+`dependencies/`; `--native-prefix` can select another prepared prefix. Debug
+dependency trees, tools and applications are omitted. Linux retains system native
+dependencies. Neither package contains the demo or C/C++ implementation translation
+units; public and inline/template headers remain included. The selected libraries
+are already compiled. See [SDK consumption](consuming-engine.md#prebuilt-development-sdks)
+for ABI, logging and runtime-library requirements.
+
+## GitHub CI and SDK artifacts
+
+[ci.yml](../../.github/workflows/ci.yml) validates pushes to `develop`/`main`, pull
+requests targeting either branch and manual dispatches. Each job checks out recorded
+recursive submodules. Actions use commit pins; Windows uses the manifest's pinned
+vcpkg baseline. Builds use Ninja and available CPU parallelism.
+
+| Job | Host/compiler/configuration | Selection |
+| --- | --- | --- |
+| `linux-gcc-hwloc` | Ubuntu 24.04 x64, GCC 14 Release | Headless Engine, hwloc and JSON. |
+| `linux-gcc-neutral` | Ubuntu 24.04 x64, GCC 14 Release | Headless Engine and JSON, hwloc omitted. |
+| `linux-clang-debug` | Ubuntu 24.04 x64, Clang 18 Debug | Headless Engine, hwloc/JSON, ASan/UBSan. |
+| `windows-msvc-hwloc` | Windows 2025 x64, MSVC RelWithDebInfo | Headless Engine and hwloc/JSON with vcpkg native libraries. |
+| `linux-modules` | Ubuntu 24.04 x64, GCC 14 Release | Native GLFW/input, OpenGL, TGUI, RmlUi, miniaudio, hwloc/JSON and SDK. |
+| `windows-modules` | Windows 2025 x64, MSVC RelWithDebInfo | The same selected modules/helpers and SDK, with bundled native dependencies. |
+
+[run.py](../../.github/ci/run.py) configures explicit owners/options/build targets,
+runs each focused owner prefix once and executes independent consumers. Modules
+jobs compile the demo for composition coverage but never launch or package it.
+Linux jobs provide TrueType/CFF allocation fixtures. Missing fixtures and
+platform-specific skips are reported as unaccepted coverage. Native OpenGL, native
+hwloc binding acceptance, actual audio devices, desktop/controller QA and the
+Debug terminal remain separate from this focused CI selection.
+
+Modules jobs package and verify an extracted SDK on every validation run.
+[verify_sdk.py](../../.github/ci/verify_sdk.py) checks the checksum and absence of
+producer paths, then builds independent consumers/header probes using only installed
+Cheryl libraries. Test fixture sources/fonts come from the checkout; Cheryl and
+module implementation sources are not rebuilt. Use a fresh consumer build/extraction
+directory for each verification. See
+[repeating SDK checks](architecture-validation.md#installed-sdk-consumers).
+
+Successful main-push modules jobs retain SDK candidates for three days. After all
+headless and modules jobs succeed, the collection job verifies checksums and uploads
+`cheryl-development-sdks-<commit>` for 90 days. Test/configuration reports are retained
+for 14 days. These are workflow artifacts; the workflow creates no GitHub release,
+uploads no release assets and publishes no demo package. Release publication is a
+separate future decision.
+
+Local Linux validation establishes the selected producer and relocated consumer
+paths; it does not accept the exact hosted GCC 14/Clang 18 images or Windows MSVC.
+The first hosted run and main artifact collection remain pending
+[TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).

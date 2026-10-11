@@ -119,6 +119,7 @@ The demo's [option helper](src/demo-options.cpp) registers these Application opt
 | `--full-assets` | Attempts the whole manifest/image tree; failure reports to stderr and startup continues with available samples. |
 | `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
 | `--unicode-text` | Shows accented Latin, Cyrillic, mixed/pure RTL, missing-glyph and wrapping examples in the builtin HUD. |
+| `--text-runs` | Prepares positioned geometry for builtin HUD/camera text and sample labels, then submits one draw per contiguous atlas-page run. Toolkit text is unchanged. |
 | `--builtin-font` | Disables automatic installed-family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
 | `--font=/path/to/font.ttf` | Appends an application file to the ordered preferred font sources; repeat as needed. Invalid files fail startup. |
 | `--font-family=NAME` | Appends an installed family to the same preferred order. Quote names containing spaces; unavailable families are skipped. |
@@ -316,7 +317,7 @@ The selected native scope is Linux/GLFW/X11/OpenGL, including the existing 125%
 desktop scale. Per-window scale transitions, other platforms, IME and physical GPU resource
 retirement need separate observations. Native startup, field/placeholder focus,
 list layout and UI interaction are accepted in the selected Linux root composition.
-Dedicated parser/factory, support-header, callback/batch and placeholder regressions
+Dedicated parser/factory, callback/batch and placeholder regressions
 remain in the [owning plan](../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
 Builtin Unicode keeps its separate [coverage scope](../../../docs/assets/text-layout.md#native-acceptance-scope).
 

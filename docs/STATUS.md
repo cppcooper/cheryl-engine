@@ -4,39 +4,41 @@
 
 > **Original review scope:** Source-code inspection of the engine, backend modules, build configuration, demo, and test sources. No compilation, tests, hardware QA, or deployment checks were performed as part of that review. The inventory starts at the reviewed commit, with the focused reconciliation below; classifications are **not automatically updated release guarantees**.
 
-**Documentation reconciliation:** 2026-10-10 — Updates sampling/TGUI, graphics
-manifests 2.0, main material loading, the optional Linux Debug terminal and recovered
-college/font assets through source baseline `695f966`. Reconciles the selected
-terminal → worker cache locality → batching order, NUMA deferral, settled worker
-configuration/support ownership and pending acceptance. Records build/release
-automation as the intended later workstream. The original review
-baseline and qualitative estimate remain historical; this documentation pass does
-not claim a fresh review of every subsystem or new build/test/native results.
+**Documentation reconciliation:** 2026-10-11 — Reconciles cache-aware workers,
+C++/JSON configuration, opt-in positioned text runs, Linux/Windows CI and prebuilt
+SDKs through source baseline `b49ffd9`, alongside the existing sampling/material,
+terminal and asset contracts. Local Linux acceptance and pending hosted/native/QA
+coverage remain distinct. The original review baseline and qualitative estimate
+remain historical; this pass does not claim a fresh review of every subsystem or
+new build/test/native results.
+
+Recorded Linux CI/SDK acceptance uses assets `12f06eb`. The subsequent root commit
+`8989c3c` pins `5603c19`, adding an asset definition that the manifest count test
+does not yet expect. This inspected fixture mismatch needs reconciliation and a
+focused rerun before [hosted CI acceptance](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
 
 **Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = nearest scheduled work awaiting design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work; **Not implemented** = no complete functional implementation identified; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
-The following **five tables** comprise 139 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
+The following **five classification sections** comprise 141 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
 
 ## 1. Partial
 
-| Feature / integration | Status | Description / scope | Investigate |
-| --- | --- | --- | --- |
-| Worker CPU placement | Partial · selected follow-up | Linux CPU affinity, required/preferred policies and fallback behavior exist. NUMA is deferred; automatic core/cache discovery remains absent. General best-effort placement is selected with optional Engine support targets and C++/JSON configuration; implementation has not begun. | [locality plan](planning/short-term/worker-cache-locality.md), [worker contract](runtime/worker-execution.md) |
+No current entries in this classification.
 
-*1 entry.*
+*0 entries.*
 
 ## 2. Planned
 
-| Feature / integration | Status | Description / scope | Investigate |
-| --- | --- | --- | --- |
-| Render batching | Planned · near term | Measure draw/state-switch overhead and batch compatible contiguous packets, including sampling and immutable resource generations, while preserving authored order. | [batching roadmap](planning/develop-review-and-development-plan.md#render-batching) |
+No selected implementation awaiting design in this classification; pending
+acceptance is tracked separately from source completion.
 
-*1 entry.*
+*0 entries.*
 
 ## 3. Deferred
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
+| General render batching | Deferred · unselected extension | Arbitrary contiguous packet merging requires a separate measured design; opt-in positioned text runs are implemented without sorting or changing UI packet policy. | [batching scope](planning/mid-term/README.md#general-render-batching), [text runs](assets/text-layout.md#positioned-text-runs) |
 | Multiple active rendering windows | Deferred | A display can own several windows, but switching the selected rendering window rejects. Multiple active contexts/presentation and their ownership require a separately selected extension. | [window plan](planning/long-term/README.md#multiple-active-rendering-windows) |
 | Gainput HID backend | Deferred · blocked TR6 | Backend initialization, device identity, retained reports and lifecycle notifications remain unfinished. HID acceptance is deferred with backend work and the observation harness. | [HID plan](planning/long-term/README.md#deferred-hid-integration) |
 | RmlUi rendering effects | Deferred | Core document/font/input/clipping and retained-upload integration exists. Masks, transforms, layers, filters, custom shaders and repeating texture coordinates remain unsupported extensions. | [UI extension plan](planning/long-term/README.md#ui-adapters) |
@@ -57,7 +59,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | In-game developer console | Deferred | Graphical command/output panel, history, scrolling and input routing are described as a future engine-owned facility. | [README.md](planning/long-term/README.md) |
 | Expanded manifest families | Deferred | Broader declarative asset formats remain long-term until a specific application requires their semantics. | [README.md](planning/long-term/README.md) |
 
-*19 entries.*
+*20 entries.*
 
 ## 4. Not implemented
 
@@ -78,7 +80,6 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Automatic asset hot reload | Not implemented | Explicit shader/material replacement exists; the manifest loader has no atomic watch/reload-and-republish mechanism. | [asset-loader.h](../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h) |
 | GPU memory budgets/eviction | Not implemented | Resource handles and caches are implemented, but automatic residency budgets, eviction and GPU-memory policy are absent. | [resource-provider.h](../projects/engine/include/cheryl/assets/resources/resource-provider.h) |
 | Independent provider cache domains | Not implemented | Global asset managers currently use one active provider/loading-owner domain; parallel independent cache domains are unsupported. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
-| Installed CMake package | Not implemented | The supported consumer path is the build tree; no installed find_package(Cheryl) package/export workflow exists. | [consuming-engine.md](development/consuming-engine.md) |
 | OS clipboard services | Not implemented | Both toolkit adapters reject clipboard API requests rather than reading or writing OS clipboard data. | [session.cpp](../projects/modules/ui/tgui/src/session.cpp) |
 | IME composition/preedit | Not implemented | Committed Unicode text is delivered, but multi-stage input-method composition/preedit integration is missing. | [session.cpp](../projects/modules/ui/rmlui/src/session.cpp) |
 | Relative pointer capture | Not implemented | Cursor visibility exists, but generalized raw/locked relative pointer capture is not exposed by the window contract. | [window-interface.h](../projects/engine/include/cheryl/core/display/window-interface.h) |
@@ -86,7 +87,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Gamepad-driven UI navigation | Not implemented | Input records can represent controllers, but no general controller-focus/navigation mapping for TGUI/RmlUi is supplied. | [ui/](../projects/modules/ui/) |
 | Monitor hotplug event service | Not implemented | Monitor enumeration exists; an engine-level dynamic monitor-added/removed subscription and lifecycle contract is absent. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
 
-*22 entries.*
+*21 entries.*
 
 ## 5. Implemented
 
@@ -99,6 +100,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | SimulationScheduler | Implemented | Variable/fixed cadence with bounded recovery, skipped time and catch-up policy. | [simulation-scheduler.h](../projects/engine/include/cheryl/core/game-framework/simulation-scheduler.h) |
 | TickContext | Implemented | Provides simulation delta, aggregated input, framebuffer/logical dimensions and stop-request access. | [tick-context.h](../projects/engine/include/cheryl/core/game-framework/tick-context.h) |
 | WorkerPool | Implemented | Shared threads with futures, acceptance/closure, draining and exception delivery. | [worker-pool.h](../projects/engine/include/cheryl/core/engine/worker-pool.h) |
+| Worker CPU placement | Implemented | Application-owned topology providers, optional runtime hwloc core/cache discovery and calling-thread binding, automatic/reuse/spread policies and validated C++/JSON settings. NUMA memory placement remains deferred; topology is not a speedup guarantee. | [worker contract](runtime/worker-execution.md) |
 | Weighted worker groups | Implemented | Isolated logical workloads with concurrency limits, priority, fair scheduling and statistics. | [worker-pool.cpp](../projects/engine/src/core/engine/worker-pool.cpp) |
 | PlatformDispatcher | Implemented | Submits captured work for execution on the native graphics/platform owner. | [platform-dispatcher.h](../projects/engine/include/cheryl/core/engine/platform-dispatcher.h) |
 | SimulationDispatcher | Implemented | Delivers queued callbacks on the simulation owner through future-bearing submissions. | [simulation-dispatcher.h](../projects/engine/include/cheryl/core/engine/simulation-dispatcher.h) |
@@ -123,8 +125,9 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Display/monitor abstraction | Implemented | Monitor enumeration, primary selection, logical and framebuffer sizes and content scale. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
 | GLFW window modes | Implemented | Native resizing, normal/borderless/fullscreen transitions, close detection and cursor visibility. | [window.cpp](../projects/modules/platform/native-glfw/src/core/display/window.cpp) |
 | **Rendering** | | | |
-| TGUI texture sampling | Implemented · acceptance pending | Texture/font smoothing is copied into retained draws; immutable nearest/linear samplers share image generations without mutation. Toolkit policies disable mipmaps/anisotropy while ordinary engine defaults request anisotropy. | [TGUI contract](../projects/modules/ui/tgui/README.md#recording-and-publication), [sampling](rendering/pipelines-and-materials.md#immutable-sampling) |
-| Shader manifest schema and indexed material loading | Implemented · acceptance pending | Graphics 2.0 indexes select CPU-only program/material recipes, owned source bytes and backend-owned construction. Main text/image recipes migrated; textures and shaders stay independent, with optional asset selections and explicit incremental replacement. | [manifest guide](assets/asset-manifests.md#shadermaterial-definitions), [loading](assets/asset-loading.md) |
+| Positioned text runs | Implemented | Opt-in prepared glyph placement geometry and contiguous atlas-page draws preserve authored order, clipping, sampling and retained generations; arbitrary shader and exact boundary-pixel semantics need the per-glyph path. | [text contract](assets/text-layout.md#positioned-text-runs) |
+| TGUI texture sampling | Implemented | Texture/font smoothing is copied into retained draws; immutable nearest/linear samplers share image generations without mutation. Toolkit policies disable mipmaps/anisotropy while ordinary engine defaults request anisotropy. Selected Linux sampling/UI checks are accepted; native nearest-font appearance remains separate. | [TGUI contract](../projects/modules/ui/tgui/README.md#recording-and-publication), [sampling](rendering/pipelines-and-materials.md#immutable-sampling) |
+| Shader manifest schema and indexed material loading | Implemented · demo QA pending | Graphics 2.0 indexes select CPU-only program/material recipes, owned source bytes and backend-owned construction. Main text/image recipes migrated; textures and shaders stay independent, with optional asset selections and explicit incremental replacement. Linux CPU/backend checks are accepted; shader-pair failure/recovery QA remains pending. | [manifest guide](assets/asset-manifests.md#shadermaterial-definitions), [loading](assets/asset-loading.md) |
 | Renderer abstraction | Implemented | Backend-neutral lifecycle, frame rendering, viewport, clear and camera matrix operations. | [renderer.h](../projects/engine/include/cheryl/core/rendering/renderer.h) |
 | OpenGL backend | Implemented | GL-based pass playback, context validation, native rendering and resource maintenance. | [renderer.cpp](../projects/modules/graphics/opengl/src/backends/opengl/renderer.cpp) |
 | GLFW OpenGL context | Implemented | Context creation, activation and proc loading through the GLFW graphics module. | [glfw-context.h](../projects/modules/graphics/opengl/include/cheryl/backends/opengl/glfw-context.h) |
@@ -182,6 +185,8 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | File manager and path I/O | Implemented | Core file-manager interface and path-oriented file operations, distinct from installed font discovery. | [file-mgr.h](../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h) |
 | External Debug terminal | Implemented · Linux acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. AUTO links actual Debug only; explicit non-Debug inclusion still needs a runtime enable option. Engine supplies only an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [pending matrix](testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) |
 | **Build and verification** | | | |
+| Installed CMake package | Implemented | Opt-in CherylSDK component exports prebuilt selected libraries, headers, dependency targets and licenses; independent Linux installed consumers are accepted. Windows bundles native dependencies and awaits hosted acceptance. | [SDK consumption](development/consuming-engine.md#prebuilt-development-sdks) |
+| GitHub CI and SDK artifacts | Implemented | Linux GCC/Clang and Windows MSVC focused builds/tests plus relocated SDK consumers; successful main validation collects compiled development SDK artifacts without applications or release publication. A newer assets pin requires fixture reconciliation before pending hosted execution. | [CI matrix](development/building.md#github-ci-and-sdk-artifacts), [TR20](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts) |
 | Modular CMake root | Implemented | C++23 build splits Engine and native graphics/platform/UI/audio owners. | [CMakeLists.txt](../CMakeLists.txt) |
 | CMake option selection | Implemented | Root switches for GLFW, OpenGL, TGUI, RmlUi, miniaudio, native input, demo and test modes. | [CherylOptions.cmake](../cmake/CherylOptions.cmake) |
 | Named library target aliases | Implemented | Consistent identities such as Cheryl::Engine, Cheryl::NativeGLFW and Cheryl::Audio::Miniaudio. | [CherylTargets.cmake](../cmake/CherylTargets.cmake) |
@@ -196,7 +201,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Debug sanitizers | Implemented | Non-MSVC Debug configuration enables address/undefined-behavior sanitizers. | [CMakeLists.txt](../CMakeLists.txt) |
 | Third-party dependency wiring | Implemented | Pinned submodules plus FreeType, HarfBuzz, ICU, GLM, STB, JSON, spdlog, backward-cpp, CTTI and CLI11. | [CherylDependencies.cmake](../cmake/CherylDependencies.cmake) |
 
-*96 entries.*
+*100 entries.*
 
 ## Assessment and direction
 
@@ -204,13 +209,15 @@ The review's qualitative estimate of foundational architecture maturity is
 approximately **85%**. It concerns established engine foundations, not completion
 of the roadmap, and is not calculated from feature counts, coverage or test results.
 The implemented facilities support a desktop 2D consumer; higher-level game services
-remain consumer-selected. Terminal implementation and shader/sampling integration
-await executable/native acceptance. NUMA is deferred indefinitely; general
-cache/core locality is the next selected implementation, with its
-[design and handoff](planning/short-term/worker-cache-locality.md) settled. Render
-batching follows and requires a design discussion. GitHub Actions for develop
-builds/tests and main versioned package preparation are the intended
-[subsequent workstream](planning/develop-review-and-development-plan.md#build-and-release-automation).
+remain consumer-selected. Cache/core locality, positioned text submission and CI/SDK
+source work are implemented. Selected Linux controlled/native worker, text-run,
+sampling/UI and relocated SDK checks are accepted within their
+[subject-guide limits](README.md). Exact hosted Linux/Windows execution and the main
+SDK collection gate remain pending; local Linux results do not establish Windows
+runtime support. Terminal configuration/desktop acceptance, independent Engine-only
+Release graph verification and targeted shader-reload/artwork QA remain in the
+[testing queue](testing-requests.md). NUMA remains deferred indefinitely; general
+packet merging and sorting require separate scope and workload evidence.
 
 Recorded Linux acceptance covers the initial
 [Unicode scope](assets/text-layout.md#native-acceptance-scope),

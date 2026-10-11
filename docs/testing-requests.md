@@ -3,122 +3,75 @@
 This is the pending user-run acceptance queue for implemented work. The
 [roadmap](planning/develop-review-and-development-plan.md) owns development
 sequencing; subject guides own contracts, reusable procedures and coverage limits.
-These requests cover sampling/TGUI, graphics manifests 2.0, indexed materials and
-the optional terminal since the accepted Linux baseline. They do not reopen
-unrelated accepted audio, controller or startup/UI QA.
+Current requests retain independent Engine-only graph verification, the optional
+terminal matrix/desktop checks, targeted material/artwork QA and the first hosted
+CI/SDK run. Accepted CPU, sampling/UI and native pixel checks belong in their
+reusable subject procedures, not this pending queue.
 
-| TR# | Short description / title | Long description (plain language) |
+Recorded Linux CI/SDK acceptance uses source `b49ffd9` and pinned assets `12f06eb`.
+The subsequent assets update in `8989c3c` changes that fixture baseline; its
+manifest-count mismatch is a prerequisite in TR20, not a newly accepted result.
+
+| **TR#** | **Short description / title** | **Long description (plain language)** |
 | --- | --- | --- |
-| [TR15](#tr15-automated-engine-only-graphics-and-resource-contracts) | Engine-only graphics and assets | Check that asset files and shader definitions load correctly, texture filtering settings are preserved, and reloading assets leaves data already in use valid. This checks Engine independently of window/rendering modules on Linux without a display; it does not show the recovered artwork. |
-| [TR16](#tr16-automated-opengl-sampling-owned-shaders-and-ui-composition) | OpenGL sampling and UI | Check texture sharpness/smoothing, shader creation and the TGUI/RmlUi interface integrations, including scenes kept while images or fonts are replaced. Most checks need no desktop; the final pixel comparison needs an X11 display. Hardware without anisotropy, which improves texture filtering on angled surfaces, verifies only the fallback. |
+| [TR15](#tr15-automated-engine-only-composition-graph) | Engine-only composition graph | Build an independent Engine-only Release consumer and check its compiled sources and final links. This verifies that using Engine does not pull in windowing, graphics, UI, audio or hwloc libraries. Behavior tests are already accepted; this remaining check needs Linux development dependencies but no display or device. |
 | [TR17](#tr17-automated-linux-terminal-configuration-matrix) | Terminal configuration and output | Use fake terminal launchers to check which builds include the terminal, when it opens, and how application output and test reports survive shutdown, failed launches, manual closure and crashes. Covers Debug/Release and AUTO/ON/OFF settings without a desktop; actual windows need TR18. |
 | [TR18](#tr18-qa-linux-debug-terminal-on-a-real-desktop) | Real desktop terminal | Watch actual Konsole/xterm windows during normal runs, manual closure and crashes, including launches from a terminal, desktop and IDE. Confirm final output appears and closing the viewer leaves the app running. Requires a Linux desktop and TR17's binaries; the Debug demo needs separate preparation. |
 | [TR19](#tr19-qa-indexed-demo-materials-and-recovered-graphics) | Demo materials and recovered assets | Run the demo with simulation/rendering together and on separate threads. Check text/images, failed shader reloads keeping the last working materials, and recovery after restoring files. Artwork checks need sample images; recovered college graphics and bitmap fonts need a showcase/font setup before visual checks can run. |
+| [TR20](#tr20-automated-hosted-ci-and-sdk-artifacts) | Hosted Linux/Windows builds and SDKs | Run the GitHub workflow on its actual Ubuntu and Windows machines, checking builds, tests and applications using the precompiled SDK. First reconcile the count test with the newer asset catalog, then check SDK collection after a successful main update. Local Linux results do not establish Windows or hosted-toolchain coverage; the workflow must first be available on GitHub. |
 
 Report the request ID, tested revision, configuration, platform, failures and skips.
-Keep existing IDs when requests change; accepted and deferred historical requests
-retain their original numbers.
+Keep existing IDs when requests change; never reuse retired IDs.
 
-No builds or tests were executed for this reconciliation. Reuse a build only when
-its source, compiler, configuration and options match; otherwise configure it as
-shown. Stop on failures, require nonempty selections and report skips separately.
-Skipped/unselected coverage remains unresolved. These commands do not authorize
-agent execution.
+Reuse a build only when its source, compiler, configuration and options match;
+otherwise configure it as shown. Stop on failures, require nonempty selections
+and report skips separately. Skipped/unselected coverage remains unresolved.
+These commands do not authorize agent execution.
 
-## TR15: Automated Engine-only graphics and resource contracts
+## TR15: Automated Engine-only composition graph
 
-**Platform:** Linux Release. **Readiness:** source/targets ready; execution pending.
-**Prerequisites:** initialized assets/dependency submodules, C++23, Ninja, FreeType,
-HarfBuzz and ICU. No display, native module or audio device is needed.
+**Automated. Platform:** Linux Release. **Readiness:** consumer/header targets ready;
+independent graph verification pending. **Prerequisites:** initialized pinned
+submodules, C++23, Ninja, FreeType, HarfBuzz and ICU. No display/device is needed.
 
-Accept neutral public headers, sampler values, indexed parsing/source ownership,
-asset shader selection, catalogue generations/retry/failure behavior and checked-in
-manifest conversions. The focused suite also preserves text/grid/submission coverage.
-Inspect the generated graph/compile inventory for Engine-only isolation; successful
-root composition alone cannot prove it.
+CPU resource, graphics-manifest, shader-selection, sampling and positioned-text
+behavior is accepted in the selected Linux runs. Preserve only the independent
+Engine-only isolation check here: inspect the compilation inventory, target graph
+and final consumer link to confirm absence of Cheryl native/OpenGL/GLAD/GLFW/Gainput,
+UI/audio and hwloc dependencies. Include common Startup compilation and public
+first-include probes. This consumer does not accept appearance or device operation.
+
+Reuse a matching Engine-only Release build if its graph and options establish this
+scope. Otherwise prepare one without selecting optional topology helpers:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-engine -G Ninja \
+  cmake -S . -B build/testing-engine-isolation -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=OFF \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF
-  cmake --build build/testing-engine --parallel --target \
-    cengine_startup tests-engine consumer-cengine
-  ./build/testing-engine/cheryl-consumer
-  ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^tests-engine\.'
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+    -DCHERYL_BUILD_SDK=OFF -DCHERYL_BUILD_TESTS=OFF \
+    -DCHERYL_BUILD_CONSUMER_TESTS=ON
+  cmake --build build/testing-engine-isolation --parallel --target \
+    cengine_startup consumer-cengine
+  ./build/testing-engine-isolation/cheryl-consumer
+  ninja -C build/testing-engine-isolation -t commands consumer-cengine
 )
 ```
 
-This does not establish recovered FFont artwork appearance. Dedicated font-weight
-fixtures and Startup/batch/placeholder regressions remain unfinished in their plans.
-
-## TR16: Automated OpenGL sampling, owned shaders and UI composition
-
-**Platform:** Linux Release, GLFW/X11 dependencies, HID disabled.
-**Readiness:** source/targets ready; execution pending. **Prerequisites:** the
-[native/toolkit dependencies](development/building.md#system-dependencies), owned
-pinned TGUI/RmlUi with its placeholder correction and the bundled font. Controlled
-suites need no desktop; the final native case requires an X11 display/driver and
-is blocked when unavailable.
-
-Accept sampler policy/domain/mipmap/reset/retirement, owned shader construction and
-cleanup, TGUI texture/font smoothing snapshots, shared pixel generations and retained
-scenes. Include RmlUi/manual-material and coexistence consumers because shared
-resource contracts changed. Run focused owners once, without duplicate aggregates.
-The same build prepares the demo for targeted QA.
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/testing-graphics -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
-    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
-    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON -DCHERYL_DEBUG_TERMINAL=AUTO \
-    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
-    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
-    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
-    -DCHERYL_RMLUI_TEST_FONT="$PWD/assets/fonts/DejaVuSans.ttf" \
-    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
-    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
-    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON
-  cmake --build build/testing-graphics --parallel --target \
-    tests-opengl tests-ui-tgui tests-ui-rmlui tests-ui-coexist \
-    consumer-module-opengl consumer-module-ui-tgui consumer-module-ui-rmlui \
-    acceptance-opengl demo
-  ./build/testing-graphics/cheryl-opengl-consumer
-  ./build/testing-graphics/cheryl-ui-tgui-consumer
-  ./build/testing-graphics/cheryl-ui-rmlui-consumer
-  ctest --test-dir build/testing-graphics --parallel "$(nproc)" --output-on-failure \
-    --no-tests=error -R '^(tests-opengl|tests-ui-tgui|tests-ui-rmlui|tests-ui-coexist)\.'
-  CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-graphics \
-    --output-on-failure --no-tests=error \
-    -R '^acceptance-opengl\.native_opengl\.texture_sampling$'
-)
-```
-
-The native case compares nearest/linear minification and magnification pixels,
-retained sampler state and defaults. Unsupported-anisotropy hardware establishes
-fallback only. The demo has no interactive TGUI smoothing control; controlled
-texture/font cases do not establish a new native nearest-font observation.
+Inspect the consumer's final link command and `compile_commands.json` for the
+listed exclusions; successful consumption in a full-module root cannot prove this
+independent graph. Broader behavioral reruns are not part of this remaining request.
 
 ## TR17: Automated Linux terminal configuration matrix
 
-**Platform:** Linux GNU/Clang with the POSIX/GNU APIs used by the module.
+**Automated. Platform:** Linux GNU/Clang with the POSIX/GNU APIs used by the module.
 **Readiness:** raw/report probes and driver ready; execution pending.
 **Prerequisites:** Engine text dependencies, owned pinned GoogleTest and Python 3
 without optimization. Fake emulator launchers remove the desktop/emulator
@@ -165,7 +118,7 @@ emulator window behavior.
 
 ## TR18: QA Linux Debug terminal on a real desktop
 
-**Platform:** Linux desktop, GNU/Clang Debug; explicit non-Debug inclusion in
+**QA. Platform:** Linux desktop, GNU/Clang Debug; explicit non-Debug inclusion in
 Release `ON`. **Readiness:** runnable probes ready; blocked without a desktop and
 Konsole/xterm. Complete the matrix first and reuse its binaries. Desktop/IDE demo
 observations require a matching Debug native demo too.
@@ -232,10 +185,33 @@ For root application composition, build once and reuse:
 
 ## TR19: QA Indexed demo materials and recovered graphics
 
-**Platform:** Linux/GLFW/X11/OpenGL, sequential and concurrent.
-**Readiness:** main-material QA ready after the graphics build. Package rendering
+**QA. Platform:** Linux/GLFW/X11/OpenGL, sequential and concurrent.
+**Readiness:** main-material QA ready after preparing the demo below. Package rendering
 is blocked without matching images. Recovered-college and FFont appearance portions
 are blocked because the demo has no corresponding showcase/initialization harness.
+
+Reuse an accepted matching `build/testing-graphics` composition; otherwise build
+only the demo with both UI owners. This is preparation for QA, not a repeat of
+accepted unit/native suites:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-graphics -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCHERYL_LOG_PROFILE=developer \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
+    -DCHERYL_RMLUI_TEST_FONT="$PWD/assets/fonts/DejaVuSans.ttf" \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
+    -DCHERYL_BUILD_TESTS=OFF
+  cmake --build build/testing-graphics --target demo --parallel
+)
+```
 
 ```sh
 (
@@ -264,12 +240,74 @@ are blocked because the demo has no corresponding showcase/initialization harnes
   Check inferred pivots, Invaders' caller scale and font rows/banks. Parsing or byte
   preservation alone does not establish those images.
 
+## TR20: Automated Hosted CI and SDK artifacts
+
+**Automated. Platform:** Ubuntu 24.04 x64 GCC 14 Release/Clang 18 Debug and Windows
+2025 x64 MSVC RelWithDebInfo. **Readiness:** workflow/jobs implemented; hosted
+execution pending and blocked by the asset fixture mismatch below.
+**Prerequisites:** a pinned revision containing `ci.yml` on
+GitHub, enabled Actions and permission to trigger it. The command block also needs
+an authenticated GitHub CLI; its
+[dispatch](https://cli.github.com/manual/gh_workflow_run) and
+[run listing](https://cli.github.com/manual/gh_run_list) commands can be replaced by
+the GitHub Actions UI. Manual dispatch requires the
+workflow on the default branch. Main artifact collection additionally requires an
+authorized main push; PR/develop/manual runs do not trigger that collection.
+
+Root commit `8989c3c` pins assets `5603c19`, whose graphics index contains twelve
+asset definitions. `asset_manifest.checked_in_manifests` still expects eleven in
+[manifest.cpp](../projects/engine/tests/all-tests/src/assets/manifest.cpp).
+This is a source-inspection finding, not an executed failure. Reconcile the test
+with the intended catalog and accept its focused manifest selection before hosted
+validation; all CI profiles include that case. Earlier Linux results used the old
+pin and do not accept the new catalog.
+
+Run all six headless/modules matrix entries from the
+[CI matrix](development/building.md#github-ci-and-sdk-artifacts). The workflow's
+[runner](../.github/ci/run.py) supplies Ninja CMake configuration, explicit build
+targets, owner-prefix CTest selection and font fixtures; module jobs additionally
+package/extract SDKs and build their installed consumers. Native OpenGL/hwloc
+hardware, terminal and physical-device acceptance are outside this selection.
+
+Once the workflow is installed and the intended revision is on `develop`, this
+starts a validation run and lists its IDs/revisions for inspection. Use the GitHub
+run page or `gh run watch <run-id> --exit-status` for the matching SHA:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  gh workflow run ci.yml --ref develop
+  gh run list --workflow ci.yml --branch develop --limit 5 \
+    --json databaseId,headSha,event,status,conclusion
+)
+```
+
+- Require all selected jobs and installed SDK consumers/probes to succeed; inspect
+  JUnit/skips rather than treating a green job as missing fixture/platform acceptance.
+  Linux requires its supplied TrueType/CFF fixtures; absent Windows CFF coverage
+  remains unaccepted and does not invalidate unrelated consumer checks.
+- Confirm the Windows consumer runs with DLLs from the relocated SDK's bundled
+  `dependencies/bin`, and import files contain no producer source/build paths.
+- Inspect archives for compiled libraries, public/inline/template headers, CMake
+  integration and dependency licenses. Windows includes native dependencies;
+  Linux uses compatible system packages. No demo, executables or C/C++ translation
+  units may be included.
+- On the first successful main-push run, confirm the final
+  `cheryl-development-sdks-<commit>` artifact appears only after both complete
+  matrices pass, contains Linux/Windows bundles and matching SHA256/manifests,
+  and creates no GitHub release. A successful manual run does not accept this gate.
+
+Record run URL, commit/configuration and unresolved skips/failures. Local Linux
+producer/consumer results do not replace these exact hosted jobs. Windows desktop,
+controller/HID and GPU runtime behavior remain separate deferred requests.
+
 ## Deferred and unfinished coverage
 
 HID backend work and TR6 remain deferred with the
 [platform plan](planning/long-term/platform-acceptance.md#deferred-hid-lifecycle-and-windows-notifications),
-including Windows TR3–TR5 and macOS/Wayland prerequisites. No new platform request
-is activated. Existing Linux audio, Unicode, controller and startup/UI acceptance
+including Windows TR3–TR5 and macOS/Wayland prerequisites. TR20 activates hosted
+build/SDK acceptance only; it does not activate those native/device requests. Existing Linux audio, Unicode, controller and startup/UI acceptance
 limits remain in their subject guides.
 
 Unimplemented regressions stay in the

@@ -26,7 +26,9 @@ discover modules, own native sessions or require Engine to call a platform backe
 The Linux implementation uses the GNU-compatible linker `--wrap=main` attachment,
 supplying its callback before application startup. It owns session shutdown through
 `atexit`. Hosts with another entry-point wrapper must resolve their composition
-explicitly; installed-package deployment and another platform module are unimplemented.
+explicitly. This module is not included in the
+[development SDK exports](../../../../docs/development/consuming-engine.md#prebuilt-development-sdks);
+its installed-package deployment and another platform implementation remain unimplemented.
 
 ## Build and runtime policy
 

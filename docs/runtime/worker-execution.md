@@ -28,6 +28,55 @@ locks protect queue/accounting changes; user work and its captured destructors
 run outside them. Submitted jobs retain their group even if its handle is dropped.
 
 
+## Topology providers and capacity
+
+Neutral topology descriptions, pool/group options and scheduling belong to
+`Cheryl::Engine`. The optional `Cheryl::WorkerTopology::Hwloc` target supplies
+`make_hwloc_worker_topology()`; `Cheryl::WorkerTopology::Json` supplies configuration
+loading independently of hwloc. Both live under `projects/engine/support/worker-topology/`.
+Applications link the selected support targets; Engine does not link back to them.
+Public contracts expose neither hwloc nor JSON library types. The static hwloc
+support library propagates its required final link dependency.
+
+Supply a `WorkerTopologyProvider` through `WorkerPoolOptions::topology_provider`.
+The pool retains it through worker joins. There is no global registrar, entry-point
+hook or implicit discovery. The existing numeric constructor still defaults to one
+worker and requires a positive count. `WorkerPoolOptions::worker_count = 0` explicitly
+selects automatic capacity: eligible physical cores when all eligible CPUs have core
+information, eligible logical CPUs otherwise, or one worker when eligibility is unknown.
+Group concurrency zero uses pool capacity; a larger requested cap is limited to that
+capacity and creates no extra threads.
+
+```cpp
+#include <cheryl/core/engine/worker-pool.h>
+#include <cheryl/core/engine/worker-topology/hwloc.h>
+#include <memory>
+#include <utility>
+
+CE::Engine::WorkerPoolOptions options;
+options.worker_count = 0;
+options.topology_provider = CE::Engine::make_hwloc_worker_topology();
+auto pool = std::make_shared<CE::Engine::WorkerPool>(std::move(options));
+CE::Engine::WorkerGroupOptions simulation_options;
+simulation_options.max_concurrency = 1;
+simulation_options.cpu.locality = CE::Engine::WorkerLocalityPolicy::Reuse;
+auto simulation = pool->make_group(simulation_options);
+```
+
+`topology()` returns an owned snapshot of eligible OS CPU IDs, physical-core/SMT
+relationships and reported cache domains. Each cache has a snapshot-scoped ID,
+level, data/instruction/unified type, member CPUs and optional capacity/line size.
+Private and shared caches at all reported levels are represented; missing values
+are omitted. CPU IDs need not be consecutive, and core widths/cache sizes need not
+be uniform. No policy assumes a particular CPU vendor or one processor package.
+
+The provider discovers the executing machine at runtime. The pool intersects its
+advertised CPUs with the pool creator's inherited thread mask, validates IDs and
+memberships, and retains that restriction for later binding/restoration. Discovery
+does not run per job, change creator affinity or place memory. Invalid structural
+snapshots reject before worker startup. Missing runtime capabilities remain explicit
+in `capabilities()` and `limitations`.
+
 ## CPU policy and capabilities
 
 WorkerGroup owns its CPU/locality policy. The neutral root scheduler enforces the
@@ -39,21 +88,43 @@ Capabilities are a startup snapshot, not a live OS-eligibility query; each job's
 native policy application supplies its execution-time check. `policy()` and
 `status()` return owned values. Status counters observe progress without locking
 application state or establishing completion; closed-group drainage is the barrier.
-Hard cache-domain/NUMA requests reject until a native topology adapter exists;
-manual CPU sets can already express a game's known locality domains. CPU affinity
-does not promise that data remains in L1/L2, and NUMA memory placement is separate.
-The [roadmap](../planning/develop-review-and-development-plan.md#numa-and-nuca)
-defers NUMA and selects general best-effort cache/core locality as the next worker
-integration. The [owning plan](../planning/short-term/worker-cache-locality.md)
-specifies optional Engine support targets, runtime hwloc discovery/placement and
-both C++ and JSON configuration. Those additions are planned; automatic core/cache
-discovery and memory placement remain absent from the current affinity adapter.
+`shared_cache_domain` selects a domain from this pool's snapshot and intersects its
+members with the group's CPU eligibility. Missing/conflicting required domains
+reject; preferred requests report fallback. Required explicit locality also needs
+thread binding and physical-core information for every selected CPU. Without a
+provider, existing explicit affinity remains available, preferred locality falls
+back and unavailable hard requirements reject. An unspecified locality policy uses
+Automatic with a provider and ordinary affinity without one.
 
-The Linux adapter queries inherited pthread eligibility, sets and verifies the
-actual mask, and reports errors through job futures. The native mask is limited
-to CPU_SETSIZE; query failure disables affinity capability explicitly. Other
-platforms expose unsupported affinity rather than pretending to honor a hard
-request. Native OS/real-time priority is separate from scheduler priority.
+| Locality | CPU targeting |
+| --- | --- |
+| Automatic | Reuses for effective concurrency one; otherwise spreads across eligible cores/CPUs. |
+| Reuse | Prefers the group's last verified CPU, then its physical core, subject to current load. |
+| Spread | Rotates equal candidates and favors idle physical cores before SMT siblings. |
+
+Busy-core/CPU load takes precedence over soft reuse. Fair selection and concurrency
+limits remain authoritative, so locality alone does not stall available work.
+`policy()` reports effective locality, cache domain, concurrency, eligibility and
+fallback; `status().last_cpu` is the last verified singleton mask at job entry,
+not a live residency observation. A CPU mask is eligibility, not exclusive core
+ownership. Applications identify related jobs and own their working sets; the
+facility cannot infer that relationship from callable captures, inspect cache
+contents or select internal cache banks. Discovery/binding do not establish a speedup.
+Representative workload measurements are required before making performance claims.
+
+NUMA discovery as an application facility, memory allocation/binding, first-touch
+and migration remain [indefinitely deferred](../planning/long-term/README.md#other-engine-extensions).
+`numa_placement` remains false; required NUMA requests reject and preferred requests
+report fallback. CPU binding must not enable memory placement as a side effect.
+
+Without a provider, the Linux adapter queries pthread eligibility, sets and verifies
+the actual mask, and reports errors through job futures. That adapter retains its
+`CPU_SETSIZE` limit; platforms without it report unsupported affinity. The hwloc
+provider uses hwloc CPU sets without that fixed limit, retains instruction-cache
+objects, queries thread-specific binding and uses strict calling-thread binding with
+`HWLOC_CPUBIND_NOMEMBIND`. Missing support or failed verification is reported rather
+than pretending to honor a hard request. Native OS/real-time priority remains
+separate from scheduler priority.
 
 Workers retain an unchanged verified mask between compatible jobs. Before another
 group's work they apply its eligibility, restoring inherited eligibility for an
@@ -72,6 +143,48 @@ and [Linux cpuset constraints](https://docs.kernel.org/admin-guide/cgroup-v2.htm
 The kernel can restrict an otherwise successful set operation, which is why the
 adapter reads back the effective mask.
 
+## Typed and JSON configuration
+
+`WorkerConfiguration` owns pool options and a map of named group options.
+`validate_worker_group_options()` and `validate_worker_configuration()` perform
+structural checks without discovering topology, creating threads or binding CPUs.
+Runtime availability and CPU/cache intersections are resolved by pool/group
+construction. Named groups match `[a-z][a-z0-9_]*`.
+
+Link `Cheryl::WorkerTopology::Json` and include
+`<cheryl/core/engine/worker-topology/configuration.h>` for
+`parse_worker_configuration(document, source)` or `load_worker_configuration(path)`;
+the latter also accepts a stream and source path. The supported version is `"1.0"`:
+
+```json
+{
+  "version": "1.0",
+  "workers": "auto",
+  "groups": {
+    "simulation": {"locality": "reuse", "concurrency": 1},
+    "asset_preparation": {"locality": "spread", "concurrency": "auto"}
+  }
+}
+```
+
+Omitted workers default to one; omitted group concurrency defaults to pool capacity.
+`workers`/`concurrency` accept `"auto"` or a positive integer within `size_t` range,
+not numeric zero. Groups also accept weight 1..1024, priority 0..7 and a `cpu` object
+with distinct nonnegative OS `cpus`, `strength` (`preferred`/`required`),
+`cache_domain` and `prefer_same_worker`. Select domain IDs from the pool's
+advertised snapshot; do not assume they are portable between snapshots or machines.
+NUMA fields are not in this format.
+The [schema](../../projects/engine/support/worker-topology/schema/worker-configuration-v1.schema.json)
+and [example](../../projects/engine/support/worker-topology/examples/workers.json)
+define the exact shape.
+
+Unknown versions/fields, duplicate JSON properties, invalid names/types/ranges and
+invalid structural options fail with a source/field diagnostic. C++ and JSON use
+the same structural validation. Loading is inert: callers attach a provider, create
+the pool and select groups themselves. It neither silently starts work nor changes
+existing pools/groups. It supplies no live resize/reconfiguration or process-wide
+affinity change. JSON loading works with hwloc omitted.
+
 ## Context ownership
 
 EngineContext accepts ExecutionOptions: owned worker_count (default one) or an
@@ -88,6 +201,10 @@ The normal GLFW/OpenGL factory forwards `GlfwOpenGLConfig::execution` to the
 context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
+
+The [shared-pool example](../../projects/engine/support/worker-topology/examples/shared-pool.cpp)
+composes loaded or direct settings with an application-supplied backend factory and
+named context-owned groups. It is a separately buildable example, not a global hook.
 
 ## Policy example
 

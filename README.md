@@ -16,6 +16,7 @@ is linked automatically only in actual Debug configurations.
 - [Setup](#setup)
 - [Targets](#targets)
 - [Tests](#tests)
+- [CI and development SDKs](#ci-and-development-sdks)
 - [Repository architecture](#repository-architecture)
 - [Documentation and development](#documentation-and-development)
 
@@ -74,6 +75,8 @@ the public aliases to inherit headers and dependencies.
 | --- | --- | --- |
 | `cengine` | `Cheryl::Engine` | Neutral engine contracts and implementation. |
 | `cengine_startup` | `Cheryl::Startup` | Optional command-line parsing, validated configuration and custom backend startup. |
+| `cengine_worker_topology_hwloc` | `Cheryl::WorkerTopology::Hwloc` | Optional runtime core/cache discovery and worker thread binding. |
+| `cengine_worker_topology_json` | `Cheryl::WorkerTopology::Json` | Optional versioned worker settings loader; works without hwloc. |
 | `module_native_glfw` | `Cheryl::NativeGLFW` | Display, windows and optional input. |
 | `module_debug_terminal_linux` | `Cheryl::DebugTerminal::Linux` | Optional Linux process output capture/viewer; an interface selects the implementation by configuration. |
 | `cengine_debug_terminal_startup` | `Cheryl::DebugTerminal::Startup` | Small argument/startup attachment accepting a module implementation callback. |
@@ -83,11 +86,12 @@ the public aliases to inherit headers and dependencies.
 | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | RML/RCSS documents and retained scene bridge. |
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
 | `demo` | — | Example native application. |
+| `cheryl-sdk` | — | Builds selected installable libraries when `CHERYL_BUILD_SDK=ON`. |
 
 See the [module index](projects/modules/README.md) for each owner's API and the
 [consumption guide](docs/development/consuming-engine.md) for application CMake
-composition. Build-tree composition is supported; installed
-`find_package(Cheryl)` packaging remains future work.
+composition. Applications can also use an installed prebuilt SDK through
+[`find_package(Cheryl)`](docs/development/consuming-engine.md#prebuilt-development-sdks).
 
 ## Tests
 
@@ -108,6 +112,16 @@ The [test guide](docs/development/testing.md) explains focused runners, aggregat
 CTest selection, consumers and environment opt-ins. Native graphics and real-font
 checks need their stated prerequisites; skipped cases leave that coverage pending.
 The [testing queue](docs/testing-requests.md) contains pending automated checks and QA.
+
+## CI and development SDKs
+
+[GitHub CI](docs/development/building.md#github-ci-and-sdk-artifacts) selects Linux
+GCC/Clang and Windows MSVC builds, focused tests and installed SDK consumers.
+Successful main-push validation collects prebuilt development SDKs as workflow
+artifacts. They contain compiled libraries, public/inline/template headers, CMake
+integration and licenses; Windows also bundles native dependency libraries/DLLs.
+The demo and C/C++ implementation files are excluded. GitHub release publication
+is separate, and exact hosted Linux/Windows acceptance remains pending the first run.
 
 ## Repository architecture
 
@@ -146,6 +160,7 @@ for the steps required to add an owner.
 | Demo                                   | [Controls](projects/apps/demo/README.md#controls), [command-line options](projects/apps/demo/README.md#command-line-options) and [asset packages](docs/assets/catalog.md) |
 | Automated tests                        | [Runners and CTest selection](docs/development/testing.md), [acceptance checks](docs/development/testing.md#acceptance-and-consumers) and [logging acceptance](docs/development/logging-acceptance.md) |
 | Consumers and header probes            | [Selection and targets](docs/development/testing.md#acceptance-and-consumers) and [independent consumer builds](docs/development/consuming-engine.md#independent-consumers-and-header-probes) |
+| Development SDKs and CI                | [SDK production](docs/development/building.md#development-sdk-builds), [prebuilt consumption](docs/development/consuming-engine.md#prebuilt-development-sdks) and [hosted CI matrix](docs/development/building.md#github-ci-and-sdk-artifacts) |
 | Architecture validation and QA         | [Validation procedures](docs/development/architecture-validation.md), [desktop checks](docs/development/native-desktop-checks.md) and [pending testing requests](docs/testing-requests.md) |
 | Troubleshooting                        | [Build and dependency issues](docs/development/building.md#troubleshooting) and [compiler discovery and standard headers](docs/development/consuming-engine.md#standard-headers-in-an-existing-build) |
 | Contributing                           | [Development workflow](docs/development/contributing.md), [C++ style](docs/development/code-style.md) and [agent instructions](AGENTS.md) |

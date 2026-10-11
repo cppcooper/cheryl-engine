@@ -15,7 +15,9 @@ separate from source completion.
 | Engine + Native GLFW + OpenGL | OpenGL consumer/probes, module implementation cases and selected owner/combined runner registration are correct. Native startup, presentation, retained-resource cleanup, input backpressure and concurrent shutdown require their explicit opt-ins. |
 | Standalone and supplied targets | Each module reuses one Engine; OpenGL reuses one Native GLFW. Dependency bootstrapping does not recursively enable root modules, tests or demo. Consumers link their actual owners and CTest discovers module-local cases. |
 | Crash bootstrap | An Engine-only consumer referencing no Engine entry point receives the automatic bootstrap object. Check the consumer's actual `NDEBUG` scope independently of exception/explicit traces or standalone Backward tests. |
-| Startup support | Explicitly compile `cengine_startup` in Engine-only composition and `module_opengl_startup` through the native demo. Plain Engine/OpenGL links remain free of CLI11 usage requirements; help/invalid options return before backend construction. Support headers and parser/factory behavior still need dedicated probes/regressions. |
+| Startup support | Explicitly compile `cengine_startup` in Engine-only composition and `module_opengl_startup` through the native demo. Installed SDK checks compile both support headers independently. Plain Engine/OpenGL links remain free of CLI11 usage requirements; dedicated parser/factory regressions remain pending. |
+| Worker support | Engine-only/JSON-only selection omits hwloc discovery/linkage. Controlled fixtures check owned snapshots, sparse/asymmetric topology, placement, fairness/caps and failure safety; native hwloc checks additionally require real eligible CPUs and binding support. |
+| Installed SDK | Extract into a different prefix, reject producer-path leakage, compile public/Startup header probes and run consumers linked only to installed Cheryl libraries. Windows must use bundled dependency DLLs; source-tree consumers alone do not prove this path. |
 
 Controlled Engine tests establish runtime, publication and failure behavior against
 predictable dependencies. Implementing modules own checks of their actual behavior
@@ -108,7 +110,7 @@ caller's working directory:
   ./build/testing-engine/cheryl-consumer
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|asset_pivot|asset_grid|shader_assets|image_sampling|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|asset_pivot|asset_grid|shader_assets|image_sampling|utf8|stbfont|font_selection|text_layout|text_resources|text_runs)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
@@ -121,8 +123,94 @@ exclusion. Those fixture/case gaps remain in the
 callback/placeholder regression gaps are in the
 [roadmap checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
 
-The graphics 2.0, indexed shader and sampling changes postdate that baseline.
-Their pending CPU/backend/native reruns are in the [testing queue](../testing-requests.md).
+Graphics 2.0, indexed shader/sampling and positioned-text CPU checks are accepted
+in the selected Linux compositions. The independent Release graph inspection
+remains [TR15](../testing-requests.md#tr15-automated-engine-only-composition-graph);
+demo reload/artwork observations remain separate QA.
+The newer pinned asset catalog needs its count fixture reconciled before a fresh
+behavioral run; [TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts)
+records that prerequisite.
+
+### Worker topology and configuration
+
+The [worker contract](../runtime/worker-execution.md) has controlled coverage for
+snapshot ownership/validation, private/shared caches, SMT, sparse/asymmetric CPUs,
+missing information, automatic sizing, reuse/spread targeting, fair progress/caps,
+required rejection, preferred fallback, binding/read-back and thread-start failures.
+Provider lifetime extends through joins. JSON cases check equivalence with typed
+options and reject invalid versions/properties/ranges before work is created.
+
+For a fresh Linux Release selection, use separate directories for optional hwloc
+enabled/disabled builds. This selects focused cases once, including native hwloc
+checks only in the enabled build:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  for worker_hwloc in ON OFF; do
+    worker_build="build/testing-workers-${worker_hwloc}"
+    worker_targets="tests-engine acceptance-engine tests-worker-topology-json consumer-worker-topology"
+    if [ "$worker_hwloc" = ON ]; then
+      worker_targets="$worker_targets tests-worker-topology-composition acceptance-worker-topology-hwloc"
+    fi
+    cmake -S . -B "$worker_build" -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+      -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+      -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+      -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+      -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
+      -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+      -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=OFF \
+      -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC="$worker_hwloc" \
+      -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=ON \
+      -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+      -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON
+    cmake --build "$worker_build" --parallel --target $worker_targets
+    ctest --test-dir "$worker_build" --parallel "$(nproc)" \
+      --output-on-failure --no-tests=error \
+      -R '^(tests-engine\.(worker_pool(_native|_faults)?|worker_topology|worker_configuration)\.|acceptance-engine\.worker_locality\.|tests-worker-topology-(json|composition)\.|acceptance-worker-topology-hwloc\.|consumer-worker-topology$)'
+  done
+)
+```
+
+Reuse each matching configuration when source/toolchain/options agree. Inspect the
+disabled graph/final links for absence of hwloc. Native checks observe inherited
+eligibility, worker masks, CPU binding without memory-policy changes and workload
+progress. Some need two eligible physical cores or OS memory-policy observation;
+skips leave that coverage unavailable. Linux native behavior is accepted for the
+tested host; the hosted CI selection excludes this hardware acceptance runner.
+Correct masks/progress do not establish cache residency or a workload speedup.
+
+### Installed SDK consumers
+
+The [CI producer profile](building.md#github-ci-and-sdk-artifacts) configures Ninja
+with the selected modules/helpers, explicit owner targets and `CHERYL_BUILD_SDK=ON`.
+Use a clean pinned checkout and the producer's dependencies/toolchain. Supply the
+font fixtures for complete allocation coverage; missing CFF coverage is reported
+separately. On Linux, a local equivalent is:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 .github/ci/run.py --build-dir build/ci --profile modules --hwloc ON --sdk
+  python3 .github/ci/package.py --build-dir build/ci --output build/packages
+  python3 .github/ci/verify_sdk.py --packages build/packages \
+    --producer-build build/ci --build-dir build/sdk-consumer
+)
+```
+
+Reuse `build/ci` only when its recorded source/toolchain/configuration/features match;
+omit the producer step when the matching build/checks are already accepted. The
+consumer directory and its sibling `sdk-consumer-relocated-sdk` must be fresh.
+The verifier checks SHA256, archive contents, producer paths and seven selected
+consumer programs plus first-include and Startup probes. It uses checkout test
+fixtures but imports installed Cheryl libraries, rebuilding none of their source.
+Windows CI uses the same steps under its MSVC Developer PowerShell with the
+manifest's vcpkg toolchain and DLL prefix. Local Linux acceptance does not establish
+hosted Ubuntu or Windows ABI/runtime compatibility; those remain
+[TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
 This reusable procedure does not assert acceptance of unexecuted new cases.
 
 ### Typed events
@@ -246,6 +334,57 @@ establishes toolkit behavior, physical DPI/compositor behavior or IME; selected
 adapters own their checks.
 
 ## Native and fixture checks
+
+### Sampling and positioned text
+
+Selected Linux OpenGL sampling/shader checks, TGUI/RmlUi/coexistence suites and
+their consumers are accepted. Native acceptance includes nearest/linear sampling,
+retained sampler defaults, UI clipping, retained reload and positioned text/run
+lifetime. Keep other desktop/material-failure observations separate. Anisotropy
+coverage depends on driver support; unsupported hardware establishes fallback only.
+Controlled font-filter checks do not establish new native nearest-font appearance.
+
+For a sampling/submission change, configure a matching native composition and
+build affected owners together. This block supplies its own configuration rather
+than assuming a retired testing request's build exists:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-graphics -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
+    -DCHERYL_LOG_PROFILE=developer \
+    -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
+    -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
+    -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_WAYLAND=OFF \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=ON \
+    -DCHERYL_RMLUI_TEST_FONT="$PWD/assets/fonts/DejaVuSans.ttf" \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=ON \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
+    -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON
+  cmake --build build/testing-graphics --parallel --target \
+    tests-opengl tests-ui-tgui tests-ui-rmlui tests-ui-coexist \
+    consumer-module-opengl consumer-module-ui-tgui consumer-module-ui-rmlui \
+    acceptance-opengl
+  ./build/testing-graphics/cheryl-opengl-consumer
+  ./build/testing-graphics/cheryl-ui-tgui-consumer
+  ./build/testing-graphics/cheryl-ui-rmlui-consumer
+  ctest --test-dir build/testing-graphics --parallel "$(nproc)" \
+    --output-on-failure --no-tests=error \
+    -R '^(tests-opengl|tests-ui-tgui|tests-ui-rmlui|tests-ui-coexist)\.'
+  CHERYL_NATIVE_GL_TESTS=1 ctest --test-dir build/testing-graphics \
+    --output-on-failure --no-tests=error \
+    -R '^acceptance-opengl\.native_opengl\.(texture_sampling|ui_clipping_color|retained_frame_reload|text_runs|text_run_lifetime)$'
+)
+```
+
+Reuse matching builds and select only affected checks; do not rerun accepted suites
+merely to populate an execution log. The [text contract](../assets/text-layout.md#positioned-text-runs)
+describes shader requirements and floating-point boundary coverage limits.
 
 Native OpenGL cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display:
 

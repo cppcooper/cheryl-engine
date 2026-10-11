@@ -201,9 +201,10 @@ preserve ordinary submission/completion behavior. Separate CPU-to-node mapping
 from allocation, first-touch and migration; single-node runs cannot establish
 multi-node acceptance.
 
-General cache/core locality is selected near-term work in the
-[worker cache-locality plan](../short-term/worker-cache-locality.md), separately
-from the NUMA deferral. Topology does not prove a speedup or guarantee residency.
+General cache/core locality is implemented through optional hwloc support and
+[application-owned worker providers](../../runtime/worker-execution.md#topology-providers-and-capacity),
+separately from the NUMA deferral. Topology does not prove a speedup or guarantee
+residency; performance claims still require representative workload measurements.
 
 3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven
@@ -212,9 +213,13 @@ ownership and acceptance before promoting any candidate into the development roa
 
 Broader pointer capture, modal/controller routing and clipboard/cursor/IME services
 need explicit consumer requirements under the [UI capability boundaries](../../development/ui-adapters.md#routing-and-unavailable-services).
-Installed/exported packaging remains absent from supported build-tree composition.
-The intended [build/release automation follow-up](../develop-review-and-development-plan.md#build-and-release-automation)
-must settle package contents and consumption before selecting that implementation.
+Build-tree and [prebuilt SDK consumption](../../development/consuming-engine.md#prebuilt-development-sdks)
+are implemented. [CI](../../development/building.md#github-ci-and-sdk-artifacts)
+prepares compiled development libraries/headers as workflow artifacts; it publishes
+no GitHub releases or demo packages. Release publication requires a separate choice
+of trigger/policy and accepted platform/toolchain configurations. Pending hosted
+Windows and main artifact collection remain in the active testing queue; successful
+builds do not establish desktop/device acceptance.
 
 Native monitor hotplug and per-window scale/change reporting need explicit consumers.
 Settle refreshed inventory identity, native-handle invalidation and existing-window
