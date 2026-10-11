@@ -1,10 +1,15 @@
 #include <assets/types/2d/unicode-text.h>
 #include <assets/submission/draw2d.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/sampler.h>
+#include <core/rendering/render-frame.h>
+#include <ext/matrix_clip_space.hpp>
+#include <ext/matrix_transform.hpp>
 #include <gtest/gtest.h>
 #include <internals/exceptions.h>
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -20,12 +25,15 @@ namespace {
         selection.automatic_system_fonts = false;
         return FontCollection::load(selection);
     }
+    enum class GeometryFault { None, Null, Count, Layout, Topology };
     struct TextGeometry final : Geometry2D {
         std::vector<CE::Vertex2D> vertices;
+        VertexLayout2D selected_layout = VertexLayout2D::Position3UV2;
+        PrimitiveTopology selected_topology = PrimitiveTopology::Triangles;
         explicit TextGeometry(std::span<const CE::Vertex2D> input)
         : vertices(input.begin(), input.end()) {}
-        VertexLayout2D vertex_layout() const noexcept override { return VertexLayout2D::Position3UV2; }
-        PrimitiveTopology topology() const noexcept override { return PrimitiveTopology::Triangles; }
+        VertexLayout2D vertex_layout() const noexcept override { return selected_layout; }
+        PrimitiveTopology topology() const noexcept override { return selected_topology; }
         std::size_t vertex_count() const noexcept override { return vertices.size(); }
         void bind() const override { throw std::logic_error("CPU text submission must not bind geometry"); }
         void draw(std::size_t, std::size_t) const override { throw std::logic_error("CPU text submission must not draw"); }
@@ -41,6 +49,8 @@ namespace {
     struct TextProvider final : ResourceProvider {
         int calls = 0, fail_at = 0;
         bool bad_size = false;
+        GeometryFault geometry_fault = GeometryFault::None;
+        int geometry_fault_at = 0;
         std::vector<std::weak_ptr<Geometry2D>> geometry;
         std::vector<std::weak_ptr<Image>> images;
 
@@ -60,7 +70,17 @@ namespace {
         }
         std::shared_ptr<Geometry2D> upload_geometry(std::span<const CE::Vertex2D> vertices, PrimitiveTopology) override {
             admit();
+            if (calls == geometry_fault_at && geometry_fault == GeometryFault::Null)
+                return {};
             auto result = std::make_shared<TextGeometry>(vertices);
+            if (calls == geometry_fault_at) {
+                if (geometry_fault == GeometryFault::Count)
+                    result->vertices.pop_back();
+                if (geometry_fault == GeometryFault::Layout)
+                    result->selected_layout = VertexLayout2D::Position3UV2Color4;
+                if (geometry_fault == GeometryFault::Topology)
+                    result->selected_topology = PrimitiveTopology::TriangleStrip;
+            }
             geometry.push_back(result);
             return result;
         }
@@ -80,6 +100,14 @@ namespace {
     public:
         TextPipeline()
         : Pipeline(definition()) {}
+        explicit TextPipeline(PipelineDefinition value)
+        : Pipeline(std::move(value)) {}
+    };
+    class TextSampler final : public Sampler {
+    public:
+        TextSampler()
+        : Sampler({}, 1) {}
+        void bind(std::uint32_t) const override { throw std::logic_error("CPU text submission must not bind a sampler"); }
     };
     DrawStyle2D style() {
         DrawStyle2D result;
@@ -92,6 +120,36 @@ namespace {
         SubmissionContext2D result;
         result.image = ImageParameter2D{"image", 2};
         return result;
+    }
+
+    void expect_same_vertices(const RenderedText& text, const DrawStyle2D& selected, const SubmissionContext2D& submission) {
+        const auto glyphs = resolve_text(text, selected, submission);
+        const auto runs = resolve_text_runs(text, selected, submission);
+        ASSERT_FALSE(runs.empty());
+        const auto geometry = std::dynamic_pointer_cast<TextGeometry>(text.positioned_geometry());
+        ASSERT_TRUE(geometry);
+        ASSERT_EQ(geometry->vertices.size(), glyphs.size() * 6);
+        const auto run_model = std::get<glm::mat4>(runs.front().parameters.at("model"));
+        const auto camera = submission.pass.projection * submission.pass.view;
+        for (std::size_t glyph = 0; glyph < glyphs.size(); ++glyph) {
+            const auto& packet = glyphs[glyph];
+            const auto source = std::dynamic_pointer_cast<const TextGeometry>(packet.geometry);
+            ASSERT_TRUE(source);
+            const auto glyph_model = std::get<glm::mat4>(packet.parameters.at("model"));
+            for (std::size_t index = 0; index < 6; ++index) {
+                const auto& original = source->vertices[packet.first_vertex + index];
+                const auto& positioned = geometry->vertices[glyph * 6 + index];
+                const auto expected = camera * glyph_model *
+                                      glm::vec4(original.x * selected.scale, original.y * selected.scale, original.z * selected.scale, 1);
+                const auto actual =
+                    camera * run_model *
+                    glm::vec4(positioned.x * selected.scale, positioned.y * selected.scale, positioned.z * selected.scale, 1);
+                for (glm::length_t component = 0; component < 4; ++component)
+                    EXPECT_NEAR(actual[component], expected[component], 0.0001f);
+                EXPECT_FLOAT_EQ(positioned.u, original.u);
+                EXPECT_FLOAT_EQ(positioned.v, original.v);
+            }
+        }
     }
 }
 
@@ -200,4 +258,222 @@ TEST(text_resources, failures) {
     auto collision = style();
     collision.parameters.emplace("image", ImageBinding{uploaded.pages()[0].atlas, 0});
     EXPECT_THROW(static_cast<void>(resolve_text(uploaded, collision, context())), CE::Exceptions::invalid_args);
+}
+
+TEST(text_runs, opt_in) {
+    const auto shaped = layout_text(fonts(), "AA");
+    const auto plain = prepare_text(shaped);
+    EXPECT_FALSE(plain.has_positioned_runs());
+    EXPECT_TRUE(plain.positioned_vertices().empty());
+    EXPECT_TRUE(plain.runs().empty());
+    TextProvider provider;
+    const auto plain_upload = upload_text(plain, provider);
+    EXPECT_FALSE(plain_upload.positioned_geometry());
+    EXPECT_EQ(provider.calls, 2);
+    EXPECT_THROW(static_cast<void>(resolve_text_runs(plain_upload, style(), context())), CE::Exceptions::invalid_args);
+    const auto prepared = prepare_text(shaped, {.positioned_runs = true});
+    ASSERT_TRUE(prepared.has_positioned_runs());
+    ASSERT_EQ(prepared.pages().size(), 1u);
+    EXPECT_EQ(prepared.pages()[0].vertices.size(), 6u);
+    EXPECT_EQ(prepared.positioned_vertices().size(), 12u);
+    ASSERT_EQ(prepared.runs().size(), 1u);
+    EXPECT_EQ(prepared.runs()[0].vertex_count, 12u);
+    provider.calls = 0;
+    const auto uploaded = upload_text(prepared, provider);
+    EXPECT_EQ(provider.calls, 3);
+    EXPECT_EQ(resolve_text(uploaded, style(), context()).size(), 2u);
+    const auto packets = resolve_text_runs(uploaded, style(), context());
+    ASSERT_EQ(packets.size(), 1u);
+    EXPECT_EQ(packets[0].first_vertex, 0u);
+    EXPECT_EQ(packets[0].vertex_count, 12u);
+}
+
+TEST(text_runs, transforms) {
+    TextProvider provider;
+    const auto uploaded = upload_text(prepare_text(layout_text(fonts(), "A A\nAA"), {.positioned_runs = true}), provider);
+    auto selected = style();
+    selected.model_matrix = glm::translate(glm::mat4{1}, {17, -5, 0});
+    selected.model_matrix = glm::rotate(selected.model_matrix, 0.63f, {0, 0, 1});
+    selected.model_matrix = glm::scale(selected.model_matrix, {1.3f, 0.7f, 1});
+    auto submission = context();
+    submission.pass.projection = glm::ortho(-200.0f, 200.0f, -200.0f, 200.0f);
+    submission.pass.view = glm::translate(glm::mat4{1}, {-9, 11, 0});
+    for (const auto scale : std::array{-1.75f, 0.0f, 1.0f, 2.5f}) {
+        SCOPED_TRACE(scale);
+        selected.scale = scale;
+        expect_same_vertices(uploaded, selected, submission);
+    }
+}
+
+TEST(text_runs, pages) {
+    LayoutOptions options;
+    options.pixel_height = 16;
+    const auto prepared = prepare_text(layout_text(fonts(), "AAZZAA", options), {20, true});
+    ASSERT_EQ(prepared.pages().size(), 2u);
+    ASSERT_EQ(prepared.runs().size(), 3u);
+    TextProvider provider;
+    const auto uploaded = upload_text(prepared, provider);
+    const auto packets = resolve_text_runs(uploaded, style(), context());
+    ASSERT_EQ(packets.size(), 3u);
+    for (std::size_t index = 0; index < packets.size(); ++index) {
+        const auto page = index == 1 ? 1u : 0u;
+        EXPECT_EQ(uploaded.runs()[index].page, page);
+        EXPECT_EQ(packets[index].geometry, uploaded.positioned_geometry());
+        EXPECT_EQ(packets[index].first_vertex, index * 12);
+        EXPECT_EQ(packets[index].vertex_count, 12u);
+        const auto image = std::get<ImageBinding>(packets[index].parameters.at("image"));
+        EXPECT_EQ(image.image, uploaded.pages()[page].atlas);
+        EXPECT_EQ(image.unit, 2u);
+    }
+    expect_same_vertices(uploaded, style(), context());
+}
+
+TEST(text_runs, unicode) {
+    constexpr std::u8string_view sample = u8"e\u0301 \u4e2d\n\u05d0\u05d1\u05d2 123\nEnglish wraps across several lines";
+    LayoutOptions options;
+    options.maximum_width = 70;
+    const auto shaped = layout_text(fonts(), {reinterpret_cast<const char*>(sample.data()), sample.size()}, options);
+    ASSERT_TRUE(std::ranges::any_of(shaped.glyphs(), [](const auto& glyph) { return glyph.missing; }));
+    ASSERT_TRUE(std::ranges::any_of(shaped.lines(), [](const auto& line) { return line.right_to_left; }));
+    ASSERT_GT(shaped.lines().size(), 3u);
+    TextProvider provider;
+    const auto uploaded = upload_text(prepare_text(shaped, {.positioned_runs = true}), provider);
+    expect_same_vertices(uploaded, style(), context());
+}
+
+TEST(text_runs, bindings) {
+    LayoutOptions options;
+    options.pixel_height = 16;
+    TextProvider provider;
+    const auto uploaded = upload_text(prepare_text(layout_text(fonts(), "AZA", options), {20, true}), provider);
+    auto selected = style();
+    auto definition = selected.material->definition().pipeline->definition();
+    definition.parameters.push_back({"overlay", ParameterType::Sampler2D});
+    definition.parameters.push_back({"tint", ParameterType::Vec4});
+    const auto sampler = std::make_shared<TextSampler>();
+    selected.material = std::make_shared<Material>(MaterialDefinition{
+        std::make_shared<TextPipeline>(std::move(definition)), {{"tint", glm::vec4{0.5f}}}, {{"image", sampler}}});
+    selected.parameters.emplace("overlay", ImageBinding{uploaded.pages()[0].atlas, 7, sampler});
+    selected.parameters.emplace("tint", glm::vec4{1, 0, 0, 1});
+    selected.alpha = 0.35f;
+    selected.scale = -0.5f;
+    selected.clip = ClipRegion2D{{4, 8, 40, 50}, 64, 64};
+    auto submission = context();
+    submission.parameters.emplace("tint", glm::vec4{0.25f});
+    const auto packets = resolve_text_runs(uploaded, selected, submission);
+    ASSERT_EQ(packets.size(), 3u);
+    for (const auto& packet : packets) {
+        EXPECT_EQ(packet.material, selected.material);
+        EXPECT_EQ(packet.clip, selected.clip);
+        EXPECT_EQ(std::get<glm::mat4>(packet.parameters.at("model")), selected.model_matrix);
+        EXPECT_EQ(std::get<float>(packet.parameters.at("scale")), selected.scale);
+        EXPECT_EQ(std::get<float>(packet.parameters.at("alpha")), selected.alpha);
+        EXPECT_EQ(std::get<glm::vec4>(packet.parameters.at("tint")), (glm::vec4{1, 0, 0, 1}));
+        const auto image = std::get<ImageBinding>(packet.parameters.at("image"));
+        EXPECT_EQ(image.unit, 2u);
+        EXPECT_EQ(image.sampler, sampler);
+        const auto overlay = std::get<ImageBinding>(packet.parameters.at("overlay"));
+        EXPECT_EQ(overlay.image, uploaded.pages()[0].atlas);
+        EXPECT_EQ(overlay.unit, 7u);
+        EXPECT_EQ(overlay.sampler, sampler);
+    }
+    RenderFrame frame;
+    RenderFrameWriter writer(frame);
+    auto pass = writer.begin_pass(submission.pass.projection, submission.pass.view);
+    pass.add(packets);
+    selected.clip = ClipRegion2D{{10, 12, 20, 30}, 64, 64};
+    selected.alpha = 0.75f;
+    submission.image->unit = 4;
+    pass.add(resolve_text_runs(uploaded, selected, submission));
+    ASSERT_EQ(frame.passes()[0].draws.size(), 6u);
+    for (std::size_t index = 0; index < 6; ++index) {
+        const auto& packet = frame.passes()[0].draws[index];
+        EXPECT_EQ(packet.authored_order, index);
+        EXPECT_EQ(std::get<ImageBinding>(packet.parameters.at("image")).unit, index < 3 ? 2u : 4u);
+        EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("alpha")), index < 3 ? 0.35f : 0.75f);
+    }
+    EXPECT_NE(frame.passes()[0].draws[0].clip, frame.passes()[0].draws[3].clip);
+}
+
+TEST(text_runs, empty) {
+    TextProvider provider;
+    const auto prepared = prepare_text(layout_text(fonts(), " \t\n"), {.positioned_runs = true});
+    EXPECT_TRUE(prepared.has_positioned_runs());
+    EXPECT_TRUE(prepared.positioned_vertices().empty());
+    EXPECT_TRUE(prepared.runs().empty());
+    const auto uploaded = upload_text(prepared, provider);
+    EXPECT_TRUE(uploaded.has_positioned_runs());
+    EXPECT_FALSE(uploaded.positioned_geometry());
+    EXPECT_TRUE(resolve_text_runs(uploaded, style(), context()).empty());
+    EXPECT_EQ(provider.calls, 0);
+    EXPECT_THROW(static_cast<void>(resolve_text_runs(uploaded, style(), {})), CE::Exceptions::invalid_args);
+}
+
+TEST(text_runs, failures) {
+    TextProvider provider;
+    const auto prepared = prepare_text(layout_text(fonts(), "AA"), {.positioned_runs = true});
+    provider.fail_at = 3;
+    EXPECT_THROW(static_cast<void>(upload_text(prepared, provider)), std::runtime_error);
+    EXPECT_TRUE(std::ranges::all_of(provider.geometry, [](const auto& handle) { return handle.expired(); }));
+    EXPECT_TRUE(std::ranges::all_of(provider.images, [](const auto& handle) { return handle.expired(); }));
+    provider.fail_at = 0;
+    const auto uploaded = upload_text(prepared, provider);
+    auto selected = style();
+    selected.parameters.emplace("image", ImageBinding{uploaded.pages()[0].atlas, 0});
+    EXPECT_THROW(static_cast<void>(resolve_text_runs(uploaded, selected, context())), CE::Exceptions::invalid_args);
+    selected = style();
+    selected.clip = ClipRegion2D{{20, 0, 10, 10}, 64, 64};
+    EXPECT_THROW(static_cast<void>(resolve_text_runs(uploaded, selected, context())), CE::Exceptions::invalid_args);
+    auto submission = context();
+    submission.constraints.depth = DepthMode::Less;
+    EXPECT_THROW(static_cast<void>(resolve_text_runs(uploaded, style(), submission)), CE::Exceptions::invalid_args);
+}
+
+TEST(text_runs, malformed) {
+    const auto prepared = prepare_text(layout_text(fonts(), "A"), {.positioned_runs = true});
+    for (const auto fault : std::array{GeometryFault::Null, GeometryFault::Count, GeometryFault::Layout, GeometryFault::Topology}) {
+        SCOPED_TRACE(static_cast<int>(fault));
+        TextProvider provider;
+        provider.geometry_fault_at = 3;
+        provider.geometry_fault = fault;
+        EXPECT_THROW(static_cast<void>(upload_text(prepared, provider)), CE::Exceptions::failed_operation);
+        EXPECT_TRUE(std::ranges::all_of(provider.geometry, [](const auto& handle) { return handle.expired(); }));
+        EXPECT_TRUE(std::ranges::all_of(provider.images, [](const auto& handle) { return handle.expired(); }));
+    }
+}
+
+TEST(text_runs, replacement) {
+    TextProvider provider;
+    auto active =
+        std::make_shared<RenderedText>(upload_text(prepare_text(layout_text(fonts(), "AA"), {.positioned_runs = true}), provider));
+    const std::weak_ptr<Geometry2D> positioned = active->positioned_geometry();
+    const std::weak_ptr<Geometry2D> glyphs = active->pages()[0].geometry;
+    const std::weak_ptr<Image> atlas = active->pages()[0].atlas;
+    const std::weak_ptr<RenderedText> old_text = active;
+    RenderFrame frame;
+    RenderFrameWriter writer(frame);
+    auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
+    pass.add(resolve_text_runs(*active, style(), context()));
+    provider.calls = 0;
+    provider.fail_at = 3;
+    EXPECT_THROW(
+        {
+            auto next =
+                std::make_shared<RenderedText>(upload_text(prepare_text(layout_text(fonts(), "B"), {.positioned_runs = true}), provider));
+            active = std::move(next);
+        },
+        std::runtime_error
+    );
+    EXPECT_EQ(active, old_text.lock());
+    provider.fail_at = 0;
+    active = std::make_shared<RenderedText>(upload_text(prepare_text(layout_text(fonts(), "B"), {.positioned_runs = true}), provider));
+    EXPECT_TRUE(old_text.expired());
+    EXPECT_TRUE(glyphs.expired());
+    EXPECT_FALSE(positioned.expired());
+    EXPECT_FALSE(atlas.expired());
+    EXPECT_EQ(frame.passes()[0].draws[0].geometry, positioned.lock());
+    EXPECT_NE(active->positioned_geometry(), positioned.lock());
+    frame.recycle();
+    EXPECT_TRUE(positioned.expired());
+    EXPECT_TRUE(atlas.expired());
 }

@@ -7,6 +7,7 @@
 #include <backends/opengl/pipeline.h>
 #include <assets/resources/resource-provider.h>
 #include <assets/submission/draw2d.h>
+#include <assets/types/2d/unicode-text.h>
 #include <assets/types/2d/ffont.h>
 #include <backends/opengl/resource-provider.h>
 #include <backends/opengl/texture.h>
@@ -21,6 +22,7 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/subsystems/event-system.h>
 #include <ext/matrix_clip_space.hpp>
+#include <ext/matrix_transform.hpp>
 #include <internals/exceptions.h>
 
 #ifndef GLFW_INCLUDE_NONE
@@ -35,6 +37,7 @@
 #endif
 
 #include <cstdlib>
+#include <algorithm>
 #include <atomic>
 #include <array>
 #include <chrono>
@@ -245,6 +248,136 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         EXPECT_EQ(glGetError(), GL_NO_ERROR);
         return result;
     }
+
+    std::shared_ptr<const CE::Assets::Material> text_run_material(
+        CE::Assets::ResourceProvider& resources,
+        const NativeShaderFiles& files,
+        const std::shared_ptr<CE::Assets::Image>& overlay,
+        const CE::Assets::ImageFilter filter,
+        const CE::Assets::BlendMode blend = CE::Assets::BlendMode::StraightAlpha
+    ) {
+        using namespace CE::Assets;
+        NativeShaderFiles::write(files.vertex, R"(#version 330 core
+layout(location = 0) in vec3 in_Position;
+layout(location = 1) in vec2 in_Texcoord;
+uniform mat4 u_projection, u_view, u_model;
+uniform float u_scale;
+out vec2 texcoord;
+void main() {
+    gl_Position = u_projection * u_view * u_model * vec4(in_Position * u_scale, 1.0);
+    texcoord = in_Texcoord;
+}
+)");
+        NativeShaderFiles::write(files.fragment, R"(#version 330 core
+in vec2 texcoord;
+uniform sampler2D u_image, u_overlay;
+uniform float u_alpha;
+uniform vec4 u_tint;
+out vec4 color;
+void main() {
+    float coverage = texture(u_image, texcoord).a;
+    color = vec4(u_tint.rgb * texture(u_overlay, vec2(0.5)).rgb, coverage * u_alpha * u_tint.a);
+}
+)");
+        PipelineDefinition definition;
+        definition.program_sources = files.stages();
+        definition.state.blend = blend;
+        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
+            {"view", ParameterType::Mat4, true, ParameterSemantic::View}, {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
+            {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
+            {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D},
+            {"overlay", ParameterType::Sampler2D}, {"tint", ParameterType::Vec4}};
+        const GLSLPipelineBindings bindings{{{"projection", "u_projection"}, {"view", "u_view"}, {"model", "u_model"}, {"alpha", "u_alpha"},
+            {"scale", "u_scale"}, {"image", "u_image"}, {"overlay", "u_overlay"}, {"tint", "u_tint"}}};
+        SamplerOptions sampling;
+        sampling.minification = filter;
+        sampling.magnification = filter;
+        sampling.mipmaps = MipmapFilter::None;
+        sampling.anisotropy = ImageAnisotropy::Disabled;
+        auto& native = dynamic_cast<OpenGLResourceProvider&>(resources);
+        return native.build_material(
+            {native.build_pipeline(std::move(definition), bindings), {{"overlay", ImageBinding{overlay, 5}}, {"tint", glm::vec4{1}}},
+                {{"image", resources.create_sampler(sampling)}}}
+        );
+    }
+
+    CE::Text::FontCollection text_run_fonts() {
+        CE::Text::FontSelection selection;
+        selection.automatic_system_fonts = false;
+        return CE::Text::FontCollection::load(selection);
+    }
+
+    void retain_text_runs(
+        CE::RenderAPIs::RenderFrameWriter& writer,
+        const CE::Assets::RenderedText& text,
+        const CE::RenderAPIs::DrawStyle2D& style,
+        const bool runs,
+        const std::uint32_t image_unit = 2
+    ) {
+        const auto projection = glm::ortho(0.0f, 64.0f, 0.0f, 64.0f, -1.0f, 1.0f);
+        const auto view = glm::translate(glm::mat4{1}, {-2, 1, 0});
+        auto pass = writer.begin_pass(projection, view);
+        const CE::Assets::SubmissionContext2D context{pass.semantics(), {}, {}, CE::Assets::ImageParameter2D{"image", image_unit}};
+        pass.add(runs ? CE::Assets::resolve_text_runs(text, style, context) : CE::Assets::resolve_text(text, style, context));
+    }
+
+    void expect_same_pixels(const NativeFramePixels& first, const NativeFramePixels& second, const bool ink = true) {
+        int largest_difference = 0;
+        std::size_t colored = 0, differences = 0, greatest_index = 0;
+        for (std::size_t index = 0; index < first.rgba.size(); ++index) {
+            const auto difference = std::abs(int(first.rgba[index]) - int(second.rgba[index]));
+            if (difference > largest_difference) {
+                largest_difference = difference;
+                greatest_index = index;
+            }
+            if (difference > 1)
+                ++differences;
+            if (index % 4 != 3 && first.rgba[index] != 0)
+                ++colored;
+        }
+        if (largest_difference > 1) {
+            const auto stem = std::filesystem::temp_directory_path() /
+                              ("cheryl-text-run-diff-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+            const auto save = [&](const NativeFramePixels& pixels, const std::string_view suffix) {
+                const auto path = stem.string() + std::string(suffix) + ".ppm";
+                std::ofstream output(path, std::ios::binary);
+                output << "P6\n64 64\n255\n";
+                for (int row = 63; row >= 0; --row)
+                    for (std::size_t column = 0; column < 64; ++column)
+                        output.write(reinterpret_cast<const char*>(pixels.rgba.data() + (row * 64 + column) * 4), 3);
+                output.close();
+                EXPECT_TRUE(output.good()) << path;
+                return path;
+            };
+            ADD_FAILURE() << "Text images: " << save(first, "-glyphs") << " and " << save(second, "-runs");
+        }
+        EXPECT_LE(largest_difference, 1) << differences << " channels outside tolerance; largest at " << (greatest_index / 4) % 64 << ','
+                                         << (greatest_index / 4) / 64 << " channel " << greatest_index % 4 << ": "
+                                         << int(first.rgba[greatest_index]) << " vs " << int(second.rgba[greatest_index]);
+        if (ink)
+            EXPECT_GT(colored, 12u);
+    }
+
+    struct NativeDrawTrace {
+        inline static NativeDrawTrace* active = nullptr;
+        const PFNGLDRAWARRAYSPROC original = glad_glDrawArrays;
+        std::size_t draws = 0;
+
+        NativeDrawTrace() {
+            active = this;
+            glad_glDrawArrays = record;
+        }
+        ~NativeDrawTrace() {
+            glad_glDrawArrays = original;
+            active = nullptr;
+        }
+        NativeDrawTrace(const NativeDrawTrace&) = delete;
+        NativeDrawTrace& operator=(const NativeDrawTrace&) = delete;
+        static void GLAD_API_PTR record(const GLenum mode, const GLint first, const GLsizei count) {
+            ++active->draws;
+            active->original(mode, first, count);
+        }
+    };
 
     // Observe real driver-created IDs without allocating inside the forwarding calls.
     // All other GL calls remain native, and the entry points are restored on every exit.
@@ -768,6 +901,132 @@ TEST(native_opengl, shutdown_before_late_release) {
     EXPECT_TRUE(geometry_owner.expired());
     EXPECT_TRUE(image_owner.expired());
     EXPECT_TRUE(sampler_owner.expired());
+}
+
+TEST(native_opengl, text_runs) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    renderer.initialize();
+    {
+        NativeShaderFiles files;
+        auto overlay = engine->resources().create_image({{1, 1}, {204, 255, 128, 255}});
+        const auto other = text_run_material(engine->resources(), files, overlay, ImageFilter::Linear, BlendMode::Additive);
+        const auto fonts = text_run_fonts();
+        CE::Text::LayoutOptions options;
+        options.pixel_height = 16;
+        options.maximum_width = 56;
+        for (const auto sample : std::array<std::u8string_view, 2>{u8"AAZZAA", u8"e\u0301 \u4e2d\n\u05d0\u05d1\u05d2 123"}) {
+            SCOPED_TRACE(std::string(reinterpret_cast<const char*>(sample.data()), sample.size()));
+            const auto text = upload_text(
+                prepare_text(
+                    CE::Text::layout_text(fonts, {reinterpret_cast<const char*>(sample.data()), sample.size()}, options), {20, true}
+                ),
+                engine->resources()
+            );
+            ASSERT_GT(text.draws().size(), text.runs().size());
+            ASSERT_GT(text.pages().size(), 1u);
+            // Baking offsets regroups floating-point transforms. Avoid exact
+            // pixel-center edge ties in this strict raster comparison; CPU tests
+            // also compare transformed positions and unchanged atlas coordinates.
+            for (const auto filter : {ImageFilter::Nearest, ImageFilter::Linear}) {
+                SCOPED_TRACE(static_cast<int>(filter));
+                const auto main = text_run_material(engine->resources(), files, overlay, filter);
+                for (const auto scale : std::array{0.65f, -0.65f, 0.0f}) {
+                    SCOPED_TRACE(scale);
+                    for (const bool clipped : {false, true}) {
+                        SCOPED_TRACE(clipped);
+                        DrawStyle2D style;
+                        style.material = main;
+                        style.scale = scale;
+                        style.alpha = 0.4f;
+                        style.parameters.emplace("tint", glm::vec4{1, 0.2f, 0.1f, 1});
+                        style.model_matrix =
+                            glm::translate(glm::mat4{1}, scale < 0 ? glm::vec3{55.125f, 45.125f, 0} : glm::vec3{8.125f, 36.125f, 0});
+                        style.model_matrix = glm::rotate(style.model_matrix, 0.21f, {0, 0, 1});
+                        if (clipped)
+                            style.clip = ClipRegion2D{{7, 8, 54, 56}, 64, 64};
+                        RenderFrame glyphs, runs;
+                        RenderFrameWriter glyph_writer(glyphs), run_writer(runs);
+                        retain_text_runs(glyph_writer, text, style, false);
+                        retain_text_runs(run_writer, text, style, true);
+                        style.material = other;
+                        style.alpha = 0.7f;
+                        style.parameters["tint"] = glm::vec4{0.1f, 0.8f, 1, 0.5f};
+                        style.model_matrix = glm::translate(style.model_matrix, {3, -5, 0});
+                        if (clipped)
+                            style.clip = ClipRegion2D{{12, 10, 50, 52}, 64, 64};
+                        retain_text_runs(glyph_writer, text, style, false, 4);
+                        retain_text_runs(run_writer, text, style, true, 4);
+                        NativeDrawTrace trace;
+                        const auto original = draw_pixels(renderer, glyphs);
+                        EXPECT_EQ(trace.draws, text.draws().size() * 2);
+                        trace.draws = 0;
+                        const auto positioned = draw_pixels(renderer, runs);
+                        EXPECT_EQ(trace.draws, text.runs().size() * 2);
+                        expect_same_pixels(original, positioned, scale != 0);
+                    }
+                }
+            }
+        }
+    }
+    renderer.maintain_resources();
+    renderer.deinitialize();
+}
+
+TEST(native_opengl, text_run_lifetime) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    using namespace CE::Assets;
+    using namespace CE::RenderAPIs;
+    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    renderer.initialize();
+    {
+        NativeShaderFiles files;
+        auto overlay = engine->resources().create_image({{1, 1}, {255, 255, 255, 255}});
+        DrawStyle2D style;
+        style.material = text_run_material(engine->resources(), files, overlay, ImageFilter::Linear);
+        style.scale = 0.65f;
+        style.alpha = 0.6f;
+        style.model_matrix = glm::translate(glm::mat4{1}, {8, 24, 0});
+        const auto fonts = text_run_fonts();
+        auto active = std::make_shared<RenderedText>(
+            upload_text(prepare_text(CE::Text::layout_text(fonts, "AAA"), {.positioned_runs = true}), engine->resources())
+        );
+        const std::weak_ptr<Geometry2D> positioned = active->positioned_geometry();
+        const std::weak_ptr<Geometry2D> glyphs = active->pages()[0].geometry;
+        const std::weak_ptr<Image> atlas = active->pages()[0].atlas;
+        const std::weak_ptr<const Material> material = style.material;
+        RenderFrame retained;
+        RenderFrameWriter retained_writer(retained);
+        retain_text_runs(retained_writer, *active, style, true);
+        const auto before = draw_pixels(renderer, retained);
+        active = std::make_shared<RenderedText>(
+            upload_text(prepare_text(CE::Text::layout_text(fonts, "BBB"), {.positioned_runs = true}), engine->resources())
+        );
+        style.material = text_run_material(engine->resources(), files, overlay, ImageFilter::Nearest, BlendMode::Additive);
+        RenderFrame replacement;
+        RenderFrameWriter replacement_writer(replacement);
+        retain_text_runs(replacement_writer, *active, style, true);
+        EXPECT_TRUE(glyphs.expired());
+        EXPECT_FALSE(positioned.expired());
+        EXPECT_FALSE(atlas.expired());
+        EXPECT_FALSE(material.expired());
+        renderer.maintain_resources();
+        const auto after = draw_pixels(renderer, retained);
+        expect_same_pixels(before, after);
+        static_cast<void>(draw_pixels(renderer, replacement));
+        retained.recycle();
+        EXPECT_TRUE(positioned.expired());
+        EXPECT_TRUE(atlas.expired());
+        EXPECT_TRUE(material.expired());
+    }
+    renderer.maintain_resources();
+    renderer.deinitialize();
 }
 
 TEST(native_opengl, rotated_legacy_text) {
