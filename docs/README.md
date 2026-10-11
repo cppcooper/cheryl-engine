@@ -30,6 +30,7 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 - [Worker pools and groups](runtime/worker-execution.md)
 - [Logging configuration and emission](runtime/logging.md)
 - [Subsystem diagnostics](runtime/subsystem-diagnostics.md)
+- [Linux Debug output terminal and process lifetime](../projects/modules/platform/debug-terminal-linux/README.md)
 
 ## Assets
 
@@ -49,7 +50,7 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 - [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
 - [CPU memory lifetime and reservation](resources/resource-lifetime.md)
-- [FFont deprecation and font-file migration](resources/legacy-ffont.md)
+- [FFont deprecation, recovered inputs and font-file migration](resources/legacy-ffont.md)
 
 ## Development
 
@@ -63,6 +64,7 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 - [Consuming the engine and command-line startup](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
 - [Module index and owner guides](../projects/modules/README.md)
+- [Linux Debug terminal module](../projects/modules/platform/debug-terminal-linux/README.md)
 - [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
 - [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
 - [RmlUi placeholder investigation and contribution guidance](external-work/rmlui-placeholder-issue.md)

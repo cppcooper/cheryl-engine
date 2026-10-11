@@ -4,10 +4,12 @@
 
 > **Original review scope:** Source-code inspection of the engine, backend modules, build configuration, demo, and test sources. No compilation, tests, hardware QA, or deployment checks were performed as part of that review. The inventory starts at the reviewed commit, with the focused reconciliation below; classifications are **not automatically updated release guarantees**.
 
-**Focused update:** 2026-10-09 — Reconciles the selected integration priorities,
-window/HID/RmlUi extension deferrals and recorded Linux QA acceptance. The original
-source-review baseline and qualitative estimate remain unchanged; this is not a
-complete new review, build or test run.
+**Documentation reconciliation:** 2026-10-10 — Updates sampling/TGUI, graphics
+manifests 2.0, main material loading, the optional Linux Debug terminal and recovered
+college/font assets through source baseline `695f966`. Reconciles the selected
+terminal → NUMA/NUCA → batching order and pending acceptance. The original review
+baseline and qualitative estimate remain historical; this documentation pass does
+not claim a fresh review of every subsystem or new build/test/native results.
 
 **Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = nearest scheduled work awaiting design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work; **Not implemented** = no complete functional implementation identified; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
@@ -18,19 +20,16 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
 | Worker CPU placement | Partial · near term | Linux CPU affinity, required/preferred policies and fallback behavior exist. Automatic cache/node discovery and NUMA/NUCA integration remain absent; CPU, memory and cache-locality scope needs design. | [NUMA/NUCA roadmap](planning/develop-review-and-development-plan.md#numa-and-nuca), [worker contract](runtime/worker-execution.md) |
-| TGUI texture sampling | Partial · near term | Recorded scenes and textures work; nearest texture/font sampling rejects under the current provider contract. Complete backend sampling and integrate toolkit smoothing with retained scenes. | [sampling roadmap](planning/develop-review-and-development-plan.md#texture-sampling-and-tgui), [rendering.cpp](../projects/modules/ui/tgui/src/rendering.cpp) |
 
-*2 entries.*
+*1 entry.*
 
 ## 2. Planned
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
-| Shader manifest schema and indexed material loading | Planned · near term | Define versioned shader/material documents and CPU recipes using graphics-index selection, backend-owned construction and failure-safe explicit reload; format/provider design remains open. | [indexed-material-loading.md](planning/short-term/indexed-material-loading.md) |
 | Render batching | Planned · near term | Measure draw/state-switch overhead and batch compatible contiguous packets, including sampling and immutable resource generations, while preserving authored order. | [batching roadmap](planning/develop-review-and-development-plan.md#render-batching) |
-| External Debug terminal | Planned · near term | Native Debug output viewer with startup/shutdown/crash lifetime and preserved test-runner output; platform, transport and ownership decisions remain open. | [debug-console.md](planning/short-term/debug-console.md) |
 
-*3 entries.*
+*1 entry.*
 
 ## 3. Deferred
 
@@ -122,6 +121,8 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Display/monitor abstraction | Implemented | Monitor enumeration, primary selection, logical and framebuffer sizes and content scale. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
 | GLFW window modes | Implemented | Native resizing, normal/borderless/fullscreen transitions, close detection and cursor visibility. | [window.cpp](../projects/modules/platform/native-glfw/src/core/display/window.cpp) |
 | **Rendering** | | | |
+| TGUI texture sampling | Implemented · acceptance pending | Texture/font smoothing is copied into retained draws; immutable nearest/linear samplers share image generations without mutation. Toolkit policies disable mipmaps/anisotropy while ordinary engine defaults request anisotropy. | [TGUI contract](../projects/modules/ui/tgui/README.md#recording-and-publication), [sampling](rendering/pipelines-and-materials.md#immutable-sampling) |
+| Shader manifest schema and indexed material loading | Implemented · acceptance pending | Graphics 2.0 indexes select CPU-only program/material recipes, owned source bytes and backend-owned construction. Main text/image recipes migrated; textures and shaders stay independent, with optional asset selections and explicit incremental replacement. | [manifest guide](assets/asset-manifests.md#shadermaterial-definitions), [loading](assets/asset-loading.md) |
 | Renderer abstraction | Implemented | Backend-neutral lifecycle, frame rendering, viewport, clear and camera matrix operations. | [renderer.h](../projects/engine/include/cheryl/core/rendering/renderer.h) |
 | OpenGL backend | Implemented | GL-based pass playback, context validation, native rendering and resource maintenance. | [renderer.cpp](../projects/modules/graphics/opengl/src/backends/opengl/renderer.cpp) |
 | GLFW OpenGL context | Implemented | Context creation, activation and proc loading through the GLFW graphics module. | [glfw-context.h](../projects/modules/graphics/opengl/include/cheryl/backends/opengl/glfw-context.h) |
@@ -143,7 +144,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Explicit shader/material reload | Implemented | Publishes replacement generations while retained frames continue referencing prior resources. | [material-mgr.cpp](../projects/engine/src/core/resources/asset-management/material-mgr.cpp) |
 | **Assets and text** | | | |
 | Asset manifest definitions | Implemented | Schema-backed CPU definitions of sprites, tilesets, pivots, grids, animations and texture references. | [manifest.h](../projects/engine/include/cheryl/assets/definitions/manifest.h) |
-| Manifest parser | Implemented | Parses document schema 1.0 and validates references into backend-independent objects. | [manifest-loader.cpp](../projects/engine/src/core/resources/asset-management/manifest-loader.cpp) |
+| Manifest parser | Implemented | Parses sprite/tileset and shader documents selected by graphics indexes 2.0; validates exact registered paths and CPU references before construction. | [manifest-loader.cpp](../projects/engine/src/core/resources/asset-management/manifest-loader.cpp) |
 | Asset preparation/upload | Implemented | Separates CPU manifest scan/decode/validation from serialized provider-side GPU upload. | [asset-loader.cpp](../projects/engine/src/core/resources/asset-management/asset-loader.cpp) |
 | Shared asset cache contracts | Implemented | Global asset managers retain immutable resource generations with synchronized publication. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
 | Texture manager | Implemented | Normalized-path image cache, exact-key lookup and provider-owner loading checks. | [texture-mgr.h](../projects/engine/include/cheryl/core/resources/asset-management/texture-mgr.h) |
@@ -155,7 +156,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Grid geometry and UVs | Implemented | Converts image atlas grid cells into pivot-aware 2D geometry and UV coordinates. | [grid-geometry.h](../projects/engine/include/cheryl/assets/geometry/grid-geometry.h) |
 | Image decoding | Implemented | CPU-side decoded RGBA image buffers with resource-provider separation. | [decoded-image.h](../projects/engine/include/cheryl/assets/resources/decoded-image.h) |
 | UTF-8 scalar mapping | Implemented | Decodes Unicode scalar values and retains byte/scalar indices as layout source maps. | [utf8.h](../projects/engine/include/cheryl/text/utf8.h) |
-| Legacy bitmap/font paths | Implemented | Earlier font types remain usable alongside the new Unicode text facilities. | [2d/](../projects/engine/include/cheryl/assets/types/2d/) |
+| Legacy bitmap/font paths | Implemented | Legacy STBFont and deprecated FFont remain available; recovered binary widths/atlas restore FFont inputs, while JSON widths are metadata only. | [2d/](../projects/engine/include/cheryl/assets/types/2d/) |
 | System font discovery | Implemented | Searches font roots and selects installed font-file candidates. | [fonts-system.h](../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h) |
 | **Ui and audio** | | | |
 | TGUI UI bridge | Implemented | Owns toolkit session, widget APIs, input translation, CPU scene recording and scene upload. | [tgui/](../projects/modules/ui/tgui/) |
@@ -177,6 +178,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Pivot/anchor geometry | Implemented | Pivot presets, anchor conversion, quad/strip generation and Y-up geometry. | [anchor.h](../projects/engine/include/cheryl/math/anchor.h) |
 | General math utilities | Implemented | Byte, pointer, binary, fitting, numeric and time helper functions. | [math/](../projects/engine/include/cheryl/math/) |
 | File manager and path I/O | Implemented | Core file-manager interface and path-oriented file operations, distinct from installed font discovery. | [file-mgr.h](../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h) |
+| External Debug terminal | Implemented · Linux acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. AUTO links actual Debug only; explicit non-Debug inclusion still needs a runtime enable option. Engine supplies only an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [pending matrix](testing-requests.md#automated-linux-terminal-configuration-matrix) |
 | **Build and verification** | | | |
 | Modular CMake root | Implemented | C++23 build splits Engine and native graphics/platform/UI/audio owners. | [CMakeLists.txt](../CMakeLists.txt) |
 | CMake option selection | Implemented | Root switches for GLFW, OpenGL, TGUI, RmlUi, miniaudio, native input, demo and test modes. | [CherylOptions.cmake](../cmake/CherylOptions.cmake) |
@@ -192,7 +194,7 @@ The following **five tables** comprise 139 distinct entries. Links are relative 
 | Debug sanitizers | Implemented | Non-MSVC Debug configuration enables address/undefined-behavior sanitizers. | [CMakeLists.txt](../CMakeLists.txt) |
 | Third-party dependency wiring | Implemented | Pinned submodules plus FreeType, HarfBuzz, ICU, GLM, STB, JSON, spdlog, backward-cpp, CTTI and CLI11. | [CherylDependencies.cmake](../cmake/CherylDependencies.cmake) |
 
-*93 entries.*
+*96 entries.*
 
 ## Assessment and direction
 
@@ -200,8 +202,9 @@ The review's qualitative estimate of foundational architecture maturity is
 approximately **85%**. It concerns established engine foundations, not completion
 of the roadmap, and is not calculated from feature counts, coverage or test results.
 The implemented facilities support a desktop 2D consumer; higher-level game services
-remain consumer-selected. The nearest selected integrations are texture sampling/TGUI
-and NUMA/NUCA, followed by shader manifests, batching and the external Debug terminal.
+remain consumer-selected. Terminal implementation and shader/sampling integration
+await executable/native acceptance. The next integration checkpoint is NUMA/NUCA
+hardware/workload value and caller configuration, followed by a batching discussion.
 
 Recorded Linux acceptance covers the initial
 [Unicode scope](assets/text-layout.md#native-acceptance-scope),

@@ -20,6 +20,13 @@ an artwork-owner decision before additional semantics can be encoded safely.
   or retains selectable layers. The current manifest selects a flattened PNG; layer
   selection needs a different asset/runtime contract.
 
+- Recovered Invaders and Rover: the original files supply frame ordering and
+  geometry, but no durations or verified action names. Do not infer animation timing
+  or material/FX intent. Invaders' draw scale is a submission setting; irregular
+  Rover frames remain separately addressable entries. The
+  [recovery contract](../../assets/asset-manifests.md#recovered-college-definitions)
+  records pivot evidence and retained originals.
+
 Tile selection uses the declared rules;
 the [selection contract](../../assets/asset-values-and-playback.md#tile-selection)
 does not infer missing artwork semantics.

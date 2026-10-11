@@ -22,19 +22,41 @@ In each mode, check these observations:
    multilingual, bidi/fallback and wrapping scope is maintained in the
    [demo procedure](../../projects/apps/demo/README.md#unicode-preview-validation); this existing input
    sequence alone does not establish them. Probe editing still uses logical scalars.
-3. Test shader reload using copied assets. From the repository root, run
-   `cp -a assets/. /tmp/cheryl-reload-assets`, then launch
-   `/path/to/demo /tmp/cheryl-reload-assets`, substituting your demo executable.
-   The folder path after the executable is the positional argument: it selects the
-   asset root without a flag. While the demo stays running, press Esc to leave text
-   editing, then F5 with valid shaders. Reload should succeed. Append
-   `this is not valid GLSL;` to the copied
-   `/tmp/cheryl-reload-assets/graphics/shaders/shader2d.frag` and save. Press F5 again: the
-   demo's `Reload:` status must show an error while the previous text/material
-   remains visible. Remove the invalid line, save and press F5: the error clears.
-   Repeat with `/path/to/demo --concurrent /tmp/cheryl-reload-assets`.
+3. Test indexed shader reload using the temporary-root launch block below. Press
+   Escape to leave text editing, then F5 with valid definitions/sources. Append
+   `this is not valid GLSL;` to the printed root's
+   `graphics/shaders/shader2d.frag`, save and press F5: `Reload:` must report an
+   error while the previous text/image pair stays visible. Restore the file and
+   repeat F5: the error clears. Also remove or invalidate `main:text` or
+   `main:images` in the copied `graphics/shaders/main.json`, then restore it and
+   verify recovery. Missing main definitions must not be hidden by cached entries.
+   Repeat in concurrent mode. Change only the copied root while its launch runs.
 4. Close the window through its normal close control, including during repeated
    reloads. The process exits normally without hanging or printing a cleanup error.
+
+This block uses the refreshed `build/testing-graphics/demo` from the
+[testing queue](../testing-requests.md#automated-opengl-sampling-owned-shaders-and-ui-composition),
+or a matching native demo. It copies only shader/UI/font inputs, preserving the
+checkout and omitting the assets repository's Git metadata and bulk collections.
+Optional tile/sprite samples skip in this minimal root; that is not artwork QA.
+Close each launch to advance; the temporary root is removed after the sequence.
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  reload_root=$(mktemp -d /tmp/cheryl-reload-assets-XXXXXX)
+  trap 'rm -rf -- "$reload_root"' EXIT
+  mkdir -p "$reload_root/graphics/textures"
+  cp -a assets/graphics/shaders "$reload_root/graphics/"
+  cp -a assets/graphics/ui "$reload_root/graphics/"
+  cp -a assets/graphics/textures/ui "$reload_root/graphics/textures/"
+  cp -a assets/fonts "$reload_root/"
+  printf 'Edit only this temporary asset root while the demo runs: %s\n' "$reload_root"
+  ./build/testing-graphics/demo --builtin-font "$reload_root"
+  ./build/testing-graphics/demo --builtin-font --concurrent "$reload_root"
+)
+```
 
 For a failure, identify sequential/concurrent mode, the action, visible behavior,
 console error and your GPU/driver if known. Screenshots are optional; a short text

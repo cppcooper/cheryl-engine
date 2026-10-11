@@ -42,7 +42,9 @@ resolve the smallest demonstrated seam first.
 | Time, size and OS services | [Runtime ticks](../runtime/runtime-frame-boundary.md) and capability reporting | Use copied window/framebuffer dimensions and explicit simulation time; report unavailable clipboard, cursor and IME services. |
 | Queued upload and retained playback | [Thread dispatch](../runtime/thread-dispatch.md) and [native retirement](../resources/resource-residency.md#native-retirement-and-maintenance) | Send owned preparation through platform submission and retain complete published scenes through replacement and teardown. |
 
-The application supplies backend-appropriate pipelines and materials. An adapter
+The application supplies backend-appropriate pipelines and materials. Both demo
+UI integrations retain [manual construction](../rendering/pipelines-and-materials.md#manual-material-construction);
+indexed loading currently migrates only main text/image materials. An adapter
 validates their vertex layout, topology, alpha/depth/culling state, projection
 semantic and texture parameters. It does not create OpenGL pipelines or query a
 native context. Font rasterization may belong to the toolkit; its resulting atlas
@@ -64,6 +66,7 @@ The independent implementations differ where their toolkits differ:
 | Authoring | Native GUI/widgets; optional typed numeric placement and resizing. | Native context/documents; RML and RCSS layout, including percentage bounds and flex. |
 | Alpha | Straight vertex/image RGBA and `StraightAlpha` materials. | Premultiplied output and `PremultipliedAlpha` materials; file images convert once. |
 | Fonts | Guarded FreeType backend and embedded default font. | Stock Core FreeType engine and explicitly registered owned font files/bytes. |
+| Sampling | Each draw retains nearest/linear smoothing independently of pixels; UI samplers clamp, with no mipmaps or anisotropy. | Existing image upload defaults; repeating UV/effect extensions reject. |
 | Toolkit lifetime | One guarded process-global backend. | One guarded Core initialization with contexts and interfaces. |
 
 Existing Engine contracts cover both initial scopes. Their CPU recordings and
@@ -197,7 +200,7 @@ one owner is affected. A matching compiled build can be reused without rebuildin
 
 Inspect the compile inventory when the RmlUi correction changes: Core must compile
 the generated `rmlui-fixes/WidgetTextInput.cpp` rather than the unguarded original.
-The existing root session/editing/lifetime/coexistence cases are accepted, but do
+The recorded root session/editing/lifetime/coexistence baseline is accepted, but does
 not directly exercise Startup's parser/backend factory, support headers, the new
 `before_record` overload or placeholder hit-testing. These gaps remain in the
 [owning checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up);
@@ -212,3 +215,7 @@ observations are accepted in the selected Linux root composition. The
 the reusable native procedure. Builtin Unicode and sample artwork keep their own
 coverage limits there; dedicated deterministic cases and supplied dependencies
 remain outside that native baseline.
+
+Sampling and shared indexed-material/resource changes postdate that accepted
+baseline. Their targeted reruns are in the [testing queue](../testing-requests.md);
+the earlier observations do not establish acceptance of the changed code.

@@ -36,6 +36,10 @@ summary instead of spending that record on a trace prefix. Output errors and
 truncation are best effort and never raise another exception. This is independent
 of ordinary logger severity/destination configuration and cannot promise delivery
 under process termination or broken output. It may wait on stdio serialization.
+With an attached [Linux output terminal](../../projects/modules/platform/debug-terminal-linux/README.md),
+stderr writes enter its process capture even when the game fails before rendering.
+That module's independent viewer can retain available output after abnormal process
+loss; failure reporting itself does not own or launch the viewer.
 
 Trace sinks reserve termination, mark truncation, copy only the written prefix,
 and reset before reuse. Symbol resolution can allocate. Public stack_trace returns

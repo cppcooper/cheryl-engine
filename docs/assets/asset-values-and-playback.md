@@ -6,8 +6,8 @@ immutable when sharing it. Parsing validates document-local references;
 [Loader preparation](asset-loading.md) additionally checks cross-document identities
 and decoded image bounds. Direct aggregate construction does not perform those
 checks automatically.
-Parsed texture paths already include the source document's parent directory and
-lexical normalization; consumers do not prepend it again. `textures()` returns
+Parsed texture paths already include the enclosing `graphics/` directory and
+lexical normalization; consumers do not prepend the document directory. `textures()` returns
 owned deduplicated entry paths in sprite-then-tileset first-reference order.
 
 ## Coordinates and grid geometry
@@ -32,7 +32,10 @@ texture coordinates. Pivot formulas and named views are defined by the
 
 ## Resources and caches
 
-`Asset2D` retains image and geometry handles. Direct construction permits null
+`Asset2D` retains image, geometry and an optional selected material generation.
+Submission uses an explicit draw-style material first, then the asset selection;
+it rejects when neither supplies a usable material. Tile and animation handles
+retain the same selection. Direct construction permits null
 handles and does not prove matching layout, grid bounds or backend domains. Loader
 construction supplies validated definitions and uploaded resources; CPU submission
 validates its selected geometry/material/range. Read-only resource metadata can be

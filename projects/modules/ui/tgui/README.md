@@ -93,8 +93,9 @@ selection. See the [adapter routing guide](../../../../docs/development/ui-adapt
 `capabilities()` reports the input source's committed-text/focus support and
 unavailable OS clipboard, cursor and IME services. Clipboard calls reject; standard
 toolkit copy/cut/paste shortcuts are skipped before widgets can delete a selection.
-Cursor requests leave the platform cursor alone. Nearest font sampling rejects
-before FreeType mutates its smoothing flag or its atlas texture.
+Cursor requests leave the platform cursor alone. Texture and FreeType font
+smoothing can select either nearest or linear filtering; the selected value is
+copied into each recording rather than changing an uploaded shared image.
 
 Release application-held widgets, fonts and toolkit textures before session
 destruction. The input source must outlive it. After simulation has joined,
@@ -184,14 +185,20 @@ top-to-bottom RGBA pixels into a fresh immutable snapshot, including the transie
 FreeType atlas path. Old recordings retain their original snapshot. Base toolkit
 image loading also retains its pixels for transparent-pixel hit testing.
 
-The initial policy requires the application's provider to create smoothed,
-clamp-to-edge RGBA images through `create_image`. Cheryl OpenGL's default satisfies
-this policy, including its mipmap filtering. Nearest sampling and
-`setSmooth(false)` reject before changing an adapter texture. Supporting another
-policy requires a neutral provider contract; silently accepting an unsupported
-toolkit setting would change appearance.
-Completing that backend contract and TGUI texture/font smoothing integration is
-[near-term work](../../../../docs/planning/develop-review-and-development-plan.md#texture-sampling-and-tgui).
+`setSmooth` changes the toolkit's sampling selection without replacing its immutable
+pixel snapshot. Every recorded textured draw copies that selection, including
+FreeType atlas draws. Upload requests a retained nearest or linear sampler through
+`ResourceProvider::create_sampler`; both policies clamp to edge, disable mipmaps
+and disable anisotropy for toolkit atlas/pixel semantics. Engine image defaults
+remain anisotropic elsewhere. A provider without explicit sampler support rejects
+the upload rather than dropping the setting.
+
+The uploader weakly reuses live samplers and images independently. Two draws can
+share one uploaded pixel generation with different smoothing; old recordings and
+scenes retain their original policy. Changing smoothing does not mutate another
+scene or require copying the image. The
+[sampling contract](../../../../docs/rendering/pipelines-and-materials.md#immutable-sampling)
+owns backend filtering, native validation and retirement.
 
 `RenderTarget` receives a view, viewport and target extent in logical window units.
 Supply copied framebuffer/logical ratios through `set_pixel_scale` for toolkit

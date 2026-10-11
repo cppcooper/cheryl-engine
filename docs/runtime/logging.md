@@ -37,6 +37,17 @@ remains available, and explicit singleton initialization rejects a second config
 Backend/file callbacks suppress recursive ordinary writes and reject logger
 acquisition, initialization, and lifecycle reentry before entering locks.
 
+## Native output terminal
+
+The optional [Linux Debug terminal module](../../projects/modules/platform/debug-terminal-linux/README.md)
+captures process stdout/stderr, including console sinks and emergency writes,
+independently of logger profiles. Configured file sinks keep their own destinations.
+Actual Debug configuration controls automatic inclusion/display; explicit CMake
+inclusion can permit other configurations, which require a runtime enable argument.
+Engine does not depend on the module, and without its attachment output uses the
+existing inherited destinations. The owner guide defines stream/report separation,
+manual closure, fallback and abnormal-exit retention.
+
 ## Compile policy
 
 The cengine target publicly propagates cengine_logging_config. The test target

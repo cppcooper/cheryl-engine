@@ -10,6 +10,9 @@ Engine has no reverse dependency on an integration. Logging, memory, workers,
 events, assets and utilities remain within the one Engine library. Platform owners
 implement display/window/input contracts, graphics owners implement rendering and
 resources, UI owners consume neutral contracts, and audio owners implement playback.
+The optional Linux Debug terminal owns process output/viewer behavior outside the
+runtime adapter graph. Its Engine support attachment accepts a module callback;
+an absent implementation leaves application startup unchanged.
 
 Command-line bootstrap uses the separate `Cheryl::Startup` and
 `Cheryl::OpenGL::Startup` support targets. They add CLI11 and backend argument
@@ -65,6 +68,11 @@ The root defaults to Native GLFW, OpenGL, TGUI and the demo. RmlUi and miniaudio
 are optional and default to `OFF`. UI and audio selection is independent of
 platform/graphics selection. OpenGL requires Native GLFW; the demo also requires
 native input. Disable demo and every module option for Engine alone.
+On Linux GNU/Clang this includes `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF`.
+The root automatically links the selected terminal interface to its demo/shared
+test entry point; external applications select it explicitly. Its configuration
+policy and standalone probes are in the
+[owner guide](../../projects/modules/platform/debug-terminal-linux/README.md).
 
 Applications link public targets, for example:
 

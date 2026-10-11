@@ -48,6 +48,12 @@ command. Substitute another base revision when needed:
 
 ## Scope and tests
 
-The repository contains older code written under several conventions. Apply the current style to new code and to lines materially changed by a task; avoid drive-by formatting of unrelated files. Do not reformat vendored code under `extern/`, the embedded POSH header (`include/internals/posh.h`), or generated build output.
+The repository contains older code written under several conventions. Apply the current style to new code and to lines materially changed by a task; avoid drive-by formatting of unrelated files. Do not reformat vendored code under `extern/`, the embedded POSH header (`projects/engine/include/internals/posh.h`), or generated build output.
 
 Tests should follow the production subsystem they cover and use short, intuitive `snake_case` suite and test names. Let the suite identify the subsystem and name each case for its main scenario, usually in two to four words: `input_routing.stale_focus_lease`, `opengl_upload.atlas_upload_failure`. Keep detailed behavior in the test body instead of writing sentence-length names.
+
+Consume relevant `[[nodiscard]]` results in assertions; explicitly discard an
+irrelevant result with `static_cast<void>(...)`, including exception assertions.
+Normal behavior checks must not intentionally emit compiler warnings. Test expected
+compiler diagnostics with isolated captured probes and narrow compiler/construct
+suppression, retaining API attributes and target warning policy.

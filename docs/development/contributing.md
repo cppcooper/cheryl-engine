@@ -27,7 +27,8 @@ with their next action. Agent execution and commit rules live in
 
 ## Documentation and planning
 
-Update the authoritative API or subject guide when contracts change, including
+During an authorized documentation-maintenance phase, update the authoritative
+API or subject guide when contracts change, including
 ownership, valid threads, units, preconditions and failure behavior. Keep build
 instructions in the [build guide](building.md), runner selection in the
 [test guide](testing.md), and integration-specific details with their module.
@@ -35,6 +36,9 @@ instructions in the [build guide](building.md), runner selection in the
 Plans describe unresolved work, prerequisites, dependency boundaries and acceptance.
 Keep an active task's checklist in one owning plan and link it from the roadmap.
 Preserve useful decisions before removing completed plans; implementation history
-belongs in Git. Add outstanding user-run validation to
-[testing requests](../testing-requests.md) and remove accepted requests after
-reconciling the reported revision and coverage.
+belongs in Git. Maintain [testing requests](../testing-requests.md) only when that
+maintenance is authorized: carry outstanding requirements in the phase handoff
+until then, and remove accepted requests after reconciling revision and coverage.
+Documentation audit reports findings without editing; maintenance implements the
+selected corrections. Test design, implementation and execution remain separate
+work modes, and listing build/test commands does not authorize agent execution.

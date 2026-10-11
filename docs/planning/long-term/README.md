@@ -162,10 +162,10 @@ omit/replace/test benefit; a seam alone does not justify it.
 Add a built-in graphical developer console as the engine's own graphical interface.
 Its scope consists of that console, with the renderer supplying its rendering;
 other application UI remains consumer-owned. It supplies eventual in-app console
-output, including in Release, where the native Debug terminal does not exist.
+output independently of whether an application selects the optional native terminal.
 Establish scrolling/history, input routing and command requirements before
 implementation. Until then, Release uses its existing logging destinations. The
-near-term [Debug output console](../short-term/debug-console.md) uses a native terminal and can
+implemented [Linux Debug terminal](../../../projects/modules/platform/debug-terminal-linux/README.md) uses a native terminal and can
 provide diagnostics independently of game rendering; closing it leaves the
 application running.
 
@@ -183,11 +183,9 @@ their own scope and SDK/deployment requirements. Spatial audio, effects graphs,
 capture, device enumeration/hotplug and custom codecs also need separately selected
 consumer requirements.
 
-Selectable image filtering and TGUI sampling are now
-[near-term work](../develop-review-and-development-plan.md#texture-sampling-and-tgui).
-That design owns nearest/linear, mipmap/wrap, image/binding ownership and required
-atlas-edge behavior. Additional atlas padding or repacking remains separate unless
-needed for the selected sampling contract. Current grid UVs address cell edges
+Immutable image sampling and TGUI smoothing integration are implemented in the
+[sampling contract](../../rendering/pipelines-and-materials.md#immutable-sampling).
+Additional atlas padding or repacking remains a separately selected extension. Current grid UVs address cell edges
 without padding; the [demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples)
 retain the baseline observations.
 
@@ -198,7 +196,9 @@ or game refactor as a prerequisite for starting development.
 
 NUMA/NUCA integration is selected in the
 [near-term roadmap](../develop-review-and-development-plan.md#numa-and-nuca), with
-topology, CPU/memory placement and hardware-capability decisions still open.
+hardware/workload benefit, optional compilation, caller configuration and CPU/memory
+placement scope still open. Server-only benefit would justify indefinite NUMA
+deferral; that checkpoint remains unresolved.
 
 3D, networking, world/entity/physics, serialization,
 device-loss recovery and broader OS/device validation remain separate consumer-driven

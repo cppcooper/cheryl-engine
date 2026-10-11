@@ -8,6 +8,8 @@ application.
 
 The default assembly includes Native GLFW, OpenGL, TGUI and the windowed demo.
 RmlUi and miniaudio are independently selectable and default to `OFF`.
+Linux GNU/Clang also selects an optional output-terminal module; its implementation
+is linked automatically only in actual Debug configurations.
 
 ## Contents
 
@@ -73,6 +75,8 @@ the public aliases to inherit headers and dependencies.
 | `cengine` | `Cheryl::Engine` | Neutral engine contracts and implementation. |
 | `cengine_startup` | `Cheryl::Startup` | Optional command-line parsing, validated configuration and custom backend startup. |
 | `module_native_glfw` | `Cheryl::NativeGLFW` | Display, windows and optional input. |
+| `module_debug_terminal_linux` | `Cheryl::DebugTerminal::Linux` | Optional Linux process output capture/viewer; an interface selects the implementation by configuration. |
+| `cengine_debug_terminal_startup` | `Cheryl::DebugTerminal::Startup` | Small argument/startup attachment accepting a module implementation callback. |
 | `module_opengl` | `Cheryl::OpenGL` | Rendering, context, presentation and resources; requires Native GLFW. |
 | `module_opengl_startup` | `Cheryl::OpenGL::Startup` | GLFW/OpenGL command-line startup; includes common Startup and OpenGL requirements. |
 | `module_ui_tgui` | `Cheryl::UI::TGUI` | TGUI widgets and retained scene bridge. |
@@ -114,8 +118,10 @@ while `projects/tests/` owns cross-module checks.
 
 Each owner declares its own sources, public includes, dependencies and tests. The
 root CMake file selects owners; `cmake/` supplies shared metadata and composition
-helpers. `extern/` holds pinned dependencies and `assets/` holds manifests,
-shaders and small fixtures. See [module authoring](docs/development/modules.md)
+helpers. `extern/` holds pinned dependencies and the `assets/` submodule holds
+definitions, textures, shader recipes, UI documents and font inputs. Initialize it
+alongside the dependencies; optional package images still follow the
+[catalog](docs/assets/catalog.md). See [module authoring](docs/development/modules.md)
 for the steps required to add an owner.
 
 ## Documentation and development
@@ -136,6 +142,7 @@ for the steps required to add an owner.
 | Assets and text                        | [Asset loading](docs/assets/asset-loading.md), [manifest format](docs/assets/asset-manifests.md) and [Unicode text layout](docs/assets/text-layout.md) |
 | Rendering and resources                | [Pipelines and materials](docs/rendering/pipelines-and-materials.md), [CPU memory lifetime](docs/resources/resource-lifetime.md) and [resource residency](docs/resources/resource-residency.md) |
 | Logging and crash handling             | [Compile-time logging policy](docs/runtime/logging.md#compile-policy), [runtime logging](docs/runtime/logging.md#runtime-settings-and-ownership) and [crash bootstrap and exception traces](docs/development/consuming-engine.md#crash-and-exception-traces) |
+| Native output terminal                 | [Linux module, activation and viewer lifetime](projects/modules/platform/debug-terminal-linux/README.md) |
 | Demo                                   | [Controls](projects/apps/demo/README.md#controls), [command-line options](projects/apps/demo/README.md#command-line-options) and [asset packages](docs/assets/catalog.md) |
 | Automated tests                        | [Runners and CTest selection](docs/development/testing.md), [acceptance checks](docs/development/testing.md#acceptance-and-consumers) and [logging acceptance](docs/development/logging-acceptance.md) |
 | Consumers and header probes            | [Selection and targets](docs/development/testing.md#acceptance-and-consumers) and [independent consumer builds](docs/development/consuming-engine.md#independent-consumers-and-header-probes) |

@@ -7,76 +7,60 @@ Current architecture and API contracts live in the [subject guides](../README.md
 ## Nearest planned work
 
 This roadmap owns priority order; the catalogue and status inventory link here.
-Detailed requirements stay in the owning plan. These priorities do not authorize
-implementation or work-mode transitions.
+These priorities do not authorize implementation, builds or work-mode transitions.
+The selected order is terminal acceptance, then NUMA/NUCA, then render batching.
 
 | Order | Work | Next phase and checkpoint |
 | --- | --- | --- |
-| 1 | [Texture sampling backend and TGUI integration](#texture-sampling-and-tgui) | Investigate the existing backend/provider and recording paths, then settle sampling ownership and immutable scene behavior before changing APIs. |
-| 2 | [NUMA and NUCA integration](#numa-and-nuca) | Investigate native topology and hardware capabilities, then approve CPU, memory and cache-locality scope before implementation. |
-| 3 | [Shader manifest schema and indexed material loading](short-term/indexed-material-loading.md) | Resolve document identity/dispatch, recipe contents, backend construction and demo loading/reload at the existing design checkpoint. |
-| 4 | [Render batching](#render-batching) | Measure representative workloads and settle compatibility after the sampling contract; preserve authored order. |
-| 5 | [External Debug terminal](short-term/debug-console.md) | Select the first platform, viewer transport and process/output ownership. This work is independent of rendering. |
+| 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
+| 2 | [NUMA and NUCA integration](#numa-and-nuca) | Resolve hardware/workload value and scope, then settle an optional compile-time facility and a simple workload configuration interface before implementation. |
+| 3 | [Render batching](#render-batching) | Discuss the design with the project owner, using representative measurements and settled sampling/retention contracts to select compatibility and ordering rules. |
 
-The first two entries are the next integration workstreams. The remaining entries
-are scheduled follow-ons with unresolved design checkpoints. Shader/material
-manifests are one coordinated design unit until that checkpoint determines whether
-separate document formats are needed. Batching depends on final sampling semantics;
-NUMA/NUCA and the Debug terminal have no shader-manifest dependency.
-
-### Texture sampling and TGUI
-
-The OpenGL texture implementation has filtering controls, but the neutral provider
-creates RGBA images with fixed smoothed/mipmap policy. TGUI rejects nearest texture
-and font sampling. Current behavior is described in the
-[TGUI guide](../../projects/modules/ui/tgui/README.md#recording-and-publication) and
-[material contract](../rendering/pipelines-and-materials.md).
-
-At the design checkpoint, settle nearest/linear minification and magnification,
-mipmap and wrap behavior, image versus binding ownership, supported defaults and
-unsupported-backend behavior. Define how toolkit smoothing changes are copied into
-recordings so prior recordings and uploaded scenes retain their original appearance.
-Include font atlases, shared images and atlas-edge behavior; shared cached textures
-must not be mutated during frame preparation.
-
-Implement the neutral contract and OpenGL backend as one coherent unit, then TGUI
-texture/font recording and scene-upload integration as the next. Preserve platform
-upload ownership, immutable resource generations and failure-safe scene adoption.
-Acceptance must cover sampling changes, retained scenes, shared-image isolation,
-font atlases and native nearest/linear appearance without silently dropping settings.
+Sampling/TGUI integration and indexed shader/material loading are source-complete.
+Their contracts live in [rendering](../rendering/pipelines-and-materials.md),
+[TGUI](../../projects/modules/ui/tgui/README.md#recording-and-publication) and
+[graphics manifests](../assets/asset-manifests.md). Only main text/image materials
+migrated; both UI adapters retain manual builders. Executable/native acceptance of
+these changes remains in the testing queue. The completed implementation plans are
+retired rather than retained as development journals.
 
 ### NUMA and NUCA
 
-The [worker contract](../runtime/worker-execution.md) currently supports explicit
-Linux CPU affinity. Required cache-domain/NUMA requests reject and preferred requests
-fall back; automatic discovery and memory placement are absent.
+The [worker contract](../runtime/worker-execution.md) supports explicit Linux CPU
+affinity. Required cache-domain/NUMA requests reject and preferred requests fall
+back; automatic topology discovery and memory placement are absent.
 
-Investigate topology discovery dependencies and the available native controls first.
-At the design checkpoint, distinguish CPU-to-node/cache mapping, worker-group CPU
-placement and NUMA memory allocation/first-touch or migration policy. Define NUCA
-support in terms of discoverable cache locality and hardware-supported controls;
-CPU affinity alone does not guarantee cache residency or memory locality. Settle
-eligible-CPU restrictions, requested/effective policies, required/preferred failures,
-capability reporting, ownership and unsupported-platform behavior.
+First resolve benefit on the intended consumer hardware/workloads. If the useful
+scope is limited to a future server build, defer NUMA indefinitely rather than
+requiring a server architecture now; no client/server split is scheduled. This is
+an unresolved scope checkpoint, not an already adopted blanket deferral. Evaluate
+cache-locality/NUCA needs separately. Any selected facility must be compilable out
+through CMake without changing ordinary worker submission or completion semantics.
 
-Keep topology discovery, worker-group placement and any selected memory-locality
-integration as coherent implementation units. Preserve the neutral scheduler and
-unconstrained worker behavior. Acceptance needs deterministic policy/error coverage
-and native observations on suitable hardware. A single-node or unavailable-hardware
-run cannot establish multi-node placement or NUCA behavior; identify those prerequisites
-before scheduling execution.
+Design workload-oriented defaults and configuration that a caller can use without
+knowing CPU/node/cache IDs. Keep explicit low-level policy available where needed,
+show requested/effective placement and fallback clearly, and preserve futures,
+closure and drainage. Settle eligible CPUs, required/preferred failures,
+capability reporting and unsupported-platform behavior before dependent code grows.
+
+Distinguish CPU-to-node/cache mapping and worker-group placement from memory
+allocation, first-touch or migration. Affinity alone cannot guarantee cache residency
+or memory locality. Define NUCA in terms of discoverable locality and supported
+controls. Discovery, CPU placement and any selected memory integration are separate
+coherent implementation units. Single-node runs do not establish multi-node behavior;
+identify suitable hardware and deterministic policy/error coverage before acceptance.
 
 ### Render batching
 
-Collect representative update, draw/state-switch, publication and backlog metrics.
-Settle UI clipping, glyph-page and sampling semantics before caching compatibility
-keys. Include retained resource generations, parameters/image units and sampling,
-geometry ranges/topology, clip and pipeline state. Batch compatible contiguous
-packets first, preserving authored order and in-flight resource lifetime.
-Comparative measurements and visual/order/generation checks must justify the change;
-if another bottleneck dominates, report that evidence at the design checkpoint.
-[Reorder-safe sorting](mid-term/README.md#reorder-safe-render-sorting) remains a
-separate later task.
+This task requires a design discussion before implementation. Collect representative
+update, draw/state-switch, publication and backlog metrics to identify useful work.
+Include UI clipping, glyph pages, sampling, retained resource generations,
+parameters/image units, geometry ranges/topology and pipeline state in compatibility.
+Start with compatible contiguous packets, preserving authored order and in-flight
+resource lifetime; comparative measurements and visual/order/generation checks must
+justify the change. Report a different dominant bottleneck at the checkpoint rather
+than assuming batching is the next implementation. [Reorder-safe sorting](mid-term/README.md#reorder-safe-render-sorting)
+remains a separate later task.
 
 ## Work-mode progression
 

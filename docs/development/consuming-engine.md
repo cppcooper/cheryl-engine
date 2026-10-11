@@ -10,6 +10,7 @@ standalone composition and tests.
 set(CHERYL_BUILD_TESTS OFF)
 set(CHERYL_BUILD_DEMO OFF)
 set(CHERYL_BUILD_NATIVE_GLFW OFF)
+set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
 set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
 set(CHERYL_BUILD_UI_RMLUI OFF)
@@ -258,6 +259,19 @@ OpenGL consumer selects both integration owners. CMake 4 hosts may need
 module entry points and explicit null-platform selection are documented separately
 in the module guide. [Architecture validation](architecture-validation.md) describes
 independent graph, consumer and runner checks and their coverage limits.
+
+## Optional output terminal
+
+For Linux GNU/Clang consumers, explicitly link `Cheryl::DebugTerminal::Linux` (or
+the root's selected `Cheryl::DebugTerminal`) to choose the process entry attachment.
+Plain Engine and command-line Startup do not select it. `AUTO` includes actual
+Debug only; `ON` permits a non-Debug consumer to display it with `--debug-terminal`.
+See the [module guide](../../projects/modules/platform/debug-terminal-linux/README.md)
+for argument consumption, fallback and independent viewer lifetime.
+
+The small `Cheryl::DebugTerminal::Startup` support target accepts an implementation
+callback; with no callback it calls the application unchanged. Native capture,
+viewer launch and process-wide shutdown live entirely in the selected module.
 
 ## Standard headers in an existing build
 

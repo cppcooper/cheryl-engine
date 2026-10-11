@@ -53,6 +53,7 @@ A fresh Release configuration provides a neutral graph without sandbox mode:
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
     -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
@@ -73,7 +74,8 @@ focused logging cases, so they need no additional unit run.
 ### Engine asset and text regressions
 
 The Linux Release Engine-only selection covers neutral clip, tile selection/animation,
-manifest, UTF-8, legacy scalar fallback, owned font selection/layout and text-resource
+indexed graphics/shader manifests, immutable samplers, UTF-8, legacy scalar
+fallback, owned font selection/layout and text-resource
 regressions plus public first-include probes. It uses immutable synthetic resources,
 the bundled font and isolated discovery roots; no display, installed font, controller
 or audio device is needed. These CPU cases do not establish native text rendering,
@@ -95,6 +97,7 @@ caller's working directory:
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
     -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
@@ -105,11 +108,11 @@ caller's working directory:
   ./build/testing-engine/cheryl-consumer
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
-    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
+    -R '^tests-engine\.((audio_clip|tile_selection|tileset_selection|tile_animation|asset_manifest|asset_pivot|asset_grid|shader_assets|image_sampling|utf8|stbfont|font_selection|text_layout|text_resources)\.|asset_submission\.(selected_tile|tile_strip_ranges|text_layout_and_retention|utf8_text)$)'
 )
 ```
 
-Existing font/layout/resource regressions are accepted in the Linux Release
+The earlier font/layout/resource baseline is accepted in the Linux Release
 Engine-only selection; startup support and the independent consumer also compile.
 The existing `font_selection.families` fixture establishes basic discovery and
 ordering; it does not cover declared-weight ranking or heavy-only automatic
@@ -117,6 +120,10 @@ exclusion. Those fixture/case gaps remain in the
 [Unicode plan](../planning/short-term/unicode-text.md#progress). Startup and UI
 callback/placeholder regression gaps are in the
 [roadmap checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
+
+The graphics 2.0, indexed shader and sampling changes postdate that baseline.
+Their pending CPU/backend/native reruns are in the [testing queue](../testing-requests.md).
+This reusable procedure does not assert acceptance of unexecuted new cases.
 
 ### Typed events
 

@@ -10,8 +10,9 @@ successful replacement, or provider teardown. A lookup copies another strong
 handle under a shared lock. An unused cached asset remains resident; this work
 adds no weak cache, LRU, residency budget, or automatic unused-asset eviction.
 
-Provider teardown first marks the domain as releasing, then drops composite
-assets, fonts, programs, and images outside cache locks. A reentrant deleter can
+Provider teardown first marks the domain as releasing, then clears material,
+sprite/tile, font, indexed shader, program and image caches in that order. Final
+owners release outside cache locks. A reentrant deleter can
 inspect a cleared cache but cannot refill it during teardown. When release ends,
 a new provider can bind the global domain. Externally retained logical assets
 continue to exist independently; their native handles still belong to the old
@@ -22,7 +23,7 @@ renderer/context lifetime and cannot be used after that lifetime closes.
 `ResourceProvider::create_image` copies owned RGBA pixels into a new backend handle.
 Changed images or geometry use fresh immutable handles and replacement materials
 or frames. Published packets retain their selected geometry, material, program and
-image generations; replacing a cache entry releases only that cache's old owner.
+image/sampler generations; replacing a cache entry releases only that cache's old owner.
 There is no in-place texture update or dynamic atlas-growth API. UI recordings use
 owned CPU images and expanded triangles; the
 [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
@@ -43,13 +44,15 @@ Strong owners and their native retirement paths are:
 | Resource | Strong logical ownership | Native retirement |
 | --- | --- | --- |
 | Image/texture | Texture cache, Asset2D, STBFont, application handles | Texture owns one move-only OpenGLHandle. |
+| Sampler | Explicit image bindings, material FX policy and retained packets; provider/uploader reuse tables are weak | OpenGLSampler owns one move-only OpenGLHandle and uses deferred sampler deletion. |
 | Geometry | Asset2D, STBFont, application handles | VAO owns vertex-array registration plus one 2D VBO; the legacy mesh also owns its index buffer. |
 | Linked program | Shader cache, GLSLPipeline, application handles | GLSLProgram owns one tracked program handle; successful replacement preserves old owners. |
 | Compiled stage | Local shader-link guard and temporary program attachment | Mark for deletion after compilation; detach every stage after linking so retained programs do not retain stages. Failure destroys the guarded program and its remaining attachments. |
 | Font atlas/glyphs | Font cache and STBFont's image/geometry composition | Texture/VAO final-owner retirement; layout metadata has independent CPU ownership. |
 | Sprite/tileset/graphic | Strong cache or application handle; const Asset2D image/geometry handles | Composite release drops constituent owners; no second native deleter. |
-| Published frame | Each packet retains geometry/material and copied image parameter handles; pass parameters retain their own images | Platform recycling releases the frame's owners; other owners can keep resources resident. |
-| Pipeline/material | GLSLPipeline retains its program and definition/default image values; Material retains its pipeline and copied image defaults; resolved parameter sets retain image handles. Frames retain immutable material generations. | Native handles retire through the same program/image owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
+| Published frame | Each packet retains geometry/material and copied image/sampler parameter handles; pass parameters retain their own bindings | Platform recycling releases the frame's owners; other owners can keep resources resident. |
+| Pipeline/material | GLSLPipeline retains its program, contract defaults and backend missing-value bindings; Material retains its pipeline, default parameter bindings and FX sampler overrides. Resolved values retain image/sampler handles; frames retain immutable material generations. | Native handles retire through the same program/image/sampler owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
+| Indexed shader catalogue | ShaderAssetMgr retains CPU recipes paired with executable programs/materials; material entries retain their selected program generation | Catalogue replacement/clear drops its owners; native resources retire through their underlying handles. |
 
 `OpenGLHandle` registration is move-only. Destruction from any thread marks its
 registration pending; it never calls GL. Duplicate pending retirement is ignored,

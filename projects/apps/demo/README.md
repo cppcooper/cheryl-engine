@@ -1,7 +1,9 @@
 # Cheryl Engine demo
 
 The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW`, `Cheryl::OpenGL` and
-`Cheryl::OpenGL::Startup` for shared command-line bootstrap.
+`Cheryl::OpenGL::Startup` for shared command-line bootstrap. Root composition
+also selects the optional [Linux Debug terminal](../../modules/platform/debug-terminal-linux/README.md)
+where available; actual Debug defaults to a separate output viewer.
 Selecting `Cheryl::UI::TGUI` adds a panel on the right; selecting
 `Cheryl::UI::RmlUi` adds an independent native-document view on the left. Each has
 live counters, a camera-reset button, an editable field, a scrolling list,
@@ -133,6 +135,18 @@ explain the records and their limits. The option changes the OS-platform logger'
 file/logger gates to TRACE while retaining its console preset. It rejects builds
 that stripped TRACE before starting the runtime.
 
+## Native output terminal
+
+On Linux GNU/Clang, root `AUTO` composition attaches the output terminal in actual
+Debug builds. `--no-debug-terminal` disables display when included. Release and
+other configurations omit it unless `CHERYL_DEBUG_TERMINAL=ON`; those included
+non-Debug builds display only with `--debug-terminal`. Without an implementation
+these options are not consumed by terminal support. Help/headless launches create
+no viewer. Closing the viewer keeps the demo running; normal exit closes it and
+abnormal process loss retains available output. See the
+[module contract](../../modules/platform/debug-terminal-linux/README.md) and
+[pending acceptance](../../../docs/testing-requests.md).
+
 ## Tile and sprite samples
 
 Four labeled groups appear near the bottom of the world view at three times the
@@ -142,13 +156,13 @@ samples with F7 when inspecting a long Unicode HUD.
 
 | Group | Samples | Optional image relative to the asset root |
 | --- | --- | --- |
-| Static tiles | A 3×2 Puny World patch using cells 0, 1, 2, 27, 28 and 29. | `graphics/tilesets/punyworld-overworld-tileset.png` |
-| Animated tiles | Puny World targets 309, 314 and 324, left to right, using their declared 400, 200 and 100 ms frame durations. | `graphics/tilesets/punyworld-overworld-tileset.png` |
-| Static sprites | A short sword and a frozen cyan Swordsman, both using cell 0. | `graphics/MiniWorldSprites/Objects/SwordShort.png`; Swordsman image below |
-| Animated sprites | Top row: south, north and east walk. Bottom row: west walk, south idle and south attack. Walking and idle loop; attack holds its last frame until Space replays it. | `graphics/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png` |
+| Static tiles | A 3×2 Puny World patch using cells 0, 1, 2, 27, 28 and 29. | `graphics/textures/tilesets/punyworld-overworld-tileset.png` |
+| Animated tiles | Puny World targets 309, 314 and 324, left to right, using their declared 400, 200 and 100 ms frame durations. | `graphics/textures/tilesets/punyworld-overworld-tileset.png` |
+| Static sprites | A short sword and a frozen cyan Swordsman, both using cell 0. | `graphics/textures/MiniWorldSprites/Objects/SwordShort.png`; Swordsman image below |
+| Animated sprites | Top row: south, north and east walk. Bottom row: west walk, south idle and south attack. Walking and idle loop; attack holds its last frame until Space replays it. | `graphics/textures/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png` |
 
-The samples use `graphics/tilesets/punyworld-overworld.json` and
-`graphics/MiniWorldSprites/atlas.json` for grids, pivots and authored clips.
+The samples use `graphics/definitions/tilesets/punyworld-overworld.json` and
+`graphics/definitions/MiniWorldSprites/atlas.json` for grids, pivots and authored clips.
 Only these selected entries/images are loaded by default; unrelated
 absent sheets do not suppress available samples. The HUD reports each selected
 asset as ready or skipped. A failed MiniWorld manifest skips both its sprite samples,
@@ -161,11 +175,16 @@ independent sprite cursors advance using `TickContext::delta_seconds`; fractiona
 tile time accumulates before conversion to milliseconds. Pausing excludes that time
 without creating a resume jump. Frame preparation resolves current cells into
 resource-retaining packets and performs no image loading or playback mutation.
-Separate triangle-strip image and triangle text materials share `shader2d` sources
-and straight-alpha blending. Images inherit the OpenGL provider's linear
+Indexed `main:images` (triangle strip) and `main:text` (triangles) materials share
+one `shader2d` program and straight-alpha blending. Default startup and F5 select
+`graphics/shaders/graphics-manifests.json`; other shader files are not automatically
+indexed. The [loading contract](../../../docs/assets/asset-loading.md#resources-and-application-bootstrap)
+describes incremental catalogue replacement and pair adoption. Images inherit the OpenGL provider's linear
 magnification and generated mipmaps, so enlarged pixel edges can look softened.
-Selectable filtering and atlas isolation are
-[follow-on work](../../../docs/planning/long-term/README.md#other-engine-extensions).
+Engine defaults also request maximum-supported anisotropy. Explicit immutable
+[sampler bindings](../../../docs/rendering/pipelines-and-materials.md#immutable-sampling)
+can select other filtering without mutating an image; these demo samples expose no
+filtering control. Atlas padding or repacking remains separate future work.
 F5 adopts both replacement handles together; a failed
 replacement keeps the current pair. Teardown releases the application-held samples
 and labels on the platform owner after simulation joins.
@@ -177,7 +196,9 @@ the two sample materials. Closing during an interactive desktop resize was also
 not established because the close attempt was blocked until resizing ended; this
 does not identify which component delayed input. Shader-failure and simultaneous
 close/resize coverage remain separate from normal rendering and orderly shutdown.
-Reusable procedures are below in [native QA](#repeating-native-qa).
+These observations precede the indexed 2.0 material migration; affected reruns are
+now in the [testing queue](../../../docs/testing-requests.md). Reusable procedures
+are below in [native QA](#repeating-native-qa).
 
 ## Builtin Unicode text
 
@@ -210,7 +231,7 @@ example exercises replacement rather than Chinese-language coverage.
 ## UI ownership and uploads
 
 `Game` passes the neutral `DemoUiStatus` model to its selected views and receives
-camera-reset actions. Each view builds its OpenGL materials on platform during
+camera-reset actions. Each view keeps manual OpenGL material construction on platform during
 initialization, then creates its session/native objects lazily on the first
 simulation update. It supplies copied logical/framebuffer dimensions and simulation
 time. Complete CPU recordings go through the platform dispatcher/uploader, with
@@ -219,7 +240,10 @@ scene and appears in the HUD. Frame preparation appends TGUI, then RmlUi, after
 the world/HUD pass; it never traverses live widgets. Teardown follows simulation
 join and releases application-held widgets/elements/listeners before their toolkit
 globals. Both adapters remain independent; their app views share only the status
-model and generic shader assets, with distinct alpha pipelines. Each view delivers
+model and generic shader assets, with distinct alpha pipelines. The
+[manual recipe example](../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
+explains definition/binding wiring. A future indexed UI migration targets TGUI
+first; RmlUi retains a separate manual example if it later migrates too. Each view delivers
 the complete input batch once through its session's control callback, retaining
 the entry keyboard epoch while visibility controls select pointer delivery per record.
 
@@ -388,7 +412,8 @@ font-weight limits still need the [dedicated fixtures](../../../docs/planning/sh
 
 ### Tile and sprite validation
 
-The procedure stages tracked assets and the three images from the sample table in
+The procedure stages tracked definitions/shaders/fonts from the assets submodule
+and the three images from the sample table in
 temporary roots, preserving checkout files. It covers sequential variable timing
 and concurrent 16 ms fixed timing, missing metadata/images, selected/partial
 artwork and a corrupt weapon image. Artwork cases are blocked when their source
@@ -408,10 +433,13 @@ import tempfile
 checkout = Path.cwd()
 demo = checkout / 'build/testing-native-linux/demo'
 assets = checkout / 'assets'
-images = [Path('graphics/tilesets/punyworld-overworld-tileset.png'),
-          Path('graphics/MiniWorldSprites/Objects/SwordShort.png'),
-          Path('graphics/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
-tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', 'assets/']).decode().split('\0')
+images = [Path('graphics/textures/tilesets/punyworld-overworld-tileset.png'),
+          Path('graphics/textures/MiniWorldSprites/Objects/SwordShort.png'),
+          Path('graphics/textures/MiniWorldSprites/Characters/Soldiers/Melee/CyanMelee/SwordsmanCyan.png')]
+tracked = subprocess.check_output(['git', '-C', str(assets), 'ls-files', '-z']).decode().split('\0')
+runtime_extensions = {'.json', '.vert', '.frag', '.ttf', '.otf', '.ttc', '.otc', '.rml', '.rcss'}
+tracked = [Path(file) for file in tracked
+           if file and Path(file).suffix.lower() in runtime_extensions]
 cases = [('missing-images', []), ('missing-manifests', [])]
 missing = [str(path) for path in images if not (assets / path).is_file()]
 if missing:
@@ -423,18 +451,17 @@ else:
 with tempfile.TemporaryDirectory(prefix='cheryl-demo-assets-') as workspace:
     for name, selected in cases:
         root = Path(workspace) / name
-        for file in filter(None, tracked):
-            relative = Path(file).relative_to('assets')
+        for relative in tracked:
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(checkout / file, destination)
+            shutil.copy2(assets / relative, destination)
         for image in selected:
             destination = root / image
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(assets / image, destination)
         if name == 'missing-manifests':
-            for manifest in ['graphics/MiniWorldSprites/atlas.json',
-                             'graphics/tilesets/punyworld-overworld.json']:
+            for manifest in ['graphics/definitions/MiniWorldSprites/atlas.json',
+                             'graphics/definitions/tilesets/punyworld-overworld.json']:
                 (root / manifest).unlink()
         if name == 'broken-weapon':
             (root / images[1]).write_bytes(b'invalid PNG fixture')
@@ -453,7 +480,8 @@ PY
   source size, intact colors/transparent backgrounds and no joined adjacent-cell
   geometry. The current provider uses linear magnification; softened pixel edges
   reflect that policy. Report neighboring-cell color leakage separately for the
-  [sampling workstream](../../../docs/planning/develop-review-and-development-plan.md#texture-sampling-and-tgui).
+  [sampling contract](../../../docs/rendering/pipelines-and-materials.md#immutable-sampling);
+  explicit sampling does not create padded atlas cells.
   Static grass, sword and frozen Swordsman do not animate.
 - Watch the three animated tiles use their respective 400/200/100 ms frame durations
   and loop. The sprite top row walks south/north/east; the bottom row walks west,

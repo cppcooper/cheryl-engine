@@ -1,19 +1,22 @@
 # Asset package catalog
 
-This catalog lists the artwork packages referenced by the checked-in JSON manifests
-in `assets/graphics/`, with download sources and image placement. The manifests are
-tracked; their package images are supplied separately. Download the named files from the
-author pages below, then extract or copy the images into the expected locations.
+The `assets/` Git submodule contains graphics definitions, shaders, UI fixtures and
+recovered college assets. Initialize its pinned revision with the checkout's
+[submodule setup](../../README.md#setup). This catalog lists optional external
+artwork packages and their image placement; those package PNGs are supplied
+separately. Definitions live under `graphics/definitions/`, images under
+`graphics/textures/`. The [manifest guide](asset-manifests.md) owns index selection
+and graphics-relative paths.
 
 ## Located packages
 
 | Package and author page | Download | Tracked manifests |
 | --- | --- | --- |
-| [Mini World Sprites — Shade, octoshrimpy](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `MiniWorldSprites.zip` | [atlas.json](../../assets/graphics/MiniWorldSprites/atlas.json), [buildings-colored.json](../../assets/graphics/MiniWorldSprites/buildings-colored.json), [buildings-orc.json](../../assets/graphics/MiniWorldSprites/Buildings/Enemy/Orc/buildings-orc.json) |
-| [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/graphics/char-customizer/character-customizer.json) |
-| [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/graphics/tilesets/punyworld-overworld.json) |
-| [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/graphics/tilesets/magecity.json) |
-| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | `dungeon_tiles.png` | [dungeon_tiles.json](../../assets/graphics/tilesets/dungeon_tiles.json) |
+| [Mini World Sprites — Shade, octoshrimpy](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `MiniWorldSprites.zip` | [atlas.json](../../assets/graphics/definitions/MiniWorldSprites/atlas.json), [buildings-colored.json](../../assets/graphics/definitions/MiniWorldSprites/buildings-colored.json), [buildings-orc.json](../../assets/graphics/definitions/MiniWorldSprites/Buildings/Enemy/Orc/buildings-orc.json) |
+| [MiniWorld Character Customizer — Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites) | `Character-Customizer.zip` | [character-customizer.json](../../assets/graphics/definitions/char-customizer/character-customizer.json) |
+| [Puny World — Shade](https://merchant-shade.itch.io/16x16-puny-world) | `punyworld-overworld-tileset.png` or `PUNY_WORLD_v1.zip` | [punyworld-overworld.json](../../assets/graphics/definitions/tilesets/punyworld-overworld.json) |
+| [Mage City Arcanos — Hyptosis](https://opengameart.org/content/mage-city-arcanos) | `magecity.png` | [magecity.json](../../assets/graphics/definitions/tilesets/magecity.json) |
+| [Dungeon tileset — Buch, with contributions from surt](https://opengameart.org/content/dungeon-tileset) | `dungeon_tiles.png` | [dungeon_tiles.json](../../assets/graphics/definitions/tilesets/dungeon_tiles.json) |
 
 The three MiniWorld sprite/building manifests share one archive. Character Customizer
 is a separate archive on the same page. That page also offers `MiniworldGuide.docx`
@@ -21,13 +24,13 @@ for the artwork's animation documentation.
 
 ## Image placement
 
-All paths below are relative to the checkout's `assets/graphics/` directory. Preserve
+All image paths below are relative to the checkout's `assets/graphics/textures/` directory. Preserve
 case, spaces and accented filenames when extracting; avoid adding an extra archive-wrapper
-directory between `assets/graphics/` and the paths in the manifests.
+directory between `assets/graphics/textures/` and the package paths listed below.
 
 ### MiniWorld sprites
 
-Place the archive's `MiniWorldSprites/` tree under `assets/graphics/`, preserving its
+Place the archive's `MiniWorldSprites/` tree under `assets/graphics/textures/`, preserving its
 internal directories. `atlas.json` references individual sheets in `Animals/`, `Buildings/`,
 `Characters/`, `Ground/`, `Miscellaneous/`, `Nature/`, `Objects/` and `User Interface/`.
 The other two manifests reference these combined sheets from the same package:
@@ -85,3 +88,15 @@ downloads and provenance records are not included in Git.
 Unpacking these packages and writing a manifest for each belongs to the
 [long-term asset task](../planning/long-term/README.md#additional-dungeon-asset-manifests).
 The extension and remix links on their author pages are separate candidate packages.
+
+## Recovered college assets
+
+The submodule also contains [Invaders, HyperMaze, Rover and Tileset definitions](asset-manifests.md#recovered-college-definitions),
+locally populated images under `graphics/textures/misc/` and
+`graphics/textures/tilesets/`, and tracked [bitmap-font inputs](../resources/legacy-ffont.md)
+under `graphics/fonts/`. The legacy sprite/tile PNGs follow the same ignored local
+image policy as external packages; checking out definitions does not supply them.
+These are recovered project assets, not newly sourced or licensed packages. Their
+original numeric definitions remain beside the JSON conversions. The submodule's
+[provenance notice](../../assets/README.md) still applies where credits or sources
+are unknown. Conversion alone does not establish native rendering acceptance.

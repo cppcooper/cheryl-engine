@@ -18,8 +18,8 @@ namespace CE::Assets {
     using FFontData = std::tuple<std::array<float, num_chars_ffont>, std::shared_ptr<Geometry2D>, std::shared_ptr<Image>>;
 
     /** Deprecated legacy bitmap font with native-short widths and a separate
-     * whitefont.png atlas. The original atlas is unavailable; use STBFont to
-     * bake metrics and an atlas from a system or bundled font file.
+     * whitefont.png atlas. Recovered inputs remain usable by this binary loader;
+     * prefer STBFont to bake metrics and an atlas from a supplied font file.
      */
     struct [[deprecated("Use STBFont with a system or bundled font file.")]] FFont final : Font,
                                                                                             Singleton_CTS<FFont> {

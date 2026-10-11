@@ -80,6 +80,7 @@ describes those records and their limits.
 | [`CE::RenderAPIs::iPresentationSurface`](../../../engine/include/cheryl/core/rendering/presentation-surface.h) | [`GlfwOpenGLContext`](include/cheryl/backends/opengl/glfw-context.h), through [`iOpenGLContext`](include/cheryl/backends/opengl/context.h) | Present a completed frame using a borrowed GLFW window and its OpenGL context. |
 | [`CE::Assets::ResourceProvider`](../../../engine/include/cheryl/assets/resources/resource-provider.h) | [`OpenGLResourceProvider`](include/cheryl/backends/opengl/resource-provider.h) | Create images, font atlases, geometry and linked programs in the renderer's domain. |
 | [`CE::Assets::Image`](../../../engine/include/cheryl/assets/resources/image.h) | [`Texture`](include/cheryl/backends/opengl/texture.h) | Immutable uploaded pixel dimensions and texture binding. |
+| [`CE::Assets::Sampler`](../../../engine/include/cheryl/assets/resources/sampler.h) | [`OpenGLSampler`](include/cheryl/backends/opengl/sampler.h) | Immutable per-binding filtering/wrap/anisotropy and deferred native retirement. |
 | [`CE::Assets::Geometry2D`](../../../engine/include/cheryl/assets/resources/geometry2d.h) | [`VAO`](include/cheryl/backends/opengl/vertex-array-object.h) | Uploaded geometry metadata, binding and draw ranges. |
 | [`CE::Assets::Shader`](../../../engine/include/cheryl/assets/resources/shader.h) | [`GLSLProgram`](include/cheryl/backends/opengl/glslprogram.h) | Executable shader programs and pass/draw parameter binding. |
 | [`CE::Assets::Pipeline`](../../../engine/include/cheryl/assets/resources/pipeline.h) | [`GLSLPipeline`](include/cheryl/backends/opengl/pipeline.h) | Realize the engine's pipeline definition and semantic parameter bindings. |
@@ -88,6 +89,14 @@ describes those records and their limits.
 selection and entry-point lookup. That extension belongs to this graphics owner.
 Its public headers retain the existing `backends/opengl/` spelling; implementation
 and private helpers live together under `src/backends/opengl/`.
+
+The provider also implements optional `ShaderAssetBuilder` construction for
+[indexed recipes](../../../../docs/assets/asset-manifests.md#shadermaterial-definitions),
+linking prepared owned source bytes and interpreting only `bindings.opengl`.
+Manual pipeline/material builders remain available. Engine image defaults request
+maximum-supported anisotropy; explicit samplers preserve independent immutable
+sampling for shared textures. See the
+[rendering contract](../../../../docs/rendering/pipelines-and-materials.md#immutable-sampling).
 
 ## Checks
 

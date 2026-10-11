@@ -219,7 +219,7 @@ Use the supported [upstream CI configurations](https://github.com/mikke89/RmlUi/
 
 ## Cheryl context and the provisional workaround
 
-The local report followed Cheryl commit `9fa1b75f8ad10602bd8861bbbb1058f4569aec3b`, which replaced an initial value with the native placeholder. The [demo field](../../assets/ui/demo.rml#L48) and [placeholder style](../../assets/ui/demo.rml#L25) show the resulting markup; the style only changes its color.
+The local report followed Cheryl commit `9fa1b75f8ad10602bd8861bbbb1058f4569aec3b`, which replaced an initial value with the native placeholder. The [demo field](../../assets/graphics/ui/demo.rml#L48) and [placeholder style](../../assets/graphics/ui/demo.rml#L25) show the resulting markup; the style only changes its color.
 
 The [demo setup and update](../../projects/apps/demo/src/rmlui-demo.cpp) load a font, obtain a native `ElementFormControlInput`, show the document, and call `update_time` before handling input. The [session](../../projects/modules/ui/rmlui/src/session.cpp) updates the native context and forwards mouse movement and button events through the normal RmlUi API. Each complete tick batch is now handled once, with application controls before individual records. These observations make a stock-widget failure plausible; they do not rule out every integration fault without a reproduction and stack.
 

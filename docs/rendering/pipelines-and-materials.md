@@ -13,13 +13,16 @@ compiled stages remain transient. `Material` copies its recipe on construction.
 Definition/default access is read-only. Building another pipeline/material
 instance preserves the old logical generation while its readers retain it.
 MaterialMgr publishes complete immutable recipes, including their pipeline
-generation, through explicit application-supplied builders. RenderFrame packets
+generation, through explicit application-supplied builders. Indexed definitions
+use the separate `ShaderAssetMgr` catalogue and optional provider-owned
+`ShaderAssetBuilder`. Both paths preserve immutable generations. RenderFrame packets
 retain those generations for low-level renderer playback.
 
 ## Parameters and ownership
 
 Parameter values own scalars, vectors, matrices, and their map keys. A sampler
-owns a shared `const Image` handle plus a binding-unit request. Each pass and draw
+owns a shared `const Image` handle, a binding-unit request and an optional retained
+`const Sampler` override. Each pass and draw
 supplies copied ParameterSet values; material defaults belong to the immutable
 material snapshot. Resolution returns a new owned set, never a view into the
 caller's inputs.
@@ -55,11 +58,33 @@ current context's unit limit, sampled once during upload rather than queried on
 every draw. Image upload uses unit zero as temporary setup and
 stores no unit. Asset submission selects the requested key/unit explicitly.
 Two material recipes can retain the same image with different unit requests
-without mutating each other's recipe or the cached image. Sampling/filter/wrap
-policy remains the image's existing upload policy; per-material sampler objects
-are not supplied by this foundation. The
-[near-term sampling/TGUI workstream](../planning/develop-review-and-development-plan.md#texture-sampling-and-tgui)
-owns the pending image-versus-binding sampling contract.
+without mutating each other's recipe or the cached image.
+
+### Immutable sampling
+
+`SamplerOptions` selects nearest/linear minification and magnification, no/nearest/
+linear mipmap filtering, clamp/repeat/mirrored-repeat wrapping on each axis and
+disabled/maximum-supported anisotropy. Engine defaults are linear filtering,
+linear mipmaps, clamp-to-edge and maximum-supported anisotropy. OpenGL image
+creation applies those defaults and generates a complete mip chain. Font-atlas
+creation keeps its separate no-mipmap policy. Unsupported anisotropy resolves to
+an effective value of one; the uploaded sampler exposes the effective value.
+
+`ResourceProvider::create_sampler(options)` is an optional capability. Its default
+rejects rather than silently dropping overrides. OpenGL creates immutable sampler
+objects on the loading owner and weakly reuses live matching options. An
+`ImageBinding` without an override uses the image's default policy. With an override,
+the packet retains it independently of image pixels. An FX material's named sampling
+policy fills a missing binding sampler; an explicit submitted sampler wins.
+Ordinary indexed materials need no sampling declaration or image knowledge.
+
+OpenGL validates sampler/image domains, unit bounds and mip completeness before
+binding. A draw using default image sampling unbinds a preceding sampler object;
+state from another draw cannot leak into it. Samplers retire through the native
+resource lifetime just like textures. Shared images and previously published
+frames remain unchanged when another binding selects different sampling.
+For exact nearest sampling, disable anisotropy explicitly. Grid UVs still address cell edges;
+sampling support does not supply atlas padding or prevent every adjacent-cell bleed.
 
 ## Frame and recipe integration
 
@@ -121,19 +146,28 @@ own their typed definitions/backend mappings and validate all dependent resource
 A throw or null candidate retains the previous complete recipe; retained readers
 keep the old material/pipeline/image generation. Provider teardown clears recipes
 before other resource caches, with the same loading-owner/domain exclusion.
-The demo bootstrap builds a typed font recipe and reloads it on the platform owner.
+The demo loads indexed `main:text` and `main:images` recipes and reloads them on
+the platform owner.
 Frame preparation resolves asset/text submissions into owned packets; playback only
 consumes geometry, material, ranges, and copied parameters. A failed demo reload keeps
 the previous generation and reports its error in the overlay.
 
-Recipes use typed C++ definitions and explicit bootstrap/build APIs. There is no
-pipeline/material definition-file parser in manifest 1.0; a future parser would
-produce these types separately from generic manifest discovery.
+Graphics manifests 2.0 also produce owned CPU recipes through explicit index
+selection. Shader/material documents contain no default images; sprites and
+tilesets can select a material independently of their texture. The
+[manifest guide](../assets/asset-manifests.md#shadermaterial-definitions) owns the
+document format; the [loader guide](../assets/asset-loading.md#publication-and-retry)
+owns catalogue ordering, preserve-existing loads and incremental replacement.
 
 Use [architecture validation](../development/architecture-validation.md) for native
 state/reload, retained-packet and fixture checks.
 
 ## Native bootstrap and binding
+
+The OpenGL provider implements `ShaderAssetBuilder` without exposing GL types to
+common loading. It validates opaque `bindings.opengl` payloads and links the owned
+prepared source bytes. It constructs materials from the catalogue's retained program
+recipe/executable pair. These optional APIs coexist with the manual builders below.
 
 `OpenGLResourceProvider::build_pipeline(definition, bindings)` links the definition's
 sources and constructs GLSLPipeline after validating reflection. GLSLPipelineBindings
@@ -179,6 +213,41 @@ uniform reset after another draw, inactive optional uniforms without sprite role
 reflection/type/storage failures, invalid attributes/unlinked programs, and sampler
 domain/unit failures before any bind. These sources use synthetic IDs and restore
 all replaced entry points; they do not replace real-context acceptance.
+
+## Manual material construction
+
+TGUI and RmlUi deliberately keep manual recipes. The demo's
+[TGUI builder](../../projects/apps/demo/src/tgui-demo.cpp) and
+[RmlUi builder](../../projects/apps/demo/src/rmlui-demo.cpp) show adding typed
+definitions and wiring their bindings explicitly. On the OpenGL loading owner,
+with its context current, a textured TGUI material can be built as follows
+(`native` is an `OpenGLResourceProvider&`, `root` is the asset root):
+
+```cpp
+using namespace CE::Assets;
+PipelineDefinition definition;
+definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
+definition.topology = PrimitiveTopology::Triangles;
+definition.state = {BlendMode::StraightAlpha, DepthMode::Disabled, false, CullMode::None};
+definition.program_sources = {root / "graphics/shaders/tgui.vert",
+                              root / "graphics/shaders/tgui-textured.frag"};
+definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
+                         {"image", ParameterType::Sampler2D}};
+GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
+auto material = native.build_material({native.build_pipeline(std::move(definition), bindings), {}});
+```
+
+Supply that handle as `Materials::textured` to the UI uploader; its per-draw image
+binding supplies the texture and sampling without putting an image in the recipe.
+The solid material omits the image parameter and uses `tgui-solid.frag`. RmlUi uses
+the same construction pattern with premultiplied-alpha blending. Required parameter
+keys belong in the typed definition, and their uniform mappings belong in bindings;
+adding one requires both and a matching shader uniform.
+
+A future indexed UI migration targets TGUI first. If RmlUi also migrates, retain
+this manual example and an independently usable manual consumer. Other shader
+files are not indexed merely because they exist; their purposes and native behavior
+remain unverified.
 
 ## CPU submission
 

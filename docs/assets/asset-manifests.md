@@ -1,6 +1,31 @@
-# Asset manifest 1.0
+# Graphics manifests 2.0
 
-The authoritative format is `assets/schemas/asset-manifest-1.0.schema.json`. Manifest files live directly in `assets/`; schema files are not asset manifests and must not be discovered as loadable assets.
+Graphics indexes and definition documents use version `2.0`. The authoritative
+schemas are [graphics indexes](../../assets/schemas/graphics-manifest-index-2.0.schema.json),
+[sprites/tilesets](../../assets/schemas/graphics/sprite-tileset-manifest-2.0.schema.json)
+and [shaders/materials](../../assets/schemas/graphics/shader-manifest-2.0.schema.json).
+Earlier versions are rejected rather than implicitly upgraded. `$schema` is an
+editor hint; the runtime neither fetches it nor discovers schemas as assets.
+
+## Index selection and paths
+
+Only the exact basename `graphics-manifests.json` selects definition documents.
+An index contains `version: "2.0"` and a `manifests` array of JSON paths. Full loading
+uses every discovered index; focused loading supplies explicit registered indexes.
+Repeated document references are parsed once, and indexes cannot reference indexes.
+Unlisted JSON remains registered for manual use and is not opened automatically.
+
+Indexes and definitions live beneath a directory named `graphics`. Index references,
+texture paths and shader source paths all resolve from that enclosing directory,
+regardless of document nesting. Paths use forward slashes and exact, case-sensitive
+registered names; absolute paths, parent traversal, backslashes and colons reject.
+`$schema` links still follow normal editor-relative resolution.
+
+The checked-in layout separates `graphics/definitions/`, `graphics/textures/`,
+`graphics/shaders/` and `graphics/ui/`. The main
+[graphics index](../../assets/graphics/graphics-manifests.json) selects sprite/tileset
+definitions; the [shader index](../../assets/graphics/shaders/graphics-manifests.json)
+selects only the main demo recipes.
 
 The [asset package catalog](catalog.md) lists download sources and image placement
 for the packages referenced by the checked-in manifests.
@@ -10,7 +35,13 @@ for the packages referenced by the checked-in manifests.
 - A globally unique asset ID is `namespace:name`, combining the namespace and sprite or tileset map key. The loader checks duplicate IDs across manifests before upload.
 - An entry's `texture` overrides the manifest-level `texture`. One of those fields is required by the schema.
 - An entry's `pivot` overrides `defaults.sprite.pivot` or `defaults.tileset.pivot` according to the containing map.
-- Texture paths are forward-slash, case-sensitive paths relative to the manifest file.
+- Sprite/tileset documents declare `asset_class: "sprite-tileset"`. An entry's
+  optional `shader` overrides the document-level selection. It is a qualified
+  material ID, independent of the texture path; omitted selections use a supplied
+  draw-style material. An explicit draw-style material overrides an asset selection.
+- Shader and material are one asset class, declared as `asset_class: "shader"`.
+  Their program and material names share qualified identity validation and cannot
+  collide with another selected program/material identity.
 
 ## Grid and cell addressing
 
@@ -99,3 +130,54 @@ selection and simulation-time substitution follow the
 [tile selection contract](asset-values-and-playback.md#tile-selection). Reusable checks are in the
 [validation guide](../development/architecture-validation.md#engine-asset-and-text-regressions);
 source rule acceptance does not supply missing artwork metadata.
+
+## Shader/material definitions
+
+A shader document contains named `programs` and `materials`. Each program owns
+`stages.vertex` and `stages.fragment` source references. Each material names its
+qualified `program`, `vertex_layout`, `topology`, typed `parameters` and backend
+`bindings`; optional fields are `state`, literal `defaults` and FX `sampling`.
+See [main.json](../../assets/graphics/shaders/main.json) for the complete text/image
+example: both materials share one program but use different draw topologies.
+
+Definitions contain no texture paths or default images. Textures contain no shader
+references. Sprites and tilesets associate those independent resources; submission
+supplies images and units to named sampler parameters. Ordinary materials omit
+sampling and inherit the engine's policy. An FX `sampling` map can override filtering,
+mipmaps, wrapping and anisotropy for a sampler key without selecting an image.
+An explicit sampler in the submitted image binding takes precedence.
+
+Parameters support `float`, `int`, `uint`, `bool`, `vec2`, `vec3`, `vec4`, `mat4` and
+`sampler2d`; matrix literals contain sixteen column-major numbers. Projection,
+view, model, alpha and scale are engine semantics. Defaults are CPU literals and
+cannot hold image/backend handles. Arrays, uniform blocks and additional stages
+are unsupported. Unknown fields, wrong types/kinds, duplicate identities and
+unresolved references reject before publication. Backend payloads remain opaque
+to common loading; OpenGL interprets `bindings.opengl.attributes` and
+`bindings.opengl.parameters` and validates active shader reflection.
+
+The [loading guide](asset-loading.md) defines preparation, publication and explicit
+replacement. [Pipelines and materials](../rendering/pipelines-and-materials.md)
+defines manual builders, sampling and retained generation behavior. Only the main
+text/image materials are indexed; the other shaders remain manual, unverified
+examples. TGUI and RmlUi still construct their materials explicitly.
+
+## Recovered college definitions
+
+[Invaders](../../assets/graphics/definitions/misc/invaders.json),
+[HyperMaze](../../assets/graphics/definitions/misc/hypermaze.json),
+[Rover](../../assets/graphics/definitions/misc/rover.json) and
+[Tileset](../../assets/graphics/definitions/tilesets/tileset.json) preserve the legacy
+source ordering and pixel rectangles. Invaders has eleven sections containing
+nineteen frames; Rover uses four separate entries because its frame sizes differ.
+HyperMaze has five columns and six rows; Tileset has four cells. All are indexed.
+
+The legacy formats provide no animation timing, so the conversions define no
+timed clips. Invaders' `0.42` is draw scale, not a frame duration; apply it at
+submission. Its alpha is one and placement offsets are zero. Centered sprite and
+bottom-left tile pivots follow the recovered v2 loader conventions; Rover and
+Tileset descriptions identify where their sources supplied no explicit anchor.
+Duplicate `donotuse.dat` and the annotated, conflicting Rover draft do not create
+additional runtime assets. Original data files remain available for comparison.
+The font width conversion is separate [FFont compatibility metadata](../resources/legacy-ffont.md),
+not a loadable graphics manifest.

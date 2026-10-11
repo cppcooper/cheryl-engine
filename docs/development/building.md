@@ -15,6 +15,9 @@ declared only when RmlUi is selected.
 | Option | Default | Effect |
 | --- | --- | --- |
 | `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Selects GLFW display/windows and optional input. |
+| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Linux GNU/Clang: `ON`; elsewhere: `OFF` | Selects the optional Linux output-terminal module for root applications/test runners. |
+| `CHERYL_DEBUG_TERMINAL` | `AUTO` | Links the selected terminal only in Debug; `ON` includes other configurations, where display requires `--debug-terminal`; `OFF` omits it. |
+| `CHERYL_DEBUG_TERMINAL_EMULATOR` | `auto` | Linux module launcher selection: `auto`, `konsole` or `xterm`. |
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
 | `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects RmlUi independently; can coexist with TGUI. |
@@ -74,6 +77,7 @@ its text dependencies:
   cd "$(git rev-parse --show-toplevel)"
   cmake -S . -B build/engine-only -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF
@@ -109,6 +113,14 @@ links them or names their build targets; the demo links OpenGL startup. Plain
 Engine/OpenGL targets do not acquire CLI11 usage requirements. See
 [application startup](consuming-engine.md#command-line-startup).
 
+The terminal module adds a separate optional startup target and linker entry hook;
+plain Engine links neither. Debug display requires a desktop and supported emulator;
+missing prerequisites fall back to inherited output. Headless Debug and test
+discovery create no viewer. See the
+[Linux terminal guide](../../projects/modules/platform/debug-terminal-linux/README.md)
+for output/report separation and lifetime policy. `ON` is a build inclusion option,
+not a request to display a Release window automatically.
+
 ## System dependencies
 
 Install development headers and link libraries as well as runtime libraries.
@@ -124,6 +136,7 @@ Package names vary by operating system.
 | Python and Jinja2 | GLAD generation | Jinja2 must be available in CMake's selected interpreter. |
 | FreeType | TGUI / RmlUi | Each toolkit uses its own font service. |
 | libudev / libusb | Linux hidapi | Requirements depend on selected HID backends. |
+| Konsole or xterm | Linux output terminal at runtime | A desktop is needed for display; neither is an Engine build dependency. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve trace source/symbol resolution. |
 
 Engine source dependencies include GLM, CTTI, spdlog, Backward, STB and JSON.

@@ -78,6 +78,16 @@ keys remain `KI_UNKNOWN`. Committed characters come from `TextEvent`, not from
 this mapping. `modifiers` preserves Control, Shift, Alt, Super, Caps Lock and Num
 Lock flags in RmlUi's modifier representation.
 
+## Material construction
+
+The demo retains manual pipeline/material construction on the graphics owner;
+the adapter receives compatible premultiplied materials from its caller. The
+[manual example](../../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
+shows typed definitions and explicit uniform wiring. Indexed loading migrates
+only main text/image materials. A later UI migration targets TGUI first; migrating
+RmlUi also requires preserving a separately usable manual example. Core support
+and deferred effects remain independently scoped.
+
 ## Focused checks
 
 | Target | Output / kind | Selection / coverage |

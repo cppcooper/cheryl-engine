@@ -5,6 +5,13 @@ File indexing, font discovery and asset loading have separate policies. The
 it does not use the persistent `FileMgr` index. Applications choose fonts explicitly
 before loading them through their resource provider.
 
+Automatic graphics preparation registers JSON, WAV and shader paths in a fresh
+private `FileRegistry`; only exact `graphics-manifests.json` indexes select documents.
+Unlisted JSON remains unopened. `Loader::register_files()` can publish unmanaged
+paths without parsing/decoding; it does not initialize fonts or load FFont. The
+[graphics path contract](asset-manifests.md#index-selection-and-paths) uses the
+enclosing `graphics/` directory for index, texture and source references.
+
 ## FileMgr
 
 [FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h)

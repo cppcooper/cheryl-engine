@@ -72,6 +72,19 @@ consumer targets in their owner guides. Configure each `tests/consumer/` entry
 point independently to establish standalone composition; a root consumer alone
 cannot prove that boundary. See [independent consumers](consuming-engine.md#independent-consumers-and-header-probes).
 
+## Optional terminal probes
+
+The Linux module adds `tests-acceptance-engine-terminal` and
+`tests-acceptance-engine-terminal-reports` when its tests are selected. They remain
+outside CTest/GoogleTest aggregates and are driven by
+[terminal.py](../../projects/modules/platform/debug-terminal-linux/tests/acceptance/terminal.py),
+which selects deliberate failure/termination cases. Its configuration matrix and
+native observations are in the [testing queue](../testing-requests.md#automated-linux-terminal-configuration-matrix).
+The [module guide](../../projects/modules/platform/debug-terminal-linux/README.md#test-reporting)
+explains saved runner reporting, discovery/headless suppression and supplied-GoogleTest
+fallback. Debug consumers can disable display with `--no-debug-terminal` when
+attached; omitted configurations pass that option through unchanged.
+
 ## Native and fixture coverage
 
 - Native OpenGL cases require `CHERYL_NATIVE_GL_TESTS=1` and a usable display.

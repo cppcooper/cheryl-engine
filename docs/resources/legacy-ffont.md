@@ -1,7 +1,9 @@
 # FFont deprecation and font-file migration
 
-FFont is deprecated in favor of STBFont with a caller-supplied font file. The
-project owner confirms the original atlas is unavailable and chooses deprecation.
+FFont is deprecated in favor of STBFont with a caller-supplied font file. Its
+deprecation originally followed the loss of its metrics/atlas inputs; those inputs
+have since been recovered in the assets submodule. Recovery does not reverse the
+deprecation or change the loader contract.
 The class, singleton setup, typed bank selection, and loading behavior remain
 available to legacy consumers that supply compatible metrics and artwork. This
 decision does not remove the Font resource/layout interface.
@@ -32,8 +34,8 @@ layout option. Deprecation does not silently reinterpret existing layout calls.
 | Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont uses a four-space advance. |
 | State and lifetime | Layout does not store caller text/format. Each resolved glyph packet retains geometry, material and any supplied atlas binding. |
 
-Synthetic recording/native fixtures check those metrics and atlas rows; they do
-not recover the original artwork.
+Synthetic recording/native fixtures check those metrics and atlas rows. They do
+not establish native appearance of the recovered artwork.
 
 ## Recovered evidence and preserved legacy behavior
 
@@ -43,19 +45,30 @@ directly to float advances. Both the original `0329cff` loader from September 25
 as binary input and must supply the entire array before geometry is allocated or
 uploaded. Incomplete or failed reads are rejected; trailing bytes remain ignored.
 
-The externally recovered
-[fontMetrics.dat](https://bitbucket.org/cppcooper/cheryl-upgrade/src/5c28678cb0bc425bad51ff39d04e53cc104bb50f/cheryl-v3/fontMetrics.dat)
-is 512 bytes. Interpreting it as 256 little-endian signed 16-bit values gives a
-range of 0–113. That is evidence about this fixture, not a universal width limit
-or a portable format guarantee. Its SHA-256 is
+The recovered `graphics/fonts/font.dat`, `fontblack.fdat`, `fontwhite.fdat` and
+`whitefont.fdat` are identical 512-byte tables. Interpreting them as 256 little-endian
+signed 16-bit values gives a range of 0–113. That is evidence about these files,
+not a universal width limit or a portable format guarantee. Their SHA-256 is
 `8757d19f205ee0e9464e497997a136b1e568863a17daf6b2fa429c394f1d3568`.
-The file is retained externally; it is not added as a runtime dependency.
+It also matches the earlier externally recovered
+[v3 fontMetrics.dat](https://bitbucket.org/cppcooper/cheryl-upgrade/src/5c28678cb0bc425bad51ff39d04e53cc104bb50f/cheryl-v3/fontMetrics.dat).
 
 Printable ASCII selects entries 0–94; the alternate bank selects 128–222. Geometry
 uses a fixed 16-by-16 glyph grid, and loading requires a cached `whitefont.png`
-image. The recovered widths cannot provide its missing artwork. Existing tests
-supply synthetic widths and atlases; they establish behavior for those fixtures,
-not recovery of the original font.
+image. The recovered [font inputs](../../assets/graphics/fonts/) now include that
+2048×2048 atlas and related variants. `FontMgr` does not load FFont automatically:
+the caller must upload/cache the required image and initialize FFont explicitly.
+Full asset preparation includes standalone PNGs; a focused shader-only selection
+does not load this atlas.
+
+[font-widths.json](../../assets/graphics/fonts/font-widths.json) preserves all 256
+widths, source encoding/hash, atlas grid, bank offsets and normalization without
+loss. It is compatibility metadata outside the graphics index, not a supported
+font manifest. FFont still reads the original binary input and selects cached
+`whitefont.png`, regardless of which width-table filename was passed. The recorded
+same-basename texture pairs describe the recovered legacy files, not an automatic
+current-loader selection. Existing fixtures remain synthetic; recovered-data
+appearance and initialization have no newly recorded runtime acceptance.
 
 Semantic width limits, explicit byte order, exact-size/trailing-data policy, and
 atlas validation remain unverified legacy limitations. Reconstructing them or
