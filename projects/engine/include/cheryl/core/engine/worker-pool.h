@@ -31,6 +31,7 @@ namespace CE::Engine {
     }
 
     enum class WorkerPolicyStrength { Preferred, Required };
+    enum class WorkerLocalityPolicy { Automatic, Reuse, Spread };
 
     struct WorkerCpuPolicy {
         // Explicit logical CPU IDs, not indices into the available CPU list.
@@ -40,6 +41,9 @@ namespace CE::Engine {
         bool prefer_same_worker = true;
         std::optional<unsigned int> shared_cache_domain;
         std::optional<unsigned int> numa_node;
+        // Unspecified uses Automatic with a provider, or ordinary affinity without
+        // one. Explicit locality requirements need reported topology and binding.
+        std::optional<WorkerLocalityPolicy> locality;
     };
 
     struct WorkerCapabilities {
@@ -66,12 +70,20 @@ namespace CE::Engine {
         WorkerCpuPolicy cpu;
     };
 
+    // Common structural validation for direct C++ options and configuration loaders.
+    // Does not discover topology, create threads, or apply native policy.
+    void validate_worker_group_options(const WorkerGroupOptions& options);
+
     struct WorkerGroupPolicy {
         WorkerGroupOptions requested;
         std::vector<unsigned int> effective_cpus;
         bool affinity_supported = false;
         std::string limitations;
         bool preferred_fallback = false;
+        std::optional<WorkerLocalityPolicy> effective_locality;
+        std::optional<unsigned int> effective_cache_domain;
+        std::size_t effective_max_concurrency = 0;
+        bool core_topology = false;
     };
 
     struct WorkerGroupStatus {
@@ -86,6 +98,9 @@ namespace CE::Engine {
         std::uint64_t peak_pending = 0;
         std::uint64_t queue_nanoseconds = 0;
         bool accepting = false;
+        // Last verified singleton mask at job entry; empty after an unbound or
+        // multi-CPU job. This is observation, not a completion or residency promise.
+        std::optional<unsigned int> last_cpu;
     };
 
     /** A workload handle sharing physical capacity with other groups in its pool.

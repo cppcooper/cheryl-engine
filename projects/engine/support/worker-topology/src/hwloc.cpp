@@ -53,9 +53,9 @@ namespace CE::Engine {
             if (hwloc_topology_init(&raw) < 0)
                 fail("topology initialization");
             NativeTopology topology(raw, hwloc_topology_destroy);
-            // The CPUID discovery component temporarily changes affinity. Use OS
-            // discovery so construction cannot change process/thread binding.
-            if (hwloc_topology_set_components(raw, HWLOC_TOPOLOGY_COMPONENTS_FLAG_BLACKLIST, "x86") < 0 ||
+            // OS discovery retains reported topology while disabling discovery
+            // components that would temporarily change process/thread binding.
+            if (hwloc_topology_set_flags(raw, HWLOC_TOPOLOGY_FLAG_DONT_CHANGE_BINDING) < 0 ||
                 hwloc_topology_set_cache_types_filter(raw, HWLOC_TYPE_FILTER_KEEP_ALL) < 0 ||
                 hwloc_topology_set_icache_types_filter(raw, HWLOC_TYPE_FILTER_KEEP_ALL) < 0 ||
                 hwloc_topology_set_io_types_filter(raw, HWLOC_TYPE_FILTER_KEEP_NONE) < 0)

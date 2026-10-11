@@ -3,6 +3,7 @@
 #include <internals/compile-time-logging.hpp>
 #include "worker-affinity.h"
 #include "worker-topology-internal.h"
+#include "worker-placement.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -15,6 +16,7 @@ namespace CE::Engine::WorkerDetail {
     struct GroupState {
         WorkerGroupOptions options;
         WorkerGroupPolicy policy;
+        WorkerGroupPlacement placement;
         long double credit = 0;
         std::optional<std::size_t> last_worker;
         std::deque<Job> pending;
@@ -33,6 +35,7 @@ namespace CE::Engine::WorkerDetail {
         WorkerNativeAdapter native;
         std::shared_ptr<WorkerTopologyProvider> topology_provider;
         WorkerTopology topology;
+        WorkerPlacement placement;
         bool accepting = true;
         const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
         mutable std::atomic<bool> reported_startup{false};
@@ -67,10 +70,12 @@ namespace CE::Engine::WorkerDetail {
 
     void run_worker(const std::shared_ptr<PoolState>& pool, const std::size_t worker_index, std::vector<unsigned int> current_mask) {
         bool mask_known = !pool->topology_provider;
+        std::vector<unsigned int> target_mask;
         current_pool = pool.get();
         while (true) {
             std::shared_ptr<GroupState> selected;
             Job job;
+            std::optional<std::size_t> target;
             {
                 std::unique_lock lock(pool->mutex);
                 pool->wake.wait(lock, [&] { return has_eligible(*pool) || (!pool->accepting && !has_pending(*pool)); });
@@ -95,6 +100,9 @@ namespace CE::Engine::WorkerDetail {
                 }
                 selected->credit -= total_weight;
                 selected->last_worker = worker_index;
+                if (selected->policy.effective_locality)
+                    target = reserve_cpu(pool->placement, selected->placement, selected->policy,
+                                         mask_known && current_mask.size() == 1 ? std::optional{current_mask.front()} : std::nullopt);
                 job = std::move(selected->pending.front());
                 selected->pending.pop_front();
                 --selected->status.pending;
@@ -105,7 +113,9 @@ namespace CE::Engine::WorkerDetail {
             std::exception_ptr policy_error;
             if (pool->capabilities.cpu_affinity) {
                 try {
-                    const auto& desired = selected->policy.effective_cpus;
+                    if (target)
+                        target_mask.assign(1, pool->placement.cpus[*target].cpu);
+                    const auto& desired = target ? target_mask : selected->policy.effective_cpus;
                     if (!mask_known || current_mask != desired) {
                         apply_affinity(pool->native, desired);
                         current_mask = desired;
@@ -132,6 +142,17 @@ namespace CE::Engine::WorkerDetail {
                     ++selected->status.policy_failures;
                 }
             }
+            {
+                std::lock_guard lock(pool->mutex);
+                selected->status.last_cpu = pool->capabilities.cpu_affinity && mask_known && !policy_error && current_mask.size() == 1 ?
+                                            std::optional{current_mask.front()} : std::nullopt;
+                selected->placement.last_target = selected->status.last_cpu ?
+                                                  find_cpu(pool->placement, *selected->status.last_cpu) : std::nullopt;
+                if (target && (policy_error || selected->placement.last_target != target)) {
+                    release_cpu(pool->placement, *target);
+                    target.reset();
+                }
+            }
             if (policy_error)
                 job.fail(policy_error); // Never run a job under an unverified mask.
             else
@@ -143,6 +164,8 @@ namespace CE::Engine::WorkerDetail {
                 std::lock_guard lock(pool->mutex);
                 --selected->status.running;
                 ++selected->status.completed;
+                if (target)
+                    release_cpu(pool->placement, *target);
             }
             pool->wake.notify_all();
         }
@@ -269,6 +292,7 @@ namespace CE::Engine {
                                      std::max<std::size_t>(1, state_->capabilities.available_cpus.size());
         const auto worker_count = options.worker_count == 0 ? automatic_count : options.worker_count;
         state_->capacity = worker_count;
+        state_->placement = WorkerDetail::make_placement(state_->topology);
         try {
             workers_.reserve(worker_count);
             for (std::size_t i = 0; i < worker_count; ++i)
@@ -320,45 +344,14 @@ namespace CE::Engine {
     }
 
     WorkerGroup WorkerPool::make_group(const WorkerGroupOptions options) {
-        if (options.weight == 0 || options.weight > 1024 || options.priority > 7)
-            throw Exceptions::invalid_args(CE_HERE, "Worker weight must be 1..1024 and priority 0..7");
-        if (options.cpu.strength != WorkerPolicyStrength::Preferred && options.cpu.strength != WorkerPolicyStrength::Required)
-            throw Exceptions::invalid_args(CE_HERE, "Unknown worker CPU policy strength");
-        const auto& capabilities = state_->capabilities;
-        const bool hard = options.cpu.strength == WorkerPolicyStrength::Required;
-        if (hard && (options.cpu.shared_cache_domain || options.cpu.numa_node))
-            throw Exceptions::failed_operation(CE_HERE, "Cache-domain and NUMA requirements need an unavailable topology adapter");
-        if (hard && !options.cpu.cpus.empty() && !capabilities.cpu_affinity)
-            throw Exceptions::failed_operation(CE_HERE, "Required CPU affinity is unsupported");
+        auto policy = WorkerDetail::resolve_policy(options, state_->capabilities, state_->topology, state_->placement,
+                                                  state_->topology_provider != nullptr, state_->capacity);
         auto group = std::make_shared<WorkerDetail::GroupState>();
         group->status.domain = Diagnostics::next_domain_id();
         group->status.pool = state_->domain;
         group->options = options;
-        group->policy.requested = options;
-        group->policy.affinity_supported = capabilities.cpu_affinity;
-        group->policy.limitations = capabilities.limitations;
-        group->policy.effective_cpus = capabilities.available_cpus;
-        group->policy.preferred_fallback = !hard && ((!options.cpu.cpus.empty() && !capabilities.cpu_affinity) ||
-                                                   options.cpu.shared_cache_domain || options.cpu.numa_node);
-        if (!options.cpu.cpus.empty() && capabilities.cpu_affinity) {
-            auto requested = options.cpu.cpus;
-            std::sort(requested.begin(), requested.end());
-            if (std::adjacent_find(requested.begin(), requested.end()) != requested.end())
-                throw Exceptions::invalid_args(CE_HERE, "Worker CPU eligibility contains duplicates");
-            std::vector<unsigned int> allowed;
-            std::set_intersection(
-                requested.begin(), requested.end(), capabilities.available_cpus.begin(), capabilities.available_cpus.end(),
-                std::back_inserter(allowed)
-            );
-            if (hard && allowed != requested)
-                throw Exceptions::invalid_args(CE_HERE, "Required worker CPUs are not in the pool's eligible CPU set");
-            if (!allowed.empty())
-                group->policy.effective_cpus = std::move(allowed);
-            if (group->policy.effective_cpus != requested) {
-                group->policy.limitations += "; preferred CPU set fell back to available eligibility";
-                group->policy.preferred_fallback = true;
-            }
-        }
+        group->policy = std::move(policy);
+        group->placement = WorkerDetail::make_group_placement(group->policy, state_->placement);
         group->status.accepting = true;
         {
             std::lock_guard lock(state_->mutex);
