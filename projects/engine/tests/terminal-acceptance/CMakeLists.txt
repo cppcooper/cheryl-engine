@@ -1,0 +1,20 @@
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    return()
+endif()
+
+# These probes contain deliberate failure/termination cases selected by terminal.py.
+set(terminal_probe_targets tests-acceptance-engine-terminal tests-acceptance-engine-terminal-reports)
+foreach(target IN LISTS terminal_probe_targets)
+    if(CHERYL_BUILD_ACCEPTANCE_TESTS)
+        add_executable(${target})
+    else()
+        add_executable(${target} EXCLUDE_FROM_ALL)
+    endif()
+    set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+endforeach()
+target_sources(tests-acceptance-engine-terminal PRIVATE src/main.cpp)
+target_link_libraries(tests-acceptance-engine-terminal PRIVATE Cheryl::Engine)
+target_compile_definitions(tests-acceptance-engine-terminal PRIVATE
+    "CHERYL_TERMINAL_PROBE_DEBUG=$<IF:$<CONFIG:Debug>,1,0>")
+target_sources(tests-acceptance-engine-terminal-reports PRIVATE src/reports.cpp)
+target_link_libraries(tests-acceptance-engine-terminal-reports PRIVATE ${TARGET_LIB_TEST_MAIN})
