@@ -15,6 +15,7 @@ namespace CE::Assets {
     struct ResourceProvider;
     struct TextRasterOptions {
         std::uint32_t maximum_page_extent = 1024; // 4..4096; pages crop to their used padded bounds.
+        bool positioned_runs = false; // Additional geometry for explicit whole-text transform submission.
     };
     struct PreparedTextPage {
         PixelSize size;
@@ -25,6 +26,9 @@ namespace CE::Assets {
         std::size_t page{}, index{}; // Six-vertex quad within this generation's page.
         float x{}, y{};
     };
+    struct TextDrawRun {
+        std::size_t page{}, first_vertex{}, vertex_count{}; // Range in positioned geometry; page selects its atlas.
+    };
     struct TextPageResources {
         std::shared_ptr<Geometry2D> geometry;
         std::shared_ptr<Image> atlas;
@@ -33,12 +37,16 @@ namespace CE::Assets {
 
     /** Owned CPU layout, grayscale pages and geometry. Only distinct visible glyphs
      * used by this message are admitted; spaces/empty outlines keep their advances
-     * without quads. No provider is retained or invoked during preparation.
+     * without quads. Optional positioned geometry repeats quads in authored order
+     * for run submission. No provider is retained or invoked during preparation.
      */
     class PreparedText {
         Text::ShapedText layout_;
         std::vector<PreparedTextPage> pages_;
         std::vector<TextGlyphDraw> draws_;
+        std::vector<Vertex2D> positioned_vertices_;
+        std::vector<TextDrawRun> runs_;
+        bool positioned_runs_ = false;
 
         explicit PreparedText(Text::ShapedText layout);
         friend PreparedText prepare_text(Text::ShapedText, TextRasterOptions);
@@ -48,6 +56,9 @@ namespace CE::Assets {
         [[nodiscard]] const Text::ShapedText& layout() const noexcept { return layout_; }
         [[nodiscard]] std::span<const PreparedTextPage> pages() const noexcept { return pages_; }
         [[nodiscard]] std::span<const TextGlyphDraw> draws() const noexcept { return draws_; }
+        [[nodiscard]] bool has_positioned_runs() const noexcept { return positioned_runs_; }
+        [[nodiscard]] std::span<const Vertex2D> positioned_vertices() const noexcept { return positioned_vertices_; }
+        [[nodiscard]] std::span<const TextDrawRun> runs() const noexcept { return runs_; }
     };
 
     /** One complete immutable geometry/atlas generation paired with its placements.
@@ -58,14 +69,27 @@ namespace CE::Assets {
         Text::ShapedText layout_;
         std::vector<TextPageResources> pages_;
         std::vector<TextGlyphDraw> draws_;
+        std::shared_ptr<Geometry2D> positioned_geometry_;
+        std::vector<TextDrawRun> runs_;
+        bool positioned_runs_ = false;
 
-        RenderedText(Text::ShapedText layout, std::vector<TextPageResources> pages, std::vector<TextGlyphDraw> draws);
+        RenderedText(
+            Text::ShapedText layout,
+            std::vector<TextPageResources> pages,
+            std::vector<TextGlyphDraw> draws,
+            std::shared_ptr<Geometry2D> positioned_geometry,
+            std::vector<TextDrawRun> runs,
+            bool positioned_runs
+        );
         friend RenderedText upload_text(PreparedText, ResourceProvider&);
 
     public:
         [[nodiscard]] const Text::ShapedText& layout() const noexcept { return layout_; }
         [[nodiscard]] std::span<const TextPageResources> pages() const noexcept { return pages_; }
         [[nodiscard]] std::span<const TextGlyphDraw> draws() const noexcept { return draws_; }
+        [[nodiscard]] bool has_positioned_runs() const noexcept { return positioned_runs_; }
+        [[nodiscard]] const std::shared_ptr<Geometry2D>& positioned_geometry() const noexcept { return positioned_geometry_; }
+        [[nodiscard]] std::span<const TextDrawRun> runs() const noexcept { return runs_; }
     };
 
     [[nodiscard]] PreparedText prepare_text(Text::ShapedText layout, TextRasterOptions options = {});

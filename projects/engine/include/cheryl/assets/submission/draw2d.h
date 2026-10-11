@@ -53,4 +53,10 @@ namespace CE::Assets {
     // context.image. No layout, font discovery, rasterization or upload occurs here.
     [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D>
     resolve_text(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
+    // Explicitly requires positioned_runs preparation and a shader applying the
+    // common scale/model transform to positioned vertices, without per-glyph or
+    // draw-identity semantics. Emits contiguous page runs in authored glyph order;
+    // the caller's model applies to the whole text. Other shaders use resolve_text.
+    [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D>
+    resolve_text_runs(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
 }

@@ -119,4 +119,22 @@ namespace CE::Assets {
         }
         return result;
     }
+
+    std::vector<RenderAPIs::DrawPacket2D>
+    resolve_text_runs(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context) {
+        if (!text.has_positioned_runs())
+            throw Exceptions::invalid_args(CE_HERE, "Text run submission requires positioned geometry preparation");
+        if (!context.image || context.image->key.empty() || style.parameters.contains(context.image->key))
+            throw Exceptions::invalid_args(CE_HERE, "Unicode text submission needs a page image parameter");
+        std::vector<RenderAPIs::DrawPacket2D> result;
+        result.reserve(text.runs().size());
+        for (const auto& run : text.runs()) {
+            const auto selected = image_style(style, text.pages()[run.page].atlas, context);
+            result.push_back(RenderAPIs::resolve_draw_packet(
+                text.positioned_geometry(), run.first_vertex, run.vertex_count, selected, context.pass, context.parameters,
+                context.constraints
+            ));
+        }
+        return result;
+    }
 }

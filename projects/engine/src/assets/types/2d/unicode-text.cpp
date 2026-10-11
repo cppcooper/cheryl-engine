@@ -75,9 +75,17 @@ namespace CE::Assets {
     RenderedText::RenderedText(
         Text::ShapedText layout,
         std::vector<TextPageResources> pages,
-        std::vector<TextGlyphDraw> draws
+        std::vector<TextGlyphDraw> draws,
+        std::shared_ptr<Geometry2D> positioned_geometry,
+        std::vector<TextDrawRun> runs,
+        const bool positioned_runs
     )
-    : layout_(std::move(layout)), pages_(std::move(pages)), draws_(std::move(draws)) {}
+    : layout_(std::move(layout)),
+      pages_(std::move(pages)),
+      draws_(std::move(draws)),
+      positioned_geometry_(std::move(positioned_geometry)),
+      runs_(std::move(runs)),
+      positioned_runs_(positioned_runs) {}
 
     PreparedText prepare_text(Text::ShapedText layout, const TextRasterOptions options) {
         const auto extent = options.maximum_page_extent;
@@ -156,6 +164,27 @@ namespace CE::Assets {
         }
         for (std::size_t index = 0; index < result.pages_.size(); ++index)
             crop_page(result.pages_[index], packing[index], extent);
+        result.positioned_runs_ = options.positioned_runs;
+        if (options.positioned_runs) {
+            constexpr std::size_t vertices_per_glyph = VAONumbers::vertices_per_quad;
+            if (result.draws_.size() > result.positioned_vertices_.max_size() / vertices_per_glyph)
+                throw Exceptions::invalid_args(CE_HERE, "Positioned text exceeds addressable geometry");
+            result.positioned_vertices_.reserve(result.draws_.size() * vertices_per_glyph);
+            for (const auto& glyph : result.draws_) {
+                const auto first = result.positioned_vertices_.size();
+                const auto& page = result.pages_[glyph.page];
+                for (std::size_t vertex = 0; vertex < vertices_per_glyph; ++vertex) {
+                    auto placed = page.vertices[glyph.index * vertices_per_glyph + vertex];
+                    placed.x += glyph.x;
+                    placed.y += glyph.y;
+                    result.positioned_vertices_.push_back(placed);
+                }
+                if (!result.runs_.empty() && result.runs_.back().page == glyph.page)
+                    result.runs_.back().vertex_count += vertices_per_glyph;
+                else
+                    result.runs_.push_back({glyph.page, first, vertices_per_glyph});
+            }
+        }
         return result;
     }
 
@@ -172,6 +201,17 @@ namespace CE::Assets {
                 throw Exceptions::failed_operation(CE_HERE, "Text upload returned mismatched geometry or atlas resources");
             pages.push_back({std::move(geometry), std::move(atlas)});
         }
-        return RenderedText(std::move(prepared.layout_), std::move(pages), std::move(prepared.draws_));
+        std::shared_ptr<Geometry2D> positioned_geometry;
+        if (!prepared.positioned_vertices_.empty()) {
+            positioned_geometry = provider.upload_geometry(prepared.positioned_vertices_, PrimitiveTopology::Triangles);
+            if (!positioned_geometry || positioned_geometry->vertex_count() != prepared.positioned_vertices_.size() ||
+                positioned_geometry->vertex_layout() != VertexLayout2D::Position3UV2 ||
+                positioned_geometry->topology() != PrimitiveTopology::Triangles)
+                throw Exceptions::failed_operation(CE_HERE, "Text upload returned mismatched positioned geometry");
+        }
+        return RenderedText(
+            std::move(prepared.layout_), std::move(pages), std::move(prepared.draws_), std::move(positioned_geometry),
+            std::move(prepared.runs_), prepared.positioned_runs_
+        );
     }
 }
