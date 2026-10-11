@@ -38,6 +38,8 @@ set(OUTPUT_TEST_ALL_TESTS tests-all)
 # Unit tests
 set(OUTPUT_TEST_ENGINE tests-engine)
 set(OUTPUT_TEST_ENGINE_LOGGING tests-engine-logging)
+set(OUTPUT_TEST_WORKER_TOPOLOGY_JSON tests-worker-topology-json)
+set(OUTPUT_TEST_WORKER_TOPOLOGY_COMPOSITION tests-worker-topology-composition)
 set(OUTPUT_TEST_MODULE_NATIVE_GLFW tests-native-glfw)
 set(OUTPUT_TEST_NATIVE_JOYSTICK tests-native-joystick)
 set(OUTPUT_TEST_MODULE_OPENGL tests-opengl)
@@ -47,6 +49,7 @@ set(OUTPUT_TEST_MODULE_AUDIO_MINIAUDIO tests-audio-miniaudio)
 
 # Acceptance tests
 set(OUTPUT_TEST_ACCEPTANCE_ENGINE tests-acceptance-engine)
+set(OUTPUT_TEST_ACCEPTANCE_WORKER_TOPOLOGY_HWLOC tests-acceptance-worker-topology-hwloc)
 set(OUTPUT_TEST_ACCEPTANCE_ENGINE_LOGGING tests-acceptance-engine-logging)
 set(OUTPUT_TEST_ACCEPTANCE_ENGINE_SIGNAL tests-acceptance-engine-signal)
 set(OUTPUT_TEST_ACCEPTANCE_OPENGL tests-acceptance-opengl)
@@ -59,6 +62,7 @@ set(OUTPUT_TEST_DEPENDENCY_BACKWARD_CPP tests-dependency-backward-cpp)
 
 # Consumer tests
 set(OUTPUT_TEST_CONSUMER_ENGINE cheryl-consumer)
+set(OUTPUT_TEST_CONSUMER_WORKER_TOPOLOGY cheryl-worker-topology-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_NATIVE_GLFW cheryl-native-glfw-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_OPENGL cheryl-opengl-consumer)
 set(OUTPUT_TEST_CONSUMER_MODULE_UI_TGUI cheryl-ui-tgui-consumer)

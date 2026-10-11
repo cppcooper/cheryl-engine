@@ -5,6 +5,8 @@ set(consumer_headers
     cheryl/core/display.h
     cheryl/core/engine/engine-context.h
     cheryl/core/engine/worker-pool.h
+    cheryl/core/engine/worker-topology.h
+    cheryl/core/engine/worker-configuration.h
     cheryl/core/subsystems/event-channel.h
     cheryl/core/subsystems/event-bus.h
     cheryl/core/subsystems/event-system.h

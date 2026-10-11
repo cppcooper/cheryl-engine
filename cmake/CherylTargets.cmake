@@ -44,6 +44,8 @@ set(TARGET_TEST_ALL_MODULE_AUDIO_MINIAUDIO all-audio-miniaudio)
 # Unit tests
 set(TARGET_TEST_ENGINE tests-engine)
 set(TARGET_TEST_ENGINE_LOGGING tests-logging)
+set(TARGET_TEST_WORKER_TOPOLOGY_JSON tests-worker-topology-json)
+set(TARGET_TEST_WORKER_TOPOLOGY_COMPOSITION tests-worker-topology-composition)
 set(TARGET_TEST_MODULE_NATIVE_GLFW tests-native-glfw)
 set(TARGET_TEST_NATIVE_JOYSTICK tests-native-joystick)
 set(TARGET_TEST_MODULE_OPENGL tests-opengl)
@@ -53,6 +55,7 @@ set(TARGET_TEST_MODULE_AUDIO_MINIAUDIO tests-audio-miniaudio)
 
 # Acceptance tests
 set(TARGET_TEST_ACCEPTANCE_ENGINE acceptance-engine)
+set(TARGET_TEST_ACCEPTANCE_WORKER_TOPOLOGY_HWLOC acceptance-worker-topology-hwloc)
 set(TARGET_TEST_ACCEPTANCE_OPENGL acceptance-opengl)
 set(TARGET_TEST_ACCEPTANCE_ENGINE_LOGGING acceptance-logging)
 set(TARGET_TEST_ACCEPTANCE_ENGINE_SIGNAL acceptance-signal)
@@ -65,6 +68,8 @@ set(TARGET_TEST_DEPENDENCY_BACKWARD_CPP backward-cpp)
 
 # Consumer tests
 set(TARGET_TEST_CONSUMER_ENGINE consumer-cengine)
+set(TARGET_TEST_CONSUMER_WORKER_TOPOLOGY consumer-worker-topology)
+set(TARGET_TEST_CONSUMER_WORKER_TOPOLOGY_HEADERS consumer-headers-worker-topology)
 set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW consumer-module-native-glfw)
 set(TARGET_TEST_CONSUMER_MODULE_OPENGL consumer-module-opengl)
 set(TARGET_TEST_CONSUMER_MODULE_UI_TGUI consumer-module-ui-tgui)
