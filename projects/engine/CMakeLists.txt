@@ -39,7 +39,7 @@ endif()
 add_subdirectory(support/debug-terminal EXCLUDE_FROM_ALL)
 add_subdirectory(support/startup EXCLUDE_FROM_ALL)
 
-if(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC)
+if(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OR CHERYL_BUILD_WORKER_TOPOLOGY_JSON)
     add_subdirectory(support/worker-topology)
 endif()
 

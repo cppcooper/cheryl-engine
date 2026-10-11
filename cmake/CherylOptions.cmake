@@ -110,6 +110,8 @@ function(cheryl_configure_root_options)
 
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC
             "Build optional hwloc worker topology and thread placement support" OFF)
+    cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_JSON
+            "Build optional worker configuration JSON loading support" OFF)
 
     cheryl_option(CHERYL_BUILD_NATIVE_GLFW
             "Build the native GLFW window/input integration" ON)

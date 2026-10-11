@@ -36,6 +36,11 @@ set(LINKAGE_PUBLIC_LIB_ENGINE_S_STARTUP
 
 set(LINKAGE_PUBLIC_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC
         Cheryl::Engine)
+set(LINKAGE_PUBLIC_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON
+        Cheryl::Engine)
+set(LINKAGE_PUBLIC_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE
+        Cheryl::WorkerTopology::Hwloc
+        Cheryl::WorkerTopology::Json)
 
 # Native GLFW module
 #####################

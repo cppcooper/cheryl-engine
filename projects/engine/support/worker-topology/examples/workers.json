@@ -1,0 +1,9 @@
+{
+  "$schema": "../schema/worker-configuration-v1.schema.json",
+  "version": "1.0",
+  "workers": "auto",
+  "groups": {
+    "simulation": {"locality": "reuse", "concurrency": 1},
+    "asset_preparation": {"locality": "spread", "concurrency": "auto"}
+  }
+}

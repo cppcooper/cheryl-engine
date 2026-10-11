@@ -7,6 +7,8 @@ set(OUTPUT_LIB_ENGINE cheryl-engine)
 set(OUTPUT_LIB_ENGINE_S_STARTUP cheryl-engine-startup)
 set(OUTPUT_LIB_ENGINE_S_DEBUG_TERMINAL cheryl-debug-terminal-startup)
 set(OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC cheryl-worker-topology-hwloc)
+set(OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON cheryl-worker-topology-json)
+set(OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE cheryl-worker-topology-example)
 
 # Modules
 set(OUTPUT_LIB_MODULE_NATIVE_GLFW cheryl-module-native-glfw)

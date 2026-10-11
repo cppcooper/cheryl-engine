@@ -9,6 +9,8 @@ set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
 set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
 set(TARGET_LIB_ENGINE_S_DEBUG_TERMINAL cengine_debug_terminal_startup)
 set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC cengine_worker_topology_hwloc)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON cengine_worker_topology_json)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE example_worker_topology)
 
 # Modules
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
