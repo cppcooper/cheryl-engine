@@ -76,4 +76,8 @@ if(CHERYL_BUILD_DEMO AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
     add_subdirectory(projects/apps/demo)
 endif()
 
+if(CHERYL_BUILD_SDK)
+    include(cmake/CherylSdk.cmake)
+endif()
+
 cheryl_check_option_requirements()

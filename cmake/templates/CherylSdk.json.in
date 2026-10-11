@@ -1,0 +1,22 @@
+{
+  "version": "@VERSION_PROJECT_CHERYL@",
+  "system": "@CMAKE_SYSTEM_NAME@",
+  "system_version": "@CMAKE_SYSTEM_VERSION@",
+  "architecture": "@CMAKE_SYSTEM_PROCESSOR@",
+  "compiler": "@CMAKE_CXX_COMPILER_ID@",
+  "compiler_version": "@CMAKE_CXX_COMPILER_VERSION@",
+  "configuration": "@CMAKE_BUILD_TYPE@",
+  "msvc_runtime": "@sdk_msvc_runtime@",
+  "logging_profile": "@sdk_log_profile@",
+  "native_versions": {"icu": "@ICU_VERSION@", "freetype": "@FREETYPE_VERSION_STRING@"},
+  "features": {
+    "native_glfw": "@CHERYL_BUILD_NATIVE_GLFW@",
+    "native_input": "@CHERYL_NATIVE_INPUT@",
+    "opengl": "@CHERYL_BUILD_OPENGL@",
+    "tgui": "@CHERYL_BUILD_UI_TGUI@",
+    "rmlui": "@CHERYL_BUILD_UI_RMLUI@",
+    "miniaudio": "@CHERYL_BUILD_AUDIO_MINIAUDIO@",
+    "hwloc": "@CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC@",
+    "json": "@CHERYL_BUILD_WORKER_TOPOLOGY_JSON@"
+  }
+}
