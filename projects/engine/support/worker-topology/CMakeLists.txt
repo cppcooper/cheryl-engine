@@ -1,0 +1,16 @@
+if(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC AND NOT TARGET Cheryl::WorkerTopology::Hwloc)
+    include(cmake/Hwloc.cmake)
+
+    add_library(${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC} STATIC src/hwloc.cpp)
+    add_library(Cheryl::WorkerTopology::Hwloc ALIAS ${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC})
+    set_target_properties(${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC} PROPERTIES
+        VERSION "${VERSION_PROJECT_ENGINE}"
+        OUTPUT_NAME "${OUTPUT_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC}"
+        ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+    target_include_directories(${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC} PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
+    target_link_libraries(${TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC}
+        PUBLIC ${LINKAGE_PUBLIC_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC}
+        PRIVATE ${cheryl_hwloc_target})
+endif()

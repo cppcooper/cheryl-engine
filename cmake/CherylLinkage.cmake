@@ -34,6 +34,9 @@ set(LINKAGE_PUBLIC_LIB_ENGINE_S_STARTUP
         CLI11::CLI11
 )
 
+set(LINKAGE_PUBLIC_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC
+        Cheryl::Engine)
+
 # Native GLFW module
 #####################
 set(LINKAGE_PUBLIC_LIB_MODULE_NATIVE_GLFW

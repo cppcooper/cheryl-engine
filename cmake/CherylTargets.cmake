@@ -8,6 +8,7 @@ set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
 set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
 set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
 set(TARGET_LIB_ENGINE_S_DEBUG_TERMINAL cengine_debug_terminal_startup)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC cengine_worker_topology_hwloc)
 
 # Modules
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)

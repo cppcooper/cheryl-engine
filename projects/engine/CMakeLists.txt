@@ -39,6 +39,10 @@ endif()
 add_subdirectory(support/debug-terminal EXCLUDE_FROM_ALL)
 add_subdirectory(support/startup EXCLUDE_FROM_ALL)
 
+if(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC)
+    add_subdirectory(support/worker-topology)
+endif()
+
 if(CHERYL_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
