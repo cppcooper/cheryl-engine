@@ -12,7 +12,7 @@ The selected order is terminal acceptance, then NUMA/NUCA, then render batching.
 
 | Order | Work | Next phase and checkpoint |
 | --- | --- | --- |
-| 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
+| 1 | [Linux Debug terminal](../../projects/modules/platform/debug-terminal-linux/README.md) | Source implementation and controlled probes exist. Execute the configuration matrix and real-desktop QA in the [testing queue](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) when authorized; an included implementation must preserve runner reporting and viewer lifetime. |
 | 2 | [NUMA and NUCA integration](#numa-and-nuca) | Resolve hardware/workload value and scope, then settle an optional compile-time facility and a simple workload configuration interface before implementation. |
 | 3 | [Render batching](#render-batching) | Discuss the design with the project owner, using representative measurements and settled sampling/retention contracts to select compatibility and ordering rules. |
 

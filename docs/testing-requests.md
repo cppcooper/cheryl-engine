@@ -7,13 +7,25 @@ These requests cover sampling/TGUI, graphics manifests 2.0, indexed materials an
 the optional terminal since the accepted Linux baseline. They do not reopen
 unrelated accepted audio, controller or startup/UI QA.
 
+| TR# | Short description / title | Long description (plain language) |
+| --- | --- | --- |
+| [TR15](#tr15-automated-engine-only-graphics-and-resource-contracts) | Engine-only graphics and assets | Check that asset files and shader definitions load correctly, texture filtering settings are preserved, and reloading assets leaves data already in use valid. This checks Engine independently of window/rendering modules on Linux without a display; it does not show the recovered artwork. |
+| [TR16](#tr16-automated-opengl-sampling-owned-shaders-and-ui-composition) | OpenGL sampling and UI | Check texture sharpness/smoothing, shader creation and the TGUI/RmlUi interface integrations, including scenes kept while images or fonts are replaced. Most checks need no desktop; the final pixel comparison needs an X11 display. Hardware without anisotropy, which improves texture filtering on angled surfaces, verifies only the fallback. |
+| [TR17](#tr17-automated-linux-terminal-configuration-matrix) | Terminal configuration and output | Use fake terminal launchers to check which builds include the terminal, when it opens, and how application output and test reports survive shutdown, failed launches, manual closure and crashes. Covers Debug/Release and AUTO/ON/OFF settings without a desktop; actual windows need TR18. |
+| [TR18](#tr18-qa-linux-debug-terminal-on-a-real-desktop) | Real desktop terminal | Watch actual Konsole/xterm windows during normal runs, manual closure and crashes, including launches from a terminal, desktop and IDE. Confirm final output appears and closing the viewer leaves the app running. Requires a Linux desktop and TR17's binaries; the Debug demo needs separate preparation. |
+| [TR19](#tr19-qa-indexed-demo-materials-and-recovered-graphics) | Demo materials and recovered assets | Run the demo with simulation/rendering together and on separate threads. Check text/images, failed shader reloads keeping the last working materials, and recovery after restoring files. Artwork checks need sample images; recovered college graphics and bitmap fonts need a showcase/font setup before visual checks can run. |
+
+Report the request ID, tested revision, configuration, platform, failures and skips.
+Keep existing IDs when requests change; accepted and deferred historical requests
+retain their original numbers.
+
 No builds or tests were executed for this reconciliation. Reuse a build only when
 its source, compiler, configuration and options match; otherwise configure it as
 shown. Stop on failures, require nonempty selections and report skips separately.
 Skipped/unselected coverage remains unresolved. These commands do not authorize
 agent execution.
 
-## Automated: Engine-only graphics and resource contracts
+## TR15: Automated Engine-only graphics and resource contracts
 
 **Platform:** Linux Release. **Readiness:** source/targets ready; execution pending.
 **Prerequisites:** initialized assets/dependency submodules, C++23, Ninja, FreeType,
@@ -51,7 +63,7 @@ root composition alone cannot prove it.
 This does not establish recovered FFont artwork appearance. Dedicated font-weight
 fixtures and Startup/batch/placeholder regressions remain unfinished in their plans.
 
-## Automated: OpenGL sampling, owned shaders and UI composition
+## TR16: Automated OpenGL sampling, owned shaders and UI composition
 
 **Platform:** Linux Release, GLFW/X11 dependencies, HID disabled.
 **Readiness:** source/targets ready; execution pending. **Prerequisites:** the
@@ -104,7 +116,7 @@ retained sampler state and defaults. Unsupported-anisotropy hardware establishes
 fallback only. The demo has no interactive TGUI smoothing control; controlled
 texture/font cases do not establish a new native nearest-font observation.
 
-## Automated: Linux terminal configuration matrix
+## TR17: Automated Linux terminal configuration matrix
 
 **Platform:** Linux GNU/Clang with the POSIX/GNU APIs used by the module.
 **Readiness:** raw/report probes and driver ready; execution pending.
@@ -151,7 +163,7 @@ Inspect omitted consumers' final link commands: the implementation archive, entr
 wrapper and viewer dependency must be absent. Fake launchers do not accept actual
 emulator window behavior.
 
-## QA: Linux Debug terminal on a real desktop
+## TR18: QA Linux Debug terminal on a real desktop
 
 **Platform:** Linux desktop, GNU/Clang Debug; explicit non-Debug inclusion in
 Release `ON`. **Readiness:** runnable probes ready; blocked without a desktop and
@@ -218,7 +230,7 @@ For root application composition, build once and reuse:
   inherited stream. Check early failure and both runtime modes. The standalone
   probe alone does not accept application composition or desktop/IDE launch.
 
-## QA: Indexed demo materials and recovered graphics
+## TR19: QA Indexed demo materials and recovered graphics
 
 **Platform:** Linux/GLFW/X11/OpenGL, sequential and concurrent.
 **Readiness:** main-material QA ready after the graphics build. Package rendering
