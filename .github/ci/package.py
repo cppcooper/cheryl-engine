@@ -58,6 +58,18 @@ def copy_native_dependencies(prefix, stage):
                 target = destination / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
+                if path.suffix == ".cmake":
+                    # Some vcpkg configs use toolchain variables instead of their own prefix.
+                    original = target.read_text(encoding="utf-8")
+                    contents = original
+                    for variable in ("VCPKG_INSTALLED_DIR", "_VCPKG_INSTALLED_DIR"):
+                        contents = contents.replace("${" + variable + "}/${VCPKG_TARGET_TRIPLET}",
+                                                    "${cheryl_sdk_native_prefix}")
+                    if contents != original:
+                        parent = "/".join(".." for _ in relative.parent.parts)
+                        contents = ('get_filename_component(cheryl_sdk_native_prefix '
+                                    '"${CMAKE_CURRENT_LIST_DIR}/' + parent + '" ABSOLUTE)\n' + contents)
+                        target.write_text(contents, encoding="utf-8")
 
 
 def check_contents(stage):
