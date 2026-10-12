@@ -101,8 +101,10 @@ The Linux module adds `tests-acceptance-engine-terminal` and
 `tests-acceptance-engine-terminal-reports` when its tests are selected. They remain
 outside CTest/GoogleTest aggregates and are driven by
 [terminal.py](../../projects/modules/platform/debug-terminal-linux/tests/acceptance/terminal.py),
-which selects deliberate failure/termination cases. Its configuration matrix and
-native observations are in the [testing queue](../testing-requests.md#tr17-automated-linux-terminal-configuration-matrix).
+which selects deliberate failure/termination cases. The accepted
+[configuration matrix](../../projects/modules/platform/debug-terminal-linux/README.md#configuration-matrix)
+is reusable from the module guide; actual desktop observations remain
+[TR18](../testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop).
 The [module guide](../../projects/modules/platform/debug-terminal-linux/README.md#test-reporting)
 explains saved runner reporting, discovery/headless suppression and supplied-GoogleTest
 fallback. Debug consumers can disable display with `--no-debug-terminal` when

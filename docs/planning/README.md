@@ -9,7 +9,7 @@ and [testing requests](../testing-requests.md) contains pending user-run accepta
 
 | Folder | Scope and owning plans |
 | --- | --- |
-| `short-term/` | [Unicode font-selection regressions](short-term/unicode-text.md). The roadmap owns [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up) and links pending hosted CI/SDK, terminal, Engine-only graph and demo acceptance to the testing queue. Completed cache-locality source work lives in the worker guide. |
+| `short-term/` | [Unicode font-selection regressions](short-term/unicode-text.md). The roadmap owns [startup/UI follow-up](develop-review-and-development-plan.md#startup-and-ui-follow-up) and links pending main-push SDK collection, terminal desktop QA and demo acceptance to the testing queue. Completed cache-locality source work lives in the worker guide. |
 | `mid-term/` | [Planned color emoji and reorder-safe sorting, with deferred general batching and measured text/timing optimization](mid-term/README.md); design and workload prerequisites remain |
 | `long-term/` | [Planned RmlUi effects, alternative audio and the graphical console alongside deferred integrations, NUMA and consumer-selected extensions](long-term/README.md), [deferred HID/platform acceptance](long-term/platform-acceptance.md) and [unresolved artwork metadata](long-term/asset-manifest-metadata.md) |
 

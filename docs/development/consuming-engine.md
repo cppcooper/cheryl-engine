@@ -86,12 +86,12 @@ Windows config prepends the bundled dependency prefix and exposes
 an application automatically. OpenGL still needs the host's graphics runtime.
 SDK relocation does not establish compatibility with another ABI or distribution.
 
-Local Linux installed-target consumers and first-include probes cover the selected
-SDK composition, including both Startup support headers. Hosted Linux toolchains
-and Windows build/SDK acceptance remain pending the first
-[CI run](building.md#github-ci-and-sdk-artifacts). Desktop, GPU and physical-device
-coverage remain separate. The SDK does not export the Linux Debug terminal;
-that module retains its source-composition path.
+Installed-target consumers and first-include probes cover the selected SDK
+composition, including both Startup support headers, on the selected hosted Linux
+and Windows toolchains. The [CI guide](building.md#github-ci-and-sdk-artifacts)
+retains hosted skipped-case limits and the pending main-push artifact collection.
+Desktop, GPU and physical-device coverage remain separate. The SDK does not export
+the Linux Debug terminal; that module retains its source-composition path.
 
 ## Command-line startup
 

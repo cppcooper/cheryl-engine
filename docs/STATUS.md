@@ -4,18 +4,21 @@
 
 > **Original review scope:** Source-code inspection of the engine, backend modules, build configuration, demo, and test sources. No compilation, tests, hardware QA, or deployment checks were performed as part of that review. The inventory starts at the reviewed commit, with the focused reconciliation below; classifications are **not automatically updated release guarantees**.
 
-**Documentation reconciliation:** 2026-10-11 — Reconciles cache-aware workers,
+**Documentation reconciliation:** 2026-10-12 — Reconciles cache-aware workers,
 C++/JSON configuration, opt-in positioned text runs, Linux/Windows CI and prebuilt
 SDKs through source baseline `b49ffd9`, alongside the existing sampling/material,
-terminal and asset contracts. Local Linux acceptance and pending hosted/native/QA
-coverage remain distinct. The original review baseline and qualitative estimate
+terminal and asset contracts. Selected local/hosted acceptance and pending artifact,
+native and QA coverage remain distinct. The original review baseline and qualitative estimate
 remain historical; this pass does not claim a fresh review of every subsystem or
 new build/test/native results.
 
-Recorded Linux CI/SDK acceptance uses assets `12f06eb`. The subsequent root commit
-`8989c3c` pins `5603c19`, adding an asset definition that the manifest count test
-does not yet expect. This inspected fixture mismatch needs reconciliation and a
-focused rerun before [hosted CI acceptance](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
+Independent Engine-only graph inspection and the Linux terminal configuration
+matrix are accepted. Hosted Linux/Windows builds and relocated SDK consumers are
+accepted within the [CI coverage limits](development/building.md#github-ci-and-sdk-artifacts).
+The first main-push SDK collection remains
+[TR20](testing-requests.md#tr20-automated-main-push-sdk-collection); terminal desktop
+and demo material/artwork observations remain pending. These acceptance updates do
+not extend the original implementation review baseline.
 
 **Planning update:** 2026-10-12 — Selects three dependency reviews, RmlUi effects,
 reorder-safe sorting, color emoji, an alternative audio SDK and the in-game console.
@@ -200,10 +203,10 @@ within each phase.
 | Pivot/anchor geometry | Implemented | Pivot presets, anchor conversion, quad/strip generation and Y-up geometry. | [anchor.h](../projects/engine/include/cheryl/math/anchor.h) |
 | General math utilities | Implemented | Byte, pointer, binary, fitting, numeric and time helper functions. | [math/](../projects/engine/include/cheryl/math/) |
 | File manager and path I/O | Implemented | Core file-manager interface and path-oriented file operations, distinct from installed font discovery. | [file-mgr.h](../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h) |
-| External Debug terminal | Implemented · Linux acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. AUTO links actual Debug only; explicit non-Debug inclusion still needs a runtime enable option. Engine supplies only an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [pending matrix](testing-requests.md#tr17-automated-linux-terminal-configuration-matrix) |
+| External Debug terminal | Implemented · Linux desktop acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. The configuration matrix is accepted; AUTO links actual Debug only and non-Debug inclusion needs a runtime enable option. Engine supplies an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [desktop QA](testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop) |
 | **Build and verification** | | | |
-| Installed CMake package | Implemented | Opt-in CherylSDK component exports prebuilt selected libraries, headers, dependency targets and licenses; independent Linux installed consumers are accepted. Windows bundles native dependencies and awaits hosted acceptance. | [SDK consumption](development/consuming-engine.md#prebuilt-development-sdks) |
-| GitHub CI and SDK artifacts | Implemented | Linux GCC/Clang and Windows MSVC focused builds/tests plus relocated SDK consumers; successful main validation collects compiled development SDK artifacts without applications or release publication. A newer assets pin requires fixture reconciliation before pending hosted execution. | [CI matrix](development/building.md#github-ci-and-sdk-artifacts), [TR20](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts) |
+| Installed CMake package | Implemented | Opt-in CherylSDK component exports prebuilt selected libraries, headers, dependency targets and licenses; selected hosted Linux and Windows installed consumers are accepted. Windows bundles native dependencies. | [SDK consumption](development/consuming-engine.md#prebuilt-development-sdks) |
+| GitHub CI and SDK artifacts | Implemented | Linux GCC/Clang and Windows MSVC focused builds/tests plus relocated SDK consumers; successful main validation collects compiled development SDK artifacts without applications or release publication. Hosted builds and relocated consumers are accepted with explicit Windows skipped-case limits; first main-push artifact collection remains pending. | [CI matrix](development/building.md#github-ci-and-sdk-artifacts), [TR20](testing-requests.md#tr20-automated-main-push-sdk-collection) |
 | Modular CMake root | Implemented | C++23 build splits Engine and native graphics/platform/UI/audio owners. | [CMakeLists.txt](../CMakeLists.txt) |
 | CMake option selection | Implemented | Root switches for GLFW, OpenGL, TGUI, RmlUi, miniaudio, native input, demo and test modes. | [CherylOptions.cmake](../cmake/CherylOptions.cmake) |
 | Named library target aliases | Implemented | Consistent identities such as Cheryl::Engine, Cheryl::NativeGLFW and Cheryl::Audio::Miniaudio. | [CherylTargets.cmake](../cmake/CherylTargets.cmake) |

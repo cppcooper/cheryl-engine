@@ -272,7 +272,21 @@ for 14 days. These are workflow artifacts; the workflow creates no GitHub releas
 uploads no release assets and publishes no demo package. Release publication is a
 separate future decision.
 
-Local Linux validation establishes the selected producer and relocated consumer
-paths; it does not accept the exact hosted GCC 14/Clang 18 images or Windows MSVC.
-The first hosted run and main artifact collection remain pending
-[TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
+The selected hosted Ubuntu GCC/Clang and Windows MSVC producer jobs and relocated
+SDK consumers are accepted. The first main-push artifact collection remains
+[TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection); collection is
+intentionally skipped on PR, `develop` and manual runs.
+
+### Hosted Windows coverage limits
+
+Both Windows profiles leave these focused cases unaccepted:
+
+| Cases | Missing prerequisite and next action |
+| --- | --- |
+| `font_bake.real_nested_allocation_scope`, `font_bake.real_cff_alloc_failure` | The workflow supplies the bundled TrueType face but no CFF OpenType fixture on Windows. Supply `CHERYL_STB_ALLOCATION_CFF` with a suitable face, retain the TrueType fixture for nested scopes, and rerun these cases on hosted Windows. |
+| `logging.config_reopen` | The test needs a temporary directory on the checkout's filesystem root so it can use a relative log path. Configure the hosted Windows temporary directory on that drive, then rerun the case. |
+
+The [font fixture requirements](architecture-validation.md#native-and-fixture-checks)
+define suitable faces. A green job does not accept these skipped cases; successful
+local MSVC/Wine checks do not replace the missing hosted execution. These limits
+are separate from SDK collection and desktop/GPU/device acceptance.

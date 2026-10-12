@@ -73,6 +73,39 @@ Consumers depend on their first-include probes; no separate probe build is neede
 Use the logging and Release signal drivers below. The logging driver also executes
 focused logging cases, so they need no additional unit run.
 
+### Engine-only composition graph
+
+The independent Linux Release graph is accepted. To repeat its isolation check
+when composition changes, reuse a matching `build/testing-engine-isolation` or
+configure the graph below. It includes common Startup and public first-include
+probes while omitting optional topology helpers, modules, tests and SDK exports:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/testing-engine-isolation -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
+    -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
+    -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEMO=OFF \
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+    -DCHERYL_BUILD_SDK=OFF -DCHERYL_BUILD_TESTS=OFF \
+    -DCHERYL_BUILD_CONSUMER_TESTS=ON
+  cmake --build build/testing-engine-isolation --parallel --target \
+    cengine_startup consumer-cengine
+  ./build/testing-engine-isolation/cheryl-consumer
+  ninja -C build/testing-engine-isolation -t commands consumer-cengine
+)
+```
+
+Inspect the target graph, `compile_commands.json` and final consumer link for
+Cheryl native/OpenGL/GLAD/GLFW/Gainput, UI/audio and hwloc dependencies; all must
+be absent. A consumer in a full-module root does not prove this boundary. This
+check establishes graph isolation, not rendering appearance or device operation.
+
 ### Engine asset and text regressions
 
 The Linux Release Engine-only selection covers neutral clip, tile selection/animation,
@@ -124,12 +157,10 @@ callback/placeholder regression gaps are in the
 [roadmap checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
 
 Graphics 2.0, indexed shader/sampling and positioned-text CPU checks are accepted
-in the selected Linux compositions. The independent Release graph inspection
-remains [TR15](../testing-requests.md#tr15-automated-engine-only-composition-graph);
-demo reload/artwork observations remain separate QA.
-The newer pinned asset catalog needs its count fixture reconciled before a fresh
-behavioral run; [TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts)
-records that prerequisite.
+in the selected Linux compositions. The
+[independent Release graph](#engine-only-composition-graph) is also accepted;
+demo reload/artwork observations remain separate QA. The manifest count fixture
+matches the pinned catalog.
 
 ### Worker topology and configuration
 
@@ -208,9 +239,10 @@ The verifier checks SHA256, archive contents, producer paths and seven selected
 consumer programs plus first-include and Startup probes. It uses checkout test
 fixtures but imports installed Cheryl libraries, rebuilding none of their source.
 Windows CI uses the same steps under its MSVC Developer PowerShell with the
-manifest's vcpkg toolchain and DLL prefix. Local Linux acceptance does not establish
-hosted Ubuntu or Windows ABI/runtime compatibility; those remain
-[TR20](../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
+manifest's vcpkg toolchain and DLL prefix. The selected hosted Ubuntu and Windows
+producer/relocated-consumer paths are accepted within the
+[CI coverage limits](building.md#github-ci-and-sdk-artifacts). The first main-push
+artifact collection remains [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection).
 This reusable procedure does not assert acceptance of unexecuted new cases.
 
 ### Typed events

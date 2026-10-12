@@ -100,8 +100,46 @@ fail or terminate. The [terminal.py driver](tests/acceptance/terminal.py) select
 them, controls fake emulator launchers and checks output, rollback/reaping, crash
 retention, manual closure, discovery, captures, death tests and XML.
 
-The [testing queue](../../../../docs/testing-requests.md) contains the pending
-configuration matrix and real-desktop QA. Source presence and controlled launcher
-checks do not establish actual Konsole/xterm window behavior, desktop/IDE launch,
-or another operating system. Native implementation and executable acceptance remain
-separate.
+### Configuration matrix
+
+The Linux configuration matrix is accepted for Debug `AUTO`, Release `AUTO`,
+Release `ON` and Debug `OFF`. Included configurations cover C/C++/native/worker/logger
+output, final draining, startup rollback, launcher reaping, manual closure, abnormal
+process loss, help/discovery, framework reporting/diagnostics, captures, both death-test
+styles and XML. Omitted configurations establish
+omission and passthrough; their final links exclude the implementation archive,
+entry wrapper and viewer dependency.
+
+To repeat the matrix or prepare desktop probe binaries, use Linux GNU/Clang, Engine
+text dependencies, initialized pinned GoogleTest and Python 3 without optimization.
+The standalone composition needs no GLFW/OpenGL/UI selection. Reuse each matching
+source/toolchain/configuration independently:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  for selection in Debug:AUTO Release:AUTO Release:ON Debug:OFF; do
+    terminal_configuration="${selection%%:*}"
+    terminal_inclusion="${selection#*:}"
+    terminal_build="build/testing-terminal-${terminal_configuration}-${terminal_inclusion}"
+    cmake -S projects/modules/platform/debug-terminal-linux -B "$terminal_build" -G Ninja \
+      -DCMAKE_BUILD_TYPE="$terminal_configuration" \
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
+      -DCHERYL_REPOSITORY_ROOT="$PWD" -DCHERYL_LOG_PROFILE=developer \
+      -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
+      -DCHERYL_DEBUG_TERMINAL="$terminal_inclusion" \
+      -DCHERYL_DEBUG_TERMINAL_EMULATOR=auto
+    cmake --build "$terminal_build" --parallel --target \
+      tests-acceptance-engine-terminal tests-acceptance-engine-terminal-reports
+    python3 projects/modules/platform/debug-terminal-linux/tests/acceptance/terminal.py \
+      "$terminal_build" --configuration "$terminal_configuration" \
+      --inclusion "$terminal_inclusion"
+  done
+)
+```
+
+Controlled launcher checks do not establish actual Konsole/xterm window behavior,
+desktop/IDE launch or another operating system. The
+[real-desktop request](../../../../docs/testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop)
+retains those observations and reuses matching probe binaries from this procedure.

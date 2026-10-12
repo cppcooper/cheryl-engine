@@ -6,17 +6,19 @@ coverage; they are outside the active
 [testing queue](../../testing-requests.md). Resume them only when platform testing is
 scheduled, reconcile the current source/targets/configuration first, then restore
 ready requests to that queue. Linux/X11 is the current native acceptance platform.
-Windows hosted compilation, focused tests and installed SDK consumption are active
-in [TR20](../../testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts);
-that request does not activate the desktop/controller/HID procedures here.
+Windows hosted compilation, focused tests and installed SDK consumption are
+accepted within the [CI coverage limits](../../development/building.md#github-ci-and-sdk-artifacts).
+The remaining [TR20](../../testing-requests.md#tr20-automated-main-push-sdk-collection)
+checks main-push SDK collection; it does not activate the desktop/controller/HID
+procedures here.
 
 ## Scope and prerequisites
 
 Windows acceptance includes native input ownership and consumer/header probes,
 typed-event and resize delivery, desktop resize, controller reports and HID
 notification lifetime. TR3–TR5 below retain their request IDs for later activation.
-They are **deferred**, and Windows dependency/toolchain configuration remains
-unaccepted until its hosted run; CI success alone does not accept native behavior.
+They are **deferred**. The hosted MSVC configuration is accepted for the focused
+CI selection; desktop and physical-device behavior remain unaccepted.
 A configuration/build failure is an unresolved prerequisite, not an
 accepted or skipped case.
 
@@ -36,8 +38,8 @@ Accept native input integration and resize callback cases on Windows, particular
 rejection of reattachment to a different notification window and successful
 reattachment to the original live window. Include tile-animation and typed-event
 regressions and consumer probes on this platform.
-Use a usable Windows desktop session. This is an acceptance request for the current
-Windows source, not evidence that its dependency/toolchain configuration is accepted.
+Use a usable Windows desktop session. These native observations extend beyond the
+accepted hosted CI dependency/toolchain selection.
 
 ```powershell
 $cherylRoot = git rev-parse --show-toplevel
