@@ -205,10 +205,14 @@ Additional atlas padding or repacking remains a separately selected extension. C
 without padding; the [demo samples](../../../projects/apps/demo/README.md#tile-and-sprite-samples)
 retain the baseline observations.
 
-World, entities, collision and game mechanics wait for a game consumer. The game
-can consume Cheryl as a Git submodule and supply its own optional modules from
-the start, or implement its features directly. Do not plan on a later extraction
-or game refactor as a prerequisite for starting development.
+Manual collision checks for object overlap/clipping are deferred to phase 1 of the
+[status inventory](../../STATUS.md#3-deferred). Define their shape, coordinate and
+boundary rules separately from physics simulation. Save-game serialization,
+physics, tilemap/world and entity-component systems are deferred to phase 2;
+their scope and acceptance still require a game consumer. The game can consume
+Cheryl as a Git submodule and supply its own optional modules from the start, or
+implement its features directly. Do not plan on a later extraction or game
+refactor as a prerequisite for starting development.
 
 NUMA discovery and memory placement are deferred indefinitely; no client/server
 architecture is scheduled. Reopen only for a consumer and hardware that justify
