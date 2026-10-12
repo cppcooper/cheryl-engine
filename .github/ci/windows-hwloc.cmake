@@ -10,6 +10,9 @@ if(PROJECT_NAME STREQUAL "cheryl" AND CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC)
     set(CHERYL_HWLOC_TARGET cheryl_ci_hwloc)
 endif()
 if(PROJECT_NAME STREQUAL "cheryl" AND CHERYL_BUILD_NATIVE_GLFW)
-    # The pinned Gainput Windows adapter links hidapi even with its HID option off.
-    find_package(hidapi CONFIG REQUIRED)
+    # Gainput forces HID on for Windows and requests hidapi through FetchContent.
+    # Declare it first so that request reuses the pinned vcpkg SDK dependency.
+    include(FetchContent)
+    FetchContent_Declare(hidapi FIND_PACKAGE_ARGS CONFIG REQUIRED)
+    FetchContent_MakeAvailable(hidapi)
 endif()
