@@ -126,6 +126,12 @@ objects, queries thread-specific binding and uses strict calling-thread binding 
 than pretending to honor a hard request. Native OS/real-time priority remains
 separate from scheduler priority.
 
+On Windows, the hwloc provider retains discovered CPUs, cores and caches but reports
+`cpu_affinity = false`: its backend rejects `HWLOC_CPUBIND_NOMEMBIND`. Preferred
+CPU/cache locality uses portable scheduling; required explicit CPU, cache-domain or
+locality requests reject. Windows binding that preserves memory placement is a
+[phase 4 deferral](../planning/long-term/README.md#windows-worker-affinity).
+
 Workers retain an unchanged verified mask between compatible jobs. Before another
 group's work they apply its eligibility, restoring inherited eligibility for an
 unconstrained group. A required job checks that cached eligibility remains valid.

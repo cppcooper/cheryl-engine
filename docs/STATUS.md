@@ -17,14 +17,14 @@ Recorded Linux CI/SDK acceptance uses assets `12f06eb`. The subsequent root comm
 does not yet expect. This inspected fixture mismatch needs reconciliation and a
 focused rerun before [hosted CI acceptance](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
 
-**Planning update:** 2026-10-11 — Selects three dependency reviews, RmlUi effects,
+**Planning update:** 2026-10-12 — Selects three dependency reviews, RmlUi effects,
 reorder-safe sorting, color emoji, an alternative audio SDK and the in-game console.
-Deferred work now includes absent capabilities; this scheduling update does not
-change the implementation review baseline above.
+Deferred work includes absent capabilities and Windows worker affinity in phase 4;
+this scheduling update does not change the implementation review baseline above.
 
 **Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = selected work awaiting investigation, design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work, including capabilities with no complete implementation; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
 
-The following **four classification sections** comprise 145 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
+The following **four classification sections** comprise 146 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
 
 ## 1. Partial
 
@@ -60,7 +60,7 @@ within each phase.
 - **Phase 1:** General render batching, the Gainput HID backend and manual collision checks for object clipping.
 - **Phase 2:** Save-game serialization, physics, tilemap/world and entity-component systems, alongside other deferred engine/module extensions and Windows native acceptance.
 - **Phase 3:** Cache-related optimization, residency and ownership work, plus the monitor hotplug event service.
-- **Phase 4:** Wayland and macOS acceptance, Steam API services, OS/UI input services and spatial audio.
+- **Phase 4:** Wayland and macOS acceptance, Windows worker affinity, Steam API services, OS/UI input services and spatial audio.
 - **Phase 5:** Other platform modules, 3D mesh/model rendering, networking and automatic asset hot reload.
 
 | Feature / integration | Status | Description / scope | Investigate |
@@ -85,6 +85,7 @@ within each phase.
 | GPU memory budgets/eviction | Deferred · phase 3 | Resource handles and caches are implemented, but automatic residency budgets, eviction and GPU-memory policy are absent. | [resource-provider.h](../projects/engine/include/cheryl/assets/resources/resource-provider.h) |
 | Independent provider cache domains | Deferred · phase 3 | Global asset managers currently use one active provider/loading-owner domain; parallel independent cache domains are unsupported. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
 | Monitor hotplug event service | Deferred · phase 3 | Monitor enumeration exists; an engine-level dynamic monitor-added/removed subscription and lifecycle contract is absent. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
+| Windows worker CPU affinity | Deferred · phase 4 | Provide calling-thread CPU binding on Windows while preserving memory placement and inherited CPU eligibility. Preferred policies currently fall back; required CPU/cache locality is unavailable. | [Windows affinity scope](planning/long-term/README.md#windows-worker-affinity) |
 | macOS native acceptance | Deferred · phase 4 | Validate dependency configuration, windowing, input and graphics behavior on macOS. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
 | Wayland native acceptance | Deferred · phase 4 | Verify GLFW Wayland windows, focus, input and OpenGL presentation; X11 is the active desktop acceptance path. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
 | Steam API services | Deferred · phase 4 | Define application-scoped service session, callback scheduling, SDK selection and integration requirements from a real consumer. | [README.md](planning/long-term/README.md) |
@@ -103,7 +104,7 @@ within each phase.
 | Networking/multiplayer | Deferred · phase 5 | No network transport, game session, replication or network-state reconciliation engine facilities. | [modules/](../projects/modules/) |
 | Automatic asset hot reload | Deferred · phase 5 | Explicit shader/material replacement exists; the manifest loader has no atomic watch/reload-and-republish mechanism. | [asset-loader.h](../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h) |
 
-*37 entries.*
+*38 entries.*
 
 ## 4. Implemented
 
@@ -116,7 +117,7 @@ within each phase.
 | SimulationScheduler | Implemented | Variable/fixed cadence with bounded recovery, skipped time and catch-up policy. | [simulation-scheduler.h](../projects/engine/include/cheryl/core/game-framework/simulation-scheduler.h) |
 | TickContext | Implemented | Provides simulation delta, aggregated input, framebuffer/logical dimensions and stop-request access. | [tick-context.h](../projects/engine/include/cheryl/core/game-framework/tick-context.h) |
 | WorkerPool | Implemented | Shared threads with futures, acceptance/closure, draining and exception delivery. | [worker-pool.h](../projects/engine/include/cheryl/core/engine/worker-pool.h) |
-| Worker CPU placement | Implemented | Application-owned topology providers, optional runtime hwloc core/cache discovery and calling-thread binding, automatic/reuse/spread policies and validated C++/JSON settings. NUMA memory placement remains deferred; topology is not a speedup guarantee. | [worker contract](runtime/worker-execution.md) |
+| Worker CPU placement | Implemented | Application-owned topology providers, optional runtime hwloc core/cache discovery and calling-thread binding where supported, automatic/reuse/spread policies and validated C++/JSON settings. Windows binding remains deferred to phase 4; NUMA memory placement remains deferred. Topology is not a speedup guarantee. | [worker contract](runtime/worker-execution.md) |
 | Weighted worker groups | Implemented | Isolated logical workloads with concurrency limits, priority, fair scheduling and statistics. | [worker-pool.cpp](../projects/engine/src/core/engine/worker-pool.cpp) |
 | PlatformDispatcher | Implemented | Submits captured work for execution on the native graphics/platform owner. | [platform-dispatcher.h](../projects/engine/include/cheryl/core/engine/platform-dispatcher.h) |
 | SimulationDispatcher | Implemented | Delivers queued callbacks on the simulation owner through future-bearing submissions. | [simulation-dispatcher.h](../projects/engine/include/cheryl/core/engine/simulation-dispatcher.h) |

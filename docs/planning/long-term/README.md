@@ -51,6 +51,28 @@ in-flight frame/teardown lifetimes. Keep broader native input ownership separate
 scoped rather than assuming each additional window needs another initialized
 Gainput owner.
 
+### Windows worker affinity
+
+Windows worker CPU affinity is deferred to phase 4 of the
+[status inventory](../../STATUS.md#3-deferred), alongside platform acceptance and
+OS services. The current Windows hwloc provider retains CPU/core/cache discovery
+but reports thread binding unavailable because its backend rejects
+`HWLOC_CPUBIND_NOMEMBIND`. The [worker contract](../../runtime/worker-execution.md#cpu-policy-and-capabilities)
+requires CPU binding to preserve memory placement; preferred policies use portable
+scheduling and required CPU/cache locality requests reject.
+
+Investigate a Windows calling-thread binding path that preserves memory placement
+and inherited CPU eligibility, with native SDK details confined to the provider.
+If the OS/backend cannot meet that contract, resolve the contract explicitly before
+advertising affinity support. Keep NUMA allocation, first-touch and migration in
+their separate indefinite deferral.
+
+Acceptance on native Windows must prove CPU-mask readback, unchanged memory policy
+and pool-creating thread affinity, required CPU/cache locality enforcement, and
+clear rejection of unsupported requirements. Verify preferred-policy fallback and
+provider lifetime through worker shutdown. Successful topology discovery or
+portable job execution does not establish binding support.
+
 ### Deferred HID integration
 
 Gainput HID backend work remains deferred at the `d94c60f` code baseline. The
