@@ -75,8 +75,8 @@ namespace CE::math {
         Reference operator[](std::size_t index) noexcept;
         bool operator[](std::size_t index) const noexcept;
 
-        std::span<word_type, word_count> words() noexcept;
-        std::span<const word_type, word_count> words() const noexcept;
+        auto words() noexcept -> std::span<word_type, word_count>;
+        auto words() const noexcept -> std::span<const word_type, word_count>;
 
     private:
         using storage_type = Detail::bit_storage_t<Bits>;
@@ -148,12 +148,11 @@ namespace CE::math {
         return (word(index) & mask(index)) != 0;
     }
 
-    template <std::size_t Bits> std::span<typename BitArray<Bits>::word_type, BitArray<Bits>::word_count> BitArray<Bits>::words() noexcept {
+    template <std::size_t Bits> auto BitArray<Bits>::words() noexcept -> std::span<word_type, word_count> {
         return std::span<word_type, word_count>{&word(0), word_count};
     }
 
-    template <std::size_t Bits>
-    std::span<const typename BitArray<Bits>::word_type, BitArray<Bits>::word_count> BitArray<Bits>::words() const noexcept {
+    template <std::size_t Bits> auto BitArray<Bits>::words() const noexcept -> std::span<const word_type, word_count> {
         return std::span<const word_type, word_count>{&word(0), word_count};
     }
 
