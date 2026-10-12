@@ -6,10 +6,12 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <filesystem>
 #include <future>
 #include <limits>
 #include <memory>
 #include <numbers>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -17,6 +19,15 @@ namespace {
     using CE::Audio::PlaybackOptions;
     using CE::Audio::PlaybackState;
     using CE::Audio::Miniaudio::System;
+
+    struct CurrentDirectoryGuard {
+        const std::filesystem::path original = std::filesystem::current_path();
+
+        ~CurrentDirectoryGuard() {
+            std::error_code error;
+            std::filesystem::current_path(original, error);
+        }
+    };
 
     Clip constant(float value = 0.25f, std::size_t frames = 1024) {
         return Clip::from_samples({2, 48000}, std::vector<float>(frames * 2, value));
@@ -357,9 +368,15 @@ TEST(audio_stream, failure) {
     expect_samples(output, 0.25f);
     EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
     fixture.write({2, 48000}, std::vector<float>(2048, 0.125f));
-    auto stream = system->stream(fixture.file(), {.paused = true});
-    EXPECT_TRUE(std::filesystem::remove(fixture.file()));
+    const AudioFixture::Wav unavailable;
+    const CurrentDirectoryGuard directory;
+    std::filesystem::current_path(fixture.file().parent_path());
+    auto stream = system->stream(fixture.file().filename(), {.paused = true});
+    // Reopen a relative source from an empty directory without deleting an open file.
+    std::filesystem::current_path(unavailable.file().parent_path());
     EXPECT_THROW(stream->restart(), CE::Exceptions::runtime_exception);
     EXPECT_EQ(stream->snapshot().state, PlaybackState::Paused);
     EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
+    system->render(output);
+    expect_samples(output, 0.25f);
 }
