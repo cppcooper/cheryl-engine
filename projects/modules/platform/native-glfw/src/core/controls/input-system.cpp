@@ -475,10 +475,9 @@ namespace CE::Input {
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollX}, static_cast<float>(x));
                 input->bindings_.on_delta({input->mouse_id_, MouseControl::ScrollY}, static_cast<float>(y));
                 if (y != 0.0) {
-                    input->bindings_.on_button(
-                        {input->mouse_id_, y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown}, true
-                    );
-                    input->mouse_->queue_pulse(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
+                    const auto button = static_cast<DeviceButtonId>(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
+                    input->bindings_.on_button({input->mouse_id_, button}, true);
+                    input->mouse_->queue_pulse(button);
                 }
             });
     }
