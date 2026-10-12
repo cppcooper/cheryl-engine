@@ -9,7 +9,8 @@ namespace CE::GFramework {
     void TickContext::request_stop() const {
         if (!runtime_stop.stop_possible())
             throw Exceptions::failed_operation(CE_HERE, "Tick has no runtime stop request");
-        (void)runtime_stop.request_stop();
+        auto stop = runtime_stop;
+        static_cast<void>(stop.request_stop());
     }
 
     double TickContext::button_simulation_seconds(const Input::ActionId action) const {
