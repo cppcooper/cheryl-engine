@@ -3,7 +3,7 @@
 The initial rendering scope is accented Latin (including English, French and German),
 Russian/Cyrillic, mixed paragraph direction and optional width-constrained wrapping.
 Glyph coverage and shaping are font/script concerns rather than a separate renderer
-for every language. Color emoji is a possible
+for every language. Color emoji is a planned
 [next text batch](../planning/mid-term/README.md#color-emoji);
 wider CJK/script acceptance remains in the
 [long-term plan](../planning/long-term/README.md#other-engine-extensions).

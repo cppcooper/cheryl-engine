@@ -1,10 +1,13 @@
 # Long-term engine and integration plans
 
-Selected integration deferrals and consumer-driven extensions live here. Unselected
-engine and module extensions need a named application consumer to establish scope
-and prerequisites. Additional asset manifests below are also deferred to the long
-term. Steam API services, Steam Input and their SDK-free preparation are outside
-the short- and mid-term development sequence.
+This guide retains the scope and prerequisites for deferred integrations and
+consumer-driven extensions. RmlUi rendering effects, an alternative audio SDK and
+the in-game developer console are now selected in the
+[planned roadmap](../develop-review-and-development-plan.md#selected-planned-work).
+Other unselected engine and module extensions still need a named application
+consumer to establish scope and prerequisites. Additional asset manifests below
+remain deferred to the long term. Steam API services, Steam Input and their
+SDK-free preparation are outside the short- and mid-term development sequence.
 Multi-platform testing is also shelved; Linux/X11 remains the active short-term
 platform.
 
@@ -131,16 +134,25 @@ the missing readiness signal.
 
 The RmlUi core integration supplies native documents/fonts, keyboard/text/pointer
 input, rectangular clipping, retained CPU/GPU scenes and lifecycle handling. Its
-selected Linux root-composition baseline is sufficient to defer further integration
-extensions. Existing dedicated regressions and supplied-Core acceptance remain in
+selected Linux root-composition baseline remains usable while rendering effects
+are planned. Existing dedicated regressions and supplied-Core acceptance remain in
 the [startup/UI follow-up](../develop-review-and-development-plan.md#startup-and-ui-follow-up).
 
 RmlUi masks, nonidentity transforms, offscreen layers, filters, custom shaders and
-repeating texture coordinates remain deferred and reject publication under the
+repeating texture coordinates are planned extensions and currently reject
+publication under the
 [current recording contract](../../../projects/modules/ui/rmlui/README.md#recording-and-publication).
+Determine which effects can be implemented by the adapter and which require
+changes to neutral render/resource contracts and the graphics backend. Include
+necessary OpenGL/backend support in the selected task, covering render targets,
+passes, masks, transform/clipping semantics and filter/shader/sampling capabilities
+as required by the chosen features. Preserve retained resource generations and
+the independently usable core path; prove CPU/native rendering and failure behavior
+for each added capability.
 Clipboard, cursor styling, IME and controller navigation also need separately
-selected consumer requirements. Resolve transform/clipping, resource lifetime and
-capability/failure contracts before promoting advanced effects.
+selected consumer requirements and remain deferred. Resolve transform/clipping,
+resource lifetime and capability/failure contracts before implementing the selected
+effects.
 
 Select another toolkit only for a concrete application need and preserve its native
 authoring API. Similarity to existing bridges does not require shared widgets.
@@ -159,7 +171,8 @@ omit/replace/test benefit; a seam alone does not justify it.
 
 ## Other engine extensions
 
-Add a built-in graphical developer console as the engine's own graphical interface.
+The built-in graphical developer console is planned as the engine's own graphical
+interface.
 Its scope consists of that console, with the renderer supplying its rendering;
 other application UI remains consumer-owned. It supplies eventual in-app console
 output independently of whether an application selects the optional native terminal.
@@ -172,16 +185,19 @@ application running.
 Beyond the initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope),
 consider wider CJK/script acceptance when a consumer establishes its required fonts,
 language-specific shaping, line-breaking and coverage fixtures. Color emoji is a
-possible [nearer text follow-on](../mid-term/README.md#color-emoji).
+planned [nearer text follow-on](../mid-term/README.md#color-emoji).
 Neither belongs to the current grayscale Latin/Cyrillic and bidi batch.
 
 The [miniaudio module](../../../projects/modules/audio/miniaudio/README.md)
 implements ordinary playback with an accepted Linux root-assembly WAV baseline.
-A later FMOD backend may implement the same
-ordinary playback contract; Studio events, banks and adaptive authoring require
-their own scope and SDK/deployment requirements. Spatial audio, effects graphs,
-capture, device enumeration/hotplug and custom codecs also need separately selected
-consumer requirements.
+An alternative audio SDK/module is planned; select its SDK and assess licensing,
+runtime/dependency deployment, source/package integration and coexistence before
+implementation. FMOD is a candidate for the same ordinary playback contract;
+Studio events, banks and adaptive authoring require their own selected scope and
+SDK/deployment requirements. Preserve miniaudio's independently usable path and
+define consumer/native acceptance for the chosen alternative. Spatial audio,
+effects graphs, capture, device enumeration/hotplug and custom codecs also need
+separately selected consumer requirements.
 
 Immutable image sampling and TGUI smoothing integration are implemented in the
 [sampling contract](../../rendering/pipelines-and-materials.md#immutable-sampling).
@@ -221,7 +237,9 @@ of trigger/policy and accepted platform/toolchain configurations. Pending hosted
 Windows and main artifact collection remain in the active testing queue; successful
 builds do not establish desktop/device acceptance.
 
-Native monitor hotplug and per-window scale/change reporting need explicit consumers.
+Native monitor hotplug is deferred in
+[phase 3 of the status inventory](../../STATUS.md#3-deferred); monitor hotplug and
+per-window scale/change reporting still need explicit consumers.
 Settle refreshed inventory identity, native-handle invalidation and existing-window
 rebinding before adding hotplug support; monitor scale alone does not satisfy a
 per-window service. The current

@@ -17,9 +17,14 @@ Recorded Linux CI/SDK acceptance uses assets `12f06eb`. The subsequent root comm
 does not yet expect. This inspected fixture mismatch needs reconciliation and a
 focused rerun before [hosted CI acceptance](testing-requests.md#tr20-automated-hosted-ci-and-sdk-artifacts).
 
-**Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = nearest scheduled work awaiting design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work; **Not implemented** = no complete functional implementation identified; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
+**Planning update:** 2026-10-11 — Selects three dependency reviews, RmlUi effects,
+reorder-safe sorting, color emoji, an alternative audio SDK and the in-game console.
+Deferred work now includes absent capabilities; this scheduling update does not
+change the implementation review baseline above.
 
-The following **five classification sections** comprise 141 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
+**Classification:** **Partial** = implemented functionality with a selected integration gap; **Planned** = selected work awaiting investigation, design or implementation; **Deferred** = deliberately postponed, unselected, or blocked work, including capabilities with no complete implementation; **Implemented** = substantive source implementation exists, but does not imply a verified build or universal platform coverage.
+
+The following **four classification sections** comprise 144 distinct entries. Links are relative to `docs/STATUS.md`, so they follow the branch in which the document is viewed.
 
 ## 1. Partial
 
@@ -29,67 +34,73 @@ No current entries in this classification.
 
 ## 2. Planned
 
-No selected implementation awaiting design in this classification; pending
-acceptance is tracked separately from source completion.
+The [roadmap](planning/develop-review-and-development-plan.md#selected-planned-work)
+owns these selected tasks. Their prerequisites and design checkpoints remain;
+selection does not authorize implementation or establish executable acceptance.
 
-*0 entries.*
+| Feature / integration | Status | Description / scope | Investigate |
+| --- | --- | --- | --- |
+| GoogleTest submodule review | Planned | Review upstream history since the pinned revision, assess test/CMake/toolchain compatibility and decide whether to update the submodule; validate affected test owners if an update is selected. | [dependency reviews](planning/develop-review-and-development-plan.md#dependency-reviews) |
+| nlohmann/json submodule review | Planned | Review upstream history since the pinned revision and assess parsing, serialization, configuration and package compatibility before deciding whether to update the JSON submodule. | [dependency reviews](planning/develop-review-and-development-plan.md#dependency-reviews) |
+| spdlog submodule review | Planned | Review upstream history since the pinned revision and assess logging/sink behavior, formatting dependencies, exported targets and toolchain compatibility before deciding whether to update the submodule. | [dependency reviews](planning/develop-review-and-development-plan.md#dependency-reviews) |
+| RmlUi rendering effects | Planned | Core document/font/input/clipping and retained-upload integration exists. Plan masks, transforms, layers, filters, custom shaders and repeating texture coordinates, including any neutral rendering-contract and graphics-backend changes needed to support them. | [UI extension plan](planning/long-term/README.md#ui-adapters) |
+| Reorder-safe render sorting | Planned | Sorting is not performed; identify explicitly reorderable regions and preserve required authored draw order, clipping and retained generations before implementing a measured policy. | [sorting scope](planning/mid-term/README.md#reorder-safe-render-sorting) |
+| Color emoji glyphs | Planned | Specify accepted color-font formats, RGBA page handling, material semantics and multi-codepoint fallback beyond the accepted initial grayscale scope. | [emoji scope](planning/mid-term/README.md#color-emoji) |
+| Alternative audio SDK (e.g., FMOD) | Planned · SDK selection pending | Select and assess an alternative SDK/module against the existing audio contracts, including licensing, deployment, coexistence and any additional authoring requirements. | [audio scope](planning/long-term/README.md#other-engine-extensions) |
+| In-game developer console | Planned | Define and implement an engine-owned graphical command/output panel with history, scrolling and input routing, independently of the optional native terminal. | [console scope](planning/long-term/README.md#other-engine-extensions) |
+
+*8 entries.*
 
 ## 3. Deferred
 
-| Feature / integration | Status | Description / scope | Investigate |
-| --- | --- | --- | --- |
-| General render batching | Deferred · unselected extension | Arbitrary contiguous packet merging requires a separate measured design; opt-in positioned text runs are implemented without sorting or changing UI packet policy. | [batching scope](planning/mid-term/README.md#general-render-batching), [text runs](assets/text-layout.md#positioned-text-runs) |
-| Multiple active rendering windows | Deferred | A display can own several windows, but switching the selected rendering window rejects. Multiple active contexts/presentation and their ownership require a separately selected extension. | [window plan](planning/long-term/README.md#multiple-active-rendering-windows) |
-| Gainput HID backend | Deferred · blocked TR6 | Backend initialization, device identity, retained reports and lifecycle notifications remain unfinished. HID acceptance is deferred with backend work and the observation harness. | [HID plan](planning/long-term/README.md#deferred-hid-integration) |
-| RmlUi rendering effects | Deferred | Core document/font/input/clipping and retained-upload integration exists. Masks, transforms, layers, filters, custom shaders and repeating texture coordinates remain unsupported extensions. | [UI extension plan](planning/long-term/README.md#ui-adapters) |
-| Windows native acceptance | Deferred | Verify GLFW/Gainput input, resize/events, controller behavior and HID notifications on Windows; some guarded platform-specific code already exists. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
-| macOS native acceptance | Deferred | Validate dependency configuration, windowing, input and graphics behavior on macOS. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
-| Wayland native acceptance | Deferred | Verify GLFW Wayland windows, focus, input and OpenGL presentation; X11 is the active desktop acceptance path. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
-| Alternative graphics APIs | Deferred | No selected Vulkan, Metal or Direct3D renderer; future modules should test existing neutral graphics/resource contracts. | [README.md](planning/long-term/README.md) |
-| Reorder-safe render sorting | Deferred | Sorting is not performed; a future policy must identify explicitly reorderable regions and preserve required authored draw order. | [README.md](planning/mid-term/README.md) |
-| Text shaping/glyph optimization | Deferred | Profile paragraph shaping, glyph preparation and upload before adding caches or accelerated line fitting. | [README.md](planning/mid-term/README.md) |
-| Color emoji glyphs | Deferred | Specify accepted color-font formats, RGBA page handling, material semantics and multi-codepoint fallback beyond the accepted initial grayscale scope. | [README.md](planning/mid-term/README.md) |
-| Adaptive timing adviser | Deferred | Potential profiling-driven timing recommendations without changing explicit simulation/input policy or silently retiming updates. | [README.md](planning/mid-term/README.md) |
-| Steam API services | Deferred | Define application-scoped service session, callback scheduling, SDK selection and integration requirements from a real consumer. | [README.md](planning/long-term/README.md) |
-| Steam Input | Deferred | Define controller ownership, device selection and native/Steam interaction; prove SDK-free input policies before transport. | [README.md](planning/long-term/README.md) |
-| Multi-source input composition | Deferred | Merge native and optional provider contributions before publishing one logical action snapshot, with precise edge and focus semantics. | [README.md](planning/long-term/README.md) |
-| Multiple native input owners | Deferred | Generalize beyond one Gainput-initialized owner and coordinate native notification-window lifetime where demanded by consumers. | [README.md](planning/long-term/README.md) |
-| Additional UI toolkit modules | Deferred | Add another toolkit only for a demonstrated consumer requirement; preserve neutral Engine contracts and toolkit-owned widget APIs. | [README.md](planning/long-term/README.md) |
-| Alternative audio SDK (e.g., FMOD) | Deferred / unselected | No alternative audio module is selected; the audio contracts admit replacement implementations when a consumer justifies one. | [audio/](../projects/modules/audio/) |
-| In-game developer console | Deferred | Graphical command/output panel, history, scrolling and input routing are described as a future engine-owned facility. | [README.md](planning/long-term/README.md) |
-| Expanded manifest families | Deferred | Broader declarative asset formats remain long-term until a specific application requires their semantics. | [README.md](planning/long-term/README.md) |
-
-*20 entries.*
-
-## 4. Not implemented
+Phases describe future review order within this section, not release milestones,
+delivery dates or authorization to implement. **Phase 2** revisits extensions and
+acceptance for current engine/module facilities. **Phase 3** considers broader
+capability gaps that need their own scope and prerequisites. Rows retain their
+existing order within each phase.
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |
-| Android platform module | Not implemented | No Android lifecycle adapter, EGL/mobile rendering path, Android input implementation or packaging target. | [platform/](../projects/modules/platform/) |
-| iOS platform module | Not implemented | No iOS lifecycle, Metal/OpenGL ES integration, touch-input implementation or application packaging. | [platform/](../projects/modules/platform/) |
-| PlayStation platform module | Not implemented | No console SDK adapter, graphics/input module or platform deployment integration. | [modules/](../projects/modules/) |
-| Xbox platform module | Not implemented | No Xbox SDK adapter, graphics/input module or packaging integration. | [modules/](../projects/modules/) |
-| Nintendo platform module | Not implemented | No Nintendo SDK adapter, graphics/input module or packaging integration. | [modules/](../projects/modules/) |
-| 3D mesh/model rendering | Not implemented | Camera3D projects perspective matrices, but there is no complete mesh/model draw path; the current mesh header is empty. | [mesh.h](../projects/engine/include/cheryl/assets/types/3d/mesh.h) |
-| Entity-component system | Not implemented | No built-in entity registry, components/archetypes or prescribed ECS; game logic architecture belongs to the consumer. | [abstract-game.h](../projects/engine/include/cheryl/core/game-framework/abstract-game.h) |
-| Tilemap/world system | Not implemented | Autotile selection is provided, but tilemap storage, regions, streaming and world-level map management are not. | [tile-selection.h](../projects/engine/include/cheryl/assets/selection/tile-selection.h) |
-| Collision/physics system | Not implemented | No physics world, collision engine, rigid-body simulation or built-in solver. | [cheryl/](../projects/engine/include/cheryl/) |
-| Networking/multiplayer | Not implemented | No network transport, game session, replication or network-state reconciliation engine facilities. | [modules/](../projects/modules/) |
-| Save-game serialization | Not implemented | Manifest JSON parsing does not constitute an application save-state or serialization subsystem. | [resources/](../projects/engine/include/cheryl/core/resources/) |
-| Spatial/positional audio | Not implemented | Audio handles expose gain, looping and playback, but no listener/source coordinates or spatial mixing contract. | [system.h](../projects/engine/include/cheryl/audio/system.h) |
-| Automatic asset hot reload | Not implemented | Explicit shader/material replacement exists; the manifest loader has no atomic watch/reload-and-republish mechanism. | [asset-loader.h](../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h) |
-| GPU memory budgets/eviction | Not implemented | Resource handles and caches are implemented, but automatic residency budgets, eviction and GPU-memory policy are absent. | [resource-provider.h](../projects/engine/include/cheryl/assets/resources/resource-provider.h) |
-| Independent provider cache domains | Not implemented | Global asset managers currently use one active provider/loading-owner domain; parallel independent cache domains are unsupported. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
-| OS clipboard services | Not implemented | Both toolkit adapters reject clipboard API requests rather than reading or writing OS clipboard data. | [session.cpp](../projects/modules/ui/tgui/src/session.cpp) |
-| IME composition/preedit | Not implemented | Committed Unicode text is delivered, but multi-stage input-method composition/preedit integration is missing. | [session.cpp](../projects/modules/ui/rmlui/src/session.cpp) |
-| Relative pointer capture | Not implemented | Cursor visibility exists, but generalized raw/locked relative pointer capture is not exposed by the window contract. | [window-interface.h](../projects/engine/include/cheryl/core/display/window-interface.h) |
-| Toolkit OS cursor styling | Not implemented | Toolkit cursor-style callbacks are no-ops and there is no integrated cursor-style provider. | [session.cpp](../projects/modules/ui/rmlui/src/session.cpp) |
-| Gamepad-driven UI navigation | Not implemented | Input records can represent controllers, but no general controller-focus/navigation mapping for TGUI/RmlUi is supplied. | [ui/](../projects/modules/ui/) |
-| Monitor hotplug event service | Not implemented | Monitor enumeration exists; an engine-level dynamic monitor-added/removed subscription and lifecycle contract is absent. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
+| General render batching | Deferred · phase 2 · unselected extension | Arbitrary contiguous packet merging requires a separate measured design; opt-in positioned text runs are implemented without sorting or changing UI packet policy. | [batching scope](planning/mid-term/README.md#general-render-batching), [text runs](assets/text-layout.md#positioned-text-runs) |
+| Multiple active rendering windows | Deferred · phase 2 | A display can own several windows, but switching the selected rendering window rejects. Multiple active contexts/presentation and their ownership require a separately selected extension. | [window plan](planning/long-term/README.md#multiple-active-rendering-windows) |
+| Gainput HID backend | Deferred · phase 2 · blocked TR6 | Backend initialization, device identity, retained reports and lifecycle notifications remain unfinished. HID acceptance is deferred with backend work and the observation harness. | [HID plan](planning/long-term/README.md#deferred-hid-integration) |
+| Windows native acceptance | Deferred · phase 2 | Verify GLFW/Gainput input, resize/events, controller behavior and HID notifications on Windows; some guarded platform-specific code already exists. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
+| macOS native acceptance | Deferred · phase 2 | Validate dependency configuration, windowing, input and graphics behavior on macOS. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
+| Wayland native acceptance | Deferred · phase 2 | Verify GLFW Wayland windows, focus, input and OpenGL presentation; X11 is the active desktop acceptance path. | [platform-acceptance.md](planning/long-term/platform-acceptance.md) |
+| Alternative graphics APIs | Deferred · phase 2 | No selected Vulkan, Metal or Direct3D renderer; future modules should test existing neutral graphics/resource contracts. | [README.md](planning/long-term/README.md) |
+| Text shaping/glyph optimization | Deferred · phase 2 | Profile paragraph shaping, glyph preparation and upload before adding caches or accelerated line fitting. | [README.md](planning/mid-term/README.md) |
+| Adaptive timing adviser | Deferred · phase 2 | Potential profiling-driven timing recommendations without changing explicit simulation/input policy or silently retiming updates. | [README.md](planning/mid-term/README.md) |
+| Steam API services | Deferred · phase 2 | Define application-scoped service session, callback scheduling, SDK selection and integration requirements from a real consumer. | [README.md](planning/long-term/README.md) |
+| Steam Input | Deferred · phase 2 | Define controller ownership, device selection and native/Steam interaction; prove SDK-free input policies before transport. | [README.md](planning/long-term/README.md) |
+| Multi-source input composition | Deferred · phase 2 | Merge native and optional provider contributions before publishing one logical action snapshot, with precise edge and focus semantics. | [README.md](planning/long-term/README.md) |
+| Multiple native input owners | Deferred · phase 2 | Generalize beyond one Gainput-initialized owner and coordinate native notification-window lifetime where demanded by consumers. | [README.md](planning/long-term/README.md) |
+| Additional UI toolkit modules | Deferred · phase 2 | Add another toolkit only for a demonstrated consumer requirement; preserve neutral Engine contracts and toolkit-owned widget APIs. | [README.md](planning/long-term/README.md) |
+| Expanded manifest families | Deferred · phase 2 | Broader declarative asset formats remain long-term until a specific application requires their semantics. | [README.md](planning/long-term/README.md) |
+| Android platform module | Deferred · phase 3 | No Android lifecycle adapter, EGL/mobile rendering path, Android input implementation or packaging target. | [platform/](../projects/modules/platform/) |
+| iOS platform module | Deferred · phase 3 | No iOS lifecycle, Metal/OpenGL ES integration, touch-input implementation or application packaging. | [platform/](../projects/modules/platform/) |
+| PlayStation platform module | Deferred · phase 3 | No console SDK adapter, graphics/input module or platform deployment integration. | [modules/](../projects/modules/) |
+| Xbox platform module | Deferred · phase 3 | No Xbox SDK adapter, graphics/input module or packaging integration. | [modules/](../projects/modules/) |
+| Nintendo platform module | Deferred · phase 3 | No Nintendo SDK adapter, graphics/input module or packaging integration. | [modules/](../projects/modules/) |
+| 3D mesh/model rendering | Deferred · phase 3 | Camera3D projects perspective matrices, but there is no complete mesh/model draw path; the current mesh header is empty. | [mesh.h](../projects/engine/include/cheryl/assets/types/3d/mesh.h) |
+| Entity-component system | Deferred · phase 3 | No built-in entity registry, components/archetypes or prescribed ECS; game logic architecture belongs to the consumer. | [abstract-game.h](../projects/engine/include/cheryl/core/game-framework/abstract-game.h) |
+| Tilemap/world system | Deferred · phase 3 | Autotile selection is provided, but tilemap storage, regions, streaming and world-level map management are not. | [tile-selection.h](../projects/engine/include/cheryl/assets/selection/tile-selection.h) |
+| Collision/physics system | Deferred · phase 3 | No physics world, collision engine, rigid-body simulation or built-in solver. | [cheryl/](../projects/engine/include/cheryl/) |
+| Networking/multiplayer | Deferred · phase 3 | No network transport, game session, replication or network-state reconciliation engine facilities. | [modules/](../projects/modules/) |
+| Save-game serialization | Deferred · phase 3 | Manifest JSON parsing does not constitute an application save-state or serialization subsystem. | [resources/](../projects/engine/include/cheryl/core/resources/) |
+| Spatial/positional audio | Deferred · phase 3 | Audio handles expose gain, looping and playback, but no listener/source coordinates or spatial mixing contract. | [system.h](../projects/engine/include/cheryl/audio/system.h) |
+| Automatic asset hot reload | Deferred · phase 3 | Explicit shader/material replacement exists; the manifest loader has no atomic watch/reload-and-republish mechanism. | [asset-loader.h](../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h) |
+| GPU memory budgets/eviction | Deferred · phase 3 | Resource handles and caches are implemented, but automatic residency budgets, eviction and GPU-memory policy are absent. | [resource-provider.h](../projects/engine/include/cheryl/assets/resources/resource-provider.h) |
+| Independent provider cache domains | Deferred · phase 3 | Global asset managers currently use one active provider/loading-owner domain; parallel independent cache domains are unsupported. | [asset-mgr.h](../projects/engine/include/cheryl/templates/asset-mgr.h) |
+| OS clipboard services | Deferred · phase 3 | Both toolkit adapters reject clipboard API requests rather than reading or writing OS clipboard data. | [session.cpp](../projects/modules/ui/tgui/src/session.cpp) |
+| IME composition/preedit | Deferred · phase 3 | Committed Unicode text is delivered, but multi-stage input-method composition/preedit integration is missing. | [session.cpp](../projects/modules/ui/rmlui/src/session.cpp) |
+| Relative pointer capture | Deferred · phase 3 | Cursor visibility exists, but generalized raw/locked relative pointer capture is not exposed by the window contract. | [window-interface.h](../projects/engine/include/cheryl/core/display/window-interface.h) |
+| Toolkit OS cursor styling | Deferred · phase 3 | Toolkit cursor-style callbacks are no-ops and there is no integrated cursor-style provider. | [session.cpp](../projects/modules/ui/rmlui/src/session.cpp) |
+| Gamepad-driven UI navigation | Deferred · phase 3 | Input records can represent controllers, but no general controller-focus/navigation mapping for TGUI/RmlUi is supplied. | [ui/](../projects/modules/ui/) |
+| Monitor hotplug event service | Deferred · phase 3 | Monitor enumeration exists; an engine-level dynamic monitor-added/removed subscription and lifecycle contract is absent. | [display-system-interface.h](../projects/engine/include/cheryl/core/display/display-system-interface.h) |
 
-*21 entries.*
+*36 entries.*
 
-## 5. Implemented
+## 4. Implemented
 
 | Feature / integration | Status | Description / scope | Investigate |
 | --- | --- | --- | --- |

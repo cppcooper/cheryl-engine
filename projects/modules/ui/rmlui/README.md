@@ -8,8 +8,9 @@ recording and retained scene upload. The
 engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
 
 This core integration is sufficient for the selected Linux root-composition scope.
-Further rendering effects and OS services are
-[deferred extensions](../../../../docs/planning/long-term/README.md#ui-adapters).
+Further rendering effects are
+[planned extensions](../../../../docs/planning/long-term/README.md#ui-adapters),
+including any required graphics-backend support. OS services remain deferred.
 Dedicated regression and supplied-Core acceptance gaps remain in the
 [startup/UI follow-up](../../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
 
@@ -86,7 +87,7 @@ the adapter receives compatible premultiplied materials from its caller. The
 shows typed definitions and explicit uniform wiring. Indexed loading migrates
 only main text/image materials. A later UI migration targets TGUI first; migrating
 RmlUi also requires preserving a separately usable manual example. Core support
-and deferred effects remain independently scoped.
+and planned effects remain independently scoped.
 
 ## Focused checks
 

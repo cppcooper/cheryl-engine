@@ -1,13 +1,17 @@
 # Mid-term work
 
-Color emoji follows the accepted initial grayscale Unicode baseline. Sorting and
-text/timing optimization require representative workload evidence and settled
-contracts. These tasks have no active checklist yet; promote one coherent unit when
-its prerequisites and scope are settled. Opt-in
+Color emoji and reorder-safe sorting are planned in the
+[selected roadmap](../develop-review-and-development-plan.md#selected-planned-work).
+General render batching and text/timing optimization remain deferred. Sorting and
+optimization retain their representative-workload and settled-contract prerequisites.
+These tasks have no active implementation checklist yet; activate one coherent unit
+after its investigation/design checkpoint. Opt-in
 [positioned text runs](../../assets/text-layout.md#positioned-text-runs) already
 prepare glyph placements once and preserve contiguous page order.
 
 ## Color emoji
+
+This is selected planned work beyond the current grayscale implementation.
 
 Select required color-font formats, fonts and emoji sequences beyond the accepted
 initial [grayscale scope](../../assets/text-layout.md#native-acceptance-scope).
@@ -18,7 +22,9 @@ and sequence appearance need their own CPU/native acceptance.
 
 ## General render batching
 
-General contiguous packet merging remains distinct from positioned-text submission.
+General contiguous packet merging remains deferred and distinct from implemented
+positioned-text submission. The current renderer submits each general packet
+individually; the selected text path emits one draw per contiguous atlas-page run.
 Require representative update, draw/state-switch, publication and backlog evidence
 and a design discussion before selecting another implementation. Compatibility
 must include UI clipping, glyph pages, immutable sampling/resource generations,
@@ -29,8 +35,9 @@ If another bottleneck dominates, report it before accumulating dependent work.
 
 ## Reorder-safe render sorting
 
-Sorting remains separate from contiguous batching. Identify explicitly reorder-safe
-regions and preserve required authored order, clipping and retained generations.
+Sorting is selected planned work and remains separate from contiguous batching.
+Identify explicitly reorder-safe regions and preserve required authored order,
+clipping and retained generations.
 Use workload measurements and visual/order/generation acceptance to justify
 reordering; batching alone does not authorize it.
 

@@ -13,6 +13,45 @@ Its contracts live in the [worker guide](../runtime/worker-execution.md),
 [text guide](../assets/text-layout.md#positioned-text-runs) and
 [build/CI guide](../development/building.md#github-ci-and-sdk-artifacts).
 
+### Selected planned work
+
+The following work is selected for investigation and design. Dependency reviews
+remain three independent tasks; each feature needs its own settled scope and
+acceptance before implementation. This selection does not promote general packet
+batching or the other deferred integrations.
+
+| Work | Owning scope and next checkpoint |
+| --- | --- |
+| GoogleTest submodule review | [Dependency review](#dependency-reviews): compare upstream history with the current pin, assess test/CMake/toolchain changes and recommend retaining the pin or selecting an update. |
+| nlohmann/json submodule review | [Dependency review](#dependency-reviews): assess parsing, serialization, configuration and source/package compatibility against upstream candidates. |
+| spdlog submodule review | [Dependency review](#dependency-reviews): assess logger/sink behavior, formatting dependencies, exported targets and source/package/toolchain compatibility. |
+| RmlUi rendering effects | [UI extension scope](long-term/README.md#ui-adapters): settle masks, transforms, layers, filters, custom shaders and repeating coordinates, including required neutral-contract and graphics-backend support. |
+| Reorder-safe render sorting | [Sorting scope](mid-term/README.md#reorder-safe-render-sorting): identify reorderable regions and measure a policy that preserves authored order where required, clipping and retained generations. |
+| Color emoji glyphs | [Emoji scope](mid-term/README.md#color-emoji): select color-font formats and sequences, then settle RGBA pages, materials, fallback and CPU/native acceptance. |
+| Alternative audio SDK | [Audio scope](long-term/README.md#other-engine-extensions): select an SDK, assess licensing/deployment and preserve the ordinary playback contract; any richer authoring model needs explicit scope. |
+| In-game developer console | [Console scope](long-term/README.md#other-engine-extensions): settle graphical output, commands, scrolling/history and input routing independently of the native terminal. |
+
+The current RmlUi document/font/input/clipping and retained-upload integration
+remains sufficient for the selected Linux root composition. Its planned rendering
+effects include any required backend work; the
+[startup/UI follow-up](#startup-and-ui-follow-up) keeps regression and supplied-Core
+acceptance separate from extending that integration.
+
+### Dependency reviews
+
+For each dependency, compare its pinned commit with upstream history and candidate
+revisions, including changed ancestry or tag/commit availability. Review relevant
+release notes, integration/API changes, CMake targets/options, supported compilers
+and license changes. Check both Cheryl-owned source and supplied target/package
+paths where applicable. Recommend an exact reproducible candidate or retention of
+the existing pin; reviewing history does not automatically authorize an update.
+
+If an update is selected, keep each submodule change a separate development unit
+and design focused acceptance for the affected owners, independent consumers and
+Linux/Windows CI configurations. Preserve unrelated pins and local dependency work.
+
+### Remaining acceptance
+
 Remaining acceptance has independent prerequisites:
 
 | Work | Next phase and checkpoint |
@@ -30,8 +69,9 @@ preserves coverage limits. Completed implementation plans are retired after thei
 contracts and unresolved acceptance have moved to the subject guides/testing queue.
 
 NUMA discovery and memory placement remain [indefinitely deferred](long-term/README.md#other-engine-extensions).
-General packet batching and reorder-safe sorting require separate selection under
-the [mid-term scope](mid-term/README.md#general-render-batching).
+General packet batching remains deferred under the
+[mid-term scope](mid-term/README.md#general-render-batching). Reorder-safe sorting
+is selected separately; positioned text runs do not implement either policy.
 [Release publication](long-term/README.md#other-engine-extensions)
 remains a future decision: current SDK outputs are workflow artifacts and contain
 prebuilt development libraries/headers, not applications or a demo package.
@@ -96,10 +136,7 @@ the current programmatic startup contract and has no selected implementation pha
 
 Multiple active rendering windows and HID integration belong to the
 [long-term native plan](long-term/README.md#deferred-native-integration).
-The RmlUi document/font/input/clipping and retained-upload integration is sufficient
-for the selected Linux root composition. Further effects and OS services are
-[deferred UI extensions](long-term/README.md#ui-adapters); the open regression and
-supplied-Core cases above remain distinct from extending that core integration.
+Toolkit OS services remain [deferred UI extensions](long-term/README.md#ui-adapters).
 
 ### Deferred HID integration
 
@@ -111,6 +148,9 @@ is deferred there, outside the active testing queue.
 ## Later work
 
 Use the [horizon catalogue](README.md) for work beyond the nearest sequence.
-Color emoji remains unselected; text/timing optimization and reorder-safe sorting
-wait for workload evidence and their own contracts. Platform, Steam and additional
-optional modules require a named consumer and resolved prerequisites.
+Color emoji and reorder-safe sorting are selected above, with their design and
+workload prerequisites retained. General batching and text/timing optimization
+remain deferred. RmlUi effects, alternative audio and the graphical console are
+also selected; platform, Steam and other optional modules retain their existing
+consumer and prerequisite requirements. Deferred phases in the
+[status inventory](../STATUS.md#3-deferred) describe review order within that section.
