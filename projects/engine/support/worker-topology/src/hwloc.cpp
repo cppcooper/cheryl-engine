@@ -114,9 +114,14 @@ namespace CE::Engine {
                 std::set_intersection(
                     allowed.begin(), allowed.end(), inherited.begin(), inherited.end(), std::back_inserter(snapshot_.eligible_cpus)
                 );
+#if defined(_WIN32)
+                // hwloc's Windows backend rejects CPU binding with NOMEMBIND.
+                snapshot_.limitations = "hwloc on Windows cannot bind thread CPUs without affecting memory placement";
+#else
                 snapshot_.cpu_affinity = binding->set_thisthread_cpubind && !snapshot_.eligible_cpus.empty();
                 if (!snapshot_.cpu_affinity)
                     snapshot_.limitations = "hwloc thread-specific binding is unavailable or eligible CPUs are unknown";
+#endif
 
                 for (int depth = 0; depth < hwloc_topology_get_depth(native); ++depth) {
                     hwloc_obj_t object = nullptr;
