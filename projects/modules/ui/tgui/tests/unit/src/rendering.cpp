@@ -60,7 +60,8 @@ TEST(ui_tgui_texture, hit_pixels) {
 
 TEST(ui_tgui_texture, limits) {
     EXPECT_THROW(Texture(0), CE::Exceptions::invalid_args);
-    EXPECT_THROW(CE::UI::TGUI::Renderer(std::numeric_limits<unsigned int>::max()), CE::Exceptions::invalid_args);
+    constexpr auto maximum = (std::numeric_limits<unsigned int>::max)();
+    EXPECT_THROW(static_cast<void>(CE::UI::TGUI::Renderer{maximum}), CE::Exceptions::invalid_args);
     CE::UI::TGUI::Renderer renderer(32);
     EXPECT_EQ(renderer.getMaximumTextureSize(), 32u);
     EXPECT_TRUE(std::dynamic_pointer_cast<Texture>(renderer.createTexture()));

@@ -90,7 +90,8 @@ TEST(ui_rmlui_texture, file_alpha) {
 
 TEST(ui_rmlui_texture, limits) {
     EXPECT_THROW(RenderTarget(0), CE::Exceptions::invalid_args);
-    EXPECT_THROW(RenderTarget(std::numeric_limits<unsigned int>::max()), CE::Exceptions::invalid_args);
+    constexpr auto maximum = (std::numeric_limits<unsigned int>::max)();
+    EXPECT_THROW(static_cast<void>(RenderTarget{maximum}), CE::Exceptions::invalid_args);
     RenderTarget renderer(1);
     constexpr std::array<unsigned char, 8> pixels{};
     EXPECT_THROW(renderer.GenerateTexture({pixels.data(), pixels.size()}, {2, 1}), CE::Exceptions::invalid_args);
