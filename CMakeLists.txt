@@ -6,6 +6,10 @@ project(cheryl
         LANGUAGES C CXX
 )
 
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 # Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
 include(cmake/CherylOptions.cmake)
 cheryl_configure_root_options()
