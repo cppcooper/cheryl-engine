@@ -284,6 +284,8 @@ namespace CE {
 
         bool registered = false;
         try {
+            std::filesystem::create_directories(configuration_.directory);
+
             // Build a complete replacement resource graph before publishing it to callers.
             // The file sink deleter becomes the close-completion signal once the lifecycle
             // later enters Closing; destruction during a failed opening is intentionally ignored.
