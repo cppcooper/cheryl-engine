@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -623,35 +624,43 @@ TEST(logging, console_failure) {
 
 TEST(logging, backend_reentry) {
     LogDirectory directory;
-    TestLog<reentry_name> log{{}, queue_config(reentry_name, directory.path)};
-    TestLog<reentry_target_name> target{{}, queue_config(reentry_target_name, directory.path)};
     int prepared = 0;
     int rejected = 0;
+    std::promise<void> callback_complete;
+    auto callback_result = callback_complete.get_future();
+    TestLog<reentry_name> log{{}, queue_config(reentry_name, directory.path)};
+    TestLog<reentry_target_name> target{{}, queue_config(reentry_target_name, directory.path)};
     const auto callback = [&] {
-        spdlog::get(reentry_target_name)->warn("native-recursive");
-        log.warn("owned-recursive");
-        CE_LOG_WARN(untouched_name, "{}", ++prepared);
-        UWARN(untouched_name) << ++prepared;
-        const auto reject = [&](auto operation) {
-            try {
-                operation();
-            } catch (const Exceptions::bad_request&) {
-                ++rejected;
-            }
-        };
-        reject([&] { log.close(close_timeout); });
-        reject([&] { log.flush(); });
-        reject([&] { spdlog::get(reentry_target_name)->flush(); });
-        // The main thread can already have dropped this callback's own registry
-        // entry during close. The target stays open until the callback completes.
-        reject([&] { spdlog::get(reentry_target_name)->set_pattern("%v"); });
-        reject([&] { (void)Logger<untouched_name>::get(); });
+        try {
+            spdlog::get(reentry_target_name)->warn("native-recursive");
+            log.warn("owned-recursive");
+            CE_LOG_WARN(untouched_name, "{}", ++prepared);
+            UWARN(untouched_name) << ++prepared;
+            const auto reject = [&](auto operation) {
+                try {
+                    operation();
+                } catch (const Exceptions::bad_request&) {
+                    ++rejected;
+                }
+            };
+            reject([&] { log.close(close_timeout); });
+            reject([&] { log.flush(); });
+            reject([&] { spdlog::get(reentry_target_name)->flush(); });
+            reject([&] { spdlog::get(reentry_target_name)->set_pattern("%v"); });
+            reject([&] { (void)Logger<untouched_name>::get(); });
+        } catch (...) {
+            callback_complete.set_exception(std::current_exception());
+            return;
+        }
+        callback_complete.set_value();
     };
     {
         auto native = log.retain_logger();
         native->sinks()[1]->set_formatter(std::make_unique<CallbackFormatter>(callback));
         native->warn("outer-record");
     }
+    // Debug exception stack traces can outlast the close deadline; finish the callback before teardown.
+    callback_result.get();
     log.close(close_timeout);
     target.close(close_timeout);
     EXPECT_EQ(prepared, 0);
