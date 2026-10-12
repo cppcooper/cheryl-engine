@@ -38,32 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
           persist-credentials: false
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ccache ninja-build pkg-config g++-14 clang-18 clang-tools-18 libfreetype-dev libharfbuzz-dev libicu-dev libhwloc-dev libdw-dev libelf-dev fonts-urw-base35
-      - name: Install Windows ccache
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          choco install ccache --version=4.14.0 --yes --no-progress
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $ccache = Get-ChildItem "$env:ChocolateyInstall/lib/ccache/tools" -Filter ccache.exe -Recurse | Select-Object -First 1
-          if (!$ccache) { throw 'ccache executable is unavailable' }
-          $ccache.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Prepare pinned vcpkg
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          git -C "$env:RUNNER_TEMP/vcpkg" checkout e456309491fd875487bf02b8a0dca76c1b1b00cc
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Prepare dependencies
+        id: dependencies
+        uses: ./.github/actions/prepare-dependencies
+        with:
+          profile: headless
       - name: Restore compiler cache
         id: ccache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -97,8 +77,18 @@ jobs:
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (!$vs) { throw 'MSVC x64 tools are unavailable' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          python .github/ci/run.py --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC --vcpkg-root "$env:RUNNER_TEMP/vcpkg"
+          python .github/ci/run.py --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check dependency cache updates
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' }}
+        id: dependency-cache-state
+        run: python .github/ci/dependencies.py cache-state
+      - name: Save dependency packages and downloads
+        if: ${{ !cancelled() && steps.dependency-cache-state.outputs.changed == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_DIR }}
+          key: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_KEY }}
       - name: Report compiler cache statistics
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         run: ccache --show-stats --verbose
@@ -135,34 +125,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          submodules: recursive
           persist-credentials: false
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ccache ninja-build pkg-config g++-14 libfreetype-dev libharfbuzz-dev libicu-dev libhwloc-dev libdw-dev libelf-dev libgl-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev python3-jinja2 fonts-urw-base35
-      - name: Install Windows ccache
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          choco install ccache --version=4.14.0 --yes --no-progress
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $ccache = Get-ChildItem "$env:ChocolateyInstall/lib/ccache/tools" -Filter ccache.exe -Recurse | Select-Object -First 1
-          if (!$ccache) { throw 'ccache executable is unavailable' }
-          $ccache.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Prepare pinned vcpkg
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          git -C "$env:RUNNER_TEMP/vcpkg" checkout e456309491fd875487bf02b8a0dca76c1b1b00cc
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -m pip install Jinja2==3.1.6
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Prepare dependencies
+        id: dependencies
+        uses: ./.github/actions/prepare-dependencies
+        with:
+          profile: modules
       - name: Restore compiler cache
         id: ccache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -192,12 +160,22 @@ jobs:
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (!$vs) { throw 'MSVC x64 tools are unavailable' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          python .github/ci/run.py --build-dir build/ci --profile modules --build-type RelWithDebInfo --hwloc ON --sdk --vcpkg-root "$env:RUNNER_TEMP/vcpkg"
+          python .github/ci/run.py --build-dir build/ci --profile modules --build-type RelWithDebInfo --hwloc ON --sdk --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python .github/ci/package.py --build-dir build/ci --output build/packages
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python .github/ci/verify_sdk.py --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check dependency cache updates
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' }}
+        id: dependency-cache-state
+        run: python .github/ci/dependencies.py cache-state
+      - name: Save dependency packages and downloads
+        if: ${{ !cancelled() && steps.dependency-cache-state.outputs.changed == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_DIR }}
+          key: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_KEY }}
       - name: Report compiler cache statistics
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         run: ccache --show-stats --verbose
