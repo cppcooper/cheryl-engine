@@ -6,11 +6,14 @@
 #include <cheryl/core/engine/worker-topology/hwloc.h>
 #endif
 
+#include <exception>
+#include <iostream>
+
 #if defined(HWLOC_API_VERSION) || defined(NLOHMANN_JSON_VERSION_MAJOR)
 #error Support headers must not expose their implementation SDKs.
 #endif
 
-int main() {
+int main() try {
     CE::Engine::WorkerConfiguration configuration;
 #if CHERYL_CONSUMER_WORKER_JSON
     configuration = CE::Engine::parse_worker_configuration(R"({"version":"1.0","workers":1,"groups":{"simulation":{"concurrency":1}}})");
@@ -27,4 +30,7 @@ int main() {
     group.close();
     group.drain();
     return value.get() == 11 ? 0 : 1;
+} catch (const std::exception& error) {
+    std::cerr << "consumer-worker-topology failed: " << error.what() << '\n';
+    return 1;
 }
