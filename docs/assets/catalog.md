@@ -83,7 +83,7 @@ downloads and provenance records are not included in Git.
 | Package and author page | Staging directory under `asset-downloads/0x72/` | Source files |
 | --- | --- | --- |
 | [16x16 Dungeon Tileset — 0x72](https://0x72.itch.io/16x16-dungeon-tileset) | `16x16-dungeon-tileset/` | `0x72_16x16DungeonTileset.v5.zip` |
-| [16x16 DungeonTileset II — 0x72](https://0x72.itch.io/dungeontileset-ii) | `dungeontileset-ii/` | `0x72_DungeonTilesetII_v1.7.zip`, `pumpkin_dude.png`, `doc.png` |
+| [16x16 DungeonTileset II — 0x72](https://0x72.itch.io/dungeontileset-ii) | `dungeontileset-ii/` | `0x72_DungeonTilesetII_v1.7.zip` |
 
 Unpacking these packages and writing a manifest for each belongs to the
 [long-term asset task](../planning/long-term/README.md#additional-dungeon-asset-manifests).
