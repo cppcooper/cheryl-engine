@@ -46,6 +46,8 @@ def main(arguments=None):
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_JSON={flag(testing)}", "-DGAINPUT_ENABLE_HID=OFF",
                  "-DGLFW_BUILD_WAYLAND=OFF", "-Dgtest_force_shared_crt=ON", "-DBUILD_SHARED_LIBS=OFF",
                  "-DTGUI_SHARED_LIBS=OFF", f"-DCHERYL_BUILD_SDK={flag(args.sdk)}", "-DCMAKE_INSTALL_LIBDIR=lib"]
+    if modules:
+        configure.append(f"-DPython_EXECUTABLE:FILEPATH={Path(sys.executable).resolve().as_posix()}")
     if sys.platform == "win32" and environment.get("CMAKE_CXX_COMPILER_LAUNCHER") == "ccache":
         # Keep MSVC debug information in the cached object instead of a compiler PDB.
         configure += ["-DCMAKE_POLICY_DEFAULT_CMP0141=NEW",
