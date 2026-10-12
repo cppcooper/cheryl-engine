@@ -11,6 +11,7 @@
 #include "../../support/document.h"
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/StringUtilities.h>
 #include <gtest/gtest.h>
 
 #include <array>
@@ -283,7 +284,11 @@ namespace {
                 const std::filesystem::path image_path{CHERYL_RMLUI_TEST_IMAGE};
                 // RmlUi strips the leading slash from absolute image URLs.
                 // Anchor the document at the fixtures and use relative names.
-                auto& document = RmlUiTests::document(*session_, (image_path.parent_path() / "runtime.rml").generic_string());
+                // Its URL parser uses '|' for Windows drive separators.
+                const auto document_url = Rml::StringUtilities::Replace(
+                    (image_path.parent_path() / "runtime.rml").generic_string(), ':', '|'
+                );
+                auto& document = RmlUiTests::document(*session_, document_url);
                 document.SetInnerRML(
                     "<div>Queued RmlUi</div><img id='picture' src='" + image_path.filename().generic_string() +
                     "' style='width:20px; height:20px;' />"
