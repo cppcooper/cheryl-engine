@@ -26,7 +26,8 @@ class RunnerTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        # Match run.py's canonical paths, including Windows 8.3 aliases.
+        self.root = Path(self.temporary.name).resolve()
         self.source = self.root / "source with spaces"
         self.source.mkdir()
         self.build = self.root / "build"
