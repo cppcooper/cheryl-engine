@@ -12,7 +12,8 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CCACHE_VERSION = "4.14.0"
+CCACHE_VERSION = "4.14"
+CCACHE_PACKAGE_VERSION = "4.14.0"
 APT_COMMON = ["ccache", "ninja-build", "pkg-config", "g++-14", "libfreetype-dev", "libharfbuzz-dev",
               "libicu-dev", "libhwloc-dev", "libdw-dev", "libelf-dev", "fonts-urw-base35"]
 APT_EXTRA = {
@@ -66,7 +67,7 @@ def metadata(profile):
     emit("GITHUB_OUTPUT", {
         "submodule-key": f"submodule-git-v1-{runner}-{submodules}",
         "submodule-path": modules_path.resolve().as_posix(),
-        "tools-key": f"windows-tools-v1-{runner}-{baseline}-ccache-{CCACHE_VERSION}",
+        "tools-key": f"windows-tools-v1-{runner}-{baseline}-ccache-{CCACHE_PACKAGE_VERSION}",
         "vcpkg-root": vcpkg.as_posix(),
         "ccache-tools": ccache.as_posix(),
         "dependency-path": cache.as_posix(),
@@ -132,7 +133,7 @@ def windows_tools():
     tools = Path(os.environ["CHERYL_CI_CCACHE_TOOLS"])
     executable = tools / "ccache.exe"
     if not executable.is_file():
-        run(["choco", "install", "ccache", f"--version={CCACHE_VERSION}", "--yes", "--no-progress"])
+        run(["choco", "install", "ccache", f"--version={CCACHE_PACKAGE_VERSION}", "--yes", "--no-progress"])
         installed = Path(os.environ["ChocolateyInstall"]) / "lib/ccache/tools"
         candidates = sorted(installed.rglob("ccache.exe"))
         if not candidates:
