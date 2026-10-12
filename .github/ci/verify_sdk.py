@@ -57,7 +57,7 @@ def main():
         environment["PATH"] = str(sdk / "dependencies/bin") + os.pathsep + environment["PATH"]
     commands = [
         ["cmake", "-S", source / ".github/ci/sdk-consumer", "-B", build, "-G", "Ninja",
-         f"-DCMAKE_PREFIX_PATH={sdk}", f"-DCHERYL_REPOSITORY_ROOT={source}",
+         f"-DCMAKE_PREFIX_PATH={sdk}", f"-DCHERYL_REPOSITORY_ROOT={source.as_posix()}",
          f"-DCMAKE_BUILD_TYPE={metadata['configuration']}"],
         ["cmake", "--build", build, "--parallel", str(args.jobs)],
         ["ctest", "--test-dir", build, "--parallel", str(args.jobs), "--no-tests=error", "--timeout", "120",
