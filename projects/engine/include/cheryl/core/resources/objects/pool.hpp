@@ -90,7 +90,7 @@ namespace CE::Obj {
         auto byte_context = manager.release_context();
         // The owner deleter runs once after every alias to this allocation
         // disappears; the slot map distinguishes constructed from raw storage.
-        std::shared_ptr<T> block_root(raw, [b, len, tracking = tracking_, byte_context = std::move(byte_context)](auto p) noexcept {
+        std::shared_ptr<T> block_root(raw, [b, len, tracking = tracking_, byte_context = std::move(byte_context)](T* p) noexcept {
             // Only tracked live slots are destroyed; unconstructed reserved slots are skipped.
             try {
                 tracking->destroy(p, len);
