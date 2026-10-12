@@ -62,6 +62,9 @@ def main():
         ["cmake", "--build", build, "--parallel", str(args.jobs)],
         ["ctest", "--test-dir", build, "--parallel", str(args.jobs), "--no-tests=error", "--timeout", "120",
          "--output-on-failure", "--output-junit", build / "junit.xml"]]
+    if metadata["system"] == "Windows" and environment.get("CMAKE_CXX_COMPILER_LAUNCHER") == "ccache":
+        commands[0] += ["-DCMAKE_POLICY_DEFAULT_CMP0141=NEW",
+                        "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"]
     for command in commands:
         print("+ " + subprocess.list2cmdline(list(map(str, command))), flush=True)
         subprocess.run(command, env=environment, check=True)
