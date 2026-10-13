@@ -11,6 +11,21 @@
 #include <utility>
 
 namespace CE::Assets {
+    SpriteMgr::spointer SpriteMgr::get_asset(const std::string_view name_space, const std::string_view name) const {
+        return get_asset(std::string(name_space) + ':' + std::string(name));
+    }
+
+    std::map<std::string, SpriteMgr::spointer, std::less<>> SpriteMgr::get_assets(const std::string_view name_space) const {
+        std::map<std::string, spointer, std::less<>> result;
+        std::shared_lock lock(assets_mutex_);
+        for (const auto& [id, sprite] : loaded_assets) {
+            const auto& definition = sprite->definition();
+            if (definition.name_space == name_space)
+                result.emplace(definition.name, sprite);
+        }
+        return result;
+    }
+
     void SpriteMgr::load_assets(const std::vector<SpriteDefinition>& definitions, ResourceProvider& provider) {
         bind_provider(provider);
         // Reserve only slots for new IDs; existing assets keep their handles across repeated loads.
