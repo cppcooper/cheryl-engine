@@ -54,7 +54,7 @@ public:
     template <typename... Args> static Type& initialize(Args&&... args) {
         if (!construct(std::forward<Args>(args)...)) {
             throw CE::Exceptions::bad_request(
-                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::name_of<Type>())
+                CE_HERE, std::string("Singleton<").append(ctti::name_of<Type>()).append("> is already initialized.")
             );
         }
         return *get_existing();
@@ -69,7 +69,7 @@ public:
             return *instance;
         }
         throw CE::Exceptions::failed_operation(
-            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::name_of<Type>())
+            CE_HERE, std::string("Singleton<").append(ctti::name_of<Type>()).append("> has not been initialized.")
         );
     }
 };
@@ -128,7 +128,7 @@ public:
     template <typename... Args> static Type& initialize(Args&&... args) {
         if (!construct(std::forward<Args>(args)...)) {
             throw CE::Exceptions::bad_request(
-                CE_HERE, std::format("Singleton<{}> is already initialized.", ctti::name_of<Type>())
+                CE_HERE, std::string("Singleton<").append(ctti::name_of<Type>()).append("> is already initialized.")
             );
         }
         return *get_existing();
@@ -142,7 +142,7 @@ public:
             return *instance;
         }
         throw CE::Exceptions::failed_operation(
-            CE_HERE, std::format("Singleton<{}> has not been initialized.", ctti::name_of<Type>())
+            CE_HERE, std::string("Singleton<").append(ctti::name_of<Type>()).append("> has not been initialized.")
         );
     }
 };
