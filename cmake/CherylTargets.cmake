@@ -27,6 +27,7 @@ set(TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK module_audio_miniaudio_sdk)
 
 # Applications
 set(TARGET_APP_DEMO demo)
+set(TARGET_APP_FIRST_GAME first-game)
 
 # Test support
 set(TARGET_LIB_TEST_SUPPORT cheryl_test_support)

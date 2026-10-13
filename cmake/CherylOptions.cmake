@@ -139,6 +139,9 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_DEMO
             "Build the windowed demonstration application" ON
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
+    cheryl_option(CHERYL_BUILD_FIRST_GAME
+            "Build the maintained getting-started game" OFF
+            REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
 
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" ON)
