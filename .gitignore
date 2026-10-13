@@ -2,6 +2,10 @@
 build/
 builds/
 cmake-build*/
+docs/api/generated/
+docs/__pycache__/
+docs/_ext/__pycache__/
+tools/docs/**/__pycache__/
 
 .git/
 .idea/

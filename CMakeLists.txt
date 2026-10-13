@@ -85,3 +85,8 @@ if(CHERYL_BUILD_SDK)
 endif()
 
 cheryl_check_option_requirements()
+
+if(CHERYL_BUILD_DOCS)
+    include(cmake/CherylDocumentation.cmake)
+    cheryl_add_documentation_targets("${CHERYL_REPOSITORY_ROOT}")
+endif()

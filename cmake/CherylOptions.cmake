@@ -105,6 +105,8 @@ function(cheryl_check_option_requirements)
 endfunction()
 
 function(cheryl_configure_root_options)
+    cheryl_option(CHERYL_BUILD_DOCS
+            "Add documentation tooling and generation targets" OFF)
     cheryl_option(CHERYL_BUILD_SDK
             "Enable installation of the selected libraries, headers and dependencies" OFF)
     cheryl_option(WARN
