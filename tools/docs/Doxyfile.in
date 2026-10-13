@@ -12,11 +12,15 @@ EXTRACT_PRIV_VIRTUAL   = NO
 EXTRACT_STATIC         = NO
 EXTRACT_LOCAL_CLASSES  = NO
 EXTRACT_ANON_NSPACES   = NO
-EXCLUDE_SYMBOLS        = "CE::Text::Detail::*"
+# Match the displayed friend name: Doxygen marks this private friendship public.
+EXCLUDE_SYMBOLS        = "CE::Text::Detail" "CE::Text::Detail::*" \
+                         "Detail::FontAccess" \
+                         "Singleton_CTS::Storage" "Singleton_CTU::Storage" \
+                         "ASSET2D_H"
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
 JAVADOC_AUTOBRIEF      = YES
-INLINE_INHERITED_MEMB  = YES
+INLINE_INHERITED_MEMB  = NO
 SORT_MEMBER_DOCS       = YES
 FULL_PATH_NAMES        = YES
 STRIP_FROM_PATH        = @REPO_ROOT@

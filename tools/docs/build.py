@@ -69,6 +69,8 @@ def extract(output: Path, doxygen: str, commit: str) -> None:
     output.mkdir(parents=True, exist_ok=True)
     configuration = output / "Doxyfile"
     configuration.write_text(template, encoding="utf-8")
+    if (output / "xml").exists():
+        shutil.rmtree(output / "xml")
     subprocess.run([doxygen, str(configuration)], cwd=REPO_ROOT, check=True)
     if not (output / "xml/index.xml").is_file():
         raise RuntimeError("Doxygen succeeded without creating xml/index.xml.")
@@ -142,6 +144,8 @@ def main() -> int:
                 "-W",
                 "--keep-going",
                 "-n",
+                "-w",
+                str(output / "sphinx-warnings.log"),
                 "-d",
                 str(output / "doctrees"),
                 str(REPO_ROOT / "docs"),

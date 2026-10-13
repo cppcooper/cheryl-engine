@@ -8,10 +8,13 @@ from pathlib import Path
 import re
 import subprocess
 from urllib.parse import quote, unquote, urlsplit
+import xml.etree.ElementTree as ElementTree
 
 from docutils import nodes
 from sphinx import addnodes
 from sphinx.errors import ConfigError
+from sphinx.util.nodes import make_refnode
+from pygments.lexers.special import TextLexer
 
 
 @dataclass(frozen=True)
@@ -180,11 +183,91 @@ def rewrite_links(app, doctree: nodes.document) -> None:
 
 def prepare(app) -> None:
     app._cheryl_repository_links = Repository.from_config(app.config)
+    project = app.config.breathe_default_project
+    index = ElementTree.parse(Path(app.config.breathe_projects[project]) / "index.xml")
+    namespaces = {}
+    short_names = {}
+    for compound in index.findall("compound"):
+        if compound.get("kind") != "namespace":
+            continue
+        name = compound.findtext("name")
+        docname = "api/generated/namespace_" + name.replace("::", "__")
+        if not (Path(app.srcdir) / (docname + ".rst")).is_file():
+            continue
+        namespaces[name] = docname
+        short_names.setdefault(name.rsplit("::", 1)[-1], []).append(docname)
+    for name, documents in short_names.items():
+        if len(documents) == 1:
+            namespaces.setdefault(name, documents[0])
+    app._cheryl_cpp_namespaces = namespaces
+    classes = {}
+    for compound in index.findall("compound"):
+        if compound.get("kind") not in {"class", "struct"}:
+            continue
+        identifier = compound.get("refid")
+        classes[identifier] = ElementTree.parse(
+            Path(app.config.breathe_projects[project]) / (identifier + ".xml")
+        ).find("compounddef")
+
+    def aliases(identifier, ancestors=()):
+        if identifier in ancestors or identifier not in classes:
+            return {}
+        declaration = classes[identifier]
+        result = {}
+        for base in declaration.findall("basecompoundref"):
+            if base.get("prot") != "public":
+                continue
+            for name, targets in aliases(base.get("refid"), (*ancestors, identifier)).items():
+                result.setdefault(name, set()).update(targets)
+        for member in declaration.findall(".//memberdef"):
+            if member.get("kind") == "typedef" and member.get("prot") == "public":
+                result[member.findtext("name")] = {
+                    ("api/generated/" + identifier, member.get("id"))
+                }
+        return result
+
+    inherited = {}
+    for identifier, declaration in classes.items():
+        targets = {}
+        for base in declaration.findall("basecompoundref"):
+            if base.get("prot") != "public":
+                continue
+            for name, owners in aliases(base.get("refid")).items():
+                targets.setdefault(name, set()).update(owners)
+        inherited["api/generated/" + identifier] = {
+            name: next(iter(owners))
+            for name, owners in targets.items()
+            if len(owners) == 1
+        }
+    app._cheryl_inherited_aliases = inherited
+
+
+def cpp_reference(app, environment, node, content):
+    if node.get("refdomain") != "cpp" or node.get("reftype") != "identifier":
+        return None
+    from_document = node.get("refdoc", environment.docname)
+    alias = app._cheryl_inherited_aliases.get(from_document, {}).get(
+        node.get("reftarget")
+    )
+    if alias and alias[0] in environment.found_docs:
+        # Sphinx does not follow C++ template bases for alias lookup. Link only
+        # aliases whose public declaring owner is unambiguous in Doxygen's XML.
+        return make_refnode(app.builder, from_document, alias[0], alias[1], content)
+    docname = app._cheryl_cpp_namespaces.get(node.get("reftarget"))
+    if docname not in environment.found_docs:
+        return None
+    return make_refnode(
+        app.builder,
+        from_document,
+        docname,
+        "",
+        content,
+    )
 
 
 def page_context(app, pagename, templatename, context, doctree) -> None:
     # Generated reference sources are published by Sphinx but are not Git files.
-    if pagename.startswith("api/generated/"):
+    if pagename not in app.env.found_docs or pagename.startswith("api/generated/"):
         context["display_github"] = False
     elif pagename in app.env.found_docs:
         context["page_source_suffix"] = Path(app.env.doc2path(pagename)).suffix
@@ -195,7 +278,11 @@ def setup(app) -> dict[str, object]:
     app.add_config_value("source_repository_root", "", "env")
     app.add_config_value("source_revision", "", "env")
     app.connect("builder-inited", prepare)
+    app.connect("missing-reference", cpp_reference)
     # Run before download collectors: source files remain links, not copied assets.
     app.connect("doctree-read", rewrite_links, priority=100)
     app.connect("html-page-context", page_context)
+    # Existing Mermaid fences remain readable source until a diagram renderer is
+    # selected. Treat them as text explicitly instead of suppressing warnings.
+    app.add_lexer("mermaid", TextLexer)
     return {"version": "1", "parallel_read_safe": True, "parallel_write_safe": True}

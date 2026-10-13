@@ -44,10 +44,13 @@ show_warning_types = True
 # Authored class/function links and identifiers inside the pilot remain checked.
 nitpick_ignore_regex = [
     ("cpp:identifier", r"std(?:::.*)?"),
-    ("cpp:identifier", r"(?:CE::)?(?:Input|RenderAPIs|Diagnostics|Mem|Obj)::.*"),
+    ("cpp:identifier", r"(?:CE::)?(?:Input|RenderAPIs|Diagnostics|Mem|Obj)(?:::.*)?"),
     ("cpp:identifier", r"(?:CE::Assets::)?(?:ResourceProvider|DecodedImage|FileRegistry|AssetManifest|ShaderAssetManifest|Geometry2D|Image|Material|PixelPoint|PixelSize|PixelRect)"),
-    ("cpp:identifier", r"(?:CE::)?(?:FramebufferSize|ViewPort)"),
+    ("cpp:identifier", r"(?:CE::)?FramebufferSize"),
+    ("cpp:identifier", r"(?:CE::)?ViewPort(?:<.*>)?"),
     ("cpp:identifier", r"(?:CE::math::)?(?:Vertex2D|Quad|QuadTriangleStrip)"),
+    # The alias itself is documented; these members belong to std::steady_clock.
+    ("cpp:identifier", r"(?:CE::GFramework::)?SimulationClock::(?:duration|time_point|now)"),
 ]
 
 xml_directory = Path(
@@ -65,7 +68,7 @@ exhale_args = {
     "rootFileTitle": "C++ API reference",
     "doxygenStripFromPath": str(REPO_ROOT),
     "exhaleExecutesDoxygen": False,
-    "createTreeView": True,
+    "createTreeView": False,
 }
 
 html_theme = "sphinx_rtd_theme"

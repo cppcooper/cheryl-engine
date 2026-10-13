@@ -15,8 +15,10 @@ and the public base interfaces those examples use.
 See {cpp:enum}`CE::GFramework::UpdateKind` for simulation update kinds,
 {cpp:type}`CE::Text::FontSource` for font selection sources, and
 {cpp:struct}`CE::Assets::AssetMgr` for the retained-cache template inherited by
-the sprite manager. The generated member lists include public overloads and
-inherited interfaces; private implementation members are excluded.
+the sprite manager. Derived pages show their declarations and explicit imported
+overloads, then link to base pages for inherited interfaces. Read inherited
+function templates on their declaring base so their parameters and lookup rules
+remain accurate. Private implementation members are excluded.
 
 Use the [asset-loading guide](../assets/asset-loading.md),
 [sprite and playback guide](../assets/asset-values-and-playback.md), and
