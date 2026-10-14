@@ -7,6 +7,12 @@ docs/__pycache__/
 docs/_ext/__pycache__/
 tools/docs/**/__pycache__/
 
+# Python bytecode caches
+__pycache__/
+
+# Generated API documentation
+/docs/api/generated/
+
 .git/
 .idea/
 .obsidian/
