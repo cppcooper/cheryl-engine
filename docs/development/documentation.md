@@ -29,16 +29,19 @@ output root; keep it outside `docs/`. Generated API pages under
 headers or authored guides, then regenerate. Generation is serialized within a
 checkout because all output profiles share the generated API source directory.
 
-The generator runs Sphinx with warnings treated as errors and unresolved references
-checked. Successful extraction shows which declarations are present; it does not
-establish that every declaration has useful prose, examples or a complete contract.
-Review public comments and the [API index](../api/index.md) separately. Derived
-pages link to the declaring base for inherited interfaces rather than repeating
-inherited members with misleading C++ lookup or template signatures.
+The generator treats Sphinx warnings and unresolved references as errors, then
+checks the public-header inventory, private-member exclusion, local links and
+fragments, case-insensitive filename collisions, and source objects at the checked
+revision. Successful extraction does not establish that every declaration has
+useful prose, examples or a complete contract. Review public comments and the
+[API index](../api/index.md) separately.
 
-Doxygen 1.18 records `final` and `[[nodiscard]]`, but Breathe 4.36 does not display
-those annotations in the rendered reference. Consult the linked header for these
-attributes. Existing Mermaid fences are displayed as plain text until a diagram
+Derived pages link to the declaring base for inherited interfaces. Public nested
+types have their own pages rather than repeated declarations in the outer class.
+The reference adds Doxygen's `final`, `[[nodiscard]]` and template constraints as
+declaration notes, and includes concept definitions. Each declaration page links
+to its header at the recorded source revision. Consult that header for the full C++
+declaration. Existing Mermaid fences are displayed as plain text until a diagram
 renderer is selected; they are not rendered diagrams.
 
 ## Tool selection and reuse
@@ -154,18 +157,21 @@ changing one direct version and accepting whatever an installer resolves:
 
 ## Publishing contract
 
-Local generation is available. The publication files described here are planned
-for the next implementation phase: `.readthedocs.yaml`,
-`.github/workflows/documentation.yml` and
-`.github/scripts/sync-docs-stable.py`. No hosted site or remote publishing acceptance
-has been established. The current `main` branch contains only the initial repository
-files and cannot build these docs; merge the approved documentation implementation
-into `main` before enabling stable publication.
+The publishing configuration is
+[.readthedocs.yaml](../../.readthedocs.yaml),
+[documentation.yml](../../.github/workflows/documentation.yml) and
+[sync-docs-stable.py](../../.github/scripts/sync-docs-stable.py). Hosted publication
+still requires the account and repository setup below. Both `develop` and `main`
+must contain the engine headers and documentation implementation before their
+respective sites can build.
 
-GitHub Actions will generate and check the HTML, then retain it as a downloadable
-artifact for review. Read the Docs will independently clone the selected Git ref,
-run the same pinned generator, and host the resulting HTML. Actions artifacts are
-not the website's source and do not need an upload token for Read the Docs.
+GitHub Actions generates and checks HTML for pull requests, pushes to `develop`
+and `main`, `v*` tags, and manual runs. It retains checked HTML and build diagnostics
+as downloadable artifacts for 30 days. Read the Docs independently clones the
+selected Git ref, runs the same pinned generator, and hosts the resulting HTML.
+Actions artifacts are not the website's source and do not need an upload token for
+Read the Docs. Engine compilation belongs to the existing code CI; the documentation
+job does not compile examples.
 
 The Read the Docs configuration uses Ubuntu 24.04 and Python 3.13, with one custom
 `build.jobs.build.html` command:
@@ -215,6 +221,11 @@ and respect repository rules; do not delete, reset or force-update the branch to
 bypass a rejection. GitHub's [ref API](https://docs.github.com/en/rest/git/refs#update-a-reference)
 supports the required non-forced update.
 
+Read the Docs builds `latest` directly from `develop`; that build is independent of
+the Actions result. The stable mirror advances only after the documentation job
+succeeds. Branch protection and release policy determine which engine checks must
+pass before a change reaches `main`.
+
 ### First account and site setup
 
 1. Merge the documentation configuration into `develop`. Create an account at
@@ -226,18 +237,20 @@ supports the required non-forced update.
    [Git integration instructions](https://docs.readthedocs.com/platform/stable/reference/git-integration.html#adding-a-project-from-a-repository).
 2. Record the actual project slug and public URL returned by Read the Docs; do not
    assume the slug from the repository name. Set its default branch to `develop`,
-   activate `latest`, and complete the first-site checks below.
+   activate `latest`, and check that version using the publication checks below.
 3. Merge the approved release into `main`. Enable `CHERYL_DOCS_PUBLISH_STABLE=true`
-   only when stable publication is approved. A qualifying `main` push creates or
-   advances the `stable` branch; let Read the Docs sync versions, then activate
-   `stable`. Trigger a build to refresh versions if it has not appeared yet.
+   only when stable publication is approved. Enabling the variable does not
+   trigger a workflow, and manual dispatch runs only the documentation checks.
+   The next qualifying `main` push creates or advances the `stable` branch; let
+   Read the Docs sync versions, then activate `stable`. Trigger a build to refresh
+   versions if it has not appeared yet.
 4. After a successful stable build and revision check, choose `stable` as the
    project's default website version. Activate existing release tags manually;
    a future-tag activation rule does not replace that initial selection.
 
 ### Publication verification and recovery
 
-The publication phase adds `html/revision.json` to every full build. Its
+Every full build writes `html/revision.json`. Its
 `source_revision` is the full checked Git commit, `source_ref` identifies the build
 ref, and `dirty` records whether the source checkout differs from that commit.
 The marker also records selected tool versions and lock/manifest hashes, without
@@ -254,9 +267,11 @@ and Git source links resolving to objects at that commit.
 
 First-site acceptance also includes opening the manual and API entry points,
 following an inherited base link and a declaring-header link, checking navigation
-and search, and switching between `latest`, `stable` and an activated release tag.
-Confirm the GitHub App triggers the expected branch rebuilds. Local HTML checks do
-not establish that the hosted version selector, search or webhook delivery works.
+and search, and switching between `latest` and `stable` once both are active.
+Check historical-version selection when a release tag containing the documentation
+tooling is available; do not count that coverage before such a tag exists. Confirm
+the GitHub App triggers the expected branch rebuilds. Local HTML checks do not
+establish that the hosted version selector, search or webhook delivery works.
 
 To pause stable updates, set `CHERYL_DOCS_PUBLISH_STABLE` to `false`. Correct a bad
 publication with a new reviewed commit on `main`, including a revert when restoring

@@ -1,9 +1,10 @@
 # Your first game
 
 Start with a small application that opens a window, loads its own sprite and
-shaders, and draws the sprite and a score label. Arrow keys move the sprite,
-Space selects its other image cell, and Escape closes the application. The score
-stays at zero while you establish the application and resource flow.
+shaders, and draws the sprite and a score label. The Left and Right arrow keys
+move the sprite, Space selects its other image cell, and Escape closes the
+application. The score stays at zero while you establish the application and
+resource flow.
 
 The maintained source lives in
 [projects/apps/first-game](../../projects/apps/first-game/). The excerpts below
@@ -16,7 +17,7 @@ Install Git, CMake 3.28 or newer, Ninja, and a C++23 compiler and standard libra
 with `std::format`. Follow the
 [system dependency table](../development/building.md#system-dependencies) for
 FreeType, HarfBuzz, ICU, and the native GLFW/OpenGL requirements. On Linux, this
-example uses X11 and needs a usable desktop graphics driver to open its window.
+example uses X11 and needs a desktop driver supporting an OpenGL 3.3 core context.
 Python and Jinja2 are required when GLAD is generated during the source build.
 
 Choose a checkout location and a revision matching the documentation you are
@@ -69,9 +70,9 @@ projects on CMake 4 hosts. `GLFW_BUILD_WAYLAND=OFF` selects the Linux X11 route;
 choices. Windows executables have an `.exe` suffix.
 
 The expected result is a 640 × 360 window containing a cyan sprite and
-“Score: 0”. Space changes the sprite to amber. The commands describe the intended
-build and run path; compilation and desktop acceptance of this new example remain
-pending.
+"Score: 0". Space changes the sprite to amber. Check movement, cell selection,
+resizing, and Escape on the desktop; compilation and command-line help alone do
+not establish those graphics and input observations.
 
 ## 2. Start the engine and keep its owners alive
 
@@ -373,7 +374,7 @@ Its application target links the public owners explicitly:
 ```{literalinclude} ../../projects/apps/first-game/CMakeLists.txt
 :language: cmake
 :start-at: add_executable
-:end-before: # Source Debug
+:end-before: Source Debug
 ```
 
 To configure the example directly against the checkout, use a separate build
