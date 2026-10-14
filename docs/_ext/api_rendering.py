@@ -82,6 +82,7 @@ def collect_metadata(app) -> None:
     directory = Path(app.config.breathe_projects[app.config.breathe_default_project])
     index = ElementTree.parse(directory / "index.xml")
     metadata = {}
+    sources = {}
     documents = {}
     concepts = []
     for compound in index.findall("compound"):
@@ -99,6 +100,9 @@ def collect_metadata(app) -> None:
             )
             concepts.append(docname)
         for element in [declaration, *declaration.findall(".//memberdef")]:
+            location = element.find("location")
+            if location is not None:
+                sources[element.get("id")] = location
             if element.tag == "memberdef" and declaration.get("kind") in {"file", "namespace"}:
                 documents["api/generated/" + element.get("kind") + "_" + element.get("id")] = element.get("id")
             notes = []
@@ -123,6 +127,7 @@ def collect_metadata(app) -> None:
             if notes:
                 metadata[element.get("id")] = notes
     app._cheryl_declaration_metadata = metadata
+    app._cheryl_declaration_sources = sources
     app._cheryl_member_documents = documents
     if concepts:
         root = Path(app.srcdir) / "api/generated/library_root.rst"

@@ -289,6 +289,19 @@ def cpp_reference(app, environment, node, content):
 
 
 def page_context(app, pagename, templatename, context, doctree) -> None:
+    context["declaring_source_url"] = None
+    if pagename.startswith("api/generated/"):
+        for identifier, document in app._cheryl_doxygen_documents.items():
+            if document == pagename:
+                location = app._cheryl_declaration_sources.get(identifier)
+                context["declaring_source_url"] = app._cheryl_cpp_references.location_url(location)
+                break
+        # Concept owner pages are added after Exhale's node inventory is created.
+        if context["declaring_source_url"] is None:
+            identifier = pagename.removeprefix("api/generated/")
+            context["declaring_source_url"] = app._cheryl_cpp_references.location_url(
+                app._cheryl_declaration_sources.get(identifier)
+            )
     # Generated reference sources are published by Sphinx but are not Git files.
     if pagename not in app.env.found_docs or pagename.startswith("api/generated/"):
         context["display_github"] = False
