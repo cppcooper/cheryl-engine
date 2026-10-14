@@ -92,9 +92,23 @@ namespace CE::Assets {
         [[nodiscard]] std::span<const TextDrawRun> runs() const noexcept { return runs_; }
     };
 
+    /** Rasterize a shaped message into owned CPU atlas pages and geometry.
+     * No provider or graphics context is used, so preparation can run on a worker.
+     * Page extents outside 4..4096, unsupported glyphs or glyphs exceeding padded
+     * page bounds reject preparation; rasterization and allocation failures propagate.
+     * @param layout Owned layout consumed by value, retaining the selected font snapshot.
+     * @param options Maximum atlas-page extent and optional positioned-run geometry.
+     * @return Complete CPU preparation ready for upload_text(), with no native resources.
+     */
     [[nodiscard]] PreparedText prepare_text(Text::ShapedText layout, TextRasterOptions options = {});
-    // Pass a copy for retry or move-owned preparation into a dispatcher request.
-    // Upload obeys provider affinity. Failure returns no generation; earlier successful
-    // transient uploads retire through their backend rather than an atomic native rollback.
+    /** Upload one immutable text generation on the provider's owner/current context.
+     * Failure returns no generation; earlier successful transient uploads retire
+     * through their backend rather than an atomic native rollback. Mismatched
+     * provider resources are rejected; provider and allocation failures propagate.
+     * @param prepared Owned CPU preparation consumed by value; pass a copy for retry
+     * or move it into an owner-dispatch request.
+     * @param provider Backend receiving the atlas and geometry uploads, borrowed for this call.
+     * @return Owned layout and resource handles; native use retains the provider-domain limits.
+     */
     [[nodiscard]] RenderedText upload_text(PreparedText prepared, ResourceProvider& provider);
 }

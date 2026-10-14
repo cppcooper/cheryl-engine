@@ -70,9 +70,18 @@ namespace CE::Text {
         [[nodiscard]] float line_height() const noexcept { return line_height_; }
     };
 
-    // CPU-only Unicode bidi/shaping. Fallback selects whole graphemes. Soft wrapping
-    // reshapes chosen lines and breaks oversized words at grapheme boundaries; no
-    // grapheme is split. Explicit CR/LF/CRLF/NEL/paragraph and line separators work.
-    // Trailing ASCII spaces/tabs have no visual advance; tab expands to four spaces.
+    /** Shape Unicode text on the CPU, resolving bidi order and whole-grapheme fallback.
+     * Soft wrapping reshapes chosen lines and breaks oversized words at grapheme
+     * boundaries without splitting a grapheme. Explicit CR/LF/CRLF/NEL/paragraph
+     * and line separators work. Trailing ASCII spaces/tabs have no visual advance;
+     * tabs expand to four spaces. No provider or graphics context is used.
+     * Invalid sizing, wrapping, direction/language settings or a moved-from font
+     * collection reject layout; shaping and allocation failures propagate.
+     * @param fonts Stable font snapshot retained by the result.
+     * @param text UTF-8 bytes borrowed only for this call; malformed input uses
+     * replacement scalars while preserving original byte ranges.
+     * @param options Font size, paragraph direction, optional width and language hint.
+     * @return Owned immutable layout, with scalar/byte mappings and retained font bytes.
+     */
     [[nodiscard]] ShapedText layout_text(const FontCollection& fonts, std::string_view text, const LayoutOptions& options = {});
 }

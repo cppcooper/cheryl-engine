@@ -70,16 +70,32 @@ namespace CE::Input {
         void refresh_button(ActionId action);
 
     public:
-        // Multiple mappings to one button action combine with OR; all controls in a chord use AND.
-        // Empty button chords, button/axis conflicts and mixed axis kinds throw.
+        /** Bind one physical control to a semantic button on the polling owner.
+         * Multiple mappings to one button action combine with OR. Conflicting
+         * button/axis use of an action is rejected.
+         * @param control Physical device and button identity.
+         * @param action Application-owned semantic identity read from tick input.
+         * @return Nonzero registration ID for later unbind().
+         */
         [[nodiscard]] BindingId bind_button(DeviceBind control, ActionId action);
+        /** Bind an AND chord to a semantic button; alternative mappings combine with OR.
+         * Empty chords and conflicting button/axis use of an action are rejected.
+         * Configuration belongs to the polling owner.
+         * @param chord Controls that must all be held in one poll.
+         * @param action Application-owned semantic button identity.
+         * @return Nonzero registration ID for later unbind().
+         */
         [[nodiscard]] BindingId bind_button(InputChord chord, ActionId action);
         // Several axis bindings contribute additively; a modifier chord gates its axis.
         // Scale/dead zone must be finite. Empty modifier chords are unconditional.
         [[nodiscard]] BindingId bind_axis(DeviceBind axis, ActionId action, AxisOptions options = {});
         [[nodiscard]] BindingId bind_axis(InputChord modifiers, DeviceBind axis, ActionId action, AxisOptions options = {});
-        // Unknown IDs return false. Removal affects the next publication; it does
-        // not erase already mapped relative activity or earlier immutable handles.
+        /** Remove one mapping on the polling owner.
+         * Removal affects the next publication; it does not erase already mapped
+         * relative activity or earlier immutable handles.
+         * @param binding Registration ID returned when the mapping was added.
+         * @return Whether an existing mapping was removed; unknown IDs return false.
+         */
         bool unbind(BindingId binding);
         void unbind_action(ActionId action);
         // Drop mappings/physical staging and publish release/zero State from the old baseline.

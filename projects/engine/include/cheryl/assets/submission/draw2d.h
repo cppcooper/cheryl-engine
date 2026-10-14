@@ -27,11 +27,22 @@ namespace CE::Assets {
         std::optional<ImageParameter2D> image;
     };
 
+    /** Resolve one sprite cell into a validated draw packet without backend calls.
+     * Keep inputs stable during CPU resolution. No binding, playback advancement
+     * or frame publication occurs; invalid cells/materials/ranges or image parameters
+     * reject resolution, and allocation failures propagate.
+     * @param sprite Sprite whose geometry/image handles are retained by the packet.
+     * @param cell Zero-based grid cell, checked against the sprite definition.
+     * @param style Copied transform/material/draw values; an absent material uses the sprite's.
+     * @param context Pass values and optional image insertion; an image key must be
+     * nonempty and absent from style.parameters.
+     * @return Owned packet ready to add to a render pass; native use requires its live resource domain.
+     */
+    [[nodiscard]] RenderAPIs::DrawPacket2D
+    resolve_sprite(const Sprite& sprite, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     // CPU-only resolution from stable inputs: copies values and retains resources,
     // without binding or advancing playback. Failures publish no frame packets.
     // Cell overloads check grid bounds; all returned packets validate material/ranges.
-    [[nodiscard]] RenderAPIs::DrawPacket2D
-    resolve_sprite(const Sprite& sprite, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     [[nodiscard]] RenderAPIs::DrawPacket2D
     resolve_tile(const Tileset& tileset, CellIndex cell, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     [[nodiscard]] RenderAPIs::DrawPacket2D
@@ -49,8 +60,18 @@ namespace CE::Assets {
         const SubmissionContext2D& context,
         FontLayoutOptions options = FontLayoutOptions{}
     );
-    // Already shaped/uploaded immutable generation; page images are selected through
-    // context.image. No layout, font discovery, rasterization or upload occurs here.
+    /** Resolve an uploaded Unicode text generation into ordered glyph draw packets.
+     * CPU-only resolution uses stable inputs and performs no font discovery, layout,
+     * rasterization or upload. Invalid image keys/materials/ranges reject the complete
+     * result without publishing frame packets; allocation failures propagate.
+     * @param text Immutable generation whose page resources are retained by the packets.
+     * @param style Copied draw values; glyph offsets are scaled and then transformed
+     * by its model matrix.
+     * @param context Pass values; image must supply a nonempty page-image key absent
+     * from style.parameters.
+     * @return Owned packets in authored glyph order, empty when there are no glyph draws;
+     * native use requires the original live resource domain.
+     */
     [[nodiscard]] std::vector<RenderAPIs::DrawPacket2D>
     resolve_text(const RenderedText& text, const RenderAPIs::DrawStyle2D& style, const SubmissionContext2D& context);
     // Explicitly requires positioned_runs preparation and a shader applying the

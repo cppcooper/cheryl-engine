@@ -25,8 +25,11 @@ namespace CE::GFramework {
         ViewPort<int> logical_size{0, 0};
         std::stop_source runtime_stop{std::nostopstate};
 
-        // Runtime ticks carry a shared stop request; manually authored ticks
-        // without one reject this operation. Requesting stop does not end update().
+        /** Request normal runtime shutdown from this simulation update.
+         * Runtime ticks carry a shared stop request; manually authored ticks
+         * without one reject the operation. This does not end update(): return
+         * explicitly when the game should stop processing the current tick.
+         */
         void request_stop() const;
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.

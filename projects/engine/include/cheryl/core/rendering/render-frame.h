@@ -82,7 +82,10 @@ namespace CE::RenderAPIs {
         [[nodiscard]] const Assets::ParameterSet& parameters() const { return frame_.passes_[index_].parameters; }
         [[nodiscard]] const Assets::PassConstraints2D& constraints() const { return frame_.passes_[index_].constraints; }
 
-        // Validation/allocation failure leaves the existing draw list intact.
+        /** Validate and append one owned packet in authored order.
+         * Validation/allocation failure leaves the existing draw list intact.
+         * @param draw Packet retaining the resources needed for later rendering.
+         */
         void add(DrawPacket2D draw) {
             auto& pass = frame_.passes_[index_];
             validate_draw_packet(draw, pass.constraints);
@@ -90,7 +93,10 @@ namespace CE::RenderAPIs {
             pass.draws.push_back(std::move(draw));
         }
 
-        // Validate the complete group before inserting any glyph/asset packets.
+        /** Validate a complete group before inserting any glyph/asset packets.
+         * Validation/storage-limit failures leave existing draws intact.
+         * @param draws Owned packet group appended in its existing order.
+         */
         void add(std::vector<DrawPacket2D> draws) {
             auto& pass = frame_.passes_[index_];
             for (const auto& draw : draws)
@@ -128,8 +134,15 @@ namespace CE::RenderAPIs {
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
 
-        // Appends an active pass in authored order, copying matrices and owning values.
-        // Keep returned writers within this preparation phase, before recycle/publication.
+        /** Append an active pass in authored order, copying matrices and owning values.
+         * Keep the returned writer within this preparation phase, before recycling
+         * or publication. No backend calls or cross-thread publication occur here.
+         * @param projection Projection matrix copied into pass semantics.
+         * @param view View matrix copied into pass semantics.
+         * @param constraints Pass requirements used to validate submitted packets.
+         * @param parameters Owned pass parameter values.
+         * @return Writer borrowing this frame's new pass.
+         */
         [[nodiscard]] RenderPassWriter begin_pass(
             const glm::mat4& projection,
             const glm::mat4& view,

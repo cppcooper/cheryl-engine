@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <utility>
 
-/* Singleton_CTS (Compile Time Safe)
+/** Singleton_CTS (Compile Time Safe)
  * For simple singleton creation.
  * You can keep inheriting these all you want, it will always be the same instance they point to.
  * Uses static_assert verifying constructibility - requires public constructor(s)
@@ -60,7 +60,13 @@ public:
         return *get_existing();
     }
 
-    // Constructors must not recursively initialize/get this same singleton.
+    /** Retrieve a published instance, constructing it once when these arguments permit it.
+     * Constructors must not recursively initialize/get the same singleton.
+     * Later argument values do not replace an existing instance. Construction
+     * failures publish nothing; unavailable nonconstructing reads throw.
+     * @param args Forwarded constructor arguments on the first successful call.
+     * @return Borrowed process-lifetime instance; its operations have their own thread contract.
+     */
     template <typename... Args> static Type& get(Args&&... args) {
         if constexpr (std::is_constructible_v<Type, Args...>) {
             construct(std::forward<Args>(args)...);
@@ -74,7 +80,7 @@ public:
     }
 };
 
-/* Singleton_CTU (Compile Time Unsafe)
+/** Singleton_CTU (Compile Time Unsafe)
  * For true singleton creation. i.e. instantiation is private/protected
  * Type must friend Singleton_CTU<Type> so construction is accessible in this template's context.
  * Deletion by std::unique_ptr still requires an accessible destructor. The initialization,

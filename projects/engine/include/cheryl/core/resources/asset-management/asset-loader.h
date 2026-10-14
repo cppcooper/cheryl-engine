@@ -57,13 +57,25 @@ namespace CE::Assets {
         [[nodiscard]] PreparedAssets prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
 
     public:
+        /** Configure an owned loader without discovering files or uploading resources.
+         * @param root_path Copied, lexically normalized asset root; relative roots
+         * resolve against the working directory when preparation or discovery runs.
+         */
         explicit Loader(const std::filesystem::path& root_path)
         : root_path_(root_path.lexically_normal()) {}
-        // Rescans/decodes owned data and validates its definitions before upload.
-        // Failure leaves both caches and the retained metadata snapshot unchanged.
+        /** Rescan the root, decode its PNG images and validate graphics definitions.
+         * CPU-only preparation can run on a worker. Discovery, decoding or validation
+         * failure leaves caches and this loader's retained metadata unchanged.
+         * @return Owned definitions, shader sources, pixels and file discovery for upload().
+         */
         [[nodiscard]] PreparedAssets prepare() const;
-        // Select explicit indexes against full-root discovery and decode only
-        // referenced images. A shader-only selection performs no image decoding.
+        /** Prepare selected graphics indexes against full-root discovery.
+         * Decode only referenced images; a shader-only selection decodes none.
+         * Empty selections and discovery, decoding or validation failures reject
+         * preparation without publishing cache entries or retained metadata.
+         * @param indexes Nonempty index selection; relative paths resolve against the asset root.
+         * @return Owned data for upload(), prepared without a provider or backend calls.
+         */
         [[nodiscard]] PreparedAssets prepare_graphics(const std::vector<std::filesystem::path>& indexes) const;
         /** Consumes one prepared value without reopening its image files. Existing
          * keys remain; each successful new entry can become visible immediately.
@@ -73,29 +85,53 @@ namespace CE::Assets {
          * a consumed failed value is not returned. Retry preserves existing keys,
          * not replacement of their contents. Pending platform requests may cancel
          * before execution; once executing, upload has no rollback/cancellation API.
+         * Explicit shader replacement leaves image/grid keys intact. Earlier
+         * successful replacements remain visible if a later candidate fails.
+         * @param prepared Owned batch consumed by value; retain a copy when retry needs it.
+         * @param provider Active resource backend, used on its loading owner/current context.
+         * @param replace_shaders Whether existing shader programs/materials may be replaced.
          */
-        // Explicit shader replacement leaves image/grid keys intact. Earlier
-        // successful replacements remain visible if a later candidate fails.
         void upload(PreparedAssets prepared, ResourceProvider& provider, bool replace_shaders = false);
+        /** Prepare the complete root and synchronously upload it without shader replacement.
+         * Preparation failures leave caches unchanged; upload failures retain the
+         * partial-publication behavior of upload().
+         * @param provider Active backend, used on its loading owner/current context.
+         */
         void load_assets(ResourceProvider& provider);
-        // Discover and register unmanaged paths without parsing JSON, decoding
-        // images or requiring a provider. Manual asset loading can use this path.
+        /** Discover and register unmanaged paths for manual asset loading.
+         * No JSON parsing, image decoding or provider is required. Filesystem and
+         * allocation failures propagate; PNG images remain outside the untyped registry.
+         */
         void register_files() const;
-        // Last upload attempt, including partial publication. Observation only;
-        // no upload/rollback ordering guarantee beyond the loading-owner contract.
+        /** Observe the last upload attempt, including partial publication.
+         * The snapshot is synchronized, but provides no upload/rollback ordering
+         * guarantee beyond the loading-owner contract.
+         * @return Copied counters and completion status for the last attempt.
+         */
         [[nodiscard]] UploadStats diagnostics() const;
-        // Last successfully submitted definitions, not an atomic snapshot of the
-        // global caches. Readers retain this metadata after later upload/destruction.
+        /** @return Owned snapshot of the last successfully submitted asset definitions.
+         * Readers retain it across later uploads and loader destruction. This is
+         * metadata, not an atomic snapshot of the global caches.
+         */
         [[nodiscard]] std::shared_ptr<const std::vector<AssetManifest>> manifests() const {
             return manifests_.load(std::memory_order_acquire);
         }
+        /** @return Owned snapshot of the last successfully submitted shader definitions,
+         * with the same lifetime and cache-observation limits as manifests().
+         */
         [[nodiscard]] std::shared_ptr<const std::vector<ShaderAssetManifest>> shader_manifests() const {
             return shaders_.load(std::memory_order_acquire);
         }
-        // Legacy singleton access checks its root instead of silently reusing another root.
-        // Configure on the loading owner before producers start; prefer owned Loader instances
-        // when separate roots/lifetimes are needed. get() rejects unpublished initialization.
+        /** Configure or retrieve the legacy singleton on the loading owner before producers start.
+         * A different normalized root is rejected. Prefer owned Loader instances
+         * for separate roots/lifetimes; they still share the supported cache domain.
+         * @param root_path Root to initialize, or match against the existing singleton.
+         * @return Borrowed process-lifetime loader with that root.
+         */
         static Loader& get(const std::filesystem::path& root_path);
+        /** Retrieve the configured legacy singleton without initializing it.
+         * @return Borrowed process-lifetime loader; fails if initialization is unpublished.
+         */
         static Loader& get();
 
     };
