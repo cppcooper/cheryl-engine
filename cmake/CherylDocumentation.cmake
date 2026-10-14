@@ -20,13 +20,13 @@ function(cheryl_add_documentation_targets repository_root)
         list(APPEND tool_arguments --force-pinned)
     endif()
     add_custom_target(docs-tools
-        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/tools/docs/bootstrap.py" setup ${tool_arguments}
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" setup ${tool_arguments}
         WORKING_DIRECTORY "${repository_root}"
         COMMENT "Preparing shared documentation tools"
         USES_TERMINAL VERBATIM)
     add_custom_target(docs
-        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/tools/docs/bootstrap.py" exec ${tool_arguments}
-            -- python "${repository_root}/tools/docs/build.py" --output "${CMAKE_CURRENT_BINARY_DIR}/docs"
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" exec ${tool_arguments}
+            -- python "${repository_root}/docs/generation/build.py"
         WORKING_DIRECTORY "${repository_root}"
         COMMENT "Generating Cheryl documentation"
         USES_TERMINAL VERBATIM)

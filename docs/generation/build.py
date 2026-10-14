@@ -16,9 +16,11 @@ import sys
 import xml.etree.ElementTree as ElementTree
 
 # Set the cache location before importing repository-local modules.
-REPO_ROOT = Path(__file__).resolve().parents[2]
+GENERATION_ROOT = Path(__file__).resolve().parent
+GENERATED_ROOT = (GENERATION_ROOT / "generated").resolve()
+REPO_ROOT = GENERATION_ROOT.parents[1]
 if sys.pycache_prefix is None:
-    sys.pycache_prefix = str(REPO_ROOT / "docs/generated/pycache")
+    sys.pycache_prefix = str(GENERATED_ROOT / "pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
 from bootstrap import file_lock, validate_doxygen
@@ -113,7 +115,7 @@ def provenance(commit: str, doxygen_version: str, output: Path) -> dict:
             "packages": tools["packages"],
         },
         "requirements_sha256": hashlib.sha256(
-            (REPO_ROOT / "docs/requirements.txt").read_bytes()
+            Path(__file__).with_name("requirements.txt").read_bytes()
         ).hexdigest(),
         "native_manifest_sha256": hashlib.sha256(
             Path(__file__).with_name("native-tools.json").read_bytes()
@@ -223,8 +225,8 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=REPO_ROOT / "build/docs",
-        help="Output root containing xml/, html/, and doctrees/ (default: build/docs).",
+        default=GENERATED_ROOT,
+        help="Output root containing xml/, html/, and doctrees/ (default: docs/generation/generated).",
     )
     parser.add_argument(
         "--extract-only", action="store_true", help="Generate Doxygen XML only."
@@ -248,10 +250,12 @@ def main() -> int:
             ]
         )
     output = arguments.output.expanduser().resolve()
-    if (output.is_relative_to(REPO_ROOT / "docs")
+    if ((output.is_relative_to(REPO_ROOT / "docs") and not output.is_relative_to(GENERATED_ROOT))
             or (REPO_ROOT / "docs").is_relative_to(output)
-            or any(root.is_relative_to(output) for root in PUBLIC_INCLUDE_ROOTS)):
-        parser.error("The output root must not contain or overwrite documentation/public header sources.")
+            or any(root.is_relative_to(output) for root in PUBLIC_INCLUDE_ROOTS)
+            or output.is_relative_to(GENERATED_ROOT / "api")
+            or output.is_relative_to(GENERATED_ROOT / "pycache")):
+        parser.error("The output root must not overwrite authored sources, generated API pages or Python caches.")
     doxygen = arguments.doxygen or os.environ.get("CHERYL_DOCS_DOXYGEN") or shutil.which(
         "doxygen"
     )
@@ -269,11 +273,11 @@ def main() -> int:
     doxygen_version = validate_doxygen(Path(doxygen))
     commit = revision()
     # Every output/profile uses this same lock because Exhale writes source pages.
-    with file_lock(REPO_ROOT / "build/.docs-generation.lock"):
+    with file_lock(GENERATED_ROOT / ".generation.lock"):
         extract(output, doxygen, commit)
         if arguments.extract_only:
             return 0
-        generated = REPO_ROOT / "docs/generated/api"
+        generated = GENERATED_ROOT / "api"
         if generated.exists():
             shutil.rmtree(generated)
         for directory in (output / "html", output / "doctrees"):
@@ -289,6 +293,8 @@ def main() -> int:
                 sys.executable,
                 "-m",
                 "sphinx",
+                "-c",
+                str(GENERATION_ROOT),
                 "-b",
                 "html",
                 "-W",

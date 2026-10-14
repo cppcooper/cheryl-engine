@@ -21,10 +21,10 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 if sys.pycache_prefix is None:
-    sys.pycache_prefix = str(ROOT / "docs/generated/pycache")
+    sys.pycache_prefix = str(Path(__file__).resolve().parent / "generated/pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
-REQUIREMENTS = ROOT / "docs/requirements.txt"
+REQUIREMENTS = Path(__file__).with_name("requirements.txt")
 NATIVE_TOOLS = Path(__file__).with_name("native-tools.json")
 FORMAT_VERSION = 1
 MINIMUM_PACKAGES = {
@@ -221,7 +221,7 @@ def cached_python(cache: Path, install: bool):
     if versions:
         return python, versions
     if not install:
-        raise ToolError("Pinned Python tools need setup; run tools/docs/bootstrap.py setup")
+        raise ToolError("Pinned Python tools need setup; run docs/generation/bootstrap.py setup")
     with file_lock(cache / "locks" / f"python-{identity}.lock"):
         versions = ready()
         if not versions:
@@ -390,7 +390,7 @@ def select_doxygen(cache: Path, force_pinned: bool, install: bool):
     if selected:
         return selected
     if not install:
-        raise ToolError("Pinned Doxygen needs setup; run tools/docs/bootstrap.py setup")
+        raise ToolError("Pinned Doxygen needs setup; run docs/generation/bootstrap.py setup")
     with file_lock(cache / "locks" / f"doxygen-{identity}.lock"):
         selected = ready()
         if not selected:

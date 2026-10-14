@@ -16,10 +16,10 @@ import xml.etree.ElementTree as ET
 
 # Set the cache location before importing repository-local modules.
 if sys.pycache_prefix is None:
-    sys.pycache_prefix = str(Path(__file__).resolve().parents[2] / "docs/generated/pycache")
+    sys.pycache_prefix = str(Path(__file__).resolve().parent / "generated/pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
-from build import REPO_ROOT, header_inputs
+from build import GENERATED_ROOT, REPO_ROOT, header_inputs
 
 
 class Page(HTMLParser):
@@ -156,8 +156,8 @@ def check(html: Path, xml: Path, *, require_clean: bool = False) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--html", type=Path, default=REPO_ROOT / "build/docs/html")
-    parser.add_argument("--xml", type=Path, default=REPO_ROOT / "build/docs/xml")
+    parser.add_argument("--html", type=Path, default=GENERATED_ROOT / "html")
+    parser.add_argument("--xml", type=Path, default=GENERATED_ROOT / "xml")
     parser.add_argument("--require-clean", action="store_true",
                         help="Reject dirty source metadata (automatic on Actions and Read the Docs).")
     args = parser.parse_args()

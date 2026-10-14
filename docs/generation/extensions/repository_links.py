@@ -191,7 +191,7 @@ def prepare(app) -> None:
         Path(app.config.breathe_projects[project]), app._cheryl_repository_links
     )
     app._cheryl_doxygen_documents = {
-        identifier: "generated/api/" + Path(node.file_name).stem
+        identifier: "generation/generated/api/" + Path(node.file_name).stem
         for identifier, node in app.exhale_root.node_by_refid.items()
         if getattr(node, "file_name", None)
     }
@@ -201,7 +201,7 @@ def prepare(app) -> None:
         if compound.get("kind") != "namespace":
             continue
         name = compound.findtext("name")
-        docname = "generated/api/" + namespace_identity(name)
+        docname = "generation/generated/api/" + namespace_identity(name)
         if not (Path(app.srcdir) / (docname + ".rst")).is_file():
             continue
         namespaces[name] = docname
@@ -233,7 +233,7 @@ def prepare(app) -> None:
             result.pop(member.findtext("name"), None)
             if member.get("kind") == "typedef" and member.get("prot") == "public":
                 result[member.findtext("name")] = {
-                    ("generated/api/" + identifier, member.get("id"))
+                    ("generation/generated/api/" + identifier, member.get("id"))
                 }
         return result
 
@@ -247,7 +247,7 @@ def prepare(app) -> None:
                 targets.setdefault(name, set()).update(owners)
         for member in declaration.findall(".//memberdef"):
             targets.pop(member.findtext("name"), None)
-        inherited["generated/api/" + identifier] = {
+        inherited["generation/generated/api/" + identifier] = {
             name: next(iter(owners))
             for name, owners in targets.items()
             if len(owners) == 1
@@ -302,7 +302,7 @@ def cpp_reference(app, environment, node, content):
 
 def page_context(app, pagename, templatename, context, doctree) -> None:
     context["declaring_source_url"] = None
-    if pagename.startswith("generated/api/"):
+    if pagename.startswith("generation/generated/api/"):
         for identifier, document in app._cheryl_doxygen_documents.items():
             if document == pagename:
                 location = app._cheryl_declaration_sources.get(identifier)
@@ -310,12 +310,12 @@ def page_context(app, pagename, templatename, context, doctree) -> None:
                 break
         # Concept owner pages are added after Exhale's node inventory is created.
         if context["declaring_source_url"] is None:
-            identifier = pagename.removeprefix("generated/api/")
+            identifier = pagename.removeprefix("generation/generated/api/")
             context["declaring_source_url"] = app._cheryl_cpp_references.location_url(
                 app._cheryl_declaration_sources.get(identifier)
             )
     # Generated reference sources are published by Sphinx but are not Git files.
-    if pagename not in app.env.found_docs or pagename.startswith("generated/api/"):
+    if pagename not in app.env.found_docs or pagename.startswith("generation/generated/api/"):
         context["display_github"] = False
     elif pagename in app.env.found_docs:
         context["page_source_suffix"] = Path(app.env.doc2path(pagename)).suffix

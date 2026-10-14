@@ -116,7 +116,7 @@ class Index:
         self.templates = templates
         for name, _, kind, document, anchor, _ in objects:
             if (kind in KINDS and name.startswith("CE::")
-                    and document.startswith("generated/api/") and document in documents):
+                    and document.startswith("generation/generated/api/") and document in documents):
                 name = re.sub(r"\s+", "", name)
                 self.exact[name].add(Target(document, anchor, kind))
         for name, document in namespaces.items():

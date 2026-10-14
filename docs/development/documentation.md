@@ -18,16 +18,25 @@ the repository root and preserves your starting directory.
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python tools/docs/build.py
+  python docs/generation/build.py
 )
 ```
 
-Open `build/docs/html/index.html`. The output directory also contains Doxygen XML,
-Sphinx doctrees and `sphinx-warnings.log`. `--output /path/to/output` selects another
-output root; keep it outside `docs/`. Generated API pages under
-`docs/api/generated/` and build outputs are ignored by Git. Edit the declaring
+Open `docs/generation/generated/html/index.html`. The output directory also
+contains Doxygen XML, Sphinx doctrees and `sphinx-warnings.log`.
+`--output /path/to/output` selects another
+output root outside the authored documentation, or another directory beneath
+`docs/generation/generated/`; its `api/` and `pycache/` directories are reserved.
+The generated tree is ignored by Git. Edit the declaring
 headers or authored guides, then regenerate. Generation is serialized within a
 checkout because all output profiles share the generated API source directory.
+
+The generation scripts, Sphinx configuration, extensions, styles, templates and
+dependency manifests live under `docs/generation/`. Sphinx reads the authored
+pages from `docs/` using that separate configuration directory. Generated API
+sources live under `docs/generation/generated/api/`; Python bytecode defaults to
+`docs/generation/generated/pycache/`. The other generation files are excluded from
+the published manual's source discovery.
 
 The generator treats Sphinx warnings and unresolved references as errors, then
 checks the public-header inventory, private-member exclusion, local links and
@@ -58,7 +67,7 @@ renderer is selected; they are not rendered diagrams.
 
 ## Tool selection and reuse
 
-[bootstrap.py](../../tools/docs/bootstrap.py) prefers a compatible installed
+[bootstrap.py](../generation/bootstrap.py) prefers a compatible installed
 Doxygen and the Python packages in the invoking interpreter. Newer versions are
 allowed for local work. Python selection checks the complete installed dependency
 closure, version constraints, Python requirements and imports, rather than only
@@ -74,8 +83,8 @@ the five direct package versions.
 | Sphinx RTD Theme | 3.1.0 |
 
 If installed tools do not qualify, bootstrap selects the exact versions in
-[requirements.txt](../requirements.txt) and
-[native-tools.json](../../tools/docs/native-tools.json). Python fallback uses an
+[requirements.txt](../generation/requirements.txt) and
+[native-tools.json](../generation/native-tools.json). Python fallback uses an
 isolated virtual environment, a pinned pip wheel and hash-checked binary wheels;
 it does not install into the invoking interpreter. Doxygen fallback uses a
 hash-checked official archive. A healthy cached environment is validated and
@@ -102,7 +111,7 @@ generation, including CI and Read the Docs:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python tools/docs/bootstrap.py exec --force-pinned -- python tools/docs/build.py
+  python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py
 )
 ```
 
@@ -121,12 +130,12 @@ It enables no compiler languages and does not discover engine dependencies:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S tools/docs -B build/documentation -G Ninja
-  cmake --build build/documentation --target docs
+  cmake -S docs/generation -B docs/generation/generated/cmake -G Ninja
+  cmake --build docs/generation/generated/cmake --target docs
 )
 ```
 
-This writes `build/documentation/docs/html/index.html`. The optional `docs-tools`
+This writes `docs/generation/generated/html/index.html`. The optional `docs-tools`
 target prepares tools; the `docs` target also selects them, so running `docs-tools`
 first is unnecessary. Neither target belongs to the default build.
 
@@ -139,11 +148,11 @@ The root project still has its usual compiler and dependency requirements; use t
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S tools/docs -B build/documentation -G Ninja \
+  cmake -S docs/generation -B docs/generation/generated/cmake -G Ninja \
     -DCHERYL_DOCS_PYTHON=/path/to/python \
     -DCHERYL_DOCS_CACHE_DIR=/path/to/shared-cache \
     -DCHERYL_DOCS_FORCE_PINNED=ON
-  cmake --build build/documentation --target docs
+  cmake --build docs/generation/generated/cmake --target docs
 )
 ```
 
@@ -197,7 +206,7 @@ build:
   jobs:
     build:
       html:
-        - python tools/docs/bootstrap.py exec --force-pinned -- python tools/docs/build.py --output "$READTHEDOCS_OUTPUT"
+        - python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --output "$READTHEDOCS_OUTPUT"
 ```
 
 Keep `sphinx`, `mkdocs` and a separate Python installation step out of this custom

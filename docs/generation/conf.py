@@ -8,12 +8,14 @@ import subprocess
 import sys
 
 
-DOCS_ROOT = Path(__file__).resolve().parent
+GENERATION_ROOT = Path(__file__).resolve().parent
+GENERATED_ROOT = (GENERATION_ROOT / "generated").resolve()
+DOCS_ROOT = GENERATION_ROOT.parent
 REPO_ROOT = DOCS_ROOT.parent
 if sys.pycache_prefix is None:
-    sys.pycache_prefix = str(DOCS_ROOT / "generated/pycache")
+    sys.pycache_prefix = str(GENERATED_ROOT / "pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
-sys.path.insert(0, str(DOCS_ROOT / "_ext"))
+sys.path.insert(0, str(GENERATION_ROOT / "extensions"))
 
 project = "Cheryl Engine"
 author = "Cheryl Engine contributors"
@@ -36,11 +38,23 @@ exclude_patterns = [
     "testing-requests.md",
     "external-work/**",
     "_ext/**",
-    "generated/pycache/**",
-    # Ignore API pages left behind by older checkouts.
+    # Ignore generated pages left behind by older checkouts.
+    "generated/**",
     "api/generated/**",
     "**/.DS_Store",
 ]
+# Only generated API pages participate in source discovery inside this area.
+exclude_patterns.extend(
+    "generation/generated/" + name + "/**"
+    for name in ("html", "xml", "doctrees", "pycache")
+)
+for directory, included in ((GENERATION_ROOT, "generated"), (GENERATED_ROOT, "api")):
+    if directory.is_dir():
+        exclude_patterns.extend(
+            path.relative_to(DOCS_ROOT).as_posix() + ("/**" if path.is_dir() else "")
+            for path in sorted(directory.iterdir())
+            if path.name != included
+        )
 myst_heading_anchors = 6
 myst_ref_domains = ["std", "cpp"]
 nitpicky = True
@@ -61,7 +75,7 @@ nitpick_ignore_regex = [
 ]
 
 xml_directory = Path(
-    os.environ.get("CHERYL_DOCS_XML_DIR", str(REPO_ROOT / "build/docs/xml"))
+    os.environ.get("CHERYL_DOCS_XML_DIR", str(GENERATED_ROOT / "xml"))
 ).resolve()
 breathe_projects = {"Cheryl": str(xml_directory)}
 breathe_default_project = "Cheryl"
@@ -70,7 +84,7 @@ breathe_default_members = ("members", "undoc-members")
 breathe_show_include = True
 breathe_show_define_initializer = False
 exhale_args = {
-    "containmentFolder": str(DOCS_ROOT / "generated/api"),
+    "containmentFolder": str(GENERATED_ROOT / "api"),
     "rootFileName": "library_root.rst",
     "rootFileTitle": "C++ API reference",
     "doxygenStripFromPath": str(REPO_ROOT),
@@ -79,8 +93,8 @@ exhale_args = {
 }
 
 html_theme = "sphinx_rtd_theme"
-templates_path = ["_templates"]
-html_static_path = ["_static"]
+templates_path = ["templates"]
+html_static_path = ["static"]
 html_css_files = ["hierarchy.css"]
 html_title = "Cheryl Engine documentation"
 html_theme_options = {"navigation_depth": 4, "collapse_navigation": False}

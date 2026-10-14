@@ -92,7 +92,7 @@ def collect_metadata(app) -> None:
         if compound.get("kind") == "concept":
             name = declaration.findtext("compoundname")
             docname = compound.get("refid")
-            page = Path(app.srcdir) / "generated/api" / (docname + ".rst")
+            page = Path(app.srcdir) / "generation/generated/api" / (docname + ".rst")
             title = "Concept " + name
             page.write_text(
                 title + "\n" + "=" * len(title) + "\n\n.. doxygenconcept:: " + name + "\n   :project: Cheryl\n",
@@ -104,7 +104,7 @@ def collect_metadata(app) -> None:
             if location is not None:
                 sources[element.get("id")] = location
             if element.tag == "memberdef" and declaration.get("kind") in {"file", "namespace"}:
-                documents["generated/api/" + element.get("kind") + "_" + element.get("id")] = element.get("id")
+                documents["generation/generated/api/" + element.get("kind") + "_" + element.get("id")] = element.get("id")
             notes = []
             if element.get("kind") == "concept":
                 def source_text(part):
@@ -130,7 +130,7 @@ def collect_metadata(app) -> None:
     app._cheryl_declaration_sources = sources
     app._cheryl_member_documents = documents
     if concepts:
-        root = Path(app.srcdir) / "generated/api/library_root.rst"
+        root = Path(app.srcdir) / "generation/generated/api/library_root.rst"
         with root.open("a", encoding="utf-8") as output:
             output.write("\nConcepts\n--------\n\n.. toctree::\n   :maxdepth: 1\n\n")
             output.writelines("   " + docname + "\n" for docname in concepts)
