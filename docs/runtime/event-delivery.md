@@ -11,9 +11,14 @@ local_bus.dispatch("level-loaded", payload);
 // EventSystem::get() exposes the same API through its default bus.
 ```
 
+## Registrations
+
 Registration is persistent. The bus strongly owns its callback until explicit
 unregister or bus destruction; throwing away `id` does not remove it. Identifiers
 include bus identity, so an ID from a different bus cannot remove a local listener.
+
+## Immediate delivery
+
 Immediate delivery runs on dispatch's caller, in registration order within that
 dispatch. Overlapping producers can overlap callbacks; immediate listeners must
 be safe on each producer thread. Nested dispatch is synchronous and completes
@@ -22,6 +27,9 @@ inside the outer callback. Exceptions propagate to the immediate caller.
 The registry lock is released before callbacks run. Registration during dispatch
 joins the next snapshot, not the already detached one. String channel names and
 `std::any` payload typing retain their current application-level contract.
+
+## Removal and shutdown
+
 `unregister_listener(id)` invalidates invocation entry before it returns. A
 listener already running may finish. For a callback borrowing an object (for
 example `[this]`), call `unregister_and_wait(id)` before destroying that object, or

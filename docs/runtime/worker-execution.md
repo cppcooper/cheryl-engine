@@ -5,6 +5,8 @@ sharing that capacity; a group does not create another set of threads. Separate
 physical pools are still independently constructible. The default pool has one
 worker so an EngineContext need not reserve machine-wide capacity accidentally.
 
+## Jobs
+
 Jobs own their callables and return futures. Callback exceptions reach those
 futures, without stopping another job. FIFO selection within a group does not
 promise completion order when its concurrency is greater than one. A group's
@@ -13,6 +15,8 @@ Eligible groups receive smooth weighted fair selection. Weight (1..1024) times
 priority+1 (priority 0..7) determines job-selection share, not OS thread priority.
 A concurrency cap or empty queue removes a group from that selection round.
 Preferred previous-worker reuse breaks otherwise equal choices.
+
+## Pool lifetime
 
 `group.close()` stops acceptance without cancelling ordinary accepted work.
 `group.drain()` requires closure, waits for pending/running work and capture

@@ -8,41 +8,83 @@ application, then use the task guides and generated reference as you add feature
 :maxdepth: 2
 :caption: Getting started
 
-getting-started/first-game
-development/consuming-engine
-api/index
+First game <getting-started/first-game>
+Project setup <development/consuming-engine>
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Assets and presentation
-:glob:
+:caption: Assets
 
-assets/*
-rendering/*
-resources/*
+Loading <assets/asset-loading>
+Manifests <assets/asset-manifests>
+Types <assets/asset-values-and-playback>
+Discovery <assets/file-and-font-discovery>
+Text <assets/text-layout>
+Text encoding <assets/text-encoding>
+Packages <assets/catalog>
+Legacy fonts <resources/legacy-ffont>
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Rendering
+
+Drawing <rendering/pipelines-and-materials>
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Resources
+
+Caches <resources/resource-residency>
+Memory <resources/resource-lifetime>
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Runtime contracts
-:glob:
 
-runtime/*
+Architecture <runtime/runtime-architecture>
+Lifecycle <runtime/runtime-frame-boundary>
+Timing <runtime/simulation-timing>
+Display <runtime/display-and-window-contract>
+Input <runtime/input-state-model>
+Events <runtime/event-delivery>
+Dispatch <runtime/thread-dispatch>
+Workers <runtime/worker-execution>
+Audio <runtime/audio>
+Logging <runtime/logging>
+Diagnostics <runtime/subsystem-diagnostics>
+Failures <runtime/failure-reporting>
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Development reference
+:caption: Reference
 
-development/building
-development/documentation
-development/modules
-development/ui-adapters
-development/contributing
-development/code-style
-development/testing
-development/architecture-validation
-development/logging-acceptance
-development/native-desktop-checks
+C++ API <api/index>
+Utilities <runtime/utility-contracts>
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Development
+
+Build <development/building>
+Modules <development/modules>
+UI adapters <development/ui-adapters>
+Documentation <development/documentation>
+Contributing <development/contributing>
+Code style <development/code-style>
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Validation
+
+Tests <development/testing>
+Architecture <development/architecture-validation>
+Logging <development/logging-acceptance>
+Desktop <development/native-desktop-checks>
 ```

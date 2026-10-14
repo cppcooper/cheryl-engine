@@ -61,6 +61,8 @@ and leaves surviving handles safe. A system cannot reopen; construct another
 system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
 
+## Backends and limits
+
 The [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
 decode, explicit device/offline output and streamed playback. Its independent
 consumer provides native observation without a game, window or graphics module.

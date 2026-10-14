@@ -14,6 +14,8 @@ domain. IDs are neither addresses nor native handles and are not persistent keys
 Zero indicates identity exhaustion. Session failures keep the original exception
 and phase while distinct cleanup failures retain their own emergency context.
 
+## Runtime statistics
+
 RuntimeStats is published after the simulation worker joins. Callers synchronize
 with run start/return and may inspect an unstarted/completed session; live sampling
 rejects. Counts describe update attempts, completed polls, published/rendered frames,
@@ -29,6 +31,8 @@ the scheduler lock. Repeated lag drops and polling capacity held for at least
 one INFO transition. A single timing drop remains visible in counters/DEBUG without
 a shutdown warning. Final summaries include polling backpressure observations.
 
+## Native resource statistics
+
 NativeResourceStats counts registrations, live/pending native handles, collection,
 shutdown deletion, and abandonment for one resource lifetime. Taking the snapshot
 performs no GL calls or logging. Final release only queues retirement. Abandonment
@@ -36,6 +40,8 @@ and failed untracked cleanup use emergency records after the lifetime lock relea
 they never try to recover by issuing GL calls on an unavailable context. Explicit
 renderer shutdown reports lifecycle totals, while destructor recovery has no ordinary
 logger dependency.
+
+## Worker statistics
 
 WorkerGroupStatus correlates group and physical pool domains and adds callback
 failure, peak pending, and cumulative queue-wait nanosecond observations. Job
@@ -47,12 +53,16 @@ pool owners choose their own observation boundary. Constructors and pool destruc
 do not log inside a containing context lock. Unsupported required policy/startup
 is reported at the context operation owner before the original error propagates.
 
+## Dispatcher statistics
+
 DispatchStats covers accepted, completed, cancelled, failed, queued and detached
 batch counts. Callback failures are counted before settling their own futures.
 Opening/binding/closing uses DEBUG; queue peaks above 1024 produce a single shutdown
 warning. This is an observation threshold, not a new admission limit. Close during
 a callback can leave detached work executing, so the final joined snapshot is more
 complete than that close record. No per-request ordinary emission occurs.
+
+## Event statistics
 
 EventStats counts registration, dispatch, invocation, explicit discard and active
 queued-delivery failures. Registration IDs remain bus-qualified, with bus_id for
@@ -61,6 +71,8 @@ bus/registry. ErrorHandler remains the sole queued-error owner, including cancel
 active work; explicit unregister/close discards do not generate additional errors.
 report_diagnostics is explicit because event operations may run inside a platform
 callback or a containing delivery lock. It samples no names or payloads.
+
+## Asset diagnostics
 
 PreparedAssets carries a batch identity through copies, worker preparation and
 platform upload. ResourceProvider identities identify adapter instances, while cache
@@ -73,6 +85,8 @@ calls, not new publications. Neither counts nor records promise batch rollback.
 Per-key program/material reload records preserve the prior generation on failure;
 keys/paths and shader source are omitted from operational records.
 
+## Shader diagnostics
+
 Explicit GLSLProgram print_active_* calls retain the existing reflection/error
 contract and emit DEBUG count summaries and TRACE name/type/size/location records.
 No direct stdout tables remain. Query APIs already serve reflection consumers; the
@@ -80,12 +94,16 @@ selected consumer does not require an additional event transport. Successful sha
 compiler/linker diagnostics are WARN presence/byte-count records, without copying
 driver text/source into the ordinary log.
 
+## Memory statistics
+
 MemoryStats samples the shared byte-domain collections before formatting/emission.
 It counts total/available bytes, owners, partitions and pending release owners.
 Normal lookup/reuse/split/merge misses remain quiet. Explicit preallocation reports
 completed blocks/width or a partial attempt; report_diagnostics is a host-triggered
 DEBUG snapshot, so the host chooses the sampling period. These are bookkeeping
 observations, not allocation-pressure/eviction budgets.
+
+## Platform diagnostics
 
 GLFW initialization installs a bounded numeric error observer before the first
 DisplaySystem initializes the library. It chains the existing host callback with
@@ -112,6 +130,8 @@ device IDs, and a one-second sampled-state heartbeat. The native adapter's GLFW
 keyboard, pointer and committed-text values are not traced. This opt-in observer
 does not change input mapping and is separate from HID/device-notification acceptance.
 
+## OpenGL diagnostics
+
 OpenGLRenderer::set_native_diagnostics(true) opts in before startup. Debug output
 requires GL 4.3 or KHR_debug and the loaded entry points; OpenGL 3.3 remains the
 renderer baseline. Existing host callbacks prevent installation. When installed,
@@ -130,6 +150,8 @@ Failed context recovery performs no restoration calls. The remaining static
 callback has no captured owner and ignores commands after its scope disappears,
 including after renderer destruction. This avoids a dangling renderer pointer
 without taking ownership of host callback state.
+
+## Validation and limits
 
 The diagnostics acceptance runner checks bounded INFO records in engine/os-platform,
 matching runtime/input domains, no normal WARN/ERROR output, and absence of input

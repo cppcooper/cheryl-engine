@@ -40,5 +40,5 @@ in a maintained application.
 ```{toctree}
 :maxdepth: 2
 
-generated/library_root
+Symbols <generated/library_root>
 ```

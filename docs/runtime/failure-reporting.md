@@ -1,5 +1,7 @@
 # Native callbacks and failure reporting
 
+## Native callbacks
+
 Native GLFW callbacks never unwind through the C call stack. The input adapter
 and window retain their first callback exception on the platform owner thread.
 Window callbacks still update dimensions while a failure is pending, but suppress
@@ -20,6 +22,8 @@ null to the C loader. Renderer startup rethrows it after the loader returns,
 preserving that cause ahead of the unsupported-version diagnostic. A subsequent
 context-release failure is reported while the original startup failure propagates.
 
+## Shutdown failures
+
 Runtime shutdown preserves the first exception for its caller. Each distinct later
 exception is reported with the phase that raised it: producer/dispatcher closure,
 worker completion, pending native callback, frame recycling, game cleanup, input
@@ -27,6 +31,8 @@ shutdown, or renderer cleanup. Reports run outside scheduler and collection lock
 Shutdown continues its existing order; reporting does not change ownership or
 replace the first failure. Repeated failures in a shutdown pump can produce repeated
 records; ordinary category/rate configuration follows the [logging contract](logging.md).
+
+## Emergency reporting
 
 `Diagnostics::report_failure` is the emergency path for cleanup, logger destruction,
 and fatal internal release failures. It writes a bounded 1024-byte record using C
@@ -41,6 +47,8 @@ stderr writes enter its process capture even when the game fails before renderin
 That module's independent viewer can retain available output after abnormal process
 loss; failure reporting itself does not own or launch the viewer.
 
+## Traces and exception storage
+
 Trace sinks reserve termination, mark truncation, copy only the written prefix,
 and reset before reuse. Symbol resolution can allocate. Public stack_trace returns
 empty when resolution/copying fails. Cheryl exception construction prepares an
@@ -50,12 +58,16 @@ and the language runtime's thrown-object allocation are outside that guarantee.
 Exception storage and the new window virtual boundary change ABI; rebuild the
 engine and its consumers together.
 
+## Destruction failures
+
 Trusted shared-pointer release methods retain the existing terminate-on-invariant-
 or-allocation-failure policy, now reporting the caught cause first. Failure to settle
 owned workers during EngineContext destruction likewise reports before termination;
 continuing into adapter destruction would leave live work with invalid dependencies.
 Ordinary public operations can still throw. A user destructor that itself violates
 noexcept can terminate before a surrounding reporting guard can run.
+
+## Validation
 
 Regression sources cover resize listener capture/consumption, stopping during a
 failed pump, procedure lookup plus release failure, primary-plus-cleanup failure,

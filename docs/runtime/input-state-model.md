@@ -1,5 +1,7 @@
 # Input actions and state
 
+## Bindings
+
 Cheryl collects physical input on the platform thread. `InputBindings` can map one control or a simultaneous `InputChord` to a game-defined `ActionId`. Several button bindings for the same action combine with OR; controls inside one chord combine with AND. Axis bindings add their scaled values and can be gated by a chord. Negative scale inverts an axis, and an optional dead zone rescales the remaining input range. An action cannot be both a button and an axis while bound. A returned `BindingId` can remove one mapping; `unbind_action` removes all of its mappings.
 
 ```cpp
@@ -14,7 +16,11 @@ const auto keyboard = input.keyboard_id(); // Bind during game init, after adapt
                                                   {keyboard, gainput::KeyS}}}, Save);
 ```
 
+## Poll snapshots
+
 Each adapter processes its physical changes and publishes one complete poll. The GLFW adapter feeds State from key/mouse callbacks in their shared observation order, then updates Gainput and publishes the State/record pair through `publish_input()`. Gainput notifications for those externally mapped devices are ignored to prevent replay and cross-device reordering. Gainput-owned devices still use the mapper; the adapter also reconciles the gamepad's current state for reattachment/disconnection when no delta was delivered. Readers receive a `std::shared_ptr<const ActionSnapshot>` through `iInputSystem::action_snapshot()`. The published pointer is replaced atomically; an earlier handle keeps its complete sample while later polls proceed.
+
+## Tick input
 
 `AbstractGame::update(const TickContext&)` runs for each selected simulation step, including steps in a bounded recovery batch. At its start the runtime consumes the entire accumulated polling backlog, leaving an empty backlog for new polls. Input never invokes updates or divides the simulation timestep. A press observed at 20 ms and a release at 80 ms of a 100 ms observation interval report 60 ms of raw down-time even when the selected fixed delta is 20 ms. `TickContext::delta_seconds` belongs to the simulation policy; `observed_seconds()` and raw input durations remain on the observation clock. The named `button_simulation_seconds()` helper maps observed down-time proportion onto the selected delta. [Simulation timing](simulation-timing.md) explains variable/fixed stepping, caps, and dropped time.
 
