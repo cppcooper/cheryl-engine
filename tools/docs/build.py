@@ -15,10 +15,15 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ElementTree
 
+# Set the cache location before importing repository-local modules.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if sys.pycache_prefix is None:
+    sys.pycache_prefix = str(REPO_ROOT / "docs/generated/pycache")
+os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
+
 from bootstrap import file_lock, validate_doxygen
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLIC_INCLUDE_ROOTS = tuple(
     REPO_ROOT / name
     for name in (
@@ -268,7 +273,7 @@ def main() -> int:
         extract(output, doxygen, commit)
         if arguments.extract_only:
             return 0
-        generated = REPO_ROOT / "docs/api/generated"
+        generated = REPO_ROOT / "docs/generated/api"
         if generated.exists():
             shutil.rmtree(generated)
         for directory in (output / "html", output / "doctrees"):

@@ -10,6 +10,9 @@ import sys
 
 DOCS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_ROOT.parent
+if sys.pycache_prefix is None:
+    sys.pycache_prefix = str(DOCS_ROOT / "generated/pycache")
+os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 sys.path.insert(0, str(DOCS_ROOT / "_ext"))
 
 project = "Cheryl Engine"
@@ -33,6 +36,9 @@ exclude_patterns = [
     "testing-requests.md",
     "external-work/**",
     "_ext/**",
+    "generated/pycache/**",
+    # Ignore API pages left behind by older checkouts.
+    "api/generated/**",
     "**/.DS_Store",
 ]
 myst_heading_anchors = 6
@@ -64,7 +70,7 @@ breathe_default_members = ("members", "undoc-members")
 breathe_show_include = True
 breathe_show_define_initializer = False
 exhale_args = {
-    "containmentFolder": str(DOCS_ROOT / "api/generated"),
+    "containmentFolder": str(DOCS_ROOT / "generated/api"),
     "rootFileName": "library_root.rst",
     "rootFileTitle": "C++ API reference",
     "doxygenStripFromPath": str(REPO_ROOT),

@@ -20,6 +20,10 @@ import venv
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
+if sys.pycache_prefix is None:
+    sys.pycache_prefix = str(ROOT / "docs/generated/pycache")
+os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
+
 REQUIREMENTS = ROOT / "docs/requirements.txt"
 NATIVE_TOOLS = Path(__file__).with_name("native-tools.json")
 FORMAT_VERSION = 1

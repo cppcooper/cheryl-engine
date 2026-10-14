@@ -104,5 +104,5 @@ entry point remains `CE::Assets::Loading::Loader::load_assets()`.
 ```{toctree}
 :maxdepth: 2
 
-Symbols <generated/library_root>
+Symbols <../generated/api/library_root>
 ```

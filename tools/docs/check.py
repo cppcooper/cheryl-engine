@@ -10,8 +10,14 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
+
+# Set the cache location before importing repository-local modules.
+if sys.pycache_prefix is None:
+    sys.pycache_prefix = str(Path(__file__).resolve().parents[2] / "docs/generated/pycache")
+os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
 from build import REPO_ROOT, header_inputs
 

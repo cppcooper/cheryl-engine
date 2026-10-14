@@ -2,15 +2,12 @@
 build/
 builds/
 cmake-build*/
-docs/api/generated/
-docs/__pycache__/
-docs/_ext/__pycache__/
-tools/docs/**/__pycache__/
 
 # Python bytecode caches
 __pycache__/
 
-# Generated API documentation
+# Generated documentation, including legacy API output
+/docs/generated/
 /docs/api/generated/
 
 .git/

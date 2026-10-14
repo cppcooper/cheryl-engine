@@ -51,7 +51,7 @@ class CppReferences:
             name = declaration.findtext("compoundname", "") if kind != "file" else ""
             if name and declaration.findall("templateparamlist/param"):
                 self.templates.add(plain_name(name))
-            document = "api/generated/" + identifier
+            document = "generated/api/" + identifier
             if kind in {"class", "struct", "concept"}:
                 self.symbols[plain_name(name)].add((document, identifier))
                 self.classes[identifier] = declaration
@@ -69,7 +69,7 @@ class CppReferences:
                     continue
                 target = (document, member.get("id"))
                 if kind in {"file", "namespace"}:
-                    document_name = "api/generated/" + member_kind + "_" + member.get("id")
+                    document_name = "generated/api/" + member_kind + "_" + member.get("id")
                     target = (document_name, member.get("id"))
                     self.owners[document_name] = plain_name(name)
                     if member.find("location") is not None:
@@ -180,7 +180,7 @@ class CppReferences:
                         owners.update(self.member(reference.get("refid"), remaining))
                     if len(owners) == 1:
                         identifier, anchor = next(iter(owners))
-                        destination = "api/generated/" + identifier
+                        destination = "generated/api/" + identifier
                         if destination in environment.found_docs:
                             return make_refnode(app.builder, document, destination, anchor, content)
         if "::" in target:
@@ -193,7 +193,7 @@ class CppReferences:
                     owners.update(self.member(identifier, member_name))
                 if len(owners) == 1:
                     identifier, anchor = next(iter(owners))
-                    destination = "api/generated/" + identifier
+                    destination = "generated/api/" + identifier
                     if destination in environment.found_docs:
                         return make_refnode(app.builder, document, destination, anchor, content)
         return None
