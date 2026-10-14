@@ -48,8 +48,8 @@ nitpick_ignore_regex = [
     ("cpp:identifier", r"(?:size_t|uintptr_t|u?int(?:8|16|32|64)_t)"),
     ("cpp:identifier", r"(?:GLuint|GLint|GLenum|GLFWwindow|GLFWmonitor|GL_CLAMP_TO_EDGE|GL_RED)"),
     # The alias itself is documented; these members belong to std::steady_clock.
-    ("cpp:identifier", r"(?:CE::Runtime::Simulation::)?Clock::(?:duration|time_point|now)"),
-    ("cpp:identifier", r"(?:CE::Input::)?ObservationClock::(?:duration|time_point|now)"),
+    ("cpp:identifier", r"(?:::)?(?:CE::Runtime::Simulation::)?Clock::(?:duration|time_point|now)"),
+    ("cpp:identifier", r"(?:::)?(?:CE::Input::)?ObservationClock::(?:duration|time_point|now)"),
     # This constant belongs to the trait's std::true_type/std::false_type base.
     ("cpp:identifier", r"(?:CE::Time::)?is_chrono_duration<.*>::value"),
 ]

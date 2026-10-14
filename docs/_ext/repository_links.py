@@ -276,7 +276,19 @@ def cpp_reference(app, environment, node, content):
         # Sphinx does not follow C++ template bases for alias lookup. Link only
         # aliases whose public declaring owner is unambiguous in Doxygen's XML.
         return make_refnode(app.builder, from_document, alias[0], alias[1], content)
-    docname = app._cheryl_cpp_namespaces.get(node.get("reftarget", "").removeprefix("::"))
+    target = node.get("reftarget", "")
+    docname = None
+    # Names such as Input::Events and Events are intentionally reused. Resolve
+    # namespace references from the declaring scope before trying global aliases.
+    if not target.startswith("::"):
+        for owner in app._cheryl_cpp_references.lexical_owners(from_document):
+            qualified = "::".join(part for part in (owner, target) if part)
+            candidate = app._cheryl_cpp_namespaces.get(qualified)
+            if candidate in environment.found_docs:
+                docname = candidate
+                break
+    if docname is None:
+        docname = app._cheryl_cpp_namespaces.get(target.removeprefix("::"))
     if docname not in environment.found_docs:
         return app._cheryl_cpp_references.resolve(app, environment, node, content)
     return make_refnode(

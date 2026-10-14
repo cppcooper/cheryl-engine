@@ -95,7 +95,7 @@ directory still selects the same assets. An explicit relative override resolves
 from the application's working directory.
 
 Help and argument errors return a {cpp:struct}`CE::Application::StartupResult` with no
-engine; return its exit code when `should_start()` is false. On success, construct
+context; return its exit code when `should_start()` is false. On success, construct
 your game from the owned context and use `make_runtime(game)` to apply the parsed
 execution, input polling, and timing options together.
 
@@ -322,7 +322,7 @@ The vertex shader applies the copied pass and draw transforms:
 Material bindings map public parameter keys to the shader's native uniform names.
 Your common submission code uses `image`, while this OpenGL recipe maps it to
 `mytexture`. {cpp:func}`CE::Rendering::Submission::resolve_sprite` and
-{cpp:func}`CE::Rendering::Submission::resolve_text <std::vector<CE::Rendering::DrawPacket2D> CE::Rendering::Submission::resolve_text(const CE::Text::Rendering::Generation&, const CE::Rendering::DrawStyle2D&, const CE::Rendering::Submission::Context2D&)>`
+{cpp:func}`CE::Rendering::Submission::resolve_text <std::vector<DrawPacket2D> CE::Rendering::Submission::resolve_text(const CE::Text::Rendering::Generation&, const DrawStyle2D&, const Context2D&)>`
 resolve complete CPU packets without binding
 graphics state or uploading resources. Adding those packets to the pass retains
 their geometry, materials, and selected images and copies their parameter values.

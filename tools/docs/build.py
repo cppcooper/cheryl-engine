@@ -156,6 +156,16 @@ def extract(output: Path, doxygen: str, commit: str) -> None:
         declarations[identifier] = document
         declaration = document.find("compounddef")
         if declaration is not None:
+            # Doxygen can merge a leading global return-type qualifier with
+            # `virtual`. Breathe already renders virtuality from the XML attribute.
+            for member in declaration.findall(".//memberdef[@kind='function']"):
+                if member.get("virt") not in {"virtual", "pure-virtual"}:
+                    continue
+                for tag in ("type", "definition"):
+                    value = member.find(tag)
+                    if value is not None and value.text and value.text.startswith("virtual::"):
+                        value.text = value.text.removeprefix("virtual")
+                        changed.add(identifier)
             # Qualified implementation friendships are sometimes reported public.
             # Apply only the explicit namespace policy, preserving public friends.
             for member in declaration.findall(".//memberdef[@kind='friend']"):

@@ -114,14 +114,14 @@ callbacks run immediately; any values bound to the parser must remain at a stabl
 address through initialization. Startup itself cannot be copied or moved because
 its callbacks bind its configuration.
 
-Help and parse/configuration errors produce a `CE::Application::StartupResult` with no engine.
+Help and parse/configuration errors produce a `CE::Application::StartupResult` with no context.
 Return its `exit_code` when `should_start()` is false; help succeeds and invalid
 arguments fail before native context construction. A successful result owns the
 `CE::Runtime::Context` and the parsed `CE::Application::RuntimeOptions`. Construct the game from that
 context, then call `result.make_runtime(game)` to apply its run mode, polling and
 timing together. Keep the result and game alive through runtime destruction;
 `make_runtime` requires an lvalue result. Backend construction failures propagate,
-and `CE::Application::DebugTerminal::run()` retains the runtime's existing initialization/cleanup contract.
+and `CE::Runtime::GameRuntime::run()` retains the runtime's existing initialization/cleanup contract.
 
 `CE::Application::StartupOptions` supplies application defaults through `execution` and
 `runtime`. The common Engine options override those defaults:
@@ -149,7 +149,7 @@ selects finite polling; reversing them selects unlimited polling. Without overri
 the default configuration is sequential variable simulation, lockstep polling and
 one lazy CPU worker.
 
-A custom `CE::Application::StartupBackend` provides a required `create(CE::Runtime::ExecutionOptions)` factory,
+A custom `CE::Application::StartupBackend` provides a required `create(const CE::Runtime::ExecutionOptions&)` factory,
 optional Backend argument definitions and optional validation. The factory must
 return an owned context; a null result fails startup. Backend selection is currently
 programmatic. CLI backend selection, application-preference/build-default resolution
@@ -160,9 +160,9 @@ shows application-specific registration without duplicating the engine parser.
 ## Game hooks and ownership
 
 Implement `CE::Game::AbstractGame` and lend it, with an `CE::Runtime::Context`, to
-`CE::Runtime::GameRuntime`. Keep both alive through `CE::Application::DebugTerminal::run()` returning or throwing. The selected
+`CE::Runtime::GameRuntime`. Keep both alive through `CE::Runtime::GameRuntime::run()` returning or throwing. The selected
 factory assembles display, window, input, presentation, renderer and resources;
-`CE::Application::DebugTerminal::run()` initializes those adapters before calling the game.
+`CE::Runtime::GameRuntime::run()` initializes those adapters before calling the game.
 
 | Hook | Owner | Responsibility |
 | --- | --- | --- |
