@@ -15,6 +15,8 @@ from sphinx import addnodes
 from sphinx.errors import ConfigError
 from sphinx.util.nodes import make_refnode
 from pygments.lexers.special import TextLexer
+from api_rendering import namespace_identity
+from cpp_references import CppReferences
 
 
 @dataclass(frozen=True)
@@ -185,13 +187,21 @@ def prepare(app) -> None:
     app._cheryl_repository_links = Repository.from_config(app.config)
     project = app.config.breathe_default_project
     index = ElementTree.parse(Path(app.config.breathe_projects[project]) / "index.xml")
+    app._cheryl_cpp_references = CppReferences(
+        Path(app.config.breathe_projects[project]), app._cheryl_repository_links
+    )
+    app._cheryl_doxygen_documents = {
+        identifier: "api/generated/" + Path(node.file_name).stem
+        for identifier, node in app.exhale_root.node_by_refid.items()
+        if getattr(node, "file_name", None)
+    }
     namespaces = {}
     short_names = {}
     for compound in index.findall("compound"):
         if compound.get("kind") != "namespace":
             continue
         name = compound.findtext("name")
-        docname = "api/generated/namespace_" + name.replace("::", "__")
+        docname = "api/generated/" + namespace_identity(name)
         if not (Path(app.srcdir) / (docname + ".rst")).is_file():
             continue
         namespaces[name] = docname
@@ -220,6 +230,7 @@ def prepare(app) -> None:
             for name, targets in aliases(base.get("refid"), (*ancestors, identifier)).items():
                 result.setdefault(name, set()).update(targets)
         for member in declaration.findall(".//memberdef"):
+            result.pop(member.findtext("name"), None)
             if member.get("kind") == "typedef" and member.get("prot") == "public":
                 result[member.findtext("name")] = {
                     ("api/generated/" + identifier, member.get("id"))
@@ -234,6 +245,8 @@ def prepare(app) -> None:
                 continue
             for name, owners in aliases(base.get("refid")).items():
                 targets.setdefault(name, set()).update(owners)
+        for member in declaration.findall(".//memberdef"):
+            targets.pop(member.findtext("name"), None)
         inherited["api/generated/" + identifier] = {
             name: next(iter(owners))
             for name, owners in targets.items()
@@ -243,6 +256,16 @@ def prepare(app) -> None:
 
 
 def cpp_reference(app, environment, node, content):
+    if node.get("refdomain") == "std" and node.get("reftype") == "ref":
+        docname = app._cheryl_doxygen_documents.get(node.get("reftarget"))
+        if docname in environment.found_docs:
+            return make_refnode(
+                app.builder, node.get("refdoc", environment.docname), docname, "", content
+            )
+        location = app._cheryl_cpp_references.hidden_sources.get(node.get("reftarget"))
+        url = app._cheryl_cpp_references.location_url(location)
+        if url:
+            return nodes.reference("", "", content, refuri=url, internal=False)
     if node.get("refdomain") != "cpp" or node.get("reftype") != "identifier":
         return None
     from_document = node.get("refdoc", environment.docname)
@@ -253,9 +276,9 @@ def cpp_reference(app, environment, node, content):
         # Sphinx does not follow C++ template bases for alias lookup. Link only
         # aliases whose public declaring owner is unambiguous in Doxygen's XML.
         return make_refnode(app.builder, from_document, alias[0], alias[1], content)
-    docname = app._cheryl_cpp_namespaces.get(node.get("reftarget"))
+    docname = app._cheryl_cpp_namespaces.get(node.get("reftarget", "").removeprefix("::"))
     if docname not in environment.found_docs:
-        return None
+        return app._cheryl_cpp_references.resolve(app, environment, node, content)
     return make_refnode(
         app.builder,
         from_document,

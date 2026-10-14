@@ -1,0 +1,10 @@
+{% extends "!layout.html" %}
+{% block content %}
+{{ super() }}
+<p class="cheryl-revision">
+  <small>Source revision:
+  <a href="https://github.com/cppcooper/cheryl-engine/tree/{{ source_revision }}">{{ source_revision[:12] }}</a>
+  · <a href="{{ pathto('revision.json', 1) }}">Build details</a>
+  {% if source_dirty %}· Working tree modified{% endif %}</small>
+</p>
+{% endblock %}

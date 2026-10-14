@@ -23,7 +23,7 @@ version = release
 source_repository = "https://github.com/cppcooper/cheryl-engine"
 source_repository_root = str(REPO_ROOT)
 
-extensions = ["myst_parser", "breathe", "exhale", "repository_links"]
+extensions = ["myst_parser", "breathe", "exhale", "api_rendering", "repository_links"]
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 root_doc = "index"
 exclude_patterns = [
@@ -40,17 +40,18 @@ myst_ref_domains = ["std", "cpp"]
 nitpicky = True
 show_warning_types = True
 
-# These identifiers belong to dependencies outside the bounded pilot extraction.
-# Authored class/function links and identifiers inside the pilot remain checked.
+# Identifiers supplied by third-party libraries are outside Cheryl's reference.
+# All Cheryl class/function links and identifiers remain checked.
 nitpick_ignore_regex = [
     ("cpp:identifier", r"std(?:::.*)?"),
-    ("cpp:identifier", r"(?:CE::)?(?:Input|RenderAPIs|Diagnostics|Mem|Obj)(?:::.*)?"),
-    ("cpp:identifier", r"(?:CE::Assets::)?(?:ResourceProvider|DecodedImage|FileRegistry|AssetManifest|ShaderAssetManifest|Geometry2D|Image|Material|PixelPoint|PixelSize|PixelRect)"),
-    ("cpp:identifier", r"(?:CE::)?FramebufferSize"),
-    ("cpp:identifier", r"(?:CE::)?ViewPort(?:<.*>)?"),
-    ("cpp:identifier", r"(?:CE::math::)?(?:Vertex2D|Quad|QuadTriangleStrip)"),
+    ("cpp:identifier", r"(?:glm|CLI|gainput|tgui|Rml|spdlog)(?:::.*)?"),
+    ("cpp:identifier", r"(?:size_t|uintptr_t|u?int(?:8|16|32|64)_t)"),
+    ("cpp:identifier", r"(?:GLuint|GLint|GLenum|GLFWwindow|GLFWmonitor|GL_CLAMP_TO_EDGE|GL_RED)"),
     # The alias itself is documented; these members belong to std::steady_clock.
     ("cpp:identifier", r"(?:CE::GFramework::)?SimulationClock::(?:duration|time_point|now)"),
+    ("cpp:identifier", r"(?:CE::Input::)?InputClock::(?:duration|time_point|now)"),
+    # This constant belongs to the trait's std::true_type/std::false_type base.
+    ("cpp:identifier", r"is_chrono_duration<.*>::value"),
 ]
 
 xml_directory = Path(
@@ -72,6 +73,7 @@ exhale_args = {
 }
 
 html_theme = "sphinx_rtd_theme"
+templates_path = ["_templates"]
 html_title = "Cheryl Engine documentation"
 html_theme_options = {"navigation_depth": 4, "collapse_navigation": False}
 html_show_sourcelink = True
@@ -81,4 +83,6 @@ html_context = {
     "github_repo": "cheryl-engine",
     "github_version": source_revision,
     "conf_py_path": "/docs/",
+    "source_revision": source_revision,
+    "source_dirty": os.environ.get("CHERYL_DOCS_DIRTY") == "1",
 }
