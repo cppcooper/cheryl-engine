@@ -43,14 +43,16 @@ namespace CE::UI::TGUI {
             return result;
         }
 
-        RenderAPIs::ClipRect2D viewport_rectangle(const tgui::FloatRect& viewport) {
-            return {viewport.left, viewport.top, static_cast<double>(viewport.left) + viewport.width,
-                    static_cast<double>(viewport.top) + viewport.height};
+        CE::Rendering::ClipRect2D viewport_rectangle(const tgui::FloatRect& viewport) {
+            return {
+                viewport.left, viewport.top, static_cast<double>(viewport.left) + viewport.width,
+                static_cast<double>(viewport.top) + viewport.height
+            };
         }
 
-        RenderAPIs::ClipRegion2D clip_region(const RenderAPIs::ClipRect2D& rectangle, const tgui::Vector2f size) {
-            RenderAPIs::ClipRegion2D clip{rectangle, size.x, size.y};
-            RenderAPIs::validate_clip_region(clip);
+        CE::Rendering::ClipRegion2D clip_region(const CE::Rendering::ClipRect2D& rectangle, const tgui::Vector2f size) {
+            CE::Rendering::ClipRegion2D clip{rectangle, size.x, size.y};
+            CE::Rendering::validate_clip_region(clip);
             return clip;
         }
     }
@@ -69,7 +71,7 @@ namespace CE::UI::TGUI {
         const auto byte_count = width * height * 4;
         if (byte_count > static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()))
             throw Exceptions::invalid_args(CE_HERE, "TGUI RGBA pixels exceed addressable storage");
-        auto copy = std::make_shared<Assets::DecodedImage>();
+        auto copy = std::make_shared<CE::Assets::Images::Decoded>();
         copy->size = {size.x, size.y};
         copy->rgba.assign(pixels, pixels + byte_count);
         // Base load() may retain its own pixels for hit testing. Font atlases use
@@ -222,9 +224,10 @@ namespace CE::UI::TGUI {
         const auto vertical = [&](const double edge) {
             return m_viewport.top + ((edge - m_viewRect.top) * m_viewport.height / m_viewRect.height);
         };
-        clip_rectangle_ = {horizontal(clipRect.left), vertical(clipRect.top),
-                           horizontal(static_cast<double>(clipRect.left) + clipRect.width),
-                           vertical(static_cast<double>(clipRect.top) + clipRect.height)};
+        clip_rectangle_ = {
+            horizontal(clipRect.left), vertical(clipRect.top), horizontal(static_cast<double>(clipRect.left) + clipRect.width),
+            vertical(static_cast<double>(clipRect.top) + clipRect.height)
+        };
     }
 
     void RenderTarget::drawVertexArray(

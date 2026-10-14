@@ -2,8 +2,8 @@
 #include <internals/exceptions.h>
 #include <limits>
 
-namespace CE::Assets {
-    std::size_t GridDefinition::cell_count() const {
+namespace CE::Assets::Grids {
+    std::size_t Definition::cell_count() const {
         // Count cells before addressing or allocating their geometry; catch
         // multiplication overflow while rows and columns are still separate.
         if (rows != 0 && columns > std::numeric_limits<std::size_t>::max() / rows) {
@@ -12,14 +12,14 @@ namespace CE::Assets {
         return rows * columns;
     }
 
-    CellIndex GridDefinition::cell_index(const std::size_t row, const std::size_t column) const {
+    CellIndex Definition::cell_index(const std::size_t row, const std::size_t column) const {
         if (row >= rows || column >= columns) {
             throw Exceptions::bad_request(CE_HERE, "Asset grid cell coordinates are out of range");
         }
         return row * columns + column;
     }
 
-    PixelRect GridDefinition::cell_rect(const CellIndex cell) const {
+    CE::Rendering::Geometry::PixelRect Definition::cell_rect(const CellIndex cell) const {
         if (cell >= cell_count()) {
             throw Exceptions::bad_request(CE_HERE, "Asset grid cell index is out of range");
         }
@@ -31,14 +31,14 @@ namespace CE::Assets {
             origin.y + row * (static_cast<std::uint64_t>(frame.height) + spacing.y), frame.width, frame.height};
     }
 
-    std::uint64_t GridDefinition::occupied_right() const {
+    std::uint64_t Definition::occupied_right() const {
         if (columns == 0) {
             return origin.x;
         }
         return origin.x + columns * static_cast<std::uint64_t>(frame.width) + (columns - 1) * static_cast<std::uint64_t>(spacing.x);
     }
 
-    std::uint64_t GridDefinition::occupied_bottom() const {
+    std::uint64_t Definition::occupied_bottom() const {
         if (rows == 0) {
             return origin.y;
         }

@@ -7,32 +7,34 @@
 #include <TGUI/Widgets/Label.hpp>
 
 namespace {
-    class Input final : public CE::Input::iInputSystem {
-        CE::Input::InputBindings bindings_;
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
         void poll() override {}
         void deinitialize() override {}
-        CE::Input::InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         CE::Input::DeviceId keyboard_id() const override { return 1; }
         CE::Input::DeviceId mouse_id() const override { return 2; }
         CE::Input::DeviceId gamepad_id() const override { return 3; }
-        bool supports(CE::Input::InputMode) const override { return true; }
+        bool supports(CE::Input::Capture::Channel) const override { return true; }
         bool supports_focus() const override { return true; }
     };
 }
 
 int main() {
-    const CE::Input::InputRecord record{1, CE::Input::InputClock::now(), 7, CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{U'A'}};
+    const CE::Input::Events::Record record{
+        1, CE::Input::ObservationClock::now(), 7, CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{U'A'}
+    };
     const auto event = CE::UI::TGUI::translate_event(record);
     CE::UI::TGUI::RenderTarget target;
     target.setView({0, 0, 320, 240}, {0, 0, 320, 240}, {320, 240});
     target.begin_recording();
     target.drawFilledRect({}, {20, 10}, tgui::Color::Red);
     const auto scene = target.finish_recording();
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     CE::UI::TGUI::Scene{}.write(writer);
     Input input;
     CE::UI::TGUI::Session session(input, 1);

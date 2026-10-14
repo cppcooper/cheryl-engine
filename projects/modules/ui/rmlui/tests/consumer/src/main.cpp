@@ -6,22 +6,22 @@
 #include <RmlUi/Core/Core.h>
 
 namespace {
-    class Input final : public CE::Input::iInputSystem {
-        CE::Input::InputBindings bindings_;
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
         void poll() override {}
         void deinitialize() override {}
-        CE::Input::InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         CE::Input::DeviceId keyboard_id() const override { return 1; }
         CE::Input::DeviceId mouse_id() const override { return 2; }
         CE::Input::DeviceId gamepad_id() const override { return 3; }
-        bool supports(CE::Input::InputMode) const override { return true; }
+        bool supports(CE::Input::Capture::Channel) const override { return true; }
         bool supports_focus() const override { return true; }
         std::shared_ptr<const CE::Input::PollSnapshot> text() {
             begin_input_poll();
-            capture_buffer().record(1, CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{U'A'});
+            capture_buffer().record(1, CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{U'A'});
             return publish_input();
         }
     };
@@ -43,8 +43,8 @@ int main() {
         if (field.GetValue() != "A" || retained.draws().empty())
             return 1;
     }
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     CE::UI::RmlUi::Scene{}.write(writer);
     return Rml::GetVersion() == "6.3" && Rml::GetSystemInterface() == nullptr && !retained.draws().empty() &&
                    CE::UI::RmlUi::keyboard_key(CE::Input::KeyboardKey::Enter) == Rml::Input::KI_RETURN && frame.passes().empty()

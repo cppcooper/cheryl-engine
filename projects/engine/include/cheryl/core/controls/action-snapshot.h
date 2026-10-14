@@ -8,55 +8,58 @@
 #include <vector>
 
 namespace CE::Input {
-    using InputClock = std::chrono::steady_clock;
-    using InputDuration = std::chrono::duration<double>; // Observation-clock seconds.
+    using ObservationClock = std::chrono::steady_clock;
+    using ObservationDuration = std::chrono::duration<double>; // Observation-clock seconds.
     enum class AxisKind { Absolute, Relative };
 
-    /** Game-defined semantic identifier. A game's enums can be converted explicitly at its boundary. */
-    struct ActionId {
-        std::uint32_t value;
-        constexpr explicit ActionId(std::uint32_t id)
-        : value(id) {}
-        constexpr bool operator==(const ActionId&) const = default;
-    };
 } // namespace CE::Input
 
-template <> struct std::hash<CE::Input::ActionId> {
-    std::size_t operator()(const CE::Input::ActionId id) const noexcept { return std::hash<std::uint32_t>{}(id.value); }
+namespace CE::Input::Actions {
+    /** Game-defined semantic identifier. A game's enums can be converted explicitly at its boundary. */
+    struct Id {
+        std::uint32_t value;
+        constexpr explicit Id(std::uint32_t id)
+        : value(id) {}
+        constexpr bool operator==(const Id&) const = default;
+    };
+} // namespace CE::Input::Actions
+
+template <> struct std::hash<CE::Input::Actions::Id> {
+    std::size_t operator()(const CE::Input::Actions::Id id) const noexcept { return std::hash<std::uint32_t>{}(id.value); }
 };
 
-namespace CE::Input {
+namespace CE::Input::Actions {
     /** State at one completed input poll; both edges may be true for a press and release in that poll. */
-    struct ButtonActionState {
+    struct ButtonPollState {
         bool current = false;
         bool previous = false;
         bool pressed_this_poll = false;
         bool released_this_poll = false;
         std::uint64_t press_count = 0;
         std::uint64_t release_count = 0;
-        std::optional<InputClock::time_point> hold_started_at;
-        std::vector<InputDuration> completed_holds;
+        std::optional<CE::Input::ObservationClock::time_point> hold_started_at;
+        std::vector<CE::Input::ObservationDuration> completed_holds;
 
         [[nodiscard]] bool held() const { return current; }
         [[nodiscard]] bool pressed() const { return pressed_this_poll; }
         [[nodiscard]] bool released() const { return released_this_poll; }
     };
 
-    struct AxisActionState {
+    struct AxisPollState {
         float current = 0.0f;
         float previous = 0.0f;
-        AxisKind kind = AxisKind::Absolute;
+        CE::Input::AxisKind kind = CE::Input::AxisKind::Absolute;
 
-        [[nodiscard]] float delta() const { return kind == AxisKind::Relative ? current : current - previous; }
+        [[nodiscard]] float delta() const { return kind == CE::Input::AxisKind::Relative ? current : current - previous; }
     };
 
     /** The complete set of semantic actions from one poll. Copies/handles stay stable after later polls. */
-    class ActionSnapshot {
-        friend class InputBindings;
+    class Snapshot {
+        friend class Bindings;
         std::uint64_t poll_ = 0;
         std::chrono::steady_clock::time_point observed_at_ = std::chrono::steady_clock::now();
-        std::unordered_map<ActionId, ButtonActionState> buttons_;
-        std::unordered_map<ActionId, AxisActionState> axes_;
+        std::unordered_map<Id, ButtonPollState> buttons_;
+        std::unordered_map<Id, AxisPollState> axes_;
 
     public:
         [[nodiscard]] std::uint64_t poll() const { return poll_; }
@@ -71,14 +74,14 @@ namespace CE::Input {
             return false;
         }
         // Owned state copies; missing actions return inactive/zero defaults.
-        [[nodiscard]] ButtonActionState button(ActionId action) const {
+        [[nodiscard]] ButtonPollState button(Id action) const {
             const auto found = buttons_.find(action);
-            return found == buttons_.end() ? ButtonActionState{} : found->second;
+            return found == buttons_.end() ? ButtonPollState{} : found->second;
         }
-        [[nodiscard]] AxisActionState axis(ActionId action) const {
+        [[nodiscard]] AxisPollState axis(Id action) const {
             const auto found = axes_.find(action);
-            return found == axes_.end() ? AxisActionState{} : found->second;
+            return found == axes_.end() ? AxisPollState{} : found->second;
         }
-        [[nodiscard]] bool has_axis(ActionId action) const { return axes_.contains(action); }
+        [[nodiscard]] bool has_axis(Id action) const { return axes_.contains(action); }
     };
-} // namespace CE::Input
+} // namespace CE::Input::Actions

@@ -32,8 +32,8 @@ namespace CE::Audio {
         Clip& operator=(const Clip&) = default;
 
         // Rejects empty data, incomplete frames and non-finite samples.
-        [[nodiscard]] static Clip from_samples(Format format, std::vector<float> samples);
-        [[nodiscard]] Format format() const noexcept;
+        [[nodiscard]] static Clip from_samples(::CE::Audio::Format format, std::vector<float> samples);
+        [[nodiscard]] ::CE::Audio::Format format() const noexcept;
         [[nodiscard]] std::uint64_t frame_count() const noexcept;
         [[nodiscard]] std::chrono::duration<double> duration() const noexcept;
         [[nodiscard]] std::span<const float> samples() const noexcept;

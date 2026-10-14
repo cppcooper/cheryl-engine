@@ -4,7 +4,7 @@
 
 #include <atomic>
 
-namespace CE::Input {
+namespace CE::Platform::GLFW::Detail {
     // Gainput HID collection has one process-wide owner. Keep this lease through
     // device destruction, including while window callbacks are detached.
     class GainputLifetime final {

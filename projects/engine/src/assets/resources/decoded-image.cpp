@@ -7,8 +7,8 @@
 #include <limits>
 #include <memory>
 
-namespace CE::Assets {
-    DecodedImage decode_image(const std::filesystem::path& file) {
+namespace CE::Assets::Images {
+    Decoded decode(const std::filesystem::path& file) {
         int width = 0, height = 0, channels = 0;
         std::unique_ptr<unsigned char, decltype(&stbi_image_free)> pixels(
             stbi_load(file.string().c_str(), &width, &height, &channels, 4), &stbi_image_free

@@ -9,8 +9,8 @@
 #include <memory>
 #include <string_view>
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 }
 
 // Independent application presentation with native RML/RCSS documents.
@@ -19,11 +19,11 @@ class DemoRmlUi final {
     std::unique_ptr<RmlUiState> rmlui_state_;
 
 public:
-    DemoRmlUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root, std::filesystem::path font);
+    DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root, std::filesystem::path font);
     ~DemoRmlUi();
     DemoRmlUi(const DemoRmlUi&) = delete;
     DemoRmlUi& operator=(const DemoRmlUi&) = delete;
-    bool update(const CE::GFramework::TickContext& tick, const DemoUiStatus& status);
-    void write(CE::RenderAPIs::RenderFrameWriter& frame) const;
+    bool update(const CE::Game::TickContext& tick, const DemoUiStatus& status);
+    void write(CE::Rendering::FrameWriter& frame) const;
     [[nodiscard]] std::string_view error() const;
 };

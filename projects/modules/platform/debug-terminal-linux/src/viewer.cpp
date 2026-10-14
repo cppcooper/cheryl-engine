@@ -60,7 +60,7 @@ namespace {
             if (count < 0) {
                 if (errno == EINTR)
                     continue;
-                CE::TerminalDetail::native_failure("Read captured output");
+                CE::Platform::Linux::DebugTerminal::Detail::native_failure("Read captured output");
             }
             if (count == 0)
                 return Drain::empty;
@@ -79,7 +79,7 @@ namespace {
     }
 
     int run(const Options& options) {
-        using namespace CE::TerminalDetail;
+        using namespace CE::Platform::Linux::DebugTerminal::Detail;
         Descriptor control(::socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0));
         if (control.get() < 0)
             native_failure("Create viewer control socket");

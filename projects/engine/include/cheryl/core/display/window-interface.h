@@ -6,18 +6,18 @@
 
 #include <enums.h>
 
-namespace CE {
+namespace CE::Platform {
     /** Display-owned window accessed on the platform owner. Logical dimensions use
      * window coordinates; framebuffer dimensions use drawable pixels and may be zero.
      * Queries do not synchronize with another thread. Copy observed values into the
      * runtime handoff instead of reading a live window from simulation/render workers.
      */
-    class iWindow {
+    class Window {
     public:
-        virtual ~iWindow() = default;
-        [[nodiscard]] virtual ViewPort<int> logical_size() const = 0;
-        [[nodiscard]] virtual FramebufferSize framebuffer_size() const = 0;
-        [[nodiscard]] virtual Enum::window_mode mode() const = 0;
+        virtual ~Window() = default;
+        [[nodiscard]] virtual ::CE::Platform::Dimensions<int> logical_size() const = 0;
+        [[nodiscard]] virtual ::CE::Platform::FramebufferSize framebuffer_size() const = 0;
+        [[nodiscard]] virtual ::CE::Platform::WindowMode mode() const = 0;
         [[nodiscard]] virtual bool should_close() const = 0;
         /** Consume/rethrow a deferred native callback failure on the platform owner.
          * Pumping adapters check before publishing a successful poll. Backends with
@@ -28,7 +28,7 @@ namespace CE {
          * Backends define observation freshness and failure behavior after mutation.
          */
         virtual void resize(int width, int height) = 0;
-        virtual void set_mode(Enum::window_mode mode) = 0;
+        virtual void set_mode(::CE::Platform::WindowMode mode) = 0;
         /** Change cursor visibility; pointer capture and relative motion are separate capabilities. */
         virtual void hide_cursor(bool hide) const = 0;
     };
@@ -38,9 +38,9 @@ namespace CE {
      * access from another owner; retain the size alone for deferred consumers.
      */
     struct WindowResized {
-        iWindow* window;
-        FramebufferSize size;
+        ::CE::Platform::Window* window;
+        ::CE::Platform::FramebufferSize size;
     };
 
-    inline const SubSystems::EventChannel<WindowResized> window_resized_event{"window-resized"};
+    inline const ::CE::Events::EventChannel<WindowResized> window_resized_event{"window-resized"};
 }

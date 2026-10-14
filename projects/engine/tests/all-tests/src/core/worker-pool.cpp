@@ -34,7 +34,7 @@ namespace {
         int failed_query = 0;
         bool ignore_sets = false;
 
-        CE::Engine::WorkerDetail::WorkerNativeAdapter adapter() {
+        CE::Workers::Detail::NativeAdapter adapter() {
             return {true,
                 [this] {
                     if (++queries == failed_query)
@@ -53,8 +53,8 @@ namespace {
         }
     };
 
-    CE::Engine::WorkerGroupOptions recording_cpu_policy(CE::Engine::WorkerPolicyStrength strength) {
-        CE::Engine::WorkerGroupOptions options;
+    CE::Workers::GroupOptions recording_cpu_policy(CE::Workers::PolicyStrength strength) {
+        CE::Workers::GroupOptions options;
         options.cpu.cpus = {2};
         options.cpu.strength = strength;
         return options;
@@ -63,12 +63,12 @@ namespace {
     // Declare after the captured recording state so exceptional test exits join
     // the held worker before destroying anything its queued jobs may reference.
     class HeldWorkerCleanup final {
-        CE::Engine::WorkerPool& pool_;
+        CE::Workers::Pool& pool_;
         std::promise<void>& release_;
         bool released_ = false;
 
     public:
-        HeldWorkerCleanup(CE::Engine::WorkerPool& pool, std::promise<void>& release)
+        HeldWorkerCleanup(CE::Workers::Pool& pool, std::promise<void>& release)
         : pool_(pool), release_(release) {}
         ~HeldWorkerCleanup() { release_and_join(); }
         void release_and_join() {
@@ -86,13 +86,13 @@ namespace {
 
 namespace {
     class RestoreCallingThreadAffinity final {
-        const CE::Engine::WorkerDetail::WorkerNativeAdapter native_ = CE::Engine::WorkerDetail::native_worker_adapter();
+        const CE::Workers::Detail::NativeAdapter native_ = CE::Workers::Detail::native_worker_adapter();
         const std::vector<unsigned int> inherited_ = native_.query_affinity();
 
     public:
         ~RestoreCallingThreadAffinity() {
             try {
-                CE::Engine::WorkerDetail::apply_affinity(native_, inherited_);
+                CE::Workers::Detail::apply_affinity(native_, inherited_);
             } catch (const std::exception& error) {
                 ADD_FAILURE() << "Restoring the calling test thread's affinity failed: " << error.what();
             }
@@ -117,7 +117,7 @@ namespace {
 #endif
 
 TEST(worker_pool, job_results_and_failures) {
-    CE::Engine::WorkerPool pool(2);
+    CE::Workers::Pool pool(2);
     auto group = pool.make_group();
     auto value = group.submit([number = std::make_unique<int>(42)] { return *number; });
     auto failure = group.submit([]() -> int { throw std::runtime_error("failed job"); });
@@ -138,7 +138,7 @@ TEST(worker_pool, job_results_and_failures) {
 }
 
 TEST(worker_pool, serial_group_fifo) {
-    CE::Engine::WorkerPool pool(3);
+    CE::Workers::Pool pool(3);
     auto serial = pool.make_group({1});
     auto other = pool.make_group();
     std::vector<int> order;
@@ -156,7 +156,7 @@ TEST(worker_pool, serial_group_fifo) {
 }
 
 TEST(worker_pool, parallel_group_cap) {
-    CE::Engine::WorkerPool pool(3);
+    CE::Workers::Pool pool(3);
     auto capped = pool.make_group({2});
     auto other = pool.make_group();
     std::promise<void> two_entered;
@@ -195,7 +195,7 @@ TEST(worker_pool, parallel_group_cap) {
 }
 
 TEST(worker_pool, shutdown_drain) {
-    auto pool = std::make_unique<CE::Engine::WorkerPool>();
+    auto pool = std::make_unique<CE::Workers::Pool>();
     auto group = pool->make_group();
     std::atomic<int> calls{0};
     std::vector<std::future<void>> results;
@@ -210,7 +210,7 @@ TEST(worker_pool, shutdown_drain) {
 }
 
 TEST(worker_pool, worker_self_wait) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto group = pool.make_group();
     auto result = group.submit([&] {
         EXPECT_THROW(group.drain(), CE::Exceptions::failed_operation);
@@ -222,7 +222,7 @@ TEST(worker_pool, worker_self_wait) {
 }
 
 TEST(worker_pool, dropped_group_handle) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     std::future<int> result;
     {
         auto temporary_group = pool.make_group();
@@ -233,7 +233,7 @@ TEST(worker_pool, dropped_group_handle) {
 }
 
 TEST(worker_pool, capture_release_reentry) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto source = pool.make_group();
     auto other = pool.make_group();
     std::future<int> follow_up;
@@ -267,16 +267,16 @@ TEST(worker_pool, capture_release_reentry) {
 }
 
 TEST(worker_pool, unavailable_topology) {
-    CE::Engine::WorkerPool pool;
-    CE::Engine::WorkerGroupOptions options;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    CE::Workers::Pool pool;
+    CE::Workers::GroupOptions options;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     options.cpu.shared_cache_domain = 1;
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::failed_operation);
 }
 
 TEST(worker_pool, effective_policy) {
-    CE::Engine::WorkerPool pool(2);
-    CE::Engine::WorkerGroupOptions options;
+    CE::Workers::Pool pool(2);
+    CE::Workers::GroupOptions options;
     options.max_concurrency = 1;
     options.weight = 3;
     options.priority = 2;
@@ -292,7 +292,7 @@ TEST(worker_pool, effective_policy) {
 
 #if defined(__linux__)
 TEST(worker_pool_native, inherited_cpu_mask) {
-    const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
+    const auto native = CE::Workers::Detail::native_worker_adapter();
     const auto inherited = native.query_affinity();
     if (inherited.size() < 2)
         GTEST_SKIP() << "Restriction/eligibility comparison requires two inherited CPUs";
@@ -301,17 +301,17 @@ TEST(worker_pool_native, inherited_cpu_mask) {
         // Only this caller changes its own mask. Threads created below inherit
         // it; the guard restores it even after an exception or fatal assertion.
         RestoreCallingThreadAffinity restore;
-        CE::Engine::WorkerDetail::apply_affinity(native, restricted);
-        CE::Engine::WorkerPool pool;
+        CE::Workers::Detail::apply_affinity(native, restricted);
+        CE::Workers::Pool pool;
         EXPECT_TRUE(pool.capabilities().cpu_affinity);
         EXPECT_EQ(pool.capabilities().available_cpus, restricted);
-        CE::Engine::WorkerGroupOptions options;
-        options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+        CE::Workers::GroupOptions options;
+        options.cpu.strength = CE::Workers::PolicyStrength::Required;
         options.cpu.cpus = {inherited[1]};
         EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::invalid_args);
         options.cpu.cpus = restricted;
         auto required = pool.make_group(options);
-        options.cpu.strength = CE::Engine::WorkerPolicyStrength::Preferred;
+        options.cpu.strength = CE::Workers::PolicyStrength::Preferred;
         options.cpu.cpus = {inherited[0], inherited[1]};
         auto intersected = pool.make_group(options);
         options.cpu.cpus = {inherited[1]};
@@ -353,17 +353,17 @@ TEST(worker_pool_native, native_affinity_rejection) {
     }
     if (!absent_cpu)
         GTEST_SKIP() << "No absent CPU ID inside the native mask is available for kernel rejection";
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     const auto inherited = pool.capabilities().available_cpus;
-    CE::Engine::WorkerGroupOptions options;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    CE::Workers::GroupOptions options;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto group = pool.make_group(options);
     bool entered = false;
     auto rejected = group.submit([cpu = *absent_cpu, &entered] {
         // The production adapter reaches pthread_setaffinity_np with a nonempty
         // mask and an in-range ID. The kernel rejects it after callback entry.
         entered = true;
-        const auto native = CE::Engine::WorkerDetail::native_worker_adapter();
+        const auto native = CE::Workers::Detail::native_worker_adapter();
         native.set_affinity({cpu});
     });
     std::string rejection_message;
@@ -389,14 +389,14 @@ TEST(worker_pool_native, native_affinity_rejection) {
 }
 
 TEST(worker_pool, required_cpu_affinity) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity)
         GTEST_SKIP() << "Inherited CPU affinity cannot be queried";
     ASSERT_FALSE(capabilities.available_cpus.empty());
-    CE::Engine::WorkerGroupOptions options;
+    CE::Workers::GroupOptions options;
     options.cpu.cpus = {capabilities.available_cpus.front()};
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto pinned = pool.make_group(options);
     auto selected_cpu = pinned.submit([] { return sched_getcpu(); });
     EXPECT_EQ(selected_cpu.get(), static_cast<int>(options.cpu.cpus.front()));
@@ -405,12 +405,12 @@ TEST(worker_pool, required_cpu_affinity) {
 }
 
 TEST(worker_pool, group_mask_restoration) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
         GTEST_SKIP() << "Mask restoration requires at least two eligible CPUs";
-    CE::Engine::WorkerGroupOptions options;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    CE::Workers::GroupOptions options;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     options.cpu.cpus = {capabilities.available_cpus.front()};
     auto pinned = pool.make_group(options);
     options.cpu.cpus.clear();
@@ -426,12 +426,12 @@ TEST(worker_pool, group_mask_restoration) {
 }
 
 TEST(worker_pool, cached_mask_revalidation) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
         GTEST_SKIP() << "Cached-mask revalidation requires at least two eligible CPUs";
-    CE::Engine::WorkerGroupOptions options;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    CE::Workers::GroupOptions options;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto inherited = pool.make_group(options);
     const auto first_cpu = capabilities.available_cpus.front();
     // The first job changes native state behind the adapter's verified-mask cache.
@@ -451,13 +451,13 @@ TEST(worker_pool, cached_mask_revalidation) {
 }
 
 TEST(worker_pool, overlapping_cpu_groups) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     const auto capabilities = pool.capabilities();
     if (!capabilities.cpu_affinity || capabilities.available_cpus.size() < 2)
         GTEST_SKIP() << "Overlapping CPU groups require at least two eligible CPUs";
-    CE::Engine::WorkerGroupOptions options;
+    CE::Workers::GroupOptions options;
     options.weight = 3;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     options.cpu.cpus = {capabilities.available_cpus[0]};
     auto frequent = pool.make_group(options);
     const auto frequent_mask = frequent.policy().effective_cpus;
@@ -501,7 +501,7 @@ TEST(worker_pool, overlapping_cpu_groups) {
 #endif
 
 TEST(worker_pool, weighted_fairness) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto gate = pool.make_group();
     std::promise<void> entered;
     std::promise<void> release;
@@ -514,7 +514,7 @@ TEST(worker_pool, weighted_fairness) {
         released.wait();
     });
     entered.get_future().wait();
-    CE::Engine::WorkerGroupOptions options;
+    CE::Workers::GroupOptions options;
     options.weight = 3;
     auto frequent = pool.make_group(options);
     auto regular = pool.make_group();
@@ -534,12 +534,11 @@ TEST(worker_pool, weighted_fairness) {
 TEST(worker_pool_faults, discovery_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 1;
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
     EXPECT_FALSE(pool->capabilities().cpu_affinity);
     EXPECT_TRUE(pool->capabilities().available_cpus.empty());
     EXPECT_THROW(
-        static_cast<void>(pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required))),
-        CE::Exceptions::failed_operation
+        static_cast<void>(pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Required))), CE::Exceptions::failed_operation
     );
     auto ordinary = pool->make_group();
     auto result = ordinary.submit([] { return 13; });
@@ -553,8 +552,8 @@ TEST(worker_pool_faults, discovery_query_failure) {
 TEST(worker_pool_faults, required_readback_mismatch) {
     RecordingWorkerNative native;
     native.ignore_sets = true;
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-    auto group = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+    auto group = pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Required));
     int calls = 0;
     auto result = group.submit([&] { ++calls; });
     group.close();
@@ -569,8 +568,8 @@ TEST(worker_pool_faults, required_readback_mismatch) {
 TEST(worker_pool_faults, required_affinity_failure) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-    auto required = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+    auto required = pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Required));
     auto ordinary = pool->make_group();
     int calls = 0;
     bool released = false;
@@ -608,8 +607,8 @@ TEST(worker_pool_faults, required_affinity_failure) {
 TEST(worker_pool_faults, preferred_affinity_fallback) {
     RecordingWorkerNative native;
     native.failed_sets = {1};
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-    auto group = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Preferred));
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+    auto group = pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Preferred));
     auto result = group.submit([&] { return native.mask; });
     group.close();
     group.drain();
@@ -624,8 +623,8 @@ TEST(worker_pool_faults, preferred_fallback_failure) {
         RecordingWorkerNative native;
         native.failed_sets = query_failure ? std::vector<int>{1} : std::vector<int>{1, 2};
         native.failed_query = query_failure ? 2 : 0;
-        auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-        auto preferred = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Preferred));
+        auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+        auto preferred = pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Preferred));
         auto ordinary = pool->make_group();
         int calls = 0;
         auto failure = preferred.submit([&] { ++calls; });
@@ -651,8 +650,8 @@ TEST(worker_pool_faults, preferred_fallback_failure) {
 TEST(worker_pool_faults, post_set_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 2; // The set succeeds, but its readback cannot verify it.
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-    auto required = pool->make_group(recording_cpu_policy(CE::Engine::WorkerPolicyStrength::Required));
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+    auto required = pool->make_group(recording_cpu_policy(CE::Workers::PolicyStrength::Required));
     auto ordinary = pool->make_group();
     int calls = 0;
     auto failure = required.submit([&] { ++calls; });
@@ -671,9 +670,9 @@ TEST(worker_pool_faults, post_set_query_failure) {
 TEST(worker_pool_faults, cached_mask_query_failure) {
     RecordingWorkerNative native;
     native.failed_query = 2; // Discovery succeeds; the cached required mask read fails.
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, native.adapter());
-    CE::Engine::WorkerGroupOptions options;
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, native.adapter());
+    CE::Workers::GroupOptions options;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto group = pool->make_group(options);
     int calls = 0;
     auto failure = group.submit([&] { ++calls; });
@@ -695,7 +694,7 @@ TEST(worker_pool_faults, partial_thread_start) {
     int attempts = 0;
     auto captured = std::make_shared<int>(42);
     std::weak_ptr<int> retained = captured;
-    CE::Engine::WorkerDetail::WorkerNativeAdapter adapter;
+    CE::Workers::Detail::NativeAdapter adapter;
     adapter.start_thread = [captured = std::move(captured), &attempts, &entered, started, &exited](std::function<void()> work) {
         if (++attempts == 2) {
             started.wait(); // The first thread has actually entered its wrapper.
@@ -708,7 +707,7 @@ TEST(worker_pool_faults, partial_thread_start) {
         });
     };
     try {
-        static_cast<void>(CE::Engine::WorkerDetail::WorkerPoolAccess::create(3, std::move(adapter)));
+        static_cast<void>(CE::Workers::Detail::PoolAccess::create(3, std::move(adapter)));
         ADD_FAILURE() << "The second thread start did not reject construction";
     } catch (const CE::Exceptions::failed_operation& error) {
         EXPECT_NE(std::string(error.what()).find("second thread-start failure"), std::string::npos);

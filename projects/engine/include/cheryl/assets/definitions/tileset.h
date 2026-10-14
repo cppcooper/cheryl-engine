@@ -13,17 +13,17 @@
 #include <variant>
 #include <vector>
 
-namespace CE::Assets {
+namespace CE::Assets::Tilesets {
     enum class Direction { North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest };
 
     enum class WangType { Corner, Edge };
 
-    struct TerrainDefinition {
+    struct Terrain {
         std::uint32_t id{};
         std::string name;
         std::optional<std::string> color;
         double probability{1.0};
-        std::optional<CellIndex> representative;
+        std::optional<CE::Assets::Grids::CellIndex> representative;
     };
 
     using WangSignature = std::array<std::uint32_t, 8>;
@@ -32,8 +32,8 @@ namespace CE::Assets {
         [[nodiscard]] std::size_t operator()(const WangSignature& signature) const noexcept;
     };
 
-    struct WangTileDefinition {
-        CellIndex cell{};
+    struct WangTile {
+        CE::Assets::Grids::CellIndex cell{};
         WangSignature wang{};
         double weight{1.0};
     };
@@ -41,37 +41,37 @@ namespace CE::Assets {
     /** Parsed terrain signatures and candidate tile indices in definition order.
      * CPU selection samples shared edge/corner labels and chooses a weighted variant.
      */
-    struct WangAutotileDefinition {
+    struct WangRule {
         std::string description;
         WangType type{};
         std::array<Direction, 8> slot_order{};
-        std::vector<TerrainDefinition> terrains;
-        std::vector<WangTileDefinition> tiles;
+        std::vector<Terrain> terrains;
+        std::vector<WangTile> tiles;
         std::unordered_map<WangSignature, std::vector<std::size_t>, WangSignatureHash> variants;
     };
 
     enum class BitmaskType { FourNeighbor, EightNeighbor };
 
-    struct BitmaskAutotileDefinition {
+    struct BitmaskRule {
         std::string description;
         BitmaskType type{};
         std::vector<Direction> bit_order;
-        std::unordered_map<std::uint32_t, CellIndex> cases;
+        std::unordered_map<std::uint32_t, CE::Assets::Grids::CellIndex> cases;
     };
 
-    using AutotileDefinition = std::variant<WangAutotileDefinition, BitmaskAutotileDefinition>;
+    using Rule = std::variant<WangRule, BitmaskRule>;
 
-    struct TilesetDefinition {
+    struct Definition {
         std::string name_space;
         std::string name;
         std::string description;
         std::filesystem::path texture;
-        GridDefinition grid;
-        math::Pivot pivot;
-        std::unordered_map<std::string, ViewDefinition> views;
-        std::unordered_map<std::string, CellIndex> orientations;
-        std::unordered_map<std::string, TileAnimationDefinition> animations;
-        std::unordered_map<std::string, AutotileDefinition> autotiles;
+        CE::Assets::Grids::Definition grid;
+        CE::Rendering::Geometry::Pivot pivot;
+        std::unordered_map<std::string, CE::Assets::Grids::View> views;
+        std::unordered_map<std::string, CE::Assets::Grids::CellIndex> orientations;
+        std::unordered_map<std::string, Clip> animations;
+        std::unordered_map<std::string, Rule> autotiles;
         std::optional<std::string> shader = {};
 
         [[nodiscard]] std::string id() const;

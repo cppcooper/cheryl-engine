@@ -3,7 +3,7 @@
 #include <core/rendering/render-frame.h>
 #include "tick-context.h"
 
-namespace CE::GFramework {
+namespace CE::Game {
     /** Game simulation hooks driven by GameRuntime.
      * update() receives accumulated input and the selected simulation delta, with
      * input observation time available separately, regardless of whether
@@ -41,12 +41,12 @@ namespace CE::GFramework {
          * @param tick Borrowed update context and input view valid for this call;
          * its delta belongs to simulation policy, not raw input observation time.
          */
-        virtual void update(const TickContext& tick) = 0;
+        virtual void update(const ::CE::Game::TickContext& tick) = 0;
         /** Copy render state into a free frame after simulation updates.
          * This runs on the simulation owner and can be skipped when no slot is free.
          * @param frame Borrowed writer valid only during this preparation; retain
          * neither it nor pass writers, and perform no backend graphics operations.
          */
-        virtual void prepare_render_frame(RenderAPIs::RenderFrameWriter& frame) const = 0;
+        virtual void prepare_render_frame(::CE::Rendering::FrameWriter& frame) const = 0;
     };
 }

@@ -6,8 +6,8 @@
 #include <iostream>
 #include <mutex>
 
-namespace CE {
-    template <typename Mutex> class osink : public spdlog::sinks::base_sink<Mutex> {
+namespace CE::Logging::Sinks {
+    template <typename Mutex> class OutputSink : public spdlog::sinks::base_sink<Mutex> {
     protected:
         void sink_it_(const spdlog::details::log_msg& msg) override {
             spdlog::memory_buf_t formatted;
@@ -25,6 +25,6 @@ namespace CE {
         }
     };
 
-    using osink_mt = osink<std::mutex>;
-    using osink_st = osink<spdlog::details::null_mutex>;
+    using ThreadSafeOutputSink = OutputSink<std::mutex>;
+    using SingleThreadOutputSink = OutputSink<spdlog::details::null_mutex>;
 }

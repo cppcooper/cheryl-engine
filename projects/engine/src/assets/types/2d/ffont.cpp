@@ -6,12 +6,12 @@
 #include <internals/exceptions.h>
 #include <math/anchor.h>
 
-namespace CE::Assets {
-    using namespace VAONumbers;
-    constexpr uint16_t num_vertices = num_chars_ffont * vertices_per_quad;
+namespace CE::Text::Legacy {
+    using namespace CE::Rendering::Geometry;
+    constexpr uint16_t num_vertices = bitmap_character_count * vertices_per_quad;
 
-    std::vector<GlyphPlacement2D> FFont::layout(const std::string_view text, const FontLayoutOptions options) const {
-        std::vector<GlyphPlacement2D> result;
+    std::vector<GlyphPlacement> BitmapFont::layout(const std::string_view text, const LayoutOptions options) const {
+        std::vector<GlyphPlacement> result;
         result.reserve(text.size());
         float x = 0.0f;
         float y = 0.0f;
@@ -33,15 +33,15 @@ namespace CE::Assets {
         return result;
     }
 
-    void make_vertices(Vertex2D* vertices) {
-        for (int idx = 0; idx < num_chars_ffont; ++idx) {
+    void make_vertices(CE::Rendering::Geometry::Vertex2D* vertices) {
+        for (int idx = 0; idx < bitmap_character_count; ++idx) {
             uint16_t x0 = idx % 16;
             uint16_t y0 = idx / 16;
-            math::Anchor::Center(vertices + (idx * vertices_per_quad), 16, 16, 1, 1, x0, y0);
+            CE::Rendering::Geometry::Anchor::Center(vertices + (idx * vertices_per_quad), 16, 16, 1, 1, x0, y0);
         }
     }
 
-    FFontData FFont::load_ffont(const std::filesystem::path& path, ResourceProvider& provider) {
+    BitmapFontData BitmapFont::load_ffont(const std::filesystem::path& path, CE::Rendering::Resources::Provider& provider) {
         std::ifstream file(path, std::ios::binary);
         if (!file.is_open()) {
             throw Exceptions::failed_operation(CE_HERE,
@@ -50,7 +50,7 @@ namespace CE::Assets {
         // This deprecated loader preserves native-short encoding and ignored
         // trailing data. The original atlas is unavailable; semantic format
         // recovery is no longer required work (docs/resources/legacy-ffont.md).
-        std::array<short, num_chars_ffont> buffer{};
+        std::array<short, bitmap_character_count> buffer{};
         constexpr auto byte_count = static_cast<std::streamsize>(sizeof(buffer));
         file.read(reinterpret_cast<char*>(buffer.data()), byte_count);
         if (!file || file.gcount() != byte_count) {
@@ -60,18 +60,18 @@ namespace CE::Assets {
 
         // Convert stored glyph widths for pen movement, then upload the fixed
         // atlas geometry while reusing the already loaded font image.
-        std::array<float, num_chars_ffont> widths{};
-        for (int idx = 0; idx < num_chars_ffont; ++idx) {
+        std::array<float, bitmap_character_count> widths{};
+        for (int idx = 0; idx < bitmap_character_count; ++idx) {
             widths[idx] = static_cast<float>(buffer[idx]);
         }
 
-        auto vertices = std::make_shared<std::array<Vertex2D, num_vertices>>();
+        auto vertices = std::make_shared<std::array<CE::Rendering::Geometry::Vertex2D, num_vertices>>();
         make_vertices(vertices->data());
-        auto texture = TextureMgr::get().get_asset("whitefont.png");
+        auto texture = CE::Assets::Images::Manager::get().get_asset("whitefont.png");
         if (!texture)
             throw Exceptions::runtime_exception(CE_HERE, "The legacy font texture is not loaded");
-        std::shared_ptr<Vertex2D> verts(vertices, vertices->data());
-        auto geometry = provider.upload_geometry(verts, num_vertices, PrimitiveTopology::Triangles);
+        std::shared_ptr<CE::Rendering::Geometry::Vertex2D> verts(vertices, vertices->data());
+        auto geometry = provider.upload_geometry(verts, num_vertices, CE::Rendering::Geometry::Topology::Triangles);
         return {widths, std::move(geometry), std::move(texture)};
     }
 }

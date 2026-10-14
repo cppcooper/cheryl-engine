@@ -10,22 +10,22 @@
 #include <optional>
 #include <string>
 
-namespace CE::Assets {
-    struct ResourceProvider;
+namespace CE::Rendering::Resources {
+    struct Provider;
 }
 
 // Optional application samples: upload on platform, advance on simulation, then
 // copy cells/transforms into retained packets without exposing live cursors.
 class DemoAssets final {
     struct Character {
-        std::shared_ptr<const CE::Assets::Sprite> sprite;
-        std::array<CE::Assets::SpriteAnimation, 6> clips;
+        std::shared_ptr<const CE::Assets::Sprites::Asset> sprite;
+        std::array<CE::Assets::Sprites::Animation, 6> clips;
     };
 
-    std::shared_ptr<const CE::Assets::Tileset> tiles_;
-    std::shared_ptr<const CE::Assets::Sprite> weapon_;
+    std::shared_ptr<const CE::Assets::Tilesets::Asset> tiles_;
+    std::shared_ptr<const CE::Assets::Sprites::Asset> weapon_;
     std::optional<Character> character_;
-    std::array<std::shared_ptr<const CE::Assets::RenderedText>, 4> labels_;
+    std::array<std::shared_ptr<const CE::Text::Rendering::Generation>, 4> labels_;
     std::chrono::duration<double> elapsed_{};
     bool paused_ = false;
     bool visible_ = true;
@@ -33,9 +33,9 @@ class DemoAssets final {
 public:
     void load(
         const std::filesystem::path& root,
-        CE::Assets::ResourceProvider& provider,
+        CE::Rendering::Resources::Provider& provider,
         const CE::Text::FontCollection& fonts,
-        CE::Assets::TextRasterOptions raster_options
+        CE::Text::Rendering::RasterOptions raster_options
     );
     void reset();
     void toggle_pause() { paused_ = !paused_; }
@@ -43,10 +43,10 @@ public:
     void replay_attack();
     void advance(std::chrono::duration<double> delta);
     void write(
-        CE::RenderAPIs::RenderPassWriter& pass,
-        const CE::RenderAPIs::DrawStyle2D& images,
-        const CE::RenderAPIs::DrawStyle2D& text,
-        const CE::Assets::SubmissionContext2D& context
+        CE::Rendering::PassWriter& pass,
+        const CE::Rendering::DrawStyle2D& images,
+        const CE::Rendering::DrawStyle2D& text,
+        const CE::Rendering::Submission::Context2D& context
     ) const;
     [[nodiscard]] std::string status() const;
 };

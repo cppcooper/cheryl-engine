@@ -38,22 +38,22 @@ namespace CE::Text {
         FontBytes read_font(const std::filesystem::path& path) {
             std::ifstream input(path, std::ios::binary | std::ios::ate);
             if (!input)
-                throw Exceptions::runtime_exception(CE_HERE, "Unable to open font '" + path.string() + "'");
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to open font '" + path.string() + "'");
             const auto length = static_cast<std::streamoff>(input.tellg());
             if (length <= 0 || static_cast<std::uintmax_t>(length) > static_cast<std::uintmax_t>(std::numeric_limits<FT_Long>::max()) ||
                 static_cast<std::uintmax_t>(length) > std::numeric_limits<std::size_t>::max() ||
                 length > std::numeric_limits<std::streamsize>::max())
-                throw Exceptions::runtime_exception(CE_HERE, "Invalid font size for '" + path.string() + "'");
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Invalid font size for '" + path.string() + "'");
             auto bytes = std::make_shared<std::vector<unsigned char>>(static_cast<std::size_t>(length));
             input.seekg(0);
             if (!input.read(reinterpret_cast<char*>(bytes->data()), static_cast<std::streamsize>(length)))
-                throw Exceptions::runtime_exception(CE_HERE, "Unable to read font '" + path.string() + "'");
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to read font '" + path.string() + "'");
             return bytes;
         }
 
         FontFaceInfo face_info(FT_Face face, std::optional<std::filesystem::path> path, const std::uint32_t index) {
             if (face->num_glyphs <= 0 || static_cast<unsigned long>(face->num_glyphs) > std::numeric_limits<std::uint32_t>::max())
-                throw Exceptions::runtime_exception(CE_HERE, "Font has an unsupported glyph count");
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font has an unsupported glyph count");
             return {face->family_name ? face->family_name : "", face->style_name ? face->style_name : "", std::move(path),
                 index, static_cast<std::uint32_t>(face->num_glyphs), false};
         }
@@ -78,7 +78,7 @@ namespace CE::Text {
 
         struct Candidate {
             FontFaceData data;
-            FontFaceInfo info;
+            ::CE::Text::FontFaceInfo info;
             StyleScore style_score;
         };
 
@@ -90,15 +90,14 @@ namespace CE::Text {
             std::map<std::string, Candidate> result;
             if (requested.empty())
                 return result;
-            const auto files = selection.system_directories ? Resources::find_system_fonts(*selection.system_directories)
-                                                           : Resources::find_system_fonts();
+            const auto files = selection.system_directories ? find_system_fonts(*selection.system_directories) : find_system_fonts();
             for (const auto& file : files) {
                 FontBytes bytes;
                 FreeTypeFace first(nullptr, FT_Done_Face);
                 try {
                     bytes = read_font(file);
                     first = open_face(library, {bytes, 0});
-                } catch (const Exceptions::runtime_exception&) {
+                } catch (const ::CE::Exceptions::runtime_exception&) {
                     continue; // Installed-font discovery is best effort; explicit files below are strict.
                 }
                 const auto count = first->num_faces;
@@ -108,7 +107,7 @@ namespace CE::Text {
                     FreeTypeFace face(nullptr, FT_Done_Face);
                     try {
                         face = index == 0 ? std::move(first) : open_face(library, {bytes, static_cast<std::uint32_t>(index)});
-                    } catch (const Exceptions::runtime_exception&) {
+                    } catch (const ::CE::Exceptions::runtime_exception&) {
                         continue;
                     }
                     const auto key = family_key(face->family_name ? face->family_name : "");
@@ -141,33 +140,33 @@ namespace CE::Text {
         if (error == FT_Err_Out_Of_Memory)
             throw std::bad_alloc{};
         if (error)
-            throw Exceptions::runtime_exception(CE_HERE, "Unable to initialize FreeType");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to initialize FreeType");
         return {library, FT_Done_FreeType};
     }
 
     Detail::FreeTypeFace Detail::open_face(FT_Library library, const FontFaceData& data, const std::uint32_t pixel_height) {
         if (!data.bytes || data.bytes->empty() || data.bytes->size() > static_cast<std::size_t>(std::numeric_limits<FT_Long>::max()) ||
             !std::in_range<FT_Long>(data.index))
-            throw Exceptions::runtime_exception(CE_HERE, "Font bytes or face index exceed FreeType limits");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font bytes or face index exceed FreeType limits");
         FT_Face raw = nullptr;
         auto error = FT_New_Memory_Face(library, data.bytes->data(), static_cast<FT_Long>(data.bytes->size()), data.index, &raw);
         FreeTypeFace face(raw, FT_Done_Face);
         if (!error && data.index >= static_cast<unsigned long>(raw->num_faces))
-            throw Exceptions::runtime_exception(CE_HERE, "Font face index must select a collection face, not a named variation");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font face index must select a collection face, not a named variation");
         if (!error && (!FT_IS_SCALABLE(raw) || FT_Select_Charmap(raw, FT_ENCODING_UNICODE)))
-            throw Exceptions::runtime_exception(CE_HERE, "A text font needs a scalable Unicode face");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "A text font needs a scalable Unicode face");
         if (!error && pixel_height)
             error = FT_Set_Pixel_Sizes(raw, 0, pixel_height);
         if (error == FT_Err_Out_Of_Memory)
             throw std::bad_alloc{};
         if (error)
-            throw Exceptions::runtime_exception(CE_HERE, "Unable to open or size a font face");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to open or size a font face");
         return face;
     }
 
     const Detail::FontCollectionData& Detail::FontAccess::data(const FontCollection& collection) {
         if (!collection.data_)
-            throw Exceptions::invalid_args(CE_HERE, "A moved-from font collection has no faces");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "A moved-from font collection has no faces");
         return *collection.data_;
     }
 
@@ -180,7 +179,7 @@ namespace CE::Text {
         for (const auto& source : selection.preferred) {
             if (const auto* family = std::get_if<SystemFontFamily>(&source)) {
                 if (family->name.empty() || family->name.find('\0') != std::string::npos)
-                    throw Exceptions::invalid_args(CE_HERE, "An installed font family needs a nonempty name without NUL");
+                    throw ::CE::Exceptions::invalid_args(CE_HERE, "An installed font family needs a nonempty name without NUL");
                 requested.push_back(family_key(family->name));
             }
         }
@@ -213,7 +212,7 @@ namespace CE::Text {
         const Detail::FontFaceData fallback{std::make_shared<const std::vector<unsigned char>>(embedded.begin(), embedded.end()), 0};
         const auto face = Detail::open_face(library.get(), fallback);
         if (!FT_Get_Char_Index(face.get(), U'\ufffd'))
-            throw Exceptions::runtime_exception(CE_HERE, "The builtin font needs a visible replacement glyph");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "The builtin font needs a visible replacement glyph");
         auto info = face_info(face.get(), std::nullopt, 0);
         info.builtin = true;
         append_face(*result, fallback, info);

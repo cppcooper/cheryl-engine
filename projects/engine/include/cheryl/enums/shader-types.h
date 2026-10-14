@@ -1,10 +1,10 @@
 #pragma once
 #include <string>
 
-namespace CE::Enum {
-    enum ShaderTypes { VERTEX, FRAGMENT, GEOMETRY, TESS_CONTROL, TESS_EVALUATION };
+namespace CE::Rendering {
+    enum ShaderStage { VERTEX, FRAGMENT, GEOMETRY, TESS_CONTROL, TESS_EVALUATION };
 
-    inline ShaderTypes get_shader_type(const std::string& extension) {
+    inline ShaderStage shader_stage_from_extension(const std::string& extension) {
         if (extension == ".vert") {
             return VERTEX;
         }

@@ -3,23 +3,23 @@
 #include "event-bus.h"
 #include <templates/singleton.h>
 
-namespace CE::SubSystems {
+namespace CE::Events {
     /** Global access to the default persistent event bus.
      * Independent owned buses may isolate a subsystem or application lifecycle;
      * all buses use immediate producer-thread delivery unless explicitly adapted.
      */
-    struct EventSystem : Singleton_CTS<EventSystem> {
+    struct EventSystem : ::CE::State::Singleton<EventSystem> {
     private:
-        EventBus bus_;
+        ::CE::Events::EventBus bus_;
 
     public:
-        using Callback = EventBus::Callback;
-        using Registration = EventBus::Registration;
-        using Delivery = EventBus::Delivery;
-        using ErrorHandler = EventBus::ErrorHandler;
+        using Callback = ::CE::Events::EventBus::Callback;
+        using Registration = ::CE::Events::EventBus::Registration;
+        using Delivery = ::CE::Events::EventBus::Delivery;
+        using ErrorHandler = ::CE::Events::EventBus::ErrorHandler;
 
         EventSystem() = default;
-        [[nodiscard]] EventBus& bus() { return bus_; }
+        [[nodiscard]] ::CE::Events::EventBus& bus() { return bus_; }
         Registration register_listener(
             const std::string& event,
             Callback callback,
@@ -27,18 +27,18 @@ namespace CE::SubSystems {
             ErrorHandler errors = ErrorHandler{}
         );
         void dispatch(const std::string& event, const std::any& payload);
-        template <EventPayload Payload>
+        template <::CE::Events::EventPayload Payload>
         Registration register_listener(
-            const EventChannel<Payload>& event,
-            typename EventChannel<Payload>::Callback callback,
+            const ::CE::Events::EventChannel<Payload>& event,
+            typename ::CE::Events::EventChannel<Payload>::Callback callback,
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         ) {
             return bus_.register_listener(event, std::move(callback), std::move(delivery), std::move(errors));
         }
-        template <EventPayload Payload, typename Value>
+        template <::CE::Events::EventPayload Payload, typename Value>
             requires std::same_as<std::remove_cvref_t<Value>, Payload> && std::is_constructible_v<Payload, Value&&>
-        void dispatch(const EventChannel<Payload>& event, Value&& payload) {
+        void dispatch(const ::CE::Events::EventChannel<Payload>& event, Value&& payload) {
             bus_.dispatch(event, std::forward<Value>(payload));
         }
         bool unregister_listener(const Registration& registration) { return bus_.unregister_listener(registration); }

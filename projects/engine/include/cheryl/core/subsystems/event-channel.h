@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace CE::SubSystems {
+namespace CE::Events {
     template <typename T>
     concept EventPayload = std::is_object_v<T> && std::same_as<T, std::remove_cvref_t<T>> && std::is_copy_constructible_v<T>;
 

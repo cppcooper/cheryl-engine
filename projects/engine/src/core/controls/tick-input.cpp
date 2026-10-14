@@ -6,21 +6,21 @@
 #include <utility>
 
 namespace CE::Input {
-    TickInput::TickInput(std::shared_ptr<const ActionSnapshot> previous, std::vector<std::shared_ptr<const ActionSnapshot>> polls)
-    : TickInput(
+    Tick::Tick(std::shared_ptr<const Actions::Snapshot> previous, std::vector<std::shared_ptr<const Actions::Snapshot>> polls)
+    : Tick(
           previous,
           polls,
-          previous ? previous->observed_at() : InputClock::time_point{},
+          previous ? previous->observed_at() : ObservationClock::time_point{},
           !polls.empty() && polls.back() ? polls.back()->observed_at()
           : previous                     ? previous->observed_at()
-                                         : InputClock::time_point{}
+                                         : ObservationClock::time_point{}
       ) {}
 
-    TickInput::TickInput(
-        std::shared_ptr<const ActionSnapshot> previous,
-        std::vector<std::shared_ptr<const ActionSnapshot>> polls,
-        const InputClock::time_point since,
-        const InputClock::time_point until
+    Tick::Tick(
+        std::shared_ptr<const Actions::Snapshot> previous,
+        std::vector<std::shared_ptr<const Actions::Snapshot>> polls,
+        const ObservationClock::time_point since,
+        const ObservationClock::time_point until
     )
     : previous_(std::move(previous)), polls_(std::move(polls)), since_(since), until_(until) {
         if (!previous_ || since < previous_->observed_at() || until < since)
@@ -35,9 +35,9 @@ namespace CE::Input {
         }
     }
 
-    ButtonTickState TickInput::button(const ActionId action) const {
+    Actions::ButtonTickState Tick::button(const Actions::Id action) const {
         const auto baseline = previous_->button(action);
-        ButtonTickState result;
+        Actions::ButtonTickState result;
         result.current = baseline.current;
         result.previous = baseline.current;
         auto cursor = since_;
@@ -63,7 +63,7 @@ namespace CE::Input {
         return result;
     }
 
-    AxisTickState TickInput::axis(const ActionId action) const {
+    Actions::AxisTickState Tick::axis(const Actions::Id action) const {
         const auto baseline = previous_->axis(action);
         const auto latest = latest_poll()->axis(action);
         // An unbound relative action can disappear from later samples. Keep
@@ -87,7 +87,7 @@ namespace CE::Input {
         return {latest.current, baseline.kind == AxisKind::Absolute ? baseline.current : 0.0f, AxisKind::Absolute};
     }
 
-    std::shared_ptr<const ActionSnapshot> TickInput::latest_poll() const {
+    std::shared_ptr<const Actions::Snapshot> Tick::latest_poll() const {
         return polls_.empty() ? previous_ : polls_.back();
     }
 }

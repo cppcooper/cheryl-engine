@@ -11,7 +11,7 @@
 TEST(templates_block, range_splits) {
     auto backing = std::shared_ptr<char>(new char[16], [](char* p) { delete[] p; });
     auto* first_byte = backing.get();
-    Block<char> front{backing, backing, CE::ptr::calculate_alignment(first_byte), 16};
+    CE::Memory::Block<char> front{backing, backing, CE::Memory::Pointers::calculate_alignment(first_byte), 16};
 
     // A block owns bytes 0 through 15; byte 16 is just beyond its end.
     EXPECT_TRUE(front.contains(first_byte));
@@ -53,7 +53,7 @@ TEST(templates_block, typed_splits) {
         std::uint64_t data;
     };
     auto backing = std::shared_ptr<Value>(new Value[4], [](Value* p) { delete[] p; });
-    Block<Value> block{backing, backing, CE::ptr::calculate_alignment(backing.get()), 4};
+    CE::Memory::Block<Value> block{backing, backing, CE::Memory::Pointers::calculate_alignment(backing.get()), 4};
 
     auto unchanged = block;
     EXPECT_FALSE(unchanged.split_exactly(0).has_value());
@@ -69,7 +69,7 @@ TEST(templates_block, typed_splits) {
     EXPECT_EQ(block.length, 1);
     EXPECT_TRUE(block.contains(backing.get()));
     EXPECT_FALSE(block.contains(backing.get() + 1));
-    EXPECT_TRUE(BlockHelpers::is_contiguous(block, *rest));
+    EXPECT_TRUE(CE::Memory::is_contiguous(block, *rest));
 
     // Split the remainder into a two-element middle and a one-element tail.
     // A split_at(3) on the untouched copy must locate that same final element.
@@ -77,7 +77,7 @@ TEST(templates_block, typed_splits) {
     ASSERT_TRUE(last.has_value());
     EXPECT_EQ(last->head.get(), backing.get() + 3);
     EXPECT_EQ(last->length, 1);
-    EXPECT_TRUE(BlockHelpers::is_contiguous(*rest, *last));
+    EXPECT_TRUE(CE::Memory::is_contiguous(*rest, *last));
     auto aligned = unchanged.split_at(3);
     ASSERT_TRUE(aligned.has_value());
     EXPECT_EQ(aligned->head.get(), backing.get() + 3);
@@ -88,19 +88,19 @@ struct CullProbeItem {
     char value;
 };
 
-struct CullProbe : AbstractManager<CullProbeItem> {
-    using AbstractManager<CullProbeItem>::record_new;
-    using AbstractManager<CullProbeItem>::merge_into_pool;
+struct CullProbe : CE::Memory::AbstractBlockManager<CullProbeItem> {
+    using CE::Memory::AbstractBlockManager<CullProbeItem>::record_new;
+    using CE::Memory::AbstractBlockManager<CullProbeItem>::merge_into_pool;
 };
 
 TEST(templates_block, stale_owner_culling) {
     // Register two independent allocations and return each complete owner;
     // both should now be stale candidates for culling.
     CullProbe manager;
-    BlockManagement<CullProbeItem> bm;
+    CE::Memory::BlockManagement<CullProbeItem> bm;
     auto make_owner = [] {
         auto p = std::shared_ptr<CullProbeItem>(new CullProbeItem[64], [](CullProbeItem* p) { delete[] p; });
-        return Block<CullProbeItem>{p, p, CE::ptr::calculate_alignment(p.get()), 64};
+        return CE::Memory::Block<CullProbeItem>{p, p, CE::Memory::Pointers::calculate_alignment(p.get()), 64};
     };
     const auto first = make_owner();
     const auto second = make_owner();
@@ -124,10 +124,10 @@ TEST(templates_block, stale_owner_culling) {
     EXPECT_TRUE(std::get<1>(bm.registry).empty());
 }
 
-struct AdjacentBlockProbe : AbstractManager<char> {
-    using AbstractManager<char>::adjacent_left;
-    using AbstractManager<char>::search_left;
-    using AbstractManager<char>::search_right;
+struct AdjacentBlockProbe : CE::Memory::AbstractBlockManager<char> {
+    using CE::Memory::AbstractBlockManager<char>::adjacent_left;
+    using CE::Memory::AbstractBlockManager<char>::search_left;
+    using CE::Memory::AbstractBlockManager<char>::search_right;
 };
 
 TEST(templates_block, neighbors_across_gaps) {
@@ -135,15 +135,15 @@ TEST(templates_block, neighbors_across_gaps) {
     // the gap, and just beyond the second range.
     auto backing = std::shared_ptr<char>(new char[128], [](const char* p) { delete[] p; });
     auto secondHead = std::shared_ptr<char>(backing, backing.get() + 64);
-    const Block<char> first{backing, backing, CE::ptr::calculate_alignment(backing.get()), 32};
-    const Block<char> second{secondHead, secondHead, CE::ptr::calculate_alignment(secondHead.get()), 32};
+    const CE::Memory::Block<char> first{backing, backing, CE::Memory::Pointers::calculate_alignment(backing.get()), 32};
+    const CE::Memory::Block<char> second{secondHead, secondHead, CE::Memory::Pointers::calculate_alignment(secondHead.get()), 32};
     auto middleHead = std::shared_ptr<char>(backing, backing.get() + 48);
-    const Block<char> middle{middleHead, middleHead, CE::ptr::calculate_alignment(middleHead.get()), 1};
+    const CE::Memory::Block<char> middle{middleHead, middleHead, CE::Memory::Pointers::calculate_alignment(middleHead.get()), 1};
     auto beyondHead = std::shared_ptr<char>(backing, backing.get() + 96);
-    const Block<char> beyond{beyondHead, beyondHead, CE::ptr::calculate_alignment(beyondHead.get()), 1};
+    const CE::Memory::Block<char> beyond{beyondHead, beyondHead, CE::Memory::Pointers::calculate_alignment(beyondHead.get()), 1};
 
-    std::tuple<std::shared_mutex, std::set<Block<char>, compare::HeadOrder<char>>> sections;
-    std::tuple<std::shared_mutex, std::set<Block<char>, compare::RegistryOrder<char>>> registry;
+    std::tuple<std::shared_mutex, std::set<CE::Memory::Block<char>, CE::Memory::Ordering::HeadOrder<char>>> sections;
+    std::tuple<std::shared_mutex, std::set<CE::Memory::Block<char>, CE::Memory::Ordering::RegistryOrder<char>>> registry;
     std::get<1>(sections).insert({first, second});
     std::get<1>(registry).insert({first, second});
 
@@ -163,7 +163,7 @@ TEST(templates_block, neighbors_across_gaps) {
     same_owner_second.owner = backing;
     auto same_owner_beyond = beyond;
     same_owner_beyond.owner = backing;
-    std::tuple<std::shared_mutex, std::set<Block<char>, compare::HeadOrder<char>>> owner_sections;
+    std::tuple<std::shared_mutex, std::set<CE::Memory::Block<char>, CE::Memory::Ordering::HeadOrder<char>>> owner_sections;
     std::get<1>(owner_sections).insert({first, same_owner_second});
     EXPECT_EQ(manager.search_left(same_owner_second, owner_sections), first);
     EXPECT_EQ(manager.search_left(same_owner_beyond, owner_sections), same_owner_second);
@@ -175,22 +175,22 @@ struct MergeProbeItem {
     char value;
 };
 
-struct MergeProbe : AbstractManager<MergeProbeItem> {
-    using AbstractManager<MergeProbeItem>::merge_into_pool;
-    using AbstractManager<MergeProbeItem>::record_new;
+struct MergeProbe : CE::Memory::AbstractBlockManager<MergeProbeItem> {
+    using CE::Memory::AbstractBlockManager<MergeProbeItem>::merge_into_pool;
+    using CE::Memory::AbstractBlockManager<MergeProbeItem>::record_new;
 };
 
 TEST(templates_block, rejoining_an_owner) {
     // Partition one owner into front, middle, and back. Seed the middle as
     // reusable while the two outer pieces are still active.
     auto backing = std::shared_ptr<MergeProbeItem>(new MergeProbeItem[128], [](MergeProbeItem* p) { delete[] p; });
-    const Block<MergeProbeItem> owner{backing, backing, CE::ptr::calculate_alignment(backing.get()), 128};
+    const CE::Memory::Block<MergeProbeItem> owner{backing, backing, CE::Memory::Pointers::calculate_alignment(backing.get()), 128};
     auto front = owner;
     auto middle = *front.split_exactly(32);
     auto back = *middle.split_exactly(32);
 
     MergeProbe manager;
-    BlockManagement<MergeProbeItem> bm;
+    CE::Memory::BlockManagement<MergeProbeItem> bm;
     auto& registry = std::get<1>(bm.registry);
     auto& sections = std::get<1>(bm.sections);
     auto& pool = std::get<1>(bm.pool);
@@ -235,16 +235,16 @@ struct ManageProbeItem {
 };
 
 /**
- * Exposes iManage's protected virtual operations to tests. Uses a dedicated
+ * Exposes CE::Memory::BlockManagerInterface's protected virtual operations to tests. Uses a dedicated
  * T and owned allocations so other managers cannot affect the result.
  */
 class Test_iManage {
-    AbstractManager<ManageProbeItem> implementation_;
-    iManage<ManageProbeItem>* mgr_ = &implementation_;
+    CE::Memory::AbstractBlockManager<ManageProbeItem> implementation_;
+    CE::Memory::BlockManagerInterface<ManageProbeItem>* mgr_ = &implementation_;
 
 public:
     ~Test_iManage() {
-        BlockManagement<ManageProbeItem> bm;
+        CE::Memory::BlockManagement<ManageProbeItem> bm;
         std::scoped_lock lock(
             std::get<0>(bm.registry), std::get<0>(bm.sections), std::get<0>(bm.pool), std::get<0>(bm.stale), std::get<0>(bm.release)
         );
@@ -255,12 +255,12 @@ public:
         std::get<1>(bm.release).clear();
     }
 
-    void record(Block<ManageProbeItem> block) { mgr_->record_new(block); }
-    OBlock<ManageProbeItem> owner(ManageProbeItem* ptr) { return mgr_->find_owner(ptr); }
-    OBlock<ManageProbeItem> section(ManageProbeItem* ptr) { return mgr_->find_section(ptr); }
-    OBlock<ManageProbeItem> merge(Block<ManageProbeItem> block) { return mgr_->merge_into_pool(block); }
+    void record(CE::Memory::Block<ManageProbeItem> block) { mgr_->record_new(block); }
+    CE::Memory::OptionalBlock<ManageProbeItem> owner(ManageProbeItem* ptr) { return mgr_->find_owner(ptr); }
+    CE::Memory::OptionalBlock<ManageProbeItem> section(ManageProbeItem* ptr) { return mgr_->find_section(ptr); }
+    CE::Memory::OptionalBlock<ManageProbeItem> merge(CE::Memory::Block<ManageProbeItem> block) { return mgr_->merge_into_pool(block); }
 
-    OBlock<ManageProbeItem> fill(std::size_t count, std::align_val_t alignment = std::align_val_t{0}) {
+    CE::Memory::OptionalBlock<ManageProbeItem> fill(std::size_t count, std::align_val_t alignment = std::align_val_t{0}) {
         return mgr_->fill_request(count, alignment);
     }
 };
@@ -269,7 +269,7 @@ TEST(templates_block, recycling_two_owners) {
     Test_iManage test;
     auto make_owner = [] {
         auto memory = std::shared_ptr<ManageProbeItem>(new ManageProbeItem[128], [](ManageProbeItem* p) { delete[] p; });
-        return Block<ManageProbeItem>{memory, memory, CE::ptr::calculate_alignment(memory.get()), 128};
+        return CE::Memory::Block<ManageProbeItem>{memory, memory, CE::Memory::Pointers::calculate_alignment(memory.get()), 128};
     };
     auto first = make_owner();
     auto second = make_owner();
@@ -291,7 +291,7 @@ TEST(templates_block, recycling_two_owners) {
     auto front = first;
     auto middle = *front.split_exactly(32);
     auto back = *middle.split_exactly(32);
-    BlockManagement<ManageProbeItem> bm;
+    CE::Memory::BlockManagement<ManageProbeItem> bm;
     {
         std::unique_lock lock(std::get<0>(bm.sections));
         auto& sections = std::get<1>(bm.sections);
@@ -328,7 +328,7 @@ TEST(templates_block, recycling_two_owners) {
 
 TEST(templates_block, bookkeeping_checks) {
     // Use a separate specialization so memory manager tests cannot affect these checks.
-    using BMv = BlockManagement<char>;
+    using BMv = CE::Memory::BlockManagement<char>;
     std::unique_lock lreg(std::get<0>(BMv::registry));
     std::unique_lock lsec(std::get<0>(BMv::sections));
     std::unique_lock lpool(std::get<0>(BMv::pool));
@@ -350,7 +350,7 @@ TEST(templates_block, bookkeeping_checks) {
     constexpr std::size_t len = 2048;
     char* p_raw = new char[len];
     std::shared_ptr<char> ptr(p_raw, [](const char* p) { delete[] p; });
-    auto align_val = CE::ptr::calculate_alignment(p_raw);
+    auto align_val = CE::Memory::Pointers::calculate_alignment(p_raw);
     constexpr std::size_t i1 = 64;
     constexpr std::size_t i2 = 128;
     constexpr std::size_t i3 = 256;
@@ -358,7 +358,7 @@ TEST(templates_block, bookkeeping_checks) {
 
     // Keep b0 as the full owner and divide a copy into five sections. Later
     // checks deliberately move those pieces among the bookkeeping sets.
-    const Block<char> b0{ptr, ptr, align_val, len};
+    const CE::Memory::Block<char> b0{ptr, ptr, align_val, len};
     auto b1 = b0;
     auto b2 = *b1.split_exactly(i1);
     auto b3 = *b2.split_exactly(i2);
@@ -498,7 +498,7 @@ namespace {
 }
 
 TEST(templates_block, release_outside_locks) {
-    auto state = std::make_shared<BlockManagement<ReentrantOwner>::State>();
+    auto state = std::make_shared<CE::Memory::BlockManagement<ReentrantOwner>::State>();
     bool released = false;
     auto owner = std::shared_ptr<ReentrantOwner>(new ReentrantOwner, [state, &released](ReentrantOwner* item) {
         // A final owner may inspect the same domain or return backing bytes.
@@ -508,12 +508,12 @@ TEST(templates_block, release_outside_locks) {
         released = true;
         delete item;
     });
-    Block<ReentrantOwner> block{owner, owner, CE::ptr::calculate_alignment(owner.get()), 1};
-    BlockTransactions<ReentrantOwner>::register_free(state, block);
+    CE::Memory::Block<ReentrantOwner> block{owner, owner, CE::Memory::Pointers::calculate_alignment(owner.get()), 1};
+    CE::Memory::BlockTransactions<ReentrantOwner>::register_free(state, block);
     block = {};
     owner.reset();
-    BlockTransactions<ReentrantOwner>::cull(state, std::chrono::minutes{0});
-    BlockTransactions<ReentrantOwner>::release_culled(state);
+    CE::Memory::BlockTransactions<ReentrantOwner>::cull(state, std::chrono::minutes{0});
+    CE::Memory::BlockTransactions<ReentrantOwner>::release_culled(state);
     EXPECT_TRUE(released);
     EXPECT_TRUE(std::get<1>(state->registry).empty());
 }

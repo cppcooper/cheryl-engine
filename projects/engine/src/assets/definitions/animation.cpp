@@ -3,8 +3,8 @@
 
 #include <limits>
 
-namespace CE::Assets {
-    CellIndex TileAnimationDefinition::cell_at(const std::chrono::milliseconds elapsed) const {
+namespace CE::Assets::Tilesets {
+    CE::Assets::Grids::CellIndex Clip::cell_at(const std::chrono::milliseconds elapsed) const {
         if (elapsed.count() < 0)
             throw Exceptions::invalid_args(CE_HERE, "Tile animation elapsed time must be nonnegative");
         if (frames.empty())

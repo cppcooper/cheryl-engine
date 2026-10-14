@@ -1,6 +1,7 @@
 #pragma once
 
 #include <assets/types/2d/base/asset2d.h>
+#include <core/resources/memory/shared.h>
 #include <assets/types/primitives/frame.h>
 #include <assets/definitions/tileset.h>
 #include <assets/selection/tile-selection.h>
@@ -12,40 +13,45 @@
 #include <unordered_map>
 #include <cstddef>
 
-namespace CE::Assets {
-    template <typename T> using shptr = std::shared_ptr<T>;
-
-    struct TilesetData {
-        shptr<Geometry2D> geometry;
-        shptr<Image> texture;
-        TilesetDefinition definition;
-        std::shared_ptr<const Material> material = {};
+namespace CE::Assets::Tilesets {
+    struct Data {
+        CE::Memory::Shared<CE::Rendering::Geometry::Buffer2D> geometry;
+        CE::Memory::Shared<CE::Rendering::Resources::Image> texture;
+        Definition definition;
+        std::shared_ptr<const CE::Rendering::Resources::Material> material = {};
     };
 
-    struct Tile final : Asset2D,
-                        Frame<Tile> {
-        explicit Tile(std::size_t cell, const shptr<Geometry2D>& geometry, const shptr<Image>& texture, std::shared_ptr<const Material> material = {})
-        : Asset2D(geometry, texture, std::move(material)), Frame(cell, 0, 1) {}
+    struct Tile final : Content2D,
+                        CE::Assets::Animation::Cursor<Tile> {
+        explicit Tile(
+            std::size_t cell,
+            const CE::Memory::Shared<CE::Rendering::Geometry::Buffer2D>& geometry,
+            const CE::Memory::Shared<CE::Rendering::Resources::Image>& texture,
+            std::shared_ptr<const CE::Rendering::Resources::Material> material = {}
+        )
+        : Content2D(geometry, texture, std::move(material)), CE::Assets::Animation::Cursor<Tile>(cell, 0, 1) {}
 
         [[nodiscard]] std::size_t cell() const { return offset_; }
     };
 
-    /** Owns a clip copy and retains its resources. Frame's index selects a clip entry,
+    /** Owns a clip copy and retains its resources. CE::Assets::Animation::Cursor's index selects a clip entry,
      * not a grid cell; looping wraps and nonlooping clamps. An empty clip throws.
      * The caller schedules index changes from millisecond durations on one owner.
      */
-    struct TileAnimation final : Asset2D,
-                                 Frame<TileAnimation> {
+    struct Animation final : Content2D,
+                             CE::Assets::Animation::Cursor<Animation> {
     private:
-        TileAnimationDefinition definition_;
+        Clip definition_;
 
     public:
-        explicit TileAnimation(
-            TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture,
-            std::shared_ptr<const Material> material = {}
+        explicit Animation(
+            Clip definition,
+            const CE::Memory::Shared<CE::Rendering::Geometry::Buffer2D>& geometry,
+            const CE::Memory::Shared<CE::Rendering::Resources::Image>& texture,
+            std::shared_ptr<const CE::Rendering::Resources::Material> material = {}
         );
 
-        [[nodiscard]] const TileAnimationDefinition& definition() const { return definition_; }
+        [[nodiscard]] const Clip& definition() const { return definition_; }
         [[nodiscard]] std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
     };
@@ -55,35 +61,35 @@ namespace CE::Assets {
      * Direct construction rejects duplicate targets but does not revalidate all manifest
      * fields. Keep definitions/resources stable for concurrent read-only queries.
      */
-    struct Tileset final : Asset2D {
+    struct Asset final : Content2D {
     private:
-        TilesetDefinition definition_;
-        std::unordered_map<CellIndex, std::string> animation_targets_;
+        Definition definition_;
+        std::unordered_map<CE::Assets::Grids::CellIndex, std::string> animation_targets_;
 
     public:
-        explicit Tileset(TilesetData data);
+        explicit Asset(Data data);
 
         // Retained resource values; tile() rejects out-of-grid cells. animation() throws
         // out_of_range for an unknown name; animation_for() returns no value for no target.
         [[nodiscard]] Tile tile(std::size_t cell) const;
-        [[nodiscard]] TileAnimation animation(const std::string& name) const;
-        [[nodiscard]] std::optional<TileAnimation> animation_for(std::size_t target) const;
+        [[nodiscard]] Animation animation(const std::string& name) const;
+        [[nodiscard]] std::optional<Animation> animation_for(std::size_t target) const;
         // Resolve only the original target's clip; frame cells never recurse. Negative
         // time or invalid timelines throw invalid_args; original/final grid violations
         // throw bad_request. Static targets still require nonnegative time.
-        [[nodiscard]] CellIndex cell_at(CellIndex target, std::chrono::milliseconds elapsed) const;
+        [[nodiscard]] CE::Assets::Grids::CellIndex cell_at(CE::Assets::Grids::CellIndex target, std::chrono::milliseconds elapsed) const;
         // Unknown names throw out_of_range. Preserve selector failure values, otherwise
         // apply cell_at() once. No callback is retained; submit the returned cell value.
-        [[nodiscard]] TileSelectionResult select_tile(
+        [[nodiscard]] CE::Assets::Tilesets::Selection::Result select_tile(
             const std::string& name,
-            const TerrainSampler& sampler,
-            const TileSelectionOptions& options,
+            const CE::Assets::Tilesets::Selection::Sampler& sampler,
+            const CE::Assets::Tilesets::Selection::Options& options,
             std::chrono::milliseconds elapsed
         ) const;
-        // References borrow this Tileset's lifetime; unknown metadata names throw out_of_range.
-        [[nodiscard]] const ViewDefinition& view(const std::string& name) const;
-        [[nodiscard]] CellIndex orientation(const std::string& name) const;
-        [[nodiscard]] const AutotileDefinition& autotile(const std::string& name) const;
-        [[nodiscard]] const TilesetDefinition& definition() const { return definition_; }
+        // References borrow this CE::Assets::Tilesets::Asset's lifetime; unknown metadata names throw out_of_range.
+        [[nodiscard]] const CE::Assets::Grids::View& view(const std::string& name) const;
+        [[nodiscard]] CE::Assets::Grids::CellIndex orientation(const std::string& name) const;
+        [[nodiscard]] const Rule& autotile(const std::string& name) const;
+        [[nodiscard]] const Definition& definition() const { return definition_; }
     };
 }

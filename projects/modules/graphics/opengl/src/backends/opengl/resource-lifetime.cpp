@@ -6,11 +6,11 @@
 
 #include <utility>
 
-namespace CE::RenderAPIs {
-    OpenGLResourceLifetime::OpenGLResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
-    : OpenGLResourceLifetime(owner, std::move(is_current), {}) {}
+namespace CE::Rendering::OpenGL {
+    ResourceLifetime::ResourceLifetime(const std::thread::id owner, std::function<bool()> is_current)
+    : ResourceLifetime(owner, std::move(is_current), {}) {}
 
-    OpenGLResourceLifetime::OpenGLResourceLifetime(
+    ResourceLifetime::ResourceLifetime(
         const std::thread::id owner,
         std::function<bool()> is_current,
         std::shared_ptr<std::pmr::memory_resource> entry_memory
@@ -20,89 +20,89 @@ namespace CE::RenderAPIs {
       owner_(owner),
       is_current_(std::move(is_current)) {
         if (owner == std::thread::id{} || !is_current_)
-            throw Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL lifetime needs an owner thread and a current-context predicate");
     }
 
-    std::shared_ptr<OpenGLResourceLifetime> ResourceDetail::LifetimeAccess::create(
+    std::shared_ptr<ResourceLifetime> Detail::LifetimeAccess::create(
         const std::thread::id owner,
         std::function<bool()> is_current,
         std::shared_ptr<std::pmr::memory_resource> entry_memory
     ) {
         if (!entry_memory)
-            throw Exceptions::invalid_args(CE_HERE, "Private lifetime construction requires owned entry memory");
-        return std::shared_ptr<OpenGLResourceLifetime>(new OpenGLResourceLifetime(owner, std::move(is_current), std::move(entry_memory)));
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Private lifetime construction requires owned entry memory");
+        return std::shared_ptr<ResourceLifetime>(new ResourceLifetime(owner, std::move(is_current), std::move(entry_memory)));
     }
 
-    std::size_t ResourceDetail::LifetimeAccess::capacity(const OpenGLResourceLifetime& lifetime) {
+    std::size_t Detail::LifetimeAccess::capacity(const ResourceLifetime& lifetime) {
         const std::lock_guard lock(lifetime.mutex_);
         return lifetime.entries_.capacity();
     }
 
-    std::size_t ResourceDetail::LifetimeAccess::size(const OpenGLResourceLifetime& lifetime) {
+    std::size_t Detail::LifetimeAccess::size(const ResourceLifetime& lifetime) {
         const std::lock_guard lock(lifetime.mutex_);
         return lifetime.entries_.size();
     }
 
-    void OpenGLResourceLifetime::require_owner_locked() const {
+    void ResourceLifetime::require_owner_locked() const {
         if (!active_ || std::this_thread::get_id() != owner_)
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its live context thread");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its live context thread");
     }
 
-    void OpenGLResourceLifetime::require_current_locked() const {
+    void ResourceLifetime::require_current_locked() const {
         // Never query a borrowed context after shutdown or from a foreign thread.
         require_owner_locked();
         if (!is_current_())
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its own current context");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL resource requires its own current context");
     }
 
-    void OpenGLResourceLifetime::require_owner() const {
+    void ResourceLifetime::require_owner() const {
         const std::lock_guard lock(mutex_);
         require_owner_locked();
     }
 
-    void OpenGLResourceLifetime::require_current() const {
+    void ResourceLifetime::require_current() const {
         const std::lock_guard lock(mutex_);
         require_current_locked();
     }
 
-    NativeResourceStats OpenGLResourceLifetime::diagnostics() const {
+    ResourceStats ResourceLifetime::diagnostics() const {
         const std::lock_guard lock(mutex_);
         return diagnostics_;
     }
 
-    void OpenGLResourceLifetime::delete_handle(const GLResourceKind kind, const GLuint id) noexcept {
+    void ResourceLifetime::delete_handle(const ResourceKind kind, const GLuint id) noexcept {
         if (!id)
             return;
         switch (kind) {
-            case GLResourceKind::Texture:
+            case ResourceKind::Texture:
                 glDeleteTextures(1, &id);
                 break;
-            case GLResourceKind::Buffer:
+            case ResourceKind::Buffer:
                 glDeleteBuffers(1, &id);
                 break;
-            case GLResourceKind::VertexArray:
+            case ResourceKind::VertexArray:
                 glDeleteVertexArrays(1, &id);
                 break;
-            case GLResourceKind::Program:
+            case ResourceKind::Program:
                 glDeleteProgram(id);
                 break;
-            case GLResourceKind::ShaderStage:
+            case ResourceKind::ShaderStage:
                 glDeleteShader(id);
                 break;
-            case GLResourceKind::Sampler:
+            case ResourceKind::Sampler:
                 glDeleteSamplers(1, &id);
                 break;
         }
     }
 
-    std::size_t OpenGLResourceLifetime::track(const GLResourceKind kind, const GLuint id) {
+    std::size_t ResourceLifetime::track(const ResourceKind kind, const GLuint id) {
         const std::lock_guard lock(mutex_);
         require_current_locked();
-        if (kind != GLResourceKind::Texture && kind != GLResourceKind::Buffer && kind != GLResourceKind::VertexArray &&
-            kind != GLResourceKind::Program && kind != GLResourceKind::ShaderStage && kind != GLResourceKind::Sampler)
-            throw Exceptions::invalid_args(CE_HERE, "Unknown OpenGL resource kind");
+        if (kind != ResourceKind::Texture && kind != ResourceKind::Buffer && kind != ResourceKind::VertexArray &&
+            kind != ResourceKind::Program && kind != ResourceKind::ShaderStage && kind != ResourceKind::Sampler)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown OpenGL resource kind");
         if (!id)
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL failed to create a resource");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL failed to create a resource");
         if (free_ != none) {
             const auto slot = free_;
             free_ = entries_[slot].next;
@@ -117,7 +117,7 @@ namespace CE::RenderAPIs {
         return entries_.size() - 1;
     }
 
-    void OpenGLResourceLifetime::retire(const std::size_t slot) noexcept {
+    void ResourceLifetime::retire(const std::size_t slot) noexcept {
         try {
             const std::lock_guard lock(mutex_);
             if (!active_ || slot >= entries_.size() || entries_[slot].pending || !entries_[slot].id)
@@ -128,12 +128,12 @@ namespace CE::RenderAPIs {
             ++diagnostics_.pending;
         } catch (...) {
             // The shutdown sweep still owns this handle if a mutex operation fails.
-            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "retire", "deferred_to_shutdown");
-            Diagnostics::report_failure("native resource retirement", std::current_exception());
+            ::CE::Diagnostics::report_outcome("native_resources", diagnostics_.domain, "retire", "deferred_to_shutdown");
+            ::CE::Diagnostics::report_failure("native resource retirement", std::current_exception());
         }
     }
 
-    void OpenGLResourceLifetime::collect() {
+    void ResourceLifetime::collect() {
         const std::lock_guard lock(mutex_);
         require_current_locked();
         while (pending_ != none) {
@@ -151,7 +151,7 @@ namespace CE::RenderAPIs {
         }
     }
 
-    void OpenGLResourceLifetime::discard_untracked(const GLResourceKind kind, const GLuint id) noexcept {
+    void ResourceLifetime::discard_untracked(const ResourceKind kind, const GLuint id) noexcept {
         if (!id)
             return;
         try {
@@ -161,12 +161,12 @@ namespace CE::RenderAPIs {
         } catch (...) {
             // No tracking allocation succeeded. If the context cannot be used,
             // native context destruction owns the remaining cleanup.
-            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "discard_untracked", "deferred_to_context", 1);
-            Diagnostics::report_failure("native untracked cleanup", std::current_exception());
+            ::CE::Diagnostics::report_outcome("native_resources", diagnostics_.domain, "discard_untracked", "deferred_to_context", 1);
+            ::CE::Diagnostics::report_failure("native untracked cleanup", std::current_exception());
         }
     }
 
-    void OpenGLResourceLifetime::shutdown() {
+    void ResourceLifetime::shutdown() {
         {
             const std::lock_guard lock(mutex_);
             require_current_locked();
@@ -183,7 +183,7 @@ namespace CE::RenderAPIs {
         }
     }
 
-    void OpenGLResourceLifetime::abandon() noexcept {
+    void ResourceLifetime::abandon() noexcept {
         std::uint64_t count = 0;
         try {
             {
@@ -197,28 +197,28 @@ namespace CE::RenderAPIs {
                 pending_ = free_ = none;
             }
             if (count)
-                Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "deferred_to_context", count);
+                ::CE::Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "deferred_to_context", count);
         } catch (...) {
             // No OpenGL call is permitted from this failure fallback.
-            Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "failed");
-            Diagnostics::report_failure("native resource abandonment", std::current_exception());
+            ::CE::Diagnostics::report_outcome("native_resources", diagnostics_.domain, "abandon", "failed");
+            ::CE::Diagnostics::report_failure("native resource abandonment", std::current_exception());
         }
     }
 
-    OpenGLHandle::OpenGLHandle(std::shared_ptr<OpenGLResourceLifetime> lifetime, const GLResourceKind kind, const GLuint id)
+    Handle::Handle(std::shared_ptr<ResourceLifetime> lifetime, const ResourceKind kind, const GLuint id)
     : lifetime_(std::move(lifetime)), id_(id), kind_(kind) {
         if (!lifetime_)
-            throw Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL handle needs a resource lifetime");
         slot_ = lifetime_->track(kind, id);
     }
 
-    OpenGLHandle::OpenGLHandle(OpenGLHandle&& other) noexcept
+    Handle::Handle(Handle&& other) noexcept
     : lifetime_(std::move(other.lifetime_)),
       slot_(std::exchange(other.slot_, std::numeric_limits<std::size_t>::max())),
       id_(std::exchange(other.id_, 0)),
       kind_(other.kind_) {}
 
-    OpenGLHandle& OpenGLHandle::operator=(OpenGLHandle&& other) noexcept {
+    Handle& Handle::operator=(Handle&& other) noexcept {
         if (this != &other) {
             reset();
             lifetime_ = std::move(other.lifetime_);
@@ -229,16 +229,16 @@ namespace CE::RenderAPIs {
         return *this;
     }
 
-    void OpenGLHandle::reset() noexcept {
+    void Handle::reset() noexcept {
         if (lifetime_)
             lifetime_->retire(slot_);
         lifetime_.reset();
         id_ = 0;
     }
 
-    GLuint OpenGLHandle::id() const {
+    GLuint Handle::id() const {
         if (!lifetime_)
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL handle is empty");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL handle is empty");
         lifetime_->require_current();
         return id_;
     }

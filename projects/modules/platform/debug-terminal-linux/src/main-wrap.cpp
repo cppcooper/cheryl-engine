@@ -24,7 +24,7 @@ extern "C" int __real_main(int argc, char** argv);
 extern "C" bool ce_debug_terminal_test_process() noexcept __attribute__((weak));
 extern "C" bool ce_debug_terminal_test_reports_routed() noexcept __attribute__((weak));
 
-namespace CE::TerminalDetail {
+namespace CE::Platform::Linux::DebugTerminal::Detail {
     namespace {
         class File final {
             std::FILE* value_ = nullptr;
@@ -331,12 +331,12 @@ namespace CE::TerminalDetail {
 }
 
 extern "C" std::FILE* ce_debug_terminal_report_stream(const int error) noexcept {
-    const auto current = CE::TerminalDetail::session.load(std::memory_order_acquire);
+    const auto current = CE::Platform::Linux::DebugTerminal::Detail::session.load(std::memory_order_acquire);
     if (!current || current->owner() != ::getpid())
         return nullptr;
     return current->report(error != 0);
 }
 
 extern "C" int __wrap_main(const int argc, char** argv) {
-    return CE::DebugTerminal::run(argc, argv, __real_main, CE::TerminalDetail::begin_session);
+    return CE::Application::DebugTerminal::run(argc, argv, __real_main, CE::Platform::Linux::DebugTerminal::Detail::begin_session);
 }

@@ -12,34 +12,36 @@
 namespace {
     using namespace CE::UI::TGUI;
 
-    struct MemoryImage final : CE::Assets::Image {
-        CE::Assets::DecodedImage pixels;
+    struct MemoryImage final : CE::Rendering::Resources::Image {
+        CE::Assets::Images::Decoded pixels;
 
-        explicit MemoryImage(CE::Assets::DecodedImage image)
+        explicit MemoryImage(CE::Assets::Images::Decoded image)
         : pixels(std::move(image)) {}
-        CE::Assets::PixelSize pixel_size() const override { return pixels.size; }
+        CE::Rendering::Geometry::PixelSize pixel_size() const override { return pixels.size; }
         void bind(std::uint32_t) const override {}
     };
 
-    struct MemoryGeometry final : CE::Assets::Geometry2D {
-        std::vector<CE::Vertex2DColor> vertices;
+    struct MemoryGeometry final : CE::Rendering::Geometry::Buffer2D {
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> vertices;
 
-        explicit MemoryGeometry(const std::span<const CE::Vertex2DColor> data)
+        explicit MemoryGeometry(const std::span<const CE::Rendering::Geometry::Vertex2DColor> data)
         : vertices(data.begin(), data.end()) {}
-        CE::Assets::VertexLayout2D vertex_layout() const noexcept override { return CE::Assets::VertexLayout2D::Position3UV2Color4; }
-        CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::Triangles; }
+        CE::Rendering::Geometry::Layout2D vertex_layout() const noexcept override {
+            return CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+        }
+        CE::Rendering::Geometry::Topology topology() const noexcept override { return CE::Rendering::Geometry::Topology::Triangles; }
         std::size_t vertex_count() const noexcept override { return vertices.size(); }
         void bind() const override {}
         void draw(std::size_t, std::size_t) const override {}
     };
 
-    struct MemorySampler final : CE::Assets::Sampler {
-        explicit MemorySampler(const CE::Assets::SamplerOptions options)
-        : Sampler(options, 1) {}
+    struct MemorySampler final : CE::Rendering::Sampling::Sampler {
+        explicit MemorySampler(const CE::Rendering::Sampling::Options options)
+        : CE::Rendering::Sampling::Sampler(options, 1) {}
         void bind(std::uint32_t) const override {}
     };
 
-    struct MemoryProvider final : CE::Assets::ResourceProvider {
+    struct MemoryProvider final : CE::Rendering::Resources::Provider {
         int image_uploads = 0;
         int sampler_uploads = 0;
         int geometry_uploads = 0;
@@ -50,10 +52,10 @@ namespace {
         bool wrong_sampling = false;
         bool unsupported_sampling = false;
         std::vector<std::weak_ptr<MemoryImage>> images;
-        std::vector<std::weak_ptr<const CE::Assets::Sampler>> samplers;
+        std::vector<std::weak_ptr<const CE::Rendering::Sampling::Sampler>> samplers;
         std::vector<std::weak_ptr<MemoryGeometry>> geometry;
 
-        std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& data) override {
+        std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& data) override {
             ++image_uploads;
             if (missing_image)
                 return {};
@@ -63,70 +65,80 @@ namespace {
             images.push_back(image);
             return image;
         }
-        std::shared_ptr<const CE::Assets::Sampler> create_sampler(const CE::Assets::SamplerOptions& requested) override {
+        std::shared_ptr<const CE::Rendering::Sampling::Sampler> create_sampler(const CE::Rendering::Sampling::Options& requested) override {
             ++sampler_uploads;
             if (unsupported_sampling)
-                return ResourceProvider::create_sampler(requested);
+                return CE::Rendering::Resources::Provider::create_sampler(requested);
             if (missing_sampler)
                 return {};
             auto options = requested;
             if (wrong_sampling)
-                options.mipmaps = CE::Assets::MipmapFilter::Linear;
+                options.mipmaps = CE::Rendering::Sampling::MipmapFilter::Linear;
             auto sampler = std::make_shared<MemorySampler>(options);
             samplers.push_back(sampler);
             return sampler;
         }
-        std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize) override {
+        std::shared_ptr<CE::Rendering::Resources::Image>
+        create_font_atlas(std::span<const unsigned char>, CE::Rendering::Geometry::PixelSize) override {
             throw std::runtime_error("UI RGBA atlases use create_image");
         }
-        std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology) override {
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+        upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D>, CE::Rendering::Geometry::Topology) override {
             throw std::runtime_error("UI requires the colored layout");
         }
-        std::shared_ptr<CE::Assets::Geometry2D>
-        upload_geometry(const std::span<const CE::Vertex2DColor> vertices, const CE::Assets::PrimitiveTopology topology) override {
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> upload_geometry(
+            const std::span<const CE::Rendering::Geometry::Vertex2DColor> vertices,
+            const CE::Rendering::Geometry::Topology topology
+        ) override {
             ++geometry_uploads;
             if (fail_geometry == geometry_uploads)
                 throw std::runtime_error("injected geometry failure");
-            if (topology != CE::Assets::PrimitiveTopology::Triangles)
+            if (topology != CE::Rendering::Geometry::Topology::Triangles)
                 throw std::runtime_error("UI requires triangles");
             auto buffer = std::make_shared<MemoryGeometry>(vertices);
             geometry.push_back(buffer);
             return buffer;
         }
-        std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
+        std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
     };
 
-    class MemoryPipeline final : public CE::Assets::Pipeline {
+    class MemoryPipeline final : public CE::Rendering::Resources::Pipeline {
     public:
-        explicit MemoryPipeline(CE::Assets::PipelineDefinition definition)
-        : Pipeline(std::move(definition)) {}
+        explicit MemoryPipeline(CE::Rendering::Pipelines::Definition definition)
+        : CE::Rendering::Resources::Pipeline(std::move(definition)) {}
     };
 
     Materials materials(const bool compatible = true) {
-        using namespace CE::Assets;
-        PipelineDefinition definition;
+        CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {"test-only-ui"};
-        definition.vertex_layout = compatible ? VertexLayout2D::Position3UV2Color4 : VertexLayout2D::Position3UV2;
-        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-                                 {"view", ParameterType::Mat4, true, ParameterSemantic::View},
-                                 {"model", ParameterType::Mat4, true, ParameterSemantic::Model}};
+        definition.vertex_layout =
+            compatible ? CE::Rendering::Geometry::Layout2D::Position3UV2Color4 : CE::Rendering::Geometry::Layout2D::Position3UV2;
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection},
+            {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View},
+            {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model}
+        };
         Materials result;
-        result.solid = std::make_shared<Material>(MaterialDefinition{std::make_shared<MemoryPipeline>(definition), {}});
-        definition.parameters.push_back({"pixels", ParameterType::Sampler2D});
-        result.textured = std::make_shared<Material>(MaterialDefinition{std::make_shared<MemoryPipeline>(std::move(definition)), {}});
+        result.solid = std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(definition), {}}
+        );
+        definition.parameters.push_back({"pixels", CE::Rendering::Parameters::Type::Sampler2D});
+        result.textured = std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(std::move(definition)), {}}
+        );
         result.image_parameter = "pixels";
         result.image_unit = 3;
         return result;
     }
 
-    std::shared_ptr<Texture> texture(const unsigned char red = 255) {
-        auto image = std::make_shared<Texture>(32);
+    std::shared_ptr<CE::UI::TGUI::Texture> texture(const unsigned char red = 255) {
+        auto image = std::make_shared<CE::UI::TGUI::Texture>(32);
         const std::array<unsigned char, 4> pixels{red, 0, 0, 255};
         image->loadTextureOnly({1, 1}, pixels.data(), true);
         return image;
     }
 
-    RecordedScene recording(const std::shared_ptr<Texture>& image = {}, const std::size_t count = 1) {
+    RecordedScene recording(const std::shared_ptr<CE::UI::TGUI::Texture>& image = {}, const std::size_t count = 1) {
         RenderTarget target;
         target.setView({0, 0, 320, 240}, {0, 0, 320, 240}, {320, 240});
         target.begin_recording();
@@ -149,19 +161,19 @@ TEST(ui_tgui_scene, complete_frame) {
     EXPECT_EQ(provider.sampler_uploads, 1);
     EXPECT_EQ(provider.geometry_uploads, 2);
     ASSERT_EQ(scene.draws().size(), 2u);
-    const auto& binding = std::get<CE::Assets::ImageBinding>(scene.draws()[0].parameters.at("pixels"));
+    const auto& binding = std::get<CE::Rendering::Parameters::ImageBinding>(scene.draws()[0].parameters.at("pixels"));
     EXPECT_EQ(binding.unit, 3u);
-    EXPECT_EQ(binding.image, std::get<CE::Assets::ImageBinding>(scene.draws()[1].parameters.at("pixels")).image);
+    EXPECT_EQ(binding.image, std::get<CE::Rendering::Parameters::ImageBinding>(scene.draws()[1].parameters.at("pixels")).image);
     ASSERT_TRUE(binding.sampler);
-    EXPECT_EQ(binding.sampler, std::get<CE::Assets::ImageBinding>(scene.draws()[1].parameters.at("pixels")).sampler);
-    EXPECT_EQ(binding.sampler->options().minification, CE::Assets::ImageFilter::Linear);
-    EXPECT_EQ(binding.sampler->options().magnification, CE::Assets::ImageFilter::Linear);
-    EXPECT_EQ(binding.sampler->options().mipmaps, CE::Assets::MipmapFilter::None);
-    EXPECT_EQ(binding.sampler->options().wrap_u, CE::Assets::ImageWrap::ClampToEdge);
-    EXPECT_EQ(binding.sampler->options().wrap_v, CE::Assets::ImageWrap::ClampToEdge);
-    EXPECT_EQ(binding.sampler->options().anisotropy, CE::Assets::ImageAnisotropy::Disabled);
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    EXPECT_EQ(binding.sampler, std::get<CE::Rendering::Parameters::ImageBinding>(scene.draws()[1].parameters.at("pixels")).sampler);
+    EXPECT_EQ(binding.sampler->options().minification, CE::Rendering::Sampling::Filter::Linear);
+    EXPECT_EQ(binding.sampler->options().magnification, CE::Rendering::Sampling::Filter::Linear);
+    EXPECT_EQ(binding.sampler->options().mipmaps, CE::Rendering::Sampling::MipmapFilter::None);
+    EXPECT_EQ(binding.sampler->options().wrap_u, CE::Rendering::Sampling::Wrap::ClampToEdge);
+    EXPECT_EQ(binding.sampler->options().wrap_v, CE::Rendering::Sampling::Wrap::ClampToEdge);
+    EXPECT_EQ(binding.sampler->options().anisotropy, CE::Rendering::Sampling::Anisotropy::Disabled);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     scene.write(writer);
     ASSERT_EQ(frame.passes().size(), 1u);
     EXPECT_EQ(frame.passes()[0].draws.size(), 2u);
@@ -183,10 +195,11 @@ TEST(ui_tgui_scene, reused_generation) {
     ASSERT_TRUE(image->loadTextureOnly({1, 1}, blue.data(), true));
     const auto replacement = uploader.upload(provider, recording(image), selected);
     EXPECT_EQ(provider.image_uploads, 2);
-    const auto old_pixels =
-        std::dynamic_pointer_cast<const MemoryImage>(std::get<CE::Assets::ImageBinding>(first.draws()[0].parameters.at("pixels")).image);
+    const auto old_pixels = std::dynamic_pointer_cast<const MemoryImage>(
+        std::get<CE::Rendering::Parameters::ImageBinding>(first.draws()[0].parameters.at("pixels")).image
+    );
     const auto new_pixels = std::dynamic_pointer_cast<const MemoryImage>(
-        std::get<CE::Assets::ImageBinding>(replacement.draws()[0].parameters.at("pixels")).image
+        std::get<CE::Rendering::Parameters::ImageBinding>(replacement.draws()[0].parameters.at("pixels")).image
     );
     ASSERT_TRUE(old_pixels);
     ASSERT_TRUE(new_pixels);
@@ -204,8 +217,8 @@ TEST(ui_tgui_scene, retained_frame) {
     SceneUploader uploader(provider);
     auto image = texture();
     auto scene = uploader.upload(provider, recording(image), materials());
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     scene.write(writer);
     const auto image_lifetime = provider.images[0];
     const auto geometry_lifetime = provider.geometry[0];
@@ -234,21 +247,21 @@ TEST(ui_tgui_scene, sampling_isolation) {
     const auto reused = uploader.upload(provider, nearest_recording, selected);
     EXPECT_EQ(provider.image_uploads, 1);
     EXPECT_EQ(provider.sampler_uploads, 2);
-    const auto& nearest_binding = std::get<CE::Assets::ImageBinding>(nearest.draws()[0].parameters.at("pixels"));
-    const auto& smooth_binding = std::get<CE::Assets::ImageBinding>(smooth.draws()[0].parameters.at("pixels"));
-    const auto& reused_binding = std::get<CE::Assets::ImageBinding>(reused.draws()[0].parameters.at("pixels"));
+    const auto& nearest_binding = std::get<CE::Rendering::Parameters::ImageBinding>(nearest.draws()[0].parameters.at("pixels"));
+    const auto& smooth_binding = std::get<CE::Rendering::Parameters::ImageBinding>(smooth.draws()[0].parameters.at("pixels"));
+    const auto& reused_binding = std::get<CE::Rendering::Parameters::ImageBinding>(reused.draws()[0].parameters.at("pixels"));
     EXPECT_EQ(nearest_binding.image, smooth_binding.image);
     EXPECT_EQ(nearest_binding.image, reused_binding.image);
     ASSERT_TRUE(nearest_binding.sampler);
     ASSERT_TRUE(smooth_binding.sampler);
     EXPECT_NE(nearest_binding.sampler, smooth_binding.sampler);
     EXPECT_EQ(nearest_binding.sampler, reused_binding.sampler);
-    EXPECT_EQ(nearest_binding.sampler->options().minification, CE::Assets::ImageFilter::Nearest);
-    EXPECT_EQ(nearest_binding.sampler->options().magnification, CE::Assets::ImageFilter::Nearest);
-    EXPECT_EQ(nearest_binding.sampler->options().mipmaps, CE::Assets::MipmapFilter::None);
+    EXPECT_EQ(nearest_binding.sampler->options().minification, CE::Rendering::Sampling::Filter::Nearest);
+    EXPECT_EQ(nearest_binding.sampler->options().magnification, CE::Rendering::Sampling::Filter::Nearest);
+    EXPECT_EQ(nearest_binding.sampler->options().mipmaps, CE::Rendering::Sampling::MipmapFilter::None);
     EXPECT_FLOAT_EQ(nearest_binding.sampler->effective_anisotropy(), 1);
-    EXPECT_EQ(smooth_binding.sampler->options().minification, CE::Assets::ImageFilter::Linear);
-    EXPECT_EQ(smooth_binding.sampler->options().magnification, CE::Assets::ImageFilter::Linear);
+    EXPECT_EQ(smooth_binding.sampler->options().minification, CE::Rendering::Sampling::Filter::Linear);
+    EXPECT_EQ(smooth_binding.sampler->options().magnification, CE::Rendering::Sampling::Filter::Linear);
 }
 
 TEST(ui_tgui_scene, sampling_failure) {
@@ -259,7 +272,7 @@ TEST(ui_tgui_scene, sampling_failure) {
         const auto image = texture();
         auto current = uploader.upload(provider, recording(image), materials());
         const auto previous = current.draws()[0].geometry;
-        const auto old_sampler = std::get<CE::Assets::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler;
+        const auto old_sampler = std::get<CE::Rendering::Parameters::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler;
         image->setSmooth(false);
         provider.unsupported_sampling = failure == 0;
         provider.missing_sampler = failure == 1;
@@ -273,7 +286,7 @@ TEST(ui_tgui_scene, sampling_failure) {
         }
         EXPECT_THROW(adopt_scene(future, current), CE::Exceptions::failed_operation);
         EXPECT_EQ(current.draws()[0].geometry, previous);
-        EXPECT_EQ(std::get<CE::Assets::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler, old_sampler);
+        EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(current.draws()[0].parameters.at("pixels")).sampler, old_sampler);
         EXPECT_EQ(provider.image_uploads, 1);
         EXPECT_EQ(provider.geometry_uploads, 1);
         provider.unsupported_sampling = provider.missing_sampler = provider.wrong_sampling = false;
@@ -281,8 +294,8 @@ TEST(ui_tgui_scene, sampling_failure) {
         EXPECT_EQ(provider.image_uploads, 1);
         EXPECT_EQ(provider.sampler_uploads, 3);
         EXPECT_EQ(
-            std::get<CE::Assets::ImageBinding>(retried.draws()[0].parameters.at("pixels")).sampler->options().magnification,
-            CE::Assets::ImageFilter::Nearest
+            std::get<CE::Rendering::Parameters::ImageBinding>(retried.draws()[0].parameters.at("pixels")).sampler->options().magnification,
+            CE::Rendering::Sampling::Filter::Nearest
         );
     }
 }
@@ -340,10 +353,10 @@ TEST(ui_tgui_scene, cancelled_adoption) {
 TEST(ui_tgui_scene, rejected_submission) {
     MemoryProvider provider;
     SceneUploader uploader(provider);
-    CE::Engine::PlatformDispatcher stopped;
+    CE::Runtime::PlatformDispatcher stopped;
     auto image = texture();
     auto prepared = recording(image);
-    std::weak_ptr<const CE::Assets::DecodedImage> pixels = image->snapshot();
+    std::weak_ptr<const CE::Assets::Images::Decoded> pixels = image->snapshot();
     image.reset();
     EXPECT_THROW(
         static_cast<void>(uploader.submit(stopped.submission(), std::move(prepared), materials())), CE::Exceptions::failed_operation
@@ -382,8 +395,9 @@ TEST(ui_tgui_scene, material_contract) {
     auto no_projection = materials();
     auto definition = no_projection.solid->definition().pipeline->definition();
     definition.parameters.clear();
-    no_projection.solid =
-        std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<MemoryPipeline>(std::move(definition)), {}});
+    no_projection.solid = std::make_shared<CE::Rendering::Resources::Material>(
+        CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(std::move(definition)), {}}
+    );
     EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(), no_projection)), CE::Exceptions::invalid_args);
     EXPECT_THROW(static_cast<void>(uploader.upload(provider, recording(), Materials{})), CE::Exceptions::invalid_args);
     EXPECT_EQ(provider.image_uploads, 0);
@@ -406,8 +420,8 @@ TEST(ui_tgui_scene, empty_scene) {
     MemoryProvider provider;
     SceneUploader uploader(provider);
     const auto scene = uploader.upload(provider, RecordedScene{}, Materials{});
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     scene.write(writer);
     EXPECT_TRUE(frame.passes().empty());
     EXPECT_EQ(provider.image_uploads, 0);

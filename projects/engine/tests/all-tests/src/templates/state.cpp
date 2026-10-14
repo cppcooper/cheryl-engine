@@ -8,7 +8,7 @@
 #include <vector>
 
 TEST(state_tracker, successive_samples) {
-    StateTracker<int> health{10};
+    CE::State::StateTracker<int> health{10};
     EXPECT_FALSE(health.changed());
 
     health.update(7);
@@ -20,7 +20,7 @@ TEST(state_tracker, successive_samples) {
 }
 
 TEST(versioned_variable, coherent_waiter_snapshot) {
-    VersionedVariable<int> variable{0};
+    CE::State::VersionedVariable<int> variable{0};
     const auto start = variable.snapshot();
     variable.set(0);
     EXPECT_EQ(variable.snapshot().revision, start.revision);
@@ -46,8 +46,8 @@ namespace {
 } // namespace
 
 TEST(state_machine, guarded_transitions) {
-    StateMachine<Posture, PostureTrigger> posture{Posture::Standing};
-    StateMachine<Movement, MoveTrigger> movement{Movement::Grounded};
+    CE::State::StateMachine<Posture, PostureTrigger> posture{Posture::Standing};
+    CE::State::StateMachine<Movement, MoveTrigger> movement{Movement::Grounded};
     std::vector<int> order;
     movement.on_exit(Movement::Grounded, [&] { order.push_back(1); });
     movement.on_enter(Movement::Airborne, [&] { order.push_back(3); });

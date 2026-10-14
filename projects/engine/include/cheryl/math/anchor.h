@@ -6,7 +6,7 @@
 #include <string>
 
 namespace CE {
-    namespace math {
+    namespace Rendering::Geometry {
         /** Normalized origin within a frame: (0,0) is its top-left, (1,1) its bottom-right. */
         struct Pivot {
             float x{0.5f};
@@ -26,13 +26,13 @@ namespace CE {
          * The pointer overloads and MakeQuad write six vertices for two independent triangles;
          * MakeQuadStrip produces a separate four-vertex atlas frame.
          * CPU-only: pixel dimensions and offsets, normalized UVs, finite [0,1] pivot
-         * and nonzero texture dimensions required. Frame bounds/size are not checked.
+         * and nonzero texture dimensions required. Source rectangle bounds/size are not checked.
          * Pointer destinations must hold six Vertex2D or thirty floats (x,y,z,u,v);
          * they are borrowed through the call. Invalid pivot/texture throws before writes.
          */
         struct Anchor {
-            [[nodiscard]] static Quad MakeQuad(
-                Pivot pivot,
+            [[nodiscard]] static ::CE::Rendering::Geometry::Quad MakeQuad(
+                ::CE::Rendering::Geometry::Pivot pivot,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -40,8 +40,8 @@ namespace CE {
                 std::uint32_t x0 = 0,
                 std::uint32_t y0 = 0
             );
-            [[nodiscard]] static QuadTriangleStrip MakeQuadStrip(
-                Pivot pivot,
+            [[nodiscard]] static ::CE::Rendering::Geometry::QuadTriangleStrip MakeQuadStrip(
+                ::CE::Rendering::Geometry::Pivot pivot,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -50,7 +50,7 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void MakePivot(
-                Pivot pivot,
+                ::CE::Rendering::Geometry::Pivot pivot,
                 float* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
@@ -60,8 +60,8 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void MakePivot(
-                Pivot pivot,
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Pivot pivot,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -71,7 +71,7 @@ namespace CE {
             );
 
             static void MakeAnchor(
-                AnchorType type,
+                ::CE::Rendering::Geometry::AnchorType type,
                 float* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
@@ -81,8 +81,8 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void MakeAnchor(
-                AnchorType type,
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::AnchorType type,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -92,7 +92,7 @@ namespace CE {
             );
 
             static void Center(
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -101,7 +101,7 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void TopLeft(
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -110,7 +110,7 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void TopRight(
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -119,7 +119,7 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void BottomLeft(
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,
@@ -128,7 +128,7 @@ namespace CE {
                 std::uint32_t y0 = 0
             );
             static void BottomRight(
-                Vertex2D* vertices,
+                ::CE::Rendering::Geometry::Vertex2D* vertices,
                 std::uint32_t texture_width,
                 std::uint32_t texture_height,
                 std::uint32_t width,

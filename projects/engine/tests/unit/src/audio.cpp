@@ -34,12 +34,12 @@ TEST(audio_clip, invalid) {
     using CE::Audio::Clip;
     using CE::Exceptions::invalid_args;
     for (const CE::Audio::Format format : {CE::Audio::Format{0, 48000}, {3, 48000}, {1, 0}, {1, 7999}, {2, 192001}})
-        EXPECT_THROW(static_cast<void>(Clip::from_samples(format, {0, 0})), invalid_args);
-    EXPECT_THROW(static_cast<void>(Clip::from_samples({1, 48000}, {})), invalid_args);
-    EXPECT_THROW(static_cast<void>(Clip::from_samples({2, 48000}, {0})), invalid_args);
+        EXPECT_THROW(static_cast<void>(CE::Audio::Clip::from_samples(format, {0, 0})), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Audio::Clip::from_samples({1, 48000}, {})), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Audio::Clip::from_samples({2, 48000}, {0})), invalid_args);
     for (const float sample : {std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity(),
              std::numeric_limits<float>::quiet_NaN()})
-        EXPECT_THROW(static_cast<void>(Clip::from_samples({1, 48000}, {sample})), invalid_args);
+        EXPECT_THROW(static_cast<void>(CE::Audio::Clip::from_samples({1, 48000}, {sample})), invalid_args);
 }
 
 TEST(audio_clip, volume) {

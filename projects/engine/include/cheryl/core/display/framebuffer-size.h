@@ -1,6 +1,6 @@
 #pragma once
 
-namespace CE {
+namespace CE::Platform {
     struct FramebufferSize {
         int width = 1;
         int height = 1;

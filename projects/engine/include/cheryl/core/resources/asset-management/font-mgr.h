@@ -5,18 +5,23 @@
 #include <filesystem>
 #include <vector>
 
-using FMgr = CE::Assets::AssetMgr<CE::Assets::Font>;
-namespace CE::Assets {
-    struct ResourceProvider;
+namespace CE::Text::Legacy {
+    using Store = CE::Assets::Cache::Store<CE::Text::Legacy::Font>;
+}
 
+namespace CE::Rendering::Resources {
+    struct Provider;
+}
+
+namespace CE::Text::Legacy {
     /** Path-keyed font cache in the shared provider/loading-owner domain.
      * Loading uses STB's printable-ASCII atlas and collection face zero.
      * System-font discovery/default candidate selection are separate utilities.
      */
-    struct FontMgr final : FMgr,
-                           Singleton_CTS<FontMgr> {
-        FontMgr() = default;
-        ~FontMgr() override = default;
+    struct Manager final : Store,
+                           CE::State::Singleton<Manager> {
+        Manager() = default;
+        ~Manager() override = default;
 
         /** Load in supplied order on the active provider's loading thread. Keys
          * are lexically normalized paths; cached entries are retained. Newly loaded
@@ -24,10 +29,10 @@ namespace CE::Assets {
          * publication becomes the default if none exists. Errors propagate without
          * rolling back earlier publications or trying an alternate system font.
          */
-        void load_assets(const std::vector<std::filesystem::path>& files, ResourceProvider& provider);
+        void load(const std::vector<std::filesystem::path>& files, CE::Rendering::Resources::Provider& provider);
 
         /** Retain the published default, or return nullptr before loading/after clear. */
-        [[nodiscard]] spointer default_font() const;
+        [[nodiscard]] Handle default_font() const;
 
         /** Clear cache/default ownership; existing shared handles remain valid.
          * This does not release or replace the shared provider/loading-owner domain.

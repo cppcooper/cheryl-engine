@@ -10,24 +10,24 @@ namespace CE::Input {
      * consume() summarizes a whole polling batch; it never schedules simulation.
      * One owner supplies synchronization and a valid nonnull baseline/start.
      * Consumption validates sample/interval order before changing its baseline;
-     * returned TickInput owns handles and copied records independent of later calls.
+     * returned Tick owns handles and copied records independent of later calls.
      */
-    class InputAccumulator final {
+    class Accumulator final {
     public:
-        InputAccumulator(std::shared_ptr<const ActionSnapshot> baseline, InputClock::time_point start)
+        Accumulator(std::shared_ptr<const Actions::Snapshot> baseline, ObservationClock::time_point start)
         : previous_(std::move(baseline)), consumed_at_(start) {}
 
-        [[nodiscard]] TickInput consume(InputClock::time_point until, std::vector<std::shared_ptr<const ActionSnapshot>> polls) {
-            TickInput input(previous_, std::move(polls), consumed_at_, until);
+        [[nodiscard]] Tick consume(ObservationClock::time_point until, std::vector<std::shared_ptr<const Actions::Snapshot>> polls) {
+            Tick input(previous_, std::move(polls), consumed_at_, until);
             previous_ = input.latest_poll();
             consumed_at_ = until;
             return input;
         }
 
-        [[nodiscard]] TickInput consume_polls(InputClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls);
+        [[nodiscard]] Tick consume_polls(ObservationClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls);
 
     private:
-        std::shared_ptr<const ActionSnapshot> previous_;
-        InputClock::time_point consumed_at_;
+        std::shared_ptr<const Actions::Snapshot> previous_;
+        ObservationClock::time_point consumed_at_;
     };
 }

@@ -46,12 +46,12 @@ int main(const int argc, char** argv) {
     if (scenario != "normal" && scenario != "hold" && scenario != "crash" && scenario != "burst")
         return 2;
 
-    CE::LogConfig configuration;
+    CE::Logging::Config configuration;
     configuration.directory = std::filesystem::current_path() / "logs";
     configuration.rotate_on_open = false;
     configuration.logger_level = configuration.file_level = configuration.console_level = spdlog::level::warn;
-    CE::Logger<probe_name>::initialize(spdlog::file_event_handlers{}, configuration);
-    CE::Logger<probe_name>::set_pattern("engine-%v");
+    CE::Logging::Logger<probe_name>::initialize(spdlog::file_event_handlers{}, configuration);
+    CE::Logging::Logger<probe_name>::set_pattern("engine-%v");
     if (std::atexit(finish_probe) != 0)
         return 3;
     std::printf("terminal-linked=%d debug=%d\n", CHERYL_DEBUG_TERMINAL_AVAILABLE, CHERYL_TERMINAL_PROBE_DEBUG);

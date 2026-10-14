@@ -7,14 +7,14 @@
 using namespace std::chrono_literals;
 
 TEST(polling_backlog, lockstep_consumption) {
-    CE::Input::InputBindings bindings;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog;
     const auto now = bindings.action_snapshot()->observed_at();
     const auto poll = bindings.publish_actions(now);
     backlog.complete(poll, now);
     EXPECT_EQ(backlog.completed_polls(), 1u);
     EXPECT_FALSE(backlog.can_poll());
-    EXPECT_EQ(backlog.next_poll_at(), CE::Input::InputClock::time_point::max());
+    EXPECT_EQ(backlog.next_poll_at(), CE::Input::ObservationClock::time_point::max());
 
     const auto batch = backlog.consume();
     ASSERT_EQ(batch.size(), 1u);
@@ -26,7 +26,7 @@ TEST(polling_backlog, lockstep_consumption) {
 }
 
 TEST(polling_backlog, finite_capacity) {
-    CE::Input::InputBindings bindings;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 3, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
     for (int i = 0; i < 3; ++i) {
@@ -45,7 +45,7 @@ TEST(polling_backlog, finite_capacity) {
 }
 
 TEST(polling_backlog, poll_completion_spacing) {
-    CE::Input::InputBindings bindings;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Finite, 2, 5ms});
     const auto now = bindings.action_snapshot()->observed_at();
     backlog.complete(bindings.publish_actions(now + 2ms), now + 3ms);
@@ -58,7 +58,7 @@ TEST(polling_backlog, poll_completion_spacing) {
 }
 
 TEST(polling_backlog, unlimited_capacity) {
-    CE::Input::InputBindings bindings;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
     for (int i = 0; i < 100; ++i) {
@@ -73,7 +73,7 @@ TEST(polling_backlog, invalid_polling_inputs) {
     const CE::Input::PollingOptions negative{CE::Input::PollingPolicy::Finite, 1, -1ms};
     EXPECT_THROW((void)CE::Input::PollingBacklog{empty}, CE::Exceptions::invalid_args);
     EXPECT_THROW((void)CE::Input::PollingBacklog{negative}, CE::Exceptions::invalid_args);
-    CE::Input::InputBindings bindings;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 0ms});
     const auto now = bindings.action_snapshot()->observed_at();
     const auto poll = bindings.publish_actions(now);
@@ -83,8 +83,8 @@ TEST(polling_backlog, invalid_polling_inputs) {
 }
 
 TEST(polling_backlog, deadline_saturation) {
-    using Clock = CE::Input::InputClock;
-    CE::Input::InputBindings bindings;
+    using Clock = CE::Input::ObservationClock;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog backlog({CE::Input::PollingPolicy::Unlimited, 0, 5ms});
     const auto completed_at = Clock::time_point::max() - 1ms;
     const auto poll = bindings.publish_actions(completed_at);
@@ -98,8 +98,8 @@ TEST(polling_backlog, deadline_saturation) {
 }
 
 TEST(polling_backlog, clock_limit_spacing) {
-    using Clock = CE::Input::InputClock;
-    CE::Input::InputBindings bindings;
+    using Clock = CE::Input::ObservationClock;
+    CE::Input::Actions::Bindings bindings;
     CE::Input::PollingBacklog delayed({CE::Input::PollingPolicy::Unlimited, 0, Clock::duration::max()});
     const auto completed_at = Clock::time_point::max() - 1ms;
     delayed.complete(bindings.publish_actions(completed_at), completed_at);

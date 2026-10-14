@@ -8,24 +8,26 @@
 #include <filesystem>
 #include <memory>
 
-namespace CE::Assets {
-    struct ResourceProvider;
+namespace CE::Rendering::Resources {
+    struct Provider;
+}
 
+namespace CE::Assets::Materials {
     /** Strongly retains immutable material recipes and their pipeline generations.
      * A builder owns the explicit backend mappings and bootstrap choices. Build
      * the complete candidate before publishing; failed reload leaves the old recipe.
      * Invoke synchronously on the active provider/loading owner, outside cache locks.
      * Builder captures must survive the call; its external side effects are not rolled back.
      */
-    struct MaterialMgr final : AssetMgr<const Material>,
-                               Singleton_CTS<MaterialMgr> {
-        using Builder = std::function<std::shared_ptr<const Material>(ResourceProvider&)>;
+    struct Manager final : CE::Assets::Cache::Store<const CE::Rendering::Resources::Material>,
+                           CE::State::Singleton<Manager> {
+        using Builder = std::function<std::shared_ptr<const CE::Rendering::Resources::Material>(CE::Rendering::Resources::Provider&)>;
 
-        MaterialMgr() = default;
-        ~MaterialMgr() override = default;
+        Manager() = default;
+        ~Manager() override = default;
         // Exact path key; an existing entry skips the builder.
-        void load_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder);
+        void load(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
         // Replace or insert one generation; empty builders/null candidates throw.
-        void reload_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder);
+        void reload(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
     };
 }

@@ -3,7 +3,7 @@
 #include <internals/compile-time-logging.hpp>
 #include <algorithm>
 
-namespace CE::Engine {
+namespace CE::Runtime {
     SimulationDispatcher::~SimulationDispatcher() {
         // Normal runtime teardown already closed on the owner. Invalidation also
         // makes a saved endpoint safe if an unopened or unbound dispatcher is destroyed.
@@ -33,7 +33,7 @@ namespace CE::Engine {
         return !state_->pending.empty();
     }
 
-    Diagnostics::DispatchStats SimulationDispatcher::diagnostics() const {
+    CE::Diagnostics::DispatchStats SimulationDispatcher::diagnostics() const {
         std::lock_guard lock(state_->mutex);
         auto result = state_->diagnostics;
         result.pending = state_->pending.size();
@@ -50,7 +50,10 @@ namespace CE::Engine {
             state_->opened = true;
             state_->accepting = true;
         }
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=simulation_dispatch domain={} operation=open outcome=ready", state_->diagnostics.domain);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine, "subsystem=simulation_dispatch domain={} operation=open outcome=ready",
+            state_->diagnostics.domain
+        );
     }
 
     void SimulationDispatcher::bind_owner() {
@@ -60,7 +63,10 @@ namespace CE::Engine {
                 throw Exceptions::failed_operation(CE_HERE, "Simulation owner requires a newly opened dispatcher");
             state_->owner = std::this_thread::get_id();
         }
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=simulation_dispatch domain={} operation=bind_owner outcome=ready", state_->diagnostics.domain);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine, "subsystem=simulation_dispatch domain={} operation=bind_owner outcome=ready",
+            state_->diagnostics.domain
+        );
     }
 
     void SimulationDispatcher::require_owner(const State& state) {
@@ -107,11 +113,17 @@ namespace CE::Engine {
         }
         invalidate();
         const auto summary = diagnostics();
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=simulation_dispatch domain={} operation=close accepted={} completed={} cancelled={} failures={} peak_pending={}",
-                     summary.domain, summary.accepted, summary.completed, summary.cancelled, summary.failures, summary.peak_pending);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine,
+            "subsystem=simulation_dispatch domain={} operation=close accepted={} completed={} cancelled={} failures={} peak_pending={}",
+            summary.domain, summary.accepted, summary.completed, summary.cancelled, summary.failures, summary.peak_pending
+        );
         if (summary.peak_pending >= 1024)
-            CE_LOG_WARN(CE::enginelog, "subsystem=simulation_dispatch domain={} operation=queue_growth outcome=high_water peak_pending={}",
-                        summary.domain, summary.peak_pending);
+            CE_LOG_WARN(
+                CE::Logging::Categories::engine,
+                "subsystem=simulation_dispatch domain={} operation=queue_growth outcome=high_water peak_pending={}", summary.domain,
+                summary.peak_pending
+            );
     }
 
     void SimulationDispatcher::invalidate() {

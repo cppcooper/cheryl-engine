@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-namespace CE::Obj {
+namespace CE::Memory::Objects {
     /**
      * Manager interface for reserving blocks and retaining a context capable
      * of returning their individual ranges.
@@ -17,15 +17,15 @@ namespace CE::Obj {
     template <typename Manager, typename T>
     concept ReservableManager = requires(Manager& manager, std::size_t count, T* ptr) {
         typename Manager::release_context_type;
-        requires std::derived_from<typename Manager::release_context_type, AbstractManager<T>>;
-        { manager.retrieve_block(count) } -> std::same_as<Block<T>>;
+        requires std::derived_from<typename Manager::release_context_type, ::CE::Memory::AbstractBlockManager<T>>;
+        { manager.retrieve_block(count) } -> std::same_as<::CE::Memory::Block<T>>;
         { manager.release_context() } -> std::same_as<std::shared_ptr<typename Manager::release_context_type>>;
         { std::declval<typename Manager::release_context_type&>().return_objects(ptr, count) } -> std::same_as<void>;
         { std::declval<typename Manager::release_context_type&>().release_owned(ptr, count) } -> std::same_as<void>;
     };
 
     /**
-     * Allocator interface accepted by ObjectReservation: the allocator must
+     * Allocator interface accepted by CE::Memory::Objects::Reservation: the allocator must
      * identify a ReservableManager and expose its retained release context.
      * Ordinary allocate/deallocate still operate on whole allocations.
      */
@@ -41,14 +41,14 @@ namespace CE::Obj {
     };
 
     /**
-     * Reserves one Block and tracks only its unclaimed ranges. emplace() splits
+     * Reserves one CE::Memory::Block and tracks only its unclaimed ranges. emplace() splits
      * out a slot and gives its handle the release context; the handle may outlive
      * this reservation. Failed construction leaves the slot reserved, while the
      * destructor returns remaining contiguous ranges to the manager.
      */
-    template <typename T, typename Allocator = Mem::ObjectPoolAllocator<T>>
+    template <typename T, typename Allocator = ::CE::Memory::Allocators::ObjectPoolAllocator<T>>
         requires ReservationAllocator<Allocator, T>
-    class ObjectReservation {
+    class Reservation {
         using context_type = typename Allocator::manager_type::release_context_type;
         /**
          * Controls the constructed slot behind an aliasing shared_ptr<T>.
@@ -68,12 +68,12 @@ namespace CE::Obj {
         };
 
         std::shared_ptr<context_type> context_;
-        std::vector<Block<T>> remaining_;
+        std::vector<::CE::Memory::Block<T>> remaining_;
         T* base_ = nullptr;
         std::size_t count_ = 0;
 
     public:
-        explicit ObjectReservation(std::size_t count, Allocator allocator = {})
+        explicit Reservation(std::size_t count, Allocator allocator = {})
         : context_(allocator.context()), count_(count) {
             if (count) {
                 remaining_.reserve(1);
@@ -82,20 +82,20 @@ namespace CE::Obj {
                 remaining_.push_back(std::move(block));
             }
         }
-        ObjectReservation(const ObjectReservation&) = delete;
-        ObjectReservation& operator=(const ObjectReservation&) = delete;
-        ObjectReservation(ObjectReservation&& other) noexcept
+        Reservation(const Reservation&) = delete;
+        Reservation& operator=(const Reservation&) = delete;
+        Reservation(Reservation&& other) noexcept
         : context_(std::move(other.context_)), base_(std::exchange(other.base_, nullptr)), count_(std::exchange(other.count_, 0)) {
             remaining_.swap(other.remaining_);
         }
-        ObjectReservation& operator=(ObjectReservation&&) = delete;
-        ~ObjectReservation() noexcept {
+        Reservation& operator=(Reservation&&) = delete;
+        ~Reservation() noexcept {
             for (const auto& block : remaining_) {
                 context_->release_owned(block.head.get(), block.length);
             }
         }
 
-        [[nodiscard]] const std::vector<Block<T>>& remaining_ranges() const noexcept { return remaining_; }
+        [[nodiscard]] const std::vector<::CE::Memory::Block<T>>& remaining_ranges() const noexcept { return remaining_; }
         [[nodiscard]] std::size_t size() const noexcept { return count_; }
 
         /**
@@ -104,7 +104,7 @@ namespace CE::Obj {
          */
         template <typename... Args> std::shared_ptr<T> emplace(std::size_t index, Args&&... args) {
             if (index >= count_)
-                throw Exceptions::bad_request(CE_HERE, "Object reservation index is out of range.");
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Object reservation index is out of range.");
             T* pointer = base_ + index;
             // Search the current unclaimed partition, not the original block:
             // a previously handed-out slot must never be constructed again.
@@ -114,13 +114,13 @@ namespace CE::Obj {
                     break;
             }
             if (range_index == remaining_.size())
-                throw Exceptions::bad_request(CE_HERE, "Object reservation slot has already been claimed.");
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Object reservation slot has already been claimed.");
 
             // Split a local copy so the recorded range survives any failure
             // before construction. The original owner remains in every piece.
             auto slot = remaining_[range_index];
-            std::optional<Block<T>> before;
-            std::optional<Block<T>> after;
+            std::optional<::CE::Memory::Block<T>> before;
+            std::optional<::CE::Memory::Block<T>> after;
             const auto offset = static_cast<std::size_t>(pointer - slot.head.get());
             if (offset) {
                 auto tail = slot.split_exactly(offset);

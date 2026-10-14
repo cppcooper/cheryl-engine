@@ -204,12 +204,10 @@ TEST(ui_tgui_recording, nested_clips) {
     draw(target);
     const auto scene = target.finish_recording();
     ASSERT_EQ(scene.draws().size(), 3u);
-    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{50, 50, 90, 80}));
-    EXPECT_EQ(scene.draws()[1].clip.rectangle, (CE::RenderAPIs::ClipRect2D{30, 40, 90, 80}));
-    EXPECT_EQ(scene.draws()[2].clip.rectangle, (CE::RenderAPIs::ClipRect2D{20, 30, 220, 130}));
-    EXPECT_EQ(
-        CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{100, 100, 180, 160})
-    );
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::Rendering::ClipRect2D{50, 50, 90, 80}));
+    EXPECT_EQ(scene.draws()[1].clip.rectangle, (CE::Rendering::ClipRect2D{30, 40, 90, 80}));
+    EXPECT_EQ(scene.draws()[2].clip.rectangle, (CE::Rendering::ClipRect2D{20, 30, 220, 130}));
+    EXPECT_EQ(CE::Rendering::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::Rendering::PixelClipRect2D{100, 100, 180, 160}));
     target.setView({0, 0, 640, 480}, {0, 0, 640, 480}, {640, 480});
     EXPECT_EQ(scene.width(), 320);
     EXPECT_EQ(scene.draws()[0].clip.logical_width, 320);
@@ -224,8 +222,8 @@ TEST(ui_tgui_recording, scaled_clip) {
     target.removeClippingLayer();
     const auto scene = target.finish_recording();
     ASSERT_EQ(scene.draws().size(), 1u);
-    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{35, 45, 65, 75}));
-    EXPECT_EQ(CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{70, 90, 130, 150}));
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::Rendering::ClipRect2D{35, 45, 65, 75}));
+    EXPECT_EQ(CE::Rendering::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::Rendering::PixelClipRect2D{70, 90, 130, 150}));
 }
 
 TEST(ui_tgui_recording, fractional_clip) {
@@ -240,8 +238,8 @@ TEST(ui_tgui_recording, fractional_clip) {
     ASSERT_EQ(scene.draws().size(), 1u);
     // A real fractional edge just outside a pixel stays outside. Removing float
     // viewport noise must not introduce snapping or weaken outward rounding.
-    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{0.25, 0.25, right, 1.25}));
-    EXPECT_EQ(CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{0, 0, 3, 3}));
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::Rendering::ClipRect2D{0.25, 0.25, right, 1.25}));
+    EXPECT_EQ(CE::Rendering::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::Rendering::PixelClipRect2D{0, 0, 3, 3}));
 }
 
 TEST(ui_tgui_recording, empty_clip) {

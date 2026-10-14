@@ -4,8 +4,8 @@
 
 #include <vector>
 
-namespace CE::Engine::WorkerDetail {
-    WorkerNativeAdapter native_worker_adapter();
-    WorkerCapabilities discover_capabilities(const WorkerNativeAdapter& adapter);
-    void apply_affinity(const WorkerNativeAdapter& adapter, const std::vector<unsigned int>& cpus);
+namespace CE::Workers::Detail {
+    NativeAdapter native_worker_adapter();
+    CE::Workers::Capabilities discover_capabilities(const NativeAdapter& adapter);
+    void apply_affinity(const NativeAdapter& adapter, const std::vector<unsigned int>& cpus);
 }

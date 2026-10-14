@@ -8,7 +8,7 @@
 extern "C" std::FILE* ce_debug_terminal_report_stream(int error) noexcept __attribute__((weak));
 
 namespace CE {
-    namespace TerminalTestDetail {
+    namespace Testing::DebugTerminal::Detail {
         std::FILE* report_file(std::FILE* current) noexcept {
             if (!ce_debug_terminal_report_stream || (current != stdout && current != stderr))
                 return current;

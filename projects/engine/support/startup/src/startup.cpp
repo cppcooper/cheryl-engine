@@ -7,14 +7,14 @@
 #include <string_view>
 #include <utility>
 
-namespace CE::Engine {
-    GFramework::GameRuntime StartupResult::make_runtime(GFramework::AbstractGame& game) const& {
-        if (!engine)
+namespace CE::Application {
+    CE::Runtime::GameRuntime StartupResult::make_runtime(CE::Game::AbstractGame& game) const& {
+        if (!context)
             throw Exceptions::failed_operation(CE_HERE, "A runtime requires successful engine startup");
-        return GFramework::GameRuntime(*engine, game, runtime.mode, runtime.polling, runtime.timing);
+        return CE::Runtime::GameRuntime(*context, game, runtime.mode, runtime.polling, runtime.timing);
     }
 
-    Startup::Startup(StartupBackend backend, std::string description, StartupConfiguration configuration)
+    Startup::Startup(StartupBackend backend, std::string description, StartupOptions configuration)
     : configuration_(std::move(configuration)), backend_(std::move(backend)), parser_(std::move(description)) {
         if (!backend_.create)
             throw Exceptions::invalid_args(CE_HERE, "Engine startup requires a backend factory");
@@ -28,14 +28,15 @@ namespace CE::Engine {
         auto& options = *parser_.add_option_group("Engine");
         options
             .add_flag_callback(
-                "--concurrent", [this] { configuration_.runtime.mode = GFramework::RunMode::Concurrent; },
+                "--concurrent", [this] { configuration_.runtime.mode = CE::Runtime::RunMode::Concurrent; },
                 "Run simulation on a separate worker"
             )
             ->disable_flag_override()
             ->trigger_on_parse();
         options
             .add_flag_callback(
-                "--fixed", [this] { configuration_.runtime.timing.mode = GFramework::SimulationMode::Fixed; }, "Use fixed simulation steps"
+                "--fixed", [this] { configuration_.runtime.timing.mode = CE::Runtime::Simulation::Mode::Fixed; },
+                "Use fixed simulation steps"
             )
             ->disable_flag_override()
             ->trigger_on_parse();
@@ -43,8 +44,8 @@ namespace CE::Engine {
             .add_flag_callback(
                 "--variable-catch-up",
                 [this] {
-                    configuration_.runtime.timing.mode = GFramework::SimulationMode::Fixed;
-                    configuration_.runtime.timing.recovery = GFramework::LagRecovery::VariableCatchUp;
+                    configuration_.runtime.timing.mode = CE::Runtime::Simulation::Mode::Fixed;
+                    configuration_.runtime.timing.recovery = CE::Runtime::Simulation::LagRecovery::VariableCatchUp;
                 },
                 "Recover fixed-step lag with a bounded variable update"
             )
@@ -54,7 +55,7 @@ namespace CE::Engine {
             .add_option_function<unsigned int>(
                 "--fixed-step-ms",
                 [this](const unsigned int value) {
-                    configuration_.runtime.timing.mode = GFramework::SimulationMode::Fixed;
+                    configuration_.runtime.timing.mode = CE::Runtime::Simulation::Mode::Fixed;
                     configuration_.runtime.timing.fixed_step = std::chrono::milliseconds(value);
                 },
                 "Fixed simulation step in milliseconds"
@@ -90,7 +91,7 @@ namespace CE::Engine {
             ->trigger_on_parse();
         options
             .add_flag_callback(
-                "--input-unlimited", [this] { configuration_.runtime.polling.policy = Input::PollingPolicy::Unlimited; },
+                "--input-unlimited", [this] { configuration_.runtime.polling.policy = CE::Input::PollingPolicy::Unlimited; },
                 "Allow unlimited completed polls between simulation updates"
             )
             ->disable_flag_override()
@@ -99,7 +100,7 @@ namespace CE::Engine {
             .add_option_function<std::size_t>(
                 "--input-capacity",
                 [this](const std::size_t value) {
-                    configuration_.runtime.polling.policy = Input::PollingPolicy::Finite;
+                    configuration_.runtime.polling.policy = CE::Input::PollingPolicy::Finite;
                     configuration_.runtime.polling.capacity = value;
                 },
                 "Maximum completed polls between simulation updates"
@@ -119,7 +120,7 @@ namespace CE::Engine {
             ->trigger_on_parse();
     }
 
-    void Startup::add_application_options(const ArgumentDefinitions& definitions) {
+    void Startup::add_application_options(const OptionDefinitions& definitions) {
         if (initialized_)
             throw Exceptions::failed_operation(CE_HERE, "Application arguments must be registered before engine startup");
         if (!definitions)
@@ -128,10 +129,10 @@ namespace CE::Engine {
     }
 
     void Startup::validate_configuration() const {
-        static_cast<void>(Input::PollingBacklog(configuration_.runtime.polling));
-        static_cast<void>(GFramework::SimulationScheduler(configuration_.runtime.timing));
-        if (configuration_.runtime.mode != GFramework::RunMode::Sequential &&
-            configuration_.runtime.mode != GFramework::RunMode::Concurrent)
+        static_cast<void>(CE::Input::PollingBacklog(configuration_.runtime.polling));
+        static_cast<void>(CE::Runtime::Simulation::Scheduler(configuration_.runtime.timing));
+        if (configuration_.runtime.mode != CE::Runtime::RunMode::Sequential &&
+            configuration_.runtime.mode != CE::Runtime::RunMode::Concurrent)
             throw Exceptions::invalid_args(CE_HERE, "Unknown game runtime mode");
         if (!configuration_.execution.shared_pool && configuration_.execution.worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "Owned execution requires a positive worker count");
@@ -166,6 +167,6 @@ namespace CE::Engine {
         auto engine = backend_.create(configuration_.execution);
         if (!engine)
             throw Exceptions::failed_operation(CE_HERE, "The startup backend factory returned no engine context");
-        return {.engine = std::move(engine), .runtime = configuration_.runtime};
+        return {.context = std::move(engine), .runtime = configuration_.runtime};
     }
 }

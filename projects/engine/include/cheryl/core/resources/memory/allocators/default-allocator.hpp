@@ -1,23 +1,24 @@
 #pragma once
 #include <core/resources/memory/mem-mgr.h>
 
-namespace CE::Mem {
+namespace CE::Memory::Allocators {
     template <class T> struct DefaultAllocator final : std::allocator<T> {
         using value_type = T;
-        using MM = Manager<2.0, 4096>;
+        using MM = ::CE::Memory::Manager<2.0, 4096>;
         using manager_type = MM;
         T* allocate(std::size_t N) {
             // Request the caller's exact byte count; the manager may still
             // serve it from an existing larger reusable range.
-            auto b = MM::get().checkout_chunk(sizeof(T) * N, alignof(T), Enum::exact);
+            auto b = MM::get().checkout_chunk(sizeof(T) * N, alignof(T), ::CE::Memory::exact);
             return static_cast<T*>(b.head.get());
         }
         void deallocate(T* ptr, std::size_t /*N*/) { MM::get().return_ptr(ptr); }
     };
 }
 
-template <typename T> struct std::allocator_traits<CE::Mem::DefaultAllocator<T>> : std::allocator_traits<std::allocator<T>> {
-    using allocator_type = CE::Mem::DefaultAllocator<T>;
+template <typename T>
+struct std::allocator_traits<::CE::Memory::Allocators::DefaultAllocator<T>> : std::allocator_traits<std::allocator<T>> {
+    using allocator_type = ::CE::Memory::Allocators::DefaultAllocator<T>;
     using value_type = typename allocator_type::value_type;
     using pointer = value_type*;
     using const_pointer = const value_type*;

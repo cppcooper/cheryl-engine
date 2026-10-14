@@ -29,7 +29,7 @@ namespace CE::Text {
 
     /** Ordered application choices and optional installed-font discovery. */
     struct FontSelection {
-        std::vector<FontSource> preferred; ///< Files/families in application order.
+        std::vector<::CE::Text::FontSource> preferred; ///< Files/families in application order.
         bool automatic_system_fonts = true; ///< Append automatic installed-family choices.
         /** Unset uses system roots; an empty vector disables installed-font discovery. */
         std::optional<std::vector<std::filesystem::path>> system_directories;
@@ -61,12 +61,12 @@ namespace CE::Text {
          * borrowed only for this call.
          * @return Owned ordered faces ending in the embedded fallback, shared by copies.
          */
-        [[nodiscard]] static FontCollection load(const FontSelection& selection = {});
+        [[nodiscard]] static FontCollection load(const ::CE::Text::FontSelection& selection = {});
         /** @return Borrowed ordered face metadata, empty after moving from the collection.
          * Keep the retained collection data alive while using the view; this call
          * performs no discovery or loading.
          */
-        [[nodiscard]] std::span<const FontFaceInfo> faces() const noexcept;
+        [[nodiscard]] std::span<const ::CE::Text::FontFaceInfo> faces() const noexcept;
         /** Test character-map coverage across the retained faces without a provider.
          * This does not select a font for a whole grapheme or shape text. A moved-from
          * collection or failure opening a retained face can reject a valid-scalar query.

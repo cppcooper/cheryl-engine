@@ -8,20 +8,15 @@
 
 int main(const int argc, char** argv) {
     DemoOptions options;
-    auto startup = CE::Engine::make_glfw_opengl_startup("Cheryl demo");
+    auto startup = CE::Application::GLFWOpenGL::make_startup("Cheryl demo");
     options.register_with(startup);
     auto result = startup.initialize(argc, argv);
     if (!result.should_start())
         return result.exit_code;
 
     DemoGame game(
-        *result.engine,
-        options.asset_root,
-        options.load_all_assets,
-        std::move(options.font_selection),
-        std::move(options.text_options),
-        options.unicode_preview,
-        options.text_runs
+        *result.context, options.asset_root, options.load_all_assets, std::move(options.font_selection), std::move(options.text_options),
+        options.unicode_preview, options.text_runs
     );
     auto game_runtime = result.make_runtime(game);
     if (options.max_updates != 0)

@@ -10,7 +10,7 @@ namespace CE::Input {
      * Published as a const handle so later polls cannot mutate either channel.
      */
     struct PollSnapshot {
-        std::shared_ptr<const ActionSnapshot> state;
-        std::vector<InputRecord> records;
+        std::shared_ptr<const Actions::Snapshot> state;
+        std::vector<Events::Record> records;
     };
 }

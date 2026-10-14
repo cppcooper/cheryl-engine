@@ -16,37 +16,37 @@
 namespace FirstGame {
     // [actor]
     struct Actor {
-        std::shared_ptr<const CE::Assets::Sprite> sprite;
+        std::shared_ptr<const CE::Assets::Sprites::Asset> sprite;
         glm::vec2 position;
-        CE::Assets::CellIndex cell = 0;
+        CE::Assets::Grids::CellIndex cell = 0;
 
-        Actor(std::shared_ptr<const CE::Assets::Sprite> resource, glm::vec2 initial_position)
+        Actor(std::shared_ptr<const CE::Assets::Sprites::Asset> resource, glm::vec2 initial_position)
         : sprite(std::move(resource)), position(initial_position) {}
     };
     // [/actor]
 
     // [game]
-    class Game final : public CE::GFramework::AbstractGame {
-        static constexpr CE::Input::ActionId quit_{1};
-        static constexpr CE::Input::ActionId left_{2};
-        static constexpr CE::Input::ActionId right_{3};
-        static constexpr CE::Input::ActionId next_cell_{4};
+    class Game final : public CE::Game::AbstractGame {
+        static constexpr CE::Input::Actions::Id quit_{1};
+        static constexpr CE::Input::Actions::Id left_{2};
+        static constexpr CE::Input::Actions::Id right_{3};
+        static constexpr CE::Input::Actions::Id next_cell_{4};
         static constexpr float actor_scale_ = 4.0f;
 
-        CE::Engine::EngineContext& engine_;
+        CE::Runtime::Context& engine_;
         std::filesystem::path asset_root_;
-        CE::Camera2D camera_;
-        std::array<CE::Input::BindingId, 4> bindings_{};
+        CE::Rendering::Camera2D camera_;
+        std::array<CE::Input::Actions::BindingId, 4> bindings_{};
         std::optional<Actor> actor_;
-        std::optional<CE::Assets::RenderedText> score_;
-        std::shared_ptr<const CE::Assets::Material> images_;
-        std::shared_ptr<const CE::Assets::Material> text_;
+        std::optional<CE::Text::Rendering::Generation> score_;
+        std::shared_ptr<const CE::Rendering::Resources::Material> images_;
+        std::shared_ptr<const CE::Rendering::Resources::Material> text_;
 
     public:
-        Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root);
+        Game(CE::Runtime::Context& engine, std::filesystem::path asset_root);
         void init() override;
-        void update(const CE::GFramework::TickContext& tick) override;
-        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override;
+        void update(const CE::Game::TickContext& tick) override;
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override;
         void deinit() override;
     };
     // [/game]

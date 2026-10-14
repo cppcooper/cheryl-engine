@@ -39,58 +39,58 @@ namespace {
         std::thread::id simulation;
         std::atomic<bool> red_seen{false};
         std::atomic<bool> blue_seen{false};
-        CE::RenderAPIs::RenderFrame red_frame;
-        CE::RenderAPIs::RenderFrame blue_frame;
-        std::vector<std::weak_ptr<const CE::Assets::Image>> images;
-        std::vector<std::weak_ptr<const CE::Assets::Geometry2D>> geometry;
+        CE::Rendering::Frame red_frame;
+        CE::Rendering::Frame blue_frame;
+        std::vector<std::weak_ptr<const CE::Rendering::Resources::Image>> images;
+        std::vector<std::weak_ptr<const CE::Rendering::Geometry::Buffer2D>> geometry;
         bool input_attached = false;
         bool game_stopped = false;
         bool renderer_stopped = false;
         unsigned presentations = 0;
     };
 
-    class Window final : public CE::iWindow {
+    class Window final : public CE::Platform::Window {
         const std::thread::id owner_ = std::this_thread::get_id();
         const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
 
     public:
-        CE::ViewPort<int> logical_size() const override {
+        CE::Platform::Dimensions<int> logical_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
             return {320, 240};
         }
-        CE::FramebufferSize framebuffer_size() const override {
+        CE::Platform::FramebufferSize framebuffer_size() const override {
             EXPECT_EQ(std::this_thread::get_id(), owner_);
             return {640, 480};
         }
-        CE::Enum::window_mode mode() const override { return CE::Enum::window_mode::NORMAL; }
+        CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
         bool should_close() const override { return std::chrono::steady_clock::now() >= deadline_; }
         void resize(int, int) override {}
-        void set_mode(CE::Enum::window_mode) override {}
+        void set_mode(CE::Platform::WindowMode) override {}
         void hide_cursor(bool) const override {}
     };
 
-    class Display final : public CE::iDisplaySystem {
-        std::vector<CE::Monitor> monitors_{{1, 640, 480}};
+    class Display final : public CE::Platform::DisplaySystem {
+        std::vector<CE::Platform::Monitor> monitors_{{1, 640, 480}};
         Window window_;
 
     public:
-        const std::vector<CE::Monitor>& monitors() const override { return monitors_; }
+        const std::vector<CE::Platform::Monitor>& monitors() const override { return monitors_; }
         int monitor_count() const override { return 1; }
-        const CE::Monitor& primary_monitor() const override { return monitors_.front(); }
-        CE::iWindow* active_window() const override { return const_cast<Window*>(&window_); }
-        std::pair<float, float> content_scale(const CE::Monitor&) const override { return {2, 2}; }
-        CE::iWindow* create_window(const CE::Monitor&, CE::Enum::window_mode, int, int) override { return &window_; }
-        void activate_window(CE::iWindow&) override {}
+        const CE::Platform::Monitor& primary_monitor() const override { return monitors_.front(); }
+        CE::Platform::Window* active_window() const override { return const_cast<Window*>(&window_); }
+        std::pair<float, float> content_scale(const CE::Platform::Monitor&) const override { return {2, 2}; }
+        CE::Platform::Window* create_window(const CE::Platform::Monitor&, CE::Platform::WindowMode, int, int) override { return &window_; }
+        void activate_window(CE::Platform::Window&) override {}
     };
 
-    class Input final : public CE::Input::iInputSystem {
+    class Input final : public CE::Input::System {
         RuntimeState& state_;
-        CE::Input::InputBindings bindings_;
+        CE::Input::Actions::Bindings bindings_;
 
     public:
         explicit Input(RuntimeState& state)
         : state_(state) {}
-        void initialize(CE::iWindow&) override { state_.input_attached = true; }
+        void initialize(CE::Platform::Window&) override { state_.input_attached = true; }
         void deinitialize() override {
             discard_captured_input();
             state_.input_attached = false;
@@ -100,91 +100,102 @@ namespace {
             begin_input_poll();
             (void)publish_input();
         }
-        CE::Input::InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         CE::Input::DeviceId keyboard_id() const override { return 1; }
         CE::Input::DeviceId mouse_id() const override { return 2; }
         CE::Input::DeviceId gamepad_id() const override { return 3; }
-        bool supports(CE::Input::InputMode) const override { return true; }
+        bool supports(CE::Input::Capture::Channel) const override { return true; }
         bool supports_focus() const override { return true; }
     };
 
-    struct MemoryImage final : CE::Assets::Image {
-        CE::Assets::DecodedImage pixels;
+    struct MemoryImage final : CE::Rendering::Resources::Image {
+        CE::Assets::Images::Decoded pixels;
 
-        explicit MemoryImage(CE::Assets::DecodedImage data)
+        explicit MemoryImage(CE::Assets::Images::Decoded data)
         : pixels(std::move(data)) {}
-        CE::Assets::PixelSize pixel_size() const override { return pixels.size; }
+        CE::Rendering::Geometry::PixelSize pixel_size() const override { return pixels.size; }
         void bind(std::uint32_t) const override {}
     };
 
-    struct MemoryGeometry final : CE::Assets::Geometry2D {
-        std::vector<CE::Vertex2DColor> vertices;
+    struct MemoryGeometry final : CE::Rendering::Geometry::Buffer2D {
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> vertices;
 
-        explicit MemoryGeometry(const std::span<const CE::Vertex2DColor> data)
+        explicit MemoryGeometry(const std::span<const CE::Rendering::Geometry::Vertex2DColor> data)
         : vertices(data.begin(), data.end()) {}
-        CE::Assets::VertexLayout2D vertex_layout() const noexcept override { return CE::Assets::VertexLayout2D::Position3UV2Color4; }
-        CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::Triangles; }
+        CE::Rendering::Geometry::Layout2D vertex_layout() const noexcept override {
+            return CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+        }
+        CE::Rendering::Geometry::Topology topology() const noexcept override { return CE::Rendering::Geometry::Topology::Triangles; }
         std::size_t vertex_count() const noexcept override { return vertices.size(); }
         void bind() const override {}
         void draw(std::size_t, std::size_t) const override {}
     };
 
-    class Resources final : public CE::Assets::ResourceProvider {
+    class Resources final : public CE::Rendering::Resources::Provider {
         RuntimeState& state_;
 
     public:
         explicit Resources(RuntimeState& state)
         : state_(state) {}
-        std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& data) override {
+        std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& data) override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             auto image = std::make_shared<MemoryImage>(data);
             state_.images.push_back(image);
             return image;
         }
-        std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize) override {
+        std::shared_ptr<CE::Rendering::Resources::Image>
+        create_font_atlas(std::span<const unsigned char>, CE::Rendering::Geometry::PixelSize) override {
             throw std::logic_error("RmlUi uploads RGBA font images");
         }
-        std::shared_ptr<CE::Assets::Geometry2D> upload_geometry(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology) override {
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+        upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D>, CE::Rendering::Geometry::Topology) override {
             throw std::logic_error("RmlUi needs colored vertices");
         }
-        std::shared_ptr<CE::Assets::Geometry2D>
-        upload_geometry(const std::span<const CE::Vertex2DColor> vertices, const CE::Assets::PrimitiveTopology topology) override {
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> upload_geometry(
+            const std::span<const CE::Rendering::Geometry::Vertex2DColor> vertices,
+            const CE::Rendering::Geometry::Topology topology
+        ) override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
-            EXPECT_EQ(topology, CE::Assets::PrimitiveTopology::Triangles);
+            EXPECT_EQ(topology, CE::Rendering::Geometry::Topology::Triangles);
             auto geometry = std::make_shared<MemoryGeometry>(vertices);
             state_.geometry.push_back(geometry);
             return geometry;
         }
-        std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
+        std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override { return {}; }
     };
 
-    class MemoryPipeline final : public CE::Assets::Pipeline {
+    class MemoryPipeline final : public CE::Rendering::Resources::Pipeline {
     public:
-        explicit MemoryPipeline(CE::Assets::PipelineDefinition definition)
-        : CE::Assets::Pipeline(std::move(definition)) {}
+        explicit MemoryPipeline(CE::Rendering::Pipelines::Definition definition)
+        : CE::Rendering::Resources::Pipeline(std::move(definition)) {}
     };
 
     Materials materials() {
-        using namespace CE::Assets;
-        PipelineDefinition definition;
+        CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {"controlled-ui"};
-        definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
-        definition.state.blend = BlendMode::PremultipliedAlpha;
-        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection}};
+        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+        definition.state.blend = CE::Rendering::Pipelines::Blend::PremultipliedAlpha;
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
+        };
         Materials result;
-        result.solid = std::make_shared<Material>(MaterialDefinition{std::make_shared<MemoryPipeline>(definition), {}});
-        definition.parameters.push_back({"image", ParameterType::Sampler2D});
-        result.textured = std::make_shared<Material>(MaterialDefinition{std::make_shared<MemoryPipeline>(std::move(definition)), {}});
+        result.solid = std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(definition), {}}
+        );
+        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+        result.textured = std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(std::move(definition)), {}}
+        );
         return result;
     }
 
-    std::shared_ptr<const MemoryImage> picture_image(const CE::RenderAPIs::RenderFrame& frame) {
+    std::shared_ptr<const MemoryImage> picture_image(const CE::Rendering::Frame& frame) {
         for (const auto& pass : frame.passes())
             for (const auto& draw : pass.draws) {
                 const auto found = draw.parameters.find("image");
                 if (found == draw.parameters.end())
                     continue;
-                const auto& binding = std::get<CE::Assets::ImageBinding>(found->second);
+                const auto& binding = std::get<CE::Rendering::Parameters::ImageBinding>(found->second);
                 auto image = std::dynamic_pointer_cast<const MemoryImage>(binding.image);
                 if (image && image->pixels.size.width == 1 && image->pixels.size.height == 2)
                     return image;
@@ -194,8 +205,8 @@ namespace {
 
     // Runtime slots are borrowed. Copy published packets into an owned frame,
     // rather than retaining a pointer to a slot the runtime will recycle.
-    void retain_frame(const CE::RenderAPIs::RenderFrame& source, CE::RenderAPIs::RenderFrame& retained) {
-        CE::RenderAPIs::RenderFrameWriter writer(retained);
+    void retain_frame(const CE::Rendering::Frame& source, CE::Rendering::Frame& retained) {
+        CE::Rendering::FrameWriter writer(retained);
         for (const auto& pass : source.passes()) {
             auto output = writer.begin_pass(pass.projection, pass.view, pass.constraints, pass.parameters);
             for (const auto& draw : pass.draws)
@@ -203,7 +214,7 @@ namespace {
         }
     }
 
-    class Renderer final : public CE::RenderAPIs::iRenderer {
+    class Renderer final : public CE::Rendering::Renderer {
         RuntimeState& state_;
 
     public:
@@ -217,7 +228,7 @@ namespace {
             state_.renderer_stopped = true;
         }
         void maintain_resources() override {}
-        void render(const CE::RenderAPIs::RenderFrame& frame) override {
+        void render(const CE::Rendering::Frame& frame) override {
             EXPECT_EQ(std::this_thread::get_id(), state_.platform);
             const auto image = picture_image(frame);
             if (!image)
@@ -231,13 +242,13 @@ namespace {
             }
         }
         void clear() override {}
-        void set_viewport(CE::FramebufferSize size) override { EXPECT_EQ(size, (CE::FramebufferSize{640, 480})); }
+        void set_viewport(CE::Platform::FramebufferSize size) override { EXPECT_EQ(size, (CE::Platform::FramebufferSize{640, 480})); }
         void set_depth_test(bool) override {}
         void set_clear_colour(float, float, float, float) override {}
         void set_camera_matrices(const glm::mat4&, const glm::mat4&) override {}
     };
 
-    class Surface final : public CE::RenderAPIs::iPresentationSurface {
+    class Surface final : public CE::Rendering::PresentationSurface {
         RuntimeState& state_;
 
     public:
@@ -249,8 +260,8 @@ namespace {
         }
     };
 
-    class Game final : public CE::GFramework::AbstractGame {
-        CE::Engine::EngineContext& engine_;
+    class Game final : public CE::Game::AbstractGame {
+        CE::Runtime::Context& engine_;
         RuntimeState& state_;
         SceneUploader uploader_;
         Materials materials_;
@@ -261,7 +272,7 @@ namespace {
         bool blue_submitted_ = false;
 
     public:
-        Game(CE::Engine::EngineContext& engine, RuntimeState& state)
+        Game(CE::Runtime::Context& engine, RuntimeState& state)
         : engine_(engine), state_(state), uploader_(engine.resources()) {}
         void init() override { materials_ = materials(); }
         void deinit() override {
@@ -273,10 +284,10 @@ namespace {
             materials_ = {};
             state_.game_stopped = true;
         }
-        void update(const CE::GFramework::TickContext& tick) override {
+        void update(const CE::Game::TickContext& tick) override {
             EXPECT_EQ(tick.logical_size.width, 320);
             EXPECT_EQ(tick.logical_size.height, 240);
-            EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{640, 480}));
+            EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{640, 480}));
             if (!session_) {
                 state_.simulation = std::this_thread::get_id();
                 session_ = std::make_unique<Session>(engine_.input(), 7);
@@ -313,22 +324,22 @@ namespace {
             session_->update_time(tick.delta_seconds);
             session_->handle_input(tick.input.records(), true);
         }
-        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
             EXPECT_EQ(std::this_thread::get_id(), state_.simulation);
             current_.write(frame);
         }
     };
 
-    void run_ui(const CE::GFramework::RunMode mode) {
+    void run_ui(const CE::Runtime::RunMode mode) {
         RuntimeState state;
         EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
         {
-            CE::Engine::EngineContext engine(
+            CE::Runtime::Context engine(
                 std::make_unique<Display>(), std::make_unique<Surface>(state), std::make_unique<Renderer>(state),
                 std::make_unique<Resources>(state), std::make_unique<Input>(state)
             );
             Game game(engine, state);
-            CE::GFramework::GameRuntime runtime(engine, game, mode);
+            CE::Runtime::GameRuntime runtime(engine, game, mode);
             runtime.run();
             EXPECT_TRUE(state.red_seen.load());
             EXPECT_TRUE(state.blue_seen.load());
@@ -337,7 +348,7 @@ namespace {
             EXPECT_FALSE(state.input_attached);
             EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
             EXPECT_GE(state.presentations, 2u);
-            if (mode == CE::GFramework::RunMode::Concurrent)
+            if (mode == CE::Runtime::RunMode::Concurrent)
                 EXPECT_NE(state.simulation, state.platform);
             else
                 EXPECT_EQ(state.simulation, state.platform);
@@ -370,9 +381,9 @@ namespace {
 }
 
 TEST(ui_rmlui_runtime, sequential) {
-    run_ui(CE::GFramework::RunMode::Sequential);
+    run_ui(CE::Runtime::RunMode::Sequential);
 }
 
 TEST(ui_rmlui_runtime, concurrent) {
-    run_ui(CE::GFramework::RunMode::Concurrent);
+    run_ui(CE::Runtime::RunMode::Concurrent);
 }

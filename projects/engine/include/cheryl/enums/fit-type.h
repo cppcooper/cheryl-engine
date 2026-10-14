@@ -1,5 +1,5 @@
 #pragma once
 
-namespace CE::Enum {
-    enum fitType { exact, larger, greedy };
+namespace CE::Memory {
+    enum FitPolicy { exact, larger, greedy };
 }

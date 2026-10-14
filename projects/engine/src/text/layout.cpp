@@ -29,7 +29,7 @@ namespace CE::Text {
             if (error == U_MEMORY_ALLOCATION_ERROR)
                 throw std::bad_alloc{};
             if (U_FAILURE(error))
-                throw Exceptions::runtime_exception(CE_HERE, std::string(operation) + ": " + u_errorName(error));
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, std::string(operation) + ": " + u_errorName(error));
         }
 
         Bidi open_bidi() {
@@ -41,14 +41,14 @@ namespace CE::Text {
 
         std::string locale_for_language(const std::string& language) {
             if (language.empty() || language.find('\0') != std::string::npos || !std::in_range<int32_t>(language.size()))
-                throw Exceptions::invalid_args(CE_HERE, "Text language needs a nonempty BCP 47 tag without NUL");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Text language needs a nonempty BCP 47 tag without NUL");
             UErrorCode error = U_ZERO_ERROR;
             int32_t parsed = 0;
             std::vector<char> locale(ULOC_FULLNAME_CAPACITY);
             auto size = uloc_forLanguageTag(language.c_str(), locale.data(), static_cast<int32_t>(locale.size()), &parsed, &error);
             if (error == U_BUFFER_OVERFLOW_ERROR) {
                 if (size == std::numeric_limits<int32_t>::max())
-                    throw Exceptions::invalid_args(CE_HERE, "Text language exceeds ICU limits");
+                    throw ::CE::Exceptions::invalid_args(CE_HERE, "Text language exceeds ICU limits");
                 locale.resize(static_cast<std::size_t>(size) + 1);
                 error = U_ZERO_ERROR;
                 size = uloc_forLanguageTag(language.c_str(), locale.data(), static_cast<int32_t>(locale.size()), &parsed, &error);
@@ -56,7 +56,7 @@ namespace CE::Text {
             if (error == U_MEMORY_ALLOCATION_ERROR)
                 throw std::bad_alloc{};
             if (U_FAILURE(error) || parsed != static_cast<int32_t>(language.size()))
-                throw Exceptions::invalid_args(CE_HERE, "Text language must be a complete BCP 47 tag");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Text language must be a complete BCP 47 tag");
             return {locale.data(), static_cast<std::size_t>(size)};
         }
 
@@ -69,7 +69,7 @@ namespace CE::Text {
                 case ParagraphDirection::RightToLeft:
                     return 1;
             }
-            throw Exceptions::invalid_args(CE_HERE, "Unknown paragraph direction");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown paragraph direction");
         }
 
         bool paragraph_separator(const char32_t scalar) {
@@ -100,7 +100,7 @@ namespace CE::Text {
             bool missing{};
         };
         struct LineCandidate {
-            std::vector<ShapedGlyph> glyphs;
+            std::vector<::CE::Text::ShapedGlyph> glyphs;
             float width{};
             bool rtl{};
         };
@@ -110,8 +110,8 @@ namespace CE::Text {
         };
 
         class LayoutBuilder {
-            const std::vector<Utf8Scalar>& scalars_;
-            const LayoutOptions& options_;
+            const std::vector<::CE::Text::Utf8Scalar>& scalars_;
+            const ::CE::Text::LayoutOptions& options_;
             const std::size_t byte_count_;
             const std::string locale_;
             Detail::FreeTypeLibrary library_;
@@ -134,7 +134,7 @@ namespace CE::Text {
             std::size_t scalar_at(const int32_t offset) const {
                 const auto found = std::ranges::lower_bound(offsets_, offset);
                 if (found == offsets_.end() || *found != offset)
-                    throw Exceptions::runtime_exception(CE_HERE, "Unicode boundary splits a scalar");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unicode boundary splits a scalar");
                 return static_cast<std::size_t>(found - offsets_.begin());
             }
 
@@ -226,7 +226,7 @@ namespace CE::Text {
                 if (!hb_shape_full(faces_[segment.face].shape.get(), buffer.get(), nullptr, 0, nullptr)) {
                     if (!hb_buffer_allocation_successful(buffer.get()))
                         throw std::bad_alloc{};
-                    throw Exceptions::runtime_exception(CE_HERE, "Unable to shape a Unicode text run");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to shape a Unicode text run");
                 }
                 if (!hb_buffer_allocation_successful(buffer.get()))
                     throw std::bad_alloc{};
@@ -235,12 +235,12 @@ namespace CE::Text {
                 unsigned positioned = 0;
                 const auto* positions = hb_buffer_get_glyph_positions(buffer.get(), &positioned);
                 if (count != positioned)
-                    throw Exceptions::runtime_exception(CE_HERE, "Shaped glyphs have no matching positions");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Shaped glyphs have no matching positions");
                 std::vector<std::size_t> clusters;
                 clusters.reserve(static_cast<std::size_t>(count) + 1);
                 for (unsigned index = 0; index < count; ++index) {
                     if (info[index].cluster < segment.begin || info[index].cluster >= segment.end)
-                        throw Exceptions::runtime_exception(CE_HERE, "Shaping returned an invalid source cluster");
+                        throw ::CE::Exceptions::runtime_exception(CE_HERE, "Shaping returned an invalid source cluster");
                     clusters.push_back(info[index].cluster);
                 }
                 clusters.push_back(segment.end);
@@ -263,7 +263,7 @@ namespace CE::Text {
                         y = 0;
                     }
                     if (advance < 0 || !std::isfinite(line.width + advance) || !std::isfinite(x))
-                        throw Exceptions::runtime_exception(CE_HERE, "Text positions exceed horizontal layout limits");
+                        throw ::CE::Exceptions::runtime_exception(CE_HERE, "Text positions exceed horizontal layout limits");
                     line.glyphs.push_back({{face, glyph}, range(cluster, end), x, y, advance, missing});
                     line.width += advance;
                 }
@@ -271,19 +271,22 @@ namespace CE::Text {
 
         public:
             LayoutBuilder(
-                const FontCollection& fonts,
-                const std::vector<Utf8Scalar>& scalars,
-                const LayoutOptions& options,
+                const ::CE::Text::FontCollection& fonts,
+                const std::vector<::CE::Text::Utf8Scalar>& scalars,
+                const ::CE::Text::LayoutOptions& options,
                 const std::size_t byte_count
             )
-            : scalars_(scalars), options_(options), byte_count_(byte_count), locale_(locale_for_language(options.language)),
+            : scalars_(scalars),
+              options_(options),
+              byte_count_(byte_count),
+              locale_(locale_for_language(options.language)),
               library_(Detail::open_freetype()) {
                 const auto& data = Detail::FontAccess::data(fonts);
                 faces_.reserve(data.faces.size());
                 for (const auto& entry : data.faces) {
                     auto raster = Detail::open_face(library_.get(), entry, options.pixel_height);
                     if (!std::in_range<unsigned>(entry.bytes->size()))
-                        throw Exceptions::invalid_args(CE_HERE, "Font bytes exceed HarfBuzz limits");
+                        throw ::CE::Exceptions::invalid_args(CE_HERE, "Font bytes exceed HarfBuzz limits");
                     std::unique_ptr<hb_blob_t, decltype(&hb_blob_destroy)> blob(hb_blob_create(
                         reinterpret_cast<const char*>(entry.bytes->data()), static_cast<unsigned>(entry.bytes->size()),
                         HB_MEMORY_MODE_READONLY, nullptr, nullptr), hb_blob_destroy);
@@ -301,7 +304,7 @@ namespace CE::Text {
                     faces_.push_back({std::move(raster), std::move(shape)});
                 }
                 if (!(line_height_ > 0) || !std::isfinite(line_height_))
-                    throw Exceptions::runtime_exception(CE_HERE, "Text fonts need a finite positive line height");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Text fonts need a finite positive line height");
                 units_.reserve(scalars.size());
                 offsets_.reserve(scalars.size() + 1);
                 for (const auto& scalar : scalars) {
@@ -309,7 +312,7 @@ namespace CE::Text {
                     const auto value = static_cast<std::uint32_t>(scalar.value);
                     const auto width = value <= 0xffff ? 1u : 2u;
                     if (units_.size() > static_cast<std::size_t>(std::numeric_limits<int32_t>::max()) - width)
-                        throw Exceptions::invalid_args(CE_HERE, "Text exceeds ICU UTF-16 limits");
+                        throw ::CE::Exceptions::invalid_args(CE_HERE, "Text exceeds ICU UTF-16 limits");
                     if (width == 1) {
                         units_.push_back(static_cast<UChar>(value));
                     } else {
@@ -323,7 +326,7 @@ namespace CE::Text {
 
             [[nodiscard]] float line_height() const { return line_height_; }
 
-            [[nodiscard]] SourceRange range(const std::size_t begin, const std::size_t end) const {
+            [[nodiscard]] ::CE::Text::SourceRange range(const std::size_t begin, const std::size_t end) const {
                 const auto first = begin == scalars_.size() ? byte_count_ : scalars_[begin].byte_offset;
                 const auto last = end == scalars_.size() ? byte_count_ : scalars_[end].byte_offset;
                 return {first, last - first, begin, end - begin};
@@ -410,11 +413,11 @@ namespace CE::Text {
 
     ShapedText layout_text(const FontCollection& fonts, const std::string_view text, const LayoutOptions& options) {
         if (!options.pixel_height || options.pixel_height > static_cast<unsigned>(std::numeric_limits<int>::max() / 64))
-            throw Exceptions::invalid_args(CE_HERE, "Text size must be positive and fit shaping metrics");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Text size must be positive and fit shaping metrics");
         if (options.maximum_width && (!std::isfinite(*options.maximum_width) || *options.maximum_width <= 0))
-            throw Exceptions::invalid_args(CE_HERE, "Text maximum width must be finite and positive");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Text maximum width must be finite and positive");
         if (!std::in_range<int32_t>(text.size()))
-            throw Exceptions::invalid_args(CE_HERE, "Text exceeds paragraph source limits");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Text exceeds paragraph source limits");
         static_cast<void>(paragraph_level(options.direction));
         ShapedText result(fonts, options);
         result.scalars_ = decode_utf8(text);
@@ -424,7 +427,7 @@ namespace CE::Text {
         const auto append = [&](const std::size_t begin, const std::size_t end, LineCandidate line) {
             const auto baseline = -result.line_height_ * static_cast<float>(result.lines_.size());
             if (!std::isfinite(baseline))
-                throw Exceptions::runtime_exception(CE_HERE, "Text line positions exceed finite metrics");
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Text line positions exceed finite metrics");
             const bool overflow = options.maximum_width && line.width > *options.maximum_width;
             const auto leading = line.rtl && options.maximum_width && !overflow ? *options.maximum_width - line.width : 0.0f;
             const auto first = result.glyphs_.size();
@@ -432,7 +435,7 @@ namespace CE::Text {
                 glyph.x += leading;
                 glyph.y += baseline;
                 if (!std::isfinite(glyph.x) || !std::isfinite(glyph.y))
-                    throw Exceptions::runtime_exception(CE_HERE, "Text glyph positions exceed finite metrics");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Text glyph positions exceed finite metrics");
                 result.glyphs_.push_back(std::move(glyph));
             }
             result.lines_.push_back({builder.range(begin, end), first, result.glyphs_.size() - first,
@@ -482,7 +485,7 @@ namespace CE::Text {
                         break;
                 }
                 if (chosen_end <= start)
-                    throw Exceptions::runtime_exception(CE_HERE, "Text wrapping failed to advance");
+                    throw ::CE::Exceptions::runtime_exception(CE_HERE, "Text wrapping failed to advance");
                 append(start, chosen_end, std::move(chosen));
                 start = chosen_end;
             }

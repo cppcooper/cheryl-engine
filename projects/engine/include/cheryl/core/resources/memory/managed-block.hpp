@@ -2,7 +2,7 @@
 #include <core/resources/memory/mem-mgr.h>
 #include <memory>
 
-namespace CE::Mem {
+namespace CE::Memory {
     /**
      * Retain a HeapBlock and its byte release context. Final release returns the
      * range for reuse even after the Manager facade has been destroyed. Creating

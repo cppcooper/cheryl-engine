@@ -30,13 +30,13 @@ namespace {
             throw std::runtime_error(message);
     }
 
-    CE::LogConfig configuration(const std::filesystem::path& directory, const bool discard = false) {
-        CE::LogConfig result;
+    CE::Logging::Config configuration(const std::filesystem::path& directory, const bool discard = false) {
+        CE::Logging::Config result;
         result.directory = directory;
         result.rotate_on_open = false;
         result.logger_level = result.file_level = spdlog::level::warn;
         result.console_level = spdlog::level::off;
-        result.overflow_policy = discard ? CE::LogOverflowPolicy::DiscardNew : CE::LogOverflowPolicy::Block;
+        result.overflow_policy = discard ? CE::Logging::OverflowPolicy::DiscardNew : CE::Logging::OverflowPolicy::Block;
         return result;
     }
 
@@ -64,17 +64,17 @@ namespace {
     template <const char* name> void named_writes(const std::string_view phase) {
         CE_LOG_WARN(name, "named-formatted category={} phase={}", name, phase);
         UWARN(name) << "named-stream category=" << name << " phase=" << phase;
-        CE::Logger<name>::warn("named-direct category={} phase={}", name, phase);
+        CE::Logging::Logger<name>::warn("named-direct category={} phase={}", name, phase);
     }
 
     template <const char* name> void prepare_named(const std::filesystem::path& directory) {
-        CE::Logger<name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
-        CE::Logger<name>::set_pattern("[%n] [%l] %v");
+        CE::Logging::Logger<name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
+        CE::Logging::Logger<name>::set_pattern("[%n] [%l] %v");
     }
 
     template <const char* name> void acquire_named() {
         // First ordinary acquisition retains the normal default directory/profile.
-        auto& log = CE::Logger<name>::get();
+        auto& log = CE::Logging::Logger<name>::get();
         require(log.initial_configuration().directory == std::filesystem::current_path() / "logs", "lazy category changed directory");
         log.set_level_logger(spdlog::level::warn);
         log.set_level_filesink(spdlog::level::warn);
@@ -83,9 +83,9 @@ namespace {
     }
 
     void observe_events() {
-        CE::Logger<CE::enginelog>::set_level_logger(spdlog::level::debug);
-        CE::Logger<CE::enginelog>::set_level_filesink(spdlog::level::debug);
-        CE::SubSystems::EventBus bus;
+        CE::Logging::Logger<CE::Logging::Categories::engine>::set_level_logger(spdlog::level::debug);
+        CE::Logging::Logger<CE::Logging::Categories::engine>::set_level_filesink(spdlog::level::debug);
+        CE::Events::EventBus bus;
         int calls = 0;
         const auto registration = bus.register_listener("isolated-secret-event", [&](std::any) { ++calls; });
         bus.dispatch("isolated-secret-event", "isolated-secret-payload");
@@ -100,33 +100,35 @@ namespace {
         const auto directory = std::filesystem::absolute(supplied_directory);
         std::filesystem::current_path(directory);
         const auto engine_directory = directory / "logs";
-        CE::Log<game_name> game{{}, configuration(directory)};
+        CE::Logging::Log<game_name> game{{}, configuration(directory)};
         game.set_pattern("[%n] [%l] %v");
         game.make_default();
         const auto* game_default = spdlog::default_logger().get();
         spdlog::warn("host-game-marker");
 
-        prepare_named<CE::enginelog>(engine_directory);
+        prepare_named<CE::Logging::Categories::engine>(engine_directory);
         require(spdlog::default_logger().get() == game_default, "explicit engine initialization replaced game default");
         bool repeated = false;
         try {
-            CE::Logger<CE::enginelog>::initialize(spdlog::file_event_handlers{}, configuration(engine_directory));
+            CE::Logging::Logger<CE::Logging::Categories::engine>::initialize(
+                spdlog::file_event_handlers{}, configuration(engine_directory)
+            );
         } catch (const CE::Exceptions::bad_request&) {
             repeated = true;
         }
         require(repeated, "repeated category initialization did not reject");
-        acquire_named<CE::platformlog>();
+        acquire_named<CE::Logging::Categories::platform>();
         require(spdlog::default_logger().get() == game_default, "lazy platform initialization replaced game default");
-        prepare_named<CE::assetlog>(engine_directory);
+        prepare_named<CE::Logging::Categories::assets>(engine_directory);
         require(spdlog::default_logger().get() == game_default, "asset initialization replaced game default");
-        named_writes<CE::enginelog>("game-default");
-        named_writes<CE::platformlog>("game-default");
-        named_writes<CE::assetlog>("game-default");
+        named_writes<CE::Logging::Categories::engine>("game-default");
+        named_writes<CE::Logging::Categories::platform>("game-default");
+        named_writes<CE::Logging::Categories::assets>("game-default");
         observe_events();
         require(spdlog::default_logger().get() == game_default, "engine observer replaced game default");
 
-        CE::Logger<CE::enginelog>::make_default();
-        require(spdlog::default_logger()->name() == CE::enginelog, "engine category did not become explicit default");
+        CE::Logging::Logger<CE::Logging::Categories::engine>::make_default();
+        require(spdlog::default_logger()->name() == CE::Logging::Categories::engine, "engine category did not become explicit default");
         auto native_host = std::make_shared<spdlog::logger>(
             "app-native", std::make_shared<spdlog::sinks::basic_file_sink_mt>((directory / "app-native.log").string(), true)
         );
@@ -134,49 +136,50 @@ namespace {
         native_host->set_pattern("[%n] [%l] %v");
         spdlog::set_default_logger(native_host);
         spdlog::warn("host-native-marker");
-        prepare_named<CE::renderlog>(engine_directory);
+        prepare_named<CE::Logging::Categories::rendering>(engine_directory);
         require(spdlog::default_logger() == native_host, "render initialization replaced native host default");
-        acquire_named<CE::memlog>();
+        acquire_named<CE::Logging::Categories::memory>();
         require(spdlog::default_logger() == native_host, "lazy memory initialization replaced native host default");
-        named_writes<CE::enginelog>("native-default");
-        named_writes<CE::platformlog>("native-default");
-        named_writes<CE::renderlog>("native-default");
-        named_writes<CE::assetlog>("native-default");
-        named_writes<CE::memlog>("native-default");
+        named_writes<CE::Logging::Categories::engine>("native-default");
+        named_writes<CE::Logging::Categories::platform>("native-default");
+        named_writes<CE::Logging::Categories::rendering>("native-default");
+        named_writes<CE::Logging::Categories::assets>("native-default");
+        named_writes<CE::Logging::Categories::memory>("native-default");
         observe_events();
 
         // Finish earlier accepted writes before narrowing the async destination gate.
-        CE::Logger<CE::assetlog>::close(2s);
-        CE::Logger<CE::assetlog>::reopen();
-        CE::Logger<CE::assetlog>::set_pattern("[%n] [%l] %v");
-        CE::Logger<CE::assetlog>::set_level_filesink(spdlog::level::err);
+        CE::Logging::Logger<CE::Logging::Categories::assets>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::assets>::reopen();
+        CE::Logging::Logger<CE::Logging::Categories::assets>::set_pattern("[%n] [%l] %v");
+        CE::Logging::Logger<CE::Logging::Categories::assets>::set_level_filesink(spdlog::level::err);
         int prepared = 0;
-        CE_LOG_WARN(CE::assetlog, "filtered-asset-formatted {}", ++prepared);
-        UWARN(CE::assetlog) << "filtered-asset-stream " << ++prepared;
-        CE::Logger<CE::assetlog>::warn("filtered-asset-direct");
-        CE_LOG_ERROR(CE::assetlog, "admitted-asset-error");
+        CE_LOG_WARN(CE::Logging::Categories::assets, "filtered-asset-formatted {}", ++prepared);
+        UWARN(CE::Logging::Categories::assets) << "filtered-asset-stream " << ++prepared;
+        CE::Logging::Logger<CE::Logging::Categories::assets>::warn("filtered-asset-direct");
+        CE_LOG_ERROR(CE::Logging::Categories::assets, "admitted-asset-error");
         require(prepared == 0, "filtered named arguments were evaluated");
-        named_writes<CE::renderlog>("independent-filter");
+        named_writes<CE::Logging::Categories::rendering>("independent-filter");
 
-        CE::Logger<CE::enginelog>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::engine>::close(2s);
         require(spdlog::default_logger() == native_host, "closing engine category replaced host default");
-        named_writes<CE::enginelog>("closed-category");
-        CE::Logger<CE::enginelog>::reopen();
+        named_writes<CE::Logging::Categories::engine>("closed-category");
+        CE::Logging::Logger<CE::Logging::Categories::engine>::reopen();
         require(spdlog::default_logger() == native_host, "reopening engine category replaced host default");
-        CE::Logger<CE::enginelog>::set_pattern("[%n] [%l] %v");
-        named_writes<CE::enginelog>("reopened-category");
-        CE::Logger<CE::enginelog>::close(2s);
-        CE::Logger<CE::platformlog>::close(2s);
-        CE::Logger<CE::renderlog>::close(2s);
-        CE::Logger<CE::assetlog>::close(2s);
-        CE::Logger<CE::memlog>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::engine>::set_pattern("[%n] [%l] %v");
+        named_writes<CE::Logging::Categories::engine>("reopened-category");
+        CE::Logging::Logger<CE::Logging::Categories::engine>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::platform>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::rendering>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::assets>::close(2s);
+        CE::Logging::Logger<CE::Logging::Categories::memory>::close(2s);
         require(spdlog::default_logger() == native_host, "category shutdown replaced host default");
         require(!std::filesystem::exists(engine_directory / "cheryl.log"), "engine routing initialized legacy log");
         native_host->flush();
         game.close(2s);
         std::printf(
-            "named-routing compiled-warn=%d compiled-error=%d compiled-debug=%d\n", ctlog::enabled(ctlog::WARNING_),
-            ctlog::enabled(ctlog::ERROR_), ctlog::enabled(ctlog::DEBUG_)
+            "named-routing compiled-warn=%d compiled-error=%d compiled-debug=%d\n",
+            CE::Logging::Compile::enabled(CE::Logging::Compile::WARNING_), CE::Logging::Compile::enabled(CE::Logging::Compile::ERROR_),
+            CE::Logging::Compile::enabled(CE::Logging::Compile::DEBUG_)
         );
     }
 
@@ -219,9 +222,9 @@ namespace {
     void faults() {
         for (const bool nonstandard : {false, true}) {
             for (const bool flush : {false, true}) {
-                auto counters = std::make_shared<CE::LogDetail::BackendCounters>();
-                auto state = std::make_shared<CE::LogDetail::DestinationState>(counters, true);
-                CE::LogDetail::GuardedSink guard{std::make_shared<FailingSink>(nonstandard), state};
+                auto counters = std::make_shared<CE::Logging::Detail::BackendCounters>();
+                auto state = std::make_shared<CE::Logging::Detail::DestinationState>(counters, true);
+                CE::Logging::Detail::GuardedSink guard{std::make_shared<FailingSink>(nonstandard), state};
                 if (flush)
                     guard.flush();
                 else
@@ -244,7 +247,7 @@ namespace {
         };
         auto config = configuration(directory);
         config.rotation_bytes = 16;
-        CE::Log<owner_name> log{handlers, config};
+        CE::Logging::Log<owner_name> log{handlers, config};
         {
             const auto native = spdlog::get(owner_name);
             native->warn("first large rotation record");
@@ -274,8 +277,8 @@ namespace {
     };
 
     void full_reentry(const std::filesystem::path& directory, const bool discard) {
-        CE::Log<owner_name> holder{{}, configuration(directory)};
-        CE::Log<target_name> target{{}, configuration(directory, discard)};
+        CE::Logging::Log<owner_name> holder{{}, configuration(directory)};
+        CE::Logging::Log<target_name> target{{}, configuration(directory, discard)};
         auto native_holder = spdlog::get(owner_name);
         auto native_target = spdlog::get(target_name);
         std::promise<void> entered;
@@ -321,7 +324,7 @@ namespace {
     }
 
     void retained(const std::filesystem::path& directory) {
-        CE::Log<owner_name> log{{}, configuration(directory)};
+        CE::Logging::Log<owner_name> log{{}, configuration(directory)};
         auto native = spdlog::get(owner_name);
         auto clone = native->clone("isolated-clone");
         clone->warn("retained-clone-record");
@@ -339,8 +342,8 @@ namespace {
 
     void fatal_destruction(const std::filesystem::path& directory) {
         std::set_terminate([] { std::_Exit(86); });
-        auto target = std::make_unique<CE::Log<target_name>>(spdlog::file_event_handlers{}, configuration(directory));
-        CE::Log<owner_name> holder{{}, configuration(directory)};
+        auto target = std::make_unique<CE::Logging::Log<target_name>>(spdlog::file_event_handlers{}, configuration(directory));
+        CE::Logging::Log<owner_name> holder{{}, configuration(directory)};
         {
             auto native = spdlog::get(owner_name);
             native->sinks()[1]->set_formatter(std::make_unique<CallbackFormatter>([&] { target.reset(); }));
@@ -371,7 +374,7 @@ int main(const int argc, const char* const* argv) {
         else if (scenario == "fatal-destruction")
             fatal_destruction(directory);
         else if (scenario == "static") {
-            CE::Logger<static_name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
+            CE::Logging::Logger<static_name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
             spdlog::get(static_name)->warn("static-final-record");
             // Return normally: the singleton/pool teardown must drain this record.
         } else

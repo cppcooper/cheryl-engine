@@ -12,13 +12,13 @@
 #include <mutex>
 #include <vector>
 
-namespace CE {
+namespace CE::Logging {
     /** Cumulative observations for one Log, including failed openings and all
      * generations. Fields are sampled independently. Degradation describes the
      * last published generation and clears only after completed close/reopen.
      * Suppressed operations were already queued when their destination failed.
      */
-    struct LogBackendStats {
+    struct BackendStats {
         std::size_t failed_operations = 0;
         std::size_t callback_failures = 0;
         std::size_t suppressed_operations = 0;
@@ -29,7 +29,7 @@ namespace CE {
     };
 }
 
-namespace CE::LogDetail {
+namespace CE::Logging::Detail {
     struct BackendCounters {
         std::atomic_size_t failed_operations{0};
         std::atomic_size_t callback_failures{0};

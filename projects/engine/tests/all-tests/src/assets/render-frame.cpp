@@ -9,55 +9,61 @@
 #include <variant>
 
 namespace {
-    class FrameGeometry final : public CE::Assets::Geometry2D {
+    class FrameGeometry final : public CE::Rendering::Geometry::Buffer2D {
     public:
-        CE::Assets::VertexLayout2D vertex_layout() const noexcept override { return CE::Assets::VertexLayout2D::Position3UV2; }
-        CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::TriangleStrip; }
+        CE::Rendering::Geometry::Layout2D vertex_layout() const noexcept override {
+            return CE::Rendering::Geometry::Layout2D::Position3UV2;
+        }
+        CE::Rendering::Geometry::Topology topology() const noexcept override { return CE::Rendering::Geometry::Topology::TriangleStrip; }
         std::size_t vertex_count() const noexcept override { return 16; }
         void bind() const override { FAIL() << "Frame preparation must not bind geometry"; }
         void draw(std::size_t, std::size_t) const override { FAIL() << "Frame preparation must not draw geometry"; }
     };
-    class FramePipeline final : public CE::Assets::Pipeline {
+    class FramePipeline final : public CE::Rendering::Resources::Pipeline {
     public:
         FramePipeline()
-        : Pipeline(make_definition()) {}
+        : CE::Rendering::Resources::Pipeline(make_definition()) {}
 
     private:
-        static CE::Assets::PipelineDefinition make_definition() {
-            using namespace CE::Assets;
-            PipelineDefinition definition;
+        static CE::Rendering::Pipelines::Definition make_definition() {
+            CE::Rendering::Pipelines::Definition definition;
             definition.program_sources = {"frame.vert", "frame.frag"};
-            definition.topology = PrimitiveTopology::TriangleStrip;
-            definition.parameters = {{"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-                {"view", ParameterType::Mat4, true, ParameterSemantic::View}};
+            definition.topology = CE::Rendering::Geometry::Topology::TriangleStrip;
+            definition.parameters = {
+                {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+                {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View}
+            };
             return definition;
         }
     };
-    CE::RenderAPIs::DrawPacket2D make_packet(
-        const CE::Assets::Sprite& sprite,
-        CE::Assets::CellIndex cell,
+    CE::Rendering::DrawPacket2D make_packet(
+        const CE::Assets::Sprites::Asset& sprite,
+        CE::Assets::Grids::CellIndex cell,
         const glm::mat4& model = glm::mat4{1.0f},
-        const CE::Assets::ShaderPass& pass = CE::Assets::ShaderPass{}
+        const CE::Rendering::Parameters::PassSemantics& pass = CE::Rendering::Parameters::PassSemantics{}
     ) {
-        CE::RenderAPIs::DrawStyle2D style;
-        style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<FramePipeline>(), {}});
+        CE::Rendering::DrawStyle2D style;
+        style.material = std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<FramePipeline>(), {}}
+        );
         style.model_matrix = model;
-        CE::Assets::SubmissionContext2D context;
+        CE::Rendering::Submission::Context2D context;
         context.pass = pass;
-        return CE::Assets::resolve_sprite(sprite, cell, style, context);
+        return CE::Rendering::Submission::resolve_sprite(sprite, cell, style, context);
     }
 
-    std::shared_ptr<CE::Assets::Sprite> make_sprite() {
+    std::shared_ptr<CE::Assets::Sprites::Asset> make_sprite() {
         using namespace std::chrono_literals;
-        CE::Assets::SpriteDefinition definition;
+        CE::Assets::Sprites::Definition definition;
         definition.grid.frame = {16, 16};
         definition.grid.rows = 1;
         definition.grid.columns = 4;
         definition.animations.push_back({.name = "walk", .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}, {3, 100ms}}, .loop = true});
         definition.animations.push_back({.name = "fall", .frames = {{0, 100ms}, {1, 100ms}, {2, 100ms}}, .loop = false});
         // CPU metadata is sufficient for resolution; these resources cannot issue GPU work.
-        return std::make_shared<CE::Assets::Sprite>(CE::Assets::SpriteData{
-            .geometry = std::make_shared<FrameGeometry>(), .texture = nullptr, .definition = std::move(definition)});
+        return std::make_shared<CE::Assets::Sprites::Asset>(CE::Assets::Sprites::Data{
+            .geometry = std::make_shared<FrameGeometry>(), .texture = nullptr, .definition = std::move(definition)
+        });
     }
 }
 
@@ -103,9 +109,9 @@ TEST(render_frame, immutable_publication) {
     view[3][0] = -40.0f;
     glm::mat4 model{1.0f};
     model[3][0] = 5.0f;
-    CE::RenderAPIs::RenderFrame frame;
+    CE::Rendering::Frame frame;
     {
-        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        CE::Rendering::FrameWriter writer(frame);
         auto world = writer.begin_pass(glm::mat4{1.0f}, view);
         world.add(make_packet(*sprite, playback.cell(), model, world.semantics()));
     }
@@ -123,12 +129,12 @@ TEST(render_frame, immutable_publication) {
 
 TEST(render_frame, slot_recycling) {
     auto sprite = make_sprite();
-    std::weak_ptr<const CE::Assets::Geometry2D> retained = sprite->geometry;
-    CE::RenderAPIs::RenderFrame frame;
-    const CE::RenderAPIs::RenderPass* pass_storage = nullptr;
-    const CE::RenderAPIs::DrawPacket2D* draw_storage = nullptr;
+    std::weak_ptr<const CE::Rendering::Geometry::Buffer2D> retained = sprite->geometry;
+    CE::Rendering::Frame frame;
+    const CE::Rendering::Pass* pass_storage = nullptr;
+    const CE::Rendering::DrawPacket2D* draw_storage = nullptr;
     {
-        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        CE::Rendering::FrameWriter writer(frame);
         auto first = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
         first.reserve_draws(2);
         auto second = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
@@ -153,7 +159,7 @@ TEST(render_frame, slot_recycling) {
     EXPECT_TRUE(frame.passes().empty());
 
     {
-        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        CE::Rendering::FrameWriter writer(frame);
         glm::mat4 next_view{1.0f};
         next_view[3][0] = -6.0f;
         auto first = writer.begin_pass(glm::mat4{1.0f}, next_view);
@@ -168,13 +174,13 @@ TEST(render_frame, slot_recycling) {
 
 TEST(render_frame, invalid_draw_group) {
     const auto sprite = make_sprite();
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
     auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
     auto good = make_packet(*sprite, 0);
     auto bad = make_packet(*sprite, 1);
     bad.first_vertex = 16;
-    std::vector<CE::RenderAPIs::DrawPacket2D> group{good, bad};
+    std::vector<CE::Rendering::DrawPacket2D> group{good, bad};
     EXPECT_THROW(pass.add(std::move(group)), CE::Exceptions::invalid_args);
     EXPECT_TRUE(frame.passes()[0].draws.empty());
     pass.add(std::move(good));
@@ -183,10 +189,10 @@ TEST(render_frame, invalid_draw_group) {
 
 TEST(render_frame, conflicting_pass_state) {
     const auto sprite = make_sprite();
-    CE::RenderAPIs::RenderFrame frame;
-    CE::RenderAPIs::RenderFrameWriter writer(frame);
-    CE::Assets::PassConstraints2D constraints;
-    constraints.blend = CE::Assets::BlendMode::Opaque;
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
+    CE::Rendering::Pipelines::PassConstraints2D constraints;
+    constraints.blend = CE::Rendering::Pipelines::Blend::Opaque;
     auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f}, constraints);
     EXPECT_THROW(pass.add(make_packet(*sprite, 0)), CE::Exceptions::invalid_args);
     EXPECT_TRUE(frame.passes()[0].draws.empty());

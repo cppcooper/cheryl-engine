@@ -7,12 +7,12 @@
 #include <utility>
 
 namespace {
-    class RoutedInput final : public CE::Input::iInputSystem {
-        CE::Input::InputBindings bindings_;
+    class RoutedInput final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
         std::function<void()> collect;
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
 
         void deinitialize() override {
             bindings_.clear();
@@ -26,28 +26,28 @@ namespace {
             (void)publish_input();
         }
 
-        void key(CE::Input::ButtonPhase phase) {
-            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::ButtonEvent{65, phase});
-            if (phase != CE::Input::ButtonPhase::Repeat)
-                bindings_.on_button({keyboard_id(), 65}, phase == CE::Input::ButtonPhase::Press);
+        void key(CE::Input::Events::ButtonPhase phase) {
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::Events::Button{65, phase});
+            if (phase != CE::Input::Events::ButtonPhase::Repeat)
+                bindings_.on_button({keyboard_id(), 65}, phase == CE::Input::Events::ButtonPhase::Press);
         }
 
         void text(char32_t codepoint) {
-            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::TextEvent{codepoint});
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{codepoint});
         }
 
         void pad(bool held) { bindings_.on_button({gamepad_id(), 65}, held); }
-        [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
+        [[nodiscard]] CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
         [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
-        [[nodiscard]] bool supports(CE::Input::InputMode) const override { return true; }
+        [[nodiscard]] bool supports(CE::Input::Capture::Channel) const override { return true; }
         [[nodiscard]] bool supports_focus() const override { return true; }
     };
 }
 
 TEST(input_routing, stale_focus_lease) {
-    CE::Input::InputRouting routing;
+    CE::Input::Routing::Manager routing;
     auto first = routing.focus(1);
     const auto epoch = first.epoch();
     auto second = routing.focus(1);
@@ -64,16 +64,16 @@ TEST(input_routing, stale_focus_lease) {
 
 TEST(input_routing, exclusive_text_focus) {
     RoutedInput input;
-    constexpr CE::Input::ActionId typing_key{1};
-    constexpr CE::Input::ActionId shared_action{2};
+    constexpr CE::Input::Actions::Id typing_key{1};
+    constexpr CE::Input::Actions::Id shared_action{2};
     (void)input.bindings().bind_button({1, 65}, typing_key);
     (void)input.bindings().bind_button({1, 65}, shared_action);
     (void)input.bindings().bind_button({3, 65}, shared_action);
-    auto events = input.capture(CE::Input::InputMode::Events);
-    auto text = input.capture(CE::Input::InputMode::Text);
+    auto events = input.capture(CE::Input::Capture::Channel::Events);
+    auto text = input.capture(CE::Input::Capture::Channel::Text);
     auto focus = input.routing().focus(42);
     input.collect = [&] {
-        input.key(CE::Input::ButtonPhase::Press);
+        input.key(CE::Input::Events::ButtonPhase::Press);
         input.text(U'a');
         input.pad(true);
     };
@@ -99,10 +99,10 @@ TEST(input_routing, exclusive_text_focus) {
 
 TEST(input_routing, focus_change_during_poll) {
     RoutedInput input;
-    auto events = input.capture(CE::Input::InputMode::Events);
-    auto text = input.capture(CE::Input::InputMode::Text);
+    auto events = input.capture(CE::Input::Capture::Channel::Events);
+    auto text = input.capture(CE::Input::Capture::Channel::Text);
     auto first = input.routing().focus(10);
-    CE::Input::FocusLease second;
+    CE::Input::Routing::Lease second;
     input.collect = [&] {
         input.text(U'a');
         second = input.routing().focus(20);
@@ -121,12 +121,12 @@ TEST(input_routing, focus_change_during_poll) {
 
 TEST(input_routing, pass_through_focus) {
     RoutedInput input;
-    constexpr CE::Input::ActionId action{1};
+    constexpr CE::Input::Actions::Id action{1};
     (void)input.bindings().bind_button({1, 65}, action);
-    auto events = input.capture(CE::Input::InputMode::Events);
-    auto focus = input.routing().focus(7, CE::Input::KeyboardRouting::PassThrough);
+    auto events = input.capture(CE::Input::Capture::Channel::Events);
+    auto focus = input.routing().focus(7, CE::Input::Routing::KeyboardPolicy::PassThrough);
     input.collect = [&] {
-        input.key(CE::Input::ButtonPhase::Press);
+        input.key(CE::Input::Events::ButtonPhase::Press);
         input.text(U'a');
     };
     input.poll();
@@ -139,7 +139,7 @@ TEST(input_routing, pass_through_focus) {
 
 TEST(input_routing, focus_cleanup) {
     RoutedInput input;
-    auto text = input.capture(CE::Input::InputMode::Text);
+    auto text = input.capture(CE::Input::Capture::Channel::Text);
     auto focus = input.routing().focus(1);
     input.collect = [&] { input.text(U'a'); };
     input.poll();

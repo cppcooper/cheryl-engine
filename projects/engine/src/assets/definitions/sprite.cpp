@@ -1,7 +1,7 @@
 #include <assets/definitions/sprite.h>
 
-namespace CE::Assets {
-    std::string SpriteDefinition::id() const {
+namespace CE::Assets::Sprites {
+    std::string Definition::id() const {
         return name_space + ':' + name;
     }
 }

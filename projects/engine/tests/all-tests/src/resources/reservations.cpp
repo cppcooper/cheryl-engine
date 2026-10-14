@@ -73,21 +73,21 @@ namespace {
     };
 
     // Only an allocator with a manager-backed subrange release context may
-    // instantiate ObjectReservation; ordinary allocators lack that contract.
-    static_assert(CE::Obj::ReservationAllocator<CE::Mem::ObjectPoolAllocator<ReservationItem>, ReservationItem>);
-    static_assert(!CE::Obj::ReservationAllocator<CE::Mem::DefaultAllocator<ReservationItem>, ReservationItem>);
-    static_assert(!CE::Obj::ReservationAllocator<CE::Mem::ObjectAllocator<ReservationItem>, ReservationItem>);
-    static_assert(!CE::Obj::ReservationAllocator<std::allocator<ReservationItem>, ReservationItem>);
+    // instantiate CE::Memory::Objects::Reservation; ordinary allocators lack that contract.
+    static_assert(CE::Memory::Objects::ReservationAllocator<CE::Memory::Allocators::ObjectPoolAllocator<ReservationItem>, ReservationItem>);
+    static_assert(!CE::Memory::Objects::ReservationAllocator<CE::Memory::Allocators::DefaultAllocator<ReservationItem>, ReservationItem>);
+    static_assert(!CE::Memory::Objects::ReservationAllocator<CE::Memory::Allocators::ObjectAllocator<ReservationItem>, ReservationItem>);
+    static_assert(!CE::Memory::Objects::ReservationAllocator<std::allocator<ReservationItem>, ReservationItem>);
 }
 
 TEST(memory, unclaimed_reservation_ranges) {
-    using CE::Obj::ObjectReservation;
+    using CE::Memory::Objects::Reservation;
     ReservationItem::live = 0;
     ReservationItem::destroyed = 0;
     std::shared_ptr<ReservationItem> first, second, third;
     ReservationItem* base = nullptr;
     {
-        ObjectReservation<ReservationItem> reserved(8);
+        CE::Memory::Objects::Reservation<ReservationItem> reserved(8);
         ASSERT_EQ(reserved.remaining_ranges().size(), 1);
         base = reserved.remaining_ranges()[0].head.get();
         ASSERT_EQ(reserved.remaining_ranges()[0].length, 8);
@@ -132,7 +132,7 @@ TEST(memory, unclaimed_reservation_ranges) {
 
     // After the final handle returns its slot, none of this allocation's
     // active sections may remain in the manager bookkeeping.
-    BlockManagement<ReservationItem> bm;
+    CE::Memory::BlockManagement<ReservationItem> bm;
     auto& sections = std::get<1>(bm.sections);
     for (const auto& section : sections) {
         EXPECT_NE(section.owner.get(), base);
@@ -141,12 +141,12 @@ TEST(memory, unclaimed_reservation_ranges) {
 
 TEST(memory, handles_outlive_pool_facade) {
     LateItem::destroyed = 0;
-    std::weak_ptr<CE::Obj::PoolState<LateItem>> weak;
+    std::weak_ptr<CE::Memory::Objects::PoolState<LateItem>> weak;
     std::shared_ptr<LateItem> object;
     {
         // A local facade gives us a teardown boundary we can control. The
         // handle must retain the exact state it will use for its late release.
-        auto facade = std::make_unique<CE::Obj::Pool<LateItem>>();
+        auto facade = std::make_unique<CE::Memory::Objects::Pool<LateItem>>();
         auto context = facade->release_context();
         weak = context;
         auto objects = facade->retrieve_objects(1, 99);
@@ -166,7 +166,7 @@ TEST(memory, handles_outlive_pool_facade) {
 TEST(memory, pool_constructor_failure) {
     FailingBatchItem::attempted = 0;
     FailingBatchItem::live = 0;
-    auto context = std::make_shared<CE::Obj::PoolState<FailingBatchItem>>();
+    auto context = std::make_shared<CE::Memory::Objects::PoolState<FailingBatchItem>>();
     // The second constructor fails: the first handle and the unconstructed
     // tail must both return their slots before another batch can be retrieved.
     EXPECT_THROW(context->retrieve_objects(3), std::runtime_error);
@@ -187,7 +187,7 @@ TEST(memory, factory_batch_lifetime) {
     using Allocator = CountingAllocator<ReservationItem>;
     Allocator::allocated = 0;
     Allocator::deallocated = 0;
-    auto objects = CE::Obj::Factory<ReservationItem, Allocator>::create(3, 7);
+    auto objects = CE::Memory::Objects::Factory<ReservationItem, Allocator>::create(3, 7);
     ASSERT_EQ(objects.size(), 3);
     EXPECT_EQ(Allocator::allocated, 1);
     EXPECT_EQ(ReservationItem::live, 3);
@@ -215,7 +215,7 @@ TEST(memory, factory_constructor_failure) {
     FailingBatchItem::live = 0;
     // Failure halfway through construction destroys completed objects and
     // deallocates the original allocation once.
-    EXPECT_THROW((CE::Obj::Factory<FailingBatchItem, Allocator>::create(3)), std::runtime_error);
+    EXPECT_THROW((CE::Memory::Objects::Factory<FailingBatchItem, Allocator>::create(3)), std::runtime_error);
     EXPECT_EQ(FailingBatchItem::live, 0);
     EXPECT_EQ(Allocator::allocated, 1);
     EXPECT_EQ(Allocator::deallocated, 1);
@@ -244,7 +244,7 @@ namespace {
 }
 
 TEST(memory, concurrent_slots) {
-    using Tracking = CE::Obj::ObjCtor<ConcurrentSlot>::Context;
+    using Tracking = CE::Memory::Objects::Constructor<ConcurrentSlot>::Context;
     auto tracking = std::make_shared<Tracking>();
     auto* slots = std::allocator<ConcurrentSlot>{}.allocate(64);
     std::barrier start(3);
@@ -268,7 +268,7 @@ TEST(memory, concurrent_slots) {
 }
 
 TEST(memory, reentrant_slots) {
-    auto tracking = std::make_shared<CE::Obj::ObjCtor<ReentrantSlot>::Context>();
+    auto tracking = std::make_shared<CE::Memory::Objects::Constructor<ReentrantSlot>::Context>();
     auto* slots = std::allocator<ReentrantSlot>{}.allocate(128);
     // The outer constructor grows the tracking map through other slots. No
     // iterator from its claim may survive this reentrant map growth.
@@ -279,7 +279,7 @@ TEST(memory, reentrant_slots) {
 }
 
 TEST(memory, busy_slot) {
-    auto tracking = std::make_shared<CE::Obj::ObjCtor<PendingSlot>::Context>();
+    auto tracking = std::make_shared<CE::Memory::Objects::Constructor<PendingSlot>::Context>();
     auto* slot = std::allocator<PendingSlot>{}.allocate(1);
     std::promise<void> entered, finish;
     auto ready = entered.get_future();

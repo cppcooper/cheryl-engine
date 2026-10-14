@@ -13,8 +13,8 @@ namespace {
     using namespace CE::Text;
     const auto fixture = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/fonts/DejaVuSans.ttf";
 
-    FontSelection isolated_selection() {
-        FontSelection selection;
+    CE::Text::FontSelection isolated_selection() {
+        CE::Text::FontSelection selection;
         selection.automatic_system_fonts = false;
         selection.system_directories = std::vector<std::filesystem::path>{};
         return selection;
@@ -38,7 +38,7 @@ namespace {
 }
 
 TEST(font_selection, fallback) {
-    const auto fonts = FontCollection::load(isolated_selection());
+    const auto fonts = CE::Text::FontCollection::load(isolated_selection());
     ASSERT_EQ(fonts.faces().size(), 1u);
     EXPECT_TRUE(fonts.faces()[0].builtin);
     EXPECT_FALSE(fonts.faces()[0].path);
@@ -59,8 +59,10 @@ TEST(font_selection, fallback) {
 
 TEST(font_selection, ordered) {
     auto selection = isolated_selection();
-    selection.preferred = {SystemFontFamily{"Absent Cheryl Test Family"}, FontFile{fixture}, FontFile{fixture}};
-    const auto fonts = FontCollection::load(selection);
+    selection.preferred = {
+        CE::Text::SystemFontFamily{"Absent Cheryl Test Family"}, CE::Text::FontFile{fixture}, CE::Text::FontFile{fixture}
+    };
+    const auto fonts = CE::Text::FontCollection::load(selection);
     ASSERT_EQ(fonts.faces().size(), 2u); // Duplicate application source does not append another face.
     EXPECT_EQ(fonts.faces()[0].path, fixture);
     EXPECT_FALSE(fonts.faces()[0].builtin);
@@ -72,16 +74,16 @@ TEST(font_selection, families) {
     const auto renamed = directory.path / "not-a-family-name.TTF";
     std::filesystem::copy_file(fixture, renamed);
     auto selection = isolated_selection();
-    selection.preferred = {SystemFontFamily{"dEjAvU sAnS"}};
+    selection.preferred = {CE::Text::SystemFontFamily{"dEjAvU sAnS"}};
     selection.system_directories = std::vector{directory.path};
-    const auto fonts = FontCollection::load(selection);
+    const auto fonts = CE::Text::FontCollection::load(selection);
     ASSERT_EQ(fonts.faces().size(), 2u);
     EXPECT_EQ(fonts.faces()[0].path, renamed);
     EXPECT_EQ(fonts.faces()[0].family, "DejaVu Sans");
 
     selection.preferred.clear();
     selection.automatic_system_fonts = true;
-    const auto automatic = FontCollection::load(selection);
+    const auto automatic = CE::Text::FontCollection::load(selection);
     ASSERT_EQ(automatic.faces().size(), 2u);
     EXPECT_EQ(automatic.faces()[0].path, renamed);
 }
@@ -91,8 +93,8 @@ TEST(font_selection, snapshot) {
     const auto file = directory.path / "font.ttf";
     std::filesystem::copy_file(fixture, file);
     auto selection = isolated_selection();
-    selection.preferred = {FontFile{file}};
-    const auto fonts = FontCollection::load(selection);
+    selection.preferred = {CE::Text::FontFile{file}};
+    const auto fonts = CE::Text::FontCollection::load(selection);
     EXPECT_TRUE(std::filesystem::remove(file));
     EXPECT_FALSE(std::filesystem::exists(file));
     EXPECT_TRUE(fonts.covers(U'\u0416'));
@@ -101,12 +103,12 @@ TEST(font_selection, snapshot) {
 
 TEST(font_selection, invalid) {
     auto selection = isolated_selection();
-    selection.preferred = {FontFile{fixture, 9999}};
-    EXPECT_THROW(static_cast<void>(FontCollection::load(selection)), CE::Exceptions::runtime_exception);
-    selection.preferred = {FontFile{fixture.parent_path() / "absent.ttf"}};
-    EXPECT_THROW(static_cast<void>(FontCollection::load(selection)), CE::Exceptions::runtime_exception);
-    selection.preferred = {SystemFontFamily{""}};
-    EXPECT_THROW(static_cast<void>(FontCollection::load(selection)), CE::Exceptions::invalid_args);
-    selection.preferred = {SystemFontFamily{std::string{"DejaVu\0Sans", 11}}};
-    EXPECT_THROW(static_cast<void>(FontCollection::load(selection)), CE::Exceptions::invalid_args);
+    selection.preferred = {CE::Text::FontFile{fixture, 9999}};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
+    selection.preferred = {CE::Text::FontFile{fixture.parent_path() / "absent.ttf"}};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
+    selection.preferred = {CE::Text::SystemFontFamily{""}};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
+    selection.preferred = {CE::Text::SystemFontFamily{std::string{"DejaVu\0Sans", 11}}};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
 }

@@ -16,7 +16,7 @@
 #include <stdexcept>
 
 namespace FirstGame {
-    Game::Game(CE::Engine::EngineContext& engine, std::filesystem::path asset_root)
+    Game::Game(CE::Runtime::Context& engine, std::filesystem::path asset_root)
     : engine_(engine), asset_root_(std::move(asset_root)) {}
 
     void Game::init() {
@@ -34,12 +34,12 @@ namespace FirstGame {
 
         // [assets]
         auto& resources = engine_.resources();
-        CE::Assets::Loader loader(asset_root_);
+        CE::Assets::Loading::Loader loader(asset_root_);
         loader.load_assets(resources);
 
-        auto sprite = CE::Assets::SpriteMgr::get().get_asset("first-game", "actor");
-        images_ = CE::Assets::ShaderAssetMgr::get().get_material("first-game:images");
-        text_ = CE::Assets::ShaderAssetMgr::get().get_material("first-game:text");
+        auto sprite = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
+        images_ = CE::Assets::Shaders::Manager::get().find_material("first-game:images");
+        text_ = CE::Assets::Shaders::Manager::get().find_material("first-game:text");
         if (!sprite || !images_ || !text_)
             throw std::runtime_error("First-game assets require actor, images and text resources");
 
@@ -53,12 +53,12 @@ namespace FirstGame {
         selection.automatic_system_fonts = false;
         auto fonts = CE::Text::FontCollection::load(selection);
         auto layout = CE::Text::layout_text(fonts, "Score: 0", {.pixel_height = 24});
-        score_.emplace(CE::Assets::upload_text(CE::Assets::prepare_text(std::move(layout)), resources));
+        score_.emplace(CE::Text::Rendering::upload(CE::Text::Rendering::prepare(std::move(layout)), resources));
         // [/score]
     }
 
     // [update]
-    void Game::update(const CE::GFramework::TickContext& tick) {
+    void Game::update(const CE::Game::TickContext& tick) {
         camera_.set_framebuffer_size(tick.framebuffer_size);
         if (tick.input.button(quit_).pressed()) {
             tick.request_stop();
@@ -78,23 +78,23 @@ namespace FirstGame {
     // [/update]
 
     // [render]
-    void Game::prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const {
+    void Game::prepare_render_frame(CE::Rendering::FrameWriter& frame) const {
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
-        const CE::Assets::SubmissionContext2D context{
-            pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}
+        const CE::Rendering::Submission::Context2D context{
+            pass.semantics(), pass.parameters(), pass.constraints(), CE::Rendering::Submission::ImageParameter2D{"image", 0}
         };
 
-        CE::RenderAPIs::DrawStyle2D image_style;
+        CE::Rendering::DrawStyle2D image_style;
         image_style.material = images_;
         image_style.scale = actor_scale_;
         image_style.model_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(actor_->position, 0.0f));
-        pass.add(CE::Assets::resolve_sprite(*actor_->sprite, actor_->cell, image_style, context));
+        pass.add(CE::Rendering::Submission::resolve_sprite(*actor_->sprite, actor_->cell, image_style, context));
 
-        CE::RenderAPIs::DrawStyle2D text_style;
+        CE::Rendering::DrawStyle2D text_style;
         text_style.material = text_;
         text_style.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(24.0f, static_cast<float>(camera_.framebuffer_size().height) - 48.0f, 0.0f));
-        pass.add(CE::Assets::resolve_text(*score_, text_style, context));
+        pass.add(CE::Rendering::Submission::resolve_text(*score_, text_style, context));
     }
     // [/render]
 

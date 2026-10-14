@@ -29,8 +29,8 @@ namespace {
         }
     };
 
-    Clip constant(float value = 0.25f, std::size_t frames = 1024) {
-        return Clip::from_samples({2, 48000}, std::vector<float>(frames * 2, value));
+    CE::Audio::Clip constant(float value = 0.25f, std::size_t frames = 1024) {
+        return CE::Audio::Clip::from_samples({2, 48000}, std::vector<float>(frames * 2, value));
     }
 
     void expect_samples(std::span<const float> samples, float expected) {
@@ -40,12 +40,12 @@ namespace {
 }
 
 TEST(audio_mix, offline) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     EXPECT_EQ(system->output_format(), (CE::Audio::Format{2, 48000}));
     EXPECT_EQ(system->backend_name(), "offline");
     EXPECT_FALSE(system->closed());
     auto voice = system->play(constant());
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Playing);
     ASSERT_TRUE(voice->snapshot().duration);
     EXPECT_DOUBLE_EQ(voice->snapshot().duration->count(), 1024.0 / 48000);
     std::array<float, 128> output{};
@@ -54,7 +54,7 @@ TEST(audio_mix, offline) {
 }
 
 TEST(audio_mix, silence) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     std::array<float, 128> output{};
     output.fill(1);
     system->render(output);
@@ -64,7 +64,7 @@ TEST(audio_mix, silence) {
     system->render(output);
     expect_samples(std::span(output).first(2), 0.25f);
     expect_samples(std::span(output).subspan(2), 0);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Finished);
     voice.reset();
     system->maintain();
     output.fill(1);
@@ -74,11 +74,11 @@ TEST(audio_mix, silence) {
     auto next = system->play(constant(0.5f));
     system->render(output);
     expect_samples(output, 0.5f);
-    EXPECT_EQ(next->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(next->snapshot().state, CE::Audio::PlaybackState::Playing);
 }
 
 TEST(audio_mix, gain) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     const auto clip = constant();
     auto first = system->play(clip);
     auto second = system->play(clip, {.volume = 0.5f});
@@ -95,10 +95,10 @@ TEST(audio_mix, gain) {
 }
 
 TEST(audio_mix, cursors) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     std::vector<float> samples(2048, 0.5f);
     std::fill_n(samples.begin(), 64, 0.125f);
-    const auto clip = Clip::from_samples({2, 48000}, samples);
+    const auto clip = CE::Audio::Clip::from_samples({2, 48000}, samples);
     auto first = system->play(clip);
     std::array<float, 64> output{};
     system->render(output);
@@ -119,10 +119,10 @@ TEST(audio_mix, cursors) {
 }
 
 TEST(audio_mix, controls) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     auto voice = system->play(constant(), {.paused = true});
     std::array<float, 128> output{};
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Paused);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Paused);
     system->render(output);
     expect_samples(output, 0);
     voice->resume();
@@ -130,9 +130,9 @@ TEST(audio_mix, controls) {
     expect_samples(output, 0.25f);
     voice->stop();
     voice->resume();
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Stopped);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Stopped);
     voice->set_looping(true);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Stopped);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Stopped);
     EXPECT_TRUE(voice->snapshot().looping);
     system->render(output);
     expect_samples(output, 0);
@@ -142,30 +142,30 @@ TEST(audio_mix, controls) {
 }
 
 TEST(audio_mix, end_loop) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     auto voice = system->play(constant(0.125f, 32), {.looping = true});
     std::array<float, 512> output{};
     system->render(output);
     expect_samples(output, 0.125f);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Playing);
     voice->set_looping(false);
     // Previously buffered looping PCM can drain before the new policy reaches EOF.
-    for (int block = 0; block < 8 && voice->snapshot().state == PlaybackState::Playing; ++block)
+    for (int block = 0; block < 8 && voice->snapshot().state == CE::Audio::PlaybackState::Playing; ++block)
         system->render(output);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Finished);
     voice->resume();
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Finished);
     system->render(output);
     expect_samples(output, 0);
     voice->restart();
     system->render(output);
     expect_samples(std::span(output).first(64), 0.125f);
     expect_samples(std::span(output).subspan(64), 0);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Finished);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Finished);
 }
 
 TEST(audio_mix, retained) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     static_cast<void>(system->play(constant(0.125f, 64)));
     system->maintain();
     std::array<float, 64> output{};
@@ -181,38 +181,38 @@ TEST(audio_mix, retained) {
 }
 
 TEST(audio_mix, rates) {
-    auto system = System::open_offline();
-    const auto clip = Clip::from_samples({1, 24000}, std::vector<float>(2048, 0.25f));
+    auto system = CE::Audio::Miniaudio::System::open_offline();
+    const auto clip = CE::Audio::Clip::from_samples({1, 24000}, std::vector<float>(2048, 0.25f));
     auto voice = system->play(clip);
     std::array<float, 1024> output{};
     system->render(output);
     expect_samples(std::span(output).subspan(256), 0.25f);
     EXPECT_DOUBLE_EQ(voice->snapshot().duration->count(), 2048.0 / 24000);
-    auto other = System::open_offline({1, 8000});
-    auto other_voice = other->play(Clip::from_samples({1, 8000}, std::vector<float>(128, 0.5f)));
+    auto other = CE::Audio::Miniaudio::System::open_offline({1, 8000});
+    auto other_voice = other->play(CE::Audio::Clip::from_samples({1, 8000}, std::vector<float>(128, 0.5f)));
     std::array<float, 32> mono{};
     other->render(mono);
     expect_samples(mono, 0.5f);
     system->close();
-    EXPECT_EQ(other_voice->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(other_voice->snapshot().state, CE::Audio::PlaybackState::Playing);
 }
 
 TEST(audio_mix, closure) {
     std::shared_ptr<CE::Audio::Voice> voice;
     {
-        auto system = System::open_offline();
+        auto system = CE::Audio::Miniaudio::System::open_offline();
         voice = system->play(constant(), {.looping = true});
         system->close();
         system->close();
         EXPECT_TRUE(system->closed());
-        EXPECT_EQ(voice->snapshot().state, PlaybackState::Closed);
+        EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Closed);
         EXPECT_THROW(static_cast<void>(system->play(constant())), CE::Exceptions::bad_request);
         EXPECT_THROW(system->maintain(), CE::Exceptions::bad_request);
         EXPECT_THROW(static_cast<void>(system->volume()), CE::Exceptions::bad_request);
         EXPECT_THROW(system->set_volume(0.5f), CE::Exceptions::bad_request);
         EXPECT_THROW(system->render({}), CE::Exceptions::bad_request);
     }
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Closed);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Closed);
     EXPECT_THROW(voice->pause(), CE::Exceptions::bad_request);
     EXPECT_THROW(voice->resume(), CE::Exceptions::bad_request);
     EXPECT_THROW(voice->stop(), CE::Exceptions::bad_request);
@@ -222,8 +222,8 @@ TEST(audio_mix, closure) {
 }
 
 TEST(audio_mix, invalid) {
-    EXPECT_THROW(static_cast<void>(System::open_offline({3, 48000})), CE::Exceptions::invalid_args);
-    auto system = System::open_offline();
+    EXPECT_THROW(static_cast<void>(CE::Audio::Miniaudio::System::open_offline({3, 48000})), CE::Exceptions::invalid_args);
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     const auto clip = constant();
     for (const float volume : {-0.5f, 1.5f, std::numeric_limits<float>::quiet_NaN()}) {
         EXPECT_THROW(static_cast<void>(system->play(clip, {volume})), CE::Exceptions::invalid_args);
@@ -237,7 +237,7 @@ TEST(audio_mix, invalid) {
 }
 
 TEST(audio_mix, producers) {
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     const auto clip = constant();
     std::array<std::future<std::shared_ptr<CE::Audio::Voice>>, 4> producers;
     for (auto& producer : producers)
@@ -261,7 +261,7 @@ TEST(audio_mix, producers) {
         voices.push_back(producer.get());
     system->close();
     for (const auto& voice : voices)
-        EXPECT_EQ(voice->snapshot().state, PlaybackState::Closed);
+        EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Closed);
 }
 
 TEST(audio_decode, wav) {
@@ -338,9 +338,9 @@ TEST(audio_decode, codecs) {
 TEST(audio_stream, controls) {
     AudioFixture::Wav fixture;
     fixture.write({2, 48000}, std::vector<float>(2048, 0.25f));
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     auto voice = system->stream(fixture.file(), {.paused = true});
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Paused);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Paused);
     ASSERT_TRUE(voice->snapshot().duration);
     EXPECT_NEAR(voice->snapshot().duration->count(), 1024.0 / 48000, 0.00001);
     voice->resume();
@@ -354,19 +354,19 @@ TEST(audio_stream, controls) {
     system->render(output);
     expect_samples(output, 0.25f);
     system->close();
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Closed);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Closed);
 }
 
 TEST(audio_stream, failure) {
     AudioFixture::Wav fixture;
-    auto system = System::open_offline();
+    auto system = CE::Audio::Miniaudio::System::open_offline();
     auto voice = system->play(constant());
     EXPECT_THROW(static_cast<void>(system->stream(fixture.file())), CE::Exceptions::runtime_exception);
     EXPECT_THROW(static_cast<void>(system->stream({})), CE::Exceptions::invalid_args);
     std::array<float, 64> output{};
     system->render(output);
     expect_samples(output, 0.25f);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Playing);
     fixture.write({2, 48000}, std::vector<float>(2048, 0.125f));
     const AudioFixture::Wav unavailable;
     const CurrentDirectoryGuard directory;
@@ -375,8 +375,8 @@ TEST(audio_stream, failure) {
     // Reopen a relative source from an empty directory without deleting an open file.
     std::filesystem::current_path(unavailable.file().parent_path());
     EXPECT_THROW(stream->restart(), CE::Exceptions::runtime_exception);
-    EXPECT_EQ(stream->snapshot().state, PlaybackState::Paused);
-    EXPECT_EQ(voice->snapshot().state, PlaybackState::Playing);
+    EXPECT_EQ(stream->snapshot().state, CE::Audio::PlaybackState::Paused);
+    EXPECT_EQ(voice->snapshot().state, CE::Audio::PlaybackState::Playing);
     system->render(output);
     expect_samples(output, 0.25f);
 }

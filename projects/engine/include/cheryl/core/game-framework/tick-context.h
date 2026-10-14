@@ -8,7 +8,7 @@
 
 #include <stop_token>
 
-namespace CE::GFramework {
+namespace CE::Game {
     /** One simulation update. The runtime owns the input view for the duration of update().
      * delta_seconds belongs to the simulation policy; input.elapsed() and raw
      * hold/down durations remain observation time. A recovery batch reports its
@@ -18,11 +18,11 @@ namespace CE::GFramework {
      */
     struct TickContext {
         double delta_seconds;
-        const Input::TickInput& input;
-        FramebufferSize framebuffer_size;
-        UpdateKind update_kind = UpdateKind::Variable;
+        const ::CE::Input::Tick& input;
+        ::CE::Platform::FramebufferSize framebuffer_size;
+        ::CE::Runtime::Simulation::UpdateKind update_kind = ::CE::Runtime::Simulation::UpdateKind::Variable;
         double dropped_seconds = 0.0;
-        ViewPort<int> logical_size{0, 0};
+        ::CE::Platform::Dimensions<int> logical_size{0, 0};
         std::stop_source runtime_stop{std::nostopstate};
 
         /** Request normal runtime shutdown from this simulation update.
@@ -34,6 +34,6 @@ namespace CE::GFramework {
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.
         // With no observation interval, use held State. This does not recover tap history.
-        [[nodiscard]] double button_simulation_seconds(Input::ActionId action) const;
+        [[nodiscard]] double button_simulation_seconds(::CE::Input::Actions::Id action) const;
     };
 }

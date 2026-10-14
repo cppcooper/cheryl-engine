@@ -1,6 +1,6 @@
 #include <assets/definitions/tileset.h>
 
-namespace CE::Assets {
+namespace CE::Assets::Tilesets {
     std::size_t WangSignatureHash::operator()(const WangSignature& signature) const noexcept {
         std::size_t result = 1469598103934665603ULL;
         for (const auto value : signature) {
@@ -10,7 +10,7 @@ namespace CE::Assets {
         return result;
     }
 
-    std::string TilesetDefinition::id() const {
+    std::string Definition::id() const {
         return name_space + ':' + name;
     }
 }

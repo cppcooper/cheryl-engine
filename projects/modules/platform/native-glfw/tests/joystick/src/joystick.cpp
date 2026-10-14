@@ -37,7 +37,7 @@ namespace {
 
     struct PadSession {
         gainput::InputManager manager;
-        CE::Input::InputMapper bindings{manager};
+        CE::Platform::GLFW::GainputMapper bindings{manager};
         gainput::InputDevicePad* pad = nullptr;
         gainput::InputDeltaState delta{manager.GetAllocator()};
 
@@ -156,7 +156,7 @@ extern "C" {
 TEST(linux_joystick, cross) {
     Joystick joystick;
     PadSession session;
-    const CE::Input::ActionId action{1};
+    const CE::Input::Actions::Id action{1};
     static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), gainput::PadButtonA}, action));
     ASSERT_EQ(session.pad->GetDeviceId(), 2u);
     ASSERT_TRUE(session.pad->IsAvailable());
@@ -261,7 +261,7 @@ TEST(linux_joystick, reconnect) {
     Joystick joystick;
     {
         PadSession session;
-        const CE::Input::ActionId action{1};
+        const CE::Input::Actions::Id action{1};
         static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), gainput::PadButtonA}, action));
         joystick.push(JS_EVENT_BUTTON, 0, 1);
         joystick.push(JS_EVENT_AXIS, 0, 32767);

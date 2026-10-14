@@ -5,7 +5,7 @@
 #include <iosfwd>
 
 namespace CE {
-    namespace TerminalTestDetail {
+    namespace Testing::DebugTerminal::Detail {
         __attribute__((visibility("default"))) std::FILE* report_file(std::FILE* current) noexcept;
         __attribute__((visibility("default"))) std::ostream& output_stream();
         __attribute__((visibility("default"))) std::ostream& error_stream();

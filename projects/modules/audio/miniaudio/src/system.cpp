@@ -12,13 +12,13 @@
 
 namespace CE::Audio::Miniaudio::Detail {
     struct VoiceData {
-        std::optional<Clip> clip;
+        std::optional<::CE::Audio::Clip> clip;
         std::optional<std::filesystem::path> file;
         ma_audio_buffer buffer{};
         ma_sound sound{};
         bool buffer_initialized = false;
         bool sound_initialized = false;
-        PlaybackState requested = PlaybackState::Paused;
+        ::CE::Audio::PlaybackState requested = ::CE::Audio::PlaybackState::Paused;
         float volume = 1;
         bool looping = false;
         std::optional<std::chrono::duration<double>> duration;
@@ -37,13 +37,13 @@ namespace CE::Audio::Miniaudio::Detail {
 
         ~VoiceData() { retire(); }
 
-        [[nodiscard]] PlaybackState state() const {
+        [[nodiscard]] ::CE::Audio::PlaybackState state() const {
             if (!sound_initialized)
-                return PlaybackState::Closed;
-            if (requested == PlaybackState::Stopped)
-                return PlaybackState::Stopped;
+                return ::CE::Audio::PlaybackState::Closed;
+            if (requested == ::CE::Audio::PlaybackState::Stopped)
+                return ::CE::Audio::PlaybackState::Stopped;
             if (ma_sound_at_end(&sound))
-                return PlaybackState::Finished;
+                return ::CE::Audio::PlaybackState::Finished;
             return requested;
         }
     };
@@ -56,18 +56,18 @@ namespace CE::Audio::Miniaudio::Detail {
         bool engine_initialized = false;
         bool offline = false;
         float volume = 1;
-        Format output;
+        ::CE::Audio::Format output;
         std::string backend;
         std::vector<std::shared_ptr<VoiceData>> voices;
 
         void require_open() const {
             if (!engine_initialized)
-                throw Exceptions::bad_request(CE_HERE, "Audio system is closed");
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Audio system is closed");
         }
 
         void maintain_locked() {
             std::erase_if(voices, [](const auto& voice) {
-                return voice.use_count() == 1 && voice->state() != PlaybackState::Playing;
+                return voice.use_count() == 1 && voice->state() != ::CE::Audio::PlaybackState::Playing;
             });
         }
 
@@ -90,7 +90,7 @@ namespace CE::Audio::Miniaudio::Detail {
         ~SystemState() { close(); }
     };
 
-    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const Clip& clip) {
+    [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const ::CE::Audio::Clip& clip) {
         auto data = std::make_shared<VoiceData>();
         data->clip = clip;
         data->duration = clip.duration();
@@ -129,7 +129,7 @@ namespace CE::Audio::Miniaudio::Detail {
         return data;
     }
 
-    class VoiceHandle final : public Voice {
+    class VoiceHandle final : public ::CE::Audio::Voice {
         std::shared_ptr<SystemState> system_;
         std::shared_ptr<VoiceData> data_;
 
@@ -137,7 +137,7 @@ namespace CE::Audio::Miniaudio::Detail {
         VoiceHandle(std::shared_ptr<SystemState> system, std::shared_ptr<VoiceData> data)
         : system_(std::move(system)), data_(std::move(data)) {}
 
-        [[nodiscard]] VoiceSnapshot snapshot() const override {
+        [[nodiscard]] ::CE::Audio::VoiceSnapshot snapshot() const override {
             const std::lock_guard lock(system_->mutex);
             return {data_->state(), data_->volume, data_->looping, data_->duration};
         }
@@ -145,18 +145,18 @@ namespace CE::Audio::Miniaudio::Detail {
         void pause() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
-            if (data_->state() == PlaybackState::Playing) {
+            if (data_->state() == ::CE::Audio::PlaybackState::Playing) {
                 check(ma_sound_stop(&data_->sound), "Pause audio voice");
-                data_->requested = PlaybackState::Paused;
+                data_->requested = ::CE::Audio::PlaybackState::Paused;
             }
         }
 
         void resume() override {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
-            if (data_->state() == PlaybackState::Paused) {
+            if (data_->state() == ::CE::Audio::PlaybackState::Paused) {
                 check(ma_sound_start(&data_->sound), "Resume audio voice");
-                data_->requested = PlaybackState::Playing;
+                data_->requested = ::CE::Audio::PlaybackState::Playing;
             }
         }
 
@@ -164,7 +164,7 @@ namespace CE::Audio::Miniaudio::Detail {
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
             check(ma_sound_stop(&data_->sound), "Stop audio voice");
-            data_->requested = PlaybackState::Stopped;
+            data_->requested = ::CE::Audio::PlaybackState::Stopped;
         }
 
         void restart() override {
@@ -179,9 +179,9 @@ namespace CE::Audio::Miniaudio::Detail {
             replacement->volume = data_->volume;
             replacement->looping = data_->looping;
             check(ma_sound_stop(&data_->sound), "Stop audio voice for restart");
-            data_->requested = PlaybackState::Stopped;
+            data_->requested = ::CE::Audio::PlaybackState::Stopped;
             check(ma_sound_start(&replacement->sound), "Restart audio voice");
-            replacement->requested = PlaybackState::Playing;
+            replacement->requested = ::CE::Audio::PlaybackState::Playing;
             const auto slot = std::find(system_->voices.begin(), system_->voices.end(), data_);
             *slot = replacement;
             data_->retire();
@@ -189,7 +189,7 @@ namespace CE::Audio::Miniaudio::Detail {
         }
 
         void set_volume(float volume) override {
-            validate_volume(volume);
+            ::CE::Audio::validate_volume(volume);
             const std::lock_guard lock(system_->mutex);
             system_->require_open();
             ma_sound_set_volume(&data_->sound, volume);
@@ -204,7 +204,7 @@ namespace CE::Audio::Miniaudio::Detail {
         }
     };
 
-    [[nodiscard]] std::shared_ptr<SystemState> open(Format output, bool offline) {
+    [[nodiscard]] std::shared_ptr<SystemState> open(::CE::Audio::Format output, bool offline) {
         output.validate();
         auto state = std::make_shared<SystemState>();
         state->offline = offline;
@@ -252,10 +252,10 @@ namespace CE::Audio::Miniaudio::Detail {
         return state;
     }
 
-    [[nodiscard]] std::shared_ptr<Voice> publish_voice(
+    [[nodiscard]] std::shared_ptr<::CE::Audio::Voice> publish_voice(
         const std::shared_ptr<SystemState>& system,
         const std::shared_ptr<VoiceData>& data,
-        PlaybackOptions options
+        ::CE::Audio::PlaybackOptions options
     ) {
         ma_sound_set_volume(&data->sound, options.volume);
         ma_sound_set_looping(&data->sound, options.looping ? MA_TRUE : MA_FALSE);
@@ -266,7 +266,7 @@ namespace CE::Audio::Miniaudio::Detail {
         if (!options.paused) {
             try {
                 check(ma_sound_start(&data->sound), "Start audio voice");
-                data->requested = PlaybackState::Playing;
+                data->requested = ::CE::Audio::PlaybackState::Playing;
             } catch (...) {
                 system->voices.pop_back();
                 throw;
@@ -281,15 +281,15 @@ namespace CE::Audio::Miniaudio {
 
     System::~System() { close(); }
 
-    std::unique_ptr<System> System::open_device(Format output) {
+    std::unique_ptr<System> System::open_device(::CE::Audio::Format output) {
         return std::unique_ptr<System>(new System(Detail::open(output, false)));
     }
 
-    std::unique_ptr<System> System::open_offline(Format output) {
+    std::unique_ptr<System> System::open_offline(::CE::Audio::Format output) {
         return std::unique_ptr<System>(new System(Detail::open(output, true)));
     }
 
-    std::shared_ptr<Voice> System::play(const Clip& clip, PlaybackOptions options) {
+    std::shared_ptr<::CE::Audio::Voice> System::play(const ::CE::Audio::Clip& clip, ::CE::Audio::PlaybackOptions options) {
         options.validate();
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
@@ -298,7 +298,7 @@ namespace CE::Audio::Miniaudio {
         return Detail::publish_voice(state_, data, options);
     }
 
-    std::shared_ptr<Voice> System::stream(const std::filesystem::path& file, PlaybackOptions options) {
+    std::shared_ptr<::CE::Audio::Voice> System::stream(const std::filesystem::path& file, ::CE::Audio::PlaybackOptions options) {
         options.validate();
         Detail::validate_path(file);
         const std::lock_guard lock(state_->mutex);
@@ -309,7 +309,7 @@ namespace CE::Audio::Miniaudio {
     }
 
     void System::set_volume(float volume) {
-        validate_volume(volume);
+        ::CE::Audio::validate_volume(volume);
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
         Detail::check(ma_engine_set_volume(&state_->engine, volume), "Set audio master volume");
@@ -335,7 +335,7 @@ namespace CE::Audio::Miniaudio {
         return !state_->engine_initialized;
     }
 
-    Format System::output_format() const {
+    ::CE::Audio::Format System::output_format() const {
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
         return state_->output;
@@ -351,9 +351,9 @@ namespace CE::Audio::Miniaudio {
         const std::lock_guard lock(state_->mutex);
         state_->require_open();
         if (!state_->offline)
-            throw Exceptions::bad_request(CE_HERE, "Manual audio mixing requires explicit offline output");
+            throw ::CE::Exceptions::bad_request(CE_HERE, "Manual audio mixing requires explicit offline output");
         if (output.size() % state_->output.channels != 0)
-            throw Exceptions::invalid_args(CE_HERE, "Offline audio output requires complete interleaved frames");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Offline audio output requires complete interleaved frames");
         if (output.empty())
             return;
         ma_uint64 frames_read = 0;
@@ -361,7 +361,7 @@ namespace CE::Audio::Miniaudio {
         const auto first_frame = ma_engine_get_time_in_pcm_frames(&state_->engine);
         Detail::check(ma_engine_read_pcm_frames(&state_->engine, output.data(), frame_count, &frames_read), "Mix offline audio");
         if (frames_read > frame_count)
-            throw Exceptions::runtime_exception(CE_HERE, "Offline audio mixer exceeded the requested frame count");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Offline audio mixer exceeded the requested frame count");
         if (frames_read < frame_count) {
             // A graph without active inputs returns a successful short read. Silence
             // fills the requested interval and still advances the offline clock.

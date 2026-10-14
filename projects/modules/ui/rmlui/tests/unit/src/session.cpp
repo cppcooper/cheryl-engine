@@ -18,30 +18,35 @@ namespace {
     using namespace CE::Input;
     using namespace CE::UI::RmlUi;
 
-    class Input final : public iInputSystem {
-        InputBindings bindings_;
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
         bool text_supported = true;
         bool focus_supported = true;
 
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
         void poll() override {}
         void deinitialize() override {}
-        InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         DeviceId keyboard_id() const override { return 1; }
         DeviceId mouse_id() const override { return 2; }
         DeviceId gamepad_id() const override { return 3; }
-        bool supports(const InputMode mode) const override { return mode != InputMode::Text || text_supported; }
+        bool supports(const CE::Input::Capture::Channel mode) const override {
+            return mode != CE::Input::Capture::Channel::Text || text_supported;
+        }
         bool supports_focus() const override { return focus_supported; }
-        std::shared_ptr<const PollSnapshot> emit(InputRecordData data, const DeviceKind kind = DeviceKind::Keyboard) {
+        std::shared_ptr<const PollSnapshot> emit(CE::Input::Events::Payload data, const DeviceKind kind = DeviceKind::Keyboard) {
             begin_input_poll();
             capture_buffer().record(kind == DeviceKind::Mouse ? mouse_id() : keyboard_id(), kind, std::move(data));
             return publish_input();
         }
     };
 
-    ButtonEvent key(const KeyboardKey key, const Modifiers flags = Modifiers::None, const ButtonPhase phase = ButtonPhase::Press) {
+    CE::Input::Events::Button
+    key(const KeyboardKey key,
+        const Modifiers flags = Modifiers::None,
+        const CE::Input::Events::ButtonPhase phase = CE::Input::Events::ButtonPhase::Press) {
         return {800, phase, flags, -1, -1, key};
     }
 }
@@ -62,11 +67,11 @@ TEST(ui_rmlui_session, lifecycle) {
         EXPECT_FALSE(capabilities.cursor);
         EXPECT_FALSE(capabilities.ime);
         EXPECT_FALSE(capabilities.effects);
-        const auto text = input.emit(TextEvent{U'a'});
+        const auto text = input.emit(CE::Input::Events::Text{U'a'});
         ASSERT_EQ(text->records.size(), 1u);
         EXPECT_EQ(text->records[0].target, 7u);
         session.release_keyboard_focus();
-        EXPECT_TRUE(input.emit(TextEvent{U'a'})->records.empty());
+        EXPECT_TRUE(input.emit(CE::Input::Events::Text{U'a'})->records.empty());
     }
     EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
     EXPECT_TRUE(input.emit(key(KeyboardKey::A))->records.empty());
@@ -81,7 +86,7 @@ TEST(ui_rmlui_session, routing) {
     auto& field = RmlUiTests::field(document);
     session.request_keyboard_focus();
     ASSERT_TRUE(field.Focus());
-    const auto first = input.emit(TextEvent{U'a'});
+    const auto first = input.emit(CE::Input::Events::Text{U'a'});
     session.handle_input(first->records, false);
     EXPECT_EQ(field.GetValue(), "a");
     auto foreign = first->records;
@@ -91,7 +96,7 @@ TEST(ui_rmlui_session, routing) {
     session.request_keyboard_focus();
     session.handle_input(first->records, false);
     EXPECT_EQ(field.GetValue(), "a");
-    const auto pending = input.emit(TextEvent{U'b'});
+    const auto pending = input.emit(CE::Input::Events::Text{U'b'});
     auto newer = input.routing().focus(9);
     session.handle_input(pending->records, false);
     EXPECT_EQ(field.GetValue(), "ab");
@@ -108,15 +113,15 @@ TEST(ui_rmlui_session, editing) {
     session.request_keyboard_focus();
     ASSERT_TRUE(field.Focus());
     for (const auto character : {U'a', U'é', U'b'})
-        session.handle_input(input.emit(TextEvent{character})->records, false);
+        session.handle_input(input.emit(CE::Input::Events::Text{character})->records, false);
     EXPECT_EQ(
         field.GetValue(), "a\xc3\xa9"
                           "b"
     );
-    session.handle_input(input.emit(key(KeyboardKey::Backspace, Modifiers::None, ButtonPhase::Repeat))->records, false);
+    session.handle_input(input.emit(key(KeyboardKey::Backspace, Modifiers::None, CE::Input::Events::ButtonPhase::Repeat))->records, false);
     EXPECT_EQ(field.GetValue(), "a\xc3\xa9");
     session.handle_input(input.emit(key(KeyboardKey::Left, Modifiers::Shift))->records, false);
-    session.handle_input(input.emit(TextEvent{U'x'})->records, false);
+    session.handle_input(input.emit(CE::Input::Events::Text{U'x'})->records, false);
     EXPECT_EQ(field.GetValue(), "ax");
     field.SetValue("keep");
     field.Select();
@@ -125,7 +130,7 @@ TEST(ui_rmlui_session, editing) {
         EXPECT_EQ(field.GetValue(), "keep");
     }
     EXPECT_THROW(Rml::GetSystemInterface()->SetClipboardText("private"), CE::Exceptions::failed_operation);
-    EXPECT_THROW(session.handle_input(input.emit(TextEvent{0xD800})->records, false), CE::Exceptions::invalid_args);
+    EXPECT_THROW(session.handle_input(input.emit(CE::Input::Events::Text{0xD800})->records, false), CE::Exceptions::invalid_args);
 }
 
 TEST(ui_rmlui_session, click_position) {
@@ -134,17 +139,25 @@ TEST(ui_rmlui_session, click_position) {
     auto& document = RmlUiTests::document(session);
     auto& field = RmlUiTests::field(document);
     field.Blur();
-    const ButtonEvent click{900, ButtonPhase::Press,   Modifiers::None,   -1,
-                            -1,  KeyboardKey::Unknown, MouseButton::Left, PointerEvent{20, 45}};
+    const CE::Input::Events::Button click{
+        900,
+        CE::Input::Events::ButtonPhase::Press,
+        Modifiers::None,
+        -1,
+        -1,
+        KeyboardKey::Unknown,
+        MouseButton::Left,
+        CE::Input::Events::Pointer{20, 45}
+    };
     session.handle_input(input.emit(click, DeviceKind::Mouse)->records, false);
     EXPECT_NE(session.context().GetFocusElement(), &field);
     // A first click carries its own position; no earlier movement is necessary.
     session.handle_input(input.emit(click, DeviceKind::Mouse)->records, true);
     EXPECT_EQ(session.context().GetFocusElement(), &field);
     auto release = click;
-    release.phase = ButtonPhase::Release;
+    release.phase = CE::Input::Events::ButtonPhase::Release;
     session.handle_input(input.emit(release, DeviceKind::Mouse)->records, true);
-    session.handle_input(input.emit(PointerEvent{300, 200}, DeviceKind::Mouse)->records, true);
+    session.handle_input(input.emit(CE::Input::Events::Pointer{300, 200}, DeviceKind::Mouse)->records, true);
     EXPECT_EQ(session.context().GetFocusElement(), &field);
     auto missing = click;
     missing.position.reset();
@@ -238,7 +251,7 @@ TEST(ui_rmlui_session, wheel_position) {
         }
     } listener;
     document.AddEventListener("mousescroll", &listener, true);
-    const auto poll = input.emit(ScrollEvent{0.5, -0.25, PointerEvent{20.75, 45.25}}, DeviceKind::Mouse);
+    const auto poll = input.emit(CE::Input::Events::Scroll{0.5, -0.25, CE::Input::Events::Pointer{20.75, 45.25}}, DeviceKind::Mouse);
     session.handle_input(poll->records, false);
     EXPECT_EQ(listener.calls, 0);
     session.handle_input(poll->records, true);

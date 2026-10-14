@@ -1,23 +1,24 @@
 #pragma once
 #include <core/resources/memory/mem-mgr.h>
 
-namespace CE::Mem {
+namespace CE::Memory::Allocators {
     template <class T> struct ObjectAllocator final : std::allocator<T> {
         using value_type = T;
-        using manager_type = ObjMMgr<T>;
+        using manager_type = ::CE::Memory::ObjectMemoryManager<T>;
 
         T* allocate(std::size_t N) {
             // Reserve growth beyond this batch for future allocations of T;
             // deallocation returns the active range through its raw pointer.
-            auto b = ObjMMgr<T>::get().checkout_chunk(sizeof(T) * N, alignof(T), Enum::greedy);
+            auto b = ::CE::Memory::ObjectMemoryManager<T>::get().checkout_chunk(sizeof(T) * N, alignof(T), ::CE::Memory::greedy);
             return static_cast<T*>(b.head.get());
         }
-        void deallocate(T* ptr, std::size_t N) { ObjMMgr<T>::get().return_ptr(ptr); }
+        void deallocate(T* ptr, std::size_t N) { ::CE::Memory::ObjectMemoryManager<T>::get().return_ptr(ptr); }
     };
 }
 
-template <typename T> struct std::allocator_traits<CE::Mem::ObjectAllocator<T>> : std::allocator_traits<std::allocator<T>> {
-    using allocator_type = CE::Mem::ObjectAllocator<T>;
+template <typename T>
+struct std::allocator_traits<::CE::Memory::Allocators::ObjectAllocator<T>> : std::allocator_traits<std::allocator<T>> {
+    using allocator_type = ::CE::Memory::Allocators::ObjectAllocator<T>;
     using value_type = typename allocator_type::value_type;
     using pointer = value_type*;
     using const_pointer = const value_type*;

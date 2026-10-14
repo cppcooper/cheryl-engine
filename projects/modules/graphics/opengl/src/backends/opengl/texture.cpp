@@ -12,20 +12,20 @@
 #include <utility>
 #include <vector>
 
-namespace CE::Assets {
+namespace CE::Rendering::OpenGL {
     namespace {
-        RenderAPIs::OpenGLHandle create_texture_handle(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime) {
+        Handle create_texture_handle(std::shared_ptr<ResourceLifetime> lifetime) {
             if (!lifetime)
                 throw Exceptions::invalid_args(CE_HERE, "OpenGL texture needs a resource lifetime");
             lifetime->require_current();
-            RenderAPIs::require_no_gl_error("Cannot create a texture with pending OpenGL errors");
+            CE::Rendering::OpenGL::Detail::require_no_gl_error("Cannot create a texture with pending OpenGL errors");
             GLuint id = 0;
             glGenTextures(1, &id);
             try {
-                RenderAPIs::require_no_gl_error("OpenGL texture creation failed");
-                return {lifetime, RenderAPIs::GLResourceKind::Texture, id};
+                CE::Rendering::OpenGL::Detail::require_no_gl_error("OpenGL texture creation failed");
+                return {lifetime, ResourceKind::Texture, id};
             } catch (...) {
-                lifetime->discard_untracked(RenderAPIs::GLResourceKind::Texture, id);
+                lifetime->discard_untracked(ResourceKind::Texture, id);
                 throw;
             }
         }
@@ -51,8 +51,8 @@ namespace CE::Assets {
 
         // Color images default to maximum available anisotropy. Pixelated images
         // and the base-level red font atlas explicitly use isotropic filtering.
-        if (RenderAPIs::SamplingDetail::anisotropy_supported()) {
-            const auto anisotropy = fmt == GL_RED || pixelate ? 1 : RenderAPIs::SamplingDetail::maximum_anisotropy();
+        if (Detail::anisotropy_supported()) {
+            const auto anisotropy = fmt == GL_RED || pixelate ? 1 : Detail::maximum_anisotropy();
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
         }
 
@@ -64,12 +64,12 @@ namespace CE::Assets {
             use_mipmaps ? (pixelate ? GL_NEAREST_MIPMAP_NEAREST : GL_LINEAR_MIPMAP_LINEAR) : (pixelate ? GL_NEAREST : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minification);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, pixelate ? GL_NEAREST : GL_LINEAR);
-        RenderAPIs::require_no_gl_error("OpenGL texture sampling configuration failed");
+        CE::Rendering::OpenGL::Detail::require_no_gl_error("OpenGL texture sampling configuration failed");
 
         const GLint internal_format = fmt == GL_RED ? GL_R8 : GL_RGBA8;
         GLint previous_unpack_alignment = 4;
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
-        RenderAPIs::require_no_gl_error("OpenGL unpack-alignment query failed");
+        CE::Rendering::OpenGL::Detail::require_no_gl_error("OpenGL unpack-alignment query failed");
         if (fmt == GL_RED) {
             // One-byte atlas rows can be unaligned; map red to alpha while emitting white RGB.
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -78,29 +78,23 @@ namespace CE::Assets {
         }
         glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, fmt, GL_UNSIGNED_BYTE, bits);
         glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
-        RenderAPIs::require_no_gl_error("OpenGL texture storage upload failed");
+        CE::Rendering::OpenGL::Detail::require_no_gl_error("OpenGL texture storage upload failed");
 
         // Mip levels depend on the base image uploaded above.
         if (use_mipmaps) {
             glGenerateMipmap(GL_TEXTURE_2D);
-            RenderAPIs::require_no_gl_error("OpenGL texture mipmap generation failed");
+            CE::Rendering::OpenGL::Detail::require_no_gl_error("OpenGL texture mipmap generation failed");
         }
     }
 
-    Texture::Texture(
-        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
-        const char* file,
-        bool use_mipmaps,
-        bool pixelate,
-        int wrap_opt
-    ) {
+    Texture::Texture(std::shared_ptr<ResourceLifetime> lifetime, const char* file, bool use_mipmaps, bool pixelate, int wrap_opt) {
         if (!file)
             throw Exceptions::invalid_args(CE_HERE, "Image filename must not be null");
-        const auto pixels = decode_image(file);
+        const auto pixels = CE::Assets::Images::decode(file);
         width = static_cast<int>(pixels.size.width);
         height = static_cast<int>(pixels.size.height);
         handle_ = create_texture_handle(std::move(lifetime));
-        binding_unit_limit_ = RenderAPIs::SamplingDetail::binding_unit_limit();
+        binding_unit_limit_ = Detail::binding_unit_limit();
         bind(0);
         upload(pixels.rgba.data(), width, height, use_mipmaps, pixelate, wrap_opt, GL_RGBA);
         mipmap_complete_ = use_mipmaps || (width == 1 && height == 1);
@@ -108,7 +102,7 @@ namespace CE::Assets {
     }
 
     Texture::Texture(
-        std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime,
+        std::shared_ptr<ResourceLifetime> lifetime,
         const unsigned char* bitmap_data,
         int width,
         int height,
@@ -123,7 +117,7 @@ namespace CE::Assets {
         // The font path supplies an already baked alpha atlas; upload() applies
         // its one-channel swizzle without running a file decoder.
         handle_ = create_texture_handle(std::move(lifetime));
-        binding_unit_limit_ = RenderAPIs::SamplingDetail::binding_unit_limit();
+        binding_unit_limit_ = Detail::binding_unit_limit();
         bind(0);
         upload(bitmap_data, width, height, use_mipmaps, pixelate, wrap_opt, fmt);
         mipmap_complete_ = use_mipmaps || (width == 1 && height == 1);

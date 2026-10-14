@@ -13,14 +13,19 @@
 
 class GLFWwindow;
 
-namespace CE {
-    class iWindow;
+namespace CE::Platform {
     class Window;
 }
 
-namespace CE::Input {
-    class GlfwInputDevice;
-    class GainputLifetime;
+namespace CE::Platform::GLFW {
+    class Window;
+}
+
+namespace CE::Platform::GLFW {
+    namespace Detail {
+        class InputDevice;
+        class GainputLifetime;
+    }
 
     // Routes GLFW window input into Gainput; Gainput polls gamepads directly.
     // The engine attaches the window before AbstractGame::init, where games can bind device IDs.
@@ -31,15 +36,15 @@ namespace CE::Input {
     // Detachment retains devices; Update receives elapsed seconds between attached polls.
     // Ordered GLFW records are captured before Gainput mapping. The character
     // callback provides OS text independently of physical keyboard State.
-    class InputSystem final : public iInputSystem,
-                              public Singleton_CTS<InputSystem> {
-        std::unique_ptr<GainputLifetime> gainput_lifetime_;
+    class InputSystem final : public CE::Input::System,
+                              public CE::State::Singleton<InputSystem> {
+        std::unique_ptr<Detail::GainputLifetime> gainput_lifetime_;
         gainput::InputManager manager_;
-        InputMapper bindings_;
+        GainputMapper bindings_;
         bool manager_initialized_ = false;
-        InputClock::time_point last_update_{};
-        GlfwInputDevice* keyboard_ = nullptr;
-        GlfwInputDevice* mouse_ = nullptr;
+        CE::Input::ObservationClock::time_point last_update_{};
+        Detail::InputDevice* keyboard_ = nullptr;
+        Detail::InputDevice* mouse_ = nullptr;
         gainput::DeviceId keyboard_id_ = gainput::InvalidDeviceId;
         gainput::DeviceId mouse_id_ = gainput::InvalidDeviceId;
         gainput::DeviceId gamepad_id_ = gainput::InvalidDeviceId;
@@ -49,11 +54,11 @@ namespace CE::Input {
         std::vector<float> pad_axes_;
         std::vector<bool> pad_buttons_;
         std::exception_ptr callback_failure_;
-        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
         bool observed_gamepad_available_ = false;
         bool observed_window_focus_ = false;
         bool gamepad_diagnostics_ = false;
-        InputClock::time_point next_gamepad_diagnostics_{};
+        CE::Input::ObservationClock::time_point next_gamepad_diagnostics_{};
 
         template <typename Work> void receive(Work&& work) noexcept {
             if (callback_failure_)
@@ -78,7 +83,7 @@ namespace CE::Input {
         InputSystem();
         ~InputSystem() override;
 
-        void initialize(iWindow& window) override;
+        void initialize(CE::Platform::Window& window) override;
         void poll() override;
         // Host event-pump integration: begin_poll(), pump GLFW, then update().
         void begin_poll();
@@ -87,15 +92,16 @@ namespace CE::Input {
         // Opt-in gamepad values/IDs at TRACE; call on platform before startup or between polls.
         void set_gamepad_diagnostics(bool enabled) noexcept;
 
-        [[nodiscard]] InputBindings& bindings() override { return bindings_; }
+        [[nodiscard]] CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         // Access devices/configuration after initialize(); Init/Exit belong to this adapter.
         [[nodiscard]] gainput::InputManager& manager() { return manager_; }
-        [[nodiscard]] DeviceId keyboard_id() const override { return keyboard_id_; }
-        [[nodiscard]] DeviceId mouse_id() const override { return mouse_id_; }
-        [[nodiscard]] DeviceId gamepad_id() const override { return gamepad_id_; }
+        [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return keyboard_id_; }
+        [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return mouse_id_; }
+        [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return gamepad_id_; }
         [[nodiscard]] bool supports_focus() const override { return true; }
-        [[nodiscard]] bool supports(InputMode mode) const override {
-            return mode == InputMode::State || mode == InputMode::Events || mode == InputMode::Text;
+        [[nodiscard]] bool supports(CE::Input::Capture::Channel mode) const override {
+            return mode == CE::Input::Capture::Channel::State || mode == CE::Input::Capture::Channel::Events ||
+                   mode == CE::Input::Capture::Channel::Text;
         }
     };
 }

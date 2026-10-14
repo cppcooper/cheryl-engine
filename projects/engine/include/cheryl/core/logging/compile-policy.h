@@ -1,7 +1,7 @@
 #pragma once
 #include <spdlog/common.h>
 
-namespace ctlog {
+namespace CE::Logging::Compile {
     enum LogLevel { FATAL_ = 1 << 0, ERROR_ = 1 << 1, WARNING_ = 1 << 2, INFO_ = 1 << 3, DEBUG_ = 1 << 4, TRACE_ = 1 << 5 };
 }
 
@@ -32,7 +32,7 @@ static_assert(CHERYL_LOG_PROFILE >= 0 && CHERYL_LOG_PROFILE <= 2, "Unknown Chery
 static_assert(CHERYL_LOG_COMPILED_MASK >= 0 && (CHERYL_LOG_COMPILED_MASK & ~0x3f) == 0, "Unknown Cheryl logging severity bits");
 static_assert(CTWriteMask == CHERYL_LOG_COMPILED_MASK, "Conflicting Cheryl logging masks");
 
-namespace ctlog {
+namespace CE::Logging::Compile {
     inline constexpr unsigned compiled_mask = CHERYL_LOG_COMPILED_MASK;
     inline constexpr int profile = CHERYL_LOG_PROFILE; // Developer, support, release.
 

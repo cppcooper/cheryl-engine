@@ -4,7 +4,7 @@
 //#include <core/resources/memory/allocators/object-pool-allocator.hpp>
 #include "object-construction.hpp"
 
-namespace CE::Obj {
+namespace CE::Memory::Objects {
     template <typename T>
     template <typename... Args>
     std::vector<std::shared_ptr<T>> PoolState<T>::retrieve_objects(std::size_t N, Args... args) {
@@ -28,7 +28,7 @@ namespace CE::Obj {
                         try {
                             context->tracking_->destroy(object);
                         } catch (...) {
-                            Diagnostics::report_failure("owned object destruction", std::current_exception());
+                            ::CE::Diagnostics::report_failure("owned object destruction", std::current_exception());
                             std::terminate();
                         }
                         context->release_owned(object, 1);
@@ -51,38 +51,40 @@ namespace CE::Obj {
         try {
             return_objects(p, length);
         } catch (...) {
-            Diagnostics::report_failure("owned object range release", std::current_exception());
+            ::CE::Diagnostics::report_failure("owned object range release", std::current_exception());
             std::terminate();
         }
     }
 
-    template <typename T> Block<T> PoolState<T>::retrieve_block(std::size_t N) {
+    template <typename T>::CE::Memory::Block<T> PoolState<T>::retrieve_block(std::size_t N) {
         if (N == 0) {
-            throw Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
+            throw ::CE::Exceptions::bad_request(CE_HERE, "Cannot retrieve an empty object block.");
         }
-        return BlockTransactions<T>::checkout(this->state_, N, std::align_val_t{alignof(T)}, [this, N] { return allocate(N); });
+        return ::CE::Memory::BlockTransactions<T>::checkout(this->state_, N, std::align_val_t{alignof(T)}, [this, N] {
+            return allocate(N);
+        });
     }
 
     template <typename T> void PoolState<T>::return_objects(T* p, std::size_t length) {
-        if (!BlockTransactions<T>::return_range(this->state_, p, length)) {
-            throw Exceptions::bad_request(CE_HERE, "Cannot return an unknown, pooled, or out-of-bounds object range.");
+        if (!::CE::Memory::BlockTransactions<T>::return_range(this->state_, p, length)) {
+            throw ::CE::Exceptions::bad_request(CE_HERE, "Cannot return an unknown, pooled, or out-of-bounds object range.");
         }
     }
 
-    template <typename T> void PoolState<T>::return_block(const Block<T>& returned) {
-        if (!BlockTransactions<T>::return_block(this->state_, returned)) {
-            throw Exceptions::failed_operation(CE_HERE, "Object pool was returned an unknown or active block.");
+    template <typename T> void PoolState<T>::return_block(const ::CE::Memory::Block<T>& returned) {
+        if (!::CE::Memory::BlockTransactions<T>::return_block(this->state_, returned)) {
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Object pool was returned an unknown or active block.");
         }
     }
 
-    template <typename T> Block<T> PoolState<T>::allocate(size_t length) {
+    template <typename T>::CE::Memory::Block<T> PoolState<T>::allocate(size_t length) {
         // Borrow raw bytes from the typed memory manager. The resulting owner handle
         // destroys any tracked T objects and returns those bytes when its final alias dies.
         if (length > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-            throw Exceptions::bad_request(CE_HERE, "The requested object storage length cannot be represented.");
+            throw ::CE::Exceptions::bad_request(CE_HERE, "The requested object storage length cannot be represented.");
         }
-        auto& manager = Mem::ObjMMgr<T>::get();
-        Mem::HeapBlock b = manager.checkout_chunk(length * sizeof(T), alignof(T), Enum::greedy);
+        auto& manager = ::CE::Memory::ObjectMemoryManager<T>::get();
+        ::CE::Memory::HeapBlock b = manager.checkout_chunk(length * sizeof(T), alignof(T), ::CE::Memory::greedy);
         auto raw = static_cast<T*>(b.head.get());
 
         static_assert(!std::is_same_v<T, void>);
@@ -96,7 +98,7 @@ namespace CE::Obj {
                 tracking->destroy(p, len);
                 tracking->erase(p, p + len);
             } catch (...) {
-                Diagnostics::report_failure("object backing cleanup", std::current_exception());
+                ::CE::Diagnostics::report_failure("object backing cleanup", std::current_exception());
                 std::terminate();
             }
             byte_context->release_owned(b);

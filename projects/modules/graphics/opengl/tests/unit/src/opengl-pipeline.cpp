@@ -28,8 +28,6 @@
 #include <vector>
 
 namespace {
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
     using CE::Exceptions::invalid_args;
 
     // Synthetic IDs and recording GLAD entries exercise contract code without a window.
@@ -39,24 +37,25 @@ namespace {
         std::vector<std::function<void()>> restore_;
         bool current_ = true;
         int current_queries_ = 0;
-        std::shared_ptr<OpenGLResourceLifetime> lifetime_ = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [this] {
-            ++current_queries_;
-            return current_;
-        });
-        std::vector<std::shared_ptr<OpenGLResourceLifetime>> other_domains_;
+        std::shared_ptr<CE::Rendering::OpenGL::ResourceLifetime> lifetime_ =
+            std::make_shared<CE::Rendering::OpenGL::ResourceLifetime>(std::this_thread::get_id(), [this] {
+                ++current_queries_;
+                return current_;
+            });
+        std::vector<std::shared_ptr<CE::Rendering::OpenGL::ResourceLifetime>> other_domains_;
         GLuint next_id_ = 10;
         std::uint32_t active_unit_ = 0;
         GLenum error_ = GL_NO_ERROR;
         std::shared_ptr<CE::Testing::FailingMemoryResource> entry_memory_;
-        std::vector<OpenGLHandle> registration_padding_;
+        std::vector<CE::Rendering::OpenGL::Handle> registration_padding_;
         int reject_registration_at_ = 0;
         int registration_candidates_ = 0;
 
     public:
         bool linked = true;
-        std::vector<GLSLVariable> uniforms;
-        std::vector<GLSLVariable> attributes{{"in_Position", GL_FLOAT_VEC3, 1, 0}, {"in_Texcoord", GL_FLOAT_VEC2, 1, 1}};
-        std::map<GLint, ParameterValue> writes;
+        std::vector<CE::Rendering::OpenGL::Variable> uniforms;
+        std::vector<CE::Rendering::OpenGL::Variable> attributes{{"in_Position", GL_FLOAT_VEC3, 1, 0}, {"in_Texcoord", GL_FLOAT_VEC2, 1, 1}};
+        std::map<GLint, CE::Rendering::Parameters::Value> writes;
         std::vector<std::pair<std::uint32_t, GLuint>> image_binds;
         std::vector<std::pair<std::uint32_t, GLuint>> sampler_binds;
         std::map<GLuint, std::map<GLenum, GLint>> sampler_parameters;
@@ -74,8 +73,8 @@ namespace {
         int state_changes = 0;
         int geometry_binds = 0;
         std::vector<std::pair<GLint, GLsizei>> draws;
-        std::vector<std::pair<GLResourceKind, GLuint>> generated;
-        std::vector<std::pair<GLResourceKind, GLuint>> deleted;
+        std::vector<std::pair<CE::Rendering::OpenGL::ResourceKind, GLuint>> generated;
+        std::vector<std::pair<CE::Rendering::OpenGL::ResourceKind, GLuint>> deleted;
         int buffer_uploads = 0;
         int fail_buffer_upload = 0;
         bool fail_image_upload = false;
@@ -92,7 +91,7 @@ namespace {
         std::map<GLuint, std::pair<GLint, GLsizei>> attribute_layouts;
         std::array<GLint, 4> scissor_box{};
         GLint unpack_alignment = 4;
-        std::optional<GLResourceKind> fail_generation;
+        std::optional<CE::Rendering::OpenGL::ResourceKind> fail_generation;
         bool lose_context_on_error = false;
         std::string fail_startup_operation;
 
@@ -115,15 +114,16 @@ namespace {
                 return;
             // Fill only spare capacity so the next native adoption must request
             // registry storage, independent of the vector's growth strategy.
-            while (ResourceDetail::LifetimeAccess::size(*lifetime_) < ResourceDetail::LifetimeAccess::capacity(*lifetime_)) {
+            while (CE::Rendering::OpenGL::Detail::LifetimeAccess::size(*lifetime_) <
+                   CE::Rendering::OpenGL::Detail::LifetimeAccess::capacity(*lifetime_)) {
                 const auto id = ++next_id_;
-                generated.emplace_back(GLResourceKind::Buffer, id);
-                registration_padding_.emplace_back(lifetime_, GLResourceKind::Buffer, id);
+                generated.emplace_back(CE::Rendering::OpenGL::ResourceKind::Buffer, id);
+                registration_padding_.emplace_back(lifetime_, CE::Rendering::OpenGL::ResourceKind::Buffer, id);
             }
             entry_memory_->reject_next();
         }
 
-        static GLint maximum_name_length(const std::vector<GLSLVariable>& variables) {
+        static GLint maximum_name_length(const std::vector<CE::Rendering::OpenGL::Variable>& variables) {
             std::size_t longest = 0;
             for (const auto& variable : variables)
                 longest = std::max(longest, variable.name.size());
@@ -153,8 +153,14 @@ namespace {
             }
         }
 
-        static void
-        variable_query(const GLSLVariable& variable, GLsizei capacity, GLsizei* written, GLint* size, GLenum* type, GLchar* name) {
+        static void variable_query(
+            const CE::Rendering::OpenGL::Variable& variable,
+            GLsizei capacity,
+            GLsizei* written,
+            GLint* size,
+            GLenum* type,
+            GLchar* name
+        ) {
             const auto count = std::min(variable.name.size(), static_cast<std::size_t>(std::max(0, capacity - 1)));
             std::copy_n(variable.name.data(), count, name);
             name[count] = '\0';
@@ -173,7 +179,7 @@ namespace {
             variable_query(active_->attributes.at(index), capacity, written, size, type, name);
         }
 
-        static GLint location(const std::vector<GLSLVariable>& variables, const GLchar* name) {
+        static GLint location(const std::vector<CE::Rendering::OpenGL::Variable>& variables, const GLchar* name) {
             const auto variable = std::find_if(variables.begin(), variables.end(), [&](const auto& item) { return item.name == name; });
             return variable == variables.end() ? -1 : variable->location;
         }
@@ -192,26 +198,42 @@ namespace {
                     copied[column][row] = values[column * 4 + row];
             active_->writes.insert_or_assign(location, copied);
         }
-        static void generate(GLResourceKind kind, GLsizei count, GLuint* images) {
+        static void generate(CE::Rendering::OpenGL::ResourceKind kind, GLsizei count, GLuint* images) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->generated.emplace_back(kind, images[i] = ++active_->next_id_);
             if (active_->fail_generation == kind)
                 active_->error_ = GL_OUT_OF_MEMORY;
             active_->prepare_registration_failure();
         }
-        static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) { generate(GLResourceKind::Texture, count, images); }
-        static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) { generate(GLResourceKind::Buffer, count, images); }
-        static void GLAD_API_PTR generate_arrays(GLsizei count, GLuint* images) { generate(GLResourceKind::VertexArray, count, images); }
-        static void GLAD_API_PTR generate_samplers(GLsizei count, GLuint* ids) { generate(GLResourceKind::Sampler, count, ids); }
-        static void delete_ids(GLResourceKind kind, GLsizei count, const GLuint* ids) {
+        static void GLAD_API_PTR generate_images(GLsizei count, GLuint* images) {
+            generate(CE::Rendering::OpenGL::ResourceKind::Texture, count, images);
+        }
+        static void GLAD_API_PTR generate_buffers(GLsizei count, GLuint* images) {
+            generate(CE::Rendering::OpenGL::ResourceKind::Buffer, count, images);
+        }
+        static void GLAD_API_PTR generate_arrays(GLsizei count, GLuint* images) {
+            generate(CE::Rendering::OpenGL::ResourceKind::VertexArray, count, images);
+        }
+        static void GLAD_API_PTR generate_samplers(GLsizei count, GLuint* ids) {
+            generate(CE::Rendering::OpenGL::ResourceKind::Sampler, count, ids);
+        }
+        static void delete_ids(CE::Rendering::OpenGL::ResourceKind kind, GLsizei count, const GLuint* ids) {
             for (GLsizei i = 0; i < count; ++i)
                 active_->deleted.emplace_back(kind, ids[i]);
         }
-        static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Texture, count, ids); }
-        static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Buffer, count, ids); }
-        static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::VertexArray, count, ids); }
-        static void GLAD_API_PTR delete_program(GLuint id) { delete_ids(GLResourceKind::Program, 1, &id); }
-        static void GLAD_API_PTR delete_samplers(GLsizei count, const GLuint* ids) { delete_ids(GLResourceKind::Sampler, count, ids); }
+        static void GLAD_API_PTR delete_images(GLsizei count, const GLuint* ids) {
+            delete_ids(CE::Rendering::OpenGL::ResourceKind::Texture, count, ids);
+        }
+        static void GLAD_API_PTR delete_buffers(GLsizei count, const GLuint* ids) {
+            delete_ids(CE::Rendering::OpenGL::ResourceKind::Buffer, count, ids);
+        }
+        static void GLAD_API_PTR delete_arrays(GLsizei count, const GLuint* ids) {
+            delete_ids(CE::Rendering::OpenGL::ResourceKind::VertexArray, count, ids);
+        }
+        static void GLAD_API_PTR delete_program(GLuint id) { delete_ids(CE::Rendering::OpenGL::ResourceKind::Program, 1, &id); }
+        static void GLAD_API_PTR delete_samplers(GLsizei count, const GLuint* ids) {
+            delete_ids(CE::Rendering::OpenGL::ResourceKind::Sampler, count, ids);
+        }
         static GLenum GLAD_API_PTR error_query() {
             const auto error = std::exchange(active_->error_, GL_NO_ERROR);
             if (error != GL_NO_ERROR && active_->lose_context_on_error)
@@ -406,7 +428,7 @@ namespace {
         }
         void reject_registration(const int candidate) {
             entry_memory_ = std::make_shared<CE::Testing::FailingMemoryResource>();
-            lifetime_ = ResourceDetail::LifetimeAccess::create(
+            lifetime_ = CE::Rendering::OpenGL::Detail::LifetimeAccess::create(
                 std::this_thread::get_id(),
                 [this] {
                     ++current_queries_;
@@ -422,40 +444,45 @@ namespace {
         void set_current(const bool current) { current_ = current; }
         [[nodiscard]] bool is_current() const { return current_; }
         [[nodiscard]] int current_queries() const { return current_queries_; }
-        std::shared_ptr<OpenGLResourceLifetime> lifetime() { return lifetime_; }
+        std::shared_ptr<CE::Rendering::OpenGL::ResourceLifetime> lifetime() { return lifetime_; }
 
-        std::shared_ptr<GLSLProgram> program() {
-            return std::make_shared<GLSLProgram>(OpenGLHandle(lifetime_, GLResourceKind::Program, ++next_id_));
+        std::shared_ptr<CE::Rendering::OpenGL::Program> program() {
+            return std::make_shared<CE::Rendering::OpenGL::Program>(
+                CE::Rendering::OpenGL::Handle(lifetime_, CE::Rendering::OpenGL::ResourceKind::Program, ++next_id_)
+            );
         }
-        std::shared_ptr<Texture> image(bool another_domain = false) {
+        std::shared_ptr<CE::Rendering::OpenGL::Texture> image(bool another_domain = false) {
             auto domain = lifetime_;
             if (another_domain) {
-                domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+                domain = std::make_shared<CE::Rendering::OpenGL::ResourceLifetime>(std::this_thread::get_id(), [] { return true; });
                 other_domains_.push_back(domain);
             }
             const unsigned char pixels[]{255, 255, 255, 255};
-            return std::make_shared<Texture>(domain, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+            return std::make_shared<CE::Rendering::OpenGL::Texture>(domain, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
         }
-        std::shared_ptr<OpenGLSampler> sampler(const SamplerOptions& options, const bool another_domain = false) {
+        std::shared_ptr<CE::Rendering::OpenGL::Sampler>
+        sampler(const CE::Rendering::Sampling::Options& options, const bool another_domain = false) {
             auto domain = lifetime_;
             if (another_domain) {
-                domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+                domain = std::make_shared<CE::Rendering::OpenGL::ResourceLifetime>(std::this_thread::get_id(), [] { return true; });
                 other_domains_.push_back(domain);
             }
-            return std::make_shared<OpenGLSampler>(domain, options);
+            return std::make_shared<CE::Rendering::OpenGL::Sampler>(domain, options);
         }
-        std::shared_ptr<CE::VAO> geometry(bool another_domain = false) {
+        std::shared_ptr<CE::Rendering::OpenGL::VertexArray> geometry(bool another_domain = false) {
             auto domain = lifetime_;
             if (another_domain) {
-                domain = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [] { return true; });
+                domain = std::make_shared<CE::Rendering::OpenGL::ResourceLifetime>(std::this_thread::get_id(), [] { return true; });
                 other_domains_.push_back(domain);
             }
-            const std::array<CE::Vertex2D, 6> vertices{};
-            return std::make_shared<CE::VAO>(domain, std::span<const CE::Vertex2D>{vertices}, PrimitiveTopology::Triangles);
+            const std::array<CE::Rendering::Geometry::Vertex2D, 6> vertices{};
+            return std::make_shared<CE::Rendering::OpenGL::VertexArray>(
+                domain, std::span<const CE::Rendering::Geometry::Vertex2D>{vertices}, CE::Rendering::Geometry::Topology::Triangles
+            );
         }
     };
 
-    class RecordingContext final : public iOpenGLContext {
+    class RecordingContext final : public CE::Rendering::OpenGL::Context {
         NativeProgramRecorder& native_;
 
     public:
@@ -492,24 +519,30 @@ namespace {
         void present() override {}
     };
 
-    PipelineDefinition time_definition(bool required = true) {
-        PipelineDefinition definition;
+    CE::Rendering::Pipelines::Definition time_definition(bool required = true) {
+        CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {"effect.vert", "effect.frag"};
-        definition.parameters = {{"time", ParameterType::Float, required}};
+        definition.parameters = {{"time", CE::Rendering::Parameters::Type::Float, required}};
         return definition;
     }
 
-    ShaderProgramRecipe shader_program_recipe() {
-        return {"test:program", {{ShaderStage::Vertex, "prepared.vert", "vertex snapshot"},
-                                 {ShaderStage::Fragment, "prepared.frag", "fragment snapshot"}}};
+    CE::Assets::Shaders::ProgramRecipe shader_program_recipe() {
+        return {
+            "test:program",
+            {{CE::Assets::Shaders::Stage::Vertex, "prepared.vert", "vertex snapshot"},
+             {CE::Assets::Shaders::Stage::Fragment, "prepared.frag", "fragment snapshot"}}
+        };
     }
 
-    ShaderMaterialRecipe shader_material_recipe() {
-        ShaderMaterialRecipe recipe;
+    CE::Assets::Shaders::MaterialRecipe shader_material_recipe() {
+        CE::Assets::Shaders::MaterialRecipe recipe;
         recipe.id = "test:material";
         recipe.program = "test:program";
-        recipe.parameters = {{"image", ParameterType::Sampler2D},
-                             {"weight", ParameterType::Float, true, ParameterSemantic::Custom, ShaderLiteral{1.0f}}};
+        recipe.parameters = {
+            {"image", CE::Rendering::Parameters::Type::Sampler2D},
+            {"weight", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Custom,
+             CE::Assets::Shaders::Literal{1.0f}}
+        };
         recipe.bindings.emplace("opengl", R"JSON({"parameters":{"image":"uImage","weight":"uWeight"}})JSON");
         return recipe;
     }
@@ -518,8 +551,8 @@ namespace {
 TEST(opengl_shader_assets, cpu_validation) {
     NativeProgramRecorder native;
     RecordingContext context(native);
-    OpenGLRenderer renderer(context);
-    OpenGLResourceProvider provider(renderer);
+    CE::Rendering::OpenGL::Renderer renderer(context);
+    CE::Rendering::OpenGL::ResourceProvider provider(renderer);
     auto* builder = provider.shader_asset_builder();
     ASSERT_NE(builder, nullptr);
     const auto program = shader_program_recipe();
@@ -531,7 +564,7 @@ TEST(opengl_shader_assets, cpu_validation) {
     recipe.bindings.clear();
     EXPECT_THROW(builder->validate_material(recipe, program), invalid_args);
     recipe = shader_material_recipe();
-    recipe.sampling.emplace("weight", SamplerOptions{});
+    recipe.sampling.emplace("weight", CE::Rendering::Sampling::Options{});
     EXPECT_THROW(builder->validate_material(recipe, program), invalid_args);
     EXPECT_TRUE(native.generated.empty());
 }
@@ -539,35 +572,37 @@ TEST(opengl_shader_assets, cpu_validation) {
 TEST(opengl_shader_assets, shared_program_and_sampling) {
     NativeProgramRecorder native;
     RecordingContext context(native);
-    OpenGLRenderer renderer(context);
-    RendererDetail::RendererAccess::set_native_loader(renderer, [](iOpenGLContext&) {});
+    CE::Rendering::OpenGL::Renderer renderer(context);
+    CE::Rendering::OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](CE::Rendering::OpenGL::Context&) {});
     renderer.initialize();
-    OpenGLResourceProvider provider(renderer);
-    const auto executable = std::make_shared<GLSLProgram>(OpenGLHandle(renderer.resources(), GLResourceKind::Program, 500));
+    CE::Rendering::OpenGL::ResourceProvider provider(renderer);
+    const auto executable = std::make_shared<CE::Rendering::OpenGL::Program>(
+        CE::Rendering::OpenGL::Handle(renderer.resources(), CE::Rendering::OpenGL::ResourceKind::Program, 500)
+    );
     native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 8}, {"uWeight", GL_FLOAT, 1, 9}};
     const auto program = shader_program_recipe();
     auto recipe = shader_material_recipe();
     auto* builder = provider.shader_asset_builder();
     const auto triangles = builder->build_material(recipe, program, executable);
-    recipe.topology = PrimitiveTopology::TriangleStrip;
-    SamplerOptions nearest;
-    nearest.minification = nearest.magnification = ImageFilter::Nearest;
-    nearest.mipmaps = MipmapFilter::None;
-    nearest.anisotropy = ImageAnisotropy::Disabled;
+    recipe.topology = CE::Rendering::Geometry::Topology::TriangleStrip;
+    CE::Rendering::Sampling::Options nearest;
+    nearest.minification = nearest.magnification = CE::Rendering::Sampling::Filter::Nearest;
+    nearest.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+    nearest.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     recipe.sampling.emplace("image", nearest);
     const auto strips = builder->build_material(recipe, program, executable);
-    EXPECT_EQ(triangles->definition().pipeline->definition().topology, PrimitiveTopology::Triangles);
-    EXPECT_EQ(strips->definition().pipeline->definition().topology, PrimitiveTopology::TriangleStrip);
+    EXPECT_EQ(triangles->definition().pipeline->definition().topology, CE::Rendering::Geometry::Topology::Triangles);
+    EXPECT_EQ(strips->definition().pipeline->definition().topology, CE::Rendering::Geometry::Topology::TriangleStrip);
     EXPECT_TRUE(triangles->definition().sampling.empty());
     EXPECT_FALSE(strips->definition().defaults.contains("image"));
-    const auto image = provider.create_image(DecodedImage{{1, 1}, {255, 255, 255, 255}});
-    const ParameterSet draw{{"image", ImageBinding{image, 0}}};
-    const auto* pipeline = dynamic_cast<const GLSLPipeline*>(strips->definition().pipeline.get());
+    const auto image = provider.create_image(CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}});
+    const CE::Rendering::Parameters::Set draw{{"image", CE::Rendering::Parameters::ImageBinding{image, 0}}};
+    const auto* pipeline = dynamic_cast<const CE::Rendering::OpenGL::Pipeline*>(strips->definition().pipeline.get());
     ASSERT_NE(pipeline, nullptr);
     pipeline->bind_parameters(strips->resolve({}, {}, {}, draw));
     ASSERT_FALSE(native.sampler_binds.empty());
     EXPECT_NE(native.sampler_binds.back().second, 0u);
-    const auto* ordinary = dynamic_cast<const GLSLPipeline*>(triangles->definition().pipeline.get());
+    const auto* ordinary = dynamic_cast<const CE::Rendering::OpenGL::Pipeline*>(triangles->definition().pipeline.get());
     ASSERT_NE(ordinary, nullptr);
     ordinary->bind_parameters(triangles->resolve({}, {}, {}, draw));
     EXPECT_EQ(native.sampler_binds.back().second, 0u);
@@ -584,8 +619,8 @@ TEST(opengl_renderer, startup_failure) {
             NativeProgramRecorder native;
             RecordingContext context(native);
             context.fail_release = release_failure;
-            OpenGLRenderer renderer(context);
-            RendererDetail::RendererAccess::set_native_loader(renderer, [&](iOpenGLContext&) {
+            CE::Rendering::OpenGL::Renderer renderer(context);
+            CE::Rendering::OpenGL::Detail::RendererAccess::set_native_loader(renderer, [&](CE::Rendering::OpenGL::Context&) {
                 if (operation == "loader")
                     throw std::runtime_error("Original loader failure");
             });
@@ -627,37 +662,43 @@ TEST(opengl_renderer, context_loss_ownership) {
             SCOPED_TRACE(release_failure);
             NativeProgramRecorder native;
             RecordingContext context(native);
-            auto renderer = std::make_unique<OpenGLRenderer>(context);
-            RendererDetail::RendererAccess::set_native_loader(*renderer, [](iOpenGLContext&) {});
+            auto renderer = std::make_unique<CE::Rendering::OpenGL::Renderer>(context);
+            CE::Rendering::OpenGL::Detail::RendererAccess::set_native_loader(*renderer, [](CE::Rendering::OpenGL::Context&) {});
             renderer->initialize();
             auto domain = renderer->resources();
-            auto provider = std::make_unique<OpenGLResourceProvider>(*renderer);
-            auto& cache = MaterialMgr::get();
+            auto provider = std::make_unique<CE::Rendering::OpenGL::ResourceProvider>(*renderer);
+            auto& cache = CE::Assets::Materials::Manager::get();
             const std::filesystem::path key{"context-loss-material"};
             native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 8}};
-            native.generated.emplace_back(GLResourceKind::Program, GLuint{500});
-            auto program = std::make_shared<GLSLProgram>(OpenGLHandle(domain, GLResourceKind::Program, 500));
-            PipelineDefinition definition;
+            native.generated.emplace_back(CE::Rendering::OpenGL::ResourceKind::Program, GLuint{500});
+            auto program = std::make_shared<CE::Rendering::OpenGL::Program>(
+                CE::Rendering::OpenGL::Handle(domain, CE::Rendering::OpenGL::ResourceKind::Program, 500)
+            );
+            CE::Rendering::Pipelines::Definition definition;
             definition.program_sources = {"retained.vert", "retained.frag"};
-            definition.parameters = {{"image", ParameterType::Sampler2D, true}};
-            auto pipeline = std::make_shared<GLSLPipeline>(definition, program, GLSLPipelineBindings{{{"image", "uImage"}}});
-            DecodedImage pixels{PixelSize{1, 1}, {255, 255, 255, 255}};
+            definition.parameters = {{"image", CE::Rendering::Parameters::Type::Sampler2D, true}};
+            auto pipeline = std::make_shared<CE::Rendering::OpenGL::Pipeline>(
+                definition, program, CE::Rendering::OpenGL::PipelineBindings{{{"image", "uImage"}}}
+            );
+            CE::Assets::Images::Decoded pixels{CE::Rendering::Geometry::PixelSize{1, 1}, {255, 255, 255, 255}};
             auto image = provider->create_image(pixels);
-            const std::array<CE::Vertex2D, 6> vertices{};
-            auto geometry = provider->upload_geometry(vertices, PrimitiveTopology::Triangles);
-            auto material = provider->build_material({pipeline, {{"image", ImageBinding{image, 0}}}});
-            cache.load_material(key, *provider, [&](ResourceProvider&) { return material; });
+            const std::array<CE::Rendering::Geometry::Vertex2D, 6> vertices{};
+            auto geometry = provider->upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
+            auto material = provider->build_material({pipeline, {{"image", CE::Rendering::Parameters::ImageBinding{image, 0}}}});
+            cache.load(key, *provider, [&](CE::Rendering::Resources::Provider&) { return material; });
             auto retained = cache.get_asset(key);
-            std::weak_ptr<GLSLProgram> program_owner = program;
-            std::weak_ptr<Image> image_owner = image;
-            std::weak_ptr<Geometry2D> geometry_owner = geometry;
-            RenderFrame frame;
+            std::weak_ptr<CE::Rendering::OpenGL::Program> program_owner = program;
+            std::weak_ptr<CE::Rendering::Resources::Image> image_owner = image;
+            std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = geometry;
+            CE::Rendering::Frame frame;
             {
-                RenderFrameWriter writer(frame);
+                CE::Rendering::FrameWriter writer(frame);
                 auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
-                DrawStyle2D style;
+                CE::Rendering::DrawStyle2D style;
                 style.material = material;
-                pass.add(resolve_draw_packet(geometry, 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints()));
+                pass.add(
+                    CE::Rendering::resolve_draw_packet(geometry, 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints())
+                );
             }
             program.reset();
             pipeline.reset();
@@ -670,10 +711,10 @@ TEST(opengl_renderer, context_loss_ownership) {
             EXPECT_EQ(native.state_changes, before_loss);
             EXPECT_TRUE(native.draws.empty());
             EXPECT_THROW(
-                cache.reload_material(
+                cache.reload(
                     key, *provider,
-                    [&](ResourceProvider& value) {
-                        return static_cast<OpenGLResourceProvider&>(value).build_material(retained->definition());
+                    [&](CE::Rendering::Resources::Provider& value) {
+                        return static_cast<CE::Rendering::OpenGL::ResourceProvider&>(value).build_material(retained->definition());
                     }
                 ),
                 CE::Exceptions::failed_operation
@@ -725,12 +766,16 @@ TEST(opengl_renderer, context_loss_ownership) {
 TEST(opengl_lifetime, generation_context_loss) {
     NativeProgramRecorder native;
     auto retained = native.image();
-    native.fail_generation = GLResourceKind::Buffer;
+    native.fail_generation = CE::Rendering::OpenGL::ResourceKind::Buffer;
     native.lose_context_on_error = true;
-    auto vertices = std::shared_ptr<CE::Vertex2D>(new CE::Vertex2D[6]{}, std::default_delete<CE::Vertex2D[]>{});
-    std::weak_ptr<CE::Vertex2D> cpu_owner = vertices;
+    auto vertices = std::shared_ptr<CE::Rendering::Geometry::Vertex2D>(
+        new CE::Rendering::Geometry::Vertex2D[6]{}, std::default_delete<CE::Rendering::Geometry::Vertex2D[]>{}
+    );
+    std::weak_ptr<CE::Rendering::Geometry::Vertex2D> cpu_owner = vertices;
     try {
-        static_cast<void>(std::make_shared<CE::VAO>(native.lifetime(), std::move(vertices), 6, PrimitiveTopology::Triangles));
+        static_cast<void>(std::make_shared<CE::Rendering::OpenGL::VertexArray>(
+            native.lifetime(), std::move(vertices), 6, CE::Rendering::Geometry::Topology::Triangles
+        ));
         FAIL() << "Buffer generation must fail";
     } catch (const CE::Exceptions::failed_operation& error) {
         EXPECT_NE(std::string(error.what()).find("buffer creation failed"), std::string::npos);
@@ -738,7 +783,7 @@ TEST(opengl_lifetime, generation_context_loss) {
     EXPECT_TRUE(cpu_owner.expired());
     ASSERT_EQ(native.generated.size(), 3u);
     const auto unadopted = native.generated.back();
-    EXPECT_EQ(unadopted.first, GLResourceKind::Buffer);
+    EXPECT_EQ(unadopted.first, CE::Rendering::OpenGL::ResourceKind::Buffer);
     std::thread release([owner = std::move(retained)]() mutable { owner.reset(); });
     release.join();
     EXPECT_TRUE(native.deleted.empty());
@@ -801,16 +846,23 @@ TEST(opengl_pipeline, two_image_effect) {
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uColor", GL_FLOAT_VEC4, 1, 6}, {"uCamera", GL_FLOAT_MAT4, 1, 7},
         {"uBase", GL_SAMPLER_2D, 1, 8}, {"uMask", GL_SAMPLER_2D, 1, 9}};
     auto definition = time_definition();
-    definition.parameters.push_back({"color", ParameterType::Vec4});
-    definition.parameters.push_back({"camera", ParameterType::Mat4, true, ParameterSemantic::Projection});
-    definition.parameters.push_back({"base", ParameterType::Sampler2D});
-    definition.parameters.push_back({"mask", ParameterType::Sampler2D});
-    GLSLPipelineBindings bindings{{{"time", "uTime"}, {"color", "uColor"}, {"camera", "uCamera"}, {"base", "uBase"}, {"mask", "uMask"}}};
-    auto pipeline = std::make_shared<GLSLPipeline>(definition, native.program(), bindings);
+    definition.parameters.push_back({"color", CE::Rendering::Parameters::Type::Vec4});
+    definition.parameters.push_back(
+        {"camera", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
+    );
+    definition.parameters.push_back({"base", CE::Rendering::Parameters::Type::Sampler2D});
+    definition.parameters.push_back({"mask", CE::Rendering::Parameters::Type::Sampler2D});
+    CE::Rendering::OpenGL::PipelineBindings bindings{
+        {{"time", "uTime"}, {"color", "uColor"}, {"camera", "uCamera"}, {"base", "uBase"}, {"mask", "uMask"}}
+    };
+    auto pipeline = std::make_shared<CE::Rendering::OpenGL::Pipeline>(definition, native.program(), bindings);
     auto first = native.image();
     auto second = native.image();
-    Material material({pipeline, {{"base", ImageBinding{first, 1}}, {"mask", ImageBinding{second, 3}}}});
-    ShaderPass camera;
+    CE::Rendering::Resources::Material material(
+        {pipeline,
+         {{"base", CE::Rendering::Parameters::ImageBinding{first, 1}}, {"mask", CE::Rendering::Parameters::ImageBinding{second, 3}}}}
+    );
+    CE::Rendering::Parameters::PassSemantics camera;
     camera.projection[3][0] = 17.0f;
     auto values = material.resolve(camera, {}, {{"time", 4.0f}}, {{"color", glm::vec4{0.1f, 0.2f, 0.3f, 0.4f}}});
     native.image_binds.clear();
@@ -832,8 +884,8 @@ TEST(opengl_pipeline, optional_uniform_reset) {
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     const auto program = native.program();
     const auto definition = time_definition(false);
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, {{{"time", "uTime"}}})), invalid_args);
-    GLSLPipeline pipeline(definition, program, {{{"time", "uTime", 0.0f}}});
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, {{{"time", "uTime"}}})), invalid_args);
+    CE::Rendering::OpenGL::Pipeline pipeline(definition, program, {{{"time", "uTime", 0.0f}}});
     pipeline.bind_parameters({{"time", 7.0f}});
     pipeline.bind_parameters({});
     EXPECT_EQ(native.uses, 2);
@@ -842,7 +894,7 @@ TEST(opengl_pipeline, optional_uniform_reset) {
 
 TEST(opengl_pipeline, inactive_optional_uniforms) {
     NativeProgramRecorder native;
-    GLSLPipeline pipeline(time_definition(false), native.program(), {{{"time", "uTime"}}});
+    CE::Rendering::OpenGL::Pipeline pipeline(time_definition(false), native.program(), {{{"time", "uTime"}}});
     pipeline.bind_parameters({});
     EXPECT_EQ(native.uses, 1);
     EXPECT_TRUE(native.writes.empty());
@@ -852,16 +904,16 @@ TEST(opengl_pipeline, invalid_uniform_contract) {
     NativeProgramRecorder native;
     const auto program = native.program();
     const auto definition = time_definition();
-    const GLSLPipelineBindings bindings{{{"time", "uTime"}}};
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, bindings)), invalid_args);
+    const CE::Rendering::OpenGL::PipelineBindings bindings{{{"time", "uTime"}}};
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, bindings)), invalid_args);
     native.uniforms = {{"uTime", GL_INT, 1, 5}};
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, bindings)), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, bindings)), invalid_args);
     native.uniforms = {{"uTime", GL_FLOAT, 2, 5}};
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, bindings)), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, bindings)), invalid_args);
     native.uniforms = {{"uTime", GL_FLOAT, 1, -1}};
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, bindings)), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, bindings)), invalid_args);
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"outside", GL_FLOAT, 1, 6}};
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(definition, program, bindings)), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(definition, program, bindings)), invalid_args);
     EXPECT_EQ(native.uses, 0);
     EXPECT_TRUE(native.writes.empty());
 }
@@ -871,10 +923,13 @@ TEST(opengl_pipeline, invalid_program_attributes) {
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     const auto program = native.program();
     native.attributes[0].location = 2;
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(time_definition(), program, {{{"time", "uTime"}}})), invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Rendering::OpenGL::Pipeline(time_definition(), program, {{{"time", "uTime"}}})), invalid_args);
     native.attributes[0].location = 0;
     native.linked = false;
-    EXPECT_THROW(static_cast<void>(GLSLPipeline(time_definition(), program, {{{"time", "uTime"}}})), CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        static_cast<void>(CE::Rendering::OpenGL::Pipeline(time_definition(), program, {{{"time", "uTime"}}})),
+        CE::Exceptions::failed_operation
+    );
     EXPECT_EQ(native.uses, 0);
 }
 
@@ -882,14 +937,14 @@ TEST(opengl_pipeline, invalid_sampler_bindings) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}, {"uImage", GL_SAMPLER_2D, 1, 6}};
     auto definition = time_definition();
-    definition.parameters.push_back({"image", ParameterType::Sampler2D});
-    GLSLPipeline pipeline(definition, native.program(), {{{"time", "uTime"}, {"image", "uImage"}}});
+    definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+    CE::Rendering::OpenGL::Pipeline pipeline(definition, native.program(), {{{"time", "uTime"}, {"image", "uImage"}}});
     auto foreign = native.image(true);
     auto local = native.image();
     native.image_binds.clear();
-    EXPECT_THROW(pipeline.bind_parameters({{"time", 1.0f}, {"image", ImageBinding{foreign, 0}}}), invalid_args);
-    EXPECT_THROW(pipeline.bind_parameters({{"time", 1.0f}, {"image", ImageBinding{local, 8}}}), invalid_args);
-    EXPECT_THROW(pipeline.bind_parameters({{"time", 1}, {"image", ImageBinding{local, 0}}}), invalid_args);
+    EXPECT_THROW(pipeline.bind_parameters({{"time", 1.0f}, {"image", CE::Rendering::Parameters::ImageBinding{foreign, 0}}}), invalid_args);
+    EXPECT_THROW(pipeline.bind_parameters({{"time", 1.0f}, {"image", CE::Rendering::Parameters::ImageBinding{local, 8}}}), invalid_args);
+    EXPECT_THROW(pipeline.bind_parameters({{"time", 1}, {"image", CE::Rendering::Parameters::ImageBinding{local, 0}}}), invalid_args);
     EXPECT_EQ(native.uses, 0);
     EXPECT_TRUE(native.writes.empty());
     EXPECT_TRUE(native.image_binds.empty());
@@ -900,10 +955,12 @@ TEST(opengl_pipeline, per_draw_state) {
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     auto geometry = native.geometry();
     auto definition = time_definition();
-    definition.state = {BlendMode::Opaque, DepthMode::LessEqual, true, CullMode::Back};
-    GLSLPipeline solid(definition, native.program(), {{{"time", "uTime"}}});
-    PassConstraints2D world;
-    world.depth = DepthMode::LessEqual;
+    definition.state = {
+        CE::Rendering::Pipelines::Blend::Opaque, CE::Rendering::Pipelines::Depth::LessEqual, true, CE::Rendering::Pipelines::Cull::Back
+    };
+    CE::Rendering::OpenGL::Pipeline solid(definition, native.program(), {{{"time", "uTime"}}});
+    CE::Rendering::Pipelines::PassConstraints2D world;
+    world.depth = CE::Rendering::Pipelines::Depth::LessEqual;
     solid.draw(*geometry, 0, 6, {{"time", 1.0f}}, world);
     EXPECT_FALSE(native.enabled.at(GL_BLEND));
     EXPECT_TRUE(native.enabled.at(GL_DEPTH_TEST));
@@ -913,7 +970,7 @@ TEST(opengl_pipeline, per_draw_state) {
     EXPECT_EQ(native.cull_face, GL_BACK);
 
     definition.state = {};
-    GLSLPipeline overlay(definition, native.program(), {{{"time", "uTime"}}});
+    CE::Rendering::OpenGL::Pipeline overlay(definition, native.program(), {{{"time", "uTime"}}});
     overlay.draw(*geometry, 0, 3, {{"time", 2.0f}}, {});
     EXPECT_TRUE(native.enabled.at(GL_BLEND));
     EXPECT_FALSE(native.enabled.at(GL_DEPTH_TEST));
@@ -929,19 +986,19 @@ TEST(opengl_pipeline, per_draw_state) {
 TEST(opengl_pipeline, clipped_draws) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
-    GLSLPipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
+    CE::Rendering::OpenGL::Pipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
     auto geometry = native.geometry();
-    const ClipRegion2D clip{{10, 20, 60, 80}, 100, 100};
+    const CE::Rendering::ClipRegion2D clip{{10, 20, 60, 80}, 100, 100};
     pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, clip, {200, 300});
     EXPECT_TRUE(native.enabled.at(GL_SCISSOR_TEST));
     EXPECT_EQ(native.scissor_box, (std::array<GLint, 4>{20, 60, 100, 180}));
     pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {});
     EXPECT_FALSE(native.enabled.at(GL_SCISSOR_TEST));
     const auto changes = native.state_changes;
-    pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, ClipRegion2D{{2, 0, 2, 10}, 100, 100}, {200, 300});
+    pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, CE::Rendering::ClipRegion2D{{2, 0, 2, 10}, 100, 100}, {200, 300});
     EXPECT_EQ(native.draws.size(), 2u);
     EXPECT_EQ(native.state_changes, changes);
-    EXPECT_THROW(pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, ClipRegion2D{{}, 0, 100}, {200, 300}), invalid_args);
+    EXPECT_THROW(pipeline.draw(*geometry, 0, 6, {{"time", 1.0f}}, {}, CE::Rendering::ClipRegion2D{{}, 0, 100}, {200, 300}), invalid_args);
     EXPECT_EQ(native.state_changes, changes);
 }
 
@@ -950,30 +1007,30 @@ TEST(opengl_pipeline, colored_vertices) {
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
     native.attributes.push_back({"in_Color", GL_FLOAT_VEC4, 1, 2});
     auto definition = time_definition();
-    EXPECT_THROW((void)GLSLPipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
-    definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
-    GLSLPipeline pipeline(definition, native.program(), {{{"time", "uTime"}}});
-    const std::array<CE::Vertex2DColor, 6> vertices{};
-    CE::VAO geometry(native.lifetime(), vertices, PrimitiveTopology::Triangles);
-    EXPECT_EQ(geometry.vertex_layout(), VertexLayout2D::Position3UV2Color4);
-    EXPECT_EQ(native.attribute_layouts.at(2), (std::pair<GLint, GLsizei>{4, sizeof(CE::Vertex2DColor)}));
+    EXPECT_THROW((void)CE::Rendering::OpenGL::Pipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
+    definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+    CE::Rendering::OpenGL::Pipeline pipeline(definition, native.program(), {{{"time", "uTime"}}});
+    const std::array<CE::Rendering::Geometry::Vertex2DColor, 6> vertices{};
+    CE::Rendering::OpenGL::VertexArray geometry(native.lifetime(), vertices, CE::Rendering::Geometry::Topology::Triangles);
+    EXPECT_EQ(geometry.vertex_layout(), CE::Rendering::Geometry::Layout2D::Position3UV2Color4);
+    EXPECT_EQ(native.attribute_layouts.at(2), (std::pair<GLint, GLsizei>{4, sizeof(CE::Rendering::Geometry::Vertex2DColor)}));
     pipeline.draw(geometry, 0, 6, {{"time", 1.0f}}, {});
     native.attributes.back().type = GL_FLOAT_VEC3;
-    EXPECT_THROW((void)GLSLPipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
+    EXPECT_THROW((void)CE::Rendering::OpenGL::Pipeline(definition, native.program(), {{{"time", "uTime"}}}), invalid_args);
 }
 
 TEST(opengl_pipeline, draw_validation) {
     NativeProgramRecorder native;
     native.uniforms = {{"uTime", GL_FLOAT, 1, 5}};
-    GLSLPipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
+    CE::Rendering::OpenGL::Pipeline pipeline(time_definition(), native.program(), {{{"time", "uTime"}}});
     auto local = native.geometry();
     auto foreign = native.geometry(true);
     native.geometry_binds = 0;
     EXPECT_THROW(pipeline.draw(*foreign, 0, 6, {{"time", 1.0f}}, {}), invalid_args);
     EXPECT_THROW(pipeline.draw(*local, 4, 3, {{"time", 1.0f}}, {}), invalid_args);
     EXPECT_THROW(pipeline.draw(*local, 0, 6, {{"time", 1}}, {}), invalid_args);
-    PassConstraints2D world;
-    world.depth = DepthMode::Less;
+    CE::Rendering::Pipelines::PassConstraints2D world;
+    world.depth = CE::Rendering::Pipelines::Depth::Less;
     EXPECT_THROW(pipeline.draw(*local, 0, 6, {{"time", 1.0f}}, world), invalid_args);
     EXPECT_EQ(native.uses, 0);
     EXPECT_EQ(native.state_changes, 0);
@@ -997,19 +1054,21 @@ TEST(opengl_sampler, filter_modes) {
     const std::array<GLint, 6> expected{GL_NEAREST, GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
                                       GL_LINEAR, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR};
     std::size_t index = 0;
-    for (const auto filter : {ImageFilter::Nearest, ImageFilter::Linear}) {
-        for (const auto mipmaps : {MipmapFilter::None, MipmapFilter::Nearest, MipmapFilter::Linear}) {
-            SamplerOptions options;
+    for (const auto filter : {CE::Rendering::Sampling::Filter::Nearest, CE::Rendering::Sampling::Filter::Linear}) {
+        for (const auto mipmaps :
+             {CE::Rendering::Sampling::MipmapFilter::None, CE::Rendering::Sampling::MipmapFilter::Nearest,
+              CE::Rendering::Sampling::MipmapFilter::Linear}) {
+            CE::Rendering::Sampling::Options options;
             options.minification = filter;
             options.magnification = filter;
             options.mipmaps = mipmaps;
-            options.anisotropy = ImageAnisotropy::Disabled;
+            options.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
             const auto sampler = native.sampler(options);
             sampler->bind(3);
             const auto id = native.sampler_binds.back().second;
             const auto& parameters = native.sampler_parameters.at(id);
             EXPECT_EQ(parameters.at(GL_TEXTURE_MIN_FILTER), expected[index++]);
-            EXPECT_EQ(parameters.at(GL_TEXTURE_MAG_FILTER), filter == ImageFilter::Nearest ? GL_NEAREST : GL_LINEAR);
+            EXPECT_EQ(parameters.at(GL_TEXTURE_MAG_FILTER), filter == CE::Rendering::Sampling::Filter::Nearest ? GL_NEAREST : GL_LINEAR);
             EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_S), GL_CLAMP_TO_EDGE);
             EXPECT_EQ(parameters.at(GL_TEXTURE_WRAP_T), GL_CLAMP_TO_EDGE);
         }
@@ -1020,13 +1079,13 @@ TEST(opengl_sampler, filter_modes) {
 
 TEST(opengl_sampler, independent_modes) {
     NativeProgramRecorder native;
-    SamplerOptions options;
-    options.minification = ImageFilter::Nearest;
-    options.magnification = ImageFilter::Linear;
-    options.mipmaps = MipmapFilter::Linear;
-    options.wrap_u = ImageWrap::Repeat;
-    options.wrap_v = ImageWrap::MirroredRepeat;
-    options.anisotropy = ImageAnisotropy::Disabled;
+    CE::Rendering::Sampling::Options options;
+    options.minification = CE::Rendering::Sampling::Filter::Nearest;
+    options.magnification = CE::Rendering::Sampling::Filter::Linear;
+    options.mipmaps = CE::Rendering::Sampling::MipmapFilter::Linear;
+    options.wrap_u = CE::Rendering::Sampling::Wrap::Repeat;
+    options.wrap_v = CE::Rendering::Sampling::Wrap::MirroredRepeat;
+    options.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     const auto sampler = native.sampler(options);
     sampler->bind(2);
     const auto& parameters = native.sampler_parameters.at(native.sampler_binds.back().second);
@@ -1046,7 +1105,7 @@ TEST(opengl_sampler, anisotropy_defaults) {
         sampler->bind(0);
         const auto id = native.sampler_binds.back().second;
         EXPECT_FLOAT_EQ(sampler->effective_anisotropy(), support < 0 ? 1 : 16);
-        EXPECT_EQ(sampler->options().anisotropy, ImageAnisotropy::MaximumSupported);
+        EXPECT_EQ(sampler->options().anisotropy, CE::Rendering::Sampling::Anisotropy::MaximumSupported);
         EXPECT_EQ(native.anisotropy_queries, support < 0 ? 0 : 1);
         if (support >= 0)
             EXPECT_FLOAT_EQ(native.sampler_anisotropy.at(id), 16);
@@ -1062,17 +1121,17 @@ TEST(opengl_sampler, anisotropy_disabled) {
     NativeProgramRecorder native;
     native.enable_anisotropy();
     native.fail_anisotropy_query = true;
-    SamplerOptions options;
-    options.minification = options.magnification = ImageFilter::Nearest;
-    options.mipmaps = MipmapFilter::None;
-    options.anisotropy = ImageAnisotropy::Disabled;
+    CE::Rendering::Sampling::Options options;
+    options.minification = options.magnification = CE::Rendering::Sampling::Filter::Nearest;
+    options.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+    options.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     const auto sampler = native.sampler(options);
     sampler->bind(1);
     EXPECT_FLOAT_EQ(sampler->effective_anisotropy(), 1);
     EXPECT_FLOAT_EQ(native.sampler_anisotropy.at(native.sampler_binds.back().second), 1);
     EXPECT_EQ(native.anisotropy_queries, 0);
     const unsigned char pixels[]{255, 255, 255, 255};
-    const Texture image(native.lifetime(), pixels, 1, 1, true, true, GL_CLAMP_TO_EDGE, GL_RGBA);
+    const CE::Rendering::OpenGL::Texture image(native.lifetime(), pixels, 1, 1, true, true, GL_CLAMP_TO_EDGE, GL_RGBA);
     EXPECT_EQ(native.image_parameters.at(GL_TEXTURE_MIN_FILTER), GL_NEAREST_MIPMAP_NEAREST);
     EXPECT_EQ(native.image_parameters.at(GL_TEXTURE_MAG_FILTER), GL_NEAREST);
     EXPECT_FLOAT_EQ(native.image_anisotropy, 1);
@@ -1082,10 +1141,10 @@ TEST(opengl_sampler, anisotropy_disabled) {
 TEST(opengl_sampler, cache_lifetime) {
     NativeProgramRecorder native;
     RecordingContext context(native);
-    OpenGLRenderer renderer(context);
-    RendererDetail::RendererAccess::set_native_loader(renderer, [](iOpenGLContext&) {});
+    CE::Rendering::OpenGL::Renderer renderer(context);
+    CE::Rendering::OpenGL::Detail::RendererAccess::set_native_loader(renderer, [](CE::Rendering::OpenGL::Context&) {});
     renderer.initialize();
-    OpenGLResourceProvider provider(renderer);
+    CE::Rendering::OpenGL::ResourceProvider provider(renderer);
     auto first = provider.create_sampler({});
     auto second = provider.create_sampler({});
     EXPECT_EQ(first, second);
@@ -1095,21 +1154,21 @@ TEST(opengl_sampler, cache_lifetime) {
     worker.get();
     ASSERT_EQ(native.generated.size(), 1u);
     const auto original = native.generated.front();
-    SamplerOptions nearest;
-    nearest.minification = nearest.magnification = ImageFilter::Nearest;
-    nearest.mipmaps = MipmapFilter::None;
-    nearest.anisotropy = ImageAnisotropy::Disabled;
+    CE::Rendering::Sampling::Options nearest;
+    nearest.minification = nearest.magnification = CE::Rendering::Sampling::Filter::Nearest;
+    nearest.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+    nearest.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     const auto different = provider.create_sampler(nearest);
     EXPECT_NE(first, different);
-    std::weak_ptr<const Sampler> retained = first;
+    std::weak_ptr<const CE::Rendering::Sampling::Sampler> retained = first;
     first.reset();
     second.reset();
     EXPECT_TRUE(retained.expired());
     renderer.maintain_resources();
-    EXPECT_EQ(native.deleted, (std::vector<std::pair<GLResourceKind, GLuint>>{original}));
+    EXPECT_EQ(native.deleted, (std::vector<std::pair<CE::Rendering::OpenGL::ResourceKind, GLuint>>{original}));
     const auto replacement = provider.create_sampler({});
     EXPECT_EQ(native.generated.size(), 3u);
-    EXPECT_EQ(replacement->options(), SamplerOptions{});
+    EXPECT_EQ(replacement->options(), CE::Rendering::Sampling::Options{});
     renderer.deinitialize();
     EXPECT_EQ(native.deleted.size(), 3u);
     EXPECT_THROW(static_cast<void>(provider.create_sampler({})), CE::Exceptions::failed_operation);
@@ -1123,7 +1182,7 @@ TEST(opengl_sampler, creation_failures) {
         if (failure == 0)
             native.pending_error(GL_INVALID_OPERATION);
         else if (failure == 1)
-            native.fail_generation = GLResourceKind::Sampler;
+            native.fail_generation = CE::Rendering::OpenGL::ResourceKind::Sampler;
         else if (failure == 2)
             native.reject_registration(1);
         else if (failure == 3)
@@ -1166,25 +1225,25 @@ TEST(opengl_pipeline, sampler_isolation) {
     NativeProgramRecorder native;
     native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
     auto definition = time_definition();
-    definition.parameters = {{"image", ParameterType::Sampler2D}};
-    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
+    definition.parameters = {{"image", CE::Rendering::Parameters::Type::Sampler2D}};
+    CE::Rendering::OpenGL::Pipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
     auto image = native.image();
-    SamplerOptions nearest;
-    nearest.minification = nearest.magnification = ImageFilter::Nearest;
-    nearest.mipmaps = MipmapFilter::None;
-    nearest.anisotropy = ImageAnisotropy::Disabled;
+    CE::Rendering::Sampling::Options nearest;
+    nearest.minification = nearest.magnification = CE::Rendering::Sampling::Filter::Nearest;
+    nearest.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+    nearest.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     const auto first = native.sampler(nearest);
     const auto second = native.sampler({});
     const auto parameters = native.image_parameters;
     const auto uploads = native.image_uploads;
     native.sampler_binds.clear();
-    pipeline.bind_parameters({{"image", ImageBinding{image, 4, first}}});
+    pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 4, first}}});
     ASSERT_EQ(native.sampler_binds.size(), 2u);
     const auto nearest_id = native.sampler_binds.back().second;
-    pipeline.bind_parameters({{"image", ImageBinding{image, 4, second}}});
+    pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 4, second}}});
     const auto smooth_id = native.sampler_binds.back().second;
-    pipeline.bind_parameters({{"image", ImageBinding{image, 4}}});
-    pipeline.bind_parameters({{"image", ImageBinding{image, 4, first}}});
+    pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 4}}});
+    pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 4, first}}});
     EXPECT_NE(nearest_id, smooth_id);
     EXPECT_EQ(
         native.sampler_binds,
@@ -1198,46 +1257,53 @@ TEST(opengl_pipeline, sampler_validation) {
     NativeProgramRecorder native;
     native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
     auto definition = time_definition();
-    definition.parameters = {{"image", ParameterType::Sampler2D}};
-    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
+    definition.parameters = {{"image", CE::Rendering::Parameters::Type::Sampler2D}};
+    CE::Rendering::OpenGL::Pipeline pipeline(definition, native.program(), {{{"image", "uImage"}}});
     const auto geometry = native.geometry();
     const auto image = native.image();
     const auto foreign = native.sampler({}, true);
     const std::array<unsigned char, 16> pixels{};
-    const auto incomplete = std::make_shared<Texture>(native.lifetime(), pixels.data(), 2, 2, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+    const auto incomplete =
+        std::make_shared<CE::Rendering::OpenGL::Texture>(native.lifetime(), pixels.data(), 2, 2, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
     const auto mipmapped = native.sampler({});
     native.image_binds.clear();
     native.sampler_binds.clear();
     const auto state_changes = native.state_changes;
-    EXPECT_THROW(pipeline.draw(*geometry, 0, 3, {{"image", ImageBinding{image, 0, foreign}}}, {}), invalid_args);
-    EXPECT_THROW(pipeline.draw(*geometry, 0, 3, {{"image", ImageBinding{incomplete, 0, mipmapped}}}, {}), invalid_args);
+    EXPECT_THROW(pipeline.draw(*geometry, 0, 3, {{"image", CE::Rendering::Parameters::ImageBinding{image, 0, foreign}}}, {}), invalid_args);
+    EXPECT_THROW(
+        pipeline.draw(*geometry, 0, 3, {{"image", CE::Rendering::Parameters::ImageBinding{incomplete, 0, mipmapped}}}, {}), invalid_args
+    );
     EXPECT_EQ(native.uses, 0);
     EXPECT_EQ(native.state_changes, state_changes);
     EXPECT_TRUE(native.image_binds.empty());
     EXPECT_TRUE(native.sampler_binds.empty());
     EXPECT_TRUE(native.writes.empty());
     EXPECT_TRUE(native.draws.empty());
-    SamplerOptions base_level;
-    base_level.mipmaps = MipmapFilter::None;
+    CE::Rendering::Sampling::Options base_level;
+    base_level.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
     const auto nonmipmapped = native.sampler(base_level);
-    EXPECT_NO_THROW(pipeline.bind_parameters({{"image", ImageBinding{incomplete, 0, nonmipmapped}}}));
-    EXPECT_NO_THROW(pipeline.bind_parameters({{"image", ImageBinding{image, 0, mipmapped}}})); // A 1x1 image is already complete.
+    EXPECT_NO_THROW(pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{incomplete, 0, nonmipmapped}}}));
+    EXPECT_NO_THROW(
+        pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 0, mipmapped}}})
+    ); // A 1x1 image is already complete.
 }
 
 TEST(opengl_pipeline, sampler_reset) {
     NativeProgramRecorder native;
     native.uniforms = {{"uImage", GL_SAMPLER_2D, 1, 6}};
     auto definition = time_definition();
-    definition.parameters = {{"image", ParameterType::Sampler2D, false}};
+    definition.parameters = {{"image", CE::Rendering::Parameters::Type::Sampler2D, false}};
     const auto image = native.image();
-    GLSLPipeline pipeline(definition, native.program(), {{{"image", "uImage", ImageBinding{image, 4}}}});
-    SamplerOptions nearest;
-    nearest.minification = nearest.magnification = ImageFilter::Nearest;
-    nearest.mipmaps = MipmapFilter::None;
-    nearest.anisotropy = ImageAnisotropy::Disabled;
+    CE::Rendering::OpenGL::Pipeline pipeline(
+        definition, native.program(), {{{"image", "uImage", CE::Rendering::Parameters::ImageBinding{image, 4}}}}
+    );
+    CE::Rendering::Sampling::Options nearest;
+    nearest.minification = nearest.magnification = CE::Rendering::Sampling::Filter::Nearest;
+    nearest.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+    nearest.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
     const auto sampler = native.sampler(nearest);
     native.sampler_binds.clear();
-    pipeline.bind_parameters({{"image", ImageBinding{image, 4, sampler}}});
+    pipeline.bind_parameters({{"image", CE::Rendering::Parameters::ImageBinding{image, 4, sampler}}});
     ASSERT_EQ(native.sampler_binds.size(), 2u);
     EXPECT_NE(native.sampler_binds.back().second, 0u);
     pipeline.bind_parameters({});
@@ -1302,9 +1368,11 @@ TEST(opengl_upload, mesh_registry_failure) {
         SCOPED_TRACE(registration);
         NativeProgramRecorder native;
         native.reject_registration(registration);
-        auto vertices = std::shared_ptr<CE::Vertex3D>(new CE::Vertex3D[3]{}, std::default_delete<CE::Vertex3D[]>{});
+        auto vertices = std::shared_ptr<CE::Rendering::Geometry::Vertex3D>(
+            new CE::Rendering::Geometry::Vertex3D[3]{}, std::default_delete<CE::Rendering::Geometry::Vertex3D[]>{}
+        );
         auto indices = std::shared_ptr<std::uint32_t>(new std::uint32_t[3]{}, std::default_delete<std::uint32_t[]>{});
-        EXPECT_THROW((void)CE::VAO(native.lifetime(), vertices, 3, indices, 3), std::bad_alloc);
+        EXPECT_THROW((void)CE::Rendering::OpenGL::VertexArray(native.lifetime(), vertices, 3, indices, 3), std::bad_alloc);
         EXPECT_EQ(native.rejected_allocations(), 1u);
         EXPECT_EQ(native.buffer_uploads, 0);
         ASSERT_EQ(native.deleted.size(), 1u);
@@ -1325,7 +1393,10 @@ TEST(opengl_upload, anisotropy_query_failure) {
     native.enable_anisotropy();
     native.fail_anisotropy_query = true;
     const unsigned char pixels[]{255, 255, 255, 255};
-    EXPECT_THROW((void)Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA), CE::Exceptions::failed_operation);
+    EXPECT_THROW(
+        (void)CE::Rendering::OpenGL::Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA),
+        CE::Exceptions::failed_operation
+    );
     EXPECT_EQ(native.anisotropy_writes, 0);
     EXPECT_EQ(native.image_uploads, 0);
     EXPECT_EQ(native.mipmap_calls, 0);
@@ -1345,7 +1416,8 @@ TEST(opengl_upload, texture_query_failure) {
         native.unpack_alignment = 8;
         const unsigned char alpha[]{255};
         EXPECT_THROW(
-            (void)Texture(native.lifetime(), alpha, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RED), CE::Exceptions::failed_operation
+            (void)CE::Rendering::OpenGL::Texture(native.lifetime(), alpha, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RED),
+            CE::Exceptions::failed_operation
         );
         EXPECT_EQ(native.image_uploads, 0);
         EXPECT_EQ(native.unpack_alignment, 8);
@@ -1362,9 +1434,14 @@ TEST(opengl_upload, mesh_upload_failure) {
     for (const int failed_upload : {1, 2}) {
         NativeProgramRecorder native;
         native.fail_buffer_upload = failed_upload;
-        auto vertices = std::shared_ptr<CE::Vertex3D>(new CE::Vertex3D[3]{}, std::default_delete<CE::Vertex3D[]>{});
+        auto vertices = std::shared_ptr<CE::Rendering::Geometry::Vertex3D>(
+            new CE::Rendering::Geometry::Vertex3D[3]{}, std::default_delete<CE::Rendering::Geometry::Vertex3D[]>{}
+        );
         auto indices = std::shared_ptr<std::uint32_t>(new std::uint32_t[3]{}, std::default_delete<std::uint32_t[]>{});
-        EXPECT_THROW(static_cast<void>(CE::VAO(native.lifetime(), vertices, 3, indices, 3)), CE::Exceptions::failed_operation);
+        EXPECT_THROW(
+            static_cast<void>(CE::Rendering::OpenGL::VertexArray(native.lifetime(), vertices, 3, indices, 3)),
+            CE::Exceptions::failed_operation
+        );
         ASSERT_EQ(native.generated.size(), 3u);
         EXPECT_EQ(native.buffer_uploads, failed_upload);
         EXPECT_EQ(native.attributes_enabled, 0);
@@ -1385,7 +1462,8 @@ TEST(opengl_upload, atlas_upload_failure) {
     native.fail_image_upload = true;
     const unsigned char pixels[]{255, 255, 255};
     EXPECT_THROW(
-        static_cast<void>(Texture(native.lifetime(), pixels, 3, 1, true, false, GL_CLAMP_TO_EDGE, GL_RED)), CE::Exceptions::failed_operation
+        static_cast<void>(CE::Rendering::OpenGL::Texture(native.lifetime(), pixels, 3, 1, true, false, GL_CLAMP_TO_EDGE, GL_RED)),
+        CE::Exceptions::failed_operation
     );
     EXPECT_EQ(native.unpack_alignment, 4);
     EXPECT_EQ(native.mipmap_calls, 0);
@@ -1402,7 +1480,7 @@ TEST(opengl_upload, mipmap_generation_failure) {
     native.fail_mipmaps = true;
     const unsigned char pixels[]{255, 255, 255, 255};
     EXPECT_THROW(
-        static_cast<void>(Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA)),
+        static_cast<void>(CE::Rendering::OpenGL::Texture(native.lifetime(), pixels, 1, 1, true, false, GL_CLAMP_TO_EDGE, GL_RGBA)),
         CE::Exceptions::failed_operation
     );
     EXPECT_EQ(native.mipmap_calls, 1);
@@ -1423,10 +1501,12 @@ TEST(opengl_upload, pending_creation_errors) {
 }
 
 TEST(opengl_upload, generation_failure_cleanup) {
-    for (const auto kind : {GLResourceKind::Texture, GLResourceKind::VertexArray, GLResourceKind::Buffer}) {
+    for (const auto kind :
+         {CE::Rendering::OpenGL::ResourceKind::Texture, CE::Rendering::OpenGL::ResourceKind::VertexArray,
+          CE::Rendering::OpenGL::ResourceKind::Buffer}) {
         NativeProgramRecorder native;
         native.fail_generation = kind;
-        if (kind == GLResourceKind::Texture) {
+        if (kind == CE::Rendering::OpenGL::ResourceKind::Texture) {
             EXPECT_THROW(static_cast<void>(native.image()), CE::Exceptions::failed_operation);
         } else {
             EXPECT_THROW(static_cast<void>(native.geometry()), CE::Exceptions::failed_operation);
@@ -1450,12 +1530,12 @@ TEST(opengl_texture, unbind_context_guards) {
     NativeProgramRecorder native;
     bool current = true;
     int queries = 0;
-    auto lifetime = std::make_shared<OpenGLResourceLifetime>(std::this_thread::get_id(), [&] {
+    auto lifetime = std::make_shared<CE::Rendering::OpenGL::ResourceLifetime>(std::this_thread::get_id(), [&] {
         ++queries;
         return current;
     });
     const unsigned char pixels[]{255, 255, 255, 255};
-    Texture image(lifetime, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
+    CE::Rendering::OpenGL::Texture image(lifetime, pixels, 1, 1, false, false, GL_CLAMP_TO_EDGE, GL_RGBA);
     native.image_binds.clear();
     const auto before_foreign = queries;
     auto foreign = std::async(std::launch::async, [&] { EXPECT_THROW(image.unbind(1), CE::Exceptions::failed_operation); });

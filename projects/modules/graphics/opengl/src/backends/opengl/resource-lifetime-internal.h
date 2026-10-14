@@ -9,12 +9,12 @@
 #include <thread>
 #include <utility>
 
-namespace CE::RenderAPIs::ResourceDetail {
+namespace CE::Rendering::OpenGL::Detail {
     struct LifetimeAccess {
-        static std::shared_ptr<OpenGLResourceLifetime>
+        static std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime>
         create(std::thread::id owner, std::function<bool()> is_current, std::shared_ptr<std::pmr::memory_resource> entry_memory);
-        static std::size_t capacity(const OpenGLResourceLifetime& lifetime);
-        static std::size_t size(const OpenGLResourceLifetime& lifetime);
+        static std::size_t capacity(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
+        static std::size_t size(const ::CE::Rendering::OpenGL::ResourceLifetime& lifetime);
     };
 
     // allocate_shared retains a rebound allocator in its control block. Own the

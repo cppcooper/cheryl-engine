@@ -10,13 +10,13 @@
 #include <algorithm>
 #include <utility>
 
-namespace CE::Assets {
-    SpriteMgr::spointer SpriteMgr::get_asset(const std::string_view name_space, const std::string_view name) const {
+namespace CE::Assets::Sprites {
+    Manager::Handle Manager::get_asset(const std::string_view name_space, const std::string_view name) const {
         return get_asset(std::string(name_space) + ':' + std::string(name));
     }
 
-    std::map<std::string, SpriteMgr::spointer, std::less<>> SpriteMgr::get_assets(const std::string_view name_space) const {
-        std::map<std::string, spointer, std::less<>> result;
+    std::map<std::string, Manager::Handle, std::less<>> Manager::get_assets(const std::string_view name_space) const {
+        std::map<std::string, Handle, std::less<>> result;
         std::shared_lock lock(assets_mutex_);
         for (const auto& [id, sprite] : loaded_assets) {
             const auto& definition = sprite->definition();
@@ -26,14 +26,14 @@ namespace CE::Assets {
         return result;
     }
 
-    void SpriteMgr::load_assets(const std::vector<SpriteDefinition>& definitions, ResourceProvider& provider) {
+    void Manager::load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider) {
         bind_provider(provider);
         // Reserve only slots for new IDs; existing assets keep their handles across repeated loads.
-        std::vector<const SpriteDefinition*> pending;
+        std::vector<const Definition*> pending;
         for (const auto& definition : definitions)
             if (!contains(definition.id()))
                 pending.push_back(&definition);
-        auto reservation = reserve<Sprite>(pending.size());
+        auto reservation = reserve<Asset>(pending.size());
         std::size_t slot = 0;
         for (const auto* selected : pending) {
             const auto& definition = *selected;
@@ -41,7 +41,7 @@ namespace CE::Assets {
             if (contains(id)) {
                 continue;
             }
-            const auto texture = TextureMgr::get().get_asset(definition.texture);
+            const auto texture = CE::Assets::Images::Manager::get().get_asset(definition.texture);
             if (!texture) {
                 throw Exceptions::runtime_exception(
                     CE_HERE, "Sprite '" + id + "' references an unloaded texture '" + definition.texture.string() + "'"
@@ -51,19 +51,23 @@ namespace CE::Assets {
             if (texture_size.width == 0 || texture_size.height == 0) {
                 throw Exceptions::runtime_exception(CE_HERE, "Sprite '" + id + "' has an empty texture");
             }
-            const auto material = definition.shader ? ShaderAssetMgr::get().get_material(*definition.shader) : nullptr;
+            const auto material = definition.shader ? CE::Assets::Shaders::Manager::get().find_material(*definition.shader) : nullptr;
             if (definition.shader && !material)
                 throw Exceptions::runtime_exception(CE_HERE, "Sprite '" + id + "' references an unloaded shader '" + *definition.shader + "'");
             // Build CPU vertices from manifest grid/pivot, upload them through the selected backend,
             // and transfer the claimed slot from this reservation into the cache.
-            auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
-            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count, PrimitiveTopology::TriangleStrip);
+            auto geometry = CE::Assets::Grids::make_geometry(definition.grid, definition.pivot, texture_size);
+            auto mesh = provider.upload_geometry(
+                std::move(geometry.vertices), geometry.vertex_count, CE::Rendering::Geometry::Topology::TriangleStrip
+            );
             if (material) {
-                PassConstraints2D unconstrained;
+                CE::Rendering::Pipelines::PassConstraints2D unconstrained;
                 unconstrained.depth.reset();
                 material->definition().pipeline->validate_draw(*mesh, 0, mesh->vertex_count(), unconstrained);
             }
-            auto asset = reservation.emplace(slot++, SpriteData{.geometry = std::move(mesh), .texture = texture, .definition = definition, .material = material});
+            auto asset = reservation.emplace(
+                slot++, Data{.geometry = std::move(mesh), .texture = texture, .definition = definition, .material = material}
+            );
             publish_asset(id, std::move(asset));
         }
     }

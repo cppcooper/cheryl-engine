@@ -10,7 +10,7 @@
 TEST(camera_2d, framebuffer_corners) {
     // Map the two framebuffer corners into clip space to establish the 2D
     // projection's pixel coordinate convention.
-    CE::Camera2D camera;
+    CE::Rendering::Camera2D camera;
     camera.set_framebuffer_size({800, 600});
     const auto& projection = camera.projection_matrix();
     const auto lower_left = projection * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -22,7 +22,7 @@ TEST(camera_2d, framebuffer_corners) {
 }
 
 TEST(camera_2d, view_revision) {
-    CE::Camera2D camera;
+    CE::Rendering::Camera2D camera;
 
     // Moving the camera changes its revision; repeating the same view lets a
     // renderer keep its previous camera state.
@@ -39,7 +39,7 @@ TEST(camera_2d, view_revision) {
 TEST(camera_3d, perspective_settings) {
     // Check the default vertical field of view in degrees and the horizontal
     // scaling implied by a framebuffer twice as wide as it is high.
-    CE::Camera3D camera;
+    CE::Rendering::Camera3D camera;
     camera.set_framebuffer_size({1600, 800});
     const auto wide = camera.projection_matrix();
     EXPECT_NEAR(wide[1][1], 1.0f / std::tan(glm::radians(22.5f)), 1e-5f);
@@ -56,18 +56,18 @@ TEST(camera_3d, perspective_settings) {
 TEST(camera, minimized_window) {
     // A minimized window has no drawable pixels but should leave both
     // projections finite rather than producing NaNs.
-    CE::Camera2D two_d;
-    CE::Camera3D three_d;
+    CE::Rendering::Camera2D two_d;
+    CE::Rendering::Camera3D three_d;
     two_d.set_framebuffer_size({0, 0});
     three_d.set_framebuffer_size({0, 0});
-    EXPECT_EQ(two_d.framebuffer_size(), (CE::FramebufferSize{0, 0}));
+    EXPECT_EQ(two_d.framebuffer_size(), (CE::Platform::FramebufferSize{0, 0}));
     EXPECT_TRUE(std::isfinite(two_d.projection_matrix()[0][0]));
     EXPECT_TRUE(std::isfinite(three_d.projection_matrix()[0][0]));
 }
 
 TEST(camera, invalid_settings) {
-    CE::Camera2D two_d;
-    CE::Camera3D three_d;
+    CE::Rendering::Camera2D two_d;
+    CE::Rendering::Camera3D three_d;
 
     // Reject negative dimensions and nonsensical perspective parameters.
     EXPECT_THROW(two_d.set_framebuffer_size({-1, 10}), CE::Exceptions::invalid_args);
@@ -77,7 +77,7 @@ TEST(camera, invalid_settings) {
 
 TEST(viewport, independent_copies) {
     // Mutating the source after copying must leave the copy's dimensions intact.
-    CE::ViewPort<int> original(800, 600);
+    CE::Platform::Dimensions<int> original(800, 600);
     auto copy = original;
     original.width = 1024;
     original.height = 768;
@@ -88,7 +88,7 @@ TEST(viewport, independent_copies) {
 TEST(camera_2d, view_scalar_revision) {
     for (glm::length_t column = 0; column < 4; ++column) {
         for (glm::length_t row = 0; row < 4; ++row) {
-            CE::Camera2D camera;
+            CE::Rendering::Camera2D camera;
             auto view = camera.view_matrix();
             view[column][row] += 1.0f;
             const auto before = camera.revision();

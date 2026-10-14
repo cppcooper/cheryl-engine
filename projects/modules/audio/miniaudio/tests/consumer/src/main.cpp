@@ -49,23 +49,23 @@ namespace {
         return 0;
     }
 
-    const char* state_name(PlaybackState state) {
+    const char* state_name(CE::Audio::PlaybackState state) {
         switch (state) {
-            case PlaybackState::Playing:
+            case CE::Audio::PlaybackState::Playing:
                 return "Playing";
-            case PlaybackState::Paused:
+            case CE::Audio::PlaybackState::Paused:
                 return "Paused";
-            case PlaybackState::Finished:
+            case CE::Audio::PlaybackState::Finished:
                 return "Finished";
-            case PlaybackState::Stopped:
+            case CE::Audio::PlaybackState::Stopped:
                 return "Stopped";
-            case PlaybackState::Closed:
+            case CE::Audio::PlaybackState::Closed:
                 return "Closed";
         }
         return "Unknown";
     }
 
-    Clip tone(double frequency) {
+    CE::Audio::Clip tone(double frequency) {
         constexpr std::size_t frames = 9600;
         std::vector<float> samples(frames * 2);
         for (std::size_t frame = 0; frame < frames; ++frame) {
@@ -74,7 +74,7 @@ namespace {
             samples[frame * 2] = value;
             samples[frame * 2 + 1] = value;
         }
-        return Clip::from_samples({2, 48000}, std::move(samples));
+        return CE::Audio::Clip::from_samples({2, 48000}, std::move(samples));
     }
 
     void write_music(const AudioFixture::Wav& fixture) {
@@ -96,8 +96,8 @@ namespace {
         if (!source)
             write_music(generated);
         const auto file = source.value_or(generated.file());
-        const std::array<Clip, 3> effects{tone(440), tone(660), tone(880)};
-        auto system = System::open_device();
+        const std::array<CE::Audio::Clip, 3> effects{tone(440), tone(660), tone(880)};
+        auto system = CE::Audio::Miniaudio::System::open_device();
         system->set_volume(0.5f);
         auto music = system->stream(file, {.volume = 0.5f});
 
@@ -177,7 +177,7 @@ namespace {
         const auto final_state = music->snapshot().state;
         system.reset();
         std::cout << "Output closed; surviving music handle: " << state_name(final_state) << '\n';
-        return final_state == PlaybackState::Closed && music->snapshot().state == PlaybackState::Closed ? 0 : 1;
+        return final_state == CE::Audio::PlaybackState::Closed && music->snapshot().state == CE::Audio::PlaybackState::Closed ? 0 : 1;
     }
 }
 

@@ -5,7 +5,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace CE::Obj {
+namespace CE::Memory::Objects {
     /**
       * Allocates one contiguous batch and constructs each T separately. Each
       * returned handle destroys its object; the shared allocation owner calls

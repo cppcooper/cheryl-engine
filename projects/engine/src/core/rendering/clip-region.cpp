@@ -5,12 +5,12 @@
 #include <algorithm>
 #include <cmath>
 
-namespace CE::RenderAPIs {
+namespace CE::Rendering {
     namespace {
         void validate_rectangle(const ClipRect2D& rectangle) {
             if (!std::isfinite(rectangle.left) || !std::isfinite(rectangle.top) || !std::isfinite(rectangle.right) ||
                 !std::isfinite(rectangle.bottom) || rectangle.left > rectangle.right || rectangle.top > rectangle.bottom)
-                throw Exceptions::invalid_args(CE_HERE, "Clip edges must be finite and ordered");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Clip edges must be finite and ordered");
         }
     }
 
@@ -18,7 +18,7 @@ namespace CE::RenderAPIs {
         validate_rectangle(region.rectangle);
         if (!std::isfinite(region.logical_width) || !std::isfinite(region.logical_height) || region.logical_width <= 0 ||
             region.logical_height <= 0)
-            throw Exceptions::invalid_args(CE_HERE, "Clip logical dimensions must be finite and positive");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Clip logical dimensions must be finite and positive");
     }
 
     ClipRect2D intersect_clip_rects(const ClipRect2D& first, const ClipRect2D& second) {
@@ -29,10 +29,10 @@ namespace CE::RenderAPIs {
         return {left, top, std::max(left, std::min(first.right, second.right)), std::max(top, std::min(first.bottom, second.bottom))};
     }
 
-    PixelClipRect2D resolve_clip_region(const ClipRegion2D& region, const FramebufferSize framebuffer) {
+    PixelClipRect2D resolve_clip_region(const ClipRegion2D& region, const ::CE::Platform::FramebufferSize framebuffer) {
         validate_clip_region(region);
         if (framebuffer.width < 0 || framebuffer.height < 0)
-            throw Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions cannot be negative");
         const auto& rectangle = region.rectangle;
         const auto left = std::clamp(rectangle.left, 0.0, region.logical_width);
         const auto right = std::clamp(rectangle.right, 0.0, region.logical_width);

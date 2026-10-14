@@ -9,7 +9,7 @@
 DemoOptions::DemoOptions()
 : asset_root(std::filesystem::path(CHERYL_SOURCE_DIR) / "assets") {}
 
-void DemoOptions::register_with(CE::Engine::Startup& startup) {
+void DemoOptions::register_with(CE::Application::Startup& startup) {
     startup.add_application_options([this](CLI::App& options) {
         options
             .add_option_function<std::string>(

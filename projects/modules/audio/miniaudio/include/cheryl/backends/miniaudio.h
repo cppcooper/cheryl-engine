@@ -18,9 +18,9 @@ namespace CE::Audio::Miniaudio {
 
     // CPU-only WAV/FLAC/MP3 decode into owned PCM at the source rate/channel count.
     // Rejects unsupported formats/channels/rates, empty data and exceeded budgets.
-    [[nodiscard]] Clip decode_file(const std::filesystem::path& file, DecodeOptions options = {});
+    [[nodiscard]] ::CE::Audio::Clip decode_file(const std::filesystem::path& file, DecodeOptions options = {});
 
-    class System final : public CE::Audio::System {
+    class System final : public ::CE::Audio::System {
         std::shared_ptr<Detail::SystemState> state_;
 
         explicit System(std::shared_ptr<Detail::SystemState> state);
@@ -31,19 +31,21 @@ namespace CE::Audio::Miniaudio {
         System& operator=(const System&) = delete;
 
         // Native selection excludes miniaudio's null backend; device failures throw.
-        [[nodiscard]] static std::unique_ptr<System> open_device(Format output = {});
+        [[nodiscard]] static std::unique_ptr<System> open_device(::CE::Audio::Format output = {});
         // No device is opened. Only render() advances this system's mixing clock.
-        [[nodiscard]] static std::unique_ptr<System> open_offline(Format output = {});
+        [[nodiscard]] static std::unique_ptr<System> open_offline(::CE::Audio::Format output = {});
 
-        [[nodiscard]] std::shared_ptr<Voice> play(const Clip& clip, PlaybackOptions options = {}) override;
-        [[nodiscard]] std::shared_ptr<Voice> stream(const std::filesystem::path& file, PlaybackOptions options = {}) override;
+        [[nodiscard]] std::shared_ptr<::CE::Audio::Voice>
+        play(const ::CE::Audio::Clip& clip, ::CE::Audio::PlaybackOptions options = {}) override;
+        [[nodiscard]] std::shared_ptr<::CE::Audio::Voice>
+        stream(const std::filesystem::path& file, ::CE::Audio::PlaybackOptions options = {}) override;
         void set_volume(float volume) override;
         [[nodiscard]] float volume() const override;
         void maintain() override;
         void close() noexcept override;
         [[nodiscard]] bool closed() const override;
 
-        [[nodiscard]] Format output_format() const;
+        [[nodiscard]] ::CE::Audio::Format output_format() const;
         [[nodiscard]] std::string backend_name() const;
         // Offline only, interleaved float output with complete frames. Empty spans
         // are permitted. Mixing is serialized with controls and maintenance.

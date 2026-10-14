@@ -4,28 +4,31 @@
 #include <core/resources/memory/mem-mgr.h>
 #include "object-construction.hpp"
 
-namespace CE::Obj {
+namespace CE::Memory::Objects {
     /**
      * Owns the object pool's release operations and retains shared block
      * bookkeeping. Handles hold this context so their last release can merge
      * a slot back into the pool after the Pool<T> facade is destroyed.
      */
     template <typename T>
-    struct PoolState : AbstractManager<T>,
+    struct PoolState : ::CE::Memory::AbstractBlockManager<T>,
                        std::enable_shared_from_this<PoolState<T>> {
         static_assert(std::is_class_v<T>, "Pool<T> must have a class for T");
 
     private:
-        const std::shared_ptr<typename ObjCtor<T>::Context> tracking_ = ObjCtor<T>::release_context();
+        const std::shared_ptr<typename ::CE::Memory::Objects::Constructor<T>::Context> tracking_ =
+            ::CE::Memory::Objects::Constructor<T>::release_context();
 
     public:
-        [[nodiscard]] std::shared_ptr<typename ObjCtor<T>::Context> construction_context() const { return tracking_; }
+        [[nodiscard]] std::shared_ptr<typename ::CE::Memory::Objects::Constructor<T>::Context> construction_context() const {
+            return tracking_;
+        }
         /** Construct N objects; each returned handle retains this release state. */
         template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args);
-        /** Reserve N unconstructed slots in one Block. */
-        Block<T> retrieve_block(std::size_t N);
+        /** Reserve N unconstructed slots in one CE::Memory::Block. */
+        ::CE::Memory::Block<T> retrieve_block(std::size_t N);
         void return_objects(T* p, std::size_t length);
-        void return_block(const Block<T>& returned);
+        void return_block(const ::CE::Memory::Block<T>& returned);
 
         /**
          * Release a known owned range from a destructor. Invalid bookkeeping
@@ -34,7 +37,7 @@ namespace CE::Obj {
         void release_owned(T* p, std::size_t length) noexcept;
 
     private:
-        [[nodiscard]] Block<T> allocate(std::size_t length);
+        [[nodiscard]] ::CE::Memory::Block<T> allocate(std::size_t length);
     };
 
     /**
@@ -42,9 +45,9 @@ namespace CE::Obj {
      * remain available; release_context() gives handles a retained PoolState.
      */
     template <typename T>
-    struct Pool : AbstractManager<T>,
-                  Singleton_CTS<Pool<T>> {
-        using release_context_type = PoolState<T>;
+    struct Pool : ::CE::Memory::AbstractBlockManager<T>,
+                  ::CE::State::Singleton<Pool<T>> {
+        using release_context_type = ::CE::Memory::Objects::PoolState<T>;
 
         Pool()
         : context_(std::make_shared<release_context_type>()) {}
@@ -54,9 +57,9 @@ namespace CE::Obj {
         template <typename... Args> std::vector<std::shared_ptr<T>> retrieve_objects(std::size_t N, Args... args) {
             return context_->retrieve_objects(N, std::forward<Args>(args)...);
         }
-        Block<T> retrieve_block(std::size_t N) { return context_->retrieve_block(N); }
+        ::CE::Memory::Block<T> retrieve_block(std::size_t N) { return context_->retrieve_block(N); }
         void return_objects(T* p, std::size_t length) { context_->return_objects(p, length); }
-        void return_block(const Block<T>& block) { context_->return_block(block); }
+        void return_block(const ::CE::Memory::Block<T>& block) { context_->return_block(block); }
         void cull(std::chrono::minutes age) override { context_->cull(age); }
         void release_culled() override { context_->release_culled(); }
 

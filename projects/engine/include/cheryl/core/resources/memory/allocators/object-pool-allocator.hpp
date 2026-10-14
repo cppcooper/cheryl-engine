@@ -2,7 +2,7 @@
 #include <core/resources/objects/pool.h>
 #include <core/resources/objects/object-construction.hpp>
 
-namespace CE::Mem {
+namespace CE::Memory::Allocators {
     /**
      * Adapts Pool<T> to an allocator and retains the PoolState captured at
      * construction. Standard deallocate receives the original allocation and
@@ -11,7 +11,7 @@ namespace CE::Mem {
     template <class T> struct ObjectPoolAllocator final : std::allocator<T> {
         using Base = std::allocator<T>;
         using value_type = T;
-        using manager_type = Obj::Pool<T>;
+        using manager_type = ::CE::Memory::Objects::Pool<T>;
         using context_type = typename manager_type::release_context_type;
 
         ObjectPoolAllocator()
@@ -32,8 +32,9 @@ namespace CE::Mem {
     };
 }
 
-template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<T>> : std::allocator_traits<std::allocator<T>> {
-    using allocator_type = CE::Mem::ObjectPoolAllocator<T>;
+template <typename T>
+struct std::allocator_traits<::CE::Memory::Allocators::ObjectPoolAllocator<T>> : std::allocator_traits<std::allocator<T>> {
+    using allocator_type = ::CE::Memory::Allocators::ObjectPoolAllocator<T>;
     using value_type = typename allocator_type::value_type;
     using pointer = value_type*;
     using const_pointer = const value_type*;
@@ -67,7 +68,7 @@ template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<
 
     // Construct N objects of type T at the given location
     template <typename... Args> static void construct(T* p, std::size_t N, Args&&... args) {
-        CE::Obj::ObjCtor<T>::construct(p, N, std::forward<Args>(args)...);
+        ::CE::Memory::Objects::Constructor<T>::construct(p, N, std::forward<Args>(args)...);
     }
 
     // Construct an object of type T at the given location
@@ -77,15 +78,15 @@ template <typename T> struct std::allocator_traits<CE::Mem::ObjectPoolAllocator<
 
     // Construct an object of type T at the given location
     template <typename... Args> static void construct(T* p, Args&&... args) {
-        CE::Obj::ObjCtor<T>::construct(p, 1ull, std::forward<Args>(args)...);
+        ::CE::Memory::Objects::Constructor<T>::construct(p, 1ull, std::forward<Args>(args)...);
     }
 
     // Destroy an object of type T at the given location
-    static void destroy(T* p, std::size_t N) { CE::Obj::ObjCtor<T>::destroy(p, N); }
+    static void destroy(T* p, std::size_t N) { ::CE::Memory::Objects::Constructor<T>::destroy(p, N); }
 
     // Destroy an object of type T at the given location
     static void destroy(allocator_type& alloc, T* p) { alloc.context()->construction_context()->destroy(p); }
 
     // Destroy an object of type T at the given location
-    static void destroy(T* p) { CE::Obj::ObjCtor<T>::destroy(p); }
+    static void destroy(T* p) { ::CE::Memory::Objects::Constructor<T>::destroy(p); }
 };

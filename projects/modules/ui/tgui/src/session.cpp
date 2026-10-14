@@ -58,7 +58,7 @@ namespace CE::UI::TGUI {
         };
 
         class Gui final : public tgui::BackendGui {
-            Input::Modifiers modifiers_ = Input::Modifiers::None;
+            CE::Input::Modifiers modifiers_ = CE::Input::Modifiers::None;
 
         public:
             explicit Gui(const std::shared_ptr<RenderTarget>& target) {
@@ -68,24 +68,24 @@ namespace CE::UI::TGUI {
                 tgui::getBackend()->attachGui(this);
             }
 
-            void set_logical_size(const ViewPort<int> size) {
+            void set_logical_size(const CE::Platform::Dimensions<int> size) {
                 // TGUI's mapping uses this member for input and layout. Its units
                 // are deliberately logical here; physical rounding lives in target.
                 m_framebufferSize = {size.width, size.height};
                 updateContainerSize();
             }
-            void set_modifiers(const Input::Modifiers modifiers) { modifiers_ = modifiers; }
+            void set_modifiers(const CE::Input::Modifiers modifiers) { modifiers_ = modifiers; }
 
             [[nodiscard]] bool isKeyboardModifierPressed(const tgui::Event::KeyModifier modifier) const override {
                 switch (modifier) {
                     case tgui::Event::KeyModifier::System:
-                        return Input::has_modifier(modifiers_, Input::Modifiers::Super);
+                        return CE::Input::has_modifier(modifiers_, CE::Input::Modifiers::Super);
                     case tgui::Event::KeyModifier::Control:
-                        return Input::has_modifier(modifiers_, Input::Modifiers::Control);
+                        return CE::Input::has_modifier(modifiers_, CE::Input::Modifiers::Control);
                     case tgui::Event::KeyModifier::Shift:
-                        return Input::has_modifier(modifiers_, Input::Modifiers::Shift);
+                        return CE::Input::has_modifier(modifiers_, CE::Input::Modifiers::Shift);
                     case tgui::Event::KeyModifier::Alt:
-                        return Input::has_modifier(modifiers_, Input::Modifiers::Alt);
+                        return CE::Input::has_modifier(modifiers_, CE::Input::Modifiers::Alt);
                 }
                 return false;
             }
@@ -141,13 +141,13 @@ namespace CE::UI::TGUI {
             bool height = false;
         };
 
-        Input::iInputSystem& input;
-        const Input::FocusId target;
+        CE::Input::System& input;
+        const CE::Input::Routing::TargetId target;
         const std::thread::id thread = std::this_thread::get_id();
         const Capabilities capabilities;
-        Input::CaptureLease events;
-        Input::CaptureLease text;
-        Input::FocusLease focus;
+        CE::Input::Capture::Lease events;
+        CE::Input::Capture::Lease text;
+        CE::Input::Routing::Lease focus;
         std::uint64_t focus_epoch = 0;
         bool drawable = false;
         bool pointer_view = false;
@@ -157,15 +157,15 @@ namespace CE::UI::TGUI {
         std::shared_ptr<RenderTarget> render_target = std::make_shared<RenderTarget>();
         Gui gui{render_target};
 
-        State(Input::iInputSystem& source, const Input::FocusId id, const SessionOptions options)
+        State(CE::Input::System& source, const CE::Input::Routing::TargetId id, const SessionOptions options)
         : input(source),
           target(id),
-          capabilities{source.supports_focus(), source.supports(Input::InputMode::Text)},
-          events(source.capture(Input::InputMode::Events)),
+          capabilities{source.supports_focus(), source.supports(CE::Input::Capture::Channel::Text)},
+          events(source.capture(CE::Input::Capture::Channel::Events)),
           backend(options) {}
     };
 
-    Session::Session(Input::iInputSystem& input, const Input::FocusId target, const SessionOptions options) {
+    Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
         if (target == 0)
             throw Exceptions::invalid_args(CE_HERE, "TGUI requires a nonzero focus target");
         state_ = std::make_unique<State>(input, target, options);
@@ -187,16 +187,17 @@ namespace CE::UI::TGUI {
         return owner().capabilities;
     }
 
-    void Session::set_view(const ViewPort<int> logical, const FramebufferSize framebuffer) {
+    void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         auto& state = owner();
         if (logical.width < 0 || logical.height < 0 || framebuffer.width < 0 || framebuffer.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "TGUI window dimensions must be nonnegative");
         state.pointer_view = logical.width > 0 && logical.height > 0;
         state.drawable = state.pointer_view && framebuffer.width > 0 && framebuffer.height > 0;
         state.render_target->set_pixel_scale(
-            state.drawable ? tgui::Vector2f{static_cast<float>(framebuffer.width) / logical.width,
-                                            static_cast<float>(framebuffer.height) / logical.height}
-                           : tgui::Vector2f{1, 1}
+            state.drawable
+                ? tgui::
+                      Vector2f{static_cast<float>(framebuffer.width) / logical.width, static_cast<float>(framebuffer.height) / logical.height}
+                : tgui::Vector2f{1, 1}
         );
         state.gui.set_logical_size(logical);
     }
@@ -220,8 +221,10 @@ namespace CE::UI::TGUI {
         const auto parent_width = tgui::bindInnerWidth(container);
         const auto parent_height = tgui::bindInnerHeight(container);
         const auto origin = layout.origin.value_or(layout.anchor);
-        const tgui::Layout2d position{parent_width * (layout.anchor.x + layout.offset.relative.x) + layout.offset.fixed.x,
-                                      parent_height * (layout.anchor.y + layout.offset.relative.y) + layout.offset.fixed.y};
+        const tgui::Layout2d position{
+            parent_width * (layout.anchor.x + layout.offset.relative.x) + layout.offset.fixed.x,
+            parent_height * (layout.anchor.y + layout.offset.relative.y) + layout.offset.fixed.y
+        };
 
         std::erase_if(state.managed_sizes, [](const auto& entry) { return entry.second.widget.expired(); });
         const auto previous = state.managed_sizes.find(widget.get());
@@ -260,11 +263,11 @@ namespace CE::UI::TGUI {
         state.gui.updateTime(std::chrono::duration<double>(seconds));
     }
 
-    void Session::request_keyboard_focus(const Input::KeyboardRouting routing) {
+    void Session::request_keyboard_focus(const CE::Input::Routing::KeyboardPolicy routing) {
         auto& state = owner();
         if (!state.capabilities.keyboard_focus || !state.capabilities.committed_text)
             throw Exceptions::failed_operation(CE_HERE, "TGUI keyboard focus requires routed committed text support");
-        auto text = state.input.capture(Input::InputMode::Text);
+        auto text = state.input.capture(CE::Input::Capture::Channel::Text);
         auto focus = state.input.routing().focus(state.target, routing);
         state.text = std::move(text);
         state.focus = std::move(focus);
@@ -282,28 +285,28 @@ namespace CE::UI::TGUI {
         return owner().focus.owns_focus();
     }
 
-    void Session::handle_input(const std::span<const Input::InputRecord> records, const bool pointer_selected) {
+    void Session::handle_input(const std::span<const CE::Input::Events::Record> records, const bool pointer_selected) {
         handle_input(records, pointer_selected, {});
     }
 
     void Session::handle_input(
-        const std::span<const Input::InputRecord> records,
+        const std::span<const CE::Input::Events::Record> records,
         bool pointer_selected,
-        const std::function<bool(const Input::InputRecord&)>& before_record
+        const std::function<bool(const CE::Input::Events::Record&)>& before_record
     ) {
         auto& state = owner();
         const auto focus_epoch = state.focus_epoch;
         for (const auto& record : records) {
             if (before_record)
                 pointer_selected = before_record(record);
-            if (const auto* button = std::get_if<Input::ButtonEvent>(&record.data);
-                button && (record.device_kind == Input::DeviceKind::Keyboard || record.device_kind == Input::DeviceKind::Mouse))
+            if (const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+                button && (record.device_kind == CE::Input::DeviceKind::Keyboard || record.device_kind == CE::Input::DeviceKind::Mouse))
                 state.gui.set_modifiers(button->modifiers);
-            const bool keyboard = record.is_text() || record.device_kind == Input::DeviceKind::Keyboard;
+            const bool keyboard = record.is_text() || record.device_kind == CE::Input::DeviceKind::Keyboard;
             if (keyboard) {
                 if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;
-            } else if (record.device_kind != Input::DeviceKind::Mouse || !pointer_selected || !state.pointer_view)
+            } else if (record.device_kind != CE::Input::DeviceKind::Mouse || !pointer_selected || !state.pointer_view)
                 continue;
             const auto event = translate_event(record);
             // Unavailable clipboard shortcuts must not cut/delete a selection.

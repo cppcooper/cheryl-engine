@@ -6,9 +6,9 @@
 #include <chrono>
 #include <bit>
 
-namespace CE::Mem {
-    struct MemoryStats {
-        Diagnostics::DomainId domain = 0;
+namespace CE::Memory {
+    struct Stats {
+        ::CE::Diagnostics::DomainId domain = 0;
         std::size_t total_bytes = 0;
         std::size_t available_bytes = 0;
         std::size_t owners = 0;
@@ -16,24 +16,24 @@ namespace CE::Mem {
         std::size_t pending_release = 0;
     };
     /** Recycles byte ranges, aligning/growing a request before checkout and tracking owners,
-     * sections, and pooled remainders through AbstractManager<void>. Public operations
+     * sections, and pooled remainders through CE::Memory::AbstractBlockManager<void>. Public operations
      * serialize bookkeeping transitions across all collections; backing allocation,
      * final frees, and reporting run outside those locks. Concurrent operations require
      * a live facade or a previously retained release context. This does not synchronize
      * user access to checked-out bytes or make raw collection edits safe.
      */
     template <double growth_factor_ = 1.6, int32_t growth_base_ = 256>
-    struct Manager : AbstractManager<void>,
-                     Singleton_CTS<Manager<growth_factor_, growth_base_>> {
+    struct Manager : AbstractBlockManager<void>,
+                     ::CE::State::Singleton<Manager<growth_factor_, growth_base_>> {
         static_assert(growth_base_ >= 0, "The base growth should be a positive integer.");
         static_assert(growth_factor_ > 0, "The growth factor cannot be 0.");
 
     private:
         std::shared_ptr<void> lifetime_token_ = std::make_shared<int>(0);
-        const std::shared_ptr<ByteReleaseContext> release_context_ = std::make_shared<ByteReleaseContext>();
+        const std::shared_ptr<::CE::Memory::ByteReleaseContext> release_context_ = std::make_shared<::CE::Memory::ByteReleaseContext>();
 
     public:
-        using release_context_type = ByteReleaseContext;
+        using release_context_type = ::CE::Memory::ByteReleaseContext;
 
         Manager() = default;
         ~Manager() override { lifetime_token_.reset(); }
@@ -44,7 +44,7 @@ namespace CE::Mem {
         // Shared byte-domain statistics; free percentage is n/a when total bytes are zero.
         [[nodiscard]] std::string stats();
         // Shared byte-domain snapshot; no formatting/logging while collections lock.
-        [[nodiscard]] MemoryStats diagnostics() const;
+        [[nodiscard]] ::CE::Memory::Stats diagnostics() const;
         // Explicit unlocked observer; the host chooses its sampling interval.
         void report_diagnostics() const noexcept;
         // retrieve debug info
@@ -54,23 +54,23 @@ namespace CE::Mem {
         // return a portion of a block
         void return_portion(void* ptr, std::size_t length);
         // return all ownership of a section - this argument is presumed to exist in `sections`
-        void return_chunk(const HeapBlock& returned);
+        void return_chunk(const ::CE::Memory::HeapBlock& returned);
         // retrieve an allocation with the given length (+alignment) - returns a section of an allocation at least big enough to fill the request
-        [[nodiscard]] HeapBlock checkout_chunk(
+        [[nodiscard]] ::CE::Memory::HeapBlock checkout_chunk(
             size_t length,
             size_t alignment = 0,
-            Enum::fitType fit = Enum::exact,
+            ::CE::Memory::FitPolicy fit = ::CE::Memory::exact,
             size_t growth_base = growth_base_,
             double growth_factor = growth_factor_
         );
 
     private:
         // retrieve an allocation with the given length - returns a section of an allocation at least big enough to fill the request
-        [[nodiscard]] static HeapBlock allocate(size_t length, std::align_val_t alignment) {
+        [[nodiscard]] static ::CE::Memory::HeapBlock allocate(size_t length, std::align_val_t alignment) {
             alignment = static_cast<std::align_val_t>(std::bit_ceil(static_cast<std::size_t>(alignment)));
             auto deleter = [alignment](void* p) { ::operator delete[](p, alignment); };
             const auto ptr = std::shared_ptr<void>(::operator new[](length, alignment), deleter);
-            return {ptr, ptr, ptr::calculate_alignment(ptr.get()), length};
+            return {ptr, ptr, ::CE::Memory::Pointers::calculate_alignment(ptr.get()), length};
         }
 
     public:
@@ -84,9 +84,9 @@ namespace CE::Mem {
         );
     };
 
-    using ExactMMgr = Manager<1.0, 0>;
-    using CacheMMgr = Manager<4.0, 4096>;
-    template <typename T> using ObjMMgr = Manager<1.29, sizeof(T) * 64>;
+    using ExactManager = Manager<1.0, 0>;
+    using CachedManager = Manager<4.0, 4096>;
+    template <typename T> using ObjectMemoryManager = Manager<1.29, sizeof(T) * 64>;
 }
 
 #include "mem-mgr.hpp"

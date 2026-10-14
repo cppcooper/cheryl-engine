@@ -14,7 +14,7 @@
 #include <optional>
 #include <utility>
 
-namespace CE::Assets {
+namespace CE::Text::Rendering {
     namespace {
         struct PagePacking {
             std::uint32_t x = 1, y = 1, row_height{}, right = 1, bottom = 1;
@@ -31,7 +31,7 @@ namespace CE::Assets {
         }
 
         void append_quad(
-            std::vector<Vertex2D>& vertices,
+            std::vector<CE::Rendering::Geometry::Vertex2D>& vertices,
             const FT_GlyphSlot glyph,
             const std::uint32_t x,
             const std::uint32_t y,
@@ -45,12 +45,18 @@ namespace CE::Assets {
             const auto v0 = static_cast<float>(y) / static_cast<float>(extent);
             const auto u1 = static_cast<float>(x + glyph->bitmap.width) / static_cast<float>(extent);
             const auto v1 = static_cast<float>(y + glyph->bitmap.rows) / static_cast<float>(extent);
-            const Quad quad{{{{left, bottom, 0, u0, v1}, {right, bottom, 0, u1, v1}, {right, top, 0, u1, v0},
-                {left, bottom, 0, u0, v1}, {right, top, 0, u1, v0}, {left, top, 0, u0, v0}}}};
+            const CE::Rendering::Geometry::Quad quad{
+                {{{left, bottom, 0, u0, v1},
+                  {right, bottom, 0, u1, v1},
+                  {right, top, 0, u1, v0},
+                  {left, bottom, 0, u0, v1},
+                  {right, top, 0, u1, v0},
+                  {left, top, 0, u0, v0}}}
+            };
             vertices.insert(vertices.end(), quad.vertices.begin(), quad.vertices.end());
         }
 
-        void crop_page(PreparedTextPage& page, const PagePacking& packing, const std::uint32_t extent) {
+        void crop_page(PreparedPage& page, const PagePacking& packing, const std::uint32_t extent) {
             const auto width = packing.right + 1;
             const auto height = packing.bottom + 1;
             std::vector<unsigned char> cropped(static_cast<std::size_t>(width) * height);
@@ -69,15 +75,15 @@ namespace CE::Assets {
         }
     }
 
-    PreparedText::PreparedText(Text::ShapedText layout)
+    Prepared::Prepared(ShapedText layout)
     : layout_(std::move(layout)) {}
 
-    RenderedText::RenderedText(
-        Text::ShapedText layout,
-        std::vector<TextPageResources> pages,
-        std::vector<TextGlyphDraw> draws,
-        std::shared_ptr<Geometry2D> positioned_geometry,
-        std::vector<TextDrawRun> runs,
+    Generation::Generation(
+        ShapedText layout,
+        std::vector<PageResources> pages,
+        std::vector<GlyphDraw> draws,
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> positioned_geometry,
+        std::vector<DrawRun> runs,
         const bool positioned_runs
     )
     : layout_(std::move(layout)),
@@ -87,15 +93,15 @@ namespace CE::Assets {
       runs_(std::move(runs)),
       positioned_runs_(positioned_runs) {}
 
-    PreparedText prepare_text(Text::ShapedText layout, const TextRasterOptions options) {
+    Prepared prepare(ShapedText layout, const RasterOptions options) {
         const auto extent = options.maximum_page_extent;
         if (extent < 4 || extent > 4096)
             throw Exceptions::invalid_args(CE_HERE, "Text page extent must be between 4 and 4096 pixels");
-        PreparedText result(std::move(layout));
+        Prepared result(std::move(layout));
         const auto& fonts = Text::Detail::FontAccess::data(result.layout_.fonts());
         auto library = Text::Detail::open_freetype();
         std::map<std::size_t, Text::Detail::FreeTypeFace> faces;
-        std::map<Text::GlyphId, std::optional<QuadLocation>> admitted;
+        std::map<GlyphId, std::optional<QuadLocation>> admitted;
         std::vector<PagePacking> packing;
         for (const auto& placed : result.layout_.glyphs()) {
             auto found = admitted.find(placed.id);
@@ -142,7 +148,9 @@ namespace CE::Assets {
                     }
                     auto& current = packing.back();
                     auto& page = result.pages_.back();
-                    const QuadLocation location{result.pages_.size() - 1, page.vertices.size() / VAONumbers::vertices_per_quad};
+                    const QuadLocation location{
+                        result.pages_.size() - 1, page.vertices.size() / CE::Rendering::Geometry::vertices_per_quad
+                    };
                     for (unsigned row = 0; row < bitmap.rows; ++row) {
                         const auto* source = bitmap.buffer + static_cast<std::ptrdiff_t>(pitch * row);
                         auto* destination = page.alpha.data() + static_cast<std::size_t>(current.y + row) * extent + current.x;
@@ -166,7 +174,7 @@ namespace CE::Assets {
             crop_page(result.pages_[index], packing[index], extent);
         result.positioned_runs_ = options.positioned_runs;
         if (options.positioned_runs) {
-            constexpr std::size_t vertices_per_glyph = VAONumbers::vertices_per_quad;
+            constexpr std::size_t vertices_per_glyph = CE::Rendering::Geometry::vertices_per_quad;
             if (result.draws_.size() > result.positioned_vertices_.max_size() / vertices_per_glyph)
                 throw Exceptions::invalid_args(CE_HERE, "Positioned text exceeds addressable geometry");
             result.positioned_vertices_.reserve(result.draws_.size() * vertices_per_glyph);
@@ -188,28 +196,29 @@ namespace CE::Assets {
         return result;
     }
 
-    RenderedText upload_text(PreparedText prepared, ResourceProvider& provider) {
-        std::vector<TextPageResources> pages;
+    Generation upload(Prepared prepared, CE::Rendering::Resources::Provider& provider) {
+        std::vector<PageResources> pages;
         pages.reserve(prepared.pages_.size());
         for (const auto& page : prepared.pages_) {
-            auto geometry = provider.upload_geometry(page.vertices, PrimitiveTopology::Triangles);
+            auto geometry = provider.upload_geometry(page.vertices, CE::Rendering::Geometry::Topology::Triangles);
             auto atlas = provider.create_font_atlas(page.alpha, page.size);
-            const auto size = atlas ? atlas->pixel_size() : PixelSize{};
+            const auto size = atlas ? atlas->pixel_size() : CE::Rendering::Geometry::PixelSize{};
             if (!geometry || !atlas || geometry->vertex_count() != page.vertices.size() ||
-                geometry->vertex_layout() != VertexLayout2D::Position3UV2 || geometry->topology() != PrimitiveTopology::Triangles ||
-                size.width != page.size.width || size.height != page.size.height)
+                geometry->vertex_layout() != CE::Rendering::Geometry::Layout2D::Position3UV2 ||
+                geometry->topology() != CE::Rendering::Geometry::Topology::Triangles || size.width != page.size.width ||
+                size.height != page.size.height)
                 throw Exceptions::failed_operation(CE_HERE, "Text upload returned mismatched geometry or atlas resources");
             pages.push_back({std::move(geometry), std::move(atlas)});
         }
-        std::shared_ptr<Geometry2D> positioned_geometry;
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> positioned_geometry;
         if (!prepared.positioned_vertices_.empty()) {
-            positioned_geometry = provider.upload_geometry(prepared.positioned_vertices_, PrimitiveTopology::Triangles);
+            positioned_geometry = provider.upload_geometry(prepared.positioned_vertices_, CE::Rendering::Geometry::Topology::Triangles);
             if (!positioned_geometry || positioned_geometry->vertex_count() != prepared.positioned_vertices_.size() ||
-                positioned_geometry->vertex_layout() != VertexLayout2D::Position3UV2 ||
-                positioned_geometry->topology() != PrimitiveTopology::Triangles)
+                positioned_geometry->vertex_layout() != CE::Rendering::Geometry::Layout2D::Position3UV2 ||
+                positioned_geometry->topology() != CE::Rendering::Geometry::Topology::Triangles)
                 throw Exceptions::failed_operation(CE_HERE, "Text upload returned mismatched positioned geometry");
         }
-        return RenderedText(
+        return Generation(
             std::move(prepared.layout_), std::move(pages), std::move(prepared.draws_), std::move(positioned_geometry),
             std::move(prepared.runs_), prepared.positioned_runs_
         );

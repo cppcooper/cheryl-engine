@@ -2,7 +2,7 @@
 #include <core/diagnostics.h>
 #include <backends/native-glfw/diagnostics.h>
 
-namespace CE::DisplayDetail {
+namespace CE::Platform::GLFW::Detail {
     class NativeCallbackScope final {
         static thread_local unsigned int depth_;
 
@@ -14,7 +14,7 @@ namespace CE::DisplayDetail {
         [[nodiscard]] static bool active() noexcept { return depth_ != 0; }
     };
     struct GlfwDiagnostics {
-        Diagnostics::DomainId domain = 0;
+        ::CE::Diagnostics::DomainId domain = 0;
         std::uint64_t errors = 0;
         std::uint64_t host_failures = 0;
         int last_code = 0;

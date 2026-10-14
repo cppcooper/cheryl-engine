@@ -17,18 +17,17 @@ namespace {
     thread_local Invocation* current_invocation = nullptr;
 }
 
-namespace CE::SubSystems {
+namespace CE::Events {
     EventBus::~EventBus() {
         close();
     }
 
-    EventBus::Registration
+    ::CE::Events::EventBus::Registration
     EventBus::register_listener(const std::string& event, Callback callback, Delivery delivery, ErrorHandler errors) {
         return register_channel(event, typeid(void), std::move(callback), std::move(delivery), std::move(errors));
     }
 
-    EventBus::Registration
-    EventBus::register_channel(
+    ::CE::Events::EventBus::Registration EventBus::register_channel(
         const std::string& event,
         const std::type_index payload,
         Callback callback,
@@ -36,9 +35,9 @@ namespace CE::SubSystems {
         ErrorHandler errors
     ) {
         if (!callback)
-            throw Exceptions::invalid_args(CE_HERE, "An event listener requires a callback");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "An event listener requires a callback");
         if (delivery && !errors)
-            throw Exceptions::invalid_args(CE_HERE, "Queued event delivery requires an error handler");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Queued event delivery requires an error handler");
         auto listener = std::make_shared<Listener>();
         listener->counters = state_->counters;
         listener->event = {event, payload};
@@ -49,9 +48,9 @@ namespace CE::SubSystems {
             listener->cancellation = std::make_exception_ptr(std::future_error(std::future_errc::broken_promise));
         std::lock_guard lock(state_->mutex);
         if (state_->closed)
-            throw Exceptions::failed_operation(CE_HERE, "EventBus is closed");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "EventBus is closed");
         if (state_->next_id == std::numeric_limits<std::uint64_t>::max())
-            throw Exceptions::failed_operation(CE_HERE, "Event registration IDs exhausted");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Event registration IDs exhausted");
         const auto id = state_->next_id;
         state_->channels[listener->event].push_back(listener);
         ++state_->next_id;
@@ -69,7 +68,7 @@ namespace CE::SubSystems {
         {
             std::lock_guard lock(state_->mutex);
             if (state_->closed)
-                throw Exceptions::failed_operation(CE_HERE, "EventBus is closed");
+                throw ::CE::Exceptions::failed_operation(CE_HERE, "EventBus is closed");
             ++state_->dispatches;
             const auto found = state_->channels.find(ChannelView{event, type});
             if (found == state_->channels.end())
@@ -221,16 +220,16 @@ namespace CE::SubSystems {
 
     void EventBus::wait_for_listener(const Registration& registration) const {
         if (registration.bus_.lock() != state_)
-            throw Exceptions::invalid_args(CE_HERE, "Registration belongs to another event bus");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Registration belongs to another event bus");
         auto listener = registration.listener_.lock();
         if (!listener)
             return;
         for (auto* invocation = current_invocation; invocation; invocation = invocation->previous)
             if (invocation->listener == listener.get())
-                throw Exceptions::failed_operation(CE_HERE, "An event listener cannot wait for its own invocation");
+                throw ::CE::Exceptions::failed_operation(CE_HERE, "An event listener cannot wait for its own invocation");
         std::unique_lock lock(listener->mutex);
         if (listener->active)
-            throw Exceptions::failed_operation(CE_HERE, "Unregister the listener before waiting for completion");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Unregister the listener before waiting for completion");
         listener->idle.wait(lock, [&] { return listener->running == 0; });
     }
 
@@ -269,11 +268,14 @@ namespace CE::SubSystems {
     void EventBus::report_diagnostics() const noexcept {
         try {
             const auto summary = diagnostics();
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=events domain={} operation=summary registrations={} active={} dispatches={} invocations={} queued_failures={} discarded={} closed={}",
-                         summary.domain, summary.registrations, summary.active, summary.dispatches, summary.invocations,
-                         summary.queued_failures, summary.discarded, summary.closed);
+            CE_LOG_DEBUG(
+                ::CE::Logging::Categories::engine,
+                "subsystem=events domain={} operation=summary registrations={} active={} dispatches={} invocations={} queued_failures={} discarded={} closed={}",
+                summary.domain, summary.registrations, summary.active, summary.dispatches, summary.invocations, summary.queued_failures,
+                summary.discarded, summary.closed
+            );
         } catch (...) {
-            Diagnostics::report_failure("event diagnostic snapshot", std::current_exception());
+            ::CE::Diagnostics::report_failure("event diagnostic snapshot", std::current_exception());
         }
     }
 }

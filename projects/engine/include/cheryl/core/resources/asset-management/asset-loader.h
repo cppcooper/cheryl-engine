@@ -10,26 +10,32 @@
 #include <mutex>
 #include <vector>
 
-namespace CE::Assets {
+namespace CE::Assets::Loading {
     class FileRegistry;
-    struct ResourceProvider;
+}
+
+namespace CE::Rendering::Resources {
+    struct Provider;
+}
+
+namespace CE::Assets::Loading {
     // Owns decoded staging pixels. No provider/native/cache handle is retained.
-    struct PreparedImage {
+    struct ImageInput {
         std::filesystem::path key;
-        DecodedImage pixels;
+        CE::Assets::Images::Decoded pixels;
     };
-    struct PreparedAssets {
-        std::vector<AssetManifest> manifests;
-        std::vector<PreparedImage> images;
-        Diagnostics::DomainId batch = Diagnostics::next_domain_id();
+    struct Prepared {
+        std::vector<CE::Assets::Manifests::Graphics> manifests;
+        std::vector<ImageInput> images;
+        CE::Diagnostics::DomainId batch = CE::Diagnostics::next_domain_id();
         // Immutable, batch-owned discovery; preparation never changes the runtime registry.
         std::shared_ptr<const FileRegistry> files;
-        std::vector<ShaderAssetManifest> shaders;
+        std::vector<CE::Assets::Shaders::Manifest> shaders;
     };
 
     struct UploadStats {
-        Diagnostics::DomainId batch = 0;
-        Diagnostics::DomainId provider = 0;
+        CE::Diagnostics::DomainId batch = 0;
+        CE::Diagnostics::DomainId provider = 0;
         std::uint64_t images_completed = 0;
         std::uint64_t manifests_completed = 0;
         std::uint64_t publications = 0;
@@ -46,15 +52,19 @@ namespace CE::Assets {
      * Automatic discovery uses normalized absolute file/image keys.
      * This loader does not create a separate provider domain or atomic hot reload.
      */
-    struct Loader final : Singleton_CTS<Loader> {
+    struct Loader final : CE::State::Singleton<Loader> {
     private:
         const std::filesystem::path root_path_;
-        std::atomic<std::shared_ptr<const std::vector<AssetManifest>>> manifests_{std::make_shared<const std::vector<AssetManifest>>()};
-        std::atomic<std::shared_ptr<const std::vector<ShaderAssetManifest>>> shaders_{std::make_shared<const std::vector<ShaderAssetManifest>>()};
+        std::atomic<std::shared_ptr<const std::vector<CE::Assets::Manifests::Graphics>>> manifests_{
+            std::make_shared<const std::vector<CE::Assets::Manifests::Graphics>>()
+        };
+        std::atomic<std::shared_ptr<const std::vector<CE::Assets::Shaders::Manifest>>> shaders_{
+            std::make_shared<const std::vector<CE::Assets::Shaders::Manifest>>()
+        };
         mutable std::mutex observations_mutex_;
         UploadStats last_upload_;
 
-        [[nodiscard]] PreparedAssets prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
+        [[nodiscard]] Prepared prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
 
     public:
         /** Configure an owned loader without discovering files or uploading resources.
@@ -68,7 +78,7 @@ namespace CE::Assets {
          * failure leaves caches and this loader's retained metadata unchanged.
          * @return Owned definitions, shader sources, pixels and file discovery for upload().
          */
-        [[nodiscard]] PreparedAssets prepare() const;
+        [[nodiscard]] Prepared prepare() const;
         /** Prepare selected graphics indexes against full-root discovery.
          * Decode only referenced images; a shader-only selection decodes none.
          * Empty selections and discovery, decoding or validation failures reject
@@ -76,7 +86,7 @@ namespace CE::Assets {
          * @param indexes Nonempty index selection; relative paths resolve against the asset root.
          * @return Owned data for upload(), prepared without a provider or backend calls.
          */
-        [[nodiscard]] PreparedAssets prepare_graphics(const std::vector<std::filesystem::path>& indexes) const;
+        [[nodiscard]] Prepared prepare_graphics(const std::vector<std::filesystem::path>& indexes) const;
         /** Consumes one prepared value without reopening its image files. Existing
          * keys remain; each successful new entry can become visible immediately.
          * Failure can leave any completed cache entries, including all entries if
@@ -91,13 +101,13 @@ namespace CE::Assets {
          * @param provider Active resource backend, used on its loading owner/current context.
          * @param replace_shaders Whether existing shader programs/materials may be replaced.
          */
-        void upload(PreparedAssets prepared, ResourceProvider& provider, bool replace_shaders = false);
+        void upload(Prepared prepared, CE::Rendering::Resources::Provider& provider, bool replace_shaders = false);
         /** Prepare the complete root and synchronously upload it without shader replacement.
          * Preparation failures leave caches unchanged; upload failures retain the
          * partial-publication behavior of upload().
          * @param provider Active backend, used on its loading owner/current context.
          */
-        void load_assets(ResourceProvider& provider);
+        void load_assets(CE::Rendering::Resources::Provider& provider);
         /** Discover and register unmanaged paths for manual asset loading.
          * No JSON parsing, image decoding or provider is required. Filesystem and
          * allocation failures propagate; PNG images remain outside the untyped registry.
@@ -113,13 +123,13 @@ namespace CE::Assets {
          * Readers retain it across later uploads and loader destruction. This is
          * metadata, not an atomic snapshot of the global caches.
          */
-        [[nodiscard]] std::shared_ptr<const std::vector<AssetManifest>> manifests() const {
+        [[nodiscard]] std::shared_ptr<const std::vector<CE::Assets::Manifests::Graphics>> manifests() const {
             return manifests_.load(std::memory_order_acquire);
         }
         /** @return Owned snapshot of the last successfully submitted shader definitions,
          * with the same lifetime and cache-observation limits as manifests().
          */
-        [[nodiscard]] std::shared_ptr<const std::vector<ShaderAssetManifest>> shader_manifests() const {
+        [[nodiscard]] std::shared_ptr<const std::vector<CE::Assets::Shaders::Manifest>> shader_manifests() const {
             return shaders_.load(std::memory_order_acquire);
         }
         /** Configure or retrieve the legacy singleton on the loading owner before producers start.
@@ -133,6 +143,5 @@ namespace CE::Assets {
          * @return Borrowed process-lifetime loader; fails if initialization is unpublished.
          */
         static Loader& get();
-
     };
 }

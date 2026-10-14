@@ -17,29 +17,27 @@ namespace {
     };
 
     template <typename Callback>
-    concept CanListen = requires(
-        CE::SubSystems::EventBus& bus, const CE::SubSystems::EventChannel<int>& channel, Callback callback
-    ) {
+    concept CanListen = requires(CE::Events::EventBus& bus, const CE::Events::EventChannel<int>& channel, Callback callback) {
         bus.register_listener(channel, callback);
     };
 
-    using IntChannel = CE::SubSystems::EventChannel<int>;
-    static_assert(CE::SubSystems::EventPayload<int>);
-    static_assert(CE::SubSystems::EventPayload<std::any>);
-    static_assert(!CE::SubSystems::EventPayload<const int>);
-    static_assert(!CE::SubSystems::EventPayload<int&>);
-    static_assert(!CE::SubSystems::EventPayload<std::unique_ptr<int>>);
-    static_assert(CanDispatch<CE::SubSystems::EventBus, IntChannel, int>);
-    static_assert(CanDispatch<CE::SubSystems::EventBus, IntChannel, const int&>);
-    static_assert(!CanDispatch<CE::SubSystems::EventBus, IntChannel, double>);
-    static_assert(!CanDispatch<CE::SubSystems::EventBus, IntChannel, std::any>);
-    static_assert(!CanDispatch<CE::SubSystems::EventSystem, IntChannel, std::string>);
+    using IntChannel = CE::Events::EventChannel<int>;
+    static_assert(CE::Events::EventPayload<int>);
+    static_assert(CE::Events::EventPayload<std::any>);
+    static_assert(!CE::Events::EventPayload<const int>);
+    static_assert(!CE::Events::EventPayload<int&>);
+    static_assert(!CE::Events::EventPayload<std::unique_ptr<int>>);
+    static_assert(CanDispatch<CE::Events::EventBus, IntChannel, int>);
+    static_assert(CanDispatch<CE::Events::EventBus, IntChannel, const int&>);
+    static_assert(!CanDispatch<CE::Events::EventBus, IntChannel, double>);
+    static_assert(!CanDispatch<CE::Events::EventBus, IntChannel, std::any>);
+    static_assert(!CanDispatch<CE::Events::EventSystem, IntChannel, std::string>);
     static_assert(CanListen<void (*)(const int&)>);
     static_assert(!CanListen<void (*)(const std::string&)>);
 }
 
 TEST(typed_events, identity) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     int integers = 0;
     int strings = 0;
     int named = 0;
@@ -51,7 +49,7 @@ TEST(typed_events, identity) {
         bus.register_listener(channel, [&](const int& value) { integers += value; });
     }
     const IntChannel channel{"sample"};
-    const CE::SubSystems::EventChannel<std::string> text{"sample"};
+    const CE::Events::EventChannel<std::string> text{"sample"};
     bus.register_listener(text, [&](const std::string&) { ++strings; });
     bus.register_listener("sample", [&](std::any) { ++named; });
     bus.dispatch(channel, 2);
@@ -68,8 +66,8 @@ TEST(typed_events, identity) {
 }
 
 TEST(typed_events, payload) {
-    CE::SubSystems::EventBus bus;
-    const CE::SubSystems::EventChannel<std::string> channel{"text"};
+    CE::Events::EventBus bus;
+    const CE::Events::EventChannel<std::string> channel{"text"};
     std::string source = "original";
     std::vector<std::string> received;
     bus.register_listener(channel, [&](const std::string& value) {
@@ -83,8 +81,8 @@ TEST(typed_events, payload) {
 }
 
 TEST(typed_events, any) {
-    CE::SubSystems::EventBus bus;
-    const CE::SubSystems::EventChannel<std::any> channel{"erased-value"};
+    CE::Events::EventBus bus;
+    const CE::Events::EventChannel<std::any> channel{"erased-value"};
     int received = 0;
     bus.register_listener(channel, [&](const std::any& value) { received = std::any_cast<int>(value); });
     std::any payload = 42;
@@ -93,10 +91,10 @@ TEST(typed_events, any) {
 }
 
 TEST(typed_events, remove) {
-    CE::SubSystems::EventBus first;
-    CE::SubSystems::EventBus second;
+    CE::Events::EventBus first;
+    CE::Events::EventBus second;
     const IntChannel integer{"sample"};
-    const CE::SubSystems::EventChannel<std::string> text{"sample"};
+    const CE::Events::EventChannel<std::string> text{"sample"};
     int calls = 0;
     const auto id = first.register_listener(integer, [&](const int&) { ++calls; });
     first.register_listener(text, [&](const std::string&) { ++calls; });
@@ -109,9 +107,9 @@ TEST(typed_events, remove) {
 }
 
 TEST(typed_events, nested) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     const IntChannel channel{"tick"};
-    CE::SubSystems::EventBus::Registration first;
+    CE::Events::EventBus::Registration first;
     std::vector<int> received;
     first = bus.register_listener(channel, [&](const int& value) {
         received.push_back(value);
@@ -126,12 +124,11 @@ TEST(typed_events, nested) {
 }
 
 TEST(typed_events, errors) {
-    CE::SubSystems::EventSystem system;
+    CE::Events::EventSystem system;
     const IntChannel channel{"tick"};
     EXPECT_THROW(system.register_listener(channel, IntChannel::Callback{}), CE::Exceptions::invalid_args);
     EXPECT_THROW(
-        system.register_listener(channel, [](const int&) {}, [](CE::SubSystems::EventBus::Work) { return false; }),
-        CE::Exceptions::invalid_args
+        system.register_listener(channel, [](const int&) {}, [](CE::Events::EventBus::Work) { return false; }), CE::Exceptions::invalid_args
     );
     int received = 0;
     const auto id = system.register_listener(channel, [&](const int& value) { received += value; });

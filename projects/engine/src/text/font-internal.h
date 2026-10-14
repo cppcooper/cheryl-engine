@@ -16,10 +16,10 @@ namespace CE::Text::Detail {
     };
     struct FontCollectionData {
         std::vector<FontFaceData> faces;
-        std::vector<FontFaceInfo> info;
+        std::vector<::CE::Text::FontFaceInfo> info;
     };
     struct FontAccess {
-        [[nodiscard]] static const FontCollectionData& data(const FontCollection& collection);
+        [[nodiscard]] static const FontCollectionData& data(const ::CE::Text::FontCollection& collection);
     };
 
     using FreeTypeLibrary = std::unique_ptr<FT_LibraryRec_, decltype(&FT_Done_FreeType)>;

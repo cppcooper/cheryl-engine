@@ -12,43 +12,43 @@
 #include <utility>
 #include <vector>
 
-namespace CE::RenderAPIs {
+namespace CE::Rendering {
     /** One ordered pass. Matrices are copied from the simulation's camera; the
      * renderer never observes a live CameraBase or animation playback cursor.
      */
-    struct RenderPass {
+    struct Pass {
         glm::mat4 projection{1.0f};
         glm::mat4 view{1.0f};
-        Assets::ParameterSet parameters;
-        Assets::PassConstraints2D constraints;
-        std::vector<DrawPacket2D> draws;
+        ::CE::Rendering::Parameters::Set parameters;
+        ::CE::Rendering::Pipelines::PassConstraints2D constraints;
+        std::vector<::CE::Rendering::DrawPacket2D> draws;
     };
 
-    class RenderFrameWriter;
-    class RenderPassWriter;
+    class FrameWriter;
+    class PassWriter;
 
     /** One reusable storage slot. Only the active passes are published; inactive pass
      * objects keep their draw-vector capacity for later ticks. Runtime ownership must
      * prevent writing or recycling while the renderer reads this frame.
      */
-    class RenderFrame final {
+    class Frame final {
     private:
-        friend class RenderFrameWriter;
-        friend class RenderPassWriter;
+        friend class ::CE::Rendering::FrameWriter;
+        friend class ::CE::Rendering::PassWriter;
 
-        std::vector<RenderPass> passes_;
+        std::vector<::CE::Rendering::Pass> passes_;
         std::size_t active_passes_ = 0;
 
     public:
-        RenderFrame() = default;
-        RenderFrame(const RenderFrame&) = delete;
-        RenderFrame& operator=(const RenderFrame&) = delete;
-        RenderFrame(RenderFrame&&) = delete;
-        RenderFrame& operator=(RenderFrame&&) = delete;
+        Frame() = default;
+        Frame(const Frame&) = delete;
+        Frame& operator=(const Frame&) = delete;
+        Frame(Frame&&) = delete;
+        Frame& operator=(Frame&&) = delete;
 
         // Borrowed active-pass view; keep the slot alive and exclude writing/recycling
         // for the entire read. Outer-vector growth invalidates existing views.
-        [[nodiscard]] std::span<const RenderPass> passes() const { return {passes_.data(), active_passes_}; }
+        [[nodiscard]] std::span<const ::CE::Rendering::Pass> passes() const { return {passes_.data(), active_passes_}; }
 
         // After rendering or supersession, release packet handles on the graphics
         // thread while its context is current, then return the slot to simulation.
@@ -65,30 +65,32 @@ namespace CE::RenderAPIs {
      * grows the frame's outer vector. Use it only while the frame is being prepared.
      * No writer operation synchronizes or publishes a slot to another thread.
      */
-    class RenderPassWriter final {
+    class PassWriter final {
     private:
-        friend class RenderFrameWriter;
-        RenderFrame& frame_;
+        friend class ::CE::Rendering::FrameWriter;
+        ::CE::Rendering::Frame& frame_;
         std::size_t index_;
 
     public:
         void reserve_draws(std::size_t count) { frame_.passes_[index_].draws.reserve(count); }
 
-        [[nodiscard]] Assets::ShaderPass semantics() const {
+        [[nodiscard]] ::CE::Rendering::Parameters::PassSemantics semantics() const {
             const auto& pass = frame_.passes_[index_];
             return {pass.projection, pass.view};
         }
         // Borrowed references can be invalidated by outer-vector growth or recycling.
-        [[nodiscard]] const Assets::ParameterSet& parameters() const { return frame_.passes_[index_].parameters; }
-        [[nodiscard]] const Assets::PassConstraints2D& constraints() const { return frame_.passes_[index_].constraints; }
+        [[nodiscard]] const ::CE::Rendering::Parameters::Set& parameters() const { return frame_.passes_[index_].parameters; }
+        [[nodiscard]] const ::CE::Rendering::Pipelines::PassConstraints2D& constraints() const {
+            return frame_.passes_[index_].constraints;
+        }
 
         /** Validate and append one owned packet in authored order.
          * Validation/allocation failure leaves the existing draw list intact.
          * @param draw Packet retaining the resources needed for later rendering.
          */
-        void add(DrawPacket2D draw) {
+        void add(::CE::Rendering::DrawPacket2D draw) {
             auto& pass = frame_.passes_[index_];
-            validate_draw_packet(draw, pass.constraints);
+            ::CE::Rendering::validate_draw_packet(draw, pass.constraints);
             draw.authored_order = pass.draws.size();
             pass.draws.push_back(std::move(draw));
         }
@@ -97,12 +99,12 @@ namespace CE::RenderAPIs {
          * Validation/storage-limit failures leave existing draws intact.
          * @param draws Owned packet group appended in its existing order.
          */
-        void add(std::vector<DrawPacket2D> draws) {
+        void add(std::vector<::CE::Rendering::DrawPacket2D> draws) {
             auto& pass = frame_.passes_[index_];
             for (const auto& draw : draws)
-                validate_draw_packet(draw, pass.constraints);
+                ::CE::Rendering::validate_draw_packet(draw, pass.constraints);
             if (draws.size() > pass.draws.max_size() - pass.draws.size())
-                throw Exceptions::invalid_args(CE_HERE, "Render pass exceeds packet storage limits");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Render pass exceeds packet storage limits");
             pass.draws.reserve(pass.draws.size() + draws.size());
             for (auto& draw : draws) {
                 draw.authored_order = pass.draws.size();
@@ -111,7 +113,7 @@ namespace CE::RenderAPIs {
         }
 
     private:
-        RenderPassWriter(RenderFrame& frame, std::size_t index)
+        PassWriter(::CE::Rendering::Frame& frame, std::size_t index)
         : frame_(frame), index_(index) {}
     };
 
@@ -121,15 +123,15 @@ namespace CE::RenderAPIs {
      * rejects unrecycled active passes. Destruction does not publish or roll back;
      * a preparation failure requires recycling the partial frame before reuse.
      */
-    class RenderFrameWriter final {
+    class FrameWriter final {
     private:
-        RenderFrame& frame_;
+        ::CE::Rendering::Frame& frame_;
 
     public:
-        explicit RenderFrameWriter(RenderFrame& frame)
+        explicit FrameWriter(::CE::Rendering::Frame& frame)
         : frame_(frame) {
             if (frame_.active_passes_ != 0)
-                throw Exceptions::failed_operation(CE_HERE, "Render frame must be recycled before writing again");
+                throw ::CE::Exceptions::failed_operation(CE_HERE, "Render frame must be recycled before writing again");
         }
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
@@ -143,11 +145,11 @@ namespace CE::RenderAPIs {
          * @param parameters Owned pass parameter values.
          * @return Writer borrowing this frame's new pass.
          */
-        [[nodiscard]] RenderPassWriter begin_pass(
+        [[nodiscard]] ::CE::Rendering::PassWriter begin_pass(
             const glm::mat4& projection,
             const glm::mat4& view,
-            Assets::PassConstraints2D constraints = Assets::PassConstraints2D{},
-            Assets::ParameterSet parameters = Assets::ParameterSet{}
+            ::CE::Rendering::Pipelines::PassConstraints2D constraints = ::CE::Rendering::Pipelines::PassConstraints2D{},
+            ::CE::Rendering::Parameters::Set parameters = ::CE::Rendering::Parameters::Set{}
         ) {
             const auto index = frame_.active_passes_;
             if (index == frame_.passes_.size())
@@ -158,7 +160,7 @@ namespace CE::RenderAPIs {
             pass.constraints = std::move(constraints);
             pass.parameters = std::move(parameters);
             ++frame_.active_passes_;
-            return RenderPassWriter(frame_, index);
+            return ::CE::Rendering::PassWriter(frame_, index);
         }
     };
 }

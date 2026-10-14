@@ -3,7 +3,7 @@
 #include <internals/compile-time-logging.hpp>
 #include <algorithm>
 
-namespace CE::Engine {
+namespace CE::Runtime {
     PlatformDispatcher::~PlatformDispatcher() {
         // Normal runtime teardown already closed on the owner. Invalidation also
         // makes a saved endpoint safe if an unopened dispatcher is destroyed.
@@ -33,7 +33,7 @@ namespace CE::Engine {
         return !state_->pending.empty();
     }
 
-    Diagnostics::DispatchStats PlatformDispatcher::diagnostics() const {
+    CE::Diagnostics::DispatchStats PlatformDispatcher::diagnostics() const {
         std::lock_guard lock(state_->mutex);
         auto result = state_->diagnostics;
         result.pending = state_->pending.size();
@@ -51,7 +51,10 @@ namespace CE::Engine {
             state_->opened = true;
             state_->accepting = true;
         }
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=platform_dispatch domain={} operation=open outcome=ready", state_->diagnostics.domain);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine, "subsystem=platform_dispatch domain={} operation=open outcome=ready",
+            state_->diagnostics.domain
+        );
     }
 
     void PlatformDispatcher::require_owner(const State& state) {
@@ -59,7 +62,7 @@ namespace CE::Engine {
             throw Exceptions::failed_operation(CE_HERE, "Platform requests must execute on their owner thread");
     }
 
-    void PlatformDispatcher::drain(EngineContext& engine) {
+    void PlatformDispatcher::drain(Context& engine) {
         std::vector<Task> batch;
         {
             std::lock_guard lock(state_->mutex);
@@ -97,11 +100,17 @@ namespace CE::Engine {
         }
         invalidate();
         const auto summary = diagnostics();
-        CE_LOG_DEBUG(CE::enginelog, "subsystem=platform_dispatch domain={} operation=close accepted={} completed={} cancelled={} failures={} peak_pending={}",
-                     summary.domain, summary.accepted, summary.completed, summary.cancelled, summary.failures, summary.peak_pending);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::engine,
+            "subsystem=platform_dispatch domain={} operation=close accepted={} completed={} cancelled={} failures={} peak_pending={}",
+            summary.domain, summary.accepted, summary.completed, summary.cancelled, summary.failures, summary.peak_pending
+        );
         if (summary.peak_pending >= 1024)
-            CE_LOG_WARN(CE::enginelog, "subsystem=platform_dispatch domain={} operation=queue_growth outcome=high_water peak_pending={}",
-                        summary.domain, summary.peak_pending);
+            CE_LOG_WARN(
+                CE::Logging::Categories::engine,
+                "subsystem=platform_dispatch domain={} operation=queue_growth outcome=high_water peak_pending={}", summary.domain,
+                summary.peak_pending
+            );
     }
 
     void PlatformDispatcher::invalidate() {

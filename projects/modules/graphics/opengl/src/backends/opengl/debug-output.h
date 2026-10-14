@@ -5,9 +5,9 @@
 #include <chrono>
 #include <cstdint>
 
-namespace CE::RenderAPIs {
-    struct NativeDebugStats {
-        Diagnostics::DomainId domain = 0;
+namespace CE::Rendering::OpenGL::Detail {
+    struct DebugStats {
+        ::CE::Diagnostics::DomainId domain = 0;
         std::uint64_t high = 0;
         std::uint64_t medium = 0;
         std::uint64_t filtered = 0;
@@ -19,11 +19,10 @@ namespace CE::RenderAPIs {
         bool host_owned = false;
     };
 
-    namespace RendererDetail {
         // Internal synchronous observation. No renderer pointer is stored in GL.
         // The static callback is harmless after failed context recovery/destruction.
         class DebugOutput final {
-            NativeDebugStats stats_;
+            ::CE::Rendering::OpenGL::Detail::DebugStats stats_;
             bool previous_enabled_ = false;
             bool previous_synchronous_ = false;
             void* previous_user_ = nullptr;
@@ -43,14 +42,13 @@ namespace CE::RenderAPIs {
                 Scope& operator=(const Scope&) = delete;
             };
 
-            void start(Diagnostics::DomainId domain) noexcept;
+            void start(::CE::Diagnostics::DomainId domain) noexcept;
             void stop() noexcept;
             void report(bool force = false) noexcept;
-            [[nodiscard]] NativeDebugStats diagnostics() const noexcept { return stats_; }
+            [[nodiscard]] ::CE::Rendering::OpenGL::Detail::DebugStats diagnostics() const noexcept { return stats_; }
 
         private:
             static void GLAD_API_PTR
             callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei, const GLchar*, const void*) noexcept;
         };
-    }
 }

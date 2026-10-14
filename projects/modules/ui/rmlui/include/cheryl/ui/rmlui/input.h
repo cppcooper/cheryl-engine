@@ -6,6 +6,6 @@
 
 namespace CE::UI::RmlUi {
     // Physical identities are independent of committed text and native codes.
-    [[nodiscard]] Rml::Input::KeyIdentifier keyboard_key(Input::KeyboardKey key);
-    [[nodiscard]] int modifiers(Input::Modifiers value);
+    [[nodiscard]] Rml::Input::KeyIdentifier keyboard_key(CE::Input::KeyboardKey key);
+    [[nodiscard]] int modifiers(CE::Input::Modifiers value);
 }

@@ -14,7 +14,7 @@
 #include <sched.h>
 #endif
 
-namespace CE::Engine::WorkerDetail {
+namespace CE::Workers::Detail {
     std::vector<unsigned int> current_affinity() {
 #if defined(__linux__)
         cpu_set_t mask;
@@ -36,8 +36,8 @@ namespace CE::Engine::WorkerDetail {
 #endif
     }
 
-    WorkerCapabilities discover_capabilities(const WorkerNativeAdapter& adapter) {
-        WorkerCapabilities capabilities;
+    CE::Workers::Capabilities discover_capabilities(const NativeAdapter& adapter) {
+        CE::Workers::Capabilities capabilities;
         if (adapter.cpu_affinity) {
             try {
                 capabilities.available_cpus = adapter.query_affinity();
@@ -76,7 +76,7 @@ namespace CE::Engine::WorkerDetail {
 #endif
     }
 
-    void apply_affinity(const WorkerNativeAdapter& adapter, const std::vector<unsigned int>& cpus) {
+    void apply_affinity(const NativeAdapter& adapter, const std::vector<unsigned int>& cpus) {
         adapter.set_affinity(cpus);
         // Linux may silently intersect the request with cpuset restrictions.
         // Verify the effective mask before allowing the requested job to run.
@@ -84,8 +84,8 @@ namespace CE::Engine::WorkerDetail {
             throw Exceptions::failed_operation(CE_HERE, "Effective worker CPU affinity differs from requested eligibility");
     }
 
-    WorkerNativeAdapter native_worker_adapter() {
-        WorkerNativeAdapter adapter;
+    NativeAdapter native_worker_adapter() {
+        NativeAdapter adapter;
 #if defined(__linux__)
         adapter.cpu_affinity = true;
 #endif

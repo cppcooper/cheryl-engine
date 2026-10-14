@@ -57,7 +57,7 @@ namespace {
 TEST(opengl_debug, baseline_gate) {
     DebugNative native;
     GLAD_GL_KHR_debug = 0;
-    CE::RenderAPIs::RendererDetail::DebugOutput output;
+    CE::Rendering::OpenGL::Detail::DebugOutput output;
     output.start(17);
     EXPECT_FALSE(output.diagnostics().supported);
     EXPECT_EQ(native.calls, 0);
@@ -67,7 +67,7 @@ TEST(opengl_debug, host_callback) {
     DebugNative native;
     native.callback = [](GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*) {};
     const auto previous = native.callback;
-    CE::RenderAPIs::RendererDetail::DebugOutput output;
+    CE::Rendering::OpenGL::Detail::DebugOutput output;
     output.start(18);
     EXPECT_TRUE(output.diagnostics().host_owned);
     EXPECT_FALSE(output.diagnostics().installed);
@@ -78,13 +78,13 @@ TEST(opengl_debug, host_callback) {
 
 TEST(opengl_debug, scoped_observation) {
     DebugNative native;
-    CE::RenderAPIs::RendererDetail::DebugOutput output;
+    CE::Rendering::OpenGL::Detail::DebugOutput output;
     output.start(19);
     ASSERT_NE(native.callback, nullptr);
     EXPECT_EQ(native.user, nullptr);
     EXPECT_TRUE(native.synchronous);
     {
-        CE::RenderAPIs::RendererDetail::DebugOutput::Scope observing(&output);
+        CE::Rendering::OpenGL::Detail::DebugOutput::Scope observing(&output);
         for (int i = 0; i < 100; ++i)
             native.callback(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, 71, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, nullptr);
         native.callback(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, 72, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, nullptr);
@@ -105,9 +105,9 @@ TEST(opengl_debug, scoped_observation) {
 TEST(opengl_debug, abandoned_scope) {
     DebugNative native;
     {
-        CE::RenderAPIs::RendererDetail::DebugOutput output;
+        CE::Rendering::OpenGL::Detail::DebugOutput output;
         output.start(20);
-        CE::RenderAPIs::RendererDetail::DebugOutput::Scope observing(&output);
+        CE::Rendering::OpenGL::Detail::DebugOutput::Scope observing(&output);
         // Context recovery fails: no stop/native restoration can be attempted.
     }
     ASSERT_NE(native.callback, nullptr);
@@ -117,7 +117,7 @@ TEST(opengl_debug, abandoned_scope) {
 
 TEST(opengl_debug, host_replacement) {
     DebugNative native;
-    CE::RenderAPIs::RendererDetail::DebugOutput output;
+    CE::Rendering::OpenGL::Detail::DebugOutput output;
     output.start(21);
     native.callback = [](GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*) {};
     const auto host = native.callback;

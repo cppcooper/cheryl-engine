@@ -2,7 +2,7 @@
 #include <variant>
 #include <cstring>
 #include <internals/exceptions.h>
-namespace CE::ptr {
+namespace CE::Memory::Pointers {
     // Address arithmetic only: no allocation, ownership, bounds/lifetime validation
     // or overflow check. Byte sums must be representable and derived pointers must
     // stay in their backing allocation. Pointer comparisons require comparable ranges;
@@ -102,7 +102,7 @@ namespace CE::ptr {
             case 8:
                 return hash; // No need for modulus, 64 bits fit directly
             default:
-                throw Exceptions::invalid_args(CE_HERE, "Invalid hash size. Supported sizes: 1, 2, 4, or 8 bytes.");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid hash size. Supported sizes: 1, 2, 4, or 8 bytes.");
         }
     }
 }

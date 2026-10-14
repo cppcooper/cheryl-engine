@@ -38,29 +38,29 @@
 #include <utility>
 
 namespace DemoActions {
-    constexpr CE::Input::ActionId Up{1};
-    constexpr CE::Input::ActionId Left{2};
-    constexpr CE::Input::ActionId Down{3};
-    constexpr CE::Input::ActionId Right{4};
-    constexpr CE::Input::ActionId Reset{5};
-    constexpr CE::Input::ActionId MouseX{6};
-    constexpr CE::Input::ActionId MouseY{7};
-    constexpr CE::Input::ActionId Click{8};
-    constexpr CE::Input::ActionId WheelY{9};
-    constexpr CE::Input::ActionId GamepadA{11};
-    constexpr CE::Input::ActionId QuitGame{13};
-    constexpr CE::Input::ActionId ToggleSamples{14};
-    constexpr CE::Input::ActionId PauseAnimations{15};
-    constexpr CE::Input::ActionId ReplayAttack{16};
+    constexpr CE::Input::Actions::Id Up{1};
+    constexpr CE::Input::Actions::Id Left{2};
+    constexpr CE::Input::Actions::Id Down{3};
+    constexpr CE::Input::Actions::Id Right{4};
+    constexpr CE::Input::Actions::Id Reset{5};
+    constexpr CE::Input::Actions::Id MouseX{6};
+    constexpr CE::Input::Actions::Id MouseY{7};
+    constexpr CE::Input::Actions::Id Click{8};
+    constexpr CE::Input::Actions::Id WheelY{9};
+    constexpr CE::Input::Actions::Id GamepadA{11};
+    constexpr CE::Input::Actions::Id QuitGame{13};
+    constexpr CE::Input::Actions::Id ToggleSamples{14};
+    constexpr CE::Input::Actions::Id PauseAnimations{15};
+    constexpr CE::Input::Actions::Id ReplayAttack{16};
 } // namespace DemoActions
 
-class GameImpl : public CE::GFramework::AbstractGame {
+class GameImpl : public CE::Game::AbstractGame {
     struct Materials {
-        std::shared_ptr<const CE::Assets::Material> text;
-        std::shared_ptr<const CE::Assets::Material> images;
+        std::shared_ptr<const CE::Rendering::Resources::Material> text;
+        std::shared_ptr<const CE::Rendering::Resources::Material> images;
     };
 
-    CE::Input::CaptureLease events_;
+    CE::Input::Capture::Lease events_;
 #ifdef CHERYL_DEMO_TGUI
     std::unique_ptr<DemoUi> ui_;
 #endif
@@ -68,14 +68,14 @@ class GameImpl : public CE::GFramework::AbstractGame {
     std::unique_ptr<DemoRmlUi> rml_ui_;
 #endif
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
-    static constexpr CE::Input::FocusId text_box = 1;
-    CE::Input::CaptureLease text_capture_;
-    CE::Input::FocusLease focus_;
+    static constexpr CE::Input::Routing::TargetId text_box = 1;
+    CE::Input::Capture::Lease text_capture_;
+    CE::Input::Routing::Lease focus_;
     std::u32string text_;
     std::size_t caret_ = 0;
 #endif
-    CE::Engine::EngineContext& engine_;
-    CE::Camera2D camera_;
+    CE::Runtime::Context& engine_;
+    CE::Rendering::Camera2D camera_;
     DemoAssets assets_;
     DemoAudio audio_;
     std::filesystem::path asset_root_;
@@ -83,17 +83,17 @@ class GameImpl : public CE::GFramework::AbstractGame {
     CE::Text::FontSelection font_selection_;
     CE::Text::LayoutOptions text_options_;
     bool unicode_preview_;
-    CE::Assets::TextRasterOptions raster_options_;
+    CE::Text::Rendering::RasterOptions raster_options_;
     std::optional<CE::Text::FontCollection> fonts_;
-    std::optional<CE::Engine::WorkerGroup> text_workers_;
-    std::shared_ptr<const CE::Assets::RenderedText> target_text_;
-    std::shared_ptr<const CE::Assets::RenderedText> hud_text_;
-    std::future<CE::Assets::PreparedText> pending_text_preparation_;
-    std::future<std::shared_ptr<const CE::Assets::RenderedText>> pending_text_upload_;
+    std::optional<CE::Workers::Group> text_workers_;
+    std::shared_ptr<const CE::Text::Rendering::Generation> target_text_;
+    std::shared_ptr<const CE::Text::Rendering::Generation> hud_text_;
+    std::future<CE::Text::Rendering::Prepared> pending_text_preparation_;
+    std::future<std::shared_ptr<const CE::Text::Rendering::Generation>> pending_text_upload_;
     std::string requested_hud_;
     float requested_width_ = 0;
-    std::shared_ptr<const CE::Assets::Material> font_shader_;
-    std::shared_ptr<const CE::Assets::Material> image_shader_;
+    std::shared_ptr<const CE::Rendering::Resources::Material> font_shader_;
+    std::shared_ptr<const CE::Rendering::Resources::Material> image_shader_;
     std::future<Materials> pending_shader_;
     std::string reload_error_;
     glm::vec2 pan_{0.0f, 0.0f};
@@ -108,7 +108,7 @@ class GameImpl : public CE::GFramework::AbstractGame {
 
 public:
     GameImpl(
-        CE::Engine::EngineContext& engine,
+        CE::Runtime::Context& engine,
         std::filesystem::path asset_root,
         bool load_all_assets,
         CE::Text::FontSelection fonts,
@@ -141,7 +141,7 @@ public:
         asset_root_ = std::filesystem::absolute(asset_root_).lexically_normal();
 
         auto& resources = engine_.resources();
-        CE::Assets::Loader loader(asset_root_);
+        CE::Assets::Loading::Loader loader(asset_root_);
         bool files_registered = false;
         if (load_all_assets_) {
             try {
@@ -164,8 +164,8 @@ public:
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
         fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
         text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
-        target_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
-            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, "Camera target", text_options_), raster_options_), resources
+        target_text_ = std::make_shared<const CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
+            CE::Text::Rendering::prepare(CE::Text::layout_text(*fonts_, "Camera target", text_options_), raster_options_), resources
         ));
         assets_.load(asset_root_, resources, *fonts_, raster_options_);
         audio_.load();
@@ -193,7 +193,7 @@ public:
             {1.0f, 0.0f, CE::Input::AxisKind::Relative}
         );
         (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
-        events_ = input.capture(CE::Input::InputMode::Events);
+        events_ = input.capture(CE::Input::Capture::Channel::Events);
 #ifdef CHERYL_DEMO_TGUI
         ui_ = std::make_unique<DemoUi>(engine_, asset_root_);
 #endif
@@ -211,8 +211,8 @@ public:
         requested_hud_ = hud_message();
         auto options = hud_options();
         requested_width_ = *options.maximum_width;
-        hud_text_ = std::make_shared<const CE::Assets::RenderedText>(CE::Assets::upload_text(
-            CE::Assets::prepare_text(CE::Text::layout_text(*fonts_, requested_hud_, options), raster_options_), resources
+        hud_text_ = std::make_shared<const CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
+            CE::Text::Rendering::prepare(CE::Text::layout_text(*fonts_, requested_hud_, options), raster_options_), resources
         ));
     }
 
@@ -241,7 +241,7 @@ public:
         font_shader_.reset();
     }
 
-    void update(const CE::GFramework::TickContext& tick) override {
+    void update(const CE::Game::TickContext& tick) override {
         if (tick.input.button(DemoActions::QuitGame).held()) {
             tick.request_stop();
         }
@@ -280,33 +280,31 @@ public:
         // Records carry the owner selected when they were collected, including
         // those still pending when this update requests a focus transfer.
         for (const auto& record : actions.records()) {
-            const auto* button = std::get_if<CE::Input::ButtonEvent>(&record.data);
+            const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
             if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
-                button->phase == CE::Input::ButtonPhase::Press && !pending_shader_.valid()) {
-                pending_shader_ = engine_.platform_dispatcher().submit(
-                    [root = asset_root_](CE::Engine::EngineContext& platform) {
-                        return load_materials(root, platform.resources(), true);
-                    }
-                );
+                button->phase == CE::Input::Events::ButtonPhase::Press && !pending_shader_.valid()) {
+                pending_shader_ = engine_.platform_dispatcher().submit([root = asset_root_](CE::Runtime::Context& platform) {
+                    return load_materials(root, platform.resources(), true);
+                });
             }
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
             if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
-                button->phase == CE::Input::ButtonPhase::Press) {
+                button->phase == CE::Input::Events::ButtonPhase::Press) {
                 if (focus_.owns_focus()) {
                     focus_.reset();
                     text_capture_.reset();
                 } else {
-                    text_capture_ = engine_.input().capture(CE::Input::InputMode::Text);
+                    text_capture_ = engine_.input().capture(CE::Input::Capture::Channel::Text);
                     focus_ = engine_.input().routing().focus(text_box);
                 }
                 continue;
             }
             if (record.target != text_box)
                 continue;
-            if (const auto* text = std::get_if<CE::Input::TextEvent>(&record.data)) {
+            if (const auto* text = std::get_if<CE::Input::Events::Text>(&record.data)) {
                 text_.insert(caret_, 1, text->codepoint);
                 ++caret_;
-            } else if (button && button->phase != CE::Input::ButtonPhase::Release) {
+            } else if (button && button->phase != CE::Input::Events::ButtonPhase::Release) {
                 switch (button->button) {
                     case gainput::KeyBackSpace:
                         if (caret_ > 0)
@@ -369,28 +367,32 @@ public:
             stop_();
     }
 
-    void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+    void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
         const auto size = camera_.framebuffer_size();
         auto pass = frame.begin_pass(camera_.projection_matrix(), camera_.view_matrix());
-        const CE::Assets::SubmissionContext2D context{
-            pass.semantics(), pass.parameters(), pass.constraints(), CE::Assets::ImageParameter2D{"image", 0}
+        const CE::Rendering::Submission::Context2D context{
+            pass.semantics(), pass.parameters(), pass.constraints(), CE::Rendering::Submission::ImageParameter2D{"image", 0}
         };
-        CE::RenderAPIs::DrawStyle2D text;
+        CE::Rendering::DrawStyle2D text;
         text.material = font_shader_;
-        CE::RenderAPIs::DrawStyle2D images;
+        CE::Rendering::DrawStyle2D images;
         images.material = image_shader_;
         assets_.write(pass, images, text, context);
         text.model_matrix = glm::translate(
             glm::mat4(1.0f), glm::vec3(static_cast<float>(size.width) * 0.5f - 120.0f, static_cast<float>(size.height) * 0.5f, 0.0f)
         );
-        pass.add(raster_options_.positioned_runs ? CE::Assets::resolve_text_runs(*target_text_, text, context)
-                                               : CE::Assets::resolve_text(*target_text_, text, context));
+        pass.add(
+            raster_options_.positioned_runs ? CE::Rendering::Submission::resolve_text_runs(*target_text_, text, context)
+                                            : CE::Rendering::Submission::resolve_text(*target_text_, text, context)
+        );
 
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
-        pass.add(raster_options_.positioned_runs ? CE::Assets::resolve_text_runs(*hud_text_, text, context)
-                                               : CE::Assets::resolve_text(*hud_text_, text, context));
+        pass.add(
+            raster_options_.positioned_runs ? CE::Rendering::Submission::resolve_text_runs(*hud_text_, text, context)
+                                            : CE::Rendering::Submission::resolve_text(*hud_text_, text, context)
+        );
 #ifdef CHERYL_DEMO_TGUI
         ui_->write(frame);
 #endif
@@ -446,12 +448,13 @@ private:
                 hud_text_ = pending_text_upload_.get();
             if (pending_text_preparation_.valid() &&
                 pending_text_preparation_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
-                pending_text_upload_ = engine_.platform_dispatcher().submit(
-                    [prepared = pending_text_preparation_.get()](CE::Engine::EngineContext& platform) mutable {
-                        return std::make_shared<const CE::Assets::RenderedText>(
-                            CE::Assets::upload_text(std::move(prepared), platform.resources()));
-                    }
-                );
+                pending_text_upload_ =
+                    engine_.platform_dispatcher().submit([prepared =
+                                                              pending_text_preparation_.get()](CE::Runtime::Context& platform) mutable {
+                        return std::make_shared<const CE::Text::Rendering::Generation>(
+                            CE::Text::Rendering::upload(std::move(prepared), platform.resources())
+                        );
+                    });
             }
         } catch (const std::exception& error) {
             std::cerr << "Text replacement failed; keeping the previous text: " << error.what() << '\n';
@@ -465,39 +468,37 @@ private:
         requested_hud_ = message;
         requested_width_ = *options.maximum_width;
         try {
-            pending_text_preparation_ = text_workers_->submit(
-                [fonts = *fonts_, message = std::move(message), options = std::move(options), raster = raster_options_] {
-                    return CE::Assets::prepare_text(CE::Text::layout_text(fonts, message, options), raster);
-                }
-            );
+            pending_text_preparation_ = text_workers_->submit([fonts = *fonts_, message = std::move(message), options = std::move(options),
+                                                               raster = raster_options_] {
+                return CE::Text::Rendering::prepare(CE::Text::layout_text(fonts, message, options), raster);
+            });
         } catch (const std::exception& error) {
             std::cerr << "Text preparation failed; keeping the previous text: " << error.what() << '\n';
         }
     }
 
-    static Materials load_materials(const std::filesystem::path& root, CE::Assets::ResourceProvider& provider, const bool replace) {
-        using namespace CE::Assets;
-        Loader loader(root);
+    static Materials load_materials(const std::filesystem::path& root, CE::Rendering::Resources::Provider& provider, const bool replace) {
+        CE::Assets::Loading::Loader loader(root);
         auto prepared = loader.prepare_graphics({"graphics/shaders/graphics-manifests.json"});
         // Validate this selection before upload so removed definitions cannot be
         // hidden by an older catalogue entry during an explicit reload.
-        const auto require = [&](const std::string& id, const PrimitiveTopology topology) {
+        const auto require = [&](const std::string& id, const CE::Rendering::Geometry::Topology topology) {
             for (const auto& manifest : prepared.shaders)
                 for (const auto& material : manifest.materials)
                     if (material.id == id) {
-                        const auto image = std::ranges::find(material.parameters, "image", &ShaderParameter::key);
-                        if (material.vertex_layout != VertexLayout2D::Position3UV2 || material.topology != topology ||
-                            image == material.parameters.end() || image->type != ParameterType::Sampler2D)
+                        const auto image = std::ranges::find(material.parameters, "image", &CE::Assets::Shaders::ParameterRecipe::key);
+                        if (material.vertex_layout != CE::Rendering::Geometry::Layout2D::Position3UV2 || material.topology != topology ||
+                            image == material.parameters.end() || image->type != CE::Rendering::Parameters::Type::Sampler2D)
                             throw CE::Exceptions::invalid_args(CE_HERE, "Main demo shader recipe is incompatible: '" + id + "'");
                         return;
                     }
             throw CE::Exceptions::invalid_args(CE_HERE, "Main demo shader definition is missing: '" + id + "'");
         };
-        require("main:text", PrimitiveTopology::Triangles);
-        require("main:images", PrimitiveTopology::TriangleStrip);
+        require("main:text", CE::Rendering::Geometry::Topology::Triangles);
+        require("main:images", CE::Rendering::Geometry::Topology::TriangleStrip);
         loader.upload(std::move(prepared), provider, replace);
-        auto& materials = ShaderAssetMgr::get();
-        return {materials.get_material("main:text"), materials.get_material("main:images")};
+        auto& materials = CE::Assets::Shaders::Manager::get();
+        return {materials.find_material("main:text"), materials.find_material("main:images")};
     }
 
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
@@ -538,7 +539,7 @@ struct DemoGame::GameState {
     GameImpl game;
 
     GameState(
-        CE::Engine::EngineContext& engine,
+        CE::Runtime::Context& engine,
         std::filesystem::path asset_root,
         const bool load_all_assets,
         CE::Text::FontSelection fonts,
@@ -550,7 +551,7 @@ struct DemoGame::GameState {
 };
 
 DemoGame::DemoGame(
-    CE::Engine::EngineContext& engine,
+    CE::Runtime::Context& engine,
     std::filesystem::path asset_root,
     const bool load_all_assets,
     CE::Text::FontSelection fonts,
@@ -558,9 +559,10 @@ DemoGame::DemoGame(
     const bool unicode_preview,
     const bool text_runs
 )
-: game_state_(std::make_unique<GameState>(
-    engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs
-)) {}
+: game_state_(
+      std::make_unique<
+          GameState>(engine, std::move(asset_root), load_all_assets, std::move(fonts), std::move(text_options), unicode_preview, text_runs)
+  ) {}
 
 DemoGame::~DemoGame() = default;
 
@@ -580,10 +582,10 @@ void DemoGame::deinit() {
     game_state_->game.deinit();
 }
 
-void DemoGame::update(const CE::GFramework::TickContext& tick) {
+void DemoGame::update(const CE::Game::TickContext& tick) {
     game_state_->game.update(tick);
 }
 
-void DemoGame::prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const {
+void DemoGame::prepare_render_frame(CE::Rendering::FrameWriter& frame) const {
     game_state_->game.prepare_render_frame(frame);
 }

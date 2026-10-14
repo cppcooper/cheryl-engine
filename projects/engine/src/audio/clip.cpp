@@ -7,13 +7,13 @@
 
 namespace CE::Audio {
     struct Clip::Storage {
-        Format format;
+        ::CE::Audio::Format format;
         std::vector<float> samples;
     };
 
     void Format::validate() const {
         if ((channels != 1 && channels != 2) || sample_rate < 8000 || sample_rate > 192000)
-            throw Exceptions::invalid_args(CE_HERE, "Audio requires mono/stereo PCM at 8–192 kHz");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Audio requires mono/stereo PCM at 8–192 kHz");
     }
 
     Clip::Clip(std::shared_ptr<const Storage> storage) : storage_(std::move(storage)) {}
@@ -21,9 +21,9 @@ namespace CE::Audio {
     Clip Clip::from_samples(Format format, std::vector<float> samples) {
         format.validate();
         if (samples.empty() || samples.size() % format.channels != 0)
-            throw Exceptions::invalid_args(CE_HERE, "Audio samples require nonempty complete frames");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Audio samples require nonempty complete frames");
         if (!std::ranges::all_of(samples, [](float value) { return std::isfinite(value); }))
-            throw Exceptions::invalid_args(CE_HERE, "Audio samples must be finite");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Audio samples must be finite");
         return Clip(std::make_shared<const Storage>(Storage{format, std::move(samples)}));
     }
 

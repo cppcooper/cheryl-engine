@@ -8,10 +8,10 @@
 #include <memory>
 #include <utility>
 
-namespace CE::Engine {
+namespace CE::Application::GLFWOpenGL {
     namespace {
         struct GlfwStartupOptions {
-            GlfwOpenGLConfig context;
+            Options context;
             bool input_diagnostics = false;
         };
 
@@ -35,34 +35,34 @@ namespace CE::Engine {
             if (configuration.context.width <= 0 || configuration.context.height <= 0 || configuration.context.swap_interval < 0)
                 throw CLI::ValidationError("Backend configuration", "Window dimensions must be positive and swap interval nonnegative");
 #if CHERYL_NATIVE_INPUT
-            if (configuration.input_diagnostics && !ctlog::enabled(ctlog::TRACE_))
+            if (configuration.input_diagnostics && !CE::Logging::Compile::enabled(CE::Logging::Compile::TRACE_))
                 throw CLI::ValidationError("--input-diagnostics", "Requires a build with TRACE logging");
 #endif
         }
     }
 
-    Startup make_glfw_opengl_startup(
-        Input::iInputSystem& input,
-        std::string description,
-        GlfwOpenGLConfig configuration,
-        RuntimeConfiguration runtime
-    ) {
+    CE::Application::Startup
+    make_startup(CE::Input::System& input, std::string description, Options configuration, CE::Application::RuntimeOptions runtime) {
         auto options = std::make_shared<GlfwStartupOptions>(GlfwStartupOptions{std::move(configuration)});
-        StartupBackend backend{.arguments = [options](CLI::App& arguments) { add_glfw_options(arguments, *options); },
+        CE::Application::StartupBackend backend{
+            .arguments = [options](CLI::App& arguments) { add_glfw_options(arguments, *options); },
             .validate = [options] { validate_glfw_options(*options); },
             .create =
-                [&input, options](const ExecutionOptions& execution) {
+                [&input, options](const CE::Runtime::ExecutionOptions& execution) {
                     auto context = options->context;
                     context.execution = execution;
-                    return make_glfw_opengl_context(input, context);
-                }};
-        return Startup(std::move(backend), std::move(description), {.execution = options->context.execution, .runtime = runtime});
+                    return make_context(input, context);
+                }
+        };
+        return CE::Application::Startup(
+            std::move(backend), std::move(description), {.execution = options->context.execution, .runtime = runtime}
+        );
     }
 
 #if CHERYL_NATIVE_INPUT
-    Startup make_glfw_opengl_startup(std::string description, GlfwOpenGLConfig configuration, RuntimeConfiguration runtime) {
+    CE::Application::Startup make_startup(std::string description, Options configuration, CE::Application::RuntimeOptions runtime) {
         auto options = std::make_shared<GlfwStartupOptions>(GlfwStartupOptions{std::move(configuration)});
-        StartupBackend backend{
+        CE::Application::StartupBackend backend{
             .arguments =
                 [options](CLI::App& arguments) {
                     add_glfw_options(arguments, *options);
@@ -71,20 +71,23 @@ namespace CE::Engine {
                 },
             .validate = [options] { validate_glfw_options(*options); },
             .create =
-                [options](const ExecutionOptions& execution) {
+                [options](const CE::Runtime::ExecutionOptions& execution) {
                     auto context = options->context;
                     context.execution = execution;
                     if (options->input_diagnostics) {
-                        auto config = LogConfig::for_logger(platformlog);
+                        auto config = CE::Logging::Config::for_logger(CE::Logging::Categories::platform);
                         config.logger_level = config.file_level = spdlog::level::trace;
-                        Logger<platformlog>::initialize(spdlog::file_event_handlers{}, config);
+                        CE::Logging::Logger<CE::Logging::Categories::platform>::initialize(spdlog::file_event_handlers{}, config);
                     }
-                    auto engine = make_glfw_opengl_context(context);
+                    auto engine = make_context(context);
                     if (options->input_diagnostics)
-                        static_cast<Input::InputSystem&>(engine->input()).set_gamepad_diagnostics(true);
+                        static_cast<CE::Platform::GLFW::InputSystem&>(engine->input()).set_gamepad_diagnostics(true);
                     return engine;
-                }};
-        return Startup(std::move(backend), std::move(description), {.execution = options->context.execution, .runtime = runtime});
+                }
+        };
+        return CE::Application::Startup(
+            std::move(backend), std::move(description), {.execution = options->context.execution, .runtime = runtime}
+        );
     }
 #endif
 }
