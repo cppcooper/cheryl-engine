@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace CE {
+namespace CE::Rendering {
     /** Tracks projection and view changes by revision. The game or a render pass
      * chooses when to use these matrices; the camera does not set render policy.
      * Mutable state is unsynchronized: use one owner and copy matrices into frames.
@@ -17,12 +17,12 @@ namespace CE {
 
         // Pixel dimensions; negatives throw unchanged. Zero sizes are retained but
         // projection uses at least one pixel per axis. Equal sizes keep the revision.
-        void set_framebuffer_size(FramebufferSize size);
+        void set_framebuffer_size(::CE::Platform::FramebufferSize size);
         // Exact component equality suppresses updates. No finiteness/invertibility
         // validation; changed matrices advance the revision once.
         void set_view_matrix(const glm::mat4& view);
 
-        [[nodiscard]] FramebufferSize framebuffer_size() const { return framebuffer_size_; }
+        [[nodiscard]] ::CE::Platform::FramebufferSize framebuffer_size() const { return framebuffer_size_; }
         [[nodiscard]] const glm::mat4& projection_matrix() const { return projection_matrix_; }
         [[nodiscard]] const glm::mat4& view_matrix() const { return view_matrix_; }
         [[nodiscard]] std::uint64_t revision() const { return revision_; }
@@ -30,7 +30,7 @@ namespace CE {
     protected:
         virtual void recalculate_projection() = 0;
 
-        FramebufferSize framebuffer_size_{};
+        ::CE::Platform::FramebufferSize framebuffer_size_{};
         glm::mat4 projection_matrix_{1.0f};
         glm::mat4 view_matrix_{1.0f};
         std::uint64_t revision_ = 0;

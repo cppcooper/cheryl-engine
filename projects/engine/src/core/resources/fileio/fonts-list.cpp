@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace CE::Resources {
+namespace CE::Text {
     namespace {
         namespace fs = std::filesystem;
 
@@ -15,20 +15,26 @@ namespace CE::Resources {
             return value;
         }
 
-        void append_environment_path(std::vector<fs::path>& directories, const char* variable, const fs::path& suffix = {}) {
+        void append_environment_path(
+            std::vector<::std::filesystem::path>& directories,
+            const char* variable,
+            const ::std::filesystem::path& suffix = {}
+        ) {
             if (const char* value = std::getenv(variable); value && *value) {
-                directories.push_back(fs::path(value) / suffix);
+                directories.push_back(::std::filesystem::path(value) / suffix);
             }
         }
 
-        bool is_supported_font(const fs::path& path) {
+        bool is_supported_font(const ::std::filesystem::path& path) {
             const auto extension = lowercase(path.extension().string());
             return extension == ".ttf" || extension == ".otf" || extension == ".ttc" || extension == ".otc";
         }
     }
 
-    std::vector<fs::path> system_font_directories() {
-        std::vector<fs::path> directories{"/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts", "/System/Library/Fonts"};
+    std::vector<::std::filesystem::path> system_font_directories() {
+        std::vector<::std::filesystem::path> directories{
+            "/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts", "/System/Library/Fonts"
+        };
         append_environment_path(directories, "HOME", ".fonts");
         append_environment_path(directories, "HOME", ".local/share/fonts");
         append_environment_path(directories, "HOME", "Library/Fonts");
@@ -38,21 +44,23 @@ namespace CE::Resources {
         return directories;
     }
 
-    std::vector<fs::path> find_system_fonts() {
+    std::vector<::std::filesystem::path> find_system_fonts() {
         return find_system_fonts(system_font_directories());
     }
 
-    std::vector<fs::path> find_system_fonts(const std::vector<fs::path>& directories) {
+    std::vector<::std::filesystem::path> find_system_fonts(const std::vector<::std::filesystem::path>& directories) {
         // Ignore inaccessible roots while walking installed fonts, then sort/deduplicate
         // across overlapping system and user font directories.
-        std::vector<fs::path> fonts;
+        std::vector<::std::filesystem::path> fonts;
         for (const auto& directory : directories) {
             std::error_code error;
-            if (!fs::is_directory(directory, error) || error)
+            if (!::std::filesystem::is_directory(directory, error) || error)
                 continue;
 
-            fs::recursive_directory_iterator entries(directory, fs::directory_options::skip_permission_denied, error);
-            const fs::recursive_directory_iterator end;
+            ::std::filesystem::recursive_directory_iterator entries(
+                directory, ::std::filesystem::directory_options::skip_permission_denied, error
+            );
+            const ::std::filesystem::recursive_directory_iterator end;
             while (!error && entries != end) {
                 const auto& entry = *entries;
                 if (entry.is_regular_file(error) && !error && is_supported_font(entry.path())) {
@@ -68,7 +76,7 @@ namespace CE::Resources {
         return fonts;
     }
 
-    std::optional<fs::path> select_default_system_font(const std::vector<fs::path>& fonts) {
+    std::optional<::std::filesystem::path> select_default_system_font(const std::vector<::std::filesystem::path>& fonts) {
         if (fonts.empty())
             return std::nullopt;
         constexpr std::string_view preferred_names[]{"arial.ttf", "helvetica.ttc", "dejavusans.ttf", "liberationsans-regular.ttf",
@@ -76,8 +84,9 @@ namespace CE::Resources {
             "consola.ttf", "proggyvector regular.ttf"};
         // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
         for (const auto preferred : preferred_names) {
-            const auto match =
-                std::ranges::find_if(fonts, [preferred](const fs::path& font) { return lowercase(font.filename().string()) == preferred; });
+            const auto match = std::ranges::find_if(fonts, [preferred](const ::std::filesystem::path& font) {
+                return lowercase(font.filename().string()) == preferred;
+            });
             if (match != fonts.end())
                 return *match;
         }

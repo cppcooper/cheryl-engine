@@ -5,37 +5,39 @@
 #include <algorithm>
 #include <utility>
 
-namespace CE::GFramework {
-    SimulationScheduler::SimulationScheduler(const SimulationTimingOptions options, const SimulationClock::time_point start)
+namespace CE::Runtime::Simulation {
+    Scheduler::Scheduler(const TimingOptions options, const Clock::time_point start)
     : options_(options), observed_at_(start) {
-        if (options_.mode != SimulationMode::Variable && options_.mode != SimulationMode::Fixed)
-            throw Exceptions::invalid_args(CE_HERE, "Unknown simulation timing mode");
+        if (options_.mode != Mode::Variable && options_.mode != Mode::Fixed)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown simulation timing mode");
         if (options_.recovery != LagRecovery::DropExcessLag && options_.recovery != LagRecovery::VariableCatchUp)
-            throw Exceptions::invalid_args(CE_HERE, "Unknown simulation lag recovery policy");
-        if (options_.variable_interval < SimulationClock::duration::zero() || options_.fixed_step <= SimulationClock::duration::zero() ||
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown simulation lag recovery policy");
+        if (options_.variable_interval < Clock::duration::zero() || options_.fixed_step <= Clock::duration::zero() ||
             options_.max_fixed_updates == 0 || options_.fixed_updates_before_recovery > options_.max_fixed_updates ||
-            options_.recovery_cap < SimulationClock::duration::zero())
-            throw Exceptions::invalid_args(CE_HERE, "Simulation timing requires positive fixed steps and bounded recovery configuration");
+            options_.recovery_cap < Clock::duration::zero())
+            throw ::CE::Exceptions::invalid_args(
+                CE_HERE, "Simulation timing requires positive fixed steps and bounded recovery configuration"
+            );
     }
 
-    SimulationBatch SimulationScheduler::advance(const SimulationClock::time_point now) {
+    Batch Scheduler::advance(const Clock::time_point now) {
         if (now < observed_at_)
-            throw Exceptions::invalid_args(CE_HERE, "Simulation clock must advance monotonically");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Simulation clock must advance monotonically");
         const auto previous = observed_at_.time_since_epoch();
-        if (previous < SimulationClock::duration::zero() && now.time_since_epoch() > SimulationClock::duration::max() + previous)
-            throw Exceptions::invalid_args(CE_HERE, "Simulation clock interval exceeds its duration range");
+        if (previous < Clock::duration::zero() && now.time_since_epoch() > Clock::duration::max() + previous)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Simulation clock interval exceeds its duration range");
         const auto elapsed = now - observed_at_;
-        if (elapsed > SimulationClock::duration::max() - accumulated_)
-            throw Exceptions::invalid_args(CE_HERE, "Simulation elapsed time exceeds the clock duration range");
+        if (elapsed > Clock::duration::max() - accumulated_)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Simulation elapsed time exceeds the clock duration range");
         observed_at_ = now;
         accumulated_ += elapsed;
-        SimulationBatch batch;
+        Batch batch;
         batch.observed_elapsed = elapsed;
 
-        if (options_.mode == SimulationMode::Variable) {
+        if (options_.mode == Mode::Variable) {
             if (accumulated_ >= options_.variable_interval) {
                 batch.steps.push_back({accumulated_, UpdateKind::Variable});
-                accumulated_ = SimulationClock::duration::zero();
+                accumulated_ = Clock::duration::zero();
             }
             return batch;
         }
@@ -48,10 +50,10 @@ namespace CE::GFramework {
                 accumulated_ -= options_.fixed_step;
             }
             const auto recovery =
-                options_.recovery_cap == SimulationClock::duration::zero() ? accumulated_ : std::min(accumulated_, options_.recovery_cap);
+                options_.recovery_cap == Clock::duration::zero() ? accumulated_ : std::min(accumulated_, options_.recovery_cap);
             batch.steps.push_back({recovery, UpdateKind::VariableCatchUp});
             batch.dropped = accumulated_ - recovery;
-            accumulated_ = SimulationClock::duration::zero();
+            accumulated_ = Clock::duration::zero();
             return batch;
         }
 
@@ -67,10 +69,9 @@ namespace CE::GFramework {
         return batch;
     }
 
-    SimulationClock::time_point SimulationScheduler::next_update_at() const {
-        const auto interval = options_.mode == SimulationMode::Variable ? options_.variable_interval : options_.fixed_step;
-        const auto remaining = interval > accumulated_ ? interval - accumulated_ : SimulationClock::duration::zero();
-        return observed_at_ > SimulationClock::time_point::max() - remaining ? SimulationClock::time_point::max()
-                                                                             : observed_at_ + remaining;
+    Clock::time_point Scheduler::next_update_at() const {
+        const auto interval = options_.mode == Mode::Variable ? options_.variable_interval : options_.fixed_step;
+        const auto remaining = interval > accumulated_ ? interval - accumulated_ : Clock::duration::zero();
+        return observed_at_ > Clock::time_point::max() - remaining ? Clock::time_point::max() : observed_at_ + remaining;
     }
 }

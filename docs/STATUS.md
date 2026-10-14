@@ -119,7 +119,7 @@ within each phase.
 | GameRuntime execution modes | Implemented | Coordinates platform polling, simulation, rendering and shutdown in sequential or concurrent mode. | [game-runtime.cpp](../projects/engine/src/core/game-framework/game-runtime.cpp) |
 | SimulationScheduler | Implemented | Variable/fixed cadence with bounded recovery, skipped time and catch-up policy. | [simulation-scheduler.h](../projects/engine/include/cheryl/core/game-framework/simulation-scheduler.h) |
 | TickContext | Implemented | Provides simulation delta, aggregated input, framebuffer/logical dimensions and stop-request access. | [tick-context.h](../projects/engine/include/cheryl/core/game-framework/tick-context.h) |
-| WorkerPool | Implemented | Shared threads with futures, acceptance/closure, draining and exception delivery. | [worker-pool.h](../projects/engine/include/cheryl/core/engine/worker-pool.h) |
+| `CE::Workers::Pool` | Implemented | Shared threads with futures, acceptance/closure, draining and exception delivery. | [worker-pool.h](../projects/engine/include/cheryl/core/engine/worker-pool.h) |
 | Worker CPU placement | Implemented | Application-owned topology providers, optional runtime hwloc core/cache discovery and calling-thread binding where supported, automatic/reuse/spread policies and validated C++/JSON settings. Windows binding remains deferred to phase 4; NUMA memory placement remains deferred. Topology is not a speedup guarantee. | [worker contract](runtime/worker-execution.md) |
 | Weighted worker groups | Implemented | Isolated logical workloads with concurrency limits, priority, fair scheduling and statistics. | [worker-pool.cpp](../projects/engine/src/core/engine/worker-pool.cpp) |
 | PlatformDispatcher | Implemented | Submits captured work for execution on the native graphics/platform owner. | [platform-dispatcher.h](../projects/engine/include/cheryl/core/engine/platform-dispatcher.h) |
@@ -181,7 +181,7 @@ within each phase.
 | Grid geometry and UVs | Implemented | Converts image atlas grid cells into pivot-aware 2D geometry and UV coordinates. | [grid-geometry.h](../projects/engine/include/cheryl/assets/geometry/grid-geometry.h) |
 | Image decoding | Implemented | CPU-side decoded RGBA image buffers with resource-provider separation. | [decoded-image.h](../projects/engine/include/cheryl/assets/resources/decoded-image.h) |
 | UTF-8 scalar mapping | Implemented | Decodes Unicode scalar values and retains byte/scalar indices as layout source maps. | [utf8.h](../projects/engine/include/cheryl/text/utf8.h) |
-| Legacy bitmap/font paths | Implemented | Legacy STBFont and deprecated FFont remain available; recovered binary widths/atlas restore FFont inputs, while JSON widths are metadata only. | [2d/](../projects/engine/include/cheryl/assets/types/2d/) |
+| Legacy bitmap/font paths | Implemented | `CE::Text::Legacy::AsciiFont` and deprecated `BitmapFont` remain available; recovered binary widths/atlas restore bitmap-font inputs, while JSON widths are metadata only. | [2d/](../projects/engine/include/cheryl/assets/types/2d/) |
 | System font discovery | Implemented | Searches font roots and selects installed font-file candidates. | [fonts-system.h](../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h) |
 | **Ui and audio** | | | |
 | TGUI UI bridge | Implemented | Owns toolkit session, widget APIs, input translation, CPU scene recording and scene upload. | [tgui/](../projects/modules/ui/tgui/) |

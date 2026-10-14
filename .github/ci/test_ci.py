@@ -66,6 +66,9 @@ class RunnerTests(unittest.TestCase):
 
     def test_modules(self):
         self.invoke("--profile", "modules")
+        self.assertIn("-DCHERYL_BUILD_FIRST_GAME=ON", self.commands[0])
+        build = next(command for command in self.commands if command[:2] == ["cmake", "--build"])
+        self.assertIn("first-game", build)
         pattern = re.compile(next(command for command in self.commands if command[0] == "ctest")[-1])
         for owner in ("native-glfw", "opengl", "ui-tgui", "ui-rmlui", "audio-miniaudio", "ui-coexist"):
             self.assertIsNotNone(pattern.search(f"tests-{owner}.case"), owner)

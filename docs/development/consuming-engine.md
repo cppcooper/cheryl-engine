@@ -1,5 +1,9 @@
 # Consuming the engine
 
+Start with the [first-game walkthrough](../getting-started/first-game.md) for a
+maintained application covering startup, controls, asset loading, and sprite/text
+submission. This page describes the source and SDK consumption contracts.
+
 Applications can compose source targets from a checkout or link a prebuilt
 [development SDK](#prebuilt-development-sdks). `projects/engine/` owns the neutral
 `Cheryl::Engine` target, backed by the build
@@ -95,7 +99,7 @@ the Linux Debug terminal; that module retains its source-composition path.
 
 ## Command-line startup
 
-[`CE::Engine::Startup`](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h)
+[`CE::Application::Startup`](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h)
 owns CLI11 parsing and validates execution, input polling and simulation timing
 before invoking a selected backend factory. Link `Cheryl::Startup` for a custom
 backend or `Cheryl::OpenGL::Startup` for the
@@ -110,16 +114,16 @@ callbacks run immediately; any values bound to the parser must remain at a stabl
 address through initialization. Startup itself cannot be copied or moved because
 its callbacks bind its configuration.
 
-Help and parse/configuration errors produce a `StartupResult` with no engine.
+Help and parse/configuration errors produce a `CE::Application::StartupResult` with no context.
 Return its `exit_code` when `should_start()` is false; help succeeds and invalid
 arguments fail before native context construction. A successful result owns the
-`EngineContext` and the parsed `RuntimeConfiguration`. Construct the game from that
+`CE::Runtime::Context` and the parsed `CE::Application::RuntimeOptions`. Construct the game from that
 context, then call `result.make_runtime(game)` to apply its run mode, polling and
 timing together. Keep the result and game alive through runtime destruction;
 `make_runtime` requires an lvalue result. Backend construction failures propagate,
-and `run()` retains the runtime's existing initialization/cleanup contract.
+and `CE::Runtime::GameRuntime::run()` retains the runtime's existing initialization/cleanup contract.
 
-`StartupConfiguration` supplies application defaults through `execution` and
+`CE::Application::StartupOptions` supplies application defaults through `execution` and
 `runtime`. The common Engine options override those defaults:
 
 | Argument | Effect |
@@ -145,7 +149,7 @@ selects finite polling; reversing them selects unlimited polling. Without overri
 the default configuration is sequential variable simulation, lockstep polling and
 one lazy CPU worker.
 
-A custom `StartupBackend` provides a required `create(ExecutionOptions)` factory,
+A custom `CE::Application::StartupBackend` provides a required `create(const CE::Runtime::ExecutionOptions&)` factory,
 optional Backend argument definitions and optional validation. The factory must
 return an owned context; a null result fails startup. Backend selection is currently
 programmatic. CLI backend selection, application-preference/build-default resolution
@@ -155,10 +159,10 @@ shows application-specific registration without duplicating the engine parser.
 
 ## Game hooks and ownership
 
-Implement `CE::GFramework::AbstractGame` and lend it, with an `EngineContext`, to
-`GameRuntime`. Keep both alive through `run()` returning or throwing. The selected
+Implement `CE::Game::AbstractGame` and lend it, with an `CE::Runtime::Context`, to
+`CE::Runtime::GameRuntime`. Keep both alive through `CE::Runtime::GameRuntime::run()` returning or throwing. The selected
 factory assembles display, window, input, presentation, renderer and resources;
-`run()` initializes those adapters before calling the game.
+`CE::Runtime::GameRuntime::run()` initializes those adapters before calling the game.
 
 | Hook | Owner | Responsibility |
 | --- | --- | --- |
@@ -186,30 +190,30 @@ when Escape is pressed. It submits no draws yet:
 #include <cheryl/core/game-framework/game-runtime.h>
 #include <gainput/gainput.h>
 
-class Game final : public CE::GFramework::AbstractGame {
-    CE::Engine::EngineContext& engine_;
-    static constexpr CE::Input::ActionId quit_{1};
+class Game final : public CE::Game::AbstractGame {
+    CE::Runtime::Context& engine_;
+    static constexpr CE::Input::Actions::Id quit_{1};
 
 public:
-    explicit Game(CE::Engine::EngineContext& engine) : engine_(engine) {}
+    explicit Game(CE::Runtime::Context& engine) : engine_(engine) {}
     void init() override {
         auto& input = engine_.input();
         static_cast<void>(input.bindings().bind_button({input.keyboard_id(), gainput::KeyEscape}, quit_));
     }
-    void update(const CE::GFramework::TickContext& tick) override {
+    void update(const CE::Game::TickContext& tick) override {
         if (tick.input.button(quit_).pressed())
             tick.request_stop();
     }
-    void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter&) const override {}
+    void prepare_render_frame(CE::Rendering::FrameWriter&) const override {}
     void deinit() override {}
 };
 
 int main(int argc, char** argv) {
-    auto startup = CE::Engine::make_glfw_opengl_startup("My game", {.title = "My game"});
+    auto startup = CE::Application::GLFWOpenGL::make_startup("My game", {.title = "My game"});
     auto result = startup.initialize(argc, argv);
     if (!result.should_start())
         return result.exit_code;
-    Game game(*result.engine);
+    Game game(*result.context);
     auto runtime = result.make_runtime(game);
     runtime.run();
     return result.exit_code;
@@ -218,9 +222,9 @@ int main(int argc, char** argv) {
 
 Link this example to `Cheryl::OpenGL::Startup`. Pass `--concurrent` to select the
 simulation worker, or use the common timing/polling options above. Applications
-that construct `GameRuntime` directly can still pass `RunMode::Concurrent` as its
+that construct `CE::Runtime::GameRuntime` directly can still pass `RunMode::Concurrent` as its
 third argument.
-Keep native binding IDs inside bootstrap; gameplay reads semantic `ActionId`s.
+Keep native binding IDs inside bootstrap; gameplay reads semantic `CE::Input::Actions::Id`s.
 Never change bindings or query a live window from concurrent `update()`.
 
 To add presentation, follow [asset loading](../assets/asset-loading.md) and
@@ -344,7 +348,7 @@ An existing CMake/CLion profile can retain failed C++ compiler ABI discovery. Ch
 whether generated `CMakeCXXCompiler.cmake` records
 `CMAKE_CXX_ABI_COMPILED FALSE` and empty implicit include directories. This can turn
 the X11 dependency's `/usr/include` into an explicit `-isystem` argument;
-GCC can then fail to resolve `math.h` or `stdlib.h` through `#include_next` in
+GCC can then fail to resolve `CE::Math.h` or `stdlib.h` through `#include_next` in
 C++ standard headers.
 
 Refresh compiler discovery and regenerate the build files while preserving the

@@ -5,17 +5,17 @@
 #include <atomic>
 #include <memory>
 
-namespace CE::Input {
-    struct KeyboardFocus {
-        FocusId target = 0;
-        KeyboardRouting routing = KeyboardRouting::Exclusive;
+namespace CE::Input::Routing {
+    struct Focus {
+        TargetId target = 0;
+        KeyboardPolicy routing = KeyboardPolicy::Exclusive;
         std::uint64_t epoch = 0;
     };
 
     namespace Detail {
-        struct RoutingState {
-            std::shared_ptr<const KeyboardFocus> empty = std::make_shared<KeyboardFocus>();
-            std::atomic<std::shared_ptr<const KeyboardFocus>> current{empty};
+        struct State {
+            std::shared_ptr<const CE::Input::Routing::Focus> empty = std::make_shared<CE::Input::Routing::Focus>();
+            std::atomic<std::shared_ptr<const CE::Input::Routing::Focus>> current{empty};
             std::atomic<std::uint64_t> next_epoch{1};
         };
     }
@@ -25,45 +25,45 @@ namespace CE::Input {
      * Move/release on any thread with exclusive access to this handle. Retains only
      * routing state, not the widget/adapter. Release clears focus without restoring older requests.
      */
-    class FocusLease final {
-        friend class InputRouting;
+    class Lease final {
+        friend class Manager;
 
     public:
-        FocusLease() = default;
-        ~FocusLease();
-        FocusLease(FocusLease&& other) noexcept;
-        FocusLease& operator=(FocusLease&& other) noexcept;
-        FocusLease(const FocusLease&) = delete;
-        FocusLease& operator=(const FocusLease&) = delete;
+        Lease() = default;
+        ~Lease();
+        Lease(Lease&& other) noexcept;
+        Lease& operator=(Lease&& other) noexcept;
+        Lease(const Lease&) = delete;
+        Lease& operator=(const Lease&) = delete;
         void reset() noexcept;
         // Snapshot only; ownership can change immediately after this observation.
         [[nodiscard]] bool owns_focus() const;
-        [[nodiscard]] FocusId target() const { return focus_ ? focus_->target : 0; }
+        [[nodiscard]] TargetId target() const { return focus_ ? focus_->target : 0; }
         [[nodiscard]] std::uint64_t epoch() const { return focus_ ? focus_->epoch : 0; }
 
     private:
-        FocusLease(std::shared_ptr<Detail::RoutingState> state, std::shared_ptr<const KeyboardFocus> focus);
-        std::shared_ptr<Detail::RoutingState> state_;
-        std::shared_ptr<const KeyboardFocus> focus_;
+        Lease(std::shared_ptr<Detail::State> state, std::shared_ptr<const Focus> focus);
+        std::shared_ptr<Detail::State> state_;
+        std::shared_ptr<const Focus> focus_;
     };
 
     /** Thread-safe focus requests, independent of State mapping and capture.
      * The platform latches current() at the next poll. UI owners inspect routed
      * immutable records in simulation; no widget is called on the platform thread.
      */
-    class InputRouting final {
+    class Manager final {
     public:
-        InputRouting() = default;
-        InputRouting(const InputRouting&) = delete;
-        InputRouting& operator=(const InputRouting&) = delete;
+        Manager() = default;
+        Manager(const Manager&) = delete;
+        Manager& operator=(const Manager&) = delete;
         // Nonzero target/valid policy required; atomic publication wins among concurrent
         // requests. Epoch identifies a request, not a widget's lifetime or capture lease.
-        [[nodiscard]] FocusLease focus(FocusId target, KeyboardRouting routing = KeyboardRouting::Exclusive);
-        [[nodiscard]] std::shared_ptr<const KeyboardFocus> current() const { return state_->current.load(); }
+        [[nodiscard]] Lease focus(TargetId target, KeyboardPolicy routing = KeyboardPolicy::Exclusive);
+        [[nodiscard]] std::shared_ptr<const Focus> current() const { return state_->current.load(); }
         // Clear current ownership without changing capture activation or published records.
         void clear() { state_->current.store(state_->empty); }
 
     private:
-        std::shared_ptr<Detail::RoutingState> state_ = std::make_shared<Detail::RoutingState>();
+        std::shared_ptr<Detail::State> state_ = std::make_shared<Detail::State>();
     };
 }

@@ -14,22 +14,22 @@
 namespace {
     using namespace CE::UI::TGUI;
 
-    class Input final : public CE::Input::iInputSystem {
-        CE::Input::InputBindings bindings_;
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
         void poll() override {
             begin_input_poll();
             static_cast<void>(publish_input());
         }
         void deinitialize() override {}
-        CE::Input::InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         CE::Input::DeviceId keyboard_id() const override { return 1; }
         CE::Input::DeviceId mouse_id() const override { return 2; }
         CE::Input::DeviceId gamepad_id() const override { return 3; }
-        bool supports(const CE::Input::InputMode mode) const override {
-            return mode == CE::Input::InputMode::State || mode == CE::Input::InputMode::Events;
+        bool supports(const CE::Input::Capture::Channel mode) const override {
+            return mode == CE::Input::Capture::Channel::State || mode == CE::Input::Capture::Channel::Events;
         }
     };
 }

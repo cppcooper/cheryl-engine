@@ -14,9 +14,9 @@
 
 namespace CE::UI::RmlUi {
     struct RecordedDraw {
-        std::vector<Vertex2DColor> vertices;
-        std::shared_ptr<const Assets::DecodedImage> texture;
-        RenderAPIs::ClipRegion2D clip;
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> vertices;
+        std::shared_ptr<const CE::Assets::Images::Decoded> texture;
+        CE::Rendering::ClipRegion2D clip;
     };
 
     // Contains no toolkit objects, handles or borrowed vertex/pixel storage.
@@ -38,9 +38,9 @@ namespace CE::UI::RmlUi {
     class RenderTarget final : public Rml::RenderInterface {
         const unsigned int maximum_texture_size_;
         Rml::Vector2i size_;
-        RenderAPIs::ClipRect2D scissor_;
-        std::unordered_map<Rml::CompiledGeometryHandle, std::vector<Vertex2DColor>> geometry_;
-        std::unordered_map<Rml::TextureHandle, std::shared_ptr<const Assets::DecodedImage>> textures_;
+        CE::Rendering::ClipRect2D scissor_;
+        std::unordered_map<Rml::CompiledGeometryHandle, std::vector<CE::Rendering::Geometry::Vertex2DColor>> geometry_;
+        std::unordered_map<Rml::TextureHandle, std::shared_ptr<const CE::Assets::Images::Decoded>> textures_;
         std::vector<RecordedDraw> draws_;
         std::uintptr_t next_geometry_ = 1;
         std::uintptr_t next_texture_ = 1;
@@ -83,7 +83,7 @@ namespace CE::UI::RmlUi {
 
     private:
         [[nodiscard]] std::size_t texture_bytes(Rml::Vector2i dimensions) const;
-        Rml::TextureHandle store_texture(Assets::DecodedImage image);
+        Rml::TextureHandle store_texture(CE::Assets::Images::Decoded image);
         void reject(const char* feature) noexcept;
     };
 }

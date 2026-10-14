@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <stdexcept>
 
-namespace CE::LogDetail {
+namespace CE::Logging::Detail {
     namespace {
         thread_local BackendCounters* active_backend = nullptr;
 
@@ -48,7 +48,7 @@ namespace CE::LogDetail {
             return;
         active_backend->rejected_reentry.fetch_add(1, std::memory_order_relaxed);
         active_backend->summary_pending.store(true, std::memory_order_relaxed);
-        throw Exceptions::bad_request(CE_HERE, std::format("Cannot {} from a logging backend or file callback.", operation));
+        throw ::CE::Exceptions::bad_request(CE_HERE, std::format("Cannot {} from a logging backend or file callback.", operation));
     }
 
     void report_queue_loss(const std::shared_ptr<QueueReports>& reports, const std::size_t discards) noexcept {
@@ -100,7 +100,7 @@ namespace CE::LogDetail {
         degraded_.store(true, std::memory_order_relaxed);
         const auto* phase = file_ ? (flush ? "logging file flush" : "logging file write")
                                   : (flush ? "logging console flush" : "logging console write");
-        Diagnostics::report_failure(phase, std::move(failure));
+        ::CE::Diagnostics::report_failure(phase, std::move(failure));
     }
 
     void DestinationState::fail_open_callback() noexcept {
@@ -130,9 +130,9 @@ namespace CE::LogDetail {
             return;
         }
         if (failures[0])
-            Diagnostics::report_failure("logging before_close callback", std::move(failures[0]));
+            ::CE::Diagnostics::report_failure("logging before_close callback", std::move(failures[0]));
         if (failures[1])
-            Diagnostics::report_failure("logging after_close callback", std::move(failures[1]));
+            ::CE::Diagnostics::report_failure("logging after_close callback", std::move(failures[1]));
     }
 
     GuardedSink::GuardedSink(spdlog::sink_ptr delegate, std::shared_ptr<DestinationState> state)
@@ -210,7 +210,7 @@ namespace CE::LogDetail {
             counters->summary_pending.store(true, std::memory_order_relaxed);
             // The library's error string can contain absolute user paths. Keep
             // the fallback bounded and leave exact details to caller-owned errors.
-            Diagnostics::report_failure("logging submission or formatting", std::current_exception());
+            ::CE::Diagnostics::report_failure("logging submission or formatting", std::current_exception());
         };
         set_error_handler(report_error);
         backend_->set_error_handler(report_error);
@@ -220,7 +220,7 @@ namespace CE::LogDetail {
 
     OwnedLogger::~OwnedLogger() {
         if (in_backend()) {
-            Diagnostics::report_failure("final native logger release from a backend callback", {});
+            ::CE::Diagnostics::report_failure("final native logger release from a backend callback", {});
             std::terminate();
         }
     }
@@ -240,7 +240,7 @@ namespace CE::LogDetail {
         } catch (...) {
             counters_->failed_operations.fetch_add(1, std::memory_order_relaxed);
             counters_->summary_pending.store(true, std::memory_order_relaxed);
-            Diagnostics::report_failure("logging native submission", std::current_exception());
+            ::CE::Diagnostics::report_failure("logging native submission", std::current_exception());
         }
     }
 

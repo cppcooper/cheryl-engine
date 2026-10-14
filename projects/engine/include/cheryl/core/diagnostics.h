@@ -11,7 +11,7 @@ namespace CE::Diagnostics {
 
     // Best-effort cumulative observations, not a scheduling/admission contract.
     struct DispatchStats {
-        DomainId domain = 0;
+        ::CE::Diagnostics::DomainId domain = 0;
         std::uint64_t accepted = 0;
         std::uint64_t completed = 0;
         std::uint64_t cancelled = 0;

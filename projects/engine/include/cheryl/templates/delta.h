@@ -1,41 +1,44 @@
 #pragma once
 #include <chrono>
 
-#pragma once
 
 #include <chrono>
 
-// Caller-owned timer without synchronization. The default clock is monotonic;
-// a supplied clock determines backward jumps and its duration's representation.
-template <typename ClockType = std::chrono::steady_clock> class DeltaTime {
-public:
-    using TimePoint = typename ClockType::time_point;
-    using Duration = typename ClockType::duration;
+namespace CE::Time {
 
-private:
-    TimePoint last_checkin;
+    // Caller-owned timer without synchronization. The default clock is monotonic;
+    // a supplied clock determines backward jumps and its duration's representation.
+    template <typename ClockType = std::chrono::steady_clock> class DeltaTime {
+    public:
+        using TimePoint = typename ClockType::time_point;
+        using Duration = typename ClockType::duration;
 
-protected:
-    [[nodiscard]] Duration elapsed(const TimePoint now) const { return now - last_checkin; }
+    private:
+        TimePoint last_checkin;
 
-    void checkin(const TimePoint now) { last_checkin = now; }
+    protected:
+        [[nodiscard]] Duration elapsed(const TimePoint now) const { return now - last_checkin; }
 
-public:
-    /** Starts the first timing interval at construction. */
-    DeltaTime()
-    : last_checkin(ClockType::now()) {}
+        void checkin(const TimePoint now) { last_checkin = now; }
 
-    /** Returns the elapsed interval in seconds and begins the next interval at the same sampled time. */
-    double operator()() {
-        const auto now = ClockType::now();
-        const double delta = std::chrono::duration<double>(elapsed(now)).count();
-        checkin(now);
-        return delta;
-    }
+    public:
+        /** Starts the first timing interval at construction. */
+        DeltaTime()
+        : last_checkin(ClockType::now()) {}
 
-    /** Returns the duration since the most recent check-in without beginning a new interval. */
-    [[nodiscard]] Duration elapsed() const { return elapsed(ClockType::now()); }
+        /** Returns the elapsed interval in seconds and begins the next interval at the same sampled time. */
+        double operator()() {
+            const auto now = ClockType::now();
+            const double delta = std::chrono::duration<double>(elapsed(now)).count();
+            checkin(now);
+            return delta;
+        }
 
-    /** Ends the current interval and begins a new one at the current time. */
-    void checkin() { checkin(ClockType::now()); }
-};
+        /** Returns the duration since the most recent check-in without beginning a new interval. */
+        [[nodiscard]] Duration elapsed() const { return elapsed(ClockType::now()); }
+
+        /** Ends the current interval and begins a new one at the current time. */
+        void checkin() { checkin(ClockType::now()); }
+    };
+
+}

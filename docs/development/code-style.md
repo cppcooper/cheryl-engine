@@ -5,7 +5,7 @@ The root `.clang-format` is the formatting authority for C and C++ code. It bega
 ## Formatting
 
 - Use four spaces and never tabs for new or edited code.
-- Use attached pointer and reference declarators: `Texture* texture` and `const GridDefinition& grid`.
+- Use attached pointer and reference declarators: `CE::Rendering::OpenGL::Texture* texture` and `const CE::Assets::Grids::Definition& grid`.
 - Keep opening braces on the declaration or control-statement line.
 - Let the root formatter decide enum wrapping; short enums may fit on one line. Do not add comments to namespace-closing braces.
 - Short inline accessors may remain on one line; keep out-of-line function definitions expanded.

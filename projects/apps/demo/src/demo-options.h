@@ -5,7 +5,7 @@
 
 #include <filesystem>
 
-namespace CE::Engine {
+namespace CE::Application {
     class Startup;
 }
 
@@ -20,5 +20,5 @@ struct DemoOptions {
 
     DemoOptions();
     // Keep this object at a stable address until startup.initialize() returns.
-    void register_with(CE::Engine::Startup& startup);
+    void register_with(CE::Application::Startup& startup);
 };

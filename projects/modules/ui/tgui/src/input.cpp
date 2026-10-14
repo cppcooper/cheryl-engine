@@ -8,7 +8,7 @@
 
 namespace CE::UI::TGUI {
     namespace {
-        using Key = Input::KeyboardKey;
+        using Key = CE::Input::KeyboardKey;
         using ToolkitKey = tgui::Event::KeyboardKey;
 
         ToolkitKey keyboard_key(const Key key) {
@@ -115,13 +115,13 @@ namespace CE::UI::TGUI {
             }
         }
 
-        std::optional<tgui::Event::MouseButton> mouse_button(const Input::MouseButton button) {
+        std::optional<tgui::Event::MouseButton> mouse_button(const CE::Input::MouseButton button) {
             switch (button) {
-                case Input::MouseButton::Left:
+                case CE::Input::MouseButton::Left:
                     return tgui::Event::MouseButton::Left;
-                case Input::MouseButton::Right:
+                case CE::Input::MouseButton::Right:
                     return tgui::Event::MouseButton::Right;
-                case Input::MouseButton::Middle:
+                case CE::Input::MouseButton::Middle:
                     return tgui::Event::MouseButton::Middle;
                 default:
                     return {};
@@ -135,56 +135,58 @@ namespace CE::UI::TGUI {
             return static_cast<int>(rounded);
         }
 
-        const Input::PointerEvent& position(const std::optional<Input::PointerEvent>& value) {
+        const CE::Input::Events::Pointer& position(const std::optional<CE::Input::Events::Pointer>& value) {
             if (!value)
                 throw Exceptions::invalid_args(CE_HERE, "TGUI pointer input requires an observation-time position");
             return *value;
         }
     }
 
-    std::optional<tgui::Event> translate_event(const Input::InputRecord& record) {
+    std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record) {
         tgui::Event event{};
-        if (const auto* text = std::get_if<Input::TextEvent>(&record.data)) {
+        if (const auto* text = std::get_if<CE::Input::Events::Text>(&record.data)) {
             if (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF))
                 throw Exceptions::invalid_args(CE_HERE, "TGUI text input requires a Unicode scalar value");
             event.type = tgui::Event::Type::TextEntered;
             event.text = {text->codepoint};
             return event;
         }
-        if (const auto* button = std::get_if<Input::ButtonEvent>(&record.data)) {
-            if (record.device_kind == Input::DeviceKind::Keyboard) {
-                if (button->phase == Input::ButtonPhase::Release)
+        if (const auto* button = std::get_if<CE::Input::Events::Button>(&record.data)) {
+            if (record.device_kind == CE::Input::DeviceKind::Keyboard) {
+                if (button->phase == CE::Input::Events::ButtonPhase::Release)
                     return {};
                 const auto key = keyboard_key(button->key);
                 if (key == ToolkitKey::Unknown)
                     return {};
                 event.type = tgui::Event::Type::KeyPressed;
-                event.key = {key, Input::has_modifier(button->modifiers, Input::Modifiers::Alt),
-                             Input::has_modifier(button->modifiers, Input::Modifiers::Control),
-                             Input::has_modifier(button->modifiers, Input::Modifiers::Shift),
-                             Input::has_modifier(button->modifiers, Input::Modifiers::Super)};
+                event.key = {
+                    key, CE::Input::has_modifier(button->modifiers, CE::Input::Modifiers::Alt),
+                    CE::Input::has_modifier(button->modifiers, CE::Input::Modifiers::Control),
+                    CE::Input::has_modifier(button->modifiers, CE::Input::Modifiers::Shift),
+                    CE::Input::has_modifier(button->modifiers, CE::Input::Modifiers::Super)
+                };
                 return event;
             }
-            if (record.device_kind == Input::DeviceKind::Mouse && button->phase != Input::ButtonPhase::Repeat) {
+            if (record.device_kind == CE::Input::DeviceKind::Mouse && button->phase != CE::Input::Events::ButtonPhase::Repeat) {
                 const auto translated = mouse_button(button->mouse_button);
                 if (!translated)
                     return {};
                 const auto& pointer = position(button->position);
-                event.type = button->phase == Input::ButtonPhase::Press ? tgui::Event::Type::MouseButtonPressed
-                                                                        : tgui::Event::Type::MouseButtonReleased;
+                event.type = button->phase == CE::Input::Events::ButtonPhase::Press ? tgui::Event::Type::MouseButtonPressed
+                                                                                    : tgui::Event::Type::MouseButtonReleased;
                 event.mouseButton = {*translated, coordinate(pointer.x), coordinate(pointer.y)};
                 return event;
             }
             return {};
         }
-        if (record.device_kind != Input::DeviceKind::Mouse)
+        if (record.device_kind != CE::Input::DeviceKind::Mouse)
             return {};
-        if (const auto* pointer = std::get_if<Input::PointerEvent>(&record.data)) {
+        if (const auto* pointer = std::get_if<CE::Input::Events::Pointer>(&record.data)) {
             event.type = tgui::Event::Type::MouseMoved;
             event.mouseMove = {coordinate(pointer->x), coordinate(pointer->y)};
             return event;
         }
-        if (const auto* scroll = std::get_if<Input::ScrollEvent>(&record.data)) {
+        if (const auto* scroll = std::get_if<CE::Input::Events::Scroll>(&record.data)) {
             if (!std::isfinite(scroll->x) || !std::isfinite(scroll->y) || std::abs(scroll->y) > std::numeric_limits<float>::max())
                 throw Exceptions::invalid_args(CE_HERE, "TGUI wheel input requires a finite representable offset");
             if (scroll->y == 0.0)

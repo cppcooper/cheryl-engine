@@ -9,7 +9,10 @@
 
 namespace CE::Input {
     enum class DeviceKind { Keyboard, Mouse, Gamepad, Other };
-    enum class ButtonPhase { Press, Release, Repeat };
+    namespace Events {
+        enum class ButtonPhase { Press, Release, Repeat };
+    }
+
     enum class Modifiers : std::uint32_t { None = 0, Shift = 1, Control = 2, Alt = 4, Super = 8, CapsLock = 16, NumLock = 32 };
 
     constexpr Modifiers operator|(const Modifiers a, const Modifiers b) {
@@ -19,58 +22,60 @@ namespace CE::Input {
         return (static_cast<std::uint32_t>(value) & static_cast<std::uint32_t>(flag)) != 0;
     }
 
-    struct PointerEvent {
-        double x;
-        double y;
-    }; // Logical window coordinates.
+    namespace Events {
+        struct Pointer {
+            double x;
+            double y;
+        }; // Logical window coordinates.
 
-    struct ButtonEvent {
-        DeviceButtonId button;
-        ButtonPhase phase;
-        Modifiers modifiers = Modifiers::None;
-        // Backend codes supplement opaque control IDs, including an unmapped key.
-        int native_code = -1;
-        int scancode = -1;
-        // Adapters identify known keyboard/mouse controls without exposing their
-        // dependency's constants. Other or unrecognized controls stay Unknown.
-        KeyboardKey key = KeyboardKey::Unknown;
-        MouseButton mouse_button = MouseButton::Unknown;
-        // Observation-time position for mouse buttons, when the source provides
-        // it. A later PointerEvent is not this click's position.
-        std::optional<PointerEvent> position = std::nullopt;
-    };
-    struct AxisEvent {
-        DeviceButtonId axis;
-        float value;
-        AxisKind kind = AxisKind::Absolute;
-    };
-    struct ScrollEvent {
-        double x;
-        double y;
-        std::optional<PointerEvent> position = std::nullopt;
-    }; // Fractional scroll offsets, not synthetic buttons.
-    struct TextEvent {
-        char32_t codepoint;
-    }; // A committed Unicode scalar from the OS.
+        struct Button {
+            CE::Input::ControlId button;
+            ButtonPhase phase;
+            CE::Input::Modifiers modifiers = CE::Input::Modifiers::None;
+            // Backend codes supplement opaque control IDs, including an unmapped key.
+            int native_code = -1;
+            int scancode = -1;
+            // Adapters identify known keyboard/mouse controls without exposing their
+            // dependency's constants. Other or unrecognized controls stay Unknown.
+            CE::Input::KeyboardKey key = CE::Input::KeyboardKey::Unknown;
+            CE::Input::MouseButton mouse_button = CE::Input::MouseButton::Unknown;
+            // Observation-time position for mouse buttons, when the source provides
+            // it. A later Pointer is not this click's position.
+            std::optional<Pointer> position = std::nullopt;
+        };
+        struct Axis {
+            CE::Input::ControlId axis;
+            float value;
+            CE::Input::AxisKind kind = CE::Input::AxisKind::Absolute;
+        };
+        struct Scroll {
+            double x;
+            double y;
+            std::optional<Pointer> position = std::nullopt;
+        }; // Fractional scroll offsets, not synthetic buttons.
+        struct Text {
+            char32_t codepoint;
+        }; // A committed Unicode scalar from the OS.
 
-    using InputRecordData = std::variant<ButtonEvent, AxisEvent, PointerEvent, ScrollEvent, TextEvent>;
+        using Payload = std::variant<Button, Axis, Pointer, Scroll, Text>;
 
-    /** A backend-delivered observation. Sequence spans both Events and Text so
+        /** A backend-delivered observation. Sequence spans both Events and Text so
      * their relative order survives publication and the runtime thread handoff.
      * observed_at is callback/sample time, not a hardware event timestamp.
      * Sequence belongs to one collector, not a process-global hardware stream.
      * Payloads own their data; aggregate construction alone performs no validation.
      */
-    struct InputRecord {
-        std::uint64_t sequence;
-        InputClock::time_point observed_at;
-        DeviceId device;
-        DeviceKind device_kind;
-        InputRecordData data;
-        FocusId target = 0;
-        std::uint64_t focus_epoch = 0;
-        bool to_gameplay = true; // PassThrough can also deliver a focused keyboard event to gameplay.
+        struct Record {
+            std::uint64_t sequence;
+            CE::Input::ObservationClock::time_point observed_at;
+            CE::Input::DeviceId device;
+            CE::Input::DeviceKind device_kind;
+            Payload data;
+            CE::Input::Routing::TargetId target = 0;
+            std::uint64_t focus_epoch = 0;
+            bool to_gameplay = true; // PassThrough can also deliver a focused keyboard event to gameplay.
 
-        [[nodiscard]] bool is_text() const { return std::holds_alternative<TextEvent>(data); }
-    };
+            [[nodiscard]] bool is_text() const { return std::holds_alternative<Text>(data); }
+        };
+    }
 }

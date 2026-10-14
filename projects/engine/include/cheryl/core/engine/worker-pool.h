@@ -17,12 +17,12 @@
 #include <utility>
 #include <vector>
 
-namespace CE::Engine {
-    namespace WorkerDetail {
+namespace CE::Workers {
+    namespace Detail {
         struct PoolState;
         struct GroupState;
-        struct WorkerNativeAdapter;
-        struct WorkerPoolAccess;
+        struct NativeAdapter;
+        struct PoolAccess;
         struct Job {
             std::move_only_function<void()> run;
             std::move_only_function<void(std::exception_ptr)> fail;
@@ -30,23 +30,23 @@ namespace CE::Engine {
         };
     }
 
-    enum class WorkerPolicyStrength { Preferred, Required };
-    enum class WorkerLocalityPolicy { Automatic, Reuse, Spread };
+    enum class PolicyStrength { Preferred, Required };
+    enum class LocalityPolicy { Automatic, Reuse, Spread };
 
-    struct WorkerCpuPolicy {
+    struct CpuPolicy {
         // Explicit logical CPU IDs, not indices into the available CPU list.
         // Empty means the pool's inherited eligible set.
         std::vector<unsigned int> cpus;
-        WorkerPolicyStrength strength = WorkerPolicyStrength::Preferred;
+        PolicyStrength strength = PolicyStrength::Preferred;
         bool prefer_same_worker = true;
         std::optional<unsigned int> shared_cache_domain;
         std::optional<unsigned int> numa_node;
         // Unspecified uses Automatic with a provider, or ordinary affinity without
         // one. Explicit locality requirements need reported topology and binding.
-        std::optional<WorkerLocalityPolicy> locality;
+        std::optional<LocalityPolicy> locality;
     };
 
-    struct WorkerCapabilities {
+    struct Capabilities {
         std::vector<unsigned int> available_cpus;
         bool cpu_affinity = false;
         bool cache_topology = false;
@@ -55,40 +55,40 @@ namespace CE::Engine {
         bool core_topology = false;
     };
 
-    struct WorkerPoolOptions {
+    struct PoolOptions {
         // Zero explicitly selects eligible physical cores, or eligible logical
         // CPUs if core information is incomplete, or one thread if unknown.
         std::size_t worker_count = 1;
-        std::shared_ptr<WorkerTopologyProvider> topology_provider;
+        std::shared_ptr<TopologyProvider> topology_provider;
     };
 
-    struct WorkerGroupOptions {
+    struct GroupOptions {
         // Zero uses the root pool's capacity. Groups share, rather than own, threads.
         std::size_t max_concurrency = 0;
         unsigned int weight = 1;   // 1..1024, weighted fair job selection.
         unsigned int priority = 0; // 0..7, multiplies scheduling share by priority+1.
-        WorkerCpuPolicy cpu;
+        CpuPolicy cpu;
     };
 
     // Common structural validation for direct C++ options and configuration loaders.
     // Does not discover topology, create threads, or apply native policy.
-    void validate_worker_group_options(const WorkerGroupOptions& options);
+    void validate_group_options(const GroupOptions& options);
 
-    struct WorkerGroupPolicy {
-        WorkerGroupOptions requested;
+    struct GroupPolicy {
+        GroupOptions requested;
         std::vector<unsigned int> effective_cpus;
         bool affinity_supported = false;
         std::string limitations;
         bool preferred_fallback = false;
-        std::optional<WorkerLocalityPolicy> effective_locality;
+        std::optional<LocalityPolicy> effective_locality;
         std::optional<unsigned int> effective_cache_domain;
         std::size_t effective_max_concurrency = 0;
         bool core_topology = false;
     };
 
-    struct WorkerGroupStatus {
-        Diagnostics::DomainId domain = 0;
-        Diagnostics::DomainId pool = 0;
+    struct GroupStatus {
+        CE::Diagnostics::DomainId domain = 0;
+        CE::Diagnostics::DomainId pool = 0;
         std::uint64_t accepted = 0;
         std::uint64_t completed = 0;
         std::size_t pending = 0;
@@ -109,14 +109,14 @@ namespace CE::Engine {
      * Copies share one group. Submission/close/status are synchronized across producers;
      * keep the physical pool alive until work settles. Same-pool drainage rejects.
      */
-    class WorkerGroup final {
-        friend class WorkerPool;
-        std::weak_ptr<WorkerDetail::PoolState> pool_;
-        std::shared_ptr<WorkerDetail::GroupState> group_;
+    class Group final {
+        friend class Pool;
+        std::weak_ptr<Detail::PoolState> pool_;
+        std::shared_ptr<Detail::GroupState> group_;
 
-        WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group);
-        void enqueue(WorkerDetail::Job job) const;
-        static void record_failure(const std::weak_ptr<WorkerDetail::GroupState>& group) noexcept;
+        Group(std::shared_ptr<Detail::PoolState> pool, std::shared_ptr<Detail::GroupState> group);
+        void enqueue(Detail::Job job) const;
+        static void record_failure(const std::weak_ptr<Detail::GroupState>& group) noexcept;
 
     public:
         // Owns the callable/captures until execution or policy failure. Closure/pool
@@ -126,8 +126,8 @@ namespace CE::Engine {
             using Result = std::invoke_result_t<std::decay_t<Work>&>;
             auto completion = std::make_shared<std::promise<Result>>();
             auto result = completion->get_future();
-            WorkerDetail::Job job;
-            job.run = [completion, tracked = std::weak_ptr<WorkerDetail::GroupState>(group_), work = std::forward<Work>(work)]() mutable {
+            Detail::Job job;
+            job.run = [completion, tracked = std::weak_ptr<Detail::GroupState>(group_), work = std::forward<Work>(work)]() mutable {
                 try {
                     if constexpr (std::is_void_v<Result>) {
                         std::invoke(work);
@@ -150,8 +150,8 @@ namespace CE::Engine {
         void close() const;
         void drain() const;
         // Owned snapshots; status is observation only, policy is immutable after creation.
-        [[nodiscard]] WorkerGroupStatus status() const;
-        [[nodiscard]] WorkerGroupPolicy policy() const;
+        [[nodiscard]] GroupStatus status() const;
+        [[nodiscard]] GroupPolicy policy() const;
         // Explicit observer: caller holds no scheduler/context/application lock.
         // Callback failures remain future-owned; policy degradation is coalesced.
         void report_diagnostics() const noexcept;
@@ -163,31 +163,31 @@ namespace CE::Engine {
      * Blocking on jobs/drains from this same pool can exhaust its capacity; use
      * external completion checks instead. Pool ownership must outlive its jobs.
      */
-    class WorkerPool final {
-        friend struct WorkerDetail::WorkerPoolAccess;
-        std::shared_ptr<WorkerDetail::PoolState> state_;
+    class Pool final {
+        friend struct Detail::PoolAccess;
+        std::shared_ptr<Detail::PoolState> state_;
         std::vector<std::thread> workers_;
         std::mutex shutdown_mutex_;
 
-        WorkerPool(std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter);
-        WorkerPool(WorkerPoolOptions options, WorkerDetail::WorkerNativeAdapter adapter);
+        Pool(std::size_t worker_count, Detail::NativeAdapter adapter);
+        Pool(PoolOptions options, Detail::NativeAdapter adapter);
 
     public:
         // Positive physical thread count; partial thread-start failure joins created threads.
-        explicit WorkerPool(std::size_t worker_count = 1);
-        explicit WorkerPool(WorkerPoolOptions options);
-        ~WorkerPool();
-        WorkerPool(const WorkerPool&) = delete;
-        WorkerPool& operator=(const WorkerPool&) = delete;
+        explicit Pool(std::size_t worker_count = 1);
+        explicit Pool(PoolOptions options);
+        ~Pool();
+        Pool(const Pool&) = delete;
+        Pool& operator=(const Pool&) = delete;
 
         // Thread-safe publication; invalid options or unavailable required policy throw.
         // Preferred policy can fall back as reported by the returned group's policy().
-        [[nodiscard]] WorkerGroup make_group(WorkerGroupOptions options = WorkerGroupOptions{});
+        [[nodiscard]] Group make_group(GroupOptions options = GroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         // Owned startup snapshot, not a live query of changing OS eligibility.
-        [[nodiscard]] WorkerCapabilities capabilities() const;
-        [[nodiscard]] WorkerTopology topology() const;
-        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept;
+        [[nodiscard]] Capabilities capabilities() const;
+        [[nodiscard]] Topology topology() const;
+        [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept;
         // Explicit observer; constructors/shutdown do not log under an outer owner lock.
         void report_diagnostics() const noexcept;
         void close();

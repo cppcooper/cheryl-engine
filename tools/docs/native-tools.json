@@ -1,0 +1,27 @@
+{
+  "version": "1.18.0",
+  "minimum_version": "1.18.0",
+  "python_installer": {
+    "version": "26.2.1",
+    "url": "https://files.pythonhosted.org/packages/f3/6e/1736e5b4ae2b778ef2f81c47d797de9f891d4d8acb047a24ca37a60294dd/pip-26.2.1-py3-none-any.whl",
+    "sha256": "71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e"
+  },
+  "platforms": {
+    "linux-x86_64": {
+      "url": "https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0.linux.bin.tar.gz",
+      "sha256": "14fa81bdc34171edb5f1f02b1d60e74802f0439b77fa44e592565d517d72df90"
+    },
+    "windows-x86_64": {
+      "url": "https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0.windows.x64.bin.zip",
+      "sha256": "e84f54cfd49ef06b0b16536056dbec0c496323de28abcce53a4269463de35eaf"
+    },
+    "macos-arm64": {
+      "url": "https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0-mac-arm.zip",
+      "sha256": "31d1c74467a9f6f456b4e6a4eff0c03e93d1ffa92da5fdf2d53a2f14ebaabbd7"
+    },
+    "macos-x86_64": {
+      "url": "https://github.com/doxygen/doxygen/releases/download/Release_1_18_0/doxygen-1.18.0-mac-intel.zip",
+      "sha256": "8045d72f6f900fd430042339c1493d6eefcc85a7f990361fb57685682f16a2f9"
+    }
+  }
+}

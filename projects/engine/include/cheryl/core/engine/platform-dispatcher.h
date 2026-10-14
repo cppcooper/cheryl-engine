@@ -12,12 +12,12 @@
 #include <utility>
 #include <vector>
 
-namespace CE::GFramework {
+namespace CE::Runtime {
     class GameRuntime;
 }
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 
     /** Transfers owned requests to the runtime's platform/graphics thread.
      * Submit values or move-owned CPU data; a callback must not access live simulation objects.
@@ -26,8 +26,8 @@ namespace CE::Engine {
      * report broken_promise. Submission handles remain safe after dispatcher destruction.
      */
     class PlatformDispatcher final {
-        friend class GFramework::GameRuntime;
-        using Task = std::packaged_task<void(EngineContext&)>;
+        friend class GameRuntime;
+        using Task = std::packaged_task<void(Context&)>;
         struct State {
             mutable std::mutex mutex;
             std::vector<Task> pending;
@@ -36,7 +36,7 @@ namespace CE::Engine {
             bool accepting = false;
             bool opened = false;
             bool draining = false;
-            Diagnostics::DispatchStats diagnostics{Diagnostics::next_domain_id()};
+            CE::Diagnostics::DispatchStats diagnostics{CE::Diagnostics::next_domain_id()};
             std::atomic<std::uint64_t> failures{0};
         };
         std::shared_ptr<State> state_ = std::make_shared<State>();
@@ -58,14 +58,15 @@ namespace CE::Engine {
 
         public:
             template <typename Work>
-            [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
-                using Result = std::invoke_result_t<std::decay_t<Work>&, EngineContext&>;
+            [[nodiscard]] auto submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&, Context&>> {
+                using Result = std::invoke_result_t<std::decay_t<Work>&, Context&>;
                 std::promise<Result> completion;
                 auto result = completion.get_future();
                 // Keep callable ownership separate from the future's shared state.
                 // Cancellation releases captures even when the future is retained.
                 PlatformDispatcher::enqueue(
-                    state_, Task([work = std::forward<Work>(work), completion = std::move(completion), tracked = std::weak_ptr<State>(state_)](EngineContext& engine) mutable {
+                    state_, Task([work = std::forward<Work>(work), completion = std::move(completion),
+                                  tracked = std::weak_ptr<State>(state_)](Context& engine) mutable {
                         try {
                             if constexpr (std::is_void_v<Result>) {
                                 std::invoke(work, engine);
@@ -91,19 +92,19 @@ namespace CE::Engine {
 
         [[nodiscard]] Submission submission() const { return Submission(state_); }
         template <typename Work>
-        [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&, EngineContext&>> {
+        [[nodiscard]] auto submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&, Context&>> {
             return submission().submit(std::forward<Work>(work));
         }
         // Synchronized queued-work snapshot; false does not establish completion/closure.
         [[nodiscard]] bool has_pending() const;
         // Queue snapshot only. Callback exceptions remain owned by their futures.
-        [[nodiscard]] Diagnostics::DispatchStats diagnostics() const;
+        [[nodiscard]] CE::Diagnostics::DispatchStats diagnostics() const;
 
     private:
         static void enqueue(const std::shared_ptr<State>& state, Task request);
         static void require_owner(const State& state);
         void open(std::function<void()> wake);
-        void drain(EngineContext& engine);
+        void drain(Context& engine);
         void close();
         void invalidate();
     };

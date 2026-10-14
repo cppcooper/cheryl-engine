@@ -28,7 +28,6 @@
 #endif
 
 namespace {
-    namespace Engine = CE::Engine;
     struct TopologyDeleter {
         void operator()(hwloc_topology* value) const noexcept { hwloc_topology_destroy(value); }
     };
@@ -71,7 +70,7 @@ namespace {
         }
         throw std::runtime_error("Cannot read the native Linux thread mask");
 #else
-        return Engine::make_hwloc_worker_topology()->current_thread_cpus();
+        return CE::Workers::Hwloc::make_topology_provider()->current_thread_cpus();
 #endif
     }
 
@@ -88,7 +87,7 @@ namespace {
 
 TEST(worker_hwloc, discovery) {
     const auto before = cpu_mask();
-    const auto provider = Engine::make_hwloc_worker_topology();
+    const auto provider = CE::Workers::Hwloc::make_topology_provider();
     const auto topology = provider->topology();
     EXPECT_EQ(cpu_mask(), before);
     EXPECT_TRUE(std::ranges::is_sorted(topology.eligible_cpus));
@@ -109,14 +108,14 @@ TEST(worker_hwloc, discovery) {
 
 TEST(worker_hwloc, inherited) {
     const auto creator_mask = cpu_mask();
-    const auto provider = Engine::make_hwloc_worker_topology();
+    const auto provider = CE::Workers::Hwloc::make_topology_provider();
     if (!provider->topology().cpu_affinity)
         GTEST_SKIP() << provider->topology().limitations;
     auto creator = std::async(std::launch::async, [&] {
         provider->bind_current_thread({creator_mask.front()});
-        const auto narrowed = Engine::make_hwloc_worker_topology();
+        const auto narrowed = CE::Workers::Hwloc::make_topology_provider();
         EXPECT_EQ(narrowed->topology().eligible_cpus, (std::vector<unsigned int>{creator_mask.front()}));
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{0, narrowed});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{0, narrowed});
         EXPECT_EQ(pool.worker_count(), 1u);
         auto group = pool.make_group();
         EXPECT_EQ(group.submit(cpu_mask).get(), (std::vector<unsigned int>{creator_mask.front()}));
@@ -126,14 +125,14 @@ TEST(worker_hwloc, inherited) {
 }
 
 TEST(worker_hwloc, worker_masks) {
-    const auto provider = Engine::make_hwloc_worker_topology();
+    const auto provider = CE::Workers::Hwloc::make_topology_provider();
     const auto topology = provider->topology();
     if (!topology.cpu_affinity || topology.cores.size() < 2)
         GTEST_SKIP() << "Two eligible physical cores with thread binding are required: " << topology.limitations;
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{2, provider});
-    Engine::WorkerGroupOptions options;
-    options.cpu.locality = Engine::WorkerLocalityPolicy::Spread;
-    options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{2, provider});
+    CE::Workers::GroupOptions options;
+    options.cpu.locality = CE::Workers::LocalityPolicy::Spread;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto group = pool.make_group(options);
     std::promise<std::vector<unsigned int>> first_mask;
     CE::Testing::WorkerRelease release(pool);
@@ -165,7 +164,7 @@ TEST(worker_hwloc, worker_masks) {
 }
 
 TEST(worker_hwloc, memory_policy) {
-    const auto provider = Engine::make_hwloc_worker_topology();
+    const auto provider = CE::Workers::Hwloc::make_topology_provider();
     const auto topology = provider->topology();
     if (!topology.cpu_affinity)
         GTEST_SKIP() << topology.limitations;
@@ -191,18 +190,18 @@ TEST(worker_hwloc, memory_policy) {
 }
 
 TEST(worker_hwloc, workloads) {
-    const auto provider = Engine::make_hwloc_worker_topology();
+    const auto provider = CE::Workers::Hwloc::make_topology_provider();
     if (!provider->topology().cpu_affinity || provider->topology().cores.empty())
         GTEST_SKIP() << provider->topology().limitations;
     constexpr std::size_t jobs = 96;
     for (int selection = -1; selection < 3; ++selection) {
-        Engine::WorkerPoolOptions pool_options{2, selection < 0 ? nullptr : provider};
-        Engine::WorkerPool pool(pool_options);
+        CE::Workers::PoolOptions pool_options{2, selection < 0 ? nullptr : provider};
+        CE::Workers::Pool pool(pool_options);
         for (const bool parallel : {false, true}) {
-            Engine::WorkerGroupOptions options;
+            CE::Workers::GroupOptions options;
             options.max_concurrency = parallel ? 2 : 1;
             if (selection >= 0)
-                options.cpu.locality = static_cast<Engine::WorkerLocalityPolicy>(selection);
+                options.cpu.locality = static_cast<CE::Workers::LocalityPolicy>(selection);
             auto group = pool.make_group(options);
             std::vector<std::vector<std::uint32_t>> buffers(parallel ? jobs : 1, std::vector<std::uint32_t>(32768, 1));
             std::vector<std::future<std::uint64_t>> results;

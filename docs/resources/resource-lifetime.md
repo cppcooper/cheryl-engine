@@ -1,23 +1,37 @@
 # CPU memory lifetime and reservation
 
-`Block<T>` remains the typed range and backing ownership primitive. `BlockManagement<T>` stores its pool, sections, registry, stale entries, and release queue in a shared `State`. Existing static accessors refer to this state. An `Obj::Pool<T>` facade holds a `shared_ptr<PoolState<T>>`; that state keeps the bookkeeping alive. An object handle captures the `PoolState` itself, so it can return storage after the facade dies without calling `Pool<T>::get()`.
+## Pool ownership
 
-`ObjectReservation<T, Allocator>` accepts an allocator only if its manager identifies a release context derived from `AbstractManager<T>` and exposes block retrieval, subrange return, and retained release operations. Currently `ObjectPoolAllocator<T>` satisfies that contract. `DefaultAllocator<T>`, `ObjectAllocator<T>`, and `std::allocator<T>` do not. The ordinary allocator `allocate(n)` and `deallocate(original,n)` still address a whole allocation. Reservations return interior ranges through their manager context; the generic factory now deallocates its one allocation only after the last element handle dies.
+`CE::Memory::Block<T>` is the typed range and backing ownership primitive.
+`CE::Memory::ByteBlock` and `CE::Memory::HeapBlock` name its `void` specialization;
+`CE::Memory::OptionalByteBlock` is an optional byte block. Byte bookkeeping belongs
+to `CE::Memory`, while object construction, reservation and pools belong to
+`CE::Memory::Objects`.
 
-A reservation stores only unclaimed `Block<T>` ranges. `emplace(index, args...)` prepares split blocks and the handle before constructing the object, then transfers the one slot to the handle. If construction throws, the reservation still owns that slot. At destruction it returns the remaining contiguous ranges, while claimed object handles can outlive it. Trusted release methods used by destructors are `noexcept`: an internal invariant violation terminates rather than throwing from a deleter. Public return methods continue to report invalid calls with exceptions.
+`CE::Memory::BlockManagement<T>` stores its pool, sections, registry, stale entries, and release queue in a shared `State`. Its static accessors refer to this state. A `CE::Memory::Objects::Pool<T>` facade holds a `shared_ptr<CE::Memory::Objects::PoolState<T>>`; that state keeps the bookkeeping alive. An object handle captures the `CE::Memory::Objects::PoolState<T>` itself, so it can return storage after the facade dies without calling `CE::Memory::Objects::Pool<T>::get()`.
 
-Underlying `Mem::ObjMMgr<T>` instances can die before the pool's last backing owner.
-Object backing owners and grid/STB geometry handles created by `make_managed_block`
-retain a `ByteReleaseContext`, which holds the shared void bookkeeping independently
-of the manager facade. Final release returns the captured HeapBlock through that
+## Reservations
+
+`CE::Memory::Objects::Reservation<T, Allocator>` accepts an allocator only if its manager identifies a release context derived from `CE::Memory::AbstractBlockManager<T>` and exposes block retrieval, subrange return, and retained release operations. Currently `CE::Memory::Allocators::ObjectPoolAllocator<T>` satisfies that contract. `CE::Memory::Allocators::DefaultAllocator<T>`, `CE::Memory::Allocators::ObjectAllocator<T>`, and `std::allocator<T>` do not. The ordinary allocator `allocate(n)` and `deallocate(original,n)` still address a whole allocation. Reservations return interior ranges through their manager context; `CE::Memory::Objects::Factory<T, Allocator>` deallocates its one allocation only after the last element handle dies.
+
+A reservation stores only unclaimed `CE::Memory::Block<T>` ranges. `emplace(index, args...)` prepares split blocks and the handle before constructing the object, then transfers the one slot to the handle. If construction throws, the reservation still owns that slot. At destruction it returns the remaining contiguous ranges, while claimed object handles can outlive it. Trusted release methods used by destructors are `noexcept`: an internal invariant violation terminates rather than throwing from a deleter. Public return methods continue to report invalid calls with exceptions.
+
+## Release contexts
+
+Underlying `CE::Memory::ObjectMemoryManager<T>` instances can die before the pool's last backing owner.
+Object backing owners and grid/STB geometry handles created by `CE::Memory::make_managed_block`
+retain a `CE::Memory::ByteReleaseContext`, which holds the shared void bookkeeping independently
+of the manager facade. Final release returns the captured `CE::Memory::HeapBlock` through that
 context without a raw manager pointer, singleton lookup, or weak-token liveness
 check. Returned bytes remain reusable while the shared bookkeeping is retained.
 Public returns report invalid blocks with exceptions; trusted final releases are
 noexcept and terminate on a broken invariant or a failure to complete the return.
 Creating a handle or acquiring its context still requires a live manager facade.
 
+## Block transactions
+
 Byte and typed block checkout/return serialize registry, sections, pool, stale, and
-release transitions with `BlockTransactions<T>`. Each backing owner is either one
+release transitions with `CE::Memory::BlockTransactions<T>`. Each backing owner is either one
 unsplit registry range or a complete, nonoverlapping section partition. A free
 range appears in the pool and exactly one of those locations. Only complete free
 owners carry stale timestamps or pending release records. Checkout cancels those
@@ -41,7 +55,9 @@ its own callers to finish; previously retained contexts can continue releasing
 ranges independently. `lifetime_token()` remains a compatibility observation and
 must not authorize raw-manager access during teardown.
 
-`ObjCtor<T>` retains a synchronized `Context` shared by that T. Each tracked slot
+## Object construction
+
+`CE::Memory::Objects::Constructor<T>` retains a synchronized `Context` shared by that T. This construction context is independent of the runtime's `CE::Runtime::Context`. Each tracked slot
 is raw, constructing, live, or destroying. Claiming a raw slot allocates its entry
 before user construction; publication afterward cannot allocate. Constructors and
 destructors run outside the tracking mutex, and no map iterator crosses those calls.
@@ -51,13 +67,13 @@ an entirely inactive range; a live or busy slot leaves that erase request unchan
 Batch construction can still fail after earlier slots succeed; the owning batch
 must clean up those completed slots. Pool handles, allocator-backed destruction,
 and backing owners use their captured construction context during final cleanup.
-The old protected boolean map was replaced because unrestricted map writes cannot
-maintain those phase and synchronization guarantees. Public static construct,
-destroy, and erase entry points remain available for ordinary live callers.
+Unrestricted tracking-map writes cannot maintain these phase and synchronization
+guarantees. Use the public static `construct`, `destroy`, and `erase` entry points
+for ordinary live callers.
 
-The protected legacy `AssetMgr::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders now use reservations and create handles only for entries they actually construct. `Pool<T>::retrieve_objects` retains pool state in its element deleters; it no longer looks up a singleton when those handles die.
+The protected `CE::Assets::Cache::Store::allocate` interface remains available for callers that construct raw slots themselves. Sprite and tileset loaders use reservations and create handles only for entries they actually construct. `CE::Memory::Objects::Pool<T>::retrieve_objects` retains pool state in its element deleters, without looking up a singleton when those handles die.
 
-If construction of a `retrieve_objects` batch fails, completed handles release their slots and the unconstructed tail is returned as one range. `ObjCtor` reserves its tracking entry before invoking a constructor, so tracking allocation cannot fail after the object becomes live.
+If construction of a `retrieve_objects` batch fails, completed handles release their slots and the unconstructed tail is returned as one range. `CE::Memory::Objects::Constructor` reserves its tracking entry before invoking a constructor, so tracking allocation cannot fail after the object becomes live.
 
 GPU/cache ownership and retirement follow the
 [resource residency contract](resource-residency.md); runtime teardown follows the

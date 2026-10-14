@@ -8,13 +8,13 @@
 #include <vector>
 
 TEST(input_bindings, device_routing) {
-    CE::Input::InputBindings bindings;
-    constexpr CE::Input::DeviceButtonId key_code = 256;
-    constexpr CE::Input::DeviceButtonId axis_code = 257;
-    const CE::Input::DeviceBind key{2, key_code};
-    const CE::Input::DeviceBind axis{3, axis_code};
-    const CE::Input::ActionId jump{1};
-    const CE::Input::ActionId look{2};
+    CE::Input::Actions::Bindings bindings;
+    constexpr CE::Input::ControlId key_code = 256;
+    constexpr CE::Input::ControlId axis_code = 257;
+    const CE::Input::Control key{2, key_code};
+    const CE::Input::Control axis{3, axis_code};
+    const CE::Input::Actions::Id jump{1};
+    const CE::Input::Actions::Id look{2};
 
     (void)bindings.bind_button(key, jump);
     (void)bindings.bind_axis(axis, look);
@@ -32,9 +32,9 @@ TEST(input_bindings, device_routing) {
 }
 
 TEST(input_bindings, clear_held_bindings) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{2, 256};
-    const CE::Input::ActionId jump{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{2, 256};
+    const CE::Input::Actions::Id jump{1};
 
     // Physical state is retained even before a game binds it. A binding installed
     // for a held key becomes active at the next publication.
@@ -56,14 +56,14 @@ TEST(input_bindings, clear_held_bindings) {
 }
 
 TEST(input_bindings, chords_and_short_taps) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind w{1, 87};
-    const CE::Input::DeviceBind f{1, 70};
-    const CE::Input::DeviceBind u{1, 85};
-    const CE::Input::ActionId move{1};
-    const CE::Input::ActionId chord{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control w{1, 87};
+    const CE::Input::Control f{1, 70};
+    const CE::Input::Control u{1, 85};
+    const CE::Input::Actions::Id move{1};
+    const CE::Input::Actions::Id chord{2};
     (void)bindings.bind_button(w, move);
-    (void)bindings.bind_button(CE::Input::InputChord{{f, u}}, chord);
+    (void)bindings.bind_button(CE::Input::Actions::Chord{{f, u}}, chord);
 
     // A single held key stays held across polls but is pressed only in the first sample.
     bindings.on_button(w, true);
@@ -90,10 +90,10 @@ TEST(input_bindings, chords_and_short_taps) {
 }
 
 TEST(input_bindings, alternatives_and_remapping) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind keyboard{1, 32};
-    const CE::Input::DeviceBind gamepad{2, 32};
-    const CE::Input::ActionId jump{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control keyboard{1, 32};
+    const CE::Input::Control gamepad{2, 32};
+    const CE::Input::Actions::Id jump{1};
     const auto keyboard_binding = bindings.bind_button(keyboard, jump);
     (void)bindings.bind_button(gamepad, jump);
 
@@ -117,12 +117,12 @@ TEST(input_bindings, alternatives_and_remapping) {
 }
 
 TEST(input_bindings, scaled_axis_modifier) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind shift{1, 1};
-    const CE::Input::DeviceBind stick{2, 1};
-    const CE::Input::DeviceBind second_stick{3, 1};
-    const CE::Input::ActionId look{1};
-    (void)bindings.bind_axis(CE::Input::InputChord{{shift}}, stick, look, {-2.0f, 0.2f});
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control shift{1, 1};
+    const CE::Input::Control stick{2, 1};
+    const CE::Input::Control second_stick{3, 1};
+    const CE::Input::Actions::Id look{1};
+    (void)bindings.bind_axis(CE::Input::Actions::Chord{{shift}}, stick, look, {-2.0f, 0.2f});
     (void)bindings.bind_axis(second_stick, look);
 
     // The first stick is gated by Shift and rescales 0.6 beyond its 0.2 dead zone
@@ -140,9 +140,9 @@ TEST(input_bindings, scaled_axis_modifier) {
 }
 
 TEST(input_bindings, unbind_active_axis) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind stick{2, 1};
-    const CE::Input::ActionId look{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control stick{2, 1};
+    const CE::Input::Actions::Id look{1};
     const auto mapping = bindings.bind_axis(stick, look);
 
     bindings.on_axis(stick, 0.8f);
@@ -161,9 +161,9 @@ TEST(input_bindings, unbind_active_axis) {
 }
 
 TEST(tick_input, tap_between_updates) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId jump{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id jump{1};
     (void)bindings.bind_button(key, jump);
     const auto before = bindings.action_snapshot();
 
@@ -174,7 +174,7 @@ TEST(tick_input, tap_between_updates) {
 
     // Both polls belong to this update. The final state is released, but the
     // short press remains visible and its poll order is available to the game.
-    const CE::Input::TickInput tick(before, {pressed, released});
+    const CE::Input::Tick tick(before, {pressed, released});
     EXPECT_FALSE(tick.button(jump).held());
     EXPECT_TRUE(tick.button(jump).pressed());
     EXPECT_TRUE(tick.button(jump).released());
@@ -184,18 +184,18 @@ TEST(tick_input, tap_between_updates) {
 
     // A second update with no new poll keeps the final held state without
     // replaying either edge.
-    const CE::Input::TickInput next(tick.latest_poll(), {});
+    const CE::Input::Tick next(tick.latest_poll(), {});
     EXPECT_FALSE(next.button(jump).held());
     EXPECT_FALSE(next.button(jump).pressed());
     EXPECT_FALSE(next.button(jump).released());
 }
 
 TEST(tick_input, held_values_without_polls) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::DeviceBind stick{2, 1};
-    const CE::Input::ActionId move{1};
-    const CE::Input::ActionId look{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Control stick{2, 1};
+    const CE::Input::Actions::Id move{1};
+    const CE::Input::Actions::Id look{2};
     (void)bindings.bind_button(key, move);
     (void)bindings.bind_axis(stick, look);
     const auto before = bindings.action_snapshot();
@@ -203,13 +203,13 @@ TEST(tick_input, held_values_without_polls) {
     bindings.on_button(key, true);
     bindings.on_axis(stick, 0.75f);
     const auto poll = bindings.publish_actions();
-    const CE::Input::TickInput first(before, {poll});
+    const CE::Input::Tick first(before, {poll});
     EXPECT_TRUE(first.button(move).pressed());
     EXPECT_FLOAT_EQ(first.axis(look).delta(), 0.75f);
 
     // Simulation can tick again before the platform polls. Held/axis values
     // persist; the earlier press and axis movement do not happen twice.
-    const CE::Input::TickInput next(first.latest_poll(), {});
+    const CE::Input::Tick next(first.latest_poll(), {});
     EXPECT_TRUE(next.button(move).held());
     EXPECT_FALSE(next.button(move).pressed());
     EXPECT_FLOAT_EQ(next.axis(look).current, 0.75f);
@@ -218,12 +218,12 @@ TEST(tick_input, held_values_without_polls) {
 
 TEST(input_state, delayed_tap_duration) {
     using namespace std::chrono_literals;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId move{1};
-    CE::Input::InputBindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id move{1};
+    CE::Input::Actions::Bindings bindings;
     (void)bindings.bind_button(key, move);
     const auto start = bindings.action_snapshot()->observed_at();
-    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    CE::Input::Accumulator accumulator(bindings.action_snapshot(), start);
 
     bindings.on_button(key, true);
     auto press = bindings.publish_actions(start + 20ms);
@@ -254,12 +254,12 @@ TEST(input_state, delayed_tap_duration) {
 
 TEST(input_state, persistent_hold_age) {
     using namespace std::chrono_literals;
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId move{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id move{1};
     (void)bindings.bind_button(key, move);
     const auto start = bindings.action_snapshot()->observed_at();
-    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    CE::Input::Accumulator accumulator(bindings.action_snapshot(), start);
     bindings.on_button(key, true);
     const auto press = bindings.publish_actions(start + 20ms);
     const auto first = accumulator.consume(start + 100ms, {press});
@@ -282,13 +282,13 @@ TEST(input_state, persistent_hold_age) {
 
 TEST(input_state, multiple_hold_durations) {
     using namespace std::chrono_literals;
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId select{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id select{2};
     (void)bindings.bind_button(key, select);
     const auto start = bindings.action_snapshot()->observed_at();
-    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
-    std::vector<std::shared_ptr<const CE::Input::ActionSnapshot>> polls;
+    CE::Input::Accumulator accumulator(bindings.action_snapshot(), start);
+    std::vector<std::shared_ptr<const CE::Input::Actions::Snapshot>> polls;
     bindings.on_button(key, true);
     polls.push_back(bindings.publish_actions(start + 10ms));
     bindings.on_button(key, false);
@@ -309,12 +309,12 @@ TEST(input_state, multiple_hold_durations) {
 
 TEST(input_state, same_poll_taps) {
     using namespace std::chrono_literals;
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId select{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id select{2};
     (void)bindings.bind_button(key, select);
     const auto start = bindings.action_snapshot()->observed_at();
-    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    CE::Input::Accumulator accumulator(bindings.action_snapshot(), start);
     for (int tap = 0; tap < 2; ++tap) {
         bindings.on_button(key, true);
         bindings.on_button(key, false);
@@ -333,12 +333,12 @@ TEST(input_state, same_poll_taps) {
 
 TEST(input_state, same_timestamp_polls) {
     using namespace std::chrono_literals;
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind key{1, 32};
-    const CE::Input::ActionId select{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control key{1, 32};
+    const CE::Input::Actions::Id select{2};
     (void)bindings.bind_button(key, select);
     const auto start = bindings.action_snapshot()->observed_at();
-    CE::Input::InputAccumulator accumulator(bindings.action_snapshot(), start);
+    CE::Input::Accumulator accumulator(bindings.action_snapshot(), start);
     bindings.on_button(key, true);
     const auto press = bindings.publish_actions(start + 5ms);
     bindings.on_button(key, false);
@@ -352,9 +352,9 @@ TEST(input_state, same_timestamp_polls) {
 }
 
 TEST(input_state, relative_motion_consumption) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::ActionId position{1};
-    const CE::Input::ActionId wheel{2};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Actions::Id position{1};
+    const CE::Input::Actions::Id wheel{2};
     (void)bindings.bind_axis({2, 1}, position);
     (void)bindings.bind_axis({2, 2}, wheel, {1.0f, 0.0f, CE::Input::AxisKind::Relative});
     const auto before = bindings.action_snapshot();
@@ -364,20 +364,20 @@ TEST(input_state, relative_motion_consumption) {
     const auto first = bindings.publish_actions();
     bindings.on_delta({2, 2}, 3.0f);
     const auto second = bindings.publish_actions();
-    const CE::Input::TickInput input(before, {first, second});
+    const CE::Input::Tick input(before, {first, second});
     EXPECT_FLOAT_EQ(input.axis(position).current, 0.75f);
     EXPECT_FLOAT_EQ(input.axis(wheel).delta(), 4.5f);
-    const CE::Input::TickInput next(input.latest_poll(), {});
+    const CE::Input::Tick next(input.latest_poll(), {});
     EXPECT_FLOAT_EQ(next.axis(position).current, 0.75f);
     EXPECT_FLOAT_EQ(next.axis(wheel).delta(), 0.0f);
 }
 
 TEST(input_state, relative_motion_modifiers) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind control{1, 1};
-    const CE::Input::DeviceBind wheel{2, 1};
-    const CE::Input::ActionId zoom{1};
-    const auto mapping = bindings.bind_axis(CE::Input::InputChord{{control}}, wheel, zoom, {2.0f, 0.0f, CE::Input::AxisKind::Relative});
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control control{1, 1};
+    const CE::Input::Control wheel{2, 1};
+    const CE::Input::Actions::Id zoom{1};
+    const auto mapping = bindings.bind_axis(CE::Input::Actions::Chord{{control}}, wheel, zoom, {2.0f, 0.0f, CE::Input::AxisKind::Relative});
     const auto before = bindings.action_snapshot();
     bindings.on_delta(wheel, 1.0f); // No modifier: no Zoom movement.
     bindings.on_button(control, true);
@@ -386,26 +386,26 @@ TEST(input_state, relative_motion_modifiers) {
     EXPECT_TRUE(bindings.unbind(mapping));
     const auto movement = bindings.publish_actions();
     const auto later = bindings.publish_actions();
-    const CE::Input::TickInput input(before, {movement, later});
+    const CE::Input::Tick input(before, {movement, later});
     EXPECT_FLOAT_EQ(input.axis(zoom).delta(), 1.0f);
-    EXPECT_FLOAT_EQ(CE::Input::TickInput(input.latest_poll(), {}).axis(zoom).delta(), 0.0f);
+    EXPECT_FLOAT_EQ(CE::Input::Tick(input.latest_poll(), {}).axis(zoom).delta(), 0.0f);
 }
 
 TEST(input_state, axis_kind_change) {
-    CE::Input::InputBindings bindings;
-    const CE::Input::DeviceBind axis{1, 1};
-    const CE::Input::ActionId action{1};
+    CE::Input::Actions::Bindings bindings;
+    const CE::Input::Control axis{1, 1};
+    const CE::Input::Actions::Id action{1};
     const auto mapping = bindings.bind_axis(axis, action, {1.0f, 0.0f, CE::Input::AxisKind::Relative});
     const auto before = bindings.action_snapshot();
     bindings.on_delta(axis, 3.0f);
     const auto relative = bindings.publish_actions();
-    const CE::Input::TickInput first(before, {relative});
+    const CE::Input::Tick first(before, {relative});
     EXPECT_FLOAT_EQ(first.axis(action).delta(), 3.0f);
     EXPECT_TRUE(bindings.unbind(mapping));
     (void)bindings.bind_axis(axis, action);
     bindings.on_axis(axis, 0.75f);
     const auto absolute = bindings.publish_actions();
-    const CE::Input::TickInput next(first.latest_poll(), {absolute});
+    const CE::Input::Tick next(first.latest_poll(), {absolute});
     EXPECT_EQ(next.axis(action).kind, CE::Input::AxisKind::Absolute);
     EXPECT_FLOAT_EQ(next.axis(action).current, 0.75f);
     EXPECT_FLOAT_EQ(next.axis(action).delta(), 0.75f);

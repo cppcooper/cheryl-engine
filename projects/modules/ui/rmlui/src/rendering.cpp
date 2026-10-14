@@ -73,7 +73,7 @@ namespace CE::UI::RmlUi {
             return 0;
         if (indices.size() % 3 != 0 || vertices.empty())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi geometry must contain indexed triangles");
-        std::vector<Vertex2DColor> copy;
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> copy;
         copy.reserve(indices.size());
         for (const int index : indices) {
             if (index < 0 || static_cast<std::size_t>(index) >= vertices.size())
@@ -109,9 +109,11 @@ namespace CE::UI::RmlUi {
                 throw Exceptions::invalid_args(CE_HERE, "RmlUi draw references a released or foreign texture");
             draw.texture = image->second;
         }
-        const RenderAPIs::ClipRect2D viewport{0, 0, static_cast<double>(size_.x), static_cast<double>(size_.y)};
-        draw.clip = {scissoring_ ? RenderAPIs::intersect_clip_rects(scissor_, viewport) : viewport, static_cast<double>(size_.x),
-                     static_cast<double>(size_.y)};
+        const CE::Rendering::ClipRect2D viewport{0, 0, static_cast<double>(size_.x), static_cast<double>(size_.y)};
+        draw.clip = {
+            scissoring_ ? CE::Rendering::intersect_clip_rects(scissor_, viewport) : viewport, static_cast<double>(size_.x),
+            static_cast<double>(size_.y)
+        };
         if (draw.clip.rectangle.left == draw.clip.rectangle.right || draw.clip.rectangle.top == draw.clip.rectangle.bottom)
             return;
         draw.vertices = found->second;
@@ -141,17 +143,17 @@ namespace CE::UI::RmlUi {
         return width * height * 4;
     }
 
-    Rml::TextureHandle RenderTarget::store_texture(Assets::DecodedImage image) {
+    Rml::TextureHandle RenderTarget::store_texture(CE::Assets::Images::Decoded image) {
         const auto handle = next_handle(next_texture_);
-        textures_.emplace(handle, std::make_shared<const Assets::DecodedImage>(std::move(image)));
+        textures_.emplace(handle, std::make_shared<const CE::Assets::Images::Decoded>(std::move(image)));
         return handle;
     }
 
     Rml::TextureHandle RenderTarget::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
         dimensions = {};
-        Assets::DecodedImage image;
+        CE::Assets::Images::Decoded image;
         try {
-            image = Assets::decode_image(std::filesystem::u8path(source));
+            image = CE::Assets::Images::decode(std::filesystem::u8path(source));
         } catch (const std::exception&) {
             return 0; // The toolkit reports an unavailable file image.
         }
@@ -174,7 +176,7 @@ namespace CE::UI::RmlUi {
         const auto bytes = texture_bytes(dimensions);
         if (pixels.size() != bytes)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi RGBA pixels do not match their dimensions");
-        Assets::DecodedImage image;
+        CE::Assets::Images::Decoded image;
         image.size = {static_cast<unsigned int>(dimensions.x), static_cast<unsigned int>(dimensions.y)};
         image.rgba.assign(pixels.begin(), pixels.end());
         return store_texture(std::move(image));
@@ -191,8 +193,10 @@ namespace CE::UI::RmlUi {
     void RenderTarget::SetScissorRegion(const Rml::Rectanglei region) {
         if (!region.Valid())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi scissor edges are inverted");
-        scissor_ = {static_cast<double>(region.Left()), static_cast<double>(region.Top()), static_cast<double>(region.Right()),
-                    static_cast<double>(region.Bottom())};
+        scissor_ = {
+            static_cast<double>(region.Left()), static_cast<double>(region.Top()), static_cast<double>(region.Right()),
+            static_cast<double>(region.Bottom())
+        };
     }
 
     void RenderTarget::reject(const char* feature) noexcept {

@@ -5,15 +5,15 @@
 
 #include <utility>
 
-namespace CE::Assets {
-    void MaterialMgr::load_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder) {
+namespace CE::Assets::Materials {
+    void Manager::load(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder) {
         bind_provider(provider);
         if (!contains(key))
-            reload_material(key, provider, builder);
+            reload(key, provider, builder);
     }
 
-    void MaterialMgr::reload_material(const std::filesystem::path& key, ResourceProvider& provider, const Builder& builder) {
-        const auto attempt = Diagnostics::next_domain_id();
+    void Manager::reload(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder) {
+        const auto attempt = CE::Diagnostics::next_domain_id();
         try {
             bind_provider(provider);
             if (!builder)
@@ -28,13 +28,15 @@ namespace CE::Assets {
         } catch (...) {
             Diagnostics::report_outcome("assets", attempt, "material_reload", "preserved_previous");
             CE_LOG_ERROR(
-                CE::assetlog, "subsystem=assets domain={} cache={} operation=material_reload outcome=preserved_previous", attempt, domain_
+                CE::Logging::Categories::assets, "subsystem=assets domain={} cache={} operation=material_reload outcome=preserved_previous",
+                attempt, domain_
             );
             throw;
         }
         CE_LOG_DEBUG(
-            CE::assetlog, "subsystem=assets domain={} cache={} operation=material_reload outcome=published publications={} replacements={}",
-            attempt, domain_, diagnostics().publications, diagnostics().replacements
+            CE::Logging::Categories::assets,
+            "subsystem=assets domain={} cache={} operation=material_reload outcome=published publications={} replacements={}", attempt,
+            domain_, diagnostics().publications, diagnostics().replacements
         );
     }
 }

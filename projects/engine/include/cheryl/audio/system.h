@@ -18,7 +18,7 @@ namespace CE::Audio {
     };
 
     struct VoiceSnapshot {
-        PlaybackState state = PlaybackState::Closed;
+        ::CE::Audio::PlaybackState state = ::CE::Audio::PlaybackState::Closed;
         float volume = 1;
         bool looping = false;
         std::optional<std::chrono::duration<double>> duration;
@@ -38,7 +38,7 @@ namespace CE::Audio {
     class Voice {
     public:
         virtual ~Voice() = default;
-        [[nodiscard]] virtual VoiceSnapshot snapshot() const = 0;
+        [[nodiscard]] virtual ::CE::Audio::VoiceSnapshot snapshot() const = 0;
         virtual void pause() = 0;
         virtual void resume() = 0;
         virtual void stop() = 0;
@@ -60,8 +60,10 @@ namespace CE::Audio {
     class System {
     public:
         virtual ~System() = default;
-        [[nodiscard]] virtual std::shared_ptr<Voice> play(const Clip& clip, PlaybackOptions options = {}) = 0;
-        [[nodiscard]] virtual std::shared_ptr<Voice> stream(const std::filesystem::path& file, PlaybackOptions options = {}) = 0;
+        [[nodiscard]] virtual std::shared_ptr<::CE::Audio::Voice>
+        play(const ::CE::Audio::Clip& clip, ::CE::Audio::PlaybackOptions options = {}) = 0;
+        [[nodiscard]] virtual std::shared_ptr<::CE::Audio::Voice>
+        stream(const std::filesystem::path& file, ::CE::Audio::PlaybackOptions options = {}) = 0;
         virtual void set_volume(float volume) = 0;
         [[nodiscard]] virtual float volume() const = 0;
         // Reclaims finished/stopped/paused voices with no application handle.

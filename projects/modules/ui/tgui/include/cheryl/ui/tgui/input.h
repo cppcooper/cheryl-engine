@@ -16,5 +16,5 @@ namespace CE::UI::TGUI {
      * return no event. TGUI has no key-release event; modifier state still belongs
      * to the complete original record stream. Press and Repeat both become KeyPressed.
      */
-    [[nodiscard]] std::optional<tgui::Event> translate_event(const Input::InputRecord& record);
+    [[nodiscard]] std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record);
 }

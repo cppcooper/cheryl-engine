@@ -1,9 +1,13 @@
 # Worker pools and groups
 
-WorkerPool owns physical CPU threads. WorkerGroup is a copyable workload handle
-sharing that capacity; a group does not create another set of threads. Separate
-physical pools are still independently constructible. The default pool has one
-worker so an EngineContext need not reserve machine-wide capacity accidentally.
+`CE::Workers::Pool` owns physical CPU threads. `CE::Workers::Group` is a copyable
+workload handle sharing that capacity; a group does not create another set of
+threads. Pools, groups, CPU policies and topology form the reusable `CE::Workers`
+facility. Applications can use it without a game session or runtime context. The
+default pool has one worker so a `CE::Runtime::Context` need not reserve
+machine-wide capacity accidentally.
+
+## Jobs
 
 Jobs own their callables and return futures. Callback exceptions reach those
 futures, without stopping another job. FIFO selection within a group does not
@@ -13,6 +17,8 @@ Eligible groups receive smooth weighted fair selection. Weight (1..1024) times
 priority+1 (priority 0..7) determines job-selection share, not OS thread priority.
 A concurrency cap or empty queue removes a group from that selection round.
 Preferred previous-worker reuse breaks otherwise equal choices.
+
+## Pool lifetime
 
 `group.close()` stops acceptance without cancelling ordinary accepted work.
 `group.drain()` requires closure, waits for pending/running work and capture
@@ -30,18 +36,19 @@ run outside them. Submitted jobs retain their group even if its handle is droppe
 
 ## Topology providers and capacity
 
-Neutral topology descriptions, pool/group options and scheduling belong to
-`Cheryl::Engine`. The optional `Cheryl::WorkerTopology::Hwloc` target supplies
-`make_hwloc_worker_topology()`; `Cheryl::WorkerTopology::Json` supplies configuration
-loading independently of hwloc. Both live under `projects/engine/support/worker-topology/`.
+Neutral topology descriptions, pool/group options and scheduling live in
+`CE::Workers` and are supplied by `Cheryl::Engine`. The optional
+`Cheryl::WorkerTopology::Hwloc` target supplies
+`CE::Workers::Hwloc::make_topology_provider()`; `Cheryl::WorkerTopology::Json`
+supplies configuration loading independently of hwloc. Both live under `projects/engine/support/worker-topology/`.
 Applications link the selected support targets; Engine does not link back to them.
 Public contracts expose neither hwloc nor JSON library types. The static hwloc
 support library propagates its required final link dependency.
 
-Supply a `WorkerTopologyProvider` through `WorkerPoolOptions::topology_provider`.
+Supply a `CE::Workers::TopologyProvider` through `CE::Workers::PoolOptions::topology_provider`.
 The pool retains it through worker joins. There is no global registrar, entry-point
 hook or implicit discovery. The existing numeric constructor still defaults to one
-worker and requires a positive count. `WorkerPoolOptions::worker_count = 0` explicitly
+worker and requires a positive count. `CE::Workers::PoolOptions::worker_count = 0` explicitly
 selects automatic capacity: eligible physical cores when all eligible CPUs have core
 information, eligible logical CPUs otherwise, or one worker when eligibility is unknown.
 Group concurrency zero uses pool capacity; a larger requested cap is limited to that
@@ -53,13 +60,13 @@ capacity and creates no extra threads.
 #include <memory>
 #include <utility>
 
-CE::Engine::WorkerPoolOptions options;
+CE::Workers::PoolOptions options;
 options.worker_count = 0;
-options.topology_provider = CE::Engine::make_hwloc_worker_topology();
-auto pool = std::make_shared<CE::Engine::WorkerPool>(std::move(options));
-CE::Engine::WorkerGroupOptions simulation_options;
+options.topology_provider = CE::Workers::Hwloc::make_topology_provider();
+auto pool = std::make_shared<CE::Workers::Pool>(std::move(options));
+CE::Workers::GroupOptions simulation_options;
 simulation_options.max_concurrency = 1;
-simulation_options.cpu.locality = CE::Engine::WorkerLocalityPolicy::Reuse;
+simulation_options.cpu.locality = CE::Workers::LocalityPolicy::Reuse;
 auto simulation = pool->make_group(simulation_options);
 ```
 
@@ -79,7 +86,7 @@ in `capabilities()` and `limitations`.
 
 ## CPU policy and capabilities
 
-WorkerGroup owns its CPU/locality policy. The neutral root scheduler enforces the
+`CE::Workers::Group` owns its CPU/locality policy. The neutral root scheduler enforces the
 policy before each job, so groups are more than labels on a shared queue. Explicit
 CPU IDs must fit the inherited eligible CPU set; required unavailable CPUs reject.
 Preferred eligibility may fall back, and `policy()` describes the requested and
@@ -151,15 +158,15 @@ adapter reads back the effective mask.
 
 ## Typed and JSON configuration
 
-`WorkerConfiguration` owns pool options and a map of named group options.
-`validate_worker_group_options()` and `validate_worker_configuration()` perform
+`CE::Workers::Configuration` owns pool options and a map of named group options.
+`CE::Workers::validate_group_options()` and `CE::Workers::validate_configuration()` perform
 structural checks without discovering topology, creating threads or binding CPUs.
 Runtime availability and CPU/cache intersections are resolved by pool/group
 construction. Named groups match `[a-z][a-z0-9_]*`.
 
 Link `Cheryl::WorkerTopology::Json` and include
 `<cheryl/core/engine/worker-topology/configuration.h>` for
-`parse_worker_configuration(document, source)` or `load_worker_configuration(path)`;
+`CE::Workers::Json::parse_configuration(document, source)` or `CE::Workers::Json::load_configuration(path)`;
 the latter also accepts a stream and source path. The supported version is `"1.0"`:
 
 ```json
@@ -193,9 +200,9 @@ affinity change. JSON loading works with hwloc omitted.
 
 ## Context ownership
 
-EngineContext accepts ExecutionOptions: owned worker_count (default one) or an
-application-supplied shared_pool. Its owned root is created only when
-make_worker_group() is first called. Groups obtained there belong to that
+`CE::Runtime::Context` accepts `CE::Runtime::ExecutionOptions`: owned `worker_count`
+(default one) or an application-supplied `shared_pool`. Its owned root is created
+only when `make_worker_group()` is first called. Groups obtained there belong to that
 context's shutdown domain. Shutdown closes/drains those groups and joins an owned
 root; unrelated groups on an injected pool remain open. A saved context group
 rejects after context shutdown, while separately owned physical pools remain
@@ -203,7 +210,7 @@ independent. Do not destroy a context from one of its jobs. The runtime's
 [shutdown sequence](runtime-frame-boundary.md#shutdown) settles accepted
 dependencies before game/resource cleanup.
 
-The normal GLFW/OpenGL factory forwards `GlfwOpenGLConfig::execution` to the
+The normal GLFW/OpenGL factory forwards `CE::Application::GLFWOpenGL::Options::execution` to the
 context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
@@ -217,11 +224,11 @@ named context-owned groups. It is a separately buildable example, not a global h
 An application can choose a share and cap independently of CPU eligibility:
 
 ```cpp
-CE::Engine::WorkerGroupOptions preparation;
+CE::Workers::GroupOptions preparation;
 preparation.max_concurrency = 2;
 preparation.weight = 3;
 preparation.cpu.cpus = known_eligible_cpus;
-preparation.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+preparation.cpu.strength = CE::Workers::PolicyStrength::Required;
 auto group = context.make_worker_group(preparation);
 auto result = group.submit([] { return prepare_owned_asset_data(); });
 ```

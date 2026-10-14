@@ -22,23 +22,27 @@
 #include <utility>
 
 namespace {
-    CE::UI::TGUI::Materials materials(CE::Assets::ResourceProvider& provider, const std::filesystem::path& root) {
-        using namespace CE::Assets;
-        auto* native = dynamic_cast<OpenGLResourceProvider*>(&provider);
+    CE::UI::TGUI::Materials materials(CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root) {
+        auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
         if (!native)
             throw CE::Exceptions::invalid_args(CE_HERE, "The demo UI requires an OpenGL material provider");
-        PipelineDefinition definition;
-        definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
-        definition.topology = PrimitiveTopology::Triangles;
-        definition.state = {BlendMode::StraightAlpha, DepthMode::Disabled, false, CullMode::None};
-        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection}};
+        CE::Rendering::Pipelines::Definition definition;
+        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+        definition.topology = CE::Rendering::Geometry::Topology::Triangles;
+        definition.state = {
+            CE::Rendering::Pipelines::Blend::StraightAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
+            CE::Rendering::Pipelines::Cull::None
+        };
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
+        };
         definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
-        const GLSLPipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
+        const CE::Rendering::OpenGL::PipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
         CE::UI::TGUI::Materials result;
         result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
         definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
-        definition.parameters.push_back({"image", ParameterType::Sampler2D});
-        const GLSLPipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
+        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+        const CE::Rendering::OpenGL::PipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
         result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
         return result;
     }
@@ -71,8 +75,8 @@ namespace {
 }
 
 struct DemoUi::TguiState {
-    CE::Input::iInputSystem& input;
-    CE::Engine::PlatformDispatcher::Submission platform;
+    CE::Input::System& input;
+    CE::Runtime::PlatformDispatcher::Submission platform;
     CE::UI::TGUI::SceneUploader uploader;
     CE::UI::TGUI::Materials materials;
     // External widget handles are declared after session and destroyed first.
@@ -89,13 +93,13 @@ struct DemoUi::TguiState {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    TguiState(CE::Engine::EngineContext& engine, const std::filesystem::path& root)
+    TguiState(CE::Runtime::Context& engine, const std::filesystem::path& root)
     : input(engine.input()),
       platform(engine.platform_dispatcher().submission()),
       uploader(engine.resources()),
       materials(::materials(engine.resources(), root)) {}
 
-    void create_widgets(const CE::GFramework::TickContext& tick) {
+    void create_widgets(const CE::Game::TickContext& tick) {
         using CE::UI::TGUI::Scalable;
 
         session = std::make_unique<CE::UI::TGUI::Session>(input, 2);
@@ -200,11 +204,11 @@ struct DemoUi::TguiState {
         session->set_layout(edge, {.anchor = {1, 1}, .offset = {.fixed = {-18, -18}}});
     }
 
-    void handle_input(const CE::GFramework::TickContext& tick) {
+    void handle_input(const CE::Game::TickContext& tick) {
         using namespace CE::Input;
-        session->handle_input(tick.input.records(), visible, [&](const InputRecord& record) {
-            const auto* button = std::get_if<ButtonEvent>(&record.data);
-            if (button && record.device_kind == DeviceKind::Keyboard && button->phase == ButtonPhase::Press) {
+        session->handle_input(tick.input.records(), visible, [&](const CE::Input::Events::Record& record) {
+            const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+            if (button && record.device_kind == DeviceKind::Keyboard && button->phase == CE::Input::Events::ButtonPhase::Press) {
                 if (button->key == KeyboardKey::F2 && visible) {
                     if (session->owns_keyboard_focus())
                         session->release_keyboard_focus();
@@ -223,7 +227,7 @@ struct DemoUi::TguiState {
             }
             if (visible && tick.logical_size.width > 0 && tick.logical_size.height > 0 && button &&
                 record.device_kind == DeviceKind::Mouse && button->mouse_button == MouseButton::Left &&
-                button->phase == ButtonPhase::Press) {
+                button->phase == CE::Input::Events::ButtonPhase::Press) {
                 const auto event = CE::UI::TGUI::translate_event(record);
                 if (event) {
                     auto& gui = session->gui();
@@ -240,12 +244,12 @@ struct DemoUi::TguiState {
     }
 };
 
-DemoUi::DemoUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root)
+DemoUi::DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root)
 : tgui_state_(std::make_unique<TguiState>(engine, asset_root)) {}
 
 DemoUi::~DemoUi() = default;
 
-bool DemoUi::update(const CE::GFramework::TickContext& tick, const DemoUiStatus& status) {
+bool DemoUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
     auto& tgui = *tgui_state_;
     if (!tgui.session)
         tgui.create_widgets(tick);
@@ -271,7 +275,7 @@ bool DemoUi::update(const CE::GFramework::TickContext& tick, const DemoUiStatus&
     return std::exchange(tgui.reset_requested, false);
 }
 
-void DemoUi::write(CE::RenderAPIs::RenderFrameWriter& frame) const {
+void DemoUi::write(CE::Rendering::FrameWriter& frame) const {
     if (tgui_state_->visible)
         tgui_state_->scene.write(frame);
 }

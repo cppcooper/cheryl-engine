@@ -12,15 +12,15 @@
 #include <iterator>
 #include <atomic>
 
-namespace CE::Engine::WorkerDetail {
+namespace CE::Workers::Detail {
     struct GroupState {
-        WorkerGroupOptions options;
-        WorkerGroupPolicy policy;
+        CE::Workers::GroupOptions options;
+        CE::Workers::GroupPolicy policy;
         WorkerGroupPlacement placement;
         long double credit = 0;
         std::optional<std::size_t> last_worker;
         std::deque<Job> pending;
-        WorkerGroupStatus status;
+        CE::Workers::GroupStatus status;
         std::atomic<std::uint64_t> callback_failures{0};
         std::atomic<std::uint64_t> reported_policy_failures{0};
         std::atomic<bool> reported_fallback{false};
@@ -31,22 +31,22 @@ namespace CE::Engine::WorkerDetail {
         std::condition_variable wake;
         std::vector<std::shared_ptr<GroupState>> groups;
         std::size_t capacity = 0;
-        WorkerCapabilities capabilities;
-        WorkerNativeAdapter native;
-        std::shared_ptr<WorkerTopologyProvider> topology_provider;
-        WorkerTopology topology;
+        CE::Workers::Capabilities capabilities;
+        NativeAdapter native;
+        std::shared_ptr<CE::Workers::TopologyProvider> topology_provider;
+        CE::Workers::Topology topology;
         WorkerPlacement placement;
         bool accepting = true;
-        const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
+        const CE::Diagnostics::DomainId domain = CE::Diagnostics::next_domain_id();
         mutable std::atomic<bool> reported_startup{false};
     };
 
     thread_local PoolState* current_pool = nullptr;
 
-    WorkerPoolOptions fixed_pool_options(const std::size_t worker_count) {
+    CE::Workers::PoolOptions fixed_pool_options(const std::size_t worker_count) {
         if (worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "A worker pool requires at least one thread");
-        return WorkerPoolOptions{worker_count, {}};
+        return CE::Workers::PoolOptions{worker_count, {}};
     }
 
     bool eligible(const GroupState& group, const PoolState& pool) {
@@ -101,14 +101,16 @@ namespace CE::Engine::WorkerDetail {
                 selected->credit -= total_weight;
                 selected->last_worker = worker_index;
                 if (selected->policy.effective_locality)
-                    target = reserve_cpu(pool->placement, selected->placement, selected->policy,
-                                         mask_known && current_mask.size() == 1 ? std::optional{current_mask.front()} : std::nullopt);
+                    target = reserve_cpu(
+                        pool->placement, selected->placement, selected->policy,
+                        mask_known && current_mask.size() == 1 ? std::optional{current_mask.front()} : std::nullopt
+                    );
                 job = std::move(selected->pending.front());
                 selected->pending.pop_front();
                 --selected->status.pending;
                 ++selected->status.running;
-                selected->status.queue_nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::steady_clock::now() - job.queued_at).count();
+                selected->status.queue_nanoseconds +=
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - job.queued_at).count();
             }
             std::exception_ptr policy_error;
             if (pool->capabilities.cpu_affinity) {
@@ -120,15 +122,16 @@ namespace CE::Engine::WorkerDetail {
                         apply_affinity(pool->native, desired);
                         current_mask = desired;
                         mask_known = true;
-                    } else if (selected->options.cpu.strength == WorkerPolicyStrength::Required &&
-                               pool->native.query_affinity() != desired) {
+                    } else if (
+                        selected->options.cpu.strength == CE::Workers::PolicyStrength::Required && pool->native.query_affinity() != desired
+                    ) {
                         // Restrictions may change while the pool is alive.
                         apply_affinity(pool->native, desired);
                     }
                 } catch (...) {
                     policy_error = std::current_exception();
                     mask_known = false;
-                    if (selected->options.cpu.strength == WorkerPolicyStrength::Preferred) {
+                    if (selected->options.cpu.strength == CE::Workers::PolicyStrength::Preferred) {
                         try {
                             apply_affinity(pool->native, pool->capabilities.available_cpus);
                             current_mask = pool->capabilities.available_cpus;
@@ -144,10 +147,11 @@ namespace CE::Engine::WorkerDetail {
             }
             {
                 std::lock_guard lock(pool->mutex);
-                selected->status.last_cpu = pool->capabilities.cpu_affinity && mask_known && !policy_error && current_mask.size() == 1 ?
-                                            std::optional{current_mask.front()} : std::nullopt;
-                selected->placement.last_target = selected->status.last_cpu ?
-                                                  find_cpu(pool->placement, *selected->status.last_cpu) : std::nullopt;
+                selected->status.last_cpu = pool->capabilities.cpu_affinity && mask_known && !policy_error && current_mask.size() == 1
+                                                ? std::optional{current_mask.front()}
+                                                : std::nullopt;
+                selected->placement.last_target =
+                    selected->status.last_cpu ? find_cpu(pool->placement, *selected->status.last_cpu) : std::nullopt;
                 if (target && (policy_error || selected->placement.last_target != target)) {
                     release_cpu(pool->placement, *target);
                     target.reset();
@@ -173,11 +177,11 @@ namespace CE::Engine::WorkerDetail {
     }
 }
 
-namespace CE::Engine {
-    WorkerGroup::WorkerGroup(std::shared_ptr<WorkerDetail::PoolState> pool, std::shared_ptr<WorkerDetail::GroupState> group)
+namespace CE::Workers {
+    Group::Group(std::shared_ptr<Detail::PoolState> pool, std::shared_ptr<Detail::GroupState> group)
     : pool_(std::move(pool)), group_(std::move(group)) {}
 
-    void WorkerGroup::enqueue(WorkerDetail::Job job) const {
+    void Group::enqueue(Detail::Job job) const {
         auto pool = pool_.lock();
         if (!pool)
             throw Exceptions::failed_operation(CE_HERE, "Worker pool no longer exists");
@@ -194,7 +198,7 @@ namespace CE::Engine {
         pool->wake.notify_all();
     }
 
-    void WorkerGroup::close() const {
+    void Group::close() const {
         auto pool = pool_.lock();
         if (!pool)
             return;
@@ -205,11 +209,11 @@ namespace CE::Engine {
         pool->wake.notify_all();
     }
 
-    void WorkerGroup::drain() const {
+    void Group::drain() const {
         auto pool = pool_.lock();
         if (!pool)
             return; // Pool destruction already drained accepted work.
-        if (WorkerDetail::current_pool == pool.get())
+        if (Detail::current_pool == pool.get())
             throw Exceptions::failed_operation(CE_HERE, "A worker cannot block draining its own pool");
         std::unique_lock lock(pool->mutex);
         if (group_->status.accepting)
@@ -217,9 +221,9 @@ namespace CE::Engine {
         pool->wake.wait(lock, [&] { return group_->pending.empty() && group_->status.running == 0; });
     }
 
-    WorkerGroupStatus WorkerGroup::status() const {
+    GroupStatus Group::status() const {
         auto pool = pool_.lock();
-        WorkerGroupStatus result;
+        GroupStatus result;
         if (!pool)
             result = group_->status; // Immutable after pool destruction/join.
         else {
@@ -230,26 +234,35 @@ namespace CE::Engine {
         return result;
     }
 
-    void WorkerGroup::record_failure(const std::weak_ptr<WorkerDetail::GroupState>& group) noexcept {
+    void Group::record_failure(const std::weak_ptr<Detail::GroupState>& group) noexcept {
         if (const auto retained = group.lock())
             retained->callback_failures.fetch_add(1, std::memory_order_relaxed);
     }
 
-    void WorkerGroup::report_diagnostics() const noexcept {
+    void Group::report_diagnostics() const noexcept {
         try {
             const auto snapshot = status();
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=workers domain={} pool={} operation=group_summary accepted={} completed={} pending={} running={} callback_failures={} policy_failures={} peak_pending={} queue_ns={}",
-                         snapshot.domain, snapshot.pool, snapshot.accepted, snapshot.completed, snapshot.pending, snapshot.running,
-                         snapshot.callback_failures, snapshot.policy_failures, snapshot.peak_pending, snapshot.queue_nanoseconds);
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine,
+                "subsystem=workers domain={} pool={} operation=group_summary accepted={} completed={} pending={} running={} callback_failures={} policy_failures={} peak_pending={} queue_ns={}",
+                snapshot.domain, snapshot.pool, snapshot.accepted, snapshot.completed, snapshot.pending, snapshot.running,
+                snapshot.callback_failures, snapshot.policy_failures, snapshot.peak_pending, snapshot.queue_nanoseconds
+            );
             if (group_->policy.preferred_fallback && !group_->reported_fallback.exchange(true))
-                CE_LOG_WARN(CE::enginelog, "subsystem=workers domain={} pool={} operation=preferred_policy outcome=fallback cpus={}",
-                            snapshot.domain, snapshot.pool, group_->policy.effective_cpus.size());
+                CE_LOG_WARN(
+                    CE::Logging::Categories::engine,
+                    "subsystem=workers domain={} pool={} operation=preferred_policy outcome=fallback cpus={}", snapshot.domain,
+                    snapshot.pool, group_->policy.effective_cpus.size()
+                );
             auto reported = group_->reported_policy_failures.load();
             while (snapshot.policy_failures > reported) {
                 if (group_->reported_policy_failures.compare_exchange_weak(reported, snapshot.policy_failures)) {
-                    CE_LOG_WARN(CE::enginelog, "subsystem=workers domain={} pool={} operation=native_policy outcome=degraded failures={} new={} strength={}",
-                                snapshot.domain, snapshot.pool, snapshot.policy_failures, snapshot.policy_failures - reported,
-                                static_cast<int>(group_->options.cpu.strength));
+                    CE_LOG_WARN(
+                        CE::Logging::Categories::engine,
+                        "subsystem=workers domain={} pool={} operation=native_policy outcome=degraded failures={} new={} strength={}",
+                        snapshot.domain, snapshot.pool, snapshot.policy_failures, snapshot.policy_failures - reported,
+                        static_cast<int>(group_->options.cpu.strength)
+                    );
                     break;
                 }
             }
@@ -258,21 +271,21 @@ namespace CE::Engine {
         }
     }
 
-    WorkerPool::WorkerPool(const std::size_t worker_count)
-    : WorkerPool(worker_count, WorkerDetail::native_worker_adapter()) {}
+    Pool::Pool(const std::size_t worker_count)
+    : Pool(worker_count, Detail::native_worker_adapter()) {}
 
-    WorkerPool::WorkerPool(const std::size_t worker_count, WorkerDetail::WorkerNativeAdapter adapter)
-    : WorkerPool(WorkerDetail::fixed_pool_options(worker_count), std::move(adapter)) {}
+    Pool::Pool(const std::size_t worker_count, Detail::NativeAdapter adapter)
+    : Pool(Detail::fixed_pool_options(worker_count), std::move(adapter)) {}
 
-    WorkerPool::WorkerPool(WorkerPoolOptions options)
-    : WorkerPool(std::move(options), WorkerDetail::native_worker_adapter()) {}
+    Pool::Pool(PoolOptions options)
+    : Pool(std::move(options), Detail::native_worker_adapter()) {}
 
-    WorkerPool::WorkerPool(WorkerPoolOptions options, WorkerDetail::WorkerNativeAdapter adapter)
-    : state_(std::make_shared<WorkerDetail::PoolState>()) {
+    Pool::Pool(PoolOptions options, Detail::NativeAdapter adapter)
+    : state_(std::make_shared<Detail::PoolState>()) {
         state_->native = std::move(adapter);
         state_->topology_provider = std::move(options.topology_provider);
         if (state_->topology_provider) {
-            state_->topology = WorkerDetail::prepare_topology(*state_->topology_provider);
+            state_->topology = Detail::prepare_topology(*state_->topology_provider);
             const auto provider = state_->topology_provider;
             state_->native.cpu_affinity = state_->topology.cpu_affinity;
             state_->native.query_affinity = [provider] { return provider->current_thread_cpus(); };
@@ -280,24 +293,25 @@ namespace CE::Engine {
             state_->capabilities.available_cpus = state_->topology.eligible_cpus;
             state_->capabilities.cpu_affinity = state_->topology.cpu_affinity;
             state_->capabilities.cache_topology = !state_->topology.caches.empty();
-            state_->capabilities.core_topology = WorkerDetail::complete_core_topology(state_->topology);
+            state_->capabilities.core_topology = Detail::complete_core_topology(state_->topology);
             state_->capabilities.limitations = state_->topology.limitations;
         } else {
-            state_->capabilities = WorkerDetail::discover_capabilities(state_->native);
+            state_->capabilities = Detail::discover_capabilities(state_->native);
             state_->topology.eligible_cpus = state_->capabilities.available_cpus;
             state_->topology.cpu_affinity = state_->capabilities.cpu_affinity;
             state_->topology.limitations = state_->capabilities.limitations;
         }
-        const auto automatic_count = state_->capabilities.core_topology ? state_->topology.cores.size() :
-                                     std::max<std::size_t>(1, state_->capabilities.available_cpus.size());
+        const auto automatic_count = state_->capabilities.core_topology
+                                         ? state_->topology.cores.size()
+                                         : std::max<std::size_t>(1, state_->capabilities.available_cpus.size());
         const auto worker_count = options.worker_count == 0 ? automatic_count : options.worker_count;
         state_->capacity = worker_count;
-        state_->placement = WorkerDetail::make_placement(state_->topology);
+        state_->placement = Detail::make_placement(state_->topology);
         try {
             workers_.reserve(worker_count);
             for (std::size_t i = 0; i < worker_count; ++i)
                 workers_.push_back(state_->native.start_thread([state = state_, i, mask = state_->capabilities.available_cpus]() mutable {
-                    WorkerDetail::run_worker(state, i, std::move(mask));
+                    Detail::run_worker(state, i, std::move(mask));
                 }));
         } catch (...) {
             // Already-created threads must wake and join before construction fails.
@@ -308,50 +322,54 @@ namespace CE::Engine {
         }
     }
 
-    WorkerPool::~WorkerPool() {
+    Pool::~Pool() {
         shutdown();
     }
 
-    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(const std::size_t worker_count, WorkerNativeAdapter adapter) {
-        return std::unique_ptr<WorkerPool>(new WorkerPool(worker_count, std::move(adapter)));
+    std::unique_ptr<Pool> Detail::PoolAccess::create(const std::size_t worker_count, Detail::NativeAdapter adapter) {
+        return std::unique_ptr<Pool>(new Pool(worker_count, std::move(adapter)));
     }
 
-    std::unique_ptr<WorkerPool> WorkerDetail::WorkerPoolAccess::create(WorkerPoolOptions options, WorkerNativeAdapter adapter) {
-        return std::unique_ptr<WorkerPool>(new WorkerPool(std::move(options), std::move(adapter)));
+    std::unique_ptr<Pool> Detail::PoolAccess::create(PoolOptions options, Detail::NativeAdapter adapter) {
+        return std::unique_ptr<Pool>(new Pool(std::move(options), std::move(adapter)));
     }
 
-    WorkerGroupPolicy WorkerGroup::policy() const {
+    GroupPolicy Group::policy() const {
         return group_->policy; // Policy is immutable after group publication.
     }
 
-    WorkerCapabilities WorkerPool::capabilities() const {
+    Capabilities Pool::capabilities() const {
         return state_->capabilities; // Inherited capability snapshot; restrictions may later change.
     }
 
-    WorkerTopology WorkerPool::topology() const {
+    Topology Pool::topology() const {
         return state_->topology;
     }
 
-    Diagnostics::DomainId WorkerPool::diagnostic_id() const noexcept {
+    CE::Diagnostics::DomainId Pool::diagnostic_id() const noexcept {
         return state_->domain;
     }
 
-    void WorkerPool::report_diagnostics() const noexcept {
+    void Pool::report_diagnostics() const noexcept {
         if (!state_->reported_startup.exchange(true))
-            CE_LOG_INFO(CE::enginelog, "subsystem=workers domain={} operation=pool_capabilities capacity={} affinity={} cpus={} cache_topology={} numa={}",
-                        state_->domain, state_->capacity, state_->capabilities.cpu_affinity, state_->capabilities.available_cpus.size(),
-                        state_->capabilities.cache_topology, state_->capabilities.numa_placement);
+            CE_LOG_INFO(
+                CE::Logging::Categories::engine,
+                "subsystem=workers domain={} operation=pool_capabilities capacity={} affinity={} cpus={} cache_topology={} numa={}",
+                state_->domain, state_->capacity, state_->capabilities.cpu_affinity, state_->capabilities.available_cpus.size(),
+                state_->capabilities.cache_topology, state_->capabilities.numa_placement
+            );
     }
 
-    WorkerGroup WorkerPool::make_group(const WorkerGroupOptions options) {
-        auto policy = WorkerDetail::resolve_policy(options, state_->capabilities, state_->topology, state_->placement,
-                                                  state_->topology_provider != nullptr, state_->capacity);
-        auto group = std::make_shared<WorkerDetail::GroupState>();
-        group->status.domain = Diagnostics::next_domain_id();
+    Group Pool::make_group(const GroupOptions options) {
+        auto policy = Detail::resolve_policy(
+            options, state_->capabilities, state_->topology, state_->placement, state_->topology_provider != nullptr, state_->capacity
+        );
+        auto group = std::make_shared<Detail::GroupState>();
+        group->status.domain = CE::Diagnostics::next_domain_id();
         group->status.pool = state_->domain;
         group->options = options;
         group->policy = std::move(policy);
-        group->placement = WorkerDetail::make_group_placement(group->policy, state_->placement);
+        group->placement = Detail::make_group_placement(group->policy, state_->placement);
         group->status.accepting = true;
         {
             std::lock_guard lock(state_->mutex);
@@ -359,10 +377,10 @@ namespace CE::Engine {
                 throw Exceptions::failed_operation(CE_HERE, "Worker pool is closed");
             state_->groups.push_back(group);
         }
-        return WorkerGroup(state_, std::move(group));
+        return Group(state_, std::move(group));
     }
 
-    void WorkerPool::close() {
+    void Pool::close() {
         {
             std::lock_guard lock(state_->mutex);
             state_->accepting = false;
@@ -372,8 +390,8 @@ namespace CE::Engine {
         state_->wake.notify_all();
     }
 
-    void WorkerPool::shutdown() {
-        if (WorkerDetail::current_pool == state_.get())
+    void Pool::shutdown() {
+        if (Detail::current_pool == state_.get())
             throw Exceptions::failed_operation(CE_HERE, "A worker cannot join its own pool");
         std::lock_guard shutdown_lock(shutdown_mutex_);
         close();

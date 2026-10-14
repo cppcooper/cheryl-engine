@@ -4,28 +4,28 @@
 
 #include <utility>
 
-namespace CE::RenderAPIs {
-    void validate_draw_packet(const DrawPacket2D& packet, const Assets::PassConstraints2D& constraints) {
+namespace CE::Rendering {
+    void validate_draw_packet(const DrawPacket2D& packet, const ::CE::Rendering::Pipelines::PassConstraints2D& constraints) {
         if (packet.clip)
             validate_clip_region(*packet.clip);
         if (!packet.geometry || !packet.material)
-            throw Exceptions::invalid_args(CE_HERE, "A draw packet needs geometry and a material generation");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "A draw packet needs geometry and a material generation");
         const auto& pipeline = *packet.material->definition().pipeline;
         pipeline.validate_draw(*packet.geometry, packet.first_vertex, packet.vertex_count, constraints);
-        Assets::validate_resolved_parameters(pipeline.definition().parameters, packet.parameters);
+        ::CE::Rendering::Parameters::validate_resolved(pipeline.definition().parameters, packet.parameters);
     }
 
     DrawPacket2D resolve_draw_packet(
-        std::shared_ptr<const Assets::Geometry2D> geometry,
+        std::shared_ptr<const ::CE::Rendering::Geometry::Buffer2D> geometry,
         const std::size_t first_vertex,
         const std::size_t vertex_count,
         const DrawStyle2D& style,
-        const Assets::ShaderPass& pass,
-        const Assets::ParameterSet& pass_values,
-        const Assets::PassConstraints2D& constraints
+        const ::CE::Rendering::Parameters::PassSemantics& pass,
+        const ::CE::Rendering::Parameters::Set& pass_values,
+        const ::CE::Rendering::Pipelines::PassConstraints2D& constraints
     ) {
         if (!style.material)
-            throw Exceptions::invalid_args(CE_HERE, "A draw submission needs a material generation");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "A draw submission needs a material generation");
         DrawPacket2D packet{std::move(geometry), style.material, first_vertex, vertex_count,
             style.material->resolve(pass, {style.model_matrix, style.alpha, style.scale, 0}, pass_values, style.parameters)};
         packet.clip = style.clip;

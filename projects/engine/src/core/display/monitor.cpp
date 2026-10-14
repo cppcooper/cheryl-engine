@@ -1,6 +1,6 @@
 #include <core/display/monitor.h>
 
-namespace CE {
+namespace CE::Platform {
     Monitor::Monitor(const std::uint64_t id, const int width, const int height)
-    : ViewPort(width, height), id_(id) {}
+    : Dimensions(width, height), id_(id) {}
 }

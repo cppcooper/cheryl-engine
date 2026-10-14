@@ -6,7 +6,8 @@ Choose an entry point for the work you are doing:
 | --- | --- |
 | Check implemented, partial, planned or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
 | Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
-| Write a game | [Application composition and game hooks](development/consuming-engine.md), then [demo](../projects/apps/demo/README.md) |
+| Write a game | [First-game walkthrough](getting-started/first-game.md), then [application composition and game hooks](development/consuming-engine.md) |
+| Browse the generated API or build the manual | [API entry points](api/index.md) and [documentation tooling and publishing](development/documentation.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
 | Run checks | [Test selection](development/testing.md) and [pending checks and QA](testing-requests.md) |
 | Extend the repository | [Module authoring](development/modules.md), [UI adapters](development/ui-adapters.md) and [contributing](development/contributing.md) |
@@ -50,10 +51,13 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 - [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
 - [CPU memory lifetime and reservation](resources/resource-lifetime.md)
-- [FFont deprecation, recovered inputs and font-file migration](resources/legacy-ffont.md)
+- [Legacy bitmap font inputs and migration](resources/legacy-ffont.md)
 
 ## Development
 
+- [First-game walkthrough](getting-started/first-game.md)
+- [Generated C++ API entry points](api/index.md)
+- [Documentation generation and versioned Read the Docs publishing](development/documentation.md)
 - [Pending automated and QA testing requests](testing-requests.md)
 - [Build reference, CI and SDK production](development/building.md)
 - [Test selection](development/testing.md)

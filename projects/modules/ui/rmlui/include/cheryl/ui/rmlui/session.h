@@ -37,7 +37,7 @@ namespace CE::UI::RmlUi {
         std::unique_ptr<State> state_;
 
     public:
-        Session(Input::iInputSystem& input, Input::FocusId target, SessionOptions options = {});
+        Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
         ~Session();
         Session(const Session&) = delete;
         Session& operator=(const Session&) = delete;
@@ -50,21 +50,21 @@ namespace CE::UI::RmlUi {
         // through Core shutdown; neither path borrows the application's storage.
         bool load_font(const std::filesystem::path& file, const Rml::String& family, bool fallback = false);
         bool load_font(std::span<const unsigned char> bytes, const Rml::String& family, bool fallback = false);
-        void set_view(ViewPort<int> logical, FramebufferSize framebuffer);
+        void set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer);
         // Advances simulation time and updates native layout/animation. record()
         // also updates layout after authoring or input, without advancing time.
         void update_time(double delta_seconds);
-        void request_keyboard_focus(Input::KeyboardRouting routing = Input::KeyboardRouting::Exclusive);
+        void request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing = CE::Input::Routing::KeyboardPolicy::Exclusive);
         void release_keyboard_focus();
         [[nodiscard]] bool owns_keyboard_focus() const;
-        void handle_input(std::span<const Input::InputRecord> records, bool pointer_selected);
+        void handle_input(std::span<const CE::Input::Events::Record> records, bool pointer_selected);
         // Run application controls before each record and return its pointer
         // selection. Keyboard/text retain the entry epoch throughout the batch;
         // preempted focus is released only after all records have been handled.
         void handle_input(
-            std::span<const Input::InputRecord> records,
+            std::span<const CE::Input::Events::Record> records,
             bool pointer_selected,
-            const std::function<bool(const Input::InputRecord&)>& before_record
+            const std::function<bool(const CE::Input::Events::Record&)>& before_record
         );
         [[nodiscard]] RecordedScene record();
 

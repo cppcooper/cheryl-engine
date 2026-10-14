@@ -7,7 +7,7 @@ template <typename Tuple> static std::shared_mutex& get_mutex(Tuple& tuple) {
     return std::get<0>(tuple);
 }
 
-template <typename T> bool checkPoolNotInUse(const BlockManagement<T>& bm, const std::vector<Block<T>>& in_use) {
+template <typename T> bool checkPoolNotInUse(const CE::Memory::BlockManagement<T>& bm, const std::vector<CE::Memory::Block<T>>& in_use) {
     std::shared_lock poolLock(get_mutex(bm.pool));
 
     const auto& pool = std::get<1>(bm.pool);
@@ -19,7 +19,7 @@ template <typename T> bool checkPoolNotInUse(const BlockManagement<T>& bm, const
     return true;
 }
 
-template <typename T> bool checkOwnerEqualsHeadInRegistry(const BlockManagement<T>& bm) {
+template <typename T> bool checkOwnerEqualsHeadInRegistry(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock registryLock(get_mutex(bm.registry));
     const auto& reg = std::get<1>(bm.registry);
     for (const auto& block : reg) {
@@ -31,7 +31,7 @@ template <typename T> bool checkOwnerEqualsHeadInRegistry(const BlockManagement<
     return true;
 }
 
-template <typename T> bool checkSectionsAndRegistryAreDisjoint(const BlockManagement<T>& bm) {
+template <typename T> bool checkSectionsAndRegistryAreDisjoint(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock registryLock(get_mutex(bm.registry));
     std::shared_lock sectionsLock(get_mutex(bm.sections));
     const auto& reg = std::get<1>(bm.registry);
@@ -50,7 +50,7 @@ template <typename T> bool checkSectionsAndRegistryAreDisjoint(const BlockManage
     return true;
 }
 
-template <typename T> bool checkStaleAndReleaseInRegistry(const BlockManagement<T>& bm) {
+template <typename T> bool checkStaleAndReleaseInRegistry(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock staleLock(get_mutex(bm.stale));
     std::shared_lock releaseLock(get_mutex(bm.release));
     std::shared_lock registryLock(get_mutex(bm.registry));
@@ -81,7 +81,7 @@ template <typename T> bool checkStaleAndReleaseInRegistry(const BlockManagement<
  * a full owner in registry or a split range in sections. Set equivalence is
  * insufficient when a shorter section shares the owner's starting address.
  */
-template <typename T> bool checkPoolInSectionsOrInRegistry(const BlockManagement<T>& bm) {
+template <typename T> bool checkPoolInSectionsOrInRegistry(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));
     std::shared_lock registryLock(get_mutex(bm.registry));
     std::shared_lock sectionsLock(get_mutex(bm.sections));
@@ -102,7 +102,7 @@ template <typename T> bool checkPoolInSectionsOrInRegistry(const BlockManagement
     return true;
 }
 
-template <typename T> bool checkPoolInRegistryAlsoInStale(const BlockManagement<T>& bm) {
+template <typename T> bool checkPoolInRegistryAlsoInStale(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));
     std::shared_lock registryLock(get_mutex(bm.registry));
     std::shared_lock staleLock(get_mutex(bm.stale));
@@ -122,10 +122,10 @@ template <typename T> bool checkPoolInRegistryAlsoInStale(const BlockManagement<
 }
 
 /**
- * Find overlapping or unmerged free ranges from the same owner. PoolOrder
- * sorts by alignment and length, so compare all pairs rather than set neighbors.
+ * Find overlapping or unmerged free ranges from the same owner. CE::Memory::Ordering::BytePoolOrder
+ * sorts by alignment and length, so CE::Memory::Ordering all pairs rather than set neighbors.
  */
-template <typename T> bool checkContiguousBlocksInPool(const BlockManagement<T>& bm) {
+template <typename T> bool checkContiguousBlocksInPool(const CE::Memory::BlockManagement<T>& bm) {
     std::shared_lock poolLock(get_mutex(bm.pool));
     const auto& pool = std::get<1>(bm.pool);
     constexpr std::size_t element_size = [] {

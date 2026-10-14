@@ -10,18 +10,38 @@ Parsed texture paths already include the enclosing `graphics/` directory and
 lexical normalization; consumers do not prepend the document directory. `textures()` returns
 owned deduplicated entry paths in sprite-then-tileset first-reference order.
 
+## API domains
+
+Asset families use contextual names: qualify `Asset`, `Data`, `Definition` and
+`Animation` with the family when combining them in one consumer.
+
+| Namespace | Roles |
+| --- | --- |
+| `CE::Assets::Sprites` | `Definition` and `Clip` own metadata; `Data` supplies construction inputs; `Asset` retains resources; `Animation` owns a playback cursor; `Manager` caches sprites. |
+| `CE::Assets::Tilesets` | `Definition` and `Clip` own metadata; `Asset`, `Tile` and `Animation` retain resources; `Selection` owns CPU rule sampling; `Manager` caches tilesets. |
+| `CE::Assets::Grids` | `Definition`, `View` and `CellIndex` describe addressing; `GeometryData` and `make_geometry()` provide CPU upload storage. |
+| `CE::Assets::Animation` | `TimedFrame` is shared clip metadata; `Cursor` supplies ordinal wrap/clamp playback. |
+| `CE::Assets::Graphics` | `Asset` retains a whole-image quad and its image. |
+
+Pixel coordinates, vertex shapes and the uploaded `Buffer2D` contract belong to
+`CE::Rendering::Geometry`. Image/program/material interfaces belong to
+`CE::Rendering::Resources`; parameters, sampling and CPU packet resolution have
+their own `Rendering` namespaces. `CE::Assets::Content2D` composes those retained
+resources for the asset families. The [rendering guide](../rendering/pipelines-and-materials.md)
+describes their backend and submission boundaries.
+
 ## Coordinates and grid geometry
 
-`PixelPoint`, `PixelSize` and `PixelRect` use image pixels. Rectangles have a top-left
+`CE::Rendering::Geometry::PixelPoint`, `CE::Rendering::Geometry::PixelSize` and `CE::Rendering::Geometry::PixelRect` use image pixels. Rectangles have a top-left
 origin; their coordinates are widened to accommodate grid arithmetic. A
-`GridDefinition` addresses row-major cells. `cell_count()` rejects multiplication
+`CE::Assets::Grids::Definition` addresses row-major cells. `cell_count()` rejects multiplication
 overflow, and `cell_index()`/`cell_rect()` reject out-of-range selections. Direct
 callers must provide dimensions whose counts and coordinate arithmetic fit their
 integer types; the addressing helpers do not validate a grid against an image or
 validate every aggregate field. Empty rows/columns produce zero cells; occupied
 bounds on an empty axis equal that axis's origin.
 
-`make_grid_geometry()` requires nonzero texture dimensions, a fitting occupied
+`CE::Assets::Grids::make_geometry()` requires nonzero texture dimensions, a fitting occupied
 rectangle and an addressable vertex count. It returns retained temporary CPU
 storage, with four vertices per cell in independent triangle strips. Keep that
 storage through upload; the provider copies it before returning. A complete strip
@@ -32,7 +52,7 @@ texture coordinates. Pivot formulas and named views are defined by the
 
 ## Resources and caches
 
-`Asset2D` retains image, geometry and an optional selected material generation.
+`CE::Assets::Content2D` retains image, geometry and an optional selected material generation.
 Submission uses an explicit draw-style material first, then the asset selection;
 it rejects when neither supplies a usable material. Tile and animation handles
 retain the same selection. Direct construction permits null
@@ -44,13 +64,13 @@ selected backend's owner/current-context rules. Logical handles can outlive cach
 or backend teardown, but cannot perform native operations through a closed domain.
 See [resource ownership and retirement](../resources/resource-residency.md).
 
-`Graphic::from_image()` rejects a null or zero-sized image, then uploads a six-vertex
+`CE::Assets::Graphics::Asset::from_image()` rejects a null or zero-sized image, then uploads a six-vertex
 whole-image quad on the provider owner. The caller must use a compatible image and
-provider domain. `load()` first decodes/uploads the image. Failure returns no Graphic;
+provider domain. `load()` first decodes/uploads the image. Failure returns no graphic asset;
 these helpers do not publish a cache entry.
 
 Sprite and tileset managers use `namespace:name` IDs, require referenced images to
-be loaded, and retain existing IDs. TextureMgr uses lexically normalized paths;
+be loaded, and retain existing IDs. `CE::Assets::Images::Manager` uses lexically normalized paths;
 an exact lookup wins, and a bare filename is accepted only if unique. Ambiguous
 filenames throw, absent entries return null. Normalization does not resolve symlinks
 or fold case. `contains()` uses the cache's exact key, without the filename fallback.
@@ -60,15 +80,16 @@ strong handles under a lock; those handles survive clear/replacement independent
 
 ## Sprite playback
 
-`Sprite` retains one immutable definition snapshot and indexes clips by name/facing.
+`CE::Assets::Sprites::Asset` retains one immutable definition snapshot and indexes clips by name/facing.
 Construction checks a nonempty grid and nonempty clips with positive millisecond
 durations and in-range cells, rejecting duplicate clip keys. It does not revalidate
 all views, orientations, image bounds or resource compatibility from a direct
-`SpriteData` value. Definition/view references are borrowed from the Sprite.
+`CE::Assets::Sprites::Data` value. Definition/view references borrow the sprite's lifetime.
 Missing views/orientations throw `std::out_of_range`.
 
-Each `animation()` result retains its clip through the shared definition allocation,
-so it survives Sprite destruction without retaining the Sprite's GPU handles. It
+Each `animation()` result is a `CE::Assets::Sprites::Animation` retaining its clip
+through the shared definition allocation,
+so it survives sprite destruction without retaining the sprite's GPU handles. It
 has an independent mutable cursor. A faceless lookup prefers an exact faceless clip;
 otherwise it accepts a single matching facing-specific clip. Missing or ambiguous
 clip requests throw. `has_animation()` applies the same availability rule.
@@ -83,21 +104,21 @@ submission rather than allowing playback and rendering to race on a cursor.
 
 ## Tile playback and rules
 
-`Tileset` owns its definition and rejects duplicate animated targets on construction;
+`CE::Assets::Tilesets::Asset` owns its definition and rejects duplicate animated targets on construction;
 direct construction does not validate every frame or autotile rule. Definition,
-view and autotile references are borrowed from that Tileset. Named lookup failure
+view and autotile references borrow that tileset's lifetime. Named lookup failure
 throws `std::out_of_range`. `tile(cell)` checks grid bounds and returns a handle
 retaining the shared resources. `animation_for(target)` returns an independent
 playback value or no value; it does not require the target to be a valid grid cell.
 
-`TileAnimation` copies its clip and retains image/geometry. Its `Frame` index wraps
+`CE::Assets::Tilesets::Animation` copies its clip and retains image/geometry. Its `CE::Assets::Animation::Cursor` index wraps
 or clamps according to `loop`; an empty sequence is rejected. The index selects a
 clip frame, whose `cell` may be unrelated to its ordinal index. The caller schedules
 index changes using the positive per-frame millisecond durations. There is no
-elapsed-time advance operation. A directly constructed `Frame` requires its initial
+elapsed-time advance operation. A directly constructed `CE::Assets::Animation::Cursor` requires its initial
 index to be below its nonzero limit; later `set_frame()` normalizes the index.
 
-`TileAnimationDefinition::cell_at(elapsed)` independently resolves a clip cell from
+`CE::Assets::Tilesets::Clip::cell_at(elapsed)` independently resolves a clip cell from
 nonnegative elapsed milliseconds. The caller chooses the simulation clock and phase
 origin: a shared elapsed value synchronizes tiles, while per-tile values provide
 independent phases. Lookup has no cursor and does not mutate the definition or
@@ -109,19 +130,19 @@ Lookup rejects negative time, an empty clip, nonpositive frame durations and tot
 duration overflow. It validates the complete timeline even when the selected frame
 is earlier. Direct definitions still need caller-provided grid/cell validation.
 After choosing a base tile, resolve that target's animation once; an animated frame's
-cell does not trigger recursive target substitution. Tileset lookup uses this helper
+cell does not trigger recursive target substitution. Tileset asset lookup uses this helper
 after choosing the original target.
 
 ## Tile selection
 
-The CPU-only `select_tile(rule, sampler, options)` overloads accept Wang, bitmask or
-variant definitions and return a `TileSelectionResult`: either a `CellIndex` or a
-`TileSelectionFailure`. `MissingRule` means the derived signature/mask has no
+The CPU-only `CE::Assets::Tilesets::Selection::select(rule, sampler, options)` overloads accept Wang, bitmask or
+variant definitions and return a `CE::Assets::Tilesets::Selection::Result`: either a `CE::Assets::Grids::CellIndex` or a
+`CE::Assets::Tilesets::Selection::Failure`. `MissingRule` means the derived signature/mask has no
 candidate; `IncompleteNeighborhood` means a required sample remains unresolved.
 Neither failure silently chooses a fallback tile. The caller can skip the tile,
 retain an earlier selection or supply its own fallback cell.
 
-The sampler receives a `TerrainSite` with a direction and site kind. Bitmask sites
+The sampler receives a `CE::Assets::Tilesets::Selection::Site` with a direction and site kind. Bitmask sites
 are neighboring cells. Wang sites are the selected tile's shared edges or corner
 vertices, with nonzero IDs from that rule's terrain catalogue. The consumer owns
 coordinates and the conversion from its world representation to these labels;
@@ -137,7 +158,7 @@ retained. Unused directions are not sampled. Read-only queries can run concurren
 when the supplied samplers and world support that access.
 
 `Known` samples carry an ID; zero means empty. `Outside` and `Unknown` samples ignore
-their ID and have independent fallback policies: `Empty`, `Center` or `Unresolved`.
+their ID and have independent fallback policies: `Empty`, `CE::Rendering::Geometry::Center` or `Unresolved`.
 Defaults treat outside-world sites as empty and unknown sites as unresolved. A known
 Wang label absent from its terrain catalogue uses the unknown policy. A Wang center
 fallback requires `options.terrain` to be declared or zero. Bitmasks have no terrain
@@ -167,7 +188,7 @@ indices must be strictly increasing, and matched weights must be finite and posi
 Unmatched rules and other direct aggregate fields are not fully revalidated. The
 free selector returns a base cell without grid checks or animation substitution.
 
-`Tileset::cell_at(target, elapsed)` checks the original target against its grid,
+`CE::Assets::Tilesets::Asset::cell_at(target, elapsed)` checks the original target against its grid,
 resolves only that target's clip at the caller's elapsed milliseconds, and checks the
 returned frame cell. Static targets return their original cell. A frame that is
 itself an animation target does not trigger another lookup. Negative time throws
@@ -176,7 +197,7 @@ grid throw `bad_request`. A selected clip validates its full timeline, but only 
 returned cell is checked against the grid. Direct construction still needs valid
 cells for later frames; loader construction validates all of them.
 
-`Tileset::select_tile(name, sampler, options, elapsed)` combines rule selection and
+`CE::Assets::Tilesets::Asset::select_tile(name, sampler, options, elapsed)` combines rule selection and
 one-time animation substitution. Unknown rule names throw `std::out_of_range`;
 selector failure values pass through without inspecting a clip. Negative elapsed
 time is rejected before sampling even when a rule would fail. Identical stable
@@ -185,13 +206,13 @@ between frames, use the free selector once, then call `cell_at` with new simulat
 times. These queries do not advance a cursor or bind resources.
 
 During frame preparation, pass the resolved cell to the existing CPU submission
-overload. For an existing Tileset, sampler, options, simulation elapsed milliseconds,
-draw style/context and `RenderPassWriter` named `pass`:
+overload. For an existing tileset asset, sampler, options, simulation elapsed milliseconds,
+draw style/context and `CE::Rendering::PassWriter` named `pass`:
 
 ```cpp
 const auto selection = tileset.select_tile("terrain", sampler, options, simulation_elapsed);
-if (const auto* cell = std::get_if<CE::Assets::CellIndex>(&selection))
-    pass.add(CE::Assets::resolve_tile(tileset, *cell, style, context));
+if (const auto* cell = std::get_if<CE::Assets::Grids::CellIndex>(&selection))
+    pass.add(CE::Rendering::Submission::resolve_tile(tileset, *cell, style, context));
 ```
 
 The selection result owns only a cell/failure value. The resulting packet copies
@@ -202,34 +223,34 @@ do not establish artwork appearance, missing metadata or a world/map API.
 
 ## Fonts and CPU submission
 
-`Font::layout()` returns owned glyph placements and does not retain the input text.
+`CE::Text::Legacy::Font::layout()` returns owned glyph placements and does not retain the input text.
 Indices address six-vertex glyph quads; offsets are local Y-up pen positions in the
-font's metrics. STBFont decodes UTF-8 and uses baked printable-ASCII glyphs. Space
+font's metrics. AsciiFont decodes UTF-8 and uses baked printable-ASCII glyphs. Space
 advances without a glyph, newline resets X and subtracts line height, carriage return
 is ignored, and tab advances four spaces. Each unsupported scalar selects one `?`;
 malformed input selects one `?` per maximal subpart using the
 [encoding contract](text-encoding.md). Combining sequences remain separate scalar
 placements because this atlas supplies no shaping or non-ASCII glyphs. Callback
 traversal uses the same decoding/spacing rules; exceptions propagate with prior
-callback effects intact. Alternate-bank layout is rejected. FFont retains a separate
+callback effects intact. Alternate-bank layout is rejected. BitmapFont retains a separate
 [legacy metric/bank contract](../resources/legacy-ffont.md).
 
 The separate [Unicode text service](text-layout.md) shapes accented Latin/Cyrillic,
 resolves paragraph bidi and optional local-width wrapping, selects whole-grapheme
-fallback and prepares immutable glyph pages. Its `RenderedText` overload submits
+fallback and prepares immutable glyph pages. Its `CE::Text::Rendering::Generation` overload submits
 already uploaded placements and matching page handles; supply `context.image` for
 page selection. Legacy Font implementations retain their existing APIs/metrics.
 
-`resolve_sprite`, `resolve_tile`, `resolve_graphic` and `resolve_text` perform CPU
+`CE::Rendering::Submission::resolve_sprite`, `CE::Rendering::Submission::resolve_tile`, `CE::Rendering::Submission::resolve_graphic` and `CE::Rendering::Submission::resolve_text` perform CPU
 submission without binding resources or mutating playback. Keep their inputs stable
 for the call. They copy style/pass values and retain geometry, material and any
-resolved image bindings. An `ImageParameter2D` inserts the asset image as a draw-layer
+resolved image bindings. An `CE::Rendering::Submission::ImageParameter2D` inserts the asset image as a draw-layer
 sampler using a public contract key and zero-based unit. An empty key, null image or
 duplicate draw-layer key throws; omitting it leaves image selection to the other
 parameter layers.
 
-Sprite/tileset cell overloads check logical grid bounds; selected Tile and
-TileAnimation values instead rely on their resource range and clip indexing.
+Sprite/tileset cell overloads check logical grid bounds; selected tile and
+tile-animation values instead rely on their resource range and clip indexing.
 Text submission applies scaled local glyph offsets through the caller's model and
 returns owned packets; empty/whitespace-only text can return no packets. A failed
 resolution publishes nothing to a frame. Returned packets retain everything needed

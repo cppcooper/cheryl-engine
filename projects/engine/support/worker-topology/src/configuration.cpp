@@ -14,18 +14,22 @@
 #include <utility>
 #include <vector>
 
-namespace CE::Engine {
+namespace CE::Workers::Json {
     namespace {
         using Json = nlohmann::json;
         namespace fs = std::filesystem;
 
-        [[noreturn]] void fail(const fs::path& source, const std::string& field, const std::string& reason) {
+        [[noreturn]] void fail(const std::filesystem::path& source, const std::string& field, const std::string& reason) {
             const auto name = source.empty() ? "<worker configuration>" : source.string();
             throw Exceptions::invalid_args(CE_HERE, "Worker configuration '" + name + "' at " + field + ": " + reason);
         }
 
-        void
-        fields(const Json& value, const fs::path& source, const std::string& field, const std::initializer_list<std::string_view> allowed) {
+        void fields(
+            const Json& value,
+            const std::filesystem::path& source,
+            const std::string& field,
+            const std::initializer_list<std::string_view> allowed
+        ) {
             if (!value.is_object())
                 fail(source, field, "expected an object");
             for (const auto& item : value.items())
@@ -33,13 +37,13 @@ namespace CE::Engine {
                     fail(source, field + '.' + item.key(), "unknown property");
         }
 
-        std::string text(const Json& value, const fs::path& source, const std::string& field) {
+        std::string text(const Json& value, const std::filesystem::path& source, const std::string& field) {
             if (!value.is_string() || value.get_ref<const std::string&>().empty())
                 fail(source, field, "expected a nonempty string");
             return value.get<std::string>();
         }
 
-        template <typename T> T integer(const Json& value, const fs::path& source, const std::string& field) {
+        template <typename T> T integer(const Json& value, const std::filesystem::path& source, const std::string& field) {
             if (!value.is_number_integer() || (!value.is_number_unsigned() && value.get<std::int64_t>() < 0))
                 fail(source, field, "expected a nonnegative integer");
             const auto number = value.get<std::uint64_t>();
@@ -48,7 +52,7 @@ namespace CE::Engine {
             return static_cast<T>(number);
         }
 
-        std::size_t concurrency(const Json& value, const fs::path& source, const std::string& field) {
+        std::size_t concurrency(const Json& value, const std::filesystem::path& source, const std::string& field) {
             if (value.is_string()) {
                 if (text(value, source, field) == "auto")
                     return 0;
@@ -63,7 +67,7 @@ namespace CE::Engine {
         template <typename T>
         T choice(
             const Json& value,
-            const fs::path& source,
+            const std::filesystem::path& source,
             const std::string& field,
             const std::initializer_list<std::pair<std::string_view, T>> choices
         ) {
@@ -74,15 +78,15 @@ namespace CE::Engine {
             fail(source, field, "unsupported value '" + name + "'");
         }
 
-        bool boolean(const Json& value, const fs::path& source, const std::string& field) {
+        bool boolean(const Json& value, const std::filesystem::path& source, const std::string& field) {
             if (!value.is_boolean())
                 fail(source, field, "expected a boolean");
             return value.get<bool>();
         }
 
-        WorkerGroupOptions group_options(const Json& value, const fs::path& source, const std::string& field) {
+        CE::Workers::GroupOptions group_options(const Json& value, const std::filesystem::path& source, const std::string& field) {
             fields(value, source, field, {"concurrency", "weight", "priority", "locality", "cpu"});
-            WorkerGroupOptions options;
+            CE::Workers::GroupOptions options;
             if (value.contains("concurrency"))
                 options.max_concurrency = concurrency(value.at("concurrency"), source, field + ".concurrency");
             if (value.contains("weight")) {
@@ -96,10 +100,11 @@ namespace CE::Engine {
                     fail(source, field + ".priority", "expected 0..7");
             }
             if (value.contains("locality"))
-                options.cpu.locality = choice<WorkerLocalityPolicy>(
+                options.cpu.locality = choice<CE::Workers::LocalityPolicy>(
                     value.at("locality"), source, field + ".locality",
-                    {{"automatic", WorkerLocalityPolicy::Automatic}, {"reuse", WorkerLocalityPolicy::Reuse},
-                        {"spread", WorkerLocalityPolicy::Spread}}
+                    {{"automatic", CE::Workers::LocalityPolicy::Automatic},
+                     {"reuse", CE::Workers::LocalityPolicy::Reuse},
+                     {"spread", CE::Workers::LocalityPolicy::Spread}}
                 );
             if (value.contains("cpu")) {
                 const auto& cpu = value.at("cpu");
@@ -114,9 +119,9 @@ namespace CE::Engine {
                         );
                 }
                 if (cpu.contains("strength"))
-                    options.cpu.strength = choice<WorkerPolicyStrength>(
+                    options.cpu.strength = choice<CE::Workers::PolicyStrength>(
                         cpu.at("strength"), source, field + ".cpu.strength",
-                        {{"preferred", WorkerPolicyStrength::Preferred}, {"required", WorkerPolicyStrength::Required}}
+                        {{"preferred", CE::Workers::PolicyStrength::Preferred}, {"required", CE::Workers::PolicyStrength::Required}}
                     );
                 if (cpu.contains("cache_domain"))
                     options.cpu.shared_cache_domain = integer<unsigned int>(cpu.at("cache_domain"), source, field + ".cpu.cache_domain");
@@ -124,14 +129,14 @@ namespace CE::Engine {
                     options.cpu.prefer_same_worker = boolean(cpu.at("prefer_same_worker"), source, field + ".cpu.prefer_same_worker");
             }
             try {
-                validate_worker_group_options(options);
+                CE::Workers::validate_group_options(options);
             } catch (const Exceptions::invalid_args& error) {
                 fail(source, field, error.what());
             }
             return options;
         }
 
-        Json read_document(std::istream& input, const fs::path& source) {
+        Json read_document(std::istream& input, const std::filesystem::path& source) {
             std::vector<std::unordered_set<std::string>> keys;
             try {
                 auto root = Json::parse(input, [&](const int, const Json::parse_event_t event, Json& parsed) {
@@ -154,7 +159,7 @@ namespace CE::Engine {
         }
     }
 
-    WorkerConfiguration load_worker_configuration(std::istream& input, const std::filesystem::path& source) {
+    CE::Workers::Configuration load_configuration(std::istream& input, const std::filesystem::path& source) {
         const auto root = read_document(input, source);
         fields(root, source, "$", {"$schema", "version", "workers", "groups"});
         if (!root.contains("version"))
@@ -163,7 +168,7 @@ namespace CE::Engine {
             fail(source, "$.version", "unsupported version; expected '1.0'");
         if (root.contains("$schema"))
             static_cast<void>(text(root.at("$schema"), source, "$.$schema"));
-        WorkerConfiguration result;
+        CE::Workers::Configuration result;
         if (root.contains("workers"))
             result.pool.worker_count = concurrency(root.at("workers"), source, "$.workers");
         if (root.contains("groups")) {
@@ -172,24 +177,24 @@ namespace CE::Engine {
                 fail(source, "$.groups", "expected an object of named worker groups");
             for (const auto& item : groups.items()) {
                 const auto field = "$.groups." + item.key();
-                if (!is_worker_group_name(item.key()))
+                if (!CE::Workers::is_group_name(item.key()))
                     fail(source, field, "group name must match [a-z][a-z0-9_]*");
                 result.groups.emplace(item.key(), group_options(item.value(), source, field));
             }
         }
-        validate_worker_configuration(result);
+        CE::Workers::validate_configuration(result);
         return result;
     }
 
-    WorkerConfiguration load_worker_configuration(const std::filesystem::path& source) {
+    CE::Workers::Configuration load_configuration(const std::filesystem::path& source) {
         std::ifstream input(source);
         if (!input)
             fail(source, "$", "unable to open configuration file");
-        return load_worker_configuration(input, source);
+        return load_configuration(input, source);
     }
 
-    WorkerConfiguration parse_worker_configuration(const std::string_view document, const std::filesystem::path& source) {
+    CE::Workers::Configuration parse_configuration(const std::string_view document, const std::filesystem::path& source) {
         std::istringstream input{std::string(document)};
-        return load_worker_configuration(input, source);
+        return load_configuration(input, source);
     }
 }

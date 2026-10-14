@@ -8,7 +8,7 @@
 #include <span>
 #include <vector>
 
-namespace CE::Assets::FontDetail {
+namespace CE::Text::Legacy::Detail {
     template <typename Allocator = std::allocator<unsigned char>> struct BakedAlphaAtlas {
         std::vector<unsigned char, Allocator> pixels;
         int size;

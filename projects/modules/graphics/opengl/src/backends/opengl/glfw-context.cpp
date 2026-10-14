@@ -10,47 +10,48 @@
 #endif
 #include <GLFW/glfw3.h>
 
-namespace CE::RenderAPIs {
-    GlfwOpenGLContext::GlfwOpenGLContext(Window& window, const int swap_interval)
+namespace CE::Rendering::OpenGL {
+    GLFWContext::GLFWContext(::CE::Platform::GLFW::Window& window, const int swap_interval)
     : window_(window), swap_interval_(swap_interval) {
         if (swap_interval < 0)
-            throw Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
         CE_LOG_DEBUG(
-            CE::platformlog, "subsystem=context domain={} operation=selection swap_interval={}", window_.diagnostic_id(), swap_interval_
+            ::CE::Logging::Categories::platform, "subsystem=context domain={} operation=selection swap_interval={}",
+            window_.diagnostic_id(), swap_interval_
         );
     }
 
-    void GlfwOpenGLContext::make_current() {
+    void GLFWContext::make_current() {
         glfwMakeContextCurrent(window_.native_handle());
         if (!is_current()) {
-            DisplayDetail::report_glfw_diagnostics("make_current", true);
-            throw Exceptions::failed_operation(CE_HERE, "Could not make the window's OpenGL context current");
+            ::CE::Platform::GLFW::Detail::report_glfw_diagnostics("make_current", true);
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Could not make the window's OpenGL context current");
         }
-        DisplayDetail::report_glfw_diagnostics("make_current");
+        ::CE::Platform::GLFW::Detail::report_glfw_diagnostics("make_current");
         glfwSwapInterval(swap_interval_);
     }
 
-    void GlfwOpenGLContext::release_current() {
+    void GLFWContext::release_current() {
         if (!is_current())
-            throw Exceptions::failed_operation(CE_HERE, "The window's OpenGL context is not current on this thread");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "The window's OpenGL context is not current on this thread");
         glfwMakeContextCurrent(nullptr);
     }
 
-    bool GlfwOpenGLContext::is_current() const {
+    bool GLFWContext::is_current() const {
         return glfwGetCurrentContext() == window_.native_handle();
     }
 
-    GlfwOpenGLContext::ProcAddress GlfwOpenGLContext::proc_address(const char* name) const {
+    GLFWContext::ProcAddress GLFWContext::proc_address(const char* name) const {
         if (!name)
-            throw Exceptions::invalid_args(CE_HERE, "OpenGL procedure name must not be null");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL procedure name must not be null");
         if (!is_current())
-            throw Exceptions::failed_operation(CE_HERE, "OpenGL procedure lookup requires the current context");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL procedure lookup requires the current context");
         return glfwGetProcAddress(name);
     }
 
-    void GlfwOpenGLContext::present() {
+    void GLFWContext::present() {
         if (!is_current())
-            throw Exceptions::failed_operation(CE_HERE, "Present requires the current OpenGL context");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Present requires the current OpenGL context");
         glfwSwapBuffers(window_.native_handle());
     }
 }

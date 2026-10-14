@@ -18,10 +18,13 @@
 #include <utility>
 #include <vector>
 
-namespace CE::Assets {
-    struct ResourceProvider;
-    struct AssetCacheStats {
-        Diagnostics::DomainId domain = 0;
+namespace CE::Rendering::Resources {
+    struct Provider;
+}
+
+namespace CE::Assets::Cache {
+    struct Stats {
+        CE::Diagnostics::DomainId domain = 0;
         std::uint64_t entries = 0;
         std::uint64_t publications = 0;
         std::uint64_t replacements = 0;
@@ -35,25 +38,25 @@ namespace CE::Assets {
      * after release, a later provider may bind it. Old handles keep their old native
      * domain and cannot migrate to the replacement provider.
      */
-    class AssetCacheContext {
-        friend struct ResourceProvider;
+    class Context {
+        friend struct CE::Rendering::Resources::Provider;
         inline static std::mutex provider_mutex_;
-        inline static const ResourceProvider* bound_provider_ = nullptr;
+        inline static const CE::Rendering::Resources::Provider* bound_provider_ = nullptr;
         inline static std::thread::id owner_;
         inline static bool releasing_ = false;
 
     public:
-        static void verify_provider(const ResourceProvider& provider) {
+        static void verify_provider(const CE::Rendering::Resources::Provider& provider) {
             std::lock_guard lock(provider_mutex_);
             verify_locked(provider);
         }
-        [[nodiscard]] static bool is_bound_to(const ResourceProvider& provider) noexcept {
+        [[nodiscard]] static bool is_bound_to(const CE::Rendering::Resources::Provider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             return bound_provider_ == &provider;
         }
 
     protected:
-        static void bind_provider(const ResourceProvider& provider) {
+        static void bind_provider(const CE::Rendering::Resources::Provider& provider) {
             std::lock_guard lock(provider_mutex_);
             verify_locked(provider);
             if (!bound_provider_) {
@@ -63,14 +66,14 @@ namespace CE::Assets {
         }
 
     private:
-        static bool begin_provider_release(const ResourceProvider& provider) noexcept {
+        static bool begin_provider_release(const CE::Rendering::Resources::Provider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             if (bound_provider_ != &provider)
                 return false;
             releasing_ = true;
             return true;
         }
-        static void release_provider(const ResourceProvider& provider) noexcept {
+        static void release_provider(const CE::Rendering::Resources::Provider& provider) noexcept {
             std::lock_guard lock(provider_mutex_);
             if (bound_provider_ != &provider)
                 return;
@@ -78,7 +81,7 @@ namespace CE::Assets {
             owner_ = {};
             releasing_ = false;
         }
-        static void verify_locked(const ResourceProvider& provider) {
+        static void verify_locked(const CE::Rendering::Resources::Provider& provider) {
             if (bound_provider_ && bound_provider_ != &provider)
                 throw Exceptions::failed_operation(CE_HERE, "Asset caches are bound to another resource provider");
             if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
@@ -97,21 +100,21 @@ namespace CE::Assets {
         typename AssetType,
         typename Key = std::filesystem::path,
         typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
-    struct AssetMgr : AssetCacheContext {
-        using spointer = std::shared_ptr<AssetType>;
+    struct Store : Context {
+        using Handle = std::shared_ptr<AssetType>;
         using key_type = Key;
 
     protected:
         mutable std::shared_mutex assets_mutex_;
-        std::unordered_map<Key, spointer, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
-        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
         std::uint64_t publications_ = 0;
         std::uint64_t replacements_ = 0;
 
     public:
-        AssetMgr() = default;
-        virtual ~AssetMgr() { clear_assets(); }
-        [[nodiscard]] virtual spointer get_asset(const Key& key) const {
+        Store() = default;
+        virtual ~Store() { clear_assets(); }
+        [[nodiscard]] virtual Handle get_asset(const Key& key) const {
             std::shared_lock lock(assets_mutex_);
             if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
                 return asset->second;
@@ -126,7 +129,7 @@ namespace CE::Assets {
             std::shared_lock lock(assets_mutex_);
             return loaded_assets.size();
         }
-        [[nodiscard]] AssetCacheStats diagnostics() const {
+        [[nodiscard]] Stats diagnostics() const {
             std::shared_lock lock(assets_mutex_);
             return {domain_, loaded_assets.size(), publications_, replacements_};
         }
@@ -146,16 +149,16 @@ namespace CE::Assets {
         }
 
     protected:
-        explicit AssetMgr(const Allocator& allocator)
+        explicit Store(const Allocator& allocator)
         : loaded_assets(allocator) {}
 
-        spointer publish_asset(const Key& key, spointer asset) {
+        Handle publish_asset(const Key& key, Handle asset) {
             return publish_asset(key, std::move(asset), []() noexcept {});
         }
 
         // A derived cache can commit prepared metadata in the publication lock.
         // The callback must not throw or reenter this cache.
-        template <typename Published> spointer publish_asset(const Key& key, spointer asset, Published&& published) {
+        template <typename Published> Handle publish_asset(const Key& key, Handle asset, Published&& published) {
             static_assert(std::is_nothrow_invocable_v<Published>);
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
@@ -169,14 +172,14 @@ namespace CE::Assets {
             std::forward<Published>(published)();
             return entry->second;
         }
-        spointer replace_asset(const Key& key, spointer asset) {
+        Handle replace_asset(const Key& key, Handle asset) {
             if (!asset)
                 throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
-            spointer retired;
-            spointer result;
+            Handle retired;
+            Handle result;
             {
                 std::unique_lock lock(assets_mutex_);
-                const auto [entry, inserted] = loaded_assets.try_emplace(key, spointer{});
+                const auto [entry, inserted] = loaded_assets.try_emplace(key, Handle{});
                 if (inserted)
                     ++publications_;
                 else
@@ -189,7 +192,7 @@ namespace CE::Assets {
         /** Reserve raw slots for selective construction with emplace(). */
         template <typename Derived> auto reserve(const std::size_t N) {
             static_assert(std::is_base_of_v<AssetType, Derived>);
-            return Obj::ObjectReservation<Derived, Mem::ObjectPoolAllocator<Derived>>(N);
+            return CE::Memory::Objects::Reservation<Derived, CE::Memory::Allocators::ObjectPoolAllocator<Derived>>(N);
         }
 
         /** Provide raw object handles for callers that construct slots manually. */
@@ -198,14 +201,14 @@ namespace CE::Assets {
             if (N == 0) {
                 return {};
             }
-            using A_OPA = std::allocator_traits<Mem::ObjectPoolAllocator<Derived>>;
-            Mem::ObjectPoolAllocator<Derived> allocator;
+            using A_OPA = std::allocator_traits<CE::Memory::Allocators::ObjectPoolAllocator<Derived>>;
+            CE::Memory::Allocators::ObjectPoolAllocator<Derived> allocator;
             auto context = allocator.context();
             // Allocate one raw batch, then hand out independent per-slot
             // handles; the pool context outlives this temporary allocator.
             auto raw = A_OPA::allocate(allocator, N);
             std::shared_ptr<Derived> owner(raw, [](void* p) {});
-            Block<Derived> block{owner, owner, ptr::calculate_alignment(raw), N};
+            CE::Memory::Block<Derived> block{owner, owner, CE::Memory::Pointers::calculate_alignment(raw), N};
             // Manual callers must construct slots themselves. Their final
             // handle destroys its slot and returns exactly that slot to pool.
             return block.vector([context](Derived* p) noexcept {

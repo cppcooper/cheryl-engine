@@ -14,8 +14,8 @@
 #include <type_traits>
 #include <vector>
 
-namespace CE::Assets {
-    struct GLSLVariable {
+namespace CE::Rendering::OpenGL {
+    struct Variable {
         std::string name;
         GLenum type = 0;
         GLint size = 0;
@@ -23,7 +23,7 @@ namespace CE::Assets {
     };
 
     // GLSL naming belongs to this backend. Empty names omit roles a program does not use.
-    struct GLSLMaterialBindings {
+    struct MaterialBindings {
         std::string projection = "projectionMatrix";
         std::string view = "viewMatrix";
         std::string model = "modelMatrix";
@@ -32,25 +32,25 @@ namespace CE::Assets {
         std::string texture = "mytexture";
     };
 
-    struct GLSLProgram final : Shader {
+    struct Program final : CE::Rendering::Resources::Program {
     private:
-        RenderAPIs::OpenGLHandle program_;
-        GLSLMaterialBindings material_bindings_;
+        Handle program_;
+        MaterialBindings material_bindings_;
         std::map<std::string, int> uniforms_;
         std::map<std::string, int> attributes_;
-        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
 
     public:
-        explicit GLSLProgram(RenderAPIs::OpenGLHandle program);
+        explicit Program(Handle program);
         void use() override;
-        void bind_pass(const ShaderPass& pass) override;
-        void bind_draw(const ShaderDraw& draw) override;
-        void set_material_bindings(GLSLMaterialBindings bindings);
+        void bind_pass(const CE::Rendering::Parameters::PassSemantics& pass) override;
+        void bind_draw(const CE::Rendering::Parameters::DrawSemantics& draw) override;
+        void set_material_bindings(MaterialBindings bindings);
         void require_current() const { (void)program_.id(); }
         void require_linked() const;
-        [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
-        [[nodiscard]] std::vector<GLSLVariable> active_uniforms() const;
-        [[nodiscard]] std::vector<GLSLVariable> active_attributes() const;
+        [[nodiscard]] const ResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
+        [[nodiscard]] std::vector<Variable> active_uniforms() const;
+        [[nodiscard]] std::vector<Variable> active_attributes() const;
 
         template <glm::length_t dim> void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
         template <glm::length_t dim> void set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m);
@@ -71,7 +71,7 @@ namespace CE::Assets {
         int get_attribute_location(const char* name);
     };
 
-    template <glm::length_t dim> void GLSLProgram::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {
+    template <glm::length_t dim> void Program::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {
         // Resolve a linked program's uniform once, then choose the matching
         // GL upload at compile time from the vector's dimension.
         static_assert(2 <= dim && dim <= 4, "set_uniform_vec can only take 2-4D vectors");
@@ -88,8 +88,7 @@ namespace CE::Assets {
         }
     }
 
-    template <glm::length_t dim>
-    void GLSLProgram::set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m) {
+    template <glm::length_t dim> void Program::set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m) {
         // GLM's contiguous column-major storage is passed from its first
         // element; the dimension selects the appropriate matrix uniform call.
         static_assert(2 <= dim && dim <= 4, "set_uniform_matrix can only take 2-4D matrices");
@@ -106,7 +105,7 @@ namespace CE::Assets {
         }
     }
 
-    template <typename T> void GLSLProgram::set_uniform_value(const char* name, const T& v) {
+    template <typename T> void Program::set_uniform_value(const char* name, const T& v) {
         static_assert(
             std::is_same_v<T, GLfloat> || std::is_same_v<T, GLuint> || std::is_same_v<T, GLint> || std::is_same_v<T, bool>,
             "set_uniform_value must take a float, int, or bool"
@@ -126,10 +125,11 @@ namespace CE::Assets {
         }
     }
 }
+
 /* Important: no changelog will be updated Version 2.0 was quite a while ago
  * ..and that is why we're at the bottom of the file
  *
- * GLSLProgram is based on code from  the excellent text "OpenGL 4.0 Shading Language Cookbook"
+ * CE::Rendering::OpenGL::Program is based on code from  the excellent text "OpenGL 4.0 Shading Language Cookbook"
     by David Wolff.
     Modified by Darren Reid to suit Blit3D needs.
 

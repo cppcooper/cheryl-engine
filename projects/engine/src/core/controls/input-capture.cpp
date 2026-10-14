@@ -4,23 +4,23 @@
 
 #include <utility>
 
-namespace CE::Input {
-    CaptureLease::CaptureLease(std::shared_ptr<Detail::CaptureCounts> counts, const InputMode mode)
+namespace CE::Input::Capture {
+    Lease::Lease(std::shared_ptr<Detail::Counts> counts, const Channel mode)
     : counts_(std::move(counts)), mode_(mode) {
-        if (mode == InputMode::Events)
+        if (mode == Channel::Events)
             counts_->events.fetch_add(1);
-        else if (mode == InputMode::Text)
+        else if (mode == Channel::Text)
             counts_->text.fetch_add(1);
     }
 
-    CaptureLease::~CaptureLease() {
+    Lease::~Lease() {
         reset();
     }
 
-    CaptureLease::CaptureLease(CaptureLease&& other) noexcept
+    Lease::Lease(Lease&& other) noexcept
     : counts_(std::move(other.counts_)), mode_(other.mode_) {}
 
-    CaptureLease& CaptureLease::operator=(CaptureLease&& other) noexcept {
+    Lease& Lease::operator=(Lease&& other) noexcept {
         if (this != &other) {
             reset();
             counts_ = std::move(other.counts_);
@@ -29,51 +29,55 @@ namespace CE::Input {
         return *this;
     }
 
-    void CaptureLease::reset() noexcept {
+    void Lease::reset() noexcept {
         if (!counts_)
             return;
-        if (mode_ == InputMode::Events)
+        if (mode_ == Channel::Events)
             counts_->events.fetch_sub(1);
-        else if (mode_ == InputMode::Text)
+        else if (mode_ == Channel::Text)
             counts_->text.fetch_sub(1);
         counts_.reset();
     }
 
-    CaptureLease InputCapture::request(const InputMode mode) {
+    Lease Collector::request(const Channel mode) {
         switch (mode) {
-            case InputMode::State:
-            case InputMode::Events:
-            case InputMode::Text:
-                return CaptureLease(counts_, mode);
+            case Channel::State:
+            case Channel::Events:
+            case Channel::Text:
+                return Lease(counts_, mode);
         }
         throw Exceptions::invalid_args(CE_HERE, "Unknown input capture channel");
     }
 
-    void InputCapture::begin_poll(const KeyboardFocus focus) {
+    void Collector::begin_poll(const CE::Input::Routing::Focus focus) {
         events_enabled_ = counts_->events.load() != 0;
         text_enabled_ = counts_->text.load() != 0;
         focus_ = focus;
     }
 
-    void
-    InputCapture::record(const DeviceId device, const DeviceKind kind, InputRecordData data, const InputClock::time_point observed_at) {
-        const auto* text = std::get_if<TextEvent>(&data);
+    void Collector::record(
+        const CE::Input::DeviceId device,
+        const CE::Input::DeviceKind kind,
+        CE::Input::Events::Payload data,
+        const CE::Input::ObservationClock::time_point observed_at
+    ) {
+        const auto* text = std::get_if<CE::Input::Events::Text>(&data);
         if (text ? !text_enabled_ : !events_enabled_)
             return;
         if (text && (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF)))
             throw Exceptions::invalid_args(CE_HERE, "Text input requires a Unicode scalar value");
-        const bool keyboard = kind == DeviceKind::Keyboard || text;
+        const bool keyboard = kind == CE::Input::DeviceKind::Keyboard || text;
         pending_.push_back(
             {next_sequence_++, observed_at, device, kind, std::move(data), keyboard ? focus_.target : 0, keyboard ? focus_.epoch : 0,
-                !keyboard || focus_.target == 0 || focus_.routing == KeyboardRouting::PassThrough}
+             !keyboard || focus_.target == 0 || focus_.routing == CE::Input::Routing::KeyboardPolicy::PassThrough}
         );
     }
 
-    std::vector<InputRecord> InputCapture::complete() {
+    std::vector<CE::Input::Events::Record> Collector::complete() {
         return std::exchange(pending_, {});
     }
 
-    void InputCapture::discard_pending() {
+    void Collector::discard_pending() {
         pending_.clear();
         events_enabled_ = false;
         text_enabled_ = false;

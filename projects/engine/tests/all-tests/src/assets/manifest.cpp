@@ -19,10 +19,9 @@
 
 namespace {
     namespace fs = std::filesystem;
-    using namespace CE::Assets;
 
-    fs::path asset_file(const std::string& name) {
-        const auto graphics = fs::path(CHERYL_SOURCE_DIR) / "assets" / "graphics" / "definitions";
+    std::filesystem::path asset_file(const std::string& name) {
+        const auto graphics = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets" / "graphics" / "definitions";
         if (name == "atlas.json")
             return graphics / "MiniWorldSprites" / name;
         return graphics / "tilesets" / name;
@@ -32,8 +31,8 @@ namespace {
 TEST(asset_pivot, bottom_center_atlas_tile) {
     // Anchor an image rectangle at its bottom center, then inspect its two
     // independent triangles and their matching texture coordinates.
-    CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
-    CE::math::Anchor::MakePivot({0.5f, 1.0f}, vertices, 64, 32, 16, 8, 16, 8);
+    CE::Rendering::Geometry::Vertex2D vertices[CE::Rendering::Geometry::vertices_per_quad]{};
+    CE::Rendering::Geometry::Anchor::MakePivot({0.5f, 1.0f}, vertices, 64, 32, 16, 8, 16, 8);
 
     EXPECT_FLOAT_EQ(vertices[0].x, -8.0f);
     EXPECT_FLOAT_EQ(vertices[0].y, 0.0f);
@@ -47,15 +46,15 @@ TEST(asset_pivot, bottom_center_atlas_tile) {
     EXPECT_FLOAT_EQ(vertices[2].v, 0.75f);
     EXPECT_FLOAT_EQ(vertices[3].x, vertices[0].x);
     EXPECT_FLOAT_EQ(vertices[4].u, vertices[2].u);
-    EXPECT_EQ(CE::math::get_pivot(CE::math::BottomCenter), (CE::math::Pivot{0.5f, 1.0f}));
+    EXPECT_EQ(CE::Rendering::Geometry::get_pivot(CE::Rendering::Geometry::BottomCenter), (CE::Rendering::Geometry::Pivot{0.5f, 1.0f}));
 }
 
 TEST(asset_pivot, invalid_pivot_diagnostics) {
-    CE::Vertex2D vertices[CE::VAONumbers::vertices_per_quad]{};
+    CE::Rendering::Geometry::Vertex2D vertices[CE::Rendering::Geometry::vertices_per_quad]{};
 
     // An undefined pivot must report a usable argument error with source context.
     try {
-        CE::math::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
+        CE::Rendering::Geometry::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices, 64, 32, 16, 8);
         FAIL() << "An invalid pivot should throw";
     } catch (const CE::Exceptions::invalid_args& error) {
         EXPECT_NE(std::string(error.what()).find("A pivot must be normalized"), std::string::npos);
@@ -66,7 +65,7 @@ TEST(asset_pivot, invalid_pivot_diagnostics) {
 
 TEST(asset_grid, spaced_row_major_grid) {
     // Resolve the last cell of a spaced 2-by-3 grid and its occupied bounds.
-    const GridDefinition grid{.origin = {2, 3}, .frame = {10, 8}, .spacing = {1, 2}, .rows = 2, .columns = 3};
+    const CE::Assets::Grids::Definition grid{.origin = {2, 3}, .frame = {10, 8}, .spacing = {1, 2}, .rows = 2, .columns = 3};
 
     EXPECT_EQ(grid.cell_count(), std::size_t{6});
     EXPECT_EQ(grid.cell_index(1, 2), std::size_t{5});
@@ -82,10 +81,10 @@ TEST(asset_grid, spaced_row_major_grid) {
 
 TEST(asset_grid, tile_geometry) {
     // Build one quad against a known image size and inspect both geometry and UVs.
-    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
-    const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
+    const CE::Assets::Grids::Definition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
+    const auto geometry = CE::Assets::Grids::make_geometry(grid, {0.5f, 1.0f}, CE::Rendering::Geometry::PixelSize{32, 16});
 
-    ASSERT_EQ(geometry.vertex_count, CE::VAONumbers::vertices_per_strip_quad);
+    ASSERT_EQ(geometry.vertex_count, CE::Rendering::Geometry::vertices_per_strip_quad);
     ASSERT_NE(geometry.vertices, nullptr);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].x, -4.0f);
     EXPECT_FLOAT_EQ(geometry.vertices.get()[0].u, 0.125f);
@@ -94,8 +93,8 @@ TEST(asset_grid, tile_geometry) {
 
 TEST(asset_grid, separate_frame_strips) {
     // The second atlas cell starts a new four-corner range with its own UVs.
-    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 2};
-    const auto geometry = make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{32, 16});
+    const CE::Assets::Grids::Definition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 2};
+    const auto geometry = CE::Assets::Grids::make_geometry(grid, {0.5f, 1.0f}, CE::Rendering::Geometry::PixelSize{32, 16});
     ASSERT_EQ(geometry.vertex_count, 8u);
     ASSERT_NE(geometry.vertices, nullptr);
 
@@ -108,24 +107,30 @@ TEST(asset_grid, separate_frame_strips) {
 }
 
 TEST(asset_grid, image_too_small) {
-    const GridDefinition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
+    const CE::Assets::Grids::Definition grid{.origin = {4, 2}, .frame = {8, 6}, .rows = 1, .columns = 1};
 
     // A zero width and a width that ends before the tile both fail before
     // producing any geometry.
-    EXPECT_THROW(static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{0, 16})), CE::Exceptions::runtime_exception);
-    EXPECT_THROW(static_cast<void>(make_grid_geometry(grid, {0.5f, 1.0f}, PixelSize{8, 16})), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(
+        static_cast<void>(CE::Assets::Grids::make_geometry(grid, {0.5f, 1.0f}, CE::Rendering::Geometry::PixelSize{0, 16})),
+        CE::Exceptions::runtime_exception
+    );
+    EXPECT_THROW(
+        static_cast<void>(CE::Assets::Grids::make_geometry(grid, {0.5f, 1.0f}, CE::Rendering::Geometry::PixelSize{8, 16})),
+        CE::Exceptions::runtime_exception
+    );
 }
 
 TEST(asset_manifest, checked_in_manifests) {
-    FileMgr discovered(fs::path(CHERYL_SOURCE_DIR) / "assets");
-    FileRegistry files;
+    CE::Files::FileIndex discovered(std::filesystem::path(CHERYL_SOURCE_DIR) / "assets");
+    CE::Assets::Loading::FileRegistry files;
     files.register_files(discovered.get_files_of_type(".json"));
-    const auto definitions = ManifestLoader::load_graphics_definitions(files);
+    const auto definitions = CE::Assets::Manifests::Reader::load_graphics_definitions(files);
     ASSERT_EQ(definitions.assets.size(), std::size_t{12});
     ASSERT_EQ(definitions.shaders.size(), std::size_t{1});
     for (const auto& manifest : definitions.assets) {
         SCOPED_TRACE(manifest.source.string());
-        EXPECT_NO_THROW(static_cast<void>(ManifestLoader::load(manifest.source)));
+        EXPECT_NO_THROW(static_cast<void>(CE::Assets::Manifests::Reader::load(manifest.source)));
     }
     ASSERT_EQ(definitions.shaders.front().materials.size(), 2u);
     EXPECT_EQ(definitions.shaders.front().materials[0].id, "main:text");
@@ -134,7 +139,7 @@ TEST(asset_manifest, checked_in_manifests) {
 
 TEST(asset_manifest, profile_inheritance) {
     // Loading the atlas expands its profile definitions into sprites and tilesets.
-    const auto manifest = ManifestLoader::load(asset_file("atlas.json"));
+    const auto manifest = CE::Assets::Manifests::Reader::load(asset_file("atlas.json"));
     ASSERT_EQ(manifest.sprites.size(), std::size_t{101});
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{35});
 
@@ -142,7 +147,7 @@ TEST(asset_manifest, profile_inheritance) {
     const auto sprite = std::ranges::find_if(manifest.sprites, [](const auto& value) { return value.name == "soldier_swordsman_cyan"; });
     ASSERT_NE(sprite, manifest.sprites.end());
     EXPECT_EQ(sprite->id(), "miniworld:soldier_swordsman_cyan");
-    EXPECT_EQ(sprite->pivot, (CE::math::Pivot{0.5f, 1.0f}));
+    EXPECT_EQ(sprite->pivot, (CE::Rendering::Geometry::Pivot{0.5f, 1.0f}));
     ASSERT_EQ(sprite->animations.size(), std::size_t{20});
 
     // Follow its south-facing walk cycle through cell selection, timing, and looping.
@@ -159,7 +164,7 @@ TEST(asset_manifest, profile_inheritance) {
 
 TEST(asset_manifest, overworld_tileset) {
     // Load the overworld tileset and verify its derived views, animations, and autotiles.
-    const auto manifest = ManifestLoader::load(asset_file("punyworld-overworld.json"));
+    const auto manifest = CE::Assets::Manifests::Reader::load(asset_file("punyworld-overworld.json"));
     ASSERT_EQ(manifest.tilesets.size(), std::size_t{1});
     const auto& tileset = manifest.tilesets.front();
 
@@ -170,9 +175,9 @@ TEST(asset_manifest, overworld_tileset) {
     EXPECT_EQ(tileset.autotiles.size(), std::size_t{2});
     EXPECT_EQ(tileset.animations.at("tile-270").frames.size(), std::size_t{4});
 
-    // Check corner-based terrain and compare its total variant entries to its tile count.
-    const auto& terrain = std::get<WangAutotileDefinition>(tileset.autotiles.at("overworld"));
-    EXPECT_EQ(terrain.type, WangType::Corner);
+    // Check corner-based terrain and CE::Memory::Ordering its total variant entries to its tile count.
+    const auto& terrain = std::get<CE::Assets::Tilesets::WangRule>(tileset.autotiles.at("overworld"));
+    EXPECT_EQ(terrain.type, CE::Assets::Tilesets::WangType::Corner);
     EXPECT_EQ(terrain.terrains.size(), std::size_t{12});
     EXPECT_EQ(terrain.tiles.size(), std::size_t{168});
     EXPECT_FALSE(terrain.variants.empty());
@@ -183,8 +188,8 @@ TEST(asset_manifest, overworld_tileset) {
     EXPECT_EQ(terrain_variant_count, terrain.tiles.size());
 
     // Check the second autotile uses edge-based terrain with its own tile set.
-    const auto& pathways = std::get<WangAutotileDefinition>(tileset.autotiles.at("pathways"));
-    EXPECT_EQ(pathways.type, WangType::Edge);
+    const auto& pathways = std::get<CE::Assets::Tilesets::WangRule>(tileset.autotiles.at("pathways"));
+    EXPECT_EQ(pathways.type, CE::Assets::Tilesets::WangType::Edge);
     EXPECT_EQ(pathways.terrains.size(), std::size_t{3});
     EXPECT_EQ(pathways.tiles.size(), std::size_t{45});
     EXPECT_FALSE(pathways.variants.empty());
@@ -248,17 +253,17 @@ TEST(asset_manifest, sprite_and_tileset_sheet) {
     })json");
 
     // Resolve paths from graphics and cell coordinates within the grid.
-    const auto manifest = ManifestLoader::parse(input, "/tmp/assets/graphics/definitions/test.json");
+    const auto manifest = CE::Assets::Manifests::Reader::parse(input, "/tmp/assets/graphics/definitions/test.json");
     ASSERT_EQ(manifest.sprites.size(), std::size_t{1});
     const auto& sprite = manifest.sprites.front();
-    EXPECT_EQ(sprite.texture, fs::path("/tmp/assets/graphics/sheet.png"));
+    EXPECT_EQ(sprite.texture, std::filesystem::path("/tmp/assets/graphics/sheet.png"));
     EXPECT_EQ(sprite.orientations.at("east"), std::size_t{1});
     ASSERT_EQ(sprite.animations.size(), std::size_t{1});
     EXPECT_EQ(sprite.animations.front().frames[1].cell, std::size_t{3});
     EXPECT_EQ(sprite.animations.front().frames[1].duration, std::chrono::milliseconds(120));
 
     // Check the number of bit directions and the full-neighbor mask's cell mapping.
-    const auto& bitmask = std::get<BitmaskAutotileDefinition>(manifest.tilesets.front().autotiles.at("edges"));
+    const auto& bitmask = std::get<CE::Assets::Tilesets::BitmaskRule>(manifest.tilesets.front().autotiles.at("edges"));
     EXPECT_EQ(bitmask.bit_order.size(), std::size_t{4});
     EXPECT_EQ(bitmask.cases.at(15), std::size_t{1});
 }
@@ -292,7 +297,7 @@ TEST(asset_manifest, invalid_cell_reference) {
 
     // Parsing must reject the reference and identify its manifest in the error.
     try {
-        static_cast<void>(ManifestLoader::parse(input, "graphics/definitions/bad.json"));
+        static_cast<void>(CE::Assets::Manifests::Reader::parse(input, "graphics/definitions/bad.json"));
         FAIL() << "An out-of-range cell should throw";
     } catch (const CE::Exceptions::runtime_exception& error) {
         EXPECT_NE(std::string(error.what()).find("bad.json"), std::string::npos);

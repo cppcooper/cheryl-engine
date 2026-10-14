@@ -10,7 +10,7 @@
 #include <limits>
 #include <unordered_set>
 
-namespace CE::Assets {
+namespace CE::Rendering::OpenGL {
     namespace {
         using json = nlohmann::json;
 
@@ -32,7 +32,7 @@ namespace CE::Assets {
             return value.get<std::string>();
         }
 
-        GLSLPipelineBindings decode_bindings(const ShaderMaterialRecipe& recipe) {
+        PipelineBindings decode_bindings(const CE::Assets::Shaders::MaterialRecipe& recipe) {
             const auto selected = recipe.bindings.find("opengl");
             if (selected == recipe.bindings.end())
                 fail(recipe.id, "missing OpenGL bindings");
@@ -48,7 +48,7 @@ namespace CE::Assets {
                     return true;
                 });
                 fields(payload, recipe.id, {"attributes", "parameters"});
-                GLSLPipelineBindings result;
+                PipelineBindings result;
                 if (payload.contains("attributes")) {
                     const auto& attributes = payload.at("attributes");
                     fields(attributes, recipe.id, {"position", "texcoord", "color"});
@@ -63,7 +63,8 @@ namespace CE::Assets {
                     fail(recipe.id, "missing parameter bindings object");
                 std::unordered_set<std::string> uniforms;
                 for (const auto& item : payload.at("parameters").items()) {
-                    if (std::ranges::find(recipe.parameters, item.key(), &ShaderParameter::key) == recipe.parameters.end())
+                    if (std::ranges::find(recipe.parameters, item.key(), &CE::Assets::Shaders::ParameterRecipe::key) ==
+                        recipe.parameters.end())
                         fail(recipe.id, "binding is outside the parameter contract: '" + item.key() + "'");
                     auto uniform = name(item.value(), recipe.id);
                     if (!uniforms.emplace(uniform).second)
@@ -79,33 +80,40 @@ namespace CE::Assets {
         }
     }
 
-    void OpenGLResourceProvider::validate_program(const ShaderProgramRecipe& recipe) const {
-        validate_shader_program(recipe);
+    void ResourceProvider::validate_program(const CE::Assets::Shaders::ProgramRecipe& recipe) const {
+        CE::Assets::Shaders::validate_program(recipe);
         for (const auto& source : recipe.sources)
             if (source.bytes.empty() || source.bytes.size() > static_cast<std::size_t>(std::numeric_limits<GLint>::max()))
                 fail(recipe.id, "prepared source is empty or exceeds OpenGL's length range: '" + source.path.string() + "'");
     }
 
-    void OpenGLResourceProvider::validate_material(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program) const {
-        validate_shader_material(recipe, program);
+    void ResourceProvider::validate_material(
+        const CE::Assets::Shaders::MaterialRecipe& recipe,
+        const CE::Assets::Shaders::ProgramRecipe& program
+    ) const {
+        CE::Assets::Shaders::validate_material(recipe, program);
         static_cast<void>(decode_bindings(recipe));
     }
 
-    std::shared_ptr<Shader> OpenGLResourceProvider::build_program(const ShaderProgramRecipe& recipe) {
+    std::shared_ptr<CE::Rendering::Resources::Program> ResourceProvider::build_program(const CE::Assets::Shaders::ProgramRecipe& recipe) {
         validate_program(recipe);
-        return ProgramDetail::link_owned_program(renderer_.resources(), recipe);
+        return Detail::link_owned_program(renderer_.resources(), recipe);
     }
 
-    std::shared_ptr<const Material> OpenGLResourceProvider::build_material(
-        const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program, const std::shared_ptr<Shader>& executable
+    std::shared_ptr<const CE::Rendering::Resources::Material> ResourceProvider::build_material(
+        const CE::Assets::Shaders::MaterialRecipe& recipe,
+        const CE::Assets::Shaders::ProgramRecipe& program,
+        const std::shared_ptr<CE::Rendering::Resources::Program>& executable
     ) {
         validate_material(recipe, program);
-        auto native = std::dynamic_pointer_cast<GLSLProgram>(executable);
+        auto native = std::dynamic_pointer_cast<Program>(executable);
         if (!native || native->resource_domain() != renderer_.resources().get())
             fail(recipe.id, "selected program belongs to another backend/provider domain");
-        MaterialDefinition definition;
-        definition.pipeline = std::make_shared<GLSLPipeline>(shader_pipeline_definition(recipe, program), std::move(native), decode_bindings(recipe));
-        definition.defaults = shader_material_defaults(recipe);
+        CE::Rendering::Materials::Definition definition;
+        definition.pipeline = std::make_shared<Pipeline>(
+            CE::Assets::Shaders::pipeline_definition(recipe, program), std::move(native), decode_bindings(recipe)
+        );
+        definition.defaults = CE::Assets::Shaders::defaults(recipe);
         for (const auto& [key, options] : recipe.sampling)
             definition.sampling.emplace(key, create_sampler(options));
         return build_material(std::move(definition));

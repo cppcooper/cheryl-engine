@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace CE::TerminalDetail {
+namespace CE::Platform::Linux::DebugTerminal::Detail {
     inline constexpr char ready = 'R';
     inline constexpr char started = 'S';
     inline constexpr char normal_exit = 'N';

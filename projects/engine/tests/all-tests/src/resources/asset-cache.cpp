@@ -26,8 +26,8 @@ namespace std {
 }
 
 namespace {
-    struct Cache final : CE::Assets::AssetMgr<const int, CacheKey> {
-        spointer publish(const CacheKey& key, spointer candidate) { return publish_asset(key, std::move(candidate)); }
+    struct Cache final : CE::Assets::Cache::Store<const int, CacheKey> {
+        Handle publish(const CacheKey& key, Handle candidate) { return publish_asset(key, std::move(candidate)); }
     };
 
     struct AllocationControl {
@@ -73,19 +73,19 @@ namespace {
     };
 
     using AllocationCacheBase =
-        CE::Assets::AssetMgr<const int, CacheKey, FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>>;
+        CE::Assets::Cache::Store<const int, CacheKey, FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>>;
 
     struct AllocationCache final : AllocationCacheBase {
         explicit AllocationCache(const std::shared_ptr<AllocationControl>& control)
         : AllocationCacheBase(FailingCacheAllocator<std::pair<const CacheKey, std::shared_ptr<const int>>>{control}) {}
 
-        spointer publish(const CacheKey& key, spointer candidate) { return publish_asset(key, std::move(candidate)); }
+        Handle publish(const CacheKey& key, Handle candidate) { return publish_asset(key, std::move(candidate)); }
 
-        template <typename Published> spointer publish(const CacheKey& key, spointer candidate, Published&& published) {
+        template <typename Published> Handle publish(const CacheKey& key, Handle candidate, Published&& published) {
             return publish_asset(key, std::move(candidate), std::forward<Published>(published));
         }
 
-        spointer replace(const CacheKey& key, spointer candidate) { return replace_asset(key, std::move(candidate)); }
+        Handle replace(const CacheKey& key, Handle candidate) { return replace_asset(key, std::move(candidate)); }
 
         void require_growth() {
             std::unique_lock lock(assets_mutex_);

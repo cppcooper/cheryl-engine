@@ -17,9 +17,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace CE::SubSystems {
+namespace CE::Events {
     struct EventStats {
-        Diagnostics::DomainId domain = 0;
+        ::CE::Diagnostics::DomainId domain = 0;
         std::uint64_t registrations = 0;
         std::uint64_t active = 0;
         std::uint64_t dispatches = 0;
@@ -75,7 +75,7 @@ namespace CE::SubSystems {
             }
         };
         struct Counters {
-            const Diagnostics::DomainId domain = Diagnostics::next_domain_id();
+            const ::CE::Diagnostics::DomainId domain = ::CE::Diagnostics::next_domain_id();
             std::atomic<std::uint64_t> invocations{0};
             std::atomic<std::uint64_t> queued_failures{0};
             std::atomic<std::uint64_t> discarded{0};
@@ -123,7 +123,7 @@ namespace CE::SubSystems {
             std::weak_ptr<State> bus_;
             std::weak_ptr<Listener> listener_;
             std::uint64_t id_ = 0;
-            Diagnostics::DomainId bus_id_ = 0;
+            ::CE::Diagnostics::DomainId bus_id_ = 0;
 
             Registration(const std::shared_ptr<State>& bus, const std::shared_ptr<Listener>& listener, std::uint64_t id)
             : bus_(bus), listener_(listener), id_(id), bus_id_(bus->counters->domain) {}
@@ -131,7 +131,7 @@ namespace CE::SubSystems {
         public:
             Registration() = default;
             [[nodiscard]] std::uint64_t id() const { return id_; }
-            [[nodiscard]] Diagnostics::DomainId bus_id() const { return bus_id_; }
+            [[nodiscard]] ::CE::Diagnostics::DomainId bus_id() const { return bus_id_; }
         };
 
         EventBus() = default;
@@ -153,10 +153,10 @@ namespace CE::SubSystems {
         void dispatch(const std::string& event, const std::any& payload);
         // Exact name/type channel; callback copies/registration and delivery obey
         // the same lifetime as named listeners. Empty callbacks reject as usual.
-        template <EventPayload Payload>
+        template <::CE::Events::EventPayload Payload>
         Registration register_listener(
-            const EventChannel<Payload>& event,
-            typename EventChannel<Payload>::Callback callback,
+            const ::CE::Events::EventChannel<Payload>& event,
+            typename ::CE::Events::EventChannel<Payload>::Callback callback,
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         ) {
@@ -173,9 +173,9 @@ namespace CE::SubSystems {
         }
         // Own an exact-type payload before dispatch. Construction failure reaches
         // the producer; per-listener queued failures reach their existing error sink.
-        template <EventPayload Payload, typename Value>
+        template <::CE::Events::EventPayload Payload, typename Value>
             requires std::same_as<std::remove_cvref_t<Value>, Payload> && std::is_constructible_v<Payload, Value&&>
-        void dispatch(const EventChannel<Payload>& event, Value&& payload) {
+        void dispatch(const ::CE::Events::EventChannel<Payload>& event, Value&& payload) {
             auto owned = std::make_any<Payload>(std::forward<Value>(payload));
             dispatch_channel(event.name(), typeid(Payload), owned);
         }
@@ -187,7 +187,7 @@ namespace CE::SubSystems {
         // Every concurrent close returns after all invocation gates are closed.
         // Already-running callbacks retain ownership and are not waited for.
         void close();
-        [[nodiscard]] EventStats diagnostics() const;
+        [[nodiscard]] ::CE::Events::EventStats diagnostics() const;
         // Explicit unlocked observer; registry edits/native callbacks/destructors
         // do not emit ordinary logs. Payloads and names are not sampled.
         void report_diagnostics() const noexcept;

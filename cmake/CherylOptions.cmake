@@ -105,6 +105,8 @@ function(cheryl_check_option_requirements)
 endfunction()
 
 function(cheryl_configure_root_options)
+    cheryl_option(CHERYL_BUILD_DOCS
+            "Add documentation tooling and generation targets" OFF)
     cheryl_option(CHERYL_BUILD_SDK
             "Enable installation of the selected libraries, headers and dependencies" OFF)
     cheryl_option(WARN
@@ -136,6 +138,9 @@ function(cheryl_configure_root_options)
 
     cheryl_option(CHERYL_BUILD_DEMO
             "Build the windowed demonstration application" ON
+            REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
+    cheryl_option(CHERYL_BUILD_FIRST_GAME
+            "Build the maintained getting-started game" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
 
     cheryl_option(CHERYL_BUILD_TESTS

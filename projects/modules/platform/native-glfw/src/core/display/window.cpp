@@ -16,14 +16,14 @@
 
 namespace {
     const char* generate_title();
-    GLFWwindow* create_native_window(GLFWmonitor*, CE::Enum::window_mode, int, int, const std::string&);
+    GLFWwindow* create_native_window(GLFWmonitor*, ::CE::Platform::WindowMode, int, int, const std::string&);
 }
 
-namespace CE {
+namespace CE::Platform::GLFW {
     Window::Window(
-        const Monitor& monitor,
+        const ::CE::Platform::Monitor& monitor,
         GLFWmonitor* native_monitor,
-        const Enum::window_mode mode,
+        const ::CE::Platform::WindowMode mode,
         const int width,
         const int height,
         const std::string& title
@@ -36,7 +36,7 @@ namespace CE {
       windowed_width_(width),
       windowed_height_(height) {
         glfwGetMonitorPos(glfw_monitor_, &windowed_x_, &windowed_y_);
-        if (mode == Enum::window_mode::NORMAL) {
+        if (mode == ::CE::Platform::WindowMode::NORMAL) {
             glfwSetWindowPos(glfw_window_, windowed_x_, windowed_y_);
         }
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
@@ -46,7 +46,7 @@ namespace CE {
         glfwSetWindowSizeCallback(glfw_window_, on_window_size);
         glfwSetFramebufferSizeCallback(glfw_window_, on_framebuffer_size);
         CE_LOG_INFO(
-            CE::platformlog,
+            ::CE::Logging::Categories::platform,
             "subsystem=window domain={} operation=create mode={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
             domain_, static_cast<int>(window_mode_), logical_size_.width, logical_size_.height, framebuffer_size_.width,
             framebuffer_size_.height
@@ -59,24 +59,24 @@ namespace CE {
         glfwSetWindowUserPointer(glfw_window_, nullptr);
         glfwDestroyWindow(glfw_window_);
         if (native_failure_)
-            Diagnostics::report_failure("window destruction with an unconsumed callback failure", native_failure_);
+            ::CE::Diagnostics::report_failure("window destruction with an unconsumed callback failure", native_failure_);
     }
 
     void Window::on_window_size(GLFWwindow* handle, const int width, const int height) noexcept {
-        DisplayDetail::NativeCallbackScope callback_scope;
+        Detail::NativeCallbackScope callback_scope;
         auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
         if (!window)
             return;
         window->logical_size_ = {width, height};
         ++window->resize_observations_;
-        if (window->window_mode_ == Enum::window_mode::NORMAL) {
+        if (window->window_mode_ == ::CE::Platform::WindowMode::NORMAL) {
             window->windowed_width_ = width;
             window->windowed_height_ = height;
         }
     }
 
     void Window::on_framebuffer_size(GLFWwindow* handle, const int width, const int height) noexcept {
-        DisplayDetail::NativeCallbackScope callback_scope;
+        Detail::NativeCallbackScope callback_scope;
         auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
         if (!window)
             return;
@@ -94,20 +94,20 @@ namespace CE {
     }
 
     void Window::check_native_failure() const {
-        DisplayDetail::report_glfw_diagnostics("platform_observation");
+        Detail::report_glfw_diagnostics("platform_observation");
         if (native_failure_) {
-            if (!DisplayDetail::NativeCallbackScope::active())
-                Diagnostics::report_outcome("window", domain_, "framebuffer_callback", "failed");
+            if (!Detail::NativeCallbackScope::active())
+                ::CE::Diagnostics::report_outcome("window", domain_, "framebuffer_callback", "failed");
             std::rethrow_exception(std::exchange(native_failure_, {}));
         }
-        if (DisplayDetail::NativeCallbackScope::active())
+        if (Detail::NativeCallbackScope::active())
             return;
         const auto now = std::chrono::steady_clock::now();
         if (resize_observations_ && now >= next_diagnostic_) {
             const auto count = std::exchange(resize_observations_, 0);
             next_diagnostic_ = now + std::chrono::seconds{2};
             CE_LOG_DEBUG(
-                CE::platformlog,
+                ::CE::Logging::Categories::platform,
                 "subsystem=window domain={} operation=resize observations={} logical_width={} logical_height={} pixel_width={} pixel_height={}",
                 domain_, count, logical_size_.width, logical_size_.height, framebuffer_size_.width, framebuffer_size_.height
             );
@@ -115,28 +115,28 @@ namespace CE {
     }
 
     void Window::update_framebuffer_size(const int width, const int height) {
-        if (framebuffer_size_ == FramebufferSize{width, height})
+        if (framebuffer_size_ == ::CE::Platform::FramebufferSize{width, height})
             return;
         framebuffer_size_ = {width, height};
         ++resize_observations_;
         // Consumers recompute pixel-dependent state (for example, camera projection) on this event.
         // Keep one observation across both channels, even if a legacy listener
         // changes the window again. Legacy delivery keeps its existing order/failure boundary.
-        const WindowResized resized{this, framebuffer_size_};
-        auto& events = SubSystems::EventSystem::get();
+        const ::CE::Platform::WindowResized resized{this, framebuffer_size_};
+        auto& events = ::CE::Events::EventSystem::get();
         events.dispatch("window-resized", resized);
-        events.dispatch(window_resized_event, resized);
+        events.dispatch(::CE::Platform::window_resized_event, resized);
     }
 
     void Window::resize(const int width, const int height) {
         check_native_failure();
         if (width <= 0 || height <= 0)
-            throw Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
         glfwSetWindowSize(glfw_window_, width, height);
         // Query the accepted logical size and remember it only for ordinary
         // windows; fullscreen restoration uses the last windowed dimensions.
         glfwGetWindowSize(glfw_window_, &logical_size_.width, &logical_size_.height);
-        if (window_mode_ == Enum::window_mode::NORMAL) {
+        if (window_mode_ == ::CE::Platform::WindowMode::NORMAL) {
             windowed_width_ = logical_size_.width;
             windowed_height_ = logical_size_.height;
         }
@@ -148,38 +148,41 @@ namespace CE {
         update_framebuffer_size(framebuffer_width, framebuffer_height);
     }
 
-    void Window::set_mode(const Enum::window_mode mode) {
+    void Window::set_mode(const ::CE::Platform::WindowMode mode) {
         check_native_failure();
         if (window_mode_ == mode)
             return;
-        if (mode != Enum::window_mode::NORMAL && mode != Enum::window_mode::BORDERLESS && mode != Enum::window_mode::FULLSCREEN)
-            throw Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+        if (mode != ::CE::Platform::WindowMode::NORMAL && mode != ::CE::Platform::WindowMode::BORDERLESS &&
+            mode != ::CE::Platform::WindowMode::FULLSCREEN)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
         const GLFWvidmode* vidmode = glfwGetVideoMode(glfw_monitor_);
         if (!vidmode) {
-            throw Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "glfwGetVideoMode() failed to return the video mode");
         }
 
         // Save the ordinary window placement before changing modes so NORMAL can restore it.
-        if (window_mode_ == Enum::window_mode::NORMAL) {
+        if (window_mode_ == ::CE::Platform::WindowMode::NORMAL) {
             glfwGetWindowPos(glfw_window_, &windowed_x_, &windowed_y_);
             glfwGetWindowSize(glfw_window_, &windowed_width_, &windowed_height_);
         }
         window_mode_ = mode;
-        if (!DisplayDetail::NativeCallbackScope::active())
-            CE_LOG_DEBUG(CE::platformlog, "subsystem=window domain={} operation=mode value={}", domain_, static_cast<int>(mode));
+        if (!Detail::NativeCallbackScope::active())
+            CE_LOG_DEBUG(
+                ::CE::Logging::Categories::platform, "subsystem=window domain={} operation=mode value={}", domain_, static_cast<int>(mode)
+            );
         // Windowed and borderless use a detached monitor; fullscreen attaches
         // the selected monitor at its video mode and refresh rate.
         switch (mode) {
-            case Enum::window_mode::NORMAL:
+            case ::CE::Platform::WindowMode::NORMAL:
                 glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
                 glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_TRUE);
                 break;
-            case Enum::window_mode::BORDERLESS:
+            case ::CE::Platform::WindowMode::BORDERLESS:
                 glfwSetWindowMonitor(glfw_window_, nullptr, windowed_x_, windowed_y_, windowed_width_, windowed_height_, 0);
                 glfwSetWindowAttrib(glfw_window_, GLFW_DECORATED, GLFW_FALSE);
                 break;
-            case Enum::window_mode::FULLSCREEN:
+            case ::CE::Platform::WindowMode::FULLSCREEN:
                 glfwSetWindowMonitor(glfw_window_, glfw_monitor_, 0, 0, monitor_.width, monitor_.height, vidmode->refreshRate);
                 break;
         }
@@ -205,23 +208,24 @@ namespace CE {
 namespace {
     GLFWwindow* create_native_window(
         GLFWmonitor* monitor,
-        const CE::Enum::window_mode mode,
+        const ::CE::Platform::WindowMode mode,
         const int width,
         const int height,
         const std::string& title
     ) {
         if (width <= 0 || height <= 0)
-            throw CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
-        if (mode != CE::Enum::window_mode::NORMAL && mode != CE::Enum::window_mode::BORDERLESS && mode != CE::Enum::window_mode::FULLSCREEN)
-            throw CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Window dimensions must be positive");
+        if (mode != ::CE::Platform::WindowMode::NORMAL && mode != ::CE::Platform::WindowMode::BORDERLESS &&
+            mode != ::CE::Platform::WindowMode::FULLSCREEN)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown window mode");
 
         // The initial mode decides decoration and whether GLFW attaches the monitor.
-        glfwWindowHint(GLFW_DECORATED, mode == CE::Enum::window_mode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
-        auto* fullscreen_monitor = mode == CE::Enum::window_mode::FULLSCREEN ? monitor : nullptr;
+        glfwWindowHint(GLFW_DECORATED, mode == ::CE::Platform::WindowMode::NORMAL ? GLFW_TRUE : GLFW_FALSE);
+        auto* fullscreen_monitor = mode == ::CE::Platform::WindowMode::FULLSCREEN ? monitor : nullptr;
         auto* native = glfwCreateWindow(width, height, title.empty() ? generate_title() : title.c_str(), fullscreen_monitor, nullptr);
         if (!native) {
-            CE::DisplayDetail::report_glfw_diagnostics("create_window", true);
-            throw CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
+            ::CE::Platform::GLFW::Detail::report_glfw_diagnostics("create_window", true);
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Failed to create a GLFW window");
         }
         return native;
     }

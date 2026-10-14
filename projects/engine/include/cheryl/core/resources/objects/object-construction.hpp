@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace CE::Obj {
+namespace CE::Memory::Objects {
     /**
      * Tracks raw/live slots independently of singleton teardown. Distinct slots
      * may be constructed/destroyed concurrently; overlapping operations on a
@@ -15,7 +15,7 @@ namespace CE::Obj {
      * on other slots. Public static operations use the shared T context; final
      * owners capture that context and never consult static storage during release.
      */
-    template <typename T> struct ObjCtor {
+    template <typename T> struct Constructor {
         class Context {
             enum class Phase { raw, constructing, live, destroying };
             std::mutex mutex_;
@@ -38,7 +38,7 @@ namespace CE::Obj {
                         entry->second = previous == Phase::live ? Phase::destroying : Phase::constructing;
                 }
                 if (busy)
-                    throw Exceptions::bad_request(CE_HERE, "Object slot already has a construction or destruction in progress.");
+                    throw ::CE::Exceptions::bad_request(CE_HERE, "Object slot already has a construction or destruction in progress.");
                 return previous;
             }
 
@@ -102,7 +102,7 @@ namespace CE::Obj {
                     }
                 }
                 if (active)
-                    throw Exceptions::bad_request(CE_HERE, "Cannot erase tracking for a live or busy object slot.");
+                    throw ::CE::Exceptions::bad_request(CE_HERE, "Cannot erase tracking for a live or busy object slot.");
             }
         };
 

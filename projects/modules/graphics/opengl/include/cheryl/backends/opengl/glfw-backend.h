@@ -7,17 +7,17 @@
 #include <string>
 
 namespace CE::Input {
-    class iInputSystem;
+    class System;
 }
 
-namespace CE::Engine {
-    struct GlfwOpenGLConfig {
+namespace CE::Application::GLFWOpenGL {
+    struct Options {
         int width = 1280;
         int height = 720;
-        Enum::window_mode mode = Enum::window_mode::NORMAL;
+        CE::Platform::WindowMode mode = CE::Platform::WindowMode::NORMAL;
         std::string title; // Empty uses the original randomized window titles.
         int swap_interval = 1;
-        ExecutionOptions execution;
+        CE::Runtime::ExecutionOptions execution;
     };
 
     /** Assemble the GLFW display/window, its OpenGL presentation context,
@@ -27,9 +27,8 @@ namespace CE::Engine {
      * Runtime initialization makes the
      * context current and attaches input before game initialization.
      */
-    [[nodiscard]] std::unique_ptr<EngineContext>
-    make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config = GlfwOpenGLConfig{});
+    [[nodiscard]] std::unique_ptr<CE::Runtime::Context> make_context(CE::Input::System& input, const Options& config = Options{});
 #if CHERYL_NATIVE_INPUT
-    [[nodiscard]] std::unique_ptr<EngineContext> make_glfw_opengl_context(const GlfwOpenGLConfig& config = GlfwOpenGLConfig{});
+    [[nodiscard]] std::unique_ptr<CE::Runtime::Context> make_context(const Options& config = Options{});
 #endif
 }

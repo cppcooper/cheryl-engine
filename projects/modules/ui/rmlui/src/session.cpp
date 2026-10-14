@@ -27,11 +27,11 @@ namespace CE::UI::RmlUi {
             double GetElapsedTime() override { return elapsed; }
             bool LogMessage(const Rml::Log::Type type, const Rml::String& message) override {
                 if (type == Rml::Log::LT_ERROR || type == Rml::Log::LT_ASSERT)
-                    CE_LOG_ERROR(CE::renderlog, "subsystem=rmlui message={}", message);
+                    CE_LOG_ERROR(CE::Logging::Categories::rendering, "subsystem=rmlui message={}", message);
                 else if (type == Rml::Log::LT_WARNING)
-                    CE_LOG_WARN(CE::renderlog, "subsystem=rmlui message={}", message);
+                    CE_LOG_WARN(CE::Logging::Categories::rendering, "subsystem=rmlui message={}", message);
                 else
-                    CE_LOG_DEBUG(CE::renderlog, "subsystem=rmlui message={}", message);
+                    CE_LOG_DEBUG(CE::Logging::Categories::rendering, "subsystem=rmlui message={}", message);
                 return true;
             }
             void SetMouseCursor(const Rml::String&) override {}
@@ -85,43 +85,43 @@ namespace CE::UI::RmlUi {
             return static_cast<int>(rounded);
         }
 
-        void pointer(Rml::Context& context, const Input::PointerEvent& position, const int flags) {
+        void pointer(Rml::Context& context, const CE::Input::Events::Pointer& position, const int flags) {
             context.ProcessMouseMove(coordinate(position.x), coordinate(position.y), flags);
         }
 
-        int mouse_button(const Input::MouseButton button) {
+        int mouse_button(const CE::Input::MouseButton button) {
             switch (button) {
-                case Input::MouseButton::Left:
+                case CE::Input::MouseButton::Left:
                     return 0;
-                case Input::MouseButton::Right:
+                case CE::Input::MouseButton::Right:
                     return 1;
-                case Input::MouseButton::Middle:
+                case CE::Input::MouseButton::Middle:
                     return 2;
                 default:
                     return -1;
             }
         }
 
-        bool clipboard_shortcut(const Input::ButtonEvent& event) {
-            const bool command = Input::has_modifier(event.modifiers, Input::Modifiers::Control) ||
-                                 Input::has_modifier(event.modifiers, Input::Modifiers::Super);
-            const bool shift = Input::has_modifier(event.modifiers, Input::Modifiers::Shift);
-            using Key = Input::KeyboardKey;
+        bool clipboard_shortcut(const CE::Input::Events::Button& event) {
+            const bool command = CE::Input::has_modifier(event.modifiers, CE::Input::Modifiers::Control) ||
+                                 CE::Input::has_modifier(event.modifiers, CE::Input::Modifiers::Super);
+            const bool shift = CE::Input::has_modifier(event.modifiers, CE::Input::Modifiers::Shift);
+            using Key = CE::Input::KeyboardKey;
             return (command && (event.key == Key::C || event.key == Key::X || event.key == Key::V || event.key == Key::Insert)) ||
                    (shift && (event.key == Key::Insert || event.key == Key::Delete));
         }
     }
 
     struct Session::State {
-        Input::iInputSystem& input;
-        const Input::FocusId target;
+        CE::Input::System& input;
+        const CE::Input::Routing::TargetId target;
         const std::thread::id thread = std::this_thread::get_id();
         const Capabilities capabilities;
-        Input::CaptureLease events;
-        Input::CaptureLease text;
-        Input::FocusLease focus;
+        CE::Input::Capture::Lease events;
+        CE::Input::Capture::Lease text;
+        CE::Input::Routing::Lease focus;
         std::uint64_t focus_epoch = 0;
-        Input::Modifiers modifier_state = Input::Modifiers::None;
+        CE::Input::Modifiers modifier_state = CE::Input::Modifiers::None;
         bool drawable = false;
         bool pointer_view = false;
         bool pointer_active = false;
@@ -133,11 +133,11 @@ namespace CE::UI::RmlUi {
         LibraryLease library;
         Rml::Context* context = nullptr;
 
-        State(Input::iInputSystem& source, const Input::FocusId id, const SessionOptions options)
+        State(CE::Input::System& source, const CE::Input::Routing::TargetId id, const SessionOptions options)
         : input(source),
           target(id),
-          capabilities{source.supports_focus(), source.supports(Input::InputMode::Text)},
-          events(source.capture(Input::InputMode::Events)),
+          capabilities{source.supports_focus(), source.supports(CE::Input::Capture::Channel::Text)},
+          events(source.capture(CE::Input::Capture::Channel::Events)),
           renderer(options.maximum_texture_size),
           library(system, renderer) {
             context = Rml::CreateContext("cheryl-ui", {1, 1});
@@ -148,7 +148,7 @@ namespace CE::UI::RmlUi {
         }
     };
 
-    Session::Session(Input::iInputSystem& input, const Input::FocusId target, const SessionOptions options) {
+    Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
         if (target == 0)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi requires a nonzero focus target");
         if (options.maximum_texture_size < 1024)
@@ -190,7 +190,7 @@ namespace CE::UI::RmlUi {
         return Rml::LoadFontFace({copy.data(), copy.size()}, family, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Auto, fallback);
     }
 
-    void Session::set_view(const ViewPort<int> logical, const FramebufferSize framebuffer) {
+    void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {
         auto& state = owner();
         if (logical.width < 0 || logical.height < 0 || framebuffer.width < 0 || framebuffer.height < 0)
             throw Exceptions::invalid_args(CE_HERE, "RmlUi window dimensions must be nonnegative");
@@ -209,11 +209,11 @@ namespace CE::UI::RmlUi {
             throw Exceptions::failed_operation(CE_HERE, "RmlUi context update failed");
     }
 
-    void Session::request_keyboard_focus(const Input::KeyboardRouting routing) {
+    void Session::request_keyboard_focus(const CE::Input::Routing::KeyboardPolicy routing) {
         auto& state = owner();
         if (!state.capabilities.keyboard_focus || !state.capabilities.committed_text)
             throw Exceptions::failed_operation(CE_HERE, "RmlUi keyboard focus requires routed committed text support");
-        auto text = state.input.capture(Input::InputMode::Text);
+        auto text = state.input.capture(CE::Input::Capture::Channel::Text);
         auto focus = state.input.routing().focus(state.target, routing);
         state.text = std::move(text);
         state.focus = std::move(focus);
@@ -232,14 +232,14 @@ namespace CE::UI::RmlUi {
         return owner().focus.owns_focus();
     }
 
-    void Session::handle_input(const std::span<const Input::InputRecord> records, const bool pointer_selected) {
+    void Session::handle_input(const std::span<const CE::Input::Events::Record> records, const bool pointer_selected) {
         handle_input(records, pointer_selected, {});
     }
 
     void Session::handle_input(
-        const std::span<const Input::InputRecord> records,
+        const std::span<const CE::Input::Events::Record> records,
         bool pointer_selected,
-        const std::function<bool(const Input::InputRecord&)>& before_record
+        const std::function<bool(const CE::Input::Events::Record&)>& before_record
     ) {
         auto& state = owner();
         const auto focus_epoch = state.focus_epoch;
@@ -253,14 +253,14 @@ namespace CE::UI::RmlUi {
             if (before_record)
                 pointer_selected = before_record(record);
             leave_unselected_pointer();
-            const auto* button = std::get_if<Input::ButtonEvent>(&record.data);
-            if (button && (record.device_kind == Input::DeviceKind::Keyboard || record.device_kind == Input::DeviceKind::Mouse))
+            const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+            if (button && (record.device_kind == CE::Input::DeviceKind::Keyboard || record.device_kind == CE::Input::DeviceKind::Mouse))
                 state.modifier_state = button->modifiers;
-            const bool keyboard = record.is_text() || record.device_kind == Input::DeviceKind::Keyboard;
+            const bool keyboard = record.is_text() || record.device_kind == CE::Input::DeviceKind::Keyboard;
             if (keyboard) {
                 if (record.target != state.target || focus_epoch == 0 || record.focus_epoch != focus_epoch)
                     continue;
-                if (const auto* text = std::get_if<Input::TextEvent>(&record.data)) {
+                if (const auto* text = std::get_if<CE::Input::Events::Text>(&record.data)) {
                     if (text->codepoint > 0x10FFFF || (text->codepoint >= 0xD800 && text->codepoint <= 0xDFFF))
                         throw Exceptions::invalid_args(CE_HERE, "RmlUi text input requires a Unicode scalar");
                     state.context->ProcessTextInput(static_cast<Rml::Character>(text->codepoint));
@@ -268,29 +268,29 @@ namespace CE::UI::RmlUi {
                     const auto key = keyboard_key(button->key);
                     if (key == Rml::Input::KI_UNKNOWN || clipboard_shortcut(*button))
                         continue;
-                    if (button->phase == Input::ButtonPhase::Release)
+                    if (button->phase == CE::Input::Events::ButtonPhase::Release)
                         state.context->ProcessKeyUp(key, modifiers(button->modifiers));
                     else
                         state.context->ProcessKeyDown(key, modifiers(button->modifiers));
                 }
-            } else if (record.device_kind == Input::DeviceKind::Mouse && pointer_selected && state.pointer_view) {
+            } else if (record.device_kind == CE::Input::DeviceKind::Mouse && pointer_selected && state.pointer_view) {
                 const int flags = modifiers(state.modifier_state);
-                if (const auto* move = std::get_if<Input::PointerEvent>(&record.data)) {
+                if (const auto* move = std::get_if<CE::Input::Events::Pointer>(&record.data)) {
                     pointer(*state.context, *move, flags);
                     state.pointer_active = true;
                 } else if (button) {
                     const int index = mouse_button(button->mouse_button);
-                    if (index < 0 || button->phase == Input::ButtonPhase::Repeat)
+                    if (index < 0 || button->phase == CE::Input::Events::ButtonPhase::Repeat)
                         continue;
                     if (!button->position)
                         throw Exceptions::invalid_args(CE_HERE, "RmlUi pointer buttons need an observation-time position");
                     pointer(*state.context, *button->position, flags);
                     state.pointer_active = true;
-                    if (button->phase == Input::ButtonPhase::Release)
+                    if (button->phase == CE::Input::Events::ButtonPhase::Release)
                         state.context->ProcessMouseButtonUp(index, flags);
                     else
                         state.context->ProcessMouseButtonDown(index, flags);
-                } else if (const auto* scroll = std::get_if<Input::ScrollEvent>(&record.data)) {
+                } else if (const auto* scroll = std::get_if<CE::Input::Events::Scroll>(&record.data)) {
                     if (!scroll->position || !std::isfinite(scroll->x) || !std::isfinite(scroll->y) ||
                         !std::isfinite(static_cast<float>(scroll->x)) || !std::isfinite(static_cast<float>(scroll->y)))
                         throw Exceptions::invalid_args(CE_HERE, "RmlUi scrolling needs a position and finite representable deltas");

@@ -4,8 +4,8 @@
 #include <memory>
 #include <string_view>
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 }
 
 // Small application-owned audio example: stream music, play a decoded effect,
@@ -15,7 +15,7 @@ class DemoAudio final {
     std::unique_ptr<AudioState> audio_state_;
 
 public:
-    explicit DemoAudio(CE::Engine::EngineContext& engine);
+    explicit DemoAudio(CE::Runtime::Context& engine);
     ~DemoAudio();
     DemoAudio(const DemoAudio&) = delete;
     DemoAudio& operator=(const DemoAudio&) = delete;

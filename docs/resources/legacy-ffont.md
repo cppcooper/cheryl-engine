@@ -1,6 +1,7 @@
-# FFont deprecation and font-file migration
+# Legacy bitmap fonts
 
-FFont is deprecated in favor of STBFont with a caller-supplied font file. Its
+`CE::Text::Legacy::BitmapFont` (formerly `FFont`) is deprecated in favor of
+`CE::Text::Legacy::AsciiFont` (formerly `STBFont`) with a caller-supplied font file. Its
 deprecation originally followed the loss of its metrics/atlas inputs; those inputs
 have since been recovered in the assets submodule. Recovery does not reverse the
 deprecation or change the loader contract.
@@ -8,19 +9,19 @@ The class, singleton setup, typed bank selection, and loading behavior remain
 available to legacy consumers that supply compatible metrics and artwork. This
 decision does not remove the Font resource/layout interface.
 
-STBFont::load_font(path, font_size, provider) reads the supplied font file and bakes
+`AsciiFont::load_font(path, font_size, provider)` reads the supplied font file and bakes
 printable-ASCII geometry, advances, line height, and an alpha atlas. System-font
 discovery only helps locate a default; it does not restrict this loader. A bundled
 font uses the same entry point. The
-[FontMgr guide](../assets/file-and-font-discovery.md#fontmgr-loading-and-default-lifetime)
+[legacy font cache guide](../assets/file-and-font-discovery.md#legacy-font-cache)
 owns collection-face, default selection and loading policy. The separate
 [Unicode service](../assets/text-layout.md) supports shaped text and fallback while
 preserving legacy font interfaces.
 
-FFont's normalized advances and 1/128 local newline step differ from STBFont's
+BitmapFont's normalized advances and 1/128 local newline step differ from AsciiFont's
 baked advances and line height. Callers migrating their text must choose the font
-size and draw scale deliberately. An alternate bank has no STBFont equivalent;
-select a suitable separate font instead. STBFont currently rejects that legacy
+size and draw scale deliberately. An alternate bank has no AsciiFont equivalent;
+select a suitable separate font instead. AsciiFont currently rejects that legacy
 layout option. Deprecation does not silently reinterpret existing layout calls.
 
 ## Legacy layout
@@ -31,7 +32,7 @@ layout option. Deprecation does not silently reinterpret existing layout calls.
 | Pen advance | Glyph/space width is divided by 128, then multiplied by DrawStyle2D.scale during submission. Space advances without a packet. |
 | Newline | Reset local x and subtract 1/128 from local y; submission applies the caller's scale and model to every line. |
 | Rotation | One caller model controls all glyphs/lines. Newlines follow the model's local axes. |
-| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in FFont; STBFont uses a four-space advance. |
+| Unsupported bytes | Controls/high bytes use `?`, except newline and ignored carriage return. A tab also uses fallback in BitmapFont; AsciiFont uses a four-space advance. |
 | State and lifetime | Layout does not store caller text/format. Each resolved glyph packet retains geometry, material and any supplied atlas binding. |
 
 Synthetic recording/native fixtures check those metrics and atlas rows. They do
@@ -56,15 +57,15 @@ It also matches the earlier externally recovered
 Printable ASCII selects entries 0–94; the alternate bank selects 128–222. Geometry
 uses a fixed 16-by-16 glyph grid, and loading requires a cached `whitefont.png`
 image. The recovered [font inputs](../../assets/graphics/fonts/) now include that
-2048×2048 atlas and related variants. `FontMgr` does not load FFont automatically:
-the caller must upload/cache the required image and initialize FFont explicitly.
+2048×2048 atlas and related variants. `CE::Text::Legacy::Manager` does not load BitmapFont automatically:
+the caller must upload/cache the required image and initialize BitmapFont explicitly.
 Full asset preparation includes standalone PNGs; a focused shader-only selection
 does not load this atlas.
 
 [font-widths.json](../../assets/graphics/fonts/font-widths.json) preserves all 256
 widths, source encoding/hash, atlas grid, bank offsets and normalization without
 loss. It is compatibility metadata outside the graphics index, not a supported
-font manifest. FFont still reads the original binary input and selects cached
+font manifest. BitmapFont still reads the original binary input and selects cached
 `whitefont.png`, regardless of which width-table filename was passed. The recorded
 same-basename texture pairs describe the recovered legacy files, not an automatic
 current-loader selection. Existing fixtures remain synthetic; recovered-data

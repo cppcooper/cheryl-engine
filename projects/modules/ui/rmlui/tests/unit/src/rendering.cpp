@@ -63,9 +63,9 @@ TEST(ui_rmlui_recording, clips) {
     renderer.RenderGeometry(geometry, {}, 0);
     const auto scene = renderer.finish_recording();
     ASSERT_EQ(scene.draws().size(), 2u);
-    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::RenderAPIs::ClipRect2D{10, 20, 100, 80}));
-    EXPECT_EQ(CE::RenderAPIs::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::RenderAPIs::PixelClipRect2D{20, 40, 200, 160}));
-    EXPECT_EQ(scene.draws()[1].clip.rectangle, (CE::RenderAPIs::ClipRect2D{0, 0, 320, 240}));
+    EXPECT_EQ(scene.draws()[0].clip.rectangle, (CE::Rendering::ClipRect2D{10, 20, 100, 80}));
+    EXPECT_EQ(CE::Rendering::resolve_clip_region(scene.draws()[0].clip, {640, 480}), (CE::Rendering::PixelClipRect2D{20, 40, 200, 160}));
+    EXPECT_EQ(scene.draws()[1].clip.rectangle, (CE::Rendering::ClipRect2D{0, 0, 320, 240}));
     renderer.set_view({640, 480});
     EXPECT_EQ(scene.draws()[0].clip.logical_width, 320);
 }

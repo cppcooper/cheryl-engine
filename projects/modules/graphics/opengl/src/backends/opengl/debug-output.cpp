@@ -1,7 +1,7 @@
 #include "debug-output.h"
 #include <internals/compile-time-logging.hpp>
 
-namespace CE::RenderAPIs::RendererDetail {
+namespace CE::Rendering::OpenGL::Detail {
     thread_local DebugOutput* DebugOutput::observing_ = nullptr;
 
     DebugOutput::Scope::Scope(DebugOutput* output) noexcept
@@ -38,7 +38,7 @@ namespace CE::RenderAPIs::RendererDetail {
         stats.last_type = type;
     }
 
-    void DebugOutput::start(const Diagnostics::DomainId domain) noexcept {
+    void DebugOutput::start(const ::CE::Diagnostics::DomainId domain) noexcept {
         stats_.domain = domain;
         stats_.supported = (GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug) && glDebugMessageCallback && glGetPointerv && glIsEnabled &&
                            glEnable && glDisable && glGetError;
@@ -59,7 +59,7 @@ namespace CE::RenderAPIs::RendererDetail {
         glEnable(GL_DEBUG_OUTPUT);
         next_report_ = std::chrono::steady_clock::now() + std::chrono::seconds{2};
         if (const auto error = glGetError(); error != GL_NO_ERROR)
-            Diagnostics::report_outcome("native_debug", domain, "enable", "native_failure", error);
+            ::CE::Diagnostics::report_outcome("native_debug", domain, "enable", "native_failure", error);
     }
 
     void DebugOutput::stop() noexcept {
@@ -78,7 +78,7 @@ namespace CE::RenderAPIs::RendererDetail {
             stats_.host_owned = true;
         stats_.installed = false;
         if (const auto error = glGetError(); error != GL_NO_ERROR)
-            Diagnostics::report_outcome("native_debug", stats_.domain, "restore", "native_failure", error);
+            ::CE::Diagnostics::report_outcome("native_debug", stats_.domain, "restore", "native_failure", error);
     }
 
     void DebugOutput::report(const bool force) noexcept {
@@ -88,13 +88,14 @@ namespace CE::RenderAPIs::RendererDetail {
         next_report_ = now + std::chrono::seconds{2};
         if (stats_.high > reported_high_)
             CE_LOG_ERROR(
-                CE::renderlog, "subsystem=native_debug domain={} operation=summary high={} new={} last_id={} source={} type={}",
-                stats_.domain, stats_.high, stats_.high - reported_high_, stats_.last_id, stats_.last_source, stats_.last_type
+                ::CE::Logging::Categories::rendering,
+                "subsystem=native_debug domain={} operation=summary high={} new={} last_id={} source={} type={}", stats_.domain,
+                stats_.high, stats_.high - reported_high_, stats_.last_id, stats_.last_source, stats_.last_type
             );
         if (stats_.medium > reported_medium_)
             CE_LOG_WARN(
-                CE::renderlog, "subsystem=native_debug domain={} operation=summary medium={} new={} filtered={}", stats_.domain,
-                stats_.medium, stats_.medium - reported_medium_, stats_.filtered
+                ::CE::Logging::Categories::rendering, "subsystem=native_debug domain={} operation=summary medium={} new={} filtered={}",
+                stats_.domain, stats_.medium, stats_.medium - reported_medium_, stats_.filtered
             );
         reported_high_ = stats_.high;
         reported_medium_ = stats_.medium;

@@ -10,36 +10,36 @@
 #include <mutex>
 #include <vector>
 
-namespace CE::GFramework {
+namespace CE::Runtime {
     class GameRuntime;
 }
 
-namespace CE {
-    class iDisplaySystem;
-    class iWindow;
+namespace CE::Platform {
+    class DisplaySystem;
+    class Window;
 }
 
-namespace CE::Assets {
-    struct ResourceProvider;
+namespace CE::Rendering::Resources {
+    struct Provider;
 }
 
 namespace CE::Input {
-    class iInputSystem;
+    class System;
 }
 
-namespace CE::RenderAPIs {
-    class iPresentationSurface;
-    class iRenderer;
+namespace CE::Rendering {
+    class PresentationSurface;
+    class Renderer;
 }
 
-namespace CE::Engine {
-    namespace ContextDetail {
-        struct EngineContextAccess;
+namespace CE::Runtime {
+    namespace Detail {
+        struct ContextAccess;
     }
 
     struct ExecutionOptions {
-        std::size_t worker_count = 1;            // Owned root is created lazily.
-        std::shared_ptr<WorkerPool> shared_pool; // Injected root is never closed by this context.
+        std::size_t worker_count = 1;                   // Owned root is created lazily.
+        std::shared_ptr<CE::Workers::Pool> shared_pool; // Injected root is never closed by this context.
     };
     /** Owns a compatible set of platform, presentation, rendering, and resource adapters.
      * Input can be owned or explicitly borrowed. Owned input is destroyed before
@@ -50,64 +50,64 @@ namespace CE::Engine {
      * Borrowed input must survive runtime cleanup/context lifetime and detach from
      * the display's live window before its destruction. Adapter use retains its affinity.
      */
-    class EngineContext final {
-        std::unique_ptr<iDisplaySystem> display_;
-        std::unique_ptr<RenderAPIs::iPresentationSurface> surface_;
-        std::unique_ptr<RenderAPIs::iRenderer> renderer_;
-        std::unique_ptr<Assets::ResourceProvider> resources_;
-        std::unique_ptr<Input::iInputSystem> owned_input_;
-        Input::iInputSystem* input_;
+    class Context final {
+        std::unique_ptr<CE::Platform::DisplaySystem> display_;
+        std::unique_ptr<CE::Rendering::PresentationSurface> surface_;
+        std::unique_ptr<CE::Rendering::Renderer> renderer_;
+        std::unique_ptr<CE::Rendering::Resources::Provider> resources_;
+        std::unique_ptr<CE::Input::System> owned_input_;
+        CE::Input::System* input_;
         std::atomic<bool> session_started_{false};
         PlatformDispatcher platform_dispatcher_;
         ExecutionOptions execution_;
         mutable std::mutex execution_mutex_;
-        std::function<std::unique_ptr<WorkerPool>(std::size_t)> owned_worker_factory_;
-        std::unique_ptr<WorkerPool> owned_workers_;
-        std::vector<WorkerGroup> worker_groups_;
+        std::function<std::unique_ptr<CE::Workers::Pool>(std::size_t)> owned_worker_factory_;
+        std::unique_ptr<CE::Workers::Pool> owned_workers_;
+        std::vector<CE::Workers::Group> worker_groups_;
         bool worker_submissions_closed_ = false;
-        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
         bool destroying_ = false;
 
     public:
-        EngineContext(
-            std::unique_ptr<iDisplaySystem> display,
-            std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-            std::unique_ptr<RenderAPIs::iRenderer> renderer,
-            std::unique_ptr<Assets::ResourceProvider> resources,
-            Input::iInputSystem& input,
+        Context(
+            std::unique_ptr<CE::Platform::DisplaySystem> display,
+            std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+            std::unique_ptr<CE::Rendering::Renderer> renderer,
+            std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+            CE::Input::System& input,
             ExecutionOptions execution = ExecutionOptions{}
         );
-        EngineContext(
-            std::unique_ptr<iDisplaySystem> display,
-            std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-            std::unique_ptr<RenderAPIs::iRenderer> renderer,
-            std::unique_ptr<Assets::ResourceProvider> resources,
-            std::unique_ptr<Input::iInputSystem> input,
+        Context(
+            std::unique_ptr<CE::Platform::DisplaySystem> display,
+            std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+            std::unique_ptr<CE::Rendering::Renderer> renderer,
+            std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+            std::unique_ptr<CE::Input::System> input,
             ExecutionOptions execution = ExecutionOptions{}
         );
-        ~EngineContext();
+        ~Context();
 
-        EngineContext(const EngineContext&) = delete;
-        EngineContext& operator=(const EngineContext&) = delete;
+        Context(const Context&) = delete;
+        Context& operator=(const Context&) = delete;
 
         // Borrowed adapters, not ownership transfer; getters do not marshal work.
         // window() requires the display owner and throws if there is no active window.
-        [[nodiscard]] iDisplaySystem& display() const;
-        [[nodiscard]] iWindow& window() const;
-        [[nodiscard]] RenderAPIs::iPresentationSurface& surface() const;
-        [[nodiscard]] RenderAPIs::iRenderer& renderer() const;
-        [[nodiscard]] Assets::ResourceProvider& resources() const;
-        [[nodiscard]] Input::iInputSystem& input() const;
+        [[nodiscard]] CE::Platform::DisplaySystem& display() const;
+        [[nodiscard]] CE::Platform::Window& window() const;
+        [[nodiscard]] CE::Rendering::PresentationSurface& surface() const;
+        [[nodiscard]] CE::Rendering::Renderer& renderer() const;
+        [[nodiscard]] CE::Rendering::Resources::Provider& resources() const;
+        [[nodiscard]] CE::Input::System& input() const;
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
-        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
+        [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
         // Synchronized across producers; closed context/pool or invalid options throw.
-        [[nodiscard]] WorkerGroup make_worker_group(WorkerGroupOptions options = WorkerGroupOptions{});
+        [[nodiscard]] CE::Workers::Group make_worker_group(CE::Workers::GroupOptions options = CE::Workers::GroupOptions{});
 
     private:
-        friend class GFramework::GameRuntime;
-        friend struct ContextDetail::EngineContextAccess;
+        friend class GameRuntime;
+        friend struct Detail::ContextAccess;
         void validate() const;
         void begin_session();
         void close_worker_submissions();

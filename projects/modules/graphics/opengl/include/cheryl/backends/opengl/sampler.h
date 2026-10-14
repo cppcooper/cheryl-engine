@@ -6,15 +6,15 @@
 #include <cstdint>
 #include <memory>
 
-namespace CE::Assets {
-    class OpenGLSampler final : public Sampler {
-        RenderAPIs::OpenGLHandle handle_;
+namespace CE::Rendering::OpenGL {
+    class Sampler final : public CE::Rendering::Sampling::Sampler {
+        Handle handle_;
         std::uint32_t binding_unit_limit_ = 0;
 
     public:
-        OpenGLSampler(std::shared_ptr<RenderAPIs::OpenGLResourceLifetime> lifetime, const SamplerOptions& options);
+        Sampler(std::shared_ptr<ResourceLifetime> lifetime, const CE::Rendering::Sampling::Options& options);
         void bind(std::uint32_t unit) const override;
         void require_binding(std::uint32_t unit) const;
-        [[nodiscard]] const RenderAPIs::OpenGLResourceLifetime* resource_domain() const noexcept { return handle_.resource_domain(); }
+        [[nodiscard]] const ResourceLifetime* resource_domain() const noexcept { return handle_.resource_domain(); }
     };
 }

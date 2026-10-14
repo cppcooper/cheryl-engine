@@ -4,8 +4,8 @@
 
 #include <memory>
 
-namespace CE::Engine {
+namespace CE::Workers::Hwloc {
     // Discover the executing machine when called; does not bind the creator or
-    // place memory. Retain this instance in WorkerPoolOptions::topology_provider.
-    [[nodiscard]] std::shared_ptr<WorkerTopologyProvider> make_hwloc_worker_topology();
+    // place memory. Retain this instance in CE::Workers::PoolOptions::topology_provider.
+    [[nodiscard]] std::shared_ptr<CE::Workers::TopologyProvider> make_topology_provider();
 }

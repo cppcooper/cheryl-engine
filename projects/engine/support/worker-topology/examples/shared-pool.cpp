@@ -6,16 +6,16 @@
 #include <utility>
 
 namespace CE::Examples {
-    WorkerComposition compose_workers(Engine::WorkerConfiguration configuration, const BackendFactory& create_backend) {
-        Engine::validate_worker_configuration(configuration);
+    WorkerComposition compose_workers(CE::Workers::Configuration configuration, const BackendFactory& create_backend) {
+        CE::Workers::validate_configuration(configuration);
         if (!create_backend)
             throw Exceptions::invalid_args(CE_HERE, "Worker composition requires a backend factory");
         if (!configuration.pool.topology_provider)
-            configuration.pool.topology_provider = Engine::make_hwloc_worker_topology();
+            configuration.pool.topology_provider = CE::Workers::Hwloc::make_topology_provider();
 
         WorkerComposition result;
-        result.pool = std::make_shared<Engine::WorkerPool>(std::move(configuration.pool));
-        Engine::ExecutionOptions execution;
+        result.pool = std::make_shared<CE::Workers::Pool>(std::move(configuration.pool));
+        CE::Runtime::ExecutionOptions execution;
         execution.shared_pool = result.pool;
         result.context = create_backend(std::move(execution));
         if (!result.context)
@@ -28,6 +28,6 @@ namespace CE::Examples {
     }
 
     WorkerComposition compose_workers(const std::filesystem::path& source, const BackendFactory& create_backend) {
-        return compose_workers(Engine::load_worker_configuration(source), create_backend);
+        return compose_workers(CE::Workers::Json::load_configuration(source), create_backend);
     }
 }

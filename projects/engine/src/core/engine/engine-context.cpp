@@ -13,10 +13,10 @@
 #include <utility>
 #include <span>
 
-namespace CE::Engine {
-    void ContextDetail::EngineContextAccess::set_owned_worker_factory(
-        EngineContext& context,
-        std::function<std::unique_ptr<WorkerPool>(std::size_t)> factory
+namespace CE::Runtime {
+    void Detail::ContextAccess::set_owned_worker_factory(
+        Context& context,
+        std::function<std::unique_ptr<CE::Workers::Pool>(std::size_t)> factory
     ) {
         std::lock_guard lock(context.execution_mutex_);
         if (!factory)
@@ -27,12 +27,12 @@ namespace CE::Engine {
         context.owned_worker_factory_ = std::move(factory);
     }
 
-    EngineContext::EngineContext(
-        std::unique_ptr<iDisplaySystem> display,
-        std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-        std::unique_ptr<RenderAPIs::iRenderer> renderer,
-        std::unique_ptr<Assets::ResourceProvider> resources,
-        Input::iInputSystem& input,
+    Context::Context(
+        std::unique_ptr<CE::Platform::DisplaySystem> display,
+        std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+        std::unique_ptr<CE::Rendering::Renderer> renderer,
+        std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+        CE::Input::System& input,
         ExecutionOptions execution
     )
     : display_(std::move(display)),
@@ -44,12 +44,12 @@ namespace CE::Engine {
         validate();
     }
 
-    EngineContext::EngineContext(
-        std::unique_ptr<iDisplaySystem> display,
-        std::unique_ptr<RenderAPIs::iPresentationSurface> surface,
-        std::unique_ptr<RenderAPIs::iRenderer> renderer,
-        std::unique_ptr<Assets::ResourceProvider> resources,
-        std::unique_ptr<Input::iInputSystem> input,
+    Context::Context(
+        std::unique_ptr<CE::Platform::DisplaySystem> display,
+        std::unique_ptr<CE::Rendering::PresentationSurface> surface,
+        std::unique_ptr<CE::Rendering::Renderer> renderer,
+        std::unique_ptr<CE::Rendering::Resources::Provider> resources,
+        std::unique_ptr<CE::Input::System> input,
         ExecutionOptions execution
     )
     : display_(std::move(display)),
@@ -62,19 +62,19 @@ namespace CE::Engine {
         validate();
     }
 
-    void EngineContext::validate() const {
+    void Context::validate() const {
         if (!display_ || !surface_ || !renderer_ || !resources_ || !input_)
             throw Exceptions::invalid_args(CE_HERE, "EngineContext requires display, surface, renderer, resources, and input");
         if (!execution_.shared_pool && execution_.worker_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "Owned execution requires a positive worker count");
     }
 
-    void EngineContext::begin_session() {
+    void Context::begin_session() {
         if (session_started_.exchange(true, std::memory_order_acq_rel))
             throw Exceptions::failed_operation(CE_HERE, "EngineContext supports only one runtime session");
     }
 
-    EngineContext::~EngineContext() {
+    Context::~Context() {
         destroying_ = true;
         try {
             close_worker_submissions();
@@ -87,18 +87,18 @@ namespace CE::Engine {
         }
     }
 
-    WorkerGroup EngineContext::make_worker_group(WorkerGroupOptions options) {
-        WorkerPool* selected_pool = nullptr;
+    CE::Workers::Group Context::make_worker_group(CE::Workers::GroupOptions options) {
+        CE::Workers::Pool* selected_pool = nullptr;
         try {
             auto group = [&] {
                 std::lock_guard lock(execution_mutex_);
                 if (worker_submissions_closed_)
                     throw Exceptions::failed_operation(CE_HERE, "EngineContext worker submissions are closed");
-                WorkerPool* pool = execution_.shared_pool.get();
+                CE::Workers::Pool* pool = execution_.shared_pool.get();
                 if (!pool) {
                     if (!owned_workers_) {
                         auto workers = owned_worker_factory_ ? owned_worker_factory_(execution_.worker_count)
-                                                             : std::make_unique<WorkerPool>(execution_.worker_count);
+                                                             : std::make_unique<CE::Workers::Pool>(execution_.worker_count);
                         if (!workers)
                             throw Exceptions::failed_operation(CE_HERE, "Owned worker factory returned no pool");
                         owned_workers_ = std::move(workers);
@@ -114,24 +114,26 @@ namespace CE::Engine {
             // are explicit observers after that entire publication transaction.
             selected_pool->report_diagnostics();
             group.report_diagnostics();
-            CE_LOG_DEBUG(CE::enginelog, "subsystem=execution domain={} operation=group_created group={} pool={}",
-                         domain_, group.status().domain, selected_pool->diagnostic_id());
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::engine, "subsystem=execution domain={} operation=group_created group={} pool={}", domain_,
+                group.status().domain, selected_pool->diagnostic_id()
+            );
             return group;
         } catch (...) {
             Diagnostics::report_outcome("execution", domain_, "make_group", "failed");
-            CE_LOG_ERROR(CE::enginelog, "subsystem=execution domain={} operation=make_group outcome=failed", domain_);
+            CE_LOG_ERROR(CE::Logging::Categories::engine, "subsystem=execution domain={} operation=make_group outcome=failed", domain_);
             throw;
         }
     }
 
-    void EngineContext::close_worker_submissions() {
+    void Context::close_worker_submissions() {
         std::lock_guard lock(execution_mutex_);
         worker_submissions_closed_ = true;
         for (const auto& group : worker_groups_)
             group.close();
     }
 
-    bool EngineContext::workers_idle() const {
+    bool Context::workers_idle() const {
         std::lock_guard lock(execution_mutex_);
         for (const auto& group : worker_groups_) {
             const auto status = group.status();
@@ -141,9 +143,9 @@ namespace CE::Engine {
         return true;
     }
 
-    void EngineContext::finish_workers() {
-        std::span<const WorkerGroup> groups;
-        WorkerPool* owned;
+    void Context::finish_workers() {
+        std::span<const CE::Workers::Group> groups;
+        CE::Workers::Pool* owned;
         {
             std::lock_guard lock(execution_mutex_);
             if (!worker_submissions_closed_)
@@ -165,27 +167,27 @@ namespace CE::Engine {
             owned->shutdown();
     }
 
-    iDisplaySystem& EngineContext::display() const {
+    CE::Platform::DisplaySystem& Context::display() const {
         return *display_;
     }
 
-    iWindow& EngineContext::window() const {
+    CE::Platform::Window& Context::window() const {
         auto* active = display_->active_window();
         if (!active)
             throw Exceptions::failed_operation(CE_HERE, "EngineContext has no active window");
         return *active;
     }
 
-    RenderAPIs::iPresentationSurface& EngineContext::surface() const {
+    CE::Rendering::PresentationSurface& Context::surface() const {
         return *surface_;
     }
-    RenderAPIs::iRenderer& EngineContext::renderer() const {
+    CE::Rendering::Renderer& Context::renderer() const {
         return *renderer_;
     }
-    Assets::ResourceProvider& EngineContext::resources() const {
+    CE::Rendering::Resources::Provider& Context::resources() const {
         return *resources_;
     }
-    Input::iInputSystem& EngineContext::input() const {
+    CE::Input::System& Context::input() const {
         return *input_;
     }
 }

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <mutex>
 
-namespace CE::Assets {
+namespace CE::Assets::Loading {
     void FileRegistry::register_files(const std::vector<std::filesystem::path>& files) {
         std::vector<std::filesystem::path> absolute_files;
         absolute_files.reserve(files.size());

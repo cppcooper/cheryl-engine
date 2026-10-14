@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-namespace CE::TerminalDetail {
+namespace CE::Platform::Linux::DebugTerminal::Detail {
     std::vector<std::string> viewer_arguments(
         const std::string& emulator,
         const std::filesystem::path& viewer,

@@ -25,6 +25,7 @@ set(OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK cheryl-miniaudio-sdk)
 
 # Applications
 set(OUTPUT_APP_DEMO demo)
+set(OUTPUT_APP_FIRST_GAME first-game)
 
 # Aggregate tests
 set(OUTPUT_TEST_ALL_ENGINE tests-all-engine)

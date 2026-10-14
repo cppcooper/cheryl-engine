@@ -2,6 +2,10 @@
 build/
 builds/
 cmake-build*/
+docs/api/generated/
+docs/__pycache__/
+docs/_ext/__pycache__/
+tools/docs/**/__pycache__/
 
 .git/
 .idea/
@@ -28,3 +32,4 @@ assets/graphics/**/*.txt
 !assets/graphics/ui/quadrants.png
 !assets/graphics/ui/quadrants-alt.png
 !/projects/modules/graphics/opengl/tests/fixtures/rgba-two-rows.png
+!/projects/apps/first-game/assets/graphics/textures/actor.png

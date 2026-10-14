@@ -7,7 +7,7 @@
 namespace CE::Input {
     PollingBacklog::PollingBacklog(const PollingOptions options)
     : options_(options) {
-        if (options.spacing < InputClock::duration::zero())
+        if (options.spacing < ObservationClock::duration::zero())
             throw Exceptions::invalid_args(CE_HERE, "Polling spacing cannot be negative");
         switch (options.policy) {
             case PollingPolicy::Lockstep:
@@ -27,15 +27,15 @@ namespace CE::Input {
                polls_.size() < (options_.policy == PollingPolicy::Lockstep ? 1 : options_.capacity);
     }
 
-    bool PollingBacklog::poll_due(const InputClock::time_point now) const {
+    bool PollingBacklog::poll_due(const ObservationClock::time_point now) const {
         return can_poll() && now >= next_poll_;
     }
 
-    InputClock::time_point PollingBacklog::next_poll_at() const {
-        return can_poll() ? next_poll_ : InputClock::time_point::max();
+    ObservationClock::time_point PollingBacklog::next_poll_at() const {
+        return can_poll() ? next_poll_ : ObservationClock::time_point::max();
     }
 
-    void PollingBacklog::complete(std::shared_ptr<const PollSnapshot> poll, const InputClock::time_point completed_at) {
+    void PollingBacklog::complete(std::shared_ptr<const PollSnapshot> poll, const ObservationClock::time_point completed_at) {
         if (!poll_due(completed_at) || !poll || !poll->state || poll->state->poll() <= last_poll_ ||
             poll->state->observed_at() > completed_at)
             throw Exceptions::invalid_args(CE_HERE, "Polling backlog requires an eligible, newer completed observation");
@@ -45,11 +45,11 @@ namespace CE::Input {
         // consumption still respect the completion-to-next-poll spacing.
         // Subtract the nonnegative spacing from max, never a possibly negative
         // clock timestamp from max: that span may exceed duration's signed range.
-        next_poll_ = completed_at > InputClock::time_point::max() - options_.spacing ? InputClock::time_point::max()
-                                                                                     : completed_at + options_.spacing;
+        next_poll_ = completed_at > ObservationClock::time_point::max() - options_.spacing ? ObservationClock::time_point::max()
+                                                                                           : completed_at + options_.spacing;
     }
 
-    void PollingBacklog::complete(std::shared_ptr<const ActionSnapshot> state, const InputClock::time_point completed_at) {
+    void PollingBacklog::complete(std::shared_ptr<const Actions::Snapshot> state, const ObservationClock::time_point completed_at) {
         complete(std::make_shared<PollSnapshot>(PollSnapshot{std::move(state), {}}), completed_at);
     }
 

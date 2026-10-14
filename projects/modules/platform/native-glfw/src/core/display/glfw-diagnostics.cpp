@@ -8,11 +8,11 @@
 #include <atomic>
 #include <chrono>
 
-namespace CE::DisplayDetail {
+namespace CE::Platform::GLFW::Detail {
     thread_local unsigned int NativeCallbackScope::depth_ = 0;
     namespace {
         std::atomic<GLFWerrorfun> previous_callback{nullptr};
-        std::atomic<Diagnostics::DomainId> domain{0};
+        std::atomic<::CE::Diagnostics::DomainId> domain{0};
         std::atomic<std::uint64_t> errors{0};
         std::atomic<std::uint64_t> host_failures{0};
         std::atomic<int> last_code{0};
@@ -36,7 +36,7 @@ namespace CE::DisplayDetail {
     }
 
     void install_glfw_diagnostics() noexcept {
-        domain.store(Diagnostics::next_domain_id());
+        domain.store(::CE::Diagnostics::next_domain_id());
         errors.store(0);
         host_failures.store(0);
         last_code.store(0);
@@ -72,14 +72,17 @@ namespace CE::DisplayDetail {
         const auto prior_host = reported_host_failures.exchange(snapshot.host_failures);
         if (snapshot.errors > prior) {
             if (emergency)
-                Diagnostics::report_outcome("glfw", snapshot.domain, operation, "native_error", snapshot.last_code);
+                ::CE::Diagnostics::report_outcome("glfw", snapshot.domain, operation, "native_error", snapshot.last_code);
             else
                 CE_LOG_ERROR(
-                    CE::platformlog, "subsystem=glfw domain={} operation={} outcome=native_error code={} errors={} new={}", snapshot.domain,
-                    operation, snapshot.last_code, snapshot.errors, snapshot.errors - prior
+                    ::CE::Logging::Categories::platform,
+                    "subsystem=glfw domain={} operation={} outcome=native_error code={} errors={} new={}", snapshot.domain, operation,
+                    snapshot.last_code, snapshot.errors, snapshot.errors - prior
                 );
         }
         if (snapshot.host_failures > prior_host)
-            Diagnostics::report_outcome("glfw", snapshot.domain, operation, "host_callback_failed", snapshot.host_failures - prior_host);
+            ::CE::Diagnostics::report_outcome(
+                "glfw", snapshot.domain, operation, "host_callback_failed", snapshot.host_failures - prior_host
+            );
     }
 }

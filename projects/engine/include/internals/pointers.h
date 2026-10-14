@@ -3,7 +3,7 @@
 #include "failure-reporting.h"
 #include <math/pointers.h>
 
-namespace CE::ptr {
+namespace CE::Memory::Pointers {
     template <typename Target, typename Source> std::shared_ptr<Target> make_alias(const std::shared_ptr<Source>& source) {
         // Create an aliasing shared_ptr
         return std::shared_ptr<Target>(source, reinterpret_cast<Target*>(source.get()));
@@ -11,7 +11,7 @@ namespace CE::ptr {
     template <typename Target, typename Source>
     std::shared_ptr<Target> make_alias(const std::shared_ptr<Source>& source, const std::size_t address_offset) {
         // Create an aliasing shared_ptr
-        return std::shared_ptr<Target>(source, ptr::add_offset<Target>(source.get(), address_offset));
+        return std::shared_ptr<Target>(source, add_offset<Target>(source.get(), address_offset));
     }
     template <class T, class U> std::shared_ptr<T> make_child(std::shared_ptr<U> parent, const std::function<void(const T*)>& deletor) {
         return std::shared_ptr<T>(reinterpret_cast<T*>(parent.get()), [p = parent, d = deletor](const T* ptr) {
@@ -19,7 +19,7 @@ namespace CE::ptr {
                 d(ptr);
             } else {
                 // Final deleters cannot initialize or block on an ordinary log.
-                Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
+                ::CE::Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
                 std::unreachable();
             }
         });
@@ -31,7 +31,7 @@ namespace CE::ptr {
                 d(ptr);
             } else {
                 // Final deleters cannot initialize or block on an ordinary log.
-                Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
+                ::CE::Diagnostics::report_outcome("engine", 0, "child_release", "missing_parent");
                 std::unreachable();
             }
         });

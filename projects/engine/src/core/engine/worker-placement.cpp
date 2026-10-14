@@ -7,14 +7,14 @@
 #include <unordered_map>
 #include <utility>
 
-namespace CE::Engine {
-    void validate_worker_group_options(const WorkerGroupOptions& options) {
+namespace CE::Workers {
+    void validate_group_options(const GroupOptions& options) {
         if (options.weight == 0 || options.weight > 1024 || options.priority > 7)
             throw Exceptions::invalid_args(CE_HERE, "Worker weight must be 1..1024 and priority 0..7");
-        if (options.cpu.strength != WorkerPolicyStrength::Preferred && options.cpu.strength != WorkerPolicyStrength::Required)
+        if (options.cpu.strength != PolicyStrength::Preferred && options.cpu.strength != PolicyStrength::Required)
             throw Exceptions::invalid_args(CE_HERE, "Unknown worker CPU policy strength");
-        if (options.cpu.locality && *options.cpu.locality != WorkerLocalityPolicy::Automatic &&
-            *options.cpu.locality != WorkerLocalityPolicy::Reuse && *options.cpu.locality != WorkerLocalityPolicy::Spread)
+        if (options.cpu.locality && *options.cpu.locality != LocalityPolicy::Automatic && *options.cpu.locality != LocalityPolicy::Reuse &&
+            *options.cpu.locality != LocalityPolicy::Spread)
             throw Exceptions::invalid_args(CE_HERE, "Unknown worker locality policy");
         auto cpus = options.cpu.cpus;
         std::sort(cpus.begin(), cpus.end());
@@ -23,7 +23,7 @@ namespace CE::Engine {
     }
 }
 
-namespace CE::Engine::WorkerDetail {
+namespace CE::Workers::Detail {
     namespace {
         std::vector<unsigned int> intersection(const std::vector<unsigned int>& left, const std::vector<unsigned int>& right) {
             std::vector<unsigned int> result;
@@ -31,15 +31,15 @@ namespace CE::Engine::WorkerDetail {
             return result;
         }
 
-        void fallback(WorkerGroupPolicy& policy, const std::string& reason) {
+        void fallback(CE::Workers::GroupPolicy& policy, const std::string& reason) {
             if (!policy.limitations.empty())
                 policy.limitations += "; ";
             policy.limitations += reason;
-            policy.preferred_fallback = policy.requested.cpu.strength == WorkerPolicyStrength::Preferred;
+            policy.preferred_fallback = policy.requested.cpu.strength == CE::Workers::PolicyStrength::Preferred;
         }
     }
 
-    WorkerPlacement make_placement(const WorkerTopology& topology) {
+    WorkerPlacement make_placement(const CE::Workers::Topology& topology) {
         WorkerPlacement result;
         result.cpus.reserve(topology.eligible_cpus.size());
         result.core_running.resize(topology.cores.size());
@@ -58,21 +58,21 @@ namespace CE::Engine::WorkerDetail {
         return result;
     }
 
-    WorkerGroupPolicy resolve_policy(
-        const WorkerGroupOptions& options,
-        const WorkerCapabilities& capabilities,
-        const WorkerTopology& topology,
+    CE::Workers::GroupPolicy resolve_policy(
+        const CE::Workers::GroupOptions& options,
+        const CE::Workers::Capabilities& capabilities,
+        const CE::Workers::Topology& topology,
         const WorkerPlacement& placement,
         const bool provider_selected,
         const std::size_t capacity
     ) {
-        validate_worker_group_options(options);
-        const bool hard = options.cpu.strength == WorkerPolicyStrength::Required;
+        CE::Workers::validate_group_options(options);
+        const bool hard = options.cpu.strength == CE::Workers::PolicyStrength::Required;
         if (hard && options.cpu.numa_node)
             throw Exceptions::failed_operation(CE_HERE, "NUMA placement is unavailable and remains deferred");
         if (hard && !options.cpu.cpus.empty() && !capabilities.cpu_affinity)
             throw Exceptions::failed_operation(CE_HERE, "Required CPU affinity is unsupported");
-        WorkerGroupPolicy policy;
+        CE::Workers::GroupPolicy policy;
         policy.requested = options;
         policy.affinity_supported = capabilities.cpu_affinity;
         policy.limitations = capabilities.limitations;
@@ -101,7 +101,7 @@ namespace CE::Engine::WorkerDetail {
                     throw Exceptions::failed_operation(CE_HERE, "Required cache-domain placement needs reported caches and thread binding");
                 fallback(policy, "Preferred cache-domain placement is unavailable");
             } else {
-                const auto domain = std::ranges::find(topology.caches, *options.cpu.shared_cache_domain, &WorkerCacheDomain::id);
+                const auto domain = std::ranges::find(topology.caches, *options.cpu.shared_cache_domain, &CE::Workers::CacheDomain::id);
                 if (domain == topology.caches.end()) {
                     if (hard)
                         throw Exceptions::invalid_args(CE_HERE, "Required worker cache-domain ID is not in this pool's topology");
@@ -125,7 +125,7 @@ namespace CE::Engine::WorkerDetail {
             provider_selected && !candidates.candidates.empty() &&
             std::ranges::all_of(candidates.candidates, [&](const std::size_t target) { return placement.cpus[target].known_core; });
         const auto locality = options.cpu.locality ? options.cpu.locality
-                              : provider_selected  ? std::optional{WorkerLocalityPolicy::Automatic}
+                              : provider_selected  ? std::optional{CE::Workers::LocalityPolicy::Automatic}
                                                    : std::nullopt;
         if (locality) {
             if (!provider_selected || !capabilities.cpu_affinity || candidates.candidates.empty()) {
@@ -146,7 +146,7 @@ namespace CE::Engine::WorkerDetail {
         return policy;
     }
 
-    WorkerGroupPlacement make_group_placement(const WorkerGroupPolicy& policy, const WorkerPlacement& placement) {
+    WorkerGroupPlacement make_group_placement(const CE::Workers::GroupPolicy& policy, const WorkerPlacement& placement) {
         WorkerGroupPlacement result;
         for (std::size_t index = 0; index < placement.cpus.size(); ++index)
             if (std::binary_search(policy.effective_cpus.begin(), policy.effective_cpus.end(), placement.cpus[index].cpu))
@@ -157,11 +157,11 @@ namespace CE::Engine::WorkerDetail {
     std::size_t reserve_cpu(
         WorkerPlacement& placement,
         WorkerGroupPlacement& group,
-        const WorkerGroupPolicy& policy,
+        const CE::Workers::GroupPolicy& policy,
         const std::optional<unsigned int> current_cpu
     ) {
-        const bool reuse = policy.effective_locality == WorkerLocalityPolicy::Reuse ||
-                           (policy.effective_locality == WorkerLocalityPolicy::Automatic && policy.effective_max_concurrency == 1);
+        const bool reuse = policy.effective_locality == CE::Workers::LocalityPolicy::Reuse ||
+                           (policy.effective_locality == CE::Workers::LocalityPolicy::Automatic && policy.effective_max_concurrency == 1);
         const auto score = [&](const std::size_t candidate) {
             const auto target = group.candidates[candidate];
             const auto& cpu = placement.cpus[target];
@@ -176,8 +176,10 @@ namespace CE::Engine::WorkerDetail {
                                                                     : group.candidates.size() - group.next_candidate + candidate;
             // Busy-core/CPU load always wins over a soft reuse preference. Spread
             // rotates equal candidates; reuse also avoids needless worker migration.
-            return std::tuple{placement.core_running[cpu.core], cpu.running, locality, reuse && current_cpu != cpu.cpu,
-                reuse ? std::size_t{0} : rotation, reuse ? rotation : std::size_t{0}};
+            return std::tuple{
+                placement.core_running[cpu.core], cpu.running, locality, reuse && current_cpu != cpu.cpu, reuse ? std::size_t{0} : rotation,
+                reuse ? rotation : std::size_t{0}
+            };
         };
         std::size_t selected = 0;
         for (std::size_t candidate = 1; candidate < group.candidates.size(); ++candidate)

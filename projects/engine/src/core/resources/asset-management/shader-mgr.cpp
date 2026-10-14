@@ -3,24 +3,24 @@
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
 
-namespace CE::Assets {
-    void ShaderMgr::load_program(
+namespace CE::Assets::Shaders {
+    void ProgramCache::load(
         const std::filesystem::path& key,
         const std::vector<std::filesystem::path>& stages,
-        ResourceProvider& provider
+        CE::Rendering::Resources::Provider& provider
     ) {
         bind_provider(provider);
         if (contains(key))
             return;
-        reload_program(key, stages, provider);
+        reload(key, stages, provider);
     }
 
-    void ShaderMgr::reload_program(
+    void ProgramCache::reload(
         const std::filesystem::path& key,
         const std::vector<std::filesystem::path>& stages,
-        ResourceProvider& provider
+        CE::Rendering::Resources::Provider& provider
     ) {
-        const auto attempt = Diagnostics::next_domain_id();
+        const auto attempt = CE::Diagnostics::next_domain_id();
         try {
             bind_provider(provider);
             auto program = provider.link_program(stages);
@@ -31,13 +31,15 @@ namespace CE::Assets {
         } catch (...) {
             Diagnostics::report_outcome("assets", attempt, "program_reload", "preserved_previous");
             CE_LOG_ERROR(
-                CE::assetlog, "subsystem=assets domain={} cache={} operation=program_reload outcome=preserved_previous", attempt, domain_
+                CE::Logging::Categories::assets, "subsystem=assets domain={} cache={} operation=program_reload outcome=preserved_previous",
+                attempt, domain_
             );
             throw;
         }
         CE_LOG_DEBUG(
-            CE::assetlog, "subsystem=assets domain={} cache={} operation=program_reload outcome=published publications={} replacements={}",
-            attempt, domain_, diagnostics().publications, diagnostics().replacements
+            CE::Logging::Categories::assets,
+            "subsystem=assets domain={} cache={} operation=program_reload outcome=published publications={} replacements={}", attempt,
+            domain_, diagnostics().publications, diagnostics().replacements
         );
     }
 }

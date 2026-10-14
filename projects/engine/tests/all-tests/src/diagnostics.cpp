@@ -53,7 +53,7 @@ TEST(diagnostics, repeated_traces) {
     for (int index = 0; index < 3; ++index) {
         const CE::Exceptions::failed_operation error("probe", index, "primary failure");
         EXPECT_NE(std::string_view(error.what()).find("primary failure"), std::string_view::npos);
-        const auto trace = CE::stack_trace();
+        const auto trace = CE::Diagnostics::stack_trace();
         EXPECT_LE(trace.size(), 6143u);
     }
 }

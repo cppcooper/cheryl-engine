@@ -3,13 +3,13 @@
 
 #include <type_traits>
 
-static_assert(std::is_base_of_v<CE::iDisplaySystem, CE::DisplaySystem>);
-static_assert(std::is_base_of_v<CE::iWindow, CE::Window>);
+static_assert(std::is_base_of_v<CE::Platform::DisplaySystem, CE::Platform::GLFW::DisplaySystem>);
+static_assert(std::is_base_of_v<CE::Platform::Window, CE::Platform::GLFW::Window>);
 #if CHERYL_NATIVE_INPUT
-static_assert(std::is_base_of_v<CE::Input::iInputSystem, CE::Input::InputSystem>);
+static_assert(std::is_base_of_v<CE::Input::System, CE::Platform::GLFW::InputSystem>);
 #endif
 
 int main() {
-    CE::DisplayDetail::report_glfw_diagnostics("consumer");
+    CE::Platform::GLFW::Detail::report_glfw_diagnostics("consumer");
     return 0;
 }

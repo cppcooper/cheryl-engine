@@ -14,17 +14,17 @@
 #endif
 
 int main() try {
-    CE::Engine::WorkerConfiguration configuration;
+    CE::Workers::Configuration configuration;
 #if CHERYL_CONSUMER_WORKER_JSON
-    configuration = CE::Engine::parse_worker_configuration(R"({"version":"1.0","workers":1,"groups":{"simulation":{"concurrency":1}}})");
+    configuration = CE::Workers::Json::parse_configuration(R"({"version":"1.0","workers":1,"groups":{"simulation":{"concurrency":1}}})");
 #else
-    configuration.groups.emplace("simulation", CE::Engine::WorkerGroupOptions{});
+    configuration.groups.emplace("simulation", CE::Workers::GroupOptions{});
 #endif
 #if CHERYL_CONSUMER_WORKER_HWLOC
-    configuration.pool.topology_provider = CE::Engine::make_hwloc_worker_topology();
+    configuration.pool.topology_provider = CE::Workers::Hwloc::make_topology_provider();
 #endif
-    CE::Engine::validate_worker_configuration(configuration);
-    CE::Engine::WorkerPool pool(configuration.pool);
+    CE::Workers::validate_configuration(configuration);
+    CE::Workers::Pool pool(configuration.pool);
     auto group = pool.make_group(configuration.groups.at("simulation"));
     auto value = group.submit([] { return 11; });
     group.close();

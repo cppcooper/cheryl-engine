@@ -7,17 +7,19 @@ core/logging.h. Default paths are relative to the configured log directory:
 
 | Name | Default file | Records |
 | --- | --- | --- |
-| CE::enginelog | logs/engine.log | Runtime lifecycle/timing, workers, dispatchers and events |
-| CE::platformlog | logs/os-platform.log | OS display/window/input services, GLFW and context selection |
-| CE::renderlog | logs/rendering.log | Renderer/shader records and native graphics resource/debug observations |
-| CE::assetlog | logs/assets.log | Asset preparation/upload, cache publication and reload |
-| CE::memlog | logs/memory.log | Allocator bookkeeping, preallocation and ownership errors |
+| `CE::Logging::Categories::engine` | logs/engine.log | Runtime lifecycle/timing, workers, dispatchers and events |
+| `CE::Logging::Categories::platform` | logs/os-platform.log | OS display/window/input services, GLFW and context selection |
+| `CE::Logging::Categories::rendering` | logs/rendering.log | Renderer/shader records and native graphics resource/debug observations |
+| `CE::Logging::Categories::assets` | logs/assets.log | Asset preparation/upload, cache publication and reload |
+| `CE::Logging::Categories::memory` | logs/memory.log | Allocator bookkeeping, preallocation and ownership errors |
 
 Each file retains subsystem/operation/domain fields for finer correlation. Runtime
 input capability/focus records go to os-platform, while session records stay in
 engine. engine.log is the runtime/execution timeline; other categories contain
 their own subsystem details, with no automatic aggregate mirror.
 
+`CE::Logging::Log<name>` owns a named logger; `CE::Logging::Logger<name>` supplies
+singleton access to one. Below, Log and Logger refer to these types.
 Every engine write selects its category explicitly. Changing spdlog's default
 logger, including through an application's Log::make_default(), does not redirect
 engine records. Logger::get/initialize reads default_logger solely to establish
@@ -25,12 +27,13 @@ registry lifetime before singleton storage; emission uses its own named resource
 Required native/noexcept/logger failures use bounded stderr independently of any
 default or file destination.
 
-The existing enginelog, memlog and ce_log_name symbols retain their identities and
-values. CELog/Logger<CE::ce_log_name> remains an explicit legacy cheryl destination
-for source compatibility. Engine-owned operations no longer create cheryl.log;
-an application that explicitly uses the legacy destination still creates it.
-The destination migration does not move, merge, delete or rename existing files
-and backups. Normal configured rotation and retention still apply.
+`CE::Logging::CherylLog`, a facade derived from
+`CE::Logging::Logger<CE::Logging::Categories::cheryl>`, supplies the explicit legacy
+cheryl destination. Engine-owned operations do not create cheryl.log; an
+application that explicitly uses this destination creates it. Category values and
+file destinations remain stable; changing public namespace names does not move,
+merge, delete or rename existing files and backups. Normal configured rotation
+and retention still apply.
 
 Configure each used logger on its owner before starting writers. Lazy named access
 remains available, and explicit singleton initialization rejects a second configuration.
@@ -69,10 +72,13 @@ translation units sharing Cheryl templates; defining a different mask in one fil
 is unsupported. Header-only use without CMake defaults to developer without NDEBUG
 and release with NDEBUG. Runtime levels cannot restore a compiled-out severity.
 The include-order override in block.h is removed.
+`CE::Logging::Compile` owns the compile-policy helpers; the configuration and
+emission macros remain global preprocessor names.
 
 ## Runtime settings and ownership
 
-LogConfig::for_logger(name, profile) supplies explicit initial thresholds. Default
+`CE::Logging::Config::for_logger(name, profile)` supplies explicit initial thresholds.
+`CE::Logging::Profile` selects Developer, Support or Release presets. Default
 construction uses the selected compile profile's runtime preset; an explicitly
 supplied profile/settings object can choose different runtime levels.
 
@@ -89,23 +95,23 @@ independent; setting a destination to DEBUG also requires a logger gate at DEBUG
 or TRACE. Off is an explicit runtime filter, independent of the compile mask.
 
 File defaults remain logs/name.log, 10 MiB rotation, five retained backups, and
-rotation on open. LogConfig allows directory, rotation size/count, rotation-on-open,
+rotation on open. Config allows directory, rotation size/count, rotation-on-open,
 and all three initial levels to be selected before publication. A logger name must
 be a nonempty filename component. Invalid levels/rotation limits are rejected
 before file/registry side effects. Relative directories, including an empty path
 for the working directory, resolve once to an absolute normalized path; reopening
 keeps that destination if the application changes its working directory.
 
-Configuration is per category. Settings previously applied only to enginelog do
-not configure the new OS-platform, rendering or asset destinations. Configure
+Configuration is per category. Settings applied only to the engine category do
+not configure the OS-platform, rendering or asset destinations. Configure
 them explicitly before first use when selecting a shared directory or overrides:
 
 ```cpp
 #include <cheryl/core/logging.h>
 
-auto config = CE::LogConfig::for_logger(CE::platformlog);
+auto config = CE::Logging::Config::for_logger(CE::Logging::Categories::platform);
 config.directory = "logs";
-CE::Logger<CE::platformlog>::initialize(spdlog::file_event_handlers{}, config);
+CE::Logging::Logger<CE::Logging::Categories::platform>::initialize(spdlog::file_event_handlers{}, config);
 ```
 
 Use the corresponding name for engine, rendering, assets and memory, allowing
@@ -124,7 +130,8 @@ It reports startup settings; live level changes remain on the current resources
 and are captured/restored across close/reopen. Pattern setters affect the current
 generation; preserving later pattern overrides across reopening is not promised.
 
-LogConfig::overflow_policy selects Block or DiscardNew per Log, independently of
+`CE::Logging::Config::overflow_policy` selects `CE::Logging::OverflowPolicy::Block`
+or `DiscardNew` per Log, independently of
 severity profiles. The setting remains immutable and is reapplied after reopen.
 All existing presets retain Block as their compatibility default. Configure the
 owner before starting producers; future category default changes belong to the
@@ -203,7 +210,7 @@ future aggregate diagnostics must use a copied snapshot after releasing locks.
 
 The shared async pool belongs to Cheryl and does not replace spdlog's process-global
 pool. Each Log retains it through its own destruction, independently of the
-compatibility TPInit singleton's destruction order. The current default remains
+internal `CE::Logging::Detail::ThreadPoolInit` singleton's destruction order. The current default remains
 8192 queued items and one worker. The bundled pool creates threads in a loop
 without unwinding already-started threads if a later thread creation fails. The
 single-worker default avoids that partial-startup path and parallel backend

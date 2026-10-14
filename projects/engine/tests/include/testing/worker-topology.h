@@ -12,9 +12,9 @@
 #include <vector>
 
 namespace CE::Testing {
-    inline Engine::WorkerTopology sparse_worker_topology() {
-        using enum Engine::WorkerCacheType;
-        Engine::WorkerTopology topology;
+    inline CE::Workers::Topology sparse_worker_topology() {
+        using enum CE::Workers::CacheType;
+        CE::Workers::Topology topology;
         topology.eligible_cpus = {2, 17, 901, 2000, 4097, 5001};
         topology.cores = {{7, {2, 2000}}, {9, {17}}, {42, {901, 4097, 5001}}};
         topology.caches = {{51, 1, Data, 32768, 64, {2, 2000}}, {52, 1, Instruction, 16384, 64, {2, 2000}},
@@ -26,13 +26,13 @@ namespace CE::Testing {
 
     // Per-thread synthetic masks exercise the real pool without changing host
     // affinity. Public inputs are configured before construction; faults are atomic.
-    class WorkerTopologyProvider final : public Engine::WorkerTopologyProvider {
+    class WorkerTopologyProvider final : public CE::Workers::TopologyProvider {
         mutable std::mutex mutex_;
         mutable std::map<std::thread::id, std::vector<unsigned int>> masks_;
         mutable std::vector<std::vector<unsigned int>> bindings_;
 
     public:
-        Engine::WorkerTopology snapshot = sparse_worker_topology();
+        CE::Workers::Topology snapshot = sparse_worker_topology();
         std::vector<unsigned int> inherited = snapshot.eligible_cpus;
         mutable std::atomic<unsigned int> discoveries{0};
         mutable std::atomic<unsigned int> queries{0};
@@ -41,7 +41,7 @@ namespace CE::Testing {
         std::atomic<bool> fail_binding{false};
         std::atomic<bool> ignore_singleton{false};
 
-        Engine::WorkerTopology topology() const override {
+        CE::Workers::Topology topology() const override {
             ++discoveries;
             return snapshot;
         }
@@ -74,13 +74,13 @@ namespace CE::Testing {
     // Declare after the pool so an assertion/exception releases held callbacks
     // before pool destruction joins them.
     class WorkerRelease final {
-        Engine::WorkerPool& pool_;
+        CE::Workers::Pool& pool_;
         std::promise<void> promise_;
         bool released_ = false;
 
     public:
         const std::shared_future<void> ready = promise_.get_future().share();
-        explicit WorkerRelease(Engine::WorkerPool& pool)
+        explicit WorkerRelease(CE::Workers::Pool& pool)
         : pool_(pool) {}
         ~WorkerRelease() {
             release();

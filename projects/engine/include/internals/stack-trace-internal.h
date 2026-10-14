@@ -4,7 +4,7 @@
 #include <ostream>
 #include <string>
 
-namespace CE::TraceDetail {
+namespace CE::Diagnostics::Detail {
     /** May allocate while resolving symbols/copying text; callers choose fallback. */
     template <std::size_t Capacity>
     std::string capture(void* address, std::size_t depth, std::size_t skip) {

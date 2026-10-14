@@ -16,10 +16,9 @@
 #include <vector>
 
 namespace {
-    namespace Engine = CE::Engine;
 
-    Engine::WorkerGroupOptions locality_options(Engine::WorkerLocalityPolicy locality, const std::size_t concurrency = 0) {
-        Engine::WorkerGroupOptions options;
+    CE::Workers::GroupOptions locality_options(CE::Workers::LocalityPolicy locality, const std::size_t concurrency = 0) {
+        CE::Workers::GroupOptions options;
         options.max_concurrency = concurrency;
         options.cpu.locality = locality;
         return options;
@@ -36,37 +35,37 @@ namespace {
 TEST(worker_locality, sizing) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
     {
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{0, provider});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{0, provider});
         EXPECT_EQ(pool.worker_count(), 3u);
         EXPECT_TRUE(pool.capabilities().core_topology);
         EXPECT_TRUE(pool.capabilities().cache_topology);
         EXPECT_FALSE(pool.capabilities().numa_placement);
         const auto group = pool.make_group();
         EXPECT_EQ(group.policy().effective_max_concurrency, 3u);
-        EXPECT_EQ(group.policy().effective_locality, Engine::WorkerLocalityPolicy::Automatic);
+        EXPECT_EQ(group.policy().effective_locality, CE::Workers::LocalityPolicy::Automatic);
     }
     provider->snapshot.cores.pop_back();
     {
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{0, provider});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{0, provider});
         EXPECT_EQ(pool.worker_count(), 6u);
         EXPECT_TRUE(pool.make_group().policy().preferred_fallback);
     }
     provider->fail_query = true;
     {
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{0, provider});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{0, provider});
         EXPECT_EQ(pool.worker_count(), 1u);
         EXPECT_EQ(pool.make_group().submit([] { return 7; }).get(), 7);
     }
-    Engine::WorkerPool ordinary;
+    CE::Workers::Pool ordinary;
     EXPECT_EQ(ordinary.worker_count(), 1u);
     EXPECT_FALSE(ordinary.make_group().policy().effective_locality);
-    EXPECT_THROW(Engine::WorkerPool{0}, CE::Exceptions::invalid_args);
+    EXPECT_THROW(CE::Workers::Pool{0}, CE::Exceptions::invalid_args);
 }
 
 TEST(worker_locality, owned_snapshot) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
     provider->inherited = {17, 2000};
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{0, provider});
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{0, provider});
     provider->snapshot.cores.clear();
     provider->snapshot.caches.clear();
     auto snapshot = pool.topology();
@@ -83,9 +82,9 @@ TEST(worker_locality, owned_snapshot) {
 
 TEST(worker_locality, cache_policy) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{2, provider});
-    auto options = locality_options(Engine::WorkerLocalityPolicy::Reuse, 9);
-    options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{2, provider});
+    auto options = locality_options(CE::Workers::LocalityPolicy::Reuse, 9);
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     options.cpu.cpus = {2000, 17};
     options.cpu.shared_cache_domain = 52; // Private instruction cache of core 7.
     auto group = pool.make_group(options);
@@ -102,7 +101,7 @@ TEST(worker_locality, cache_policy) {
     options.cpu.shared_cache_domain.reset();
     options.cpu.cpus = {18};
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::invalid_args);
-    options.cpu.strength = Engine::WorkerPolicyStrength::Preferred;
+    options.cpu.strength = CE::Workers::PolicyStrength::Preferred;
     options.cpu.cpus = {2, 18};
     auto fallback = pool.make_group(options);
     EXPECT_EQ(fallback.policy().effective_cpus, (std::vector<unsigned int>{2}));
@@ -117,9 +116,9 @@ TEST(worker_locality, unavailable_policy) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
     provider->snapshot.cores.clear();
     provider->snapshot.caches.clear();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
-    auto options = locality_options(Engine::WorkerLocalityPolicy::Spread);
-    options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
+    auto options = locality_options(CE::Workers::LocalityPolicy::Spread);
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     EXPECT_THROW(static_cast<void>(pool.make_group(options)), CE::Exceptions::failed_operation);
     options.cpu.locality.reset();
     options.cpu.shared_cache_domain = 51;
@@ -127,27 +126,27 @@ TEST(worker_locality, unavailable_policy) {
     options.cpu.shared_cache_domain.reset();
     options.cpu.cpus = {4097};
     EXPECT_EQ(pool.make_group(options).submit([&] { return provider->current_thread_cpus(); }).get(), (std::vector<unsigned int>{4097}));
-    options.cpu.strength = Engine::WorkerPolicyStrength::Preferred;
-    options.cpu.locality = Engine::WorkerLocalityPolicy::Spread;
+    options.cpu.strength = CE::Workers::PolicyStrength::Preferred;
+    options.cpu.locality = CE::Workers::LocalityPolicy::Spread;
     const auto fallback = pool.make_group(options);
     EXPECT_TRUE(fallback.policy().preferred_fallback);
     EXPECT_FALSE(fallback.policy().core_topology);
-    EXPECT_EQ(fallback.policy().effective_locality, Engine::WorkerLocalityPolicy::Spread);
+    EXPECT_EQ(fallback.policy().effective_locality, CE::Workers::LocalityPolicy::Spread);
 
     provider->snapshot.cpu_affinity = false;
-    Engine::WorkerPool unbound(Engine::WorkerPoolOptions{1, provider});
+    CE::Workers::Pool unbound(CE::Workers::PoolOptions{1, provider});
     EXPECT_FALSE(unbound.make_group(options).policy().effective_locality);
-    options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     EXPECT_THROW(static_cast<void>(unbound.make_group(options)), CE::Exceptions::failed_operation);
-    Engine::WorkerPool ordinary;
+    CE::Workers::Pool ordinary;
     options.cpu.cpus.clear();
     EXPECT_THROW(static_cast<void>(ordinary.make_group(options)), CE::Exceptions::failed_operation);
 }
 
 TEST(worker_locality, reuse) {
-    for (const auto locality : {Engine::WorkerLocalityPolicy::Reuse, Engine::WorkerLocalityPolicy::Automatic}) {
+    for (const auto locality : {CE::Workers::LocalityPolicy::Reuse, CE::Workers::LocalityPolicy::Automatic}) {
         auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
         auto group = pool.make_group(locality_options(locality, 1));
         std::optional<unsigned int> first;
         for (int index = 0; index < 12; ++index) {
@@ -167,8 +166,8 @@ TEST(worker_locality, reuse) {
 
 TEST(worker_locality, spread) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
-    auto group = pool.make_group(locality_options(Engine::WorkerLocalityPolicy::Spread));
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
+    auto group = pool.make_group(locality_options(CE::Workers::LocalityPolicy::Spread));
     std::set<unsigned int> cpus;
     for (int index = 0; index < 6; ++index) {
         const auto mask = group.submit([&] { return provider->current_thread_cpus(); }).get();
@@ -179,9 +178,9 @@ TEST(worker_locality, spread) {
 }
 
 TEST(worker_locality, cores_before_smt) {
-    for (const auto locality : {Engine::WorkerLocalityPolicy::Spread, Engine::WorkerLocalityPolicy::Automatic}) {
+    for (const auto locality : {CE::Workers::LocalityPolicy::Spread, CE::Workers::LocalityPolicy::Automatic}) {
         auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{4, provider});
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{4, provider});
         auto group = pool.make_group(locality_options(locality));
         std::mutex mutex;
         std::condition_variable entered;
@@ -219,8 +218,8 @@ TEST(worker_locality, cores_before_smt) {
 
 TEST(worker_locality, soft_progress_and_cap) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{3, provider});
-    auto group = pool.make_group(locality_options(Engine::WorkerLocalityPolicy::Reuse, 2));
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{3, provider});
+    auto group = pool.make_group(locality_options(CE::Workers::LocalityPolicy::Reuse, 2));
     std::vector<std::future<void>> held;
     std::promise<unsigned int> first;
     std::promise<unsigned int> second;
@@ -238,7 +237,7 @@ TEST(worker_locality, soft_progress_and_cap) {
     ASSERT_EQ(second_cpu.wait_for(std::chrono::seconds{3}), std::future_status::ready);
     EXPECT_NE(core_for(first_cpu), core_for(second_cpu.get()));
     auto capped = group.submit([] { return 11; });
-    auto pinned_options = locality_options(Engine::WorkerLocalityPolicy::Reuse);
+    auto pinned_options = locality_options(CE::Workers::LocalityPolicy::Reuse);
     pinned_options.cpu.cpus = {first_cpu};
     auto pinned = pool.make_group(pinned_options);
     auto independent = pinned.submit([&] { return provider->current_thread_cpus().at(0); });
@@ -256,7 +255,7 @@ TEST(worker_locality, soft_progress_and_cap) {
 
 TEST(worker_locality, fairness) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
     auto blocker = pool.make_group();
     std::promise<void> entered;
     std::vector<char> order;
@@ -266,10 +265,10 @@ TEST(worker_locality, fairness) {
         release.ready.wait();
     });
     entered.get_future().wait();
-    auto heavy_options = locality_options(Engine::WorkerLocalityPolicy::Reuse);
+    auto heavy_options = locality_options(CE::Workers::LocalityPolicy::Reuse);
     heavy_options.weight = 3;
     auto heavy = pool.make_group(heavy_options);
-    auto light = pool.make_group(locality_options(Engine::WorkerLocalityPolicy::Spread));
+    auto light = pool.make_group(locality_options(CE::Workers::LocalityPolicy::Spread));
     std::vector<std::future<void>> jobs;
     for (int index = 0; index < 12; ++index) {
         jobs.push_back(heavy.submit([&] { order.push_back('h'); }));
@@ -290,9 +289,9 @@ TEST(worker_locality, binding_failures) {
         auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
         provider->fail_singleton = !readback;
         provider->ignore_singleton = readback;
-        Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
-        auto options = locality_options(Engine::WorkerLocalityPolicy::Reuse);
-        options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+        CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
+        auto options = locality_options(CE::Workers::LocalityPolicy::Reuse);
+        options.cpu.strength = CE::Workers::PolicyStrength::Required;
         auto required = pool.make_group(options);
         std::atomic<int> calls{0};
         auto rejected = required.submit([&] { ++calls; });
@@ -302,7 +301,7 @@ TEST(worker_locality, binding_failures) {
         EXPECT_EQ(calls, 0);
         EXPECT_EQ(required.status().policy_failures, 1u);
         EXPECT_FALSE(required.status().last_cpu);
-        options.cpu.strength = Engine::WorkerPolicyStrength::Preferred;
+        options.cpu.strength = CE::Workers::PolicyStrength::Preferred;
         auto preferred = pool.make_group(options);
         EXPECT_EQ(preferred.submit([&] { return provider->current_thread_cpus(); }).get(), provider->inherited);
         EXPECT_EQ(preferred.status().policy_failures, 1u);
@@ -319,9 +318,9 @@ TEST(worker_locality, binding_failures) {
 
 TEST(worker_locality, required_revalidation) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    Engine::WorkerPool pool(Engine::WorkerPoolOptions{1, provider});
-    auto options = locality_options(Engine::WorkerLocalityPolicy::Reuse);
-    options.cpu.strength = Engine::WorkerPolicyStrength::Required;
+    CE::Workers::Pool pool(CE::Workers::PoolOptions{1, provider});
+    auto options = locality_options(CE::Workers::LocalityPolicy::Reuse);
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto group = pool.make_group(options);
     const auto first = group.submit([&] { return provider->current_thread_cpus(); }).get();
     provider->reset_masks();
@@ -333,8 +332,8 @@ TEST(worker_locality, required_revalidation) {
 
 TEST(worker_locality, provider_lifetime) {
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
-    const std::weak_ptr<Engine::WorkerTopologyProvider> lifetime = provider;
-    auto pool = std::make_unique<Engine::WorkerPool>(Engine::WorkerPoolOptions{2, provider});
+    const std::weak_ptr<CE::Workers::TopologyProvider> lifetime = provider;
+    auto pool = std::make_unique<CE::Workers::Pool>(CE::Workers::PoolOptions{2, provider});
     auto group = pool->make_group();
     provider.reset();
     EXPECT_FALSE(lifetime.expired());
@@ -359,7 +358,7 @@ TEST(worker_locality, startup_failure) {
     auto started = entered.get_future();
     std::atomic<int> exits{0};
     int attempts = 0;
-    Engine::WorkerDetail::WorkerNativeAdapter adapter;
+    CE::Workers::Detail::NativeAdapter adapter;
     adapter.start_thread = [&](std::function<void()> work) {
         if (++attempts == 2) {
             started.wait();
@@ -372,7 +371,7 @@ TEST(worker_locality, startup_failure) {
             ++exits;
         });
     };
-    EXPECT_THROW(static_cast<void>(Engine::WorkerDetail::WorkerPoolAccess::create({3, provider}, std::move(adapter))), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(CE::Workers::Detail::PoolAccess::create({3, provider}, std::move(adapter))), std::runtime_error);
     EXPECT_EQ(exits, 1);
     EXPECT_EQ(provider.use_count(), 1);
 }

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace CE::Assets {
+namespace CE::Rendering::Geometry {
     // Image-pixel values with a top-left origin. Rect coordinates are widened for
     // grid arithmetic; these aggregates perform no bounds/dimension validation.
     struct PixelPoint {

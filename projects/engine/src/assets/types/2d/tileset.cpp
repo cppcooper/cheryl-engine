@@ -4,21 +4,28 @@
 #include <algorithm>
 #include <utility>
 
-namespace CE::Assets {
-    TileAnimation::TileAnimation(
-        TileAnimationDefinition definition, const shptr<Geometry2D>& geometry, const shptr<Image>& texture,
-        std::shared_ptr<const Material> material
+namespace CE::Assets::Tilesets {
+    Animation::Animation(
+        Clip definition,
+        const CE::Memory::Shared<CE::Rendering::Geometry::Buffer2D>& geometry,
+        const CE::Memory::Shared<CE::Rendering::Resources::Image>& texture,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material
     )
-    : Asset2D(geometry, texture, std::move(material)),
-      Frame(0, 0, definition.frames.size(), definition.loop ? FrameIndexPolicy::Wrap : FrameIndexPolicy::Clamp),
+    : Content2D(geometry, texture, std::move(material)),
+      CE::Assets::Animation::Cursor<Animation>(
+          0,
+          0,
+          definition.frames.size(),
+          definition.loop ? CE::Assets::Animation::IndexPolicy::Wrap : CE::Assets::Animation::IndexPolicy::Clamp
+      ),
       definition_(std::move(definition)) {}
 
-    std::chrono::milliseconds TileAnimation::frame_duration() const {
+    std::chrono::milliseconds Animation::frame_duration() const {
         return definition_.frames.at(index_).duration;
     }
 
-    Tileset::Tileset(TilesetData data)
-    : Asset2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)), definition_(std::move(data.definition)) {
+    Asset::Asset(Data data)
+    : Content2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)), definition_(std::move(data.definition)) {
         // Index each animated target once so tile-map selection can substitute its clip by cell.
         for (const auto& [name, animation] : definition_.animations) {
             if (!animation_targets_.emplace(animation.target, name).second) {
@@ -27,18 +34,18 @@ namespace CE::Assets {
         }
     }
 
-    Tile Tileset::tile(const std::size_t cell) const {
+    Tile Asset::tile(const std::size_t cell) const {
         if (cell >= definition_.grid.cell_count()) {
             throw Exceptions::bad_request(CE_HERE, "Tileset cell is outside the grid");
         }
         return Tile(cell, geometry, texture, material);
     }
 
-    TileAnimation Tileset::animation(const std::string& name) const {
-        return TileAnimation(definition_.animations.at(name), geometry, texture, material);
+    Animation Asset::animation(const std::string& name) const {
+        return Animation(definition_.animations.at(name), geometry, texture, material);
     }
 
-    std::optional<TileAnimation> Tileset::animation_for(const std::size_t target) const {
+    std::optional<Animation> Asset::animation_for(const std::size_t target) const {
         // Tile maps choose a base cell before animation; this index finds a
         // clip only when that original cell is an animated target.
         const auto animation_name = animation_targets_.find(target);
@@ -48,7 +55,7 @@ namespace CE::Assets {
         return std::nullopt;
     }
 
-    CellIndex Tileset::cell_at(const CellIndex target, const std::chrono::milliseconds elapsed) const {
+    CE::Assets::Grids::CellIndex Asset::cell_at(const CE::Assets::Grids::CellIndex target, const std::chrono::milliseconds elapsed) const {
         if (elapsed.count() < 0)
             throw Exceptions::invalid_args(CE_HERE, "Tile selection elapsed time must be nonnegative");
         const auto count = definition_.grid.cell_count();
@@ -64,29 +71,29 @@ namespace CE::Assets {
         return cell;
     }
 
-    TileSelectionResult Tileset::select_tile(
+    CE::Assets::Tilesets::Selection::Result Asset::select_tile(
         const std::string& name,
-        const TerrainSampler& sampler,
-        const TileSelectionOptions& options,
+        const CE::Assets::Tilesets::Selection::Sampler& sampler,
+        const CE::Assets::Tilesets::Selection::Options& options,
         const std::chrono::milliseconds elapsed
     ) const {
         if (elapsed.count() < 0)
             throw Exceptions::invalid_args(CE_HERE, "Tile selection elapsed time must be nonnegative");
-        auto result = CE::Assets::select_tile(autotile(name), sampler, options);
-        if (auto* cell = std::get_if<CellIndex>(&result))
+        auto result = CE::Assets::Tilesets::Selection::select(autotile(name), sampler, options);
+        if (auto* cell = std::get_if<CE::Assets::Grids::CellIndex>(&result))
             *cell = cell_at(*cell, elapsed);
         return result;
     }
 
-    const ViewDefinition& Tileset::view(const std::string& name) const {
+    const CE::Assets::Grids::View& Asset::view(const std::string& name) const {
         return definition_.views.at(name);
     }
 
-    CellIndex Tileset::orientation(const std::string& name) const {
+    CE::Assets::Grids::CellIndex Asset::orientation(const std::string& name) const {
         return definition_.orientations.at(name);
     }
 
-    const AutotileDefinition& Tileset::autotile(const std::string& name) const {
+    const Rule& Asset::autotile(const std::string& name) const {
         return definition_.autotiles.at(name);
     }
 }

@@ -18,13 +18,13 @@ namespace CE::UI::TGUI {
     // smoothing independently of immutable pixel snapshots for platform upload.
     class Texture final : public tgui::BackendTexture {
         const unsigned int maximum_size_;
-        std::shared_ptr<const Assets::DecodedImage> snapshot_;
+        std::shared_ptr<const CE::Assets::Images::Decoded> snapshot_;
 
     public:
         explicit Texture(unsigned int maximum_size);
         bool loadTextureOnly(tgui::Vector2u size, const std::uint8_t* pixels, bool smooth) override;
         void setSmooth(bool smooth) override;
-        [[nodiscard]] std::shared_ptr<const Assets::DecodedImage> snapshot() const { return snapshot_; }
+        [[nodiscard]] std::shared_ptr<const CE::Assets::Images::Decoded> snapshot() const { return snapshot_; }
     };
 
     class Renderer final : public tgui::BackendRenderer {
@@ -37,9 +37,9 @@ namespace CE::UI::TGUI {
     };
 
     struct RecordedDraw {
-        std::vector<Vertex2DColor> vertices;
-        std::shared_ptr<const Assets::DecodedImage> texture;
-        RenderAPIs::ClipRegion2D clip;
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> vertices;
+        std::shared_ptr<const CE::Assets::Images::Decoded> texture;
+        CE::Rendering::ClipRegion2D clip;
         bool smooth = true;
     };
 
@@ -58,7 +58,7 @@ namespace CE::UI::TGUI {
 
     class RenderTarget final : public tgui::BackendRenderTarget {
         tgui::Vector2f pixel_scale_{1, 1};
-        RenderAPIs::ClipRect2D clip_rectangle_;
+        CE::Rendering::ClipRect2D clip_rectangle_;
         std::vector<RecordedDraw> draws_;
         bool configured_ = false;
         bool recording_ = false;

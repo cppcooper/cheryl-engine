@@ -10,11 +10,11 @@
 
 #include <templates/singleton.h>
 
-namespace CE::Assets {
+namespace CE::Assets::Loading {
     // Lightweight registry for asset files that do not need a typed manager.
     // It stores absolute paths grouped by basename; file contents remain owned
     // by the consumer that opens or streams them.
-    class FileRegistry final : public Singleton_CTS<FileRegistry> {
+    class FileRegistry final : public CE::State::Singleton<FileRegistry> {
         std::unordered_map<std::string, std::vector<std::filesystem::path>> files_;
         mutable std::shared_mutex mutex_;
 

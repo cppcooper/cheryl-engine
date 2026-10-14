@@ -9,51 +9,52 @@
 #include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
 
-namespace CE::Assets {
-    std::shared_ptr<Image> ResourceProvider::load_image(const std::filesystem::path& file) {
-        return create_image(decode_image(file));
+namespace CE::Rendering::Resources {
+    std::shared_ptr<Image> Provider::load_image(const std::filesystem::path& file) {
+        return create_image(CE::Assets::Images::decode(file));
     }
 
-    std::shared_ptr<const Sampler> ResourceProvider::create_sampler(const SamplerOptions& options) {
-        validate_sampler_options(options);
+    std::shared_ptr<const CE::Rendering::Sampling::Sampler> Provider::create_sampler(const CE::Rendering::Sampling::Options& options) {
+        CE::Rendering::Sampling::validate(options);
         throw Exceptions::failed_operation(CE_HERE, "Resource provider does not support image samplers");
     }
 
-    std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(std::span<const Vertex2DColor>, PrimitiveTopology) {
+    std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+    Provider::upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2DColor>, CE::Rendering::Geometry::Topology) {
         throw Exceptions::failed_operation(CE_HERE, "Resource provider does not support colored 2D geometry");
     }
 
-    std::shared_ptr<Geometry2D> ResourceProvider::upload_geometry(
-        std::shared_ptr<Vertex2D> vertices,
+    std::shared_ptr<CE::Rendering::Geometry::Buffer2D> Provider::upload_geometry(
+        std::shared_ptr<CE::Rendering::Geometry::Vertex2D> vertices,
         const std::uint32_t vertex_count,
-        const PrimitiveTopology topology
+        const CE::Rendering::Geometry::Topology topology
     ) {
         if (!vertices || vertex_count == 0)
             throw Exceptions::invalid_args(CE_HERE, "Cannot upload empty 2D geometry");
-        return upload_geometry(std::span<const Vertex2D>{vertices.get(), vertex_count}, topology);
+        return upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D>{vertices.get(), vertex_count}, topology);
     }
 
-    ResourceProvider::~ResourceProvider() {
-        if (!AssetCacheContext::begin_provider_release(*this))
+    Provider::~Provider() {
+        if (!CE::Assets::Cache::Context::begin_provider_release(*this))
             return;
 
         // Drop assets which retain images and geometry before their image cache.
         // External shared owners can outlive the cache; their GPU handles still
         // belong to the renderer's shutdown sweep.
-        if (auto* manager = MaterialMgr::get_existing())
+        if (auto* manager = CE::Assets::Materials::Manager::get_existing())
             manager->clear_assets();
-        if (auto* manager = SpriteMgr::get_existing())
+        if (auto* manager = CE::Assets::Sprites::Manager::get_existing())
             manager->clear_assets();
-        if (auto* manager = TilesetMgr::get_existing())
+        if (auto* manager = CE::Assets::Tilesets::Manager::get_existing())
             manager->clear_assets();
-        if (auto* manager = FontMgr::get_existing())
+        if (auto* manager = CE::Text::Legacy::Manager::get_existing())
             manager->clear_assets();
-        if (auto* manager = ShaderAssetMgr::get_existing())
+        if (auto* manager = CE::Assets::Shaders::Manager::get_existing())
             manager->clear_assets();
-        if (auto* manager = ShaderMgr::get_existing())
+        if (auto* manager = CE::Assets::Shaders::ProgramCache::get_existing())
             manager->clear_assets();
-        if (auto* manager = TextureMgr::get_existing())
+        if (auto* manager = CE::Assets::Images::Manager::get_existing())
             manager->clear_assets();
-        AssetCacheContext::release_provider(*this);
+        CE::Assets::Cache::Context::release_provider(*this);
     }
 }

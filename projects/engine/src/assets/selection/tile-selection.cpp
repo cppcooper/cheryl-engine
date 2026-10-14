@@ -7,17 +7,17 @@
 #include <cstddef>
 #include <optional>
 
-namespace CE::Assets {
+namespace CE::Assets::Tilesets::Selection {
     namespace {
         constexpr std::array directions{Direction::North, Direction::NorthEast, Direction::East, Direction::SouthEast,
             Direction::South, Direction::SouthWest, Direction::West, Direction::NorthWest};
 
-        void validate_fallback(const TerrainFallback fallback) {
-            if (fallback != TerrainFallback::Empty && fallback != TerrainFallback::Center && fallback != TerrainFallback::Unresolved)
+        void validate_fallback(const Fallback fallback) {
+            if (fallback != Fallback::Empty && fallback != Fallback::Center && fallback != Fallback::Unresolved)
                 throw Exceptions::invalid_args(CE_HERE, "Unknown tile terrain fallback policy");
         }
 
-        void validate_options(const TerrainSampler& sampler, const TileSelectionOptions& options) {
+        void validate_options(const Sampler& sampler, const Options& options) {
             if (!sampler)
                 throw Exceptions::invalid_args(CE_HERE, "Tile selection needs a terrain sampler");
             validate_fallback(options.outside);
@@ -26,36 +26,32 @@ namespace CE::Assets {
                 throw Exceptions::invalid_args(CE_HERE, "Unknown diagonal connectivity policy");
         }
 
-        bool known_terrain(const WangAutotileDefinition& rule, const std::uint32_t terrain) {
+        bool known_terrain(const WangRule& rule, const std::uint32_t terrain) {
             return terrain == 0 || std::ranges::any_of(rule.terrains, [terrain](const auto& entry) { return entry.id == terrain; });
         }
 
-        std::optional<std::uint32_t> sample_terrain(
-            const TerrainSample sample,
-            const TileSelectionOptions& options,
-            const WangAutotileDefinition* wang
-        ) {
-            if (sample.state == TerrainSampleState::Known && (!wang || known_terrain(*wang, sample.terrain)))
+        std::optional<std::uint32_t> sample_terrain(const Sample sample, const Options& options, const WangRule* wang) {
+            if (sample.state == SampleState::Known && (!wang || known_terrain(*wang, sample.terrain)))
                 return sample.terrain;
 
-            TerrainFallback fallback;
+            Fallback fallback;
             switch (sample.state) {
-                case TerrainSampleState::Outside:
+                case SampleState::Outside:
                     fallback = options.outside;
                     break;
-                case TerrainSampleState::Known: // A label absent from the Wang terrain catalogue is unknown.
-                case TerrainSampleState::Unknown:
+                case SampleState::Known: // A label absent from the Wang terrain catalogue is unknown.
+                case SampleState::Unknown:
                     fallback = options.unknown;
                     break;
                 default:
                     throw Exceptions::invalid_args(CE_HERE, "Unknown terrain sample state");
             }
             switch (fallback) {
-                case TerrainFallback::Empty:
+                case Fallback::Empty:
                     return 0;
-                case TerrainFallback::Center:
+                case Fallback::Center:
                     return options.terrain;
-                case TerrainFallback::Unresolved:
+                case Fallback::Unresolved:
                     return std::nullopt;
             }
             throw Exceptions::invalid_args(CE_HERE, "Unknown tile terrain fallback policy");
@@ -63,17 +59,17 @@ namespace CE::Assets {
 
         std::optional<WangSignature> sample_sites(
             const std::array<bool, 8>& required,
-            const TerrainSiteKind kind,
-            const TerrainSampler& sampler,
-            const TileSelectionOptions& options,
-            const WangAutotileDefinition* wang = nullptr
+            const SiteKind kind,
+            const Sampler& sampler,
+            const Options& options,
+            const WangRule* wang = nullptr
         ) {
             WangSignature samples{};
             bool complete = true;
             for (std::size_t index = 0; index < directions.size(); ++index) {
                 if (!required[index])
                     continue;
-                const auto terrain = sample_terrain(sampler(TerrainSite{kind, directions[index]}), options, wang);
+                const auto terrain = sample_terrain(sampler(Site{kind, directions[index]}), options, wang);
                 if (terrain)
                     samples[index] = *terrain;
                 else
@@ -92,8 +88,8 @@ namespace CE::Assets {
             return seed ^ (seed >> 31);
         }
 
-        CellIndex weighted_cell(
-            const WangAutotileDefinition& rule,
+        CE::Assets::Grids::CellIndex weighted_cell(
+            const WangRule& rule,
             const WangSignature& signature,
             const std::vector<std::size_t>& candidates,
             const std::uint64_t seed
@@ -125,33 +121,29 @@ namespace CE::Assets {
         }
     }
 
-    TileSelectionResult
-    select_tile(const WangAutotileDefinition& rule, const TerrainSampler& sampler, const TileSelectionOptions& options) {
+    Result select(const WangRule& rule, const Sampler& sampler, const Options& options) {
         validate_options(sampler, options);
         if (rule.type != WangType::Corner && rule.type != WangType::Edge)
             throw Exceptions::invalid_args(CE_HERE, "Unknown Wang rule type");
         if (rule.slot_order != directions)
             throw Exceptions::invalid_args(CE_HERE, "Wang slots must use canonical direction order");
-        if ((options.outside == TerrainFallback::Center || options.unknown == TerrainFallback::Center) &&
-            !known_terrain(rule, options.terrain))
+        if ((options.outside == Fallback::Center || options.unknown == Fallback::Center) && !known_terrain(rule, options.terrain))
             throw Exceptions::invalid_args(CE_HERE, "Wang center fallback needs a declared terrain ID or zero");
 
         std::array<bool, 8> required{};
         for (std::size_t index = 0; index < required.size(); ++index)
             required[index] = (index % 2 == 0) == (rule.type == WangType::Edge);
-        const auto signature = sample_sites(
-            required, rule.type == WangType::Edge ? TerrainSiteKind::Edge : TerrainSiteKind::Corner, sampler, options, &rule
-        );
+        const auto signature =
+            sample_sites(required, rule.type == WangType::Edge ? SiteKind::Edge : SiteKind::Corner, sampler, options, &rule);
         if (!signature)
-            return TileSelectionFailure::IncompleteNeighborhood;
+            return Failure::IncompleteNeighborhood;
         const auto candidates = rule.variants.find(*signature);
         if (candidates == rule.variants.end() || candidates->second.empty())
-            return TileSelectionFailure::MissingRule;
+            return Failure::MissingRule;
         return weighted_cell(rule, *signature, candidates->second, options.seed);
     }
 
-    TileSelectionResult
-    select_tile(const BitmaskAutotileDefinition& rule, const TerrainSampler& sampler, const TileSelectionOptions& options) {
+    Result select(const BitmaskRule& rule, const Sampler& sampler, const Options& options) {
         validate_options(sampler, options);
         if (rule.type != BitmaskType::FourNeighbor && rule.type != BitmaskType::EightNeighbor)
             throw Exceptions::invalid_args(CE_HERE, "Unknown bitmask rule type");
@@ -171,9 +163,9 @@ namespace CE::Assets {
                 required[(index + 1) % 8] = true;
             }
         }
-        const auto samples = sample_sites(required, TerrainSiteKind::Cell, sampler, options);
+        const auto samples = sample_sites(required, SiteKind::Cell, sampler, options);
         if (!samples)
-            return TileSelectionFailure::IncompleteNeighborhood;
+            return Failure::IncompleteNeighborhood;
 
         const auto connects = [&](const std::size_t index) { return options.terrain != 0 && (*samples)[index] == options.terrain; };
         std::uint32_t mask = 0;
@@ -187,12 +179,11 @@ namespace CE::Assets {
         }
         const auto cell = rule.cases.find(mask);
         if (cell == rule.cases.end())
-            return TileSelectionFailure::MissingRule;
+            return Failure::MissingRule;
         return cell->second;
     }
 
-    TileSelectionResult
-    select_tile(const AutotileDefinition& rule, const TerrainSampler& sampler, const TileSelectionOptions& options) {
-        return std::visit([&](const auto& definition) { return select_tile(definition, sampler, options); }, rule);
+    Result select(const Rule& rule, const Sampler& sampler, const Options& options) {
+        return std::visit([&](const auto& definition) { return select(definition, sampler, options); }, rule);
     }
 }

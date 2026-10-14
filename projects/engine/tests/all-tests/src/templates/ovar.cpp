@@ -6,7 +6,7 @@
 TEST(templates_ovar, observers_and_waiters) {
     std::atomic<int> first_observed{-1};
     std::atomic<int> second_observed{-1};
-    ObservedVariable<int, 2> value(
+    CE::State::ObservedVariable<int, 2> value(
         0, {[&](const int& changed) { first_observed.store(changed); }, [&](const int& changed) { second_observed.store(changed); }}
     );
 

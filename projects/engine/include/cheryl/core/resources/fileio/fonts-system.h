@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-namespace CE::Resources {
+namespace CE::Text {
     /** Return owned candidate roots from built-in Unix/macOS paths and nonempty
      * HOME/XDG_DATA_HOME/WINDIR/LOCALAPPDATA values. No existence check or deduplication
      * occurs here. Keep environment mutation serialized with this call.

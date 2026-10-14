@@ -18,20 +18,21 @@ struct DemoAudio::AudioState {
     std::optional<CE::Audio::Clip> click;
     std::string status = "not loaded";
 
-    explicit AudioState(CE::Engine::EngineContext&) {}
+    explicit AudioState(CE::Runtime::Context&) {}
 #else
-    explicit AudioState(CE::Engine::EngineContext&) {}
+    explicit AudioState(CE::Runtime::Context&) {}
 #endif
 };
 
-DemoAudio::DemoAudio(CE::Engine::EngineContext& engine) : audio_state_(std::make_unique<AudioState>(engine)) {}
+DemoAudio::DemoAudio(CE::Runtime::Context& engine)
+: audio_state_(std::make_unique<AudioState>(engine)) {}
 
 DemoAudio::~DemoAudio() = default;
 
 void DemoAudio::load() {
 #ifdef CHERYL_DEMO_AUDIO
     try {
-        auto& registry = CE::Assets::FileRegistry::get();
+        auto& registry = CE::Assets::Loading::FileRegistry::get();
         const auto music = registry.get_file_named("Fair_Fight_(Battle).wav");
         const auto click = registry.get_file_named("UIClick_INTERFACE-Strong Click 2_HY_PC-004.wav");
         if (!music || !click)

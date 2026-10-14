@@ -7,8 +7,8 @@
 #include <type_traits>
 #include <utility>
 
-namespace CE::Assets {
-    bool is_shader_asset_id(const std::string_view id) {
+namespace CE::Assets::Shaders {
+    bool is_qualified_id(const std::string_view id) {
         const auto colon = id.find(':');
         if (colon == std::string_view::npos || colon == 0 || colon + 1 == id.size())
             return false;
@@ -21,58 +21,58 @@ namespace CE::Assets {
         return identifier(id.substr(0, colon), true) && identifier(id.substr(colon + 1), false);
     }
 
-    ParameterValue shader_parameter_value(const ShaderLiteral& literal) {
-        return std::visit([](const auto& value) -> ParameterValue { return value; }, literal);
+    CE::Rendering::Parameters::Value parameter_value(const Literal& literal) {
+        return std::visit([](const auto& value) -> CE::Rendering::Parameters::Value { return value; }, literal);
     }
 
-    ParameterSet shader_material_defaults(const ShaderMaterialRecipe& recipe) {
-        ParameterSet result;
+    CE::Rendering::Parameters::Set defaults(const MaterialRecipe& recipe) {
+        CE::Rendering::Parameters::Set result;
         for (const auto& [key, value] : recipe.defaults)
-            result.emplace(key, shader_parameter_value(value));
+            result.emplace(key, parameter_value(value));
         return result;
     }
 
-    PipelineDefinition shader_pipeline_definition(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program) {
-        PipelineDefinition result;
+    CE::Rendering::Pipelines::Definition pipeline_definition(const MaterialRecipe& recipe, const ProgramRecipe& program) {
+        CE::Rendering::Pipelines::Definition result;
         for (const auto& source : program.sources)
             result.program_sources.push_back(source.path);
         result.vertex_layout = recipe.vertex_layout;
         result.topology = recipe.topology;
         result.state = recipe.state;
         for (const auto& parameter : recipe.parameters) {
-            ParameterDefinition definition{parameter.key, parameter.type, parameter.required, parameter.semantic, {}};
+            CE::Rendering::Parameters::Definition definition{parameter.key, parameter.type, parameter.required, parameter.semantic, {}};
             if (parameter.default_value)
-                definition.default_value = shader_parameter_value(*parameter.default_value);
+                definition.default_value = parameter_value(*parameter.default_value);
             result.parameters.push_back(std::move(definition));
         }
         return result;
     }
 
-    void validate_shader_program(const ShaderProgramRecipe& recipe) {
-        if (!is_shader_asset_id(recipe.id) || recipe.sources.size() != 2)
+    void validate_program(const ProgramRecipe& recipe) {
+        if (!is_qualified_id(recipe.id) || recipe.sources.size() != 2)
             throw Exceptions::invalid_args(CE_HERE, "Shader program requires a qualified ID and vertex/fragment sources");
         bool vertex = false;
         bool fragment = false;
         for (const auto& source : recipe.sources) {
             if (source.path.empty())
                 throw Exceptions::invalid_args(CE_HERE, "Shader source path must not be empty");
-            if (source.stage == ShaderStage::Vertex && !vertex)
+            if (source.stage == Stage::Vertex && !vertex)
                 vertex = true;
-            else if (source.stage == ShaderStage::Fragment && !fragment)
+            else if (source.stage == Stage::Fragment && !fragment)
                 fragment = true;
             else
                 throw Exceptions::invalid_args(CE_HERE, "Shader program has an unsupported or repeated stage");
         }
     }
 
-    void validate_shader_material(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program) {
-        validate_shader_program(program);
-        if (!is_shader_asset_id(recipe.id) || recipe.program != program.id)
+    void validate_material(const MaterialRecipe& recipe, const ProgramRecipe& program) {
+        validate_program(program);
+        if (!is_qualified_id(recipe.id) || recipe.program != program.id)
             throw Exceptions::invalid_args(CE_HERE, "Shader material requires a qualified ID and its selected program");
-        const auto pipeline = shader_pipeline_definition(recipe, program);
-        validate_pipeline_definition(pipeline);
-        validate_parameter_values(pipeline.parameters, shader_material_defaults(recipe));
-        const auto validate_literal = [](const ShaderLiteral& literal) {
+        const auto pipeline = pipeline_definition(recipe, program);
+        CE::Rendering::Pipelines::validate(pipeline);
+        CE::Rendering::Parameters::validate_values(pipeline.parameters, defaults(recipe));
+        const auto validate_literal = [](const Literal& literal) {
             const auto finite = std::visit([](const auto& value) {
                 using T = std::decay_t<decltype(value)>;
                 if constexpr (std::is_arithmetic_v<T>)
@@ -100,10 +100,10 @@ namespace CE::Assets {
             validate_literal(value);
         }
         for (const auto& [key, options] : recipe.sampling) {
-            const auto parameter = std::ranges::find(recipe.parameters, key, &ShaderParameter::key);
-            if (parameter == recipe.parameters.end() || parameter->type != ParameterType::Sampler2D)
+            const auto parameter = std::ranges::find(recipe.parameters, key, &ParameterRecipe::key);
+            if (parameter == recipe.parameters.end() || parameter->type != CE::Rendering::Parameters::Type::Sampler2D)
                 throw Exceptions::invalid_args(CE_HERE, "FX sampling policy requires a sampler parameter '" + key + "'");
-            validate_sampler_options(options);
+            CE::Rendering::Sampling::validate(options);
         }
     }
 }

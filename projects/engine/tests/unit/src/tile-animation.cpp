@@ -7,8 +7,8 @@
 namespace {
     using namespace std::chrono_literals;
 
-    CE::Assets::TileAnimationDefinition clip() {
-        CE::Assets::TileAnimationDefinition result;
+    CE::Assets::Tilesets::Clip clip() {
+        CE::Assets::Tilesets::Clip result;
         result.target = 9;
         result.frames = {{7, 30ms}, {3, 50ms}, {11, 20ms}};
         return result;

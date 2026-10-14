@@ -17,7 +17,7 @@
 #error Cheryl worker topology requires hwloc 2.5 or newer with the 2.x API
 #endif
 
-namespace CE::Engine {
+namespace CE::Workers::Hwloc {
     namespace {
         using NativeTopology = std::unique_ptr<std::remove_pointer_t<hwloc_topology_t>, decltype(&hwloc_topology_destroy)>;
         using Bitmap = std::unique_ptr<std::remove_pointer_t<hwloc_bitmap_t>, decltype(&hwloc_bitmap_free)>;
@@ -65,14 +65,14 @@ namespace CE::Engine {
             return topology;
         }
 
-        WorkerCacheType cache_type(const hwloc_obj_cache_type_t type) {
+        CE::Workers::CacheType cache_type(const hwloc_obj_cache_type_t type) {
             switch (type) {
                 case HWLOC_OBJ_CACHE_DATA:
-                    return WorkerCacheType::Data;
+                    return CE::Workers::CacheType::Data;
                 case HWLOC_OBJ_CACHE_INSTRUCTION:
-                    return WorkerCacheType::Instruction;
+                    return CE::Workers::CacheType::Instruction;
                 case HWLOC_OBJ_CACHE_UNIFIED:
-                    return WorkerCacheType::Unified;
+                    return CE::Workers::CacheType::Unified;
             }
             throw Exceptions::failed_operation(CE_HERE, "hwloc reported an unknown CPU cache type");
         }
@@ -86,9 +86,9 @@ namespace CE::Engine {
             return result;
         }
 
-        class HwlocWorkerTopology final : public WorkerTopologyProvider {
+        class HwlocWorkerTopology final : public CE::Workers::TopologyProvider {
             NativeTopology native_;
-            WorkerTopology snapshot_;
+            CE::Workers::Topology snapshot_;
 
         public:
             HwlocWorkerTopology()
@@ -132,10 +132,10 @@ namespace CE::Engine {
                         if (cpus.empty())
                             continue;
                         if (object->type == HWLOC_OBJ_CORE) {
-                            snapshot_.cores.push_back(WorkerCore{object->logical_index, std::move(cpus)});
+                            snapshot_.cores.push_back(CE::Workers::Core{object->logical_index, std::move(cpus)});
                         } else if (object->attr) {
                             const auto& reported = object->attr->cache;
-                            WorkerCacheDomain cache;
+                            CE::Workers::CacheDomain cache;
                             cache.id = static_cast<unsigned int>(snapshot_.caches.size());
                             cache.level = reported.depth;
                             cache.type = cache_type(reported.type);
@@ -154,7 +154,7 @@ namespace CE::Engine {
                     snapshot_.limitations += "; hwloc did not report eligible CPU caches";
             }
 
-            WorkerTopology topology() const override { return snapshot_; }
+            CE::Workers::Topology topology() const override { return snapshot_; }
 
             std::vector<unsigned int> current_thread_cpus() const override {
                 const auto native = native_.get();
@@ -187,7 +187,7 @@ namespace CE::Engine {
         };
     }
 
-    std::shared_ptr<WorkerTopologyProvider> make_hwloc_worker_topology() {
+    std::shared_ptr<CE::Workers::TopologyProvider> make_topology_provider() {
         return std::make_shared<HwlocWorkerTopology>();
     }
 }

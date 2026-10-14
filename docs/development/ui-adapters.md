@@ -5,8 +5,8 @@ existing input, render and resource contracts. The toolkit owns its widgets,
 documents, styling and layout. Engine does not include toolkit headers or select
 an adapter. The [TGUI](../../projects/modules/ui/tgui/README.md) and
 [RmlUi](../../projects/modules/ui/rmlui/README.md) modules provide independent
-examples. Their public classes are toolkit-specific, not requirements for other
-adapters.
+examples under `CE::UI::TGUI` and `CE::UI::RmlUi`. Their public classes are
+toolkit-specific, not requirements for other adapters.
 
 An unknown future toolkit should require an additional adapter module without
 introducing its concepts into Engine. Dear ImGui remains a developer/debug tooling
@@ -102,9 +102,12 @@ when an implemented consumer demonstrates the requirement.
 
 ## Routing and unavailable services
 
-Use Events capture for ordered physical input and acquire Text capture while a
-consumer requests text focus. Focus targets and epochs select keyboard/text
-delivery; a later lease can preempt an earlier one. Drain already collected
+`CE::Input::Capture` and `CE::Input::Routing` are neutral protocols shared by
+gameplay, tools and UI consumers. The toolkit adapter owns widget behavior and
+uses these protocols rather than defining another input system. Use
+`CE::Input::Capture::Channel::Events` for ordered physical input and acquire
+`CE::Input::Capture::Channel::Text` while a consumer requests text focus. Focus
+targets and epochs select keyboard/text delivery; a later lease can preempt an earlier one. Drain already collected
 poll-latched records before releasing a preempted lease. Observe modifier releases
 even when the corresponding keyboard record is not selected for widget delivery.
 
@@ -201,7 +204,7 @@ one owner is affected. A matching compiled build can be reused without rebuildin
 Inspect the compile inventory when the RmlUi correction changes: Core must compile
 the generated `rmlui-fixes/WidgetTextInput.cpp` rather than the unguarded original.
 The recorded root session/editing/lifetime/coexistence baseline is accepted, but does
-not directly exercise Startup's parser/backend factory, support headers, the new
+not directly exercise `CE::Application::Startup`'s parser/backend factory, support headers, the new
 `before_record` overload or placeholder hit-testing. These gaps remain in the
 [owning checklist](../planning/develop-review-and-development-plan.md#startup-and-ui-follow-up);
 font-weight fixture gaps remain in the [Unicode plan](../planning/short-term/unicode-text.md#progress).

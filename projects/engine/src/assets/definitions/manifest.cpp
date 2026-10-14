@@ -1,8 +1,8 @@
 #include <assets/definitions/manifest.h>
 #include <unordered_set>
 
-namespace CE::Assets {
-    std::vector<std::filesystem::path> AssetManifest::textures() const {
+namespace CE::Assets::Manifests {
+    std::vector<std::filesystem::path> Graphics::textures() const {
         // Preserve first reference order while deduplicating shared images
         // across sprite and tileset entries in this document.
         std::vector<std::filesystem::path> result;

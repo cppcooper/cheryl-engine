@@ -4,26 +4,24 @@
 #include <cstddef>
 #include <stdexcept>
 
-namespace CE {
-    namespace VAONumbers {
-        // A standalone quad has two independent triangles. Atlas cells use strips instead.
-        constexpr int vertices_per_quad = 6;
-        constexpr int vertices_per_strip_quad = 4;
-        constexpr int floats_per_quad_vertex = 5;
-        constexpr int floats_per_quad = vertices_per_quad * floats_per_quad_vertex;
-        constexpr int floats_per_mesh_vertex = 8;
+namespace CE::Rendering::Geometry {
+    // A standalone quad has two independent triangles. Atlas cells use strips instead.
+    constexpr int vertices_per_quad = 6;
+    constexpr int vertices_per_strip_quad = 4;
+    constexpr int floats_per_quad_vertex = 5;
+    constexpr int floats_per_quad = vertices_per_quad * floats_per_quad_vertex;
+    constexpr int floats_per_mesh_vertex = 8;
 
-        inline int calculate_num_vertices(const int final_quad) {
-            return final_quad * vertices_per_quad;
-        }
+    inline int calculate_num_vertices(const int final_quad) {
+        return final_quad * vertices_per_quad;
+    }
 
-        inline int calculate_num_strip_vertices(const int final_quad) {
-            return final_quad * vertices_per_strip_quad;
-        }
+    inline int calculate_num_strip_vertices(const int final_quad) {
+        return final_quad * vertices_per_strip_quad;
+    }
 
-        inline int calculate_num_frames(const int num_vertices) {
-            return num_vertices / vertices_per_quad;
-        }
+    inline int calculate_num_frames(const int num_vertices) {
+        return num_vertices / vertices_per_quad;
     }
 
     struct Vertex2D {
@@ -75,7 +73,7 @@ namespace CE {
 
     /** Two independent triangles for a standalone textured image or graphic. */
     struct Quad {
-        std::array<Vertex2D, VAONumbers::vertices_per_quad> vertices;
+        std::array<Vertex2D, CE::Rendering::Geometry::vertices_per_quad> vertices;
     };
 
     /** A four-corner strip for one independently drawn atlas cell. */
@@ -85,7 +83,7 @@ namespace CE {
         constexpr QuadTriangleStrip(const Triangle& first, const Vertex2D& fourth)
         : triangles(first, {fourth}) {}
 
-        [[nodiscard]] constexpr const std::array<Vertex2D, VAONumbers::vertices_per_strip_quad>& vertices() const {
+        [[nodiscard]] constexpr const std::array<Vertex2D, CE::Rendering::Geometry::vertices_per_strip_quad>& vertices() const {
             return triangles.vertices;
         }
     };

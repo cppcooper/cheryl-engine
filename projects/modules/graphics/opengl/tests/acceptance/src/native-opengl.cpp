@@ -62,8 +62,8 @@ namespace {
         return value && std::string_view(value) == "1";
     }
 
-    CE::Engine::GlfwOpenGLConfig small_window() {
-        CE::Engine::GlfwOpenGLConfig config;
+    CE::Application::GLFWOpenGL::Options small_window() {
+        CE::Application::GLFWOpenGL::Options config;
         config.width = 64;
         config.height = 64;
         config.swap_interval = 0;
@@ -71,7 +71,7 @@ namespace {
         return config;
     }
 
-    GLuint bound_texture_id(const CE::Assets::Image& image) {
+    GLuint bound_texture_id(const CE::Rendering::Resources::Image& image) {
         image.bind(0);
         GLint id = 0;
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &id);
@@ -138,36 +138,37 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         [[nodiscard]] std::vector<std::filesystem::path> stages() const { return {vertex, fragment}; }
     };
 
-    CE::Assets::MaterialMgr::Builder
+    CE::Assets::Materials::Manager::Builder
     material_builder(std::vector<std::filesystem::path> stages, const glm::vec4 color, const bool missing_uniform = false) {
-        return [stages = std::move(stages), color, missing_uniform](CE::Assets::ResourceProvider& resources) {
-            auto& native = dynamic_cast<CE::Assets::OpenGLResourceProvider&>(resources);
-            CE::Assets::PipelineDefinition definition;
+        return [stages = std::move(stages), color, missing_uniform](CE::Rendering::Resources::Provider& resources) {
+            auto& native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(resources);
+            CE::Rendering::Pipelines::Definition definition;
             definition.program_sources = stages;
-            definition.parameters = {{"color", CE::Assets::ParameterType::Vec4}};
-            CE::Assets::GLSLPipelineBindings bindings;
+            definition.parameters = {{"color", CE::Rendering::Parameters::Type::Vec4}};
+            CE::Rendering::OpenGL::PipelineBindings bindings;
             bindings.parameters = {{"color", missing_uniform ? "absent_uniform" : "u_color", std::nullopt}};
             return native.build_material({native.build_pipeline(std::move(definition), bindings), {{"color", color}}});
         };
     }
 
-    std::shared_ptr<CE::Assets::Geometry2D> fullscreen_triangle(CE::Assets::ResourceProvider& resources) {
-        const std::array<CE::Vertex2D, 3> vertices{
-            {{-1.0f, -1.0f, 0.0f, 0.0f, 0.0f}, {3.0f, -1.0f, 0.0f, 0.0f, 0.0f}, {-1.0f, 3.0f, 0.0f, 0.0f, 0.0f}}};
-        return resources.upload_geometry(vertices, CE::Assets::PrimitiveTopology::Triangles);
+    std::shared_ptr<CE::Rendering::Geometry::Buffer2D> fullscreen_triangle(CE::Rendering::Resources::Provider& resources) {
+        const std::array<CE::Rendering::Geometry::Vertex2D, 3> vertices{
+            {{-1.0f, -1.0f, 0.0f, 0.0f, 0.0f}, {3.0f, -1.0f, 0.0f, 0.0f, 0.0f}, {-1.0f, 3.0f, 0.0f, 0.0f, 0.0f}}
+        };
+        return resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
     }
 
     void retain_draw(
-        CE::RenderAPIs::RenderFrame& frame,
-        const std::shared_ptr<CE::Assets::Geometry2D>& geometry,
-        const std::shared_ptr<const CE::Assets::Material>& material
+        CE::Rendering::Frame& frame,
+        const std::shared_ptr<CE::Rendering::Geometry::Buffer2D>& geometry,
+        const std::shared_ptr<const CE::Rendering::Resources::Material>& material
     ) {
-        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        CE::Rendering::FrameWriter writer(frame);
         auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
         pass.add({geometry, material, 0, 3, material->resolve({}, {}, {}, {})});
     }
 
-    std::array<unsigned char, 4> draw_pixel(CE::RenderAPIs::OpenGLRenderer& renderer, const CE::RenderAPIs::RenderFrame& frame) {
+    std::array<unsigned char, 4> draw_pixel(CE::Rendering::OpenGL::Renderer& renderer, const CE::Rendering::Frame& frame) {
         renderer.set_viewport({64, 64});
         renderer.clear();
         renderer.render(frame);
@@ -178,9 +179,9 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         return pixel;
     }
 
-    CE::Assets::DecodedImage legacy_font_pixels() {
+    CE::Assets::Images::Decoded legacy_font_pixels() {
         // Top-to-bottom source rows, with distinct banks and asymmetric glyphs.
-        CE::Assets::DecodedImage image{{128, 128}, std::vector<unsigned char>(128 * 128 * 4, 0)};
+        CE::Assets::Images::Decoded image{{128, 128}, std::vector<unsigned char>(128 * 128 * 4, 0)};
         for (std::size_t pixel = 0; pixel < image.rgba.size(); pixel += 4)
             image.rgba[pixel + 3] = 255;
         const auto paint = [&](const std::size_t index, const std::array<unsigned char, 3> color, const bool asymmetric) {
@@ -199,35 +200,44 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         return image;
     }
 
-    std::shared_ptr<const CE::Assets::Material> legacy_font_material(CE::Assets::ResourceProvider& resources) {
-        using namespace CE::Assets;
-        auto& native = dynamic_cast<OpenGLResourceProvider&>(resources);
+    std::shared_ptr<const CE::Rendering::Resources::Material> legacy_font_material(CE::Rendering::Resources::Provider& resources) {
+        auto& native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(resources);
         const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/shaders/shader2d";
-        PipelineDefinition definition;
+        CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {shaders.string() + ".vert", shaders.string() + ".frag"};
-        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-            {"view", ParameterType::Mat4, true, ParameterSemantic::View}, {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-            {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-            {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D}};
-        const GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"view", "viewMatrix"}, {"model", "modelMatrix"},
-            {"alpha", "in_Alpha"}, {"scale", "in_Scale"}, {"image", "mytexture"}}};
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection},
+            {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View},
+            {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+            {"alpha", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Alpha},
+            {"scale", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Scale},
+            {"image", CE::Rendering::Parameters::Type::Sampler2D}
+        };
+        const CE::Rendering::OpenGL::PipelineBindings bindings{
+            {{"projection", "projectionMatrix"},
+             {"view", "viewMatrix"},
+             {"model", "modelMatrix"},
+             {"alpha", "in_Alpha"},
+             {"scale", "in_Scale"},
+             {"image", "mytexture"}}
+        };
         return native.build_material({native.build_pipeline(std::move(definition), bindings), {}});
     }
 
     void retain_legacy_text(
-        CE::RenderAPIs::RenderFrame& frame,
-        const CE::Assets::FFont& font,
+        CE::Rendering::Frame& frame,
+        const CE::Text::Legacy::BitmapFont& font,
         const std::string_view text,
-        const CE::RenderAPIs::DrawStyle2D& style,
+        const CE::Rendering::DrawStyle2D& style,
         const bool alternate = false
     ) {
         const auto projection = glm::ortho(0.0f, 64.0f, 0.0f, 64.0f, -1.0f, 1.0f);
-        CE::Assets::SubmissionContext2D context;
+        CE::Rendering::Submission::Context2D context;
         context.pass = {projection, glm::mat4{1.0f}};
-        context.image = CE::Assets::ImageParameter2D{"image", 3};
-        CE::RenderAPIs::RenderFrameWriter writer(frame);
+        context.image = CE::Rendering::Submission::ImageParameter2D{"image", 3};
+        CE::Rendering::FrameWriter writer(frame);
         auto pass = writer.begin_pass(projection, glm::mat4{1.0f});
-        pass.add(CE::Assets::resolve_text(font, text, style, context, {alternate}));
+        pass.add(CE::Rendering::Submission::resolve_text(font, text, style, context, {alternate}));
     }
 
     struct NativeFramePixels {
@@ -238,7 +248,7 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         }
     };
 
-    NativeFramePixels draw_pixels(CE::RenderAPIs::OpenGLRenderer& renderer, const CE::RenderAPIs::RenderFrame& frame) {
+    NativeFramePixels draw_pixels(CE::Rendering::OpenGL::Renderer& renderer, const CE::Rendering::Frame& frame) {
         renderer.set_viewport({64, 64});
         renderer.clear();
         renderer.render(frame);
@@ -249,14 +259,13 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
         return result;
     }
 
-    std::shared_ptr<const CE::Assets::Material> text_run_material(
-        CE::Assets::ResourceProvider& resources,
+    std::shared_ptr<const CE::Rendering::Resources::Material> text_run_material(
+        CE::Rendering::Resources::Provider& resources,
         const NativeShaderFiles& files,
-        const std::shared_ptr<CE::Assets::Image>& overlay,
-        const CE::Assets::ImageFilter filter,
-        const CE::Assets::BlendMode blend = CE::Assets::BlendMode::StraightAlpha
+        const std::shared_ptr<CE::Rendering::Resources::Image>& overlay,
+        const CE::Rendering::Sampling::Filter filter,
+        const CE::Rendering::Pipelines::Blend blend = CE::Rendering::Pipelines::Blend::StraightAlpha
     ) {
-        using namespace CE::Assets;
         NativeShaderFiles::write(files.vertex, R"(#version 330 core
 layout(location = 0) in vec3 in_Position;
 layout(location = 1) in vec2 in_Texcoord;
@@ -279,25 +288,39 @@ void main() {
     color = vec4(u_tint.rgb * texture(u_overlay, vec2(0.5)).rgb, coverage * u_alpha * u_tint.a);
 }
 )");
-        PipelineDefinition definition;
+        CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = files.stages();
         definition.state.blend = blend;
-        definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-            {"view", ParameterType::Mat4, true, ParameterSemantic::View}, {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-            {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-            {"scale", ParameterType::Float, true, ParameterSemantic::Scale}, {"image", ParameterType::Sampler2D},
-            {"overlay", ParameterType::Sampler2D}, {"tint", ParameterType::Vec4}};
-        const GLSLPipelineBindings bindings{{{"projection", "u_projection"}, {"view", "u_view"}, {"model", "u_model"}, {"alpha", "u_alpha"},
-            {"scale", "u_scale"}, {"image", "u_image"}, {"overlay", "u_overlay"}, {"tint", "u_tint"}}};
-        SamplerOptions sampling;
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection},
+            {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View},
+            {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+            {"alpha", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Alpha},
+            {"scale", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Scale},
+            {"image", CE::Rendering::Parameters::Type::Sampler2D},
+            {"overlay", CE::Rendering::Parameters::Type::Sampler2D},
+            {"tint", CE::Rendering::Parameters::Type::Vec4}
+        };
+        const CE::Rendering::OpenGL::PipelineBindings bindings{
+            {{"projection", "u_projection"},
+             {"view", "u_view"},
+             {"model", "u_model"},
+             {"alpha", "u_alpha"},
+             {"scale", "u_scale"},
+             {"image", "u_image"},
+             {"overlay", "u_overlay"},
+             {"tint", "u_tint"}}
+        };
+        CE::Rendering::Sampling::Options sampling;
         sampling.minification = filter;
         sampling.magnification = filter;
-        sampling.mipmaps = MipmapFilter::None;
-        sampling.anisotropy = ImageAnisotropy::Disabled;
-        auto& native = dynamic_cast<OpenGLResourceProvider&>(resources);
+        sampling.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+        sampling.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
+        auto& native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(resources);
         return native.build_material(
-            {native.build_pipeline(std::move(definition), bindings), {{"overlay", ImageBinding{overlay, 5}}, {"tint", glm::vec4{1}}},
-                {{"image", resources.create_sampler(sampling)}}}
+            {native.build_pipeline(std::move(definition), bindings),
+             {{"overlay", CE::Rendering::Parameters::ImageBinding{overlay, 5}}, {"tint", glm::vec4{1}}},
+             {{"image", resources.create_sampler(sampling)}}}
         );
     }
 
@@ -308,17 +331,22 @@ void main() {
     }
 
     void retain_text_runs(
-        CE::RenderAPIs::RenderFrameWriter& writer,
-        const CE::Assets::RenderedText& text,
-        const CE::RenderAPIs::DrawStyle2D& style,
+        CE::Rendering::FrameWriter& writer,
+        const CE::Text::Rendering::Generation& text,
+        const CE::Rendering::DrawStyle2D& style,
         const bool runs,
         const std::uint32_t image_unit = 2
     ) {
         const auto projection = glm::ortho(0.0f, 64.0f, 0.0f, 64.0f, -1.0f, 1.0f);
         const auto view = glm::translate(glm::mat4{1}, {-2, 1, 0});
         auto pass = writer.begin_pass(projection, view);
-        const CE::Assets::SubmissionContext2D context{pass.semantics(), {}, {}, CE::Assets::ImageParameter2D{"image", image_unit}};
-        pass.add(runs ? CE::Assets::resolve_text_runs(text, style, context) : CE::Assets::resolve_text(text, style, context));
+        const CE::Rendering::Submission::Context2D context{
+            pass.semantics(), {}, {}, CE::Rendering::Submission::ImageParameter2D{"image", image_unit}
+        };
+        pass.add(
+            runs ? CE::Rendering::Submission::resolve_text_runs(text, style, context)
+                 : CE::Rendering::Submission::resolve_text(text, style, context)
+        );
     }
 
     void expect_same_pixels(const NativeFramePixels& first, const NativeFramePixels& second, const bool ink = true) {
@@ -445,11 +473,9 @@ void main() {
 TEST(native_opengl, ui_clipping_color) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
-    auto& resources = dynamic_cast<OpenGLResourceProvider&>(engine->resources());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(engine->resources());
     renderer.initialize();
     NativeShaderFiles files;
     NativeShaderFiles::write(files.vertex, R"(#version 330 core
@@ -463,31 +489,32 @@ in vec4 tint;
 out vec4 color;
 void main() { color = tint; }
 )");
-    PipelineDefinition definition;
+    CE::Rendering::Pipelines::Definition definition;
     definition.program_sources = files.stages();
-    definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
+    definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
     auto material = resources.build_material({resources.build_pipeline(definition, {}), {}});
     const auto upload = [&](const glm::vec4 color) {
-        const std::array<CE::Vertex2DColor, 3> vertices{{
-            {-1, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
-            {3, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
-            {-1, 3, 0, 0, 0, color.r, color.g, color.b, color.a}}};
-        return resources.upload_geometry(vertices, PrimitiveTopology::Triangles);
+        const std::array<CE::Rendering::Geometry::Vertex2DColor, 3> vertices{
+            {{-1, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
+             {3, -1, 0, 0, 0, color.r, color.g, color.b, color.a},
+             {-1, 3, 0, 0, 0, color.r, color.g, color.b, color.a}}
+        };
+        return resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
     };
     const auto red = upload({1, 0, 0, 0.5f});
     const auto blue = upload({0, 0, 1, 0.5f});
     const auto green = upload({0, 1, 0, 1});
-    RenderFrame frame;
+    CE::Rendering::Frame frame;
     {
-        RenderFrameWriter writer(frame);
+        CE::Rendering::FrameWriter writer(frame);
         auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
-        DrawStyle2D style;
+        CE::Rendering::DrawStyle2D style;
         style.material = material;
-        pass.add(resolve_draw_packet(red, 0, 3, style, {}, {}, {}));
-        style.clip = ClipRegion2D{{0, 0, 16, 16}, 32, 32};
-        pass.add(resolve_draw_packet(blue, 0, 3, style, {}, {}, {}));
+        pass.add(CE::Rendering::resolve_draw_packet(red, 0, 3, style, {}, {}, {}));
+        style.clip = CE::Rendering::ClipRegion2D{{0, 0, 16, 16}, 32, 32};
+        pass.add(CE::Rendering::resolve_draw_packet(blue, 0, 3, style, {}, {}, {}));
         style.clip->rectangle.right = 0; // Empty clips must not expose the green triangle.
-        pass.add(resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
+        pass.add(CE::Rendering::resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
     }
     const auto pixel = [&](int x, int y) {
         std::array<unsigned char, 4> result{};
@@ -508,13 +535,13 @@ void main() { color = tint; }
     EXPECT_NEAR(outside[0], 128, 1);
     EXPECT_EQ(outside[1], 0);
     EXPECT_EQ(outside[2], 0);
-    RenderFrame unclipped;
+    CE::Rendering::Frame unclipped;
     {
-        RenderFrameWriter writer(unclipped);
+        CE::Rendering::FrameWriter writer(unclipped);
         auto pass = writer.begin_pass(glm::mat4{1}, glm::mat4{1});
-        DrawStyle2D style;
+        CE::Rendering::DrawStyle2D style;
         style.material = material;
-        pass.add(resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
+        pass.add(CE::Rendering::resolve_draw_packet(green, 0, 3, style, {}, {}, {}));
     }
     renderer.render(unclipped);
     EXPECT_FALSE(glIsEnabled(GL_SCISSOR_TEST));
@@ -531,10 +558,10 @@ void main() { color = tint; }
 TEST(native_opengl, deferred_worker_release) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
-    auto image = engine->resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+    auto image = engine->resources().create_image(CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}});
     const auto id = bound_texture_id(*image);
     ASSERT_NE(id, 0u);
     ASSERT_EQ(glIsTexture(id), GL_TRUE);
@@ -552,11 +579,9 @@ TEST(native_opengl, deferred_worker_release) {
 TEST(native_opengl, texture_sampling) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
-    auto& resources = dynamic_cast<OpenGLResourceProvider&>(engine->resources());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(engine->resources());
     renderer.initialize();
     NativeShaderFiles files;
     NativeShaderFiles::write(files.vertex, R"(#version 330 core
@@ -571,37 +596,39 @@ uniform sampler2D pixels;
 out vec4 color;
 void main() { color = texture(pixels, uv); }
 )");
-    PipelineDefinition definition;
+    CE::Rendering::Pipelines::Definition definition;
     definition.program_sources = files.stages();
-    definition.parameters = {{"image", ParameterType::Sampler2D}};
+    definition.parameters = {{"image", CE::Rendering::Parameters::Type::Sampler2D}};
     const auto pipeline = resources.build_pipeline(definition, {{{"image", "pixels"}}});
-    const auto image = resources.create_image(DecodedImage{{2, 1}, {255, 0, 0, 255, 0, 0, 255, 255}});
+    const auto image = resources.create_image(CE::Assets::Images::Decoded{{2, 1}, {255, 0, 0, 255, 0, 0, 255, 255}});
     const auto geometry = [&](const float scale) {
         // The center readback samples u=0.625 for both derivatives. Scale 1
         // magnifies this two-texel image; scale 128 minifies it without mip access.
         const auto left = 0.625f - scale * (32.5f / 64);
-        const std::array<CE::Vertex2D, 3> vertices{{
-            {-1, -1, 0, left, 0.5f}, {3, -1, 0, left + 2 * scale, 0.5f}, {-1, 3, 0, left, 0.5f}}};
-        return resources.upload_geometry(vertices, PrimitiveTopology::Triangles);
+        const std::array<CE::Rendering::Geometry::Vertex2D, 3> vertices{
+            {{-1, -1, 0, left, 0.5f}, {3, -1, 0, left + 2 * scale, 0.5f}, {-1, 3, 0, left, 0.5f}}
+        };
+        return resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::Triangles);
     };
     const std::array geometries{geometry(1), geometry(128)};
-    for (const auto minification : {ImageFilter::Nearest, ImageFilter::Linear}) {
-        for (const auto magnification : {ImageFilter::Nearest, ImageFilter::Linear}) {
+    for (const auto minification : {CE::Rendering::Sampling::Filter::Nearest, CE::Rendering::Sampling::Filter::Linear}) {
+        for (const auto magnification : {CE::Rendering::Sampling::Filter::Nearest, CE::Rendering::Sampling::Filter::Linear}) {
             SCOPED_TRACE(static_cast<int>(minification));
             SCOPED_TRACE(static_cast<int>(magnification));
-            SamplerOptions options;
+            CE::Rendering::Sampling::Options options;
             options.minification = minification;
             options.magnification = magnification;
-            options.mipmaps = MipmapFilter::None;
-            options.anisotropy = ImageAnisotropy::Disabled;
+            options.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+            options.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
             const auto sampler = resources.create_sampler(options);
-            const auto material = resources.build_material({pipeline, {{"image", ImageBinding{image, 0, sampler}}}});
-            std::array<RenderFrame, 2> frames;
+            const auto material =
+                resources.build_material({pipeline, {{"image", CE::Rendering::Parameters::ImageBinding{image, 0, sampler}}}});
+            std::array<CE::Rendering::Frame, 2> frames;
             for (std::size_t i = 0; i < frames.size(); ++i) {
                 retain_draw(frames[i], geometries[i], material);
                 const auto pixel = draw_pixel(renderer, frames[i]);
                 const auto filter = i == 0 ? magnification : minification;
-                if (filter == ImageFilter::Nearest) {
+                if (filter == CE::Rendering::Sampling::Filter::Nearest) {
                     EXPECT_EQ(pixel, (std::array<unsigned char, 4>{0, 0, 255, 255}));
                 } else {
                     EXPECT_NEAR(pixel[0], 64, 2);
@@ -610,12 +637,13 @@ void main() { color = texture(pixels, uv); }
                     EXPECT_EQ(pixel[3], 255);
                 }
             }
-            SamplerOptions different = options;
-            different.magnification = magnification == ImageFilter::Nearest ? ImageFilter::Linear : ImageFilter::Nearest;
+            CE::Rendering::Sampling::Options different = options;
+            different.magnification = magnification == CE::Rendering::Sampling::Filter::Nearest ? CE::Rendering::Sampling::Filter::Linear
+                                                                                                : CE::Rendering::Sampling::Filter::Nearest;
             const auto alternate = resources.create_sampler(different);
             alternate->bind(0);
             const auto retained = draw_pixel(renderer, frames[0]);
-            if (magnification == ImageFilter::Nearest)
+            if (magnification == CE::Rendering::Sampling::Filter::Nearest)
                 EXPECT_EQ(retained, (std::array<unsigned char, 4>{0, 0, 255, 255}));
             else
                 EXPECT_NEAR(retained[0], 64, 2);
@@ -635,8 +663,8 @@ void main() { color = texture(pixels, uv); }
     } else {
         EXPECT_FLOAT_EQ(default_sampler->effective_anisotropy(), 1);
     }
-    RenderFrame defaults;
-    const auto default_material = resources.build_material({pipeline, {{"image", ImageBinding{image, 0}}}});
+    CE::Rendering::Frame defaults;
+    const auto default_material = resources.build_material({pipeline, {{"image", CE::Rendering::Parameters::ImageBinding{image, 0}}}});
     retain_draw(defaults, geometries[0], default_material);
     static_cast<void>(draw_pixel(renderer, defaults));
     glGetIntegeri_v(GL_SAMPLER_BINDING, 0, &sampler_id);
@@ -649,8 +677,8 @@ void main() { color = texture(pixels, uv); }
 TEST(native_opengl, debug_output) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.set_native_diagnostics(true);
     renderer.initialize();
     const bool supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
@@ -666,7 +694,7 @@ TEST(native_opengl, debug_output) {
     renderer.clear();
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
-    auto& context = dynamic_cast<CE::RenderAPIs::iOpenGLContext&>(engine->surface());
+    auto& context = dynamic_cast<CE::Rendering::OpenGL::Context&>(engine->surface());
     context.make_current();
     if (supported) {
         void* callback = nullptr;
@@ -680,12 +708,12 @@ TEST(native_opengl, debug_output) {
 TEST(native_opengl, shutdown_context_restoration) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
-    auto image = engine->resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+    auto image = engine->resources().create_image(CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}});
     const auto id = bound_texture_id(*image);
-    auto* selected = dynamic_cast<CE::Window&>(engine->window()).native_handle();
+    auto* selected = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window()).native_handle();
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)> other(
         glfwCreateWindow(32, 32, "Other native context", nullptr, nullptr), glfwDestroyWindow
@@ -715,23 +743,23 @@ TEST(native_opengl, shutdown_context_restoration) {
 TEST(native_opengl, retained_frame_reload) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     NativeShaderFiles files;
-    auto& materials = CE::Assets::MaterialMgr::get();
+    auto& materials = CE::Assets::Materials::Manager::get();
     const auto key = files.directory / "material";
-    materials.load_material(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
+    materials.load(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto old = materials.get_asset(key);
     auto geometry = fullscreen_triangle(engine->resources());
-    std::weak_ptr<const CE::Assets::Material> old_owner = old;
-    std::weak_ptr<CE::Assets::Geometry2D> geometry_owner = geometry;
+    std::weak_ptr<const CE::Rendering::Resources::Material> old_owner = old;
+    std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = geometry;
     GLint vao = 0, buffer = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &buffer);
     ASSERT_NE(vao, 0);
     ASSERT_NE(buffer, 0);
-    CE::RenderAPIs::RenderFrame old_frame, new_frame;
+    CE::Rendering::Frame old_frame, new_frame;
     retain_draw(old_frame, geometry, old);
     EXPECT_EQ(draw_pixel(renderer, old_frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
     GLint old_program = 0;
@@ -739,7 +767,7 @@ TEST(native_opengl, retained_frame_reload) {
 
     // Keep the authored color red; only the new shader swaps red and green.
     NativeShaderFiles::write(files.fragment, reloaded_fragment);
-    materials.reload_material(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
+    materials.reload(key, engine->resources(), material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f}));
     auto current = materials.get_asset(key);
     ASSERT_NE(old, current);
     retain_draw(new_frame, geometry, current);
@@ -780,36 +808,36 @@ TEST(native_opengl, retained_frame_reload) {
 TEST(native_opengl, failed_reload_cleanup) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     NativeShaderFiles files;
-    auto& materials = CE::Assets::MaterialMgr::get();
+    auto& materials = CE::Assets::Materials::Manager::get();
     const auto key = files.directory / "material";
     const auto recipe = material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f});
-    materials.load_material(key, engine->resources(), recipe);
+    materials.load(key, engine->resources(), recipe);
     const auto published = materials.get_asset(key);
     auto geometry = fullscreen_triangle(engine->resources());
-    CE::RenderAPIs::RenderFrame frame;
+    CE::Rendering::Frame frame;
     retain_draw(frame, geometry, published);
     NativeCreationTrace trace;
 
     NativeShaderFiles::write(files.fragment, "#version 330 core\nthis is not valid GLSL;\n");
-    EXPECT_THROW(materials.reload_material(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(materials.reload(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
     trace.expect_deleted(2);
     EXPECT_EQ(materials.get_asset(key), published);
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
 
     trace.reset();
     NativeShaderFiles::write(files.fragment, mismatched_fragment);
-    EXPECT_THROW(materials.reload_material(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(materials.reload(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
     trace.expect_deleted(2);
     EXPECT_EQ(materials.get_asset(key), published);
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
 
     trace.reset();
     std::filesystem::remove(files.fragment);
-    EXPECT_THROW(materials.reload_material(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
+    EXPECT_THROW(materials.reload(key, engine->resources(), recipe), CE::Exceptions::runtime_exception);
     trace.expect_deleted(1);
     EXPECT_EQ(materials.get_asset(key), published);
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
@@ -817,7 +845,7 @@ TEST(native_opengl, failed_reload_cleanup) {
     trace.reset();
     NativeShaderFiles::write(files.fragment, fragment_source);
     EXPECT_THROW(
-        materials.reload_material(key, engine->resources(), material_builder(files.stages(), {0.0f, 1.0f, 0.0f, 1.0f}, true)),
+        materials.reload(key, engine->resources(), material_builder(files.stages(), {0.0f, 1.0f, 0.0f, 1.0f}, true)),
         CE::Exceptions::invalid_args
     );
     ASSERT_EQ(trace.program_count, 1u);
@@ -828,7 +856,7 @@ TEST(native_opengl, failed_reload_cleanup) {
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
 
     trace.reset();
-    materials.reload_material(key, engine->resources(), recipe);
+    materials.reload(key, engine->resources(), recipe);
     EXPECT_NE(materials.get_asset(key), published);
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
     frame.recycle();
@@ -838,20 +866,20 @@ TEST(native_opengl, failed_reload_cleanup) {
 TEST(native_opengl, shutdown_before_late_release) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     NativeShaderFiles files;
     auto material = material_builder(files.stages(), {1.0f, 0.0f, 0.0f, 1.0f})(engine->resources());
     auto geometry = fullscreen_triangle(engine->resources());
-    auto image = engine->resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+    auto image = engine->resources().create_image(CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}});
     auto sampler = engine->resources().create_sampler({});
     sampler->bind(2);
     GLint sampler_id = 0;
     glGetIntegeri_v(GL_SAMPLER_BINDING, 2, &sampler_id);
     ASSERT_NE(sampler_id, 0);
     const auto texture = bound_texture_id(*image);
-    CE::RenderAPIs::RenderFrame frame;
+    CE::Rendering::Frame frame;
     retain_draw(frame, geometry, material);
     EXPECT_EQ(draw_pixel(renderer, frame), (std::array<unsigned char, 4>{255, 0, 0, 255}));
     GLint program = 0, vao = 0, buffer = 0;
@@ -861,8 +889,8 @@ TEST(native_opengl, shutdown_before_late_release) {
     ASSERT_NE(program, 0);
     ASSERT_NE(vao, 0);
     ASSERT_NE(buffer, 0);
-    auto* selected = dynamic_cast<CE::Window&>(engine->window()).native_handle();
-    const auto& pipeline = dynamic_cast<const CE::Assets::GLSLPipeline&>(*material->definition().pipeline);
+    auto* selected = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window()).native_handle();
+    const auto& pipeline = dynamic_cast<const CE::Rendering::OpenGL::Pipeline&>(*material->definition().pipeline);
 
     renderer.deinitialize();
     glfwMakeContextCurrent(selected);
@@ -885,10 +913,10 @@ TEST(native_opengl, shutdown_before_late_release) {
     EXPECT_THROW(image->bind(0), CE::Exceptions::failed_operation);
     EXPECT_THROW(sampler->bind(2), CE::Exceptions::failed_operation);
     frame.recycle();
-    std::weak_ptr<const CE::Assets::Material> material_owner = material;
-    std::weak_ptr<CE::Assets::Geometry2D> geometry_owner = geometry;
-    std::weak_ptr<CE::Assets::Image> image_owner = image;
-    std::weak_ptr<const CE::Assets::Sampler> sampler_owner = sampler;
+    std::weak_ptr<const CE::Rendering::Resources::Material> material_owner = material;
+    std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = geometry;
+    std::weak_ptr<CE::Rendering::Resources::Image> image_owner = image;
+    std::weak_ptr<const CE::Rendering::Sampling::Sampler> sampler_owner = sampler;
     std::thread release([material = std::move(material), geometry = std::move(geometry), image = std::move(image),
                          sampler = std::move(sampler)]() mutable {
         material.reset();
@@ -906,23 +934,23 @@ TEST(native_opengl, shutdown_before_late_release) {
 TEST(native_opengl, text_runs) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     {
         NativeShaderFiles files;
         auto overlay = engine->resources().create_image({{1, 1}, {204, 255, 128, 255}});
-        const auto other = text_run_material(engine->resources(), files, overlay, ImageFilter::Linear, BlendMode::Additive);
+        const auto other = text_run_material(
+            engine->resources(), files, overlay, CE::Rendering::Sampling::Filter::Linear, CE::Rendering::Pipelines::Blend::Additive
+        );
         const auto fonts = text_run_fonts();
         CE::Text::LayoutOptions options;
         options.pixel_height = 16;
         options.maximum_width = 56;
         for (const auto sample : std::array<std::u8string_view, 2>{u8"AAZZAA", u8"e\u0301 \u4e2d\n\u05d0\u05d1\u05d2 123"}) {
             SCOPED_TRACE(std::string(reinterpret_cast<const char*>(sample.data()), sample.size()));
-            const auto text = upload_text(
-                prepare_text(
+            const auto text = CE::Text::Rendering::upload(
+                CE::Text::Rendering::prepare(
                     CE::Text::layout_text(fonts, {reinterpret_cast<const char*>(sample.data()), sample.size()}, options), {20, true}
                 ),
                 engine->resources()
@@ -931,15 +959,15 @@ TEST(native_opengl, text_runs) {
             ASSERT_GT(text.pages().size(), 1u);
             // Baking offsets regroups floating-point transforms. Avoid exact
             // pixel-center edge ties in this strict raster comparison; CPU tests
-            // also compare transformed positions and unchanged atlas coordinates.
-            for (const auto filter : {ImageFilter::Nearest, ImageFilter::Linear}) {
+            // also CE::Memory::Ordering transformed positions and unchanged atlas coordinates.
+            for (const auto filter : {CE::Rendering::Sampling::Filter::Nearest, CE::Rendering::Sampling::Filter::Linear}) {
                 SCOPED_TRACE(static_cast<int>(filter));
                 const auto main = text_run_material(engine->resources(), files, overlay, filter);
                 for (const auto scale : std::array{0.65f, -0.65f, 0.0f}) {
                     SCOPED_TRACE(scale);
                     for (const bool clipped : {false, true}) {
                         SCOPED_TRACE(clipped);
-                        DrawStyle2D style;
+                        CE::Rendering::DrawStyle2D style;
                         style.material = main;
                         style.scale = scale;
                         style.alpha = 0.4f;
@@ -948,9 +976,9 @@ TEST(native_opengl, text_runs) {
                             glm::translate(glm::mat4{1}, scale < 0 ? glm::vec3{55.125f, 45.125f, 0} : glm::vec3{8.125f, 36.125f, 0});
                         style.model_matrix = glm::rotate(style.model_matrix, 0.21f, {0, 0, 1});
                         if (clipped)
-                            style.clip = ClipRegion2D{{7, 8, 54, 56}, 64, 64};
-                        RenderFrame glyphs, runs;
-                        RenderFrameWriter glyph_writer(glyphs), run_writer(runs);
+                            style.clip = CE::Rendering::ClipRegion2D{{7, 8, 54, 56}, 64, 64};
+                        CE::Rendering::Frame glyphs, runs;
+                        CE::Rendering::FrameWriter glyph_writer(glyphs), run_writer(runs);
                         retain_text_runs(glyph_writer, text, style, false);
                         retain_text_runs(run_writer, text, style, true);
                         style.material = other;
@@ -958,7 +986,7 @@ TEST(native_opengl, text_runs) {
                         style.parameters["tint"] = glm::vec4{0.1f, 0.8f, 1, 0.5f};
                         style.model_matrix = glm::translate(style.model_matrix, {3, -5, 0});
                         if (clipped)
-                            style.clip = ClipRegion2D{{12, 10, 50, 52}, 64, 64};
+                            style.clip = CE::Rendering::ClipRegion2D{{12, 10, 50, 52}, 64, 64};
                         retain_text_runs(glyph_writer, text, style, false, 4);
                         retain_text_runs(run_writer, text, style, true, 4);
                         NativeDrawTrace trace;
@@ -980,37 +1008,37 @@ TEST(native_opengl, text_runs) {
 TEST(native_opengl, text_run_lifetime) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     {
         NativeShaderFiles files;
         auto overlay = engine->resources().create_image({{1, 1}, {255, 255, 255, 255}});
-        DrawStyle2D style;
-        style.material = text_run_material(engine->resources(), files, overlay, ImageFilter::Linear);
+        CE::Rendering::DrawStyle2D style;
+        style.material = text_run_material(engine->resources(), files, overlay, CE::Rendering::Sampling::Filter::Linear);
         style.scale = 0.65f;
         style.alpha = 0.6f;
         style.model_matrix = glm::translate(glm::mat4{1}, {8, 24, 0});
         const auto fonts = text_run_fonts();
-        auto active = std::make_shared<RenderedText>(
-            upload_text(prepare_text(CE::Text::layout_text(fonts, "AAA"), {.positioned_runs = true}), engine->resources())
-        );
-        const std::weak_ptr<Geometry2D> positioned = active->positioned_geometry();
-        const std::weak_ptr<Geometry2D> glyphs = active->pages()[0].geometry;
-        const std::weak_ptr<Image> atlas = active->pages()[0].atlas;
-        const std::weak_ptr<const Material> material = style.material;
-        RenderFrame retained;
-        RenderFrameWriter retained_writer(retained);
+        auto active = std::make_shared<CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
+            CE::Text::Rendering::prepare(CE::Text::layout_text(fonts, "AAA"), {.positioned_runs = true}), engine->resources()
+        ));
+        const std::weak_ptr<CE::Rendering::Geometry::Buffer2D> positioned = active->positioned_geometry();
+        const std::weak_ptr<CE::Rendering::Geometry::Buffer2D> glyphs = active->pages()[0].geometry;
+        const std::weak_ptr<CE::Rendering::Resources::Image> atlas = active->pages()[0].atlas;
+        const std::weak_ptr<const CE::Rendering::Resources::Material> material = style.material;
+        CE::Rendering::Frame retained;
+        CE::Rendering::FrameWriter retained_writer(retained);
         retain_text_runs(retained_writer, *active, style, true);
         const auto before = draw_pixels(renderer, retained);
-        active = std::make_shared<RenderedText>(
-            upload_text(prepare_text(CE::Text::layout_text(fonts, "BBB"), {.positioned_runs = true}), engine->resources())
+        active = std::make_shared<CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
+            CE::Text::Rendering::prepare(CE::Text::layout_text(fonts, "BBB"), {.positioned_runs = true}), engine->resources()
+        ));
+        style.material = text_run_material(
+            engine->resources(), files, overlay, CE::Rendering::Sampling::Filter::Nearest, CE::Rendering::Pipelines::Blend::Additive
         );
-        style.material = text_run_material(engine->resources(), files, overlay, ImageFilter::Nearest, BlendMode::Additive);
-        RenderFrame replacement;
-        RenderFrameWriter replacement_writer(replacement);
+        CE::Rendering::Frame replacement;
+        CE::Rendering::FrameWriter replacement_writer(replacement);
         retain_text_runs(replacement_writer, *active, style, true);
         EXPECT_TRUE(glyphs.expired());
         EXPECT_FALSE(positioned.expired());
@@ -1032,14 +1060,12 @@ TEST(native_opengl, text_run_lifetime) {
 TEST(native_opengl, rotated_legacy_text) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    using namespace CE::RenderAPIs;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     NativeShaderFiles files;
     const auto widths_file = files.directory / "widths.bin";
-    std::array<short, num_chars_ffont> widths;
+    std::array<short, CE::Text::Legacy::bitmap_character_count> widths;
     widths.fill(128);
     widths['A' - 32] = 64;
     {
@@ -1048,13 +1074,13 @@ TEST(native_opengl, rotated_legacy_text) {
         ASSERT_TRUE(output.good());
     }
     auto pixels = legacy_font_pixels();
-    auto& textures = TextureMgr::get();
+    auto& textures = CE::Assets::Images::Manager::get();
     const auto texture_key = files.directory / "whitefont.png";
-    textures.load_asset(texture_key, pixels, engine->resources());
-    auto font = std::make_shared<FFont>(FFont::load_ffont(widths_file, engine->resources()));
-    const std::weak_ptr<FFont> font_owner = font;
-    const std::weak_ptr<Geometry2D> geometry_owner = font->glyph_geometry_handle();
-    const std::weak_ptr<Image> image_owner = font->glyph_atlas_handle();
+    textures.upload(texture_key, pixels, engine->resources());
+    auto font = std::make_shared<CE::Text::Legacy::BitmapFont>(CE::Text::Legacy::BitmapFont::load_ffont(widths_file, engine->resources()));
+    const std::weak_ptr<CE::Text::Legacy::BitmapFont> font_owner = font;
+    const std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner = font->glyph_geometry_handle();
+    const std::weak_ptr<CE::Rendering::Resources::Image> image_owner = font->glyph_atlas_handle();
     const auto texture = bound_texture_id(*font->glyph_atlas_handle());
     GLint vao = 0, buffer = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
@@ -1062,11 +1088,11 @@ TEST(native_opengl, rotated_legacy_text) {
     ASSERT_NE(vao, 0);
     ASSERT_NE(buffer, 0);
     auto material = legacy_font_material(engine->resources());
-    DrawStyle2D style;
+    CE::Rendering::DrawStyle2D style;
     style.material = material;
     style.scale = 16;
     style.model_matrix[3] = {12.5f, 12.5f, 0, 1};
-    RenderFrame upright, rotated, alternate, baseline, multiline;
+    CE::Rendering::Frame upright, rotated, alternate, baseline, multiline;
     retain_legacy_text(upright, *font, "A A", style);
     style.model_matrix[0] = {0, 1, 0, 0};
     style.model_matrix[1] = {-1, 0, 0, 0};
@@ -1137,12 +1163,11 @@ TEST(native_opengl, rotated_legacy_text) {
 TEST(native_opengl, texture_row_order) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::Assets;
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& renderer = dynamic_cast<CE::RenderAPIs::OpenGLRenderer&>(engine->renderer());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
     renderer.initialize();
     const auto path = std::filesystem::path(CHERYL_TEST_FIXTURE_DIR) / "rgba-two-rows.png";
-    const auto decoded = decode_image(path);
+    const auto decoded = CE::Assets::Images::decode(path);
     const std::array<unsigned char, 24> top_down{
         255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 0, 255, 255, 255, 255, 0, 255, 255, 255, 255, 0, 255};
     const std::array<unsigned char, 24> bottom_up{
@@ -1150,11 +1175,12 @@ TEST(native_opengl, texture_row_order) {
     ASSERT_EQ(decoded.size.width, 3u);
     ASSERT_EQ(decoded.size.height, 2u);
     ASSERT_EQ(decoded.rgba, (std::vector<unsigned char>(top_down.begin(), top_down.end())));
-    const auto direct = std::make_shared<Texture>(renderer.resources(), path.string().c_str(), false, false, GL_CLAMP_TO_EDGE);
+    const auto direct =
+        std::make_shared<CE::Rendering::OpenGL::Texture>(renderer.resources(), path.string().c_str(), false, false, GL_CLAMP_TO_EDGE);
     const auto loaded = engine->resources().load_image(path);
     const auto prepared = engine->resources().create_image(decoded);
-    const std::array<const Image*, 3> images{direct.get(), loaded.get(), prepared.get()};
-    for (const Image* image : images) {
+    const std::array<const CE::Rendering::Resources::Image*, 3> images{direct.get(), loaded.get(), prepared.get()};
+    for (const CE::Rendering::Resources::Image* image : images) {
         image->bind(0);
         std::array<unsigned char, 24> observed{};
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, observed.data());
@@ -1180,27 +1206,27 @@ TEST(native_opengl, texture_row_order) {
 
 namespace {
     struct NativeTickRecord {
-        CE::GFramework::UpdateKind kind;
+        CE::Runtime::Simulation::UpdateKind kind;
         double delta;
         double dropped;
         double observed;
         std::vector<std::uint64_t> polls;
-        std::vector<CE::Input::InputRecord> records;
-        CE::Input::ButtonTickState observed_button;
+        std::vector<CE::Input::Events::Record> records;
+        CE::Input::Actions::ButtonTickState observed_button;
     };
 
-    struct NativeRuntimeGame : CE::GFramework::AbstractGame {
-        CE::Engine::EngineContext& engine;
+    struct NativeRuntimeGame : CE::Game::AbstractGame {
+        CE::Runtime::Context& engine;
         NativeShaderFiles files;
-        std::shared_ptr<CE::Assets::Geometry2D> geometry;
-        std::shared_ptr<const CE::Assets::Material> material;
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry;
+        std::shared_ptr<const CE::Rendering::Resources::Material> material;
         std::vector<NativeTickRecord> ticks; // Simulation-owned until run() joins.
         mutable std::atomic<std::size_t> preparations{0};
         std::function<void()> after_update;
         std::function<void()> after_init;
-        std::optional<CE::Input::ActionId> observed_action;
+        std::optional<CE::Input::Actions::Id> observed_action;
 
-        explicit NativeRuntimeGame(CE::Engine::EngineContext& context)
+        explicit NativeRuntimeGame(CE::Runtime::Context& context)
         : engine(context) {}
         void init() override {
             geometry = fullscreen_triangle(engine.resources());
@@ -1208,17 +1234,17 @@ namespace {
             if (after_init)
                 after_init();
         }
-        void update(const CE::GFramework::TickContext& tick) override {
+        void update(const CE::Game::TickContext& tick) override {
             ticks.push_back({tick.update_kind, tick.delta_seconds, tick.dropped_seconds, tick.observed_seconds(), {}, {}, {}});
             for (const auto& poll : tick.input.polls())
                 ticks.back().polls.push_back(poll->poll());
             ticks.back().records.assign(tick.input.records().begin(), tick.input.records().end());
             if (observed_action)
                 ticks.back().observed_button = tick.input.button(*observed_action);
-            EXPECT_EQ(tick.framebuffer_size, (CE::FramebufferSize{64, 64}));
+            EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{64, 64}));
             after_update();
         }
-        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
             ++preparations;
             auto pass = frame.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
             pass.add({geometry, material, 0, 3, material->resolve({}, {}, {}, {})});
@@ -1232,13 +1258,13 @@ namespace {
 
     // Every operation still reaches the real GLFW context. Only the first
     // completed swap gets a controlled acceptance workload on its owner.
-    class DelayedNativeSurface final : public CE::RenderAPIs::iOpenGLContext {
-        CE::RenderAPIs::GlfwOpenGLContext native_;
+    class DelayedNativeSurface final : public CE::Rendering::OpenGL::Context {
+        CE::Rendering::OpenGL::GLFWContext native_;
         bool delayed_ = false;
     public:
         std::function<void()> after_first_swap;
         std::size_t presentations = 0;
-        explicit DelayedNativeSurface(CE::Window& window)
+        explicit DelayedNativeSurface(CE::Platform::GLFW::Window& window)
         : native_(window, 0) {}
         void make_current() override { native_.make_current(); }
         void release_current() override { native_.release_current(); }
@@ -1257,11 +1283,11 @@ namespace {
         }
     };
 
-    std::unique_ptr<CE::Engine::EngineContext> delayed_native_context(
+    std::unique_ptr<CE::Runtime::Context> delayed_native_context(
         DelayedNativeSurface*& observed,
-        std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<CE::Input::InputSystem>()
+        std::unique_ptr<CE::Input::System> input = std::make_unique<CE::Platform::GLFW::InputSystem>()
     ) {
-        auto display = std::make_unique<CE::DisplaySystem>();
+        auto display = std::make_unique<CE::Platform::GLFW::DisplaySystem>();
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -1270,22 +1296,23 @@ namespace {
 #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 #endif
-        auto* window =
-            display->create_window(display->primary_monitor(), CE::Enum::window_mode::NORMAL, 64, 64, "Cheryl delayed native presentation");
+        auto* window = display->create_window(
+            display->primary_monitor(), CE::Platform::WindowMode::NORMAL, 64, 64, "Cheryl delayed native presentation"
+        );
         display->activate_window(*window);
         auto surface = std::make_unique<DelayedNativeSurface>(*window);
         observed = surface.get();
-        auto renderer = std::make_unique<CE::RenderAPIs::OpenGLRenderer>(*surface);
-        auto resources = std::make_unique<CE::Assets::OpenGLResourceProvider>(*renderer);
-        return std::make_unique<CE::Engine::EngineContext>(
+        auto renderer = std::make_unique<CE::Rendering::OpenGL::Renderer>(*surface);
+        auto resources = std::make_unique<CE::Rendering::OpenGL::ResourceProvider>(*renderer);
+        return std::make_unique<CE::Runtime::Context>(
             std::move(display), std::move(surface), std::move(renderer), std::move(resources), std::move(input)
         );
     }
 
     // Forward complete native State snapshots; no synthetic input samples.
     // This acceptance scope needs only State, so Events/Text remain on native_.
-    class ObservedNativeInput final : public CE::Input::iInputSystem {
-        CE::Input::InputSystem native_;
+    class ObservedNativeInput final : public CE::Input::System {
+        CE::Platform::GLFW::InputSystem native_;
         std::mutex mutex_;
         std::condition_variable progress_;
         std::uint64_t sequence_ = 0;
@@ -1293,7 +1320,7 @@ namespace {
         std::function<void()> before_poll;
         std::function<void()> after_poll;
         bool deinitialized = false;
-        void initialize(CE::iWindow& window) override { native_.initialize(window); }
+        void initialize(CE::Platform::Window& window) override { native_.initialize(window); }
         void poll() override {
             if (before_poll)
                 before_poll();
@@ -1310,13 +1337,13 @@ namespace {
             native_.deinitialize();
             deinitialized = true;
         }
-        CE::Input::InputBindings& bindings() override { return native_.bindings(); }
-        std::shared_ptr<const CE::Input::ActionSnapshot> action_snapshot() override { return native_.action_snapshot(); }
+        CE::Input::Actions::Bindings& bindings() override { return native_.bindings(); }
+        std::shared_ptr<const CE::Input::Actions::Snapshot> action_snapshot() override { return native_.action_snapshot(); }
         std::shared_ptr<const CE::Input::PollSnapshot> poll_snapshot() override { return native_.poll_snapshot(); }
         CE::Input::DeviceId keyboard_id() const override { return native_.keyboard_id(); }
         CE::Input::DeviceId mouse_id() const override { return native_.mouse_id(); }
         CE::Input::DeviceId gamepad_id() const override { return native_.gamepad_id(); }
-        CE::Input::InputSystem& native() { return native_; }
+        CE::Platform::GLFW::InputSystem& native() { return native_; }
         bool wait_for_sequence(std::uint64_t target) {
             std::unique_lock lock(mutex_);
             return progress_.wait_for(lock, std::chrono::seconds{2}, [&] { return sequence_ >= target; });
@@ -1345,17 +1372,17 @@ namespace {
         DelayedNativeSurface& surface;
         const NativeRuntimeFault fault;
         const std::shared_ptr<NativeFailureResources> observed = std::make_shared<NativeFailureResources>();
-        std::shared_ptr<CE::Assets::Image> image;
-        std::weak_ptr<CE::Assets::Geometry2D> geometry_owner;
-        std::weak_ptr<const CE::Assets::Material> material_owner;
-        std::weak_ptr<CE::Assets::Image> image_owner;
-        std::optional<CE::Engine::WorkerGroup> jobs;
+        std::shared_ptr<CE::Rendering::Resources::Image> image;
+        std::weak_ptr<CE::Rendering::Geometry::Buffer2D> geometry_owner;
+        std::weak_ptr<const CE::Rendering::Resources::Material> material_owner;
+        std::weak_ptr<CE::Rendering::Resources::Image> image_owner;
+        std::optional<CE::Workers::Group> jobs;
         std::future<int> completion;
         std::promise<void> release_cpu;
         std::size_t quiesces = 0;
         std::size_t deinits = 0;
 
-        NativeFailureGame(CE::Engine::EngineContext& context, DelayedNativeSurface& presentation, const NativeRuntimeFault requested)
+        NativeFailureGame(CE::Runtime::Context& context, DelayedNativeSurface& presentation, const NativeRuntimeFault requested)
         : NativeRuntimeGame(context), surface(presentation), fault(requested) {
             after_update = [] {};
             surface.after_first_swap = [this] {
@@ -1369,12 +1396,12 @@ namespace {
             geometry->bind();
             glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &observed->vao);
             glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &observed->buffer);
-            const auto& pipeline = dynamic_cast<const CE::Assets::GLSLPipeline&>(*material->definition().pipeline);
+            const auto& pipeline = dynamic_cast<const CE::Rendering::OpenGL::Pipeline&>(*material->definition().pipeline);
             pipeline.bind_parameters(material->resolve({}, {}, {}, {}));
             GLint program = 0;
             glGetIntegerv(GL_CURRENT_PROGRAM, &program);
             observed->program = static_cast<GLuint>(program);
-            image = engine.resources().create_image(CE::Assets::DecodedImage{{1, 1}, {255, 255, 255, 255}});
+            image = engine.resources().create_image(CE::Assets::Images::Decoded{{1, 1}, {255, 255, 255, 255}});
             observed->texture = bound_texture_id(*image);
             geometry_owner = geometry;
             material_owner = material;
@@ -1385,27 +1412,26 @@ namespace {
                                           geometry = geometry, material = material, image = image]() mutable {
                 allowed.wait();
                 auto owned_cpu_data = std::make_unique<int>(42);
-                auto uploaded =
-                    platform.submit([observed, owned_cpu_data = std::move(owned_cpu_data), geometry = std::move(geometry),
-                                        material = std::move(material), image = std::move(image)](CE::Engine::EngineContext& context) {
-                        EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
-                        EXPECT_EQ(glIsProgram(observed->program), GL_TRUE);
-                        EXPECT_EQ(glIsVertexArray(observed->vao), GL_TRUE);
-                        EXPECT_EQ(glIsBuffer(observed->buffer), GL_TRUE);
-                        EXPECT_EQ(glIsTexture(observed->texture), GL_TRUE);
-                        auto shutdown_image = context.resources().create_image(CE::Assets::DecodedImage{{1, 1}, {0, 255, 0, 255}});
-                        observed->shutdown_upload = bound_texture_id(*shutdown_image);
-                        EXPECT_EQ(glIsTexture(observed->shutdown_upload), GL_TRUE);
-                        EXPECT_EQ(glGetError(), GL_NO_ERROR);
-                        ++observed->platform_completions;
-                        return *owned_cpu_data;
-                    });
+                auto uploaded = platform.submit([observed, owned_cpu_data = std::move(owned_cpu_data), geometry = std::move(geometry),
+                                                 material = std::move(material), image = std::move(image)](CE::Runtime::Context& context) {
+                    EXPECT_EQ(std::this_thread::get_id(), observed->platform_owner);
+                    EXPECT_EQ(glIsProgram(observed->program), GL_TRUE);
+                    EXPECT_EQ(glIsVertexArray(observed->vao), GL_TRUE);
+                    EXPECT_EQ(glIsBuffer(observed->buffer), GL_TRUE);
+                    EXPECT_EQ(glIsTexture(observed->texture), GL_TRUE);
+                    auto shutdown_image = context.resources().create_image(CE::Assets::Images::Decoded{{1, 1}, {0, 255, 0, 255}});
+                    observed->shutdown_upload = bound_texture_id(*shutdown_image);
+                    EXPECT_EQ(glIsTexture(observed->shutdown_upload), GL_TRUE);
+                    EXPECT_EQ(glGetError(), GL_NO_ERROR);
+                    ++observed->platform_completions;
+                    return *owned_cpu_data;
+                });
                 return uploaded.get();
             });
             if (fault == NativeRuntimeFault::Initialization)
                 throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
         }
-        void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override {
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
             NativeRuntimeGame::prepare_render_frame(frame);
             if (fault == NativeRuntimeFault::PartialFrame)
                 throw CE::Exceptions::failed_operation(CE_HERE, "Original native runtime failure");
@@ -1442,9 +1468,8 @@ namespace {
 TEST(native_opengl, runtime_failure_cleanup) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::GFramework;
     std::size_t exercised = 0;
-    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
         for (const auto fault : {NativeRuntimeFault::Initialization, NativeRuntimeFault::PartialFrame, NativeRuntimeFault::Presentation}) {
             SCOPED_TRACE(::testing::Message() << "mode=" << static_cast<int>(mode) << " fault=" << static_cast<int>(fault));
             DelayedNativeSurface* surface = nullptr;
@@ -1452,7 +1477,7 @@ TEST(native_opengl, runtime_failure_cleanup) {
             auto* input = native_input.get();
             auto engine = delayed_native_context(surface, std::move(native_input));
             NativeFailureGame game(*engine, *surface, fault);
-            GameRuntime runtime(*engine, game, mode);
+            CE::Runtime::GameRuntime runtime(*engine, game, mode);
             try {
                 runtime.run();
                 ADD_FAILURE() << "The selected native runtime failure did not propagate";
@@ -1478,7 +1503,7 @@ TEST(native_opengl, runtime_failure_cleanup) {
             EXPECT_EQ(game.preparations.load() > 0, fault != NativeRuntimeFault::Initialization);
             EXPECT_THROW(static_cast<void>(engine->make_worker_group()), CE::Exceptions::failed_operation);
             EXPECT_THROW(
-                static_cast<void>(engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {})), CE::Exceptions::failed_operation
+                static_cast<void>(engine->platform_dispatcher().submit([](CE::Runtime::Context&) {})), CE::Exceptions::failed_operation
             );
             surface->make_current();
             EXPECT_NE(game.observed->program, 0u);
@@ -1504,29 +1529,28 @@ TEST(native_opengl, runtime_failure_cleanup) {
 TEST(native_opengl, slow_update_recovery) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::GFramework;
-    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
         for (int policy = 0; policy < 4; ++policy) {
             SCOPED_TRACE(::testing::Message() << "run mode=" << static_cast<int>(mode) << " policy=" << policy);
-            auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+            auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
             NativeRuntimeGame game(*engine);
-            SimulationTimingOptions timing;
+            CE::Runtime::Simulation::TimingOptions timing;
             timing.variable_interval = std::chrono::milliseconds{5};
             timing.fixed_step = std::chrono::milliseconds{10};
             timing.max_fixed_updates = 2;
             timing.recovery_cap = std::chrono::milliseconds{15};
             if (policy != 0)
-                timing.mode = SimulationMode::Fixed;
+                timing.mode = CE::Runtime::Simulation::Mode::Fixed;
             if (policy >= 2) {
-                timing.recovery = LagRecovery::VariableCatchUp;
+                timing.recovery = CE::Runtime::Simulation::LagRecovery::VariableCatchUp;
                 timing.fixed_updates_before_recovery = policy == 2 ? 1 : 0;
             }
-            GameRuntime runtime(*engine, game, mode, {}, timing);
+            CE::Runtime::GameRuntime runtime(*engine, game, mode, {}, timing);
             game.after_update = [&] {
                 if (game.ticks.size() == 1) {
                     // This is deliberately slow work, not a sleep used to prove
                     // thread ordering. The next real-clock batch must recover it.
-                    const auto deadline = SimulationClock::now() + std::chrono::milliseconds{80};
+                    const auto deadline = CE::Runtime::Simulation::Clock::now() + std::chrono::milliseconds{80};
                     std::this_thread::sleep_until(deadline);
                 }
                 if (game.ticks.size() == 24)
@@ -1544,13 +1568,13 @@ TEST(native_opengl, slow_update_recovery) {
                 saw_variable_lag |= tick.delta >= 0.07;
                 saw_drop |= tick.dropped > 0;
                 if (policy == 0) {
-                    EXPECT_EQ(tick.kind, UpdateKind::Variable);
+                    EXPECT_EQ(tick.kind, CE::Runtime::Simulation::UpdateKind::Variable);
                     EXPECT_EQ(tick.dropped, 0);
-                } else if (tick.kind == UpdateKind::Fixed) {
+                } else if (tick.kind == CE::Runtime::Simulation::UpdateKind::Fixed) {
                     EXPECT_DOUBLE_EQ(tick.delta, 0.01);
                 } else {
                     EXPECT_GE(policy, 2);
-                    EXPECT_EQ(tick.kind, UpdateKind::VariableCatchUp);
+                    EXPECT_EQ(tick.kind, CE::Runtime::Simulation::UpdateKind::VariableCatchUp);
                     EXPECT_LE(tick.delta, 0.015);
                     saw_recovery = true;
                 }
@@ -1569,15 +1593,14 @@ TEST(native_opengl, slow_update_recovery) {
 TEST(native_opengl, slow_presentation) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::GFramework;
-    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
         SCOPED_TRACE(static_cast<int>(mode));
         DelayedNativeSurface* surface = nullptr;
         auto engine = delayed_native_context(surface);
         NativeRuntimeGame game(*engine);
-        SimulationTimingOptions timing;
+        CE::Runtime::Simulation::TimingOptions timing;
         timing.variable_interval = std::chrono::milliseconds{5};
-        GameRuntime runtime(*engine, game, mode, {}, timing);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, {}, timing);
         std::mutex mutex;
         std::condition_variable progress;
         std::size_t updates = 0;
@@ -1597,8 +1620,8 @@ TEST(native_opengl, slow_presentation) {
                 runtime.stop();
         };
         surface->after_first_swap = [&] {
-            if (mode == RunMode::Sequential) {
-                std::this_thread::sleep_until(SimulationClock::now() + std::chrono::milliseconds{80});
+            if (mode == CE::Runtime::RunMode::Sequential) {
+                std::this_thread::sleep_until(CE::Runtime::Simulation::Clock::now() + std::chrono::milliseconds{80});
                 std::lock_guard lock(mutex);
                 stop_at = updates + 8;
                 hold_completed = true;
@@ -1617,7 +1640,7 @@ TEST(native_opengl, slow_presentation) {
         ASSERT_NO_THROW(runtime.run());
         EXPECT_TRUE(hold_completed);
         EXPECT_GT(surface->presentations, 1u);
-        if (mode == RunMode::Concurrent) {
+        if (mode == CE::Runtime::RunMode::Concurrent) {
             RecordProperty("updates_during_presentation", static_cast<int>(updates_during_hold));
             RecordProperty("preparations_during_presentation", static_cast<int>(preparations_during_hold));
             EXPECT_GE(updates_during_hold, 8u);
@@ -1637,7 +1660,6 @@ TEST(native_opengl, slow_presentation) {
 TEST(native_opengl, polling_backpressure) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    using namespace CE::GFramework;
     for (const std::size_t capacity : {1u, 3u}) {
         SCOPED_TRACE(capacity);
         auto input = std::make_unique<ObservedNativeInput>();
@@ -1649,9 +1671,9 @@ TEST(native_opengl, polling_backpressure) {
         CE::Input::PollingOptions polling;
         polling.policy = capacity == 1 ? CE::Input::PollingPolicy::Lockstep : CE::Input::PollingPolicy::Finite;
         polling.capacity = capacity;
-        SimulationTimingOptions timing;
+        CE::Runtime::Simulation::TimingOptions timing;
         timing.variable_interval = std::chrono::milliseconds{5};
-        GameRuntime runtime(*engine, game, RunMode::Concurrent, polling, timing);
+        CE::Runtime::GameRuntime runtime(*engine, game, CE::Runtime::RunMode::Concurrent, polling, timing);
         std::uint64_t last_consumed = 0;
         std::size_t first_presentations = 0;
         game.after_update = [&] {
@@ -1663,7 +1685,7 @@ TEST(native_opengl, polling_backpressure) {
                 // With no consumption, a full batch must prevent more native
                 // polls while the previously published frame keeps presenting.
                 for (int drain = 0; drain < 2; ++drain) {
-                    auto request = engine->platform_dispatcher().submit([&, drain](CE::Engine::EngineContext&) {
+                    auto request = engine->platform_dispatcher().submit([&, drain](CE::Runtime::Context&) {
                         EXPECT_EQ(observed_input->sequence(), last_consumed + capacity);
                         if (drain == 0)
                             first_presentations = surface->presentations;
@@ -1679,7 +1701,7 @@ TEST(native_opengl, polling_backpressure) {
                 // admitted replacement poll instead of assuming the platform
                 // owner beats the next simulation deadline under host load.
                 ASSERT_TRUE(observed_input->wait_for_sequence(last_consumed + capacity + 1));
-                auto published = engine->platform_dispatcher().submit([](CE::Engine::EngineContext&) {});
+                auto published = engine->platform_dispatcher().submit([](CE::Runtime::Context&) {});
                 ASSERT_EQ(published.wait_for(std::chrono::seconds{2}), std::future_status::ready);
                 published.get();
             }
@@ -1700,7 +1722,7 @@ TEST(native_opengl, polling_backpressure) {
 namespace {
     // Send synthetic server events to this test's own window. XSync establishes
     // server receipt, while only the runtime's normal GLFW poll dispatches them.
-    void send_x11_key(CE::Window& window, const KeySym symbol, const int type, const unsigned state, Time& time) {
+    void send_x11_key(CE::Platform::GLFW::Window& window, const KeySym symbol, const int type, const unsigned state, Time& time) {
         auto* display = glfwGetX11Display();
         const auto target = glfwGetX11Window(window.native_handle());
         XEvent event{};
@@ -1722,10 +1744,10 @@ namespace {
 TEST(native_opengl, x11_input_recovery) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real X11 GLFW display to run native acceptance";
-    using namespace CE::GFramework;
     using namespace CE::Input;
-    for (const auto mode : {RunMode::Sequential, RunMode::Concurrent}) {
-        for (const auto recovery : {LagRecovery::DropExcessLag, LagRecovery::VariableCatchUp}) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        for (const auto recovery :
+             {CE::Runtime::Simulation::LagRecovery::DropExcessLag, CE::Runtime::Simulation::LagRecovery::VariableCatchUp}) {
             SCOPED_TRACE(::testing::Message() << "mode=" << static_cast<int>(mode) << " recovery=" << static_cast<int>(recovery));
             auto input = std::make_unique<ObservedNativeInput>();
             auto* observed = input.get();
@@ -1734,23 +1756,23 @@ TEST(native_opengl, x11_input_recovery) {
             if (glfwGetPlatform() != GLFW_PLATFORM_X11)
                 GTEST_SKIP() << "This native record case requires GLFW's X11 backend";
             surface->after_first_swap = [] {};
-            auto& window = dynamic_cast<CE::Window&>(engine->window());
+            auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
             NativeRuntimeGame game(*engine);
-            constexpr ActionId typing_action{91};
+            constexpr CE::Input::Actions::Id typing_action{91};
             game.observed_action = typing_action;
             PollingOptions polling;
             polling.policy = PollingPolicy::Finite;
             polling.capacity = 3;
-            SimulationTimingOptions timing;
-            timing.mode = SimulationMode::Fixed;
+            CE::Runtime::Simulation::TimingOptions timing;
+            timing.mode = CE::Runtime::Simulation::Mode::Fixed;
             timing.fixed_step = std::chrono::milliseconds{10};
             timing.max_fixed_updates = 2;
             timing.recovery = recovery;
             timing.fixed_updates_before_recovery = 1;
             timing.recovery_cap = std::chrono::milliseconds{20};
-            GameRuntime runtime(*engine, game, mode, polling, timing);
-            CaptureLease old_events, old_text, new_events, new_text;
-            FocusLease old_focus, new_focus;
+            CE::Runtime::GameRuntime runtime(*engine, game, mode, polling, timing);
+            CE::Input::Capture::Lease old_events, old_text, new_events, new_text;
+            CE::Input::Routing::Lease old_focus, new_focus;
             std::uint64_t old_epoch = 0;
             Time event_time = 100;
             std::promise<void> full_verified;
@@ -1759,12 +1781,12 @@ TEST(native_opengl, x11_input_recovery) {
             game.after_init = [&] {
                 auto& native = observed->native();
                 for (const auto key : {GLFW_KEY_A, GLFW_KEY_B, GLFW_KEY_C})
-                    (void)native.bindings().bind_button({native.keyboard_id(), gainput_key(key)}, typing_action);
-                old_events = native.capture(InputMode::Events);
-                old_text = native.capture(InputMode::Text);
+                    (void)native.bindings().bind_button({native.keyboard_id(), CE::Platform::GLFW::gainput_key(key)}, typing_action);
+                old_events = native.capture(CE::Input::Capture::Channel::Events);
+                old_text = native.capture(CE::Input::Capture::Channel::Text);
                 old_focus = native.routing().focus(7);
                 old_epoch = old_focus.epoch();
-                if (mode == RunMode::Concurrent)
+                if (mode == CE::Runtime::RunMode::Concurrent)
                     gate = runtime.simulation_dispatcher().submit([&] {
                         // This runs before consumption. Holding simulation here lets
                         // native polls fill capacity even if the clock is already due.
@@ -1788,21 +1810,21 @@ TEST(native_opengl, x11_input_recovery) {
                 if (observed->sequence() != 3)
                     return;
                 auto& native = observed->native();
-                new_focus = native.routing().focus(42, KeyboardRouting::PassThrough);
+                new_focus = native.routing().focus(42, CE::Input::Routing::KeyboardPolicy::PassThrough);
                 old_focus.reset(); // Cannot clear the replacement owner.
                 old_events.reset();
                 old_text.reset();
-                new_events = native.capture(InputMode::Events);
-                new_text = native.capture(InputMode::Text);
+                new_events = native.capture(CE::Input::Capture::Channel::Events);
+                new_text = native.capture(CE::Input::Capture::Channel::Text);
                 // The concurrent gate keeps this batch full. Server events wait
                 // for resumed polling. Sequential mode tests the same native
                 // record/focus transition between polls on the shared owner.
                 send_x11_key(window, XK_c, KeyPress, 0, event_time);
                 send_x11_key(window, XK_c, KeyRelease, 0, event_time);
-                if (mode == RunMode::Concurrent)
-                    auto first = engine->platform_dispatcher().submit([&](CE::Engine::EngineContext&) {
+                if (mode == CE::Runtime::RunMode::Concurrent)
+                    auto first = engine->platform_dispatcher().submit([&](CE::Runtime::Context&) {
                         EXPECT_EQ(observed->sequence(), 3u);
-                        auto second = engine->platform_dispatcher().submit([&](CE::Engine::EngineContext&) {
+                        auto second = engine->platform_dispatcher().submit([&](CE::Runtime::Context&) {
                             EXPECT_EQ(observed->sequence(), 3u);
                             full_verified.set_value();
                         });
@@ -1810,7 +1832,7 @@ TEST(native_opengl, x11_input_recovery) {
             };
             game.after_update = [&] {
                 if (game.ticks.size() == 1)
-                    std::this_thread::sleep_until(SimulationClock::now() + std::chrono::milliseconds{120});
+                    std::this_thread::sleep_until(CE::Runtime::Simulation::Clock::now() + std::chrono::milliseconds{120});
                 if (game.ticks.size() == 16)
                     runtime.stop();
             };
@@ -1818,41 +1840,43 @@ TEST(native_opengl, x11_input_recovery) {
             if (gate.valid())
                 ASSERT_NO_THROW(gate.get());
             ASSERT_EQ(game.ticks.size(), 16u);
-            if (mode == RunMode::Concurrent) {
+            if (mode == CE::Runtime::RunMode::Concurrent) {
                 ASSERT_EQ(game.ticks.front().polls.size(), 3u);
                 ASSERT_EQ(game.ticks.front().records.size(), 8u);
             }
-            std::vector<InputRecord> earlier;
+            std::vector<CE::Input::Events::Record> earlier;
             for (const auto& tick : game.ticks)
                 earlier.insert(earlier.end(), tick.records.begin(), tick.records.end());
             ASSERT_EQ(earlier.size(), 11u);
-            const std::array<ButtonPhase, 5> phases{
-                ButtonPhase::Press, ButtonPhase::Repeat, ButtonPhase::Release, ButtonPhase::Press, ButtonPhase::Release};
+            const std::array<CE::Input::Events::ButtonPhase, 5> phases{
+                CE::Input::Events::ButtonPhase::Press, CE::Input::Events::ButtonPhase::Repeat, CE::Input::Events::ButtonPhase::Release,
+                CE::Input::Events::ButtonPhase::Press, CE::Input::Events::ButtonPhase::Release
+            };
             const std::array<std::size_t, 5> buttons{0, 2, 4, 5, 7};
             for (std::size_t i = 0; i < buttons.size(); ++i) {
-                ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[buttons[i]].data));
-                EXPECT_EQ(std::get<ButtonEvent>(earlier[buttons[i]].data).phase, phases[i]);
-                EXPECT_EQ(std::get<ButtonEvent>(earlier[buttons[i]].data).native_code, i < 3 ? GLFW_KEY_A : GLFW_KEY_B);
-                EXPECT_EQ(has_modifier(std::get<ButtonEvent>(earlier[buttons[i]].data).modifiers, Modifiers::Shift), i < 3);
+                ASSERT_TRUE(std::holds_alternative<CE::Input::Events::Button>(earlier[buttons[i]].data));
+                EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[buttons[i]].data).phase, phases[i]);
+                EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[buttons[i]].data).native_code, i < 3 ? GLFW_KEY_A : GLFW_KEY_B);
+                EXPECT_EQ(has_modifier(std::get<CE::Input::Events::Button>(earlier[buttons[i]].data).modifiers, Modifiers::Shift), i < 3);
             }
-            EXPECT_EQ(std::get<TextEvent>(earlier[1].data).codepoint, U'A');
-            EXPECT_EQ(std::get<TextEvent>(earlier[3].data).codepoint, U'A');
-            EXPECT_EQ(std::get<TextEvent>(earlier[6].data).codepoint, U'b');
-            ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[8].data));
-            EXPECT_EQ(std::get<ButtonEvent>(earlier[8].data).phase, ButtonPhase::Press);
-            EXPECT_EQ(std::get<ButtonEvent>(earlier[8].data).native_code, GLFW_KEY_C);
-            ASSERT_TRUE(std::holds_alternative<TextEvent>(earlier[9].data));
-            EXPECT_EQ(std::get<TextEvent>(earlier[9].data).codepoint, U'c');
-            ASSERT_TRUE(std::holds_alternative<ButtonEvent>(earlier[10].data));
-            EXPECT_EQ(std::get<ButtonEvent>(earlier[10].data).phase, ButtonPhase::Release);
-            EXPECT_EQ(std::get<ButtonEvent>(earlier[10].data).native_code, GLFW_KEY_C);
+            EXPECT_EQ(std::get<CE::Input::Events::Text>(earlier[1].data).codepoint, U'A');
+            EXPECT_EQ(std::get<CE::Input::Events::Text>(earlier[3].data).codepoint, U'A');
+            EXPECT_EQ(std::get<CE::Input::Events::Text>(earlier[6].data).codepoint, U'b');
+            ASSERT_TRUE(std::holds_alternative<CE::Input::Events::Button>(earlier[8].data));
+            EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[8].data).phase, CE::Input::Events::ButtonPhase::Press);
+            EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[8].data).native_code, GLFW_KEY_C);
+            ASSERT_TRUE(std::holds_alternative<CE::Input::Events::Text>(earlier[9].data));
+            EXPECT_EQ(std::get<CE::Input::Events::Text>(earlier[9].data).codepoint, U'c');
+            ASSERT_TRUE(std::holds_alternative<CE::Input::Events::Button>(earlier[10].data));
+            EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[10].data).phase, CE::Input::Events::ButtonPhase::Release);
+            EXPECT_EQ(std::get<CE::Input::Events::Button>(earlier[10].data).native_code, GLFW_KEY_C);
             std::size_t delivered = 0, c_presses = 0, c_releases = 0;
             std::uint64_t sequence = 0;
             bool saw_drop = false, saw_recovery = false;
-            InputClock::time_point previous_observation = InputClock::time_point::min();
+            CE::Input::ObservationClock::time_point previous_observation = CE::Input::ObservationClock::time_point::min();
             for (const auto& tick : game.ticks) {
                 saw_drop |= tick.dropped > 0;
-                saw_recovery |= tick.kind == UpdateKind::VariableCatchUp;
+                saw_recovery |= tick.kind == CE::Runtime::Simulation::UpdateKind::VariableCatchUp;
                 c_presses += tick.observed_button.press_count;
                 c_releases += tick.observed_button.release_count;
                 EXPECT_FALSE(tick.observed_button.held());
@@ -1869,7 +1893,7 @@ TEST(native_opengl, x11_input_recovery) {
                         EXPECT_EQ(record.target, 42u);
                         EXPECT_EQ(record.focus_epoch, new_focus.epoch());
                         EXPECT_TRUE(record.to_gameplay);
-                        if (const auto* text = std::get_if<TextEvent>(&record.data))
+                        if (const auto* text = std::get_if<CE::Input::Events::Text>(&record.data))
                             EXPECT_EQ(text->codepoint, U'c');
                     }
                     ++delivered;
@@ -1879,10 +1903,11 @@ TEST(native_opengl, x11_input_recovery) {
             EXPECT_EQ(c_presses, 1u);
             EXPECT_EQ(c_releases, 1u);
             EXPECT_TRUE(saw_drop);
-            EXPECT_EQ(saw_recovery, recovery == LagRecovery::VariableCatchUp);
-            const auto prefix = mode == RunMode::Sequential ? "sequential_" : "concurrent_";
+            EXPECT_EQ(saw_recovery, recovery == CE::Runtime::Simulation::LagRecovery::VariableCatchUp);
+            const auto prefix = mode == CE::Runtime::RunMode::Sequential ? "sequential_" : "concurrent_";
             RecordProperty(
-                std::string(prefix) + (recovery == LagRecovery::DropExcessLag ? "drop_records" : "catchup_records"),
+                std::string(prefix) +
+                    (recovery == CE::Runtime::Simulation::LagRecovery::DropExcessLag ? "drop_records" : "catchup_records"),
                 static_cast<int>(delivered)
             );
         }
@@ -1893,8 +1918,8 @@ TEST(native_opengl, x11_input_recovery) {
 TEST(native_opengl, input_reattach) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& input = dynamic_cast<CE::Platform::GLFW::InputSystem&>(engine->input());
     auto& window = engine->window();
     EXPECT_THROW(input.poll(), CE::Exceptions::failed_operation);
     input.initialize(window);
@@ -1927,15 +1952,15 @@ TEST(native_opengl, input_reattach) {
 TEST(native_opengl, input_owner) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
     auto* other_window = engine->display().create_window(engine->display().primary_monitor(), engine->window().mode(), 64, 64);
     ASSERT_NE(other_window, nullptr);
-    auto first = std::make_unique<CE::Input::InputSystem>();
-    CE::Input::InputSystem second;
+    auto first = std::make_unique<CE::Platform::GLFW::InputSystem>();
+    CE::Platform::GLFW::InputSystem second;
     first->initialize(engine->window());
     EXPECT_THROW(second.initialize(*other_window), CE::Exceptions::failed_operation);
     {
-        CE::Input::InputSystem rejected;
+        CE::Platform::GLFW::InputSystem rejected;
         EXPECT_THROW(rejected.initialize(*other_window), CE::Exceptions::failed_operation);
     }
     EXPECT_NO_THROW(first->poll());
@@ -1953,8 +1978,8 @@ TEST(native_opengl, input_owner) {
 TEST(native_opengl, input_window) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& input = dynamic_cast<CE::Platform::GLFW::InputSystem&>(engine->input());
     auto* other_window = engine->display().create_window(engine->display().primary_monitor(), engine->window().mode(), 64, 64);
     ASSERT_NE(other_window, nullptr);
     input.initialize(engine->window());
@@ -1974,8 +1999,8 @@ TEST(native_opengl, input_window) {
 
 namespace {
     struct ResizeRegistration {
-        CE::SubSystems::EventSystem& events;
-        CE::SubSystems::EventSystem::Registration registration;
+        CE::Events::EventSystem& events;
+        CE::Events::EventSystem::Registration registration;
         ~ResizeRegistration() { events.unregister_listener(registration); }
     };
 }
@@ -1983,39 +2008,41 @@ namespace {
 TEST(native_opengl, resize_events) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
     auto* handle = window.native_handle();
     const auto size = window.framebuffer_size();
     const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
     glfwSetFramebufferSizeCallback(handle, callback);
     ASSERT_NE(callback, nullptr);
-    auto& events = CE::SubSystems::EventSystem::get();
+    auto& events = CE::Events::EventSystem::get();
     std::vector<int> order;
-    std::vector<CE::FramebufferSize> named_sizes;
-    std::vector<CE::FramebufferSize> typed_sizes;
+    std::vector<CE::Platform::FramebufferSize> named_sizes;
+    std::vector<CE::Platform::FramebufferSize> typed_sizes;
     bool nested = false;
-    const CE::FramebufferSize outer{size.width + 3, size.height + 3};
-    const CE::FramebufferSize inner{size.width + 4, size.height + 4};
+    const CE::Platform::FramebufferSize outer{size.width + 3, size.height + 3};
+    const CE::Platform::FramebufferSize inner{size.width + 4, size.height + 4};
     ResizeRegistration named{events, events.register_listener("window-resized", [&](std::any payload) {
-                                 const auto event = std::any_cast<CE::WindowResized>(payload);
+                                 const auto event = std::any_cast<CE::Platform::WindowResized>(payload);
                                  EXPECT_EQ(event.window, &window);
                                  order.push_back(1);
                                  named_sizes.push_back(event.size);
                                  if (nested && event.size == outer)
                                      callback(handle, inner.width, inner.height);
                              })};
-    ResizeRegistration typed{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized& event) {
-                                 EXPECT_EQ(event.window, &window);
-                                 order.push_back(2);
-                                 typed_sizes.push_back(event.size);
-                             })};
+    ResizeRegistration typed{
+        events, events.register_listener(CE::Platform::window_resized_event, [&](const CE::Platform::WindowResized& event) {
+            EXPECT_EQ(event.window, &window);
+            order.push_back(2);
+            typed_sizes.push_back(event.size);
+        })
+    };
     EXPECT_NO_THROW(callback(handle, size.width, size.height));
     EXPECT_TRUE(order.empty());
     EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
     EXPECT_EQ(order, (std::vector<int>{1, 2}));
     EXPECT_EQ(named_sizes, typed_sizes);
-    EXPECT_EQ(typed_sizes, (std::vector<CE::FramebufferSize>{{size.width + 1, size.height + 1}}));
+    EXPECT_EQ(typed_sizes, (std::vector<CE::Platform::FramebufferSize>{{size.width + 1, size.height + 1}}));
 
     order.clear();
     named_sizes.clear();
@@ -2025,32 +2052,34 @@ TEST(native_opengl, resize_events) {
     EXPECT_NO_THROW(window.check_native_failure());
     EXPECT_EQ(window.framebuffer_size(), inner);
     EXPECT_EQ(order, (std::vector<int>{1, 1, 2, 2}));
-    EXPECT_EQ(named_sizes, (std::vector<CE::FramebufferSize>{outer, inner}));
-    EXPECT_EQ(typed_sizes, (std::vector<CE::FramebufferSize>{inner, outer}));
+    EXPECT_EQ(named_sizes, (std::vector<CE::Platform::FramebufferSize>{outer, inner}));
+    EXPECT_EQ(typed_sizes, (std::vector<CE::Platform::FramebufferSize>{inner, outer}));
 }
 
 TEST(native_opengl, typed_resize_failure) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
     auto* handle = window.native_handle();
     const auto size = window.framebuffer_size();
-    auto& events = CE::SubSystems::EventSystem::get();
+    auto& events = CE::Events::EventSystem::get();
     int calls = 0;
-    ResizeRegistration listener{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized& event) {
-                                    EXPECT_EQ(event.window, &window);
-                                    EXPECT_EQ(event.size, window.framebuffer_size());
-                                    ++calls;
-                                    throw std::runtime_error("typed resize listener failed");
-                                })};
+    ResizeRegistration listener{
+        events, events.register_listener(CE::Platform::window_resized_event, [&](const CE::Platform::WindowResized& event) {
+            EXPECT_EQ(event.window, &window);
+            EXPECT_EQ(event.size, window.framebuffer_size());
+            ++calls;
+            throw std::runtime_error("typed resize listener failed");
+        })
+    };
     const auto callback = glfwSetFramebufferSizeCallback(handle, nullptr);
     glfwSetFramebufferSizeCallback(handle, callback);
     ASSERT_NE(callback, nullptr);
     EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
     EXPECT_NO_THROW(callback(handle, size.width + 2, size.height + 2));
     EXPECT_EQ(calls, 1);
-    EXPECT_EQ(window.framebuffer_size(), (CE::FramebufferSize{size.width + 2, size.height + 2}));
+    EXPECT_EQ(window.framebuffer_size(), (CE::Platform::FramebufferSize{size.width + 2, size.height + 2}));
     EXPECT_THROW(window.check_native_failure(), std::runtime_error);
     EXPECT_NO_THROW(window.check_native_failure());
     EXPECT_NO_THROW(callback(handle, size.width + 3, size.height + 3));
@@ -2061,18 +2090,18 @@ TEST(native_opengl, typed_resize_failure) {
 TEST(native_opengl, resize_callback_failure) {
     if (!native_checks_requested())
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
-    auto engine = CE::Engine::make_glfw_opengl_context(small_window());
-    auto& window = dynamic_cast<CE::Window&>(engine->window());
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& window = dynamic_cast<CE::Platform::GLFW::Window&>(engine->window());
     auto* handle = window.native_handle();
     const auto size = window.framebuffer_size();
-    auto& events = CE::SubSystems::EventSystem::get();
+    auto& events = CE::Events::EventSystem::get();
     int calls = 0;
     int typed_calls = 0;
     ResizeRegistration listener{events, events.register_listener("window-resized", [&](std::any) {
                                     ++calls;
                                     throw std::runtime_error("resize listener failed");
                                 })};
-    ResizeRegistration typed{events, events.register_listener(CE::window_resized_event, [&](const CE::WindowResized&) {
+    ResizeRegistration typed{events, events.register_listener(CE::Platform::window_resized_event, [&](const CE::Platform::WindowResized&) {
                                  ++typed_calls;
                              })};
     // Invoke the actual registered C callback deterministically, without asking
@@ -2083,7 +2112,7 @@ TEST(native_opengl, resize_callback_failure) {
     EXPECT_NO_THROW(callback(handle, size.width + 1, size.height + 1));
     EXPECT_NO_THROW(callback(handle, size.width + 2, size.height + 2));
     EXPECT_EQ(calls, 1);
-    EXPECT_EQ(window.framebuffer_size(), (CE::FramebufferSize{size.width + 2, size.height + 2}));
+    EXPECT_EQ(window.framebuffer_size(), (CE::Platform::FramebufferSize{size.width + 2, size.height + 2}));
     EXPECT_THROW(window.check_native_failure(), std::runtime_error);
     EXPECT_NO_THROW(window.check_native_failure());
 
@@ -2093,7 +2122,7 @@ TEST(native_opengl, resize_callback_failure) {
 
     engine->input().initialize(window);
     EXPECT_NO_THROW(callback(handle, size.width + 4, size.height + 4));
-    auto& input = dynamic_cast<CE::Input::InputSystem&>(engine->input());
+    auto& input = dynamic_cast<CE::Platform::GLFW::InputSystem&>(engine->input());
     EXPECT_THROW(input.update(), std::runtime_error);
     EXPECT_NO_THROW(window.check_native_failure());
     input.deinitialize();

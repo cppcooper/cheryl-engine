@@ -9,7 +9,7 @@
 #include <span>
 #include <type_traits>
 
-namespace CE::math {
+namespace CE::Math {
     namespace Detail {
         // Use size_t as Cheryl's native storage word. Small bit arrays stay in the
         // narrowest fixed-width integer that can contain them; once Bits exceeds
@@ -66,11 +66,11 @@ namespace CE::math {
         static_assert(Bits > 0);
 
     public:
-        using word_type = Detail::bit_word_t<Bits>;
-        using Reference = Detail::BitReference<word_type>;
+        using word_type = ::CE::Math::Detail::bit_word_t<Bits>;
+        using Reference = ::CE::Math::Detail::BitReference<word_type>;
 
-        static constexpr std::size_t word_bits = Detail::bit_word_bits<Bits>;
-        static constexpr std::size_t word_count = Detail::bit_word_count<Bits>;
+        static constexpr std::size_t word_bits = ::CE::Math::Detail::bit_word_bits<Bits>;
+        static constexpr std::size_t word_count = ::CE::Math::Detail::bit_word_count<Bits>;
 
         Reference operator[](std::size_t index) noexcept;
         bool operator[](std::size_t index) const noexcept;
@@ -79,7 +79,7 @@ namespace CE::math {
         auto words() const noexcept -> std::span<const word_type, word_count>;
 
     private:
-        using storage_type = Detail::bit_storage_t<Bits>;
+        using storage_type = ::CE::Math::Detail::bit_storage_t<Bits>;
 
         static constexpr word_type mask(std::size_t index) noexcept;
 
@@ -90,7 +90,7 @@ namespace CE::math {
     };
 }
 
-namespace CE::math {
+namespace CE::Math {
     namespace Detail {
         /**
          * Writable proxy for one bit inside a BitArray backing word.
@@ -105,7 +105,7 @@ namespace CE::math {
             explicit operator bool() const noexcept;
 
         private:
-            template <std::size_t> friend class CE::math::BitArray;
+            template <std::size_t> friend class ::CE::Math::BitArray;
 
             BitReference(Word& word, Word mask) noexcept;
 

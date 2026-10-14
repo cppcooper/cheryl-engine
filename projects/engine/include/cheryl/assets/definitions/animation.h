@@ -8,37 +8,43 @@
 #include <unordered_map>
 #include <vector>
 
-namespace CE::Assets {
+namespace CE::Assets::Animation {
     // Owned CPU metadata; validated clips have in-grid cells and positive millisecond
     // durations. Aggregate construction alone does not validate those requirements.
-    struct TimedFrameDefinition {
-        CellIndex cell{};
+    struct TimedFrame {
+        CE::Assets::Grids::CellIndex cell{};
         std::chrono::milliseconds duration{};
     };
+}
 
-    struct SpriteAnimationDefinition {
+namespace CE::Assets::Sprites {
+    struct Clip {
         std::string name;
         std::optional<std::string> facing;
         std::string description;
-        std::vector<TimedFrameDefinition> frames;
+        std::vector<CE::Assets::Animation::TimedFrame> frames;
         bool loop{};
     };
+}
 
-    struct TileAnimationDefinition {
+namespace CE::Assets::Tilesets {
+    struct Clip {
         std::string name;
         std::string description;
-        CellIndex target{};
-        std::vector<TimedFrameDefinition> frames;
+        CE::Assets::Grids::CellIndex target{};
+        std::vector<CE::Assets::Animation::TimedFrame> frames;
         bool loop{};
 
         // Return a cell index for caller-owned simulation time.
         // Exact duration boundaries enter the next frame; loops wrap and other clips
         // hold their last cell. Negative time, empty/nonpositive or overflowing
         // timelines throw invalid_args. Cell/grid bounds remain the caller's contract.
-        [[nodiscard]] CellIndex cell_at(std::chrono::milliseconds elapsed) const;
+        [[nodiscard]] CE::Assets::Grids::CellIndex cell_at(std::chrono::milliseconds elapsed) const;
     };
+}
 
-    struct ProfileClipDefinition {
+namespace CE::Assets::Sprites {
+    struct ProfileClip {
         std::string description;
         std::size_t row_offset{};
         std::vector<std::size_t> columns;
@@ -46,9 +52,9 @@ namespace CE::Assets {
         bool loop{};
     };
 
-    struct AnimationProfileDefinition {
+    struct Profile {
         std::string description;
         std::unordered_map<std::string, std::size_t> facings;
-        std::unordered_map<std::string, ProfileClipDefinition> clips;
+        std::unordered_map<std::string, ProfileClip> clips;
     };
 }

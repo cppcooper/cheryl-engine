@@ -7,15 +7,15 @@
 #include <cmath>
 #include <cstddef>
 
-namespace CE::math {
+namespace CE::Rendering::Geometry {
     namespace {
         void validate(const Pivot pivot, const std::uint32_t texture_width, const std::uint32_t texture_height) {
             if (!std::isfinite(pivot.x) || !std::isfinite(pivot.y) || pivot.x < 0.0f || pivot.x > 1.0f || pivot.y < 0.0f ||
                 pivot.y > 1.0f) {
-                throw Exceptions::invalid_args(CE_HERE, "A pivot must be normalized to the [0, 1] range");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "A pivot must be normalized to the [0, 1] range");
             }
             if (texture_width == 0 || texture_height == 0) {
-                throw Exceptions::invalid_args(CE_HERE, "A texture must have non-zero dimensions");
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "A texture must have non-zero dimensions");
             }
         }
 
@@ -29,10 +29,10 @@ namespace CE::math {
         }
 
         struct Corners {
-            Vertex2D bottom_left;
-            Vertex2D bottom_right;
-            Vertex2D top_right;
-            Vertex2D top_left;
+            ::CE::Rendering::Geometry::Vertex2D bottom_left;
+            ::CE::Rendering::Geometry::Vertex2D bottom_right;
+            ::CE::Rendering::Geometry::Vertex2D top_right;
+            ::CE::Rendering::Geometry::Vertex2D top_left;
         };
 
         Corners make_corners(

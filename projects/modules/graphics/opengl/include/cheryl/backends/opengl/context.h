@@ -2,11 +2,11 @@
 
 #include <core/rendering/presentation-surface.h>
 
-namespace CE::RenderAPIs {
+namespace CE::Rendering::OpenGL {
     /** OpenGL context supplied by a compatible platform adapter, not by the renderer.
      * Context operations and resource uploads must run on the thread owning this context.
      */
-    class iOpenGLContext : public iPresentationSurface {
+    class Context : public ::CE::Rendering::PresentationSurface {
     public:
         using ProcAddress = void (*)();
 

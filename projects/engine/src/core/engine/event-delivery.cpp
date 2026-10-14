@@ -9,18 +9,18 @@
 
 namespace {
     struct WorkerStream {
-        CE::Engine::WorkerGroup group;
-        CE::Engine::DeliveryDetail::WorkerSubmission submit;
+        CE::Workers::Group group;
+        CE::Events::Detail::WorkerSubmission submit;
         std::mutex mutex;
-        std::deque<CE::SubSystems::EventBus::Work> pending;
+        std::deque<CE::Events::EventBus::Work> pending;
         bool scheduled = false;
 
-        WorkerStream(CE::Engine::WorkerGroup value, CE::Engine::DeliveryDetail::WorkerSubmission submission)
+        WorkerStream(CE::Workers::Group value, CE::Events::Detail::WorkerSubmission submission)
         : group(std::move(value)), submit(std::move(submission)) {}
     };
 
     void abandon_stream(const std::shared_ptr<WorkerStream>& stream) {
-        std::deque<CE::SubSystems::EventBus::Work> cancelled;
+        std::deque<CE::Events::EventBus::Work> cancelled;
         {
             std::lock_guard lock(stream->mutex);
             stream->scheduled = false;
@@ -64,7 +64,7 @@ namespace {
     void drain_stream(const std::shared_ptr<WorkerStream>& stream) {
         try {
             while (true) {
-                CE::SubSystems::EventBus::Work work;
+                CE::Events::EventBus::Work work;
                 {
                     std::lock_guard lock(stream->mutex);
                     if (stream->pending.empty()) {
@@ -85,31 +85,31 @@ namespace {
     }
 }
 
-namespace CE::Engine {
-    SubSystems::EventBus::Delivery platform_event_delivery(PlatformDispatcher::Submission endpoint) {
-        return [endpoint = std::move(endpoint)](SubSystems::EventBus::Work work) {
-            (void)endpoint.submit([work = std::move(work)](EngineContext&) mutable { work(); });
+namespace CE::Events {
+    EventBus::Delivery platform_delivery(CE::Runtime::PlatformDispatcher::Submission endpoint) {
+        return [endpoint = std::move(endpoint)](EventBus::Work work) {
+            (void)endpoint.submit([work = std::move(work)](CE::Runtime::Context&) mutable { work(); });
             return true;
         };
     }
 
-    SubSystems::EventBus::Delivery simulation_event_delivery(SimulationDispatcher::Submission endpoint) {
-        return [endpoint = std::move(endpoint)](SubSystems::EventBus::Work work) {
+    EventBus::Delivery simulation_delivery(CE::Runtime::SimulationDispatcher::Submission endpoint) {
+        return [endpoint = std::move(endpoint)](EventBus::Work work) {
             (void)endpoint.submit(std::move(work));
             return true;
         };
     }
 
-    SubSystems::EventBus::Delivery worker_event_delivery(WorkerGroup group) {
-        auto submit = [group](SubSystems::EventBus::Work work) { (void)group.submit(std::move(work)); };
-        return DeliveryDetail::worker_stream_delivery(std::move(group), std::move(submit));
+    EventBus::Delivery worker_delivery(CE::Workers::Group group) {
+        auto submit = [group](EventBus::Work work) { (void)group.submit(std::move(work)); };
+        return Detail::worker_stream_delivery(std::move(group), std::move(submit));
     }
 
-    SubSystems::EventBus::Delivery DeliveryDetail::worker_stream_delivery(WorkerGroup group, DeliveryDetail::WorkerSubmission submit) {
+    EventBus::Delivery Detail::worker_stream_delivery(CE::Workers::Group group, Detail::WorkerSubmission submit) {
         auto stream = std::make_shared<WorkerStream>(std::move(group), std::move(submit));
-        return [stream](SubSystems::EventBus::Work work) {
+        return [stream](EventBus::Work work) {
             std::shared_ptr<WorkerPump> pump;
-            SubSystems::EventBus::Work rejected;
+            EventBus::Work rejected;
             {
                 std::lock_guard lock(stream->mutex);
                 // Check closure while excluding the pump's final empty-queue

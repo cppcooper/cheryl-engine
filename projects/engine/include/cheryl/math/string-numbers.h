@@ -7,7 +7,9 @@
 #include <string>
 #include <internals/exceptions.h>
 
-/**
+namespace CE::Text::Numbers {
+
+    /**
  * Parse a complete token. Floating syntax follows stod (including leading space,
  * a sign, and the current C locale); trailing data/space and embedded NULs fail.
  * Integer syntax is base-10 from_chars: no leading space or plus, with a minus
@@ -15,70 +17,72 @@
  * outside the selected parser's range throws bad_request.
  * Floating parsing accepts stod's nonfinite values; it adds no finiteness policy.
  */
-inline double parse_floats(const std::string& str) {
-    try {
-        std::size_t consumed = 0;
-        const auto value = std::stod(str, &consumed);
-        if (consumed != str.size())
-            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
-        return value;
-    } catch (const std::invalid_argument&) {
-        throw CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
-    } catch (const std::out_of_range&) {
-        throw CE::Exceptions::bad_request(CE_HERE, "Floating point number out of range.");
+    inline double parse_floats(const std::string& str) {
+        try {
+            std::size_t consumed = 0;
+            const auto value = std::stod(str, &consumed);
+            if (consumed != str.size())
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
+            return value;
+        } catch (const std::invalid_argument&) {
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid floating point number.");
+        } catch (const std::out_of_range&) {
+            throw ::CE::Exceptions::bad_request(CE_HERE, "Floating point number out of range.");
+        }
     }
-}
 
-// Integers choose the smallest fitting type of the requested signedness; floating
-// parsing always returns double. Values own their storage without borrowing input.
-using NumberVariant = std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, double>;
+    // Integers choose the smallest fitting type of the requested signedness; floating
+    // parsing always returns double. Values own their storage without borrowing input.
+    using NumberVariant = std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, double>;
 
-template <bool is_unsigned> NumberVariant parse_integers(const std::string& str) {
-    if constexpr (is_unsigned) {
-        uint64_t value;
-        auto result = std::from_chars(str.data(), str.data() + str.size(), value);
-        if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
-            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
-        if (result.ec == std::errc::result_out_of_range)
-            throw CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
-        if (result.ec != std::errc())
-            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+    template <bool is_unsigned> NumberVariant parse_integers(const std::string& str) {
+        if constexpr (is_unsigned) {
+            uint64_t value;
+            auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+            if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+            if (result.ec == std::errc::result_out_of_range)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
+            if (result.ec != std::errc())
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
-        if (value <= std::numeric_limits<uint8_t>::max())
-            return static_cast<uint8_t>(value);
-        if (value <= std::numeric_limits<uint16_t>::max())
-            return static_cast<uint16_t>(value);
-        if (value <= std::numeric_limits<uint32_t>::max())
-            return static_cast<uint32_t>(value);
-        return static_cast<uint64_t>(value);
-    } else {
-        int64_t value;
-        auto result = std::from_chars(str.data(), str.data() + str.size(), value);
-        if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
-            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
-        if (result.ec == std::errc::result_out_of_range)
-            throw CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
-        if (result.ec != std::errc())
-            throw CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+            if (value <= std::numeric_limits<uint8_t>::max())
+                return static_cast<uint8_t>(value);
+            if (value <= std::numeric_limits<uint16_t>::max())
+                return static_cast<uint16_t>(value);
+            if (value <= std::numeric_limits<uint32_t>::max())
+                return static_cast<uint32_t>(value);
+            return static_cast<uint64_t>(value);
+        } else {
+            int64_t value;
+            auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+            if (result.ptr != str.data() + str.size() || result.ec == std::errc::invalid_argument)
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
+            if (result.ec == std::errc::result_out_of_range)
+                throw ::CE::Exceptions::bad_request(CE_HERE, "Integer out of range.");
+            if (result.ec != std::errc())
+                throw ::CE::Exceptions::invalid_args(CE_HERE, "Invalid integer format.");
 
-        if (value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max())
-            return static_cast<int8_t>(value);
-        if (value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max())
-            return static_cast<int16_t>(value);
-        if (value >= std::numeric_limits<int32_t>::min() && value <= std::numeric_limits<int32_t>::max())
-            return static_cast<int32_t>(value);
-        return static_cast<int64_t>(value);
+            if (value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max())
+                return static_cast<int8_t>(value);
+            if (value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max())
+                return static_cast<int16_t>(value);
+            if (value >= std::numeric_limits<int32_t>::min() && value <= std::numeric_limits<int32_t>::max())
+                return static_cast<int32_t>(value);
+            return static_cast<int64_t>(value);
+        }
     }
-}
 
-template <bool is_unsigned> NumberVariant string_to_number(const std::string& str) {
-    // Preserve legacy selection: '.', 'e', or 'E' chooses the floating parser;
-    // otherwise use the requested signed/unsigned integer parser. This does not
-    // auto-detect bases or special floating values without those markers.
-    if (str.find('.') != std::string::npos || str.find('e') != std::string::npos || str.find('E') != std::string::npos) {
-        return parse_floats(str); // Always return double for floating point numbers
-    } else {
-        // Parse and return the appropriate integer type
-        return parse_integers<is_unsigned>(str);
+    template <bool is_unsigned> NumberVariant string_to_number(const std::string& str) {
+        // Preserve legacy selection: '.', 'e', or 'E' chooses the floating parser;
+        // otherwise use the requested signed/unsigned integer parser. This does not
+        // auto-detect bases or special floating values without those markers.
+        if (str.find('.') != std::string::npos || str.find('e') != std::string::npos || str.find('E') != std::string::npos) {
+            return parse_floats(str); // Always return double for floating point numbers
+        } else {
+            // Parse and return the appropriate integer type
+            return parse_integers<is_unsigned>(str);
+        }
     }
+
 }

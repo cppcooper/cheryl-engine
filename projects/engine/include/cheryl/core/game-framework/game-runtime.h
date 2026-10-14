@@ -16,21 +16,23 @@
 #include <stop_token>
 #include <thread>
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 }
 
-namespace CE::GFramework {
-    namespace RuntimeDetail {
+namespace CE::Game {
+    struct AbstractGame;
+}
+
+namespace CE::Runtime {
+    namespace Detail {
         struct GameRuntimeAccess;
     }
-
-    struct AbstractGame;
 
     enum class RunMode { Sequential, Concurrent };
 
     struct RuntimeStats {
-        Diagnostics::DomainId domain = 0;
+        ::CE::Diagnostics::DomainId domain = 0;
         std::uint64_t updates = 0;
         std::uint64_t polls = 0;
         std::uint64_t published = 0;
@@ -59,18 +61,18 @@ namespace CE::GFramework {
      */
     class GameRuntime final {
         static constexpr std::chrono::milliseconds resource_maintenance_interval{10};
-        Engine::EngineContext& engine_;
-        AbstractGame& game_;
-        RunMode mode_;
+        ::CE::Runtime::Context& engine_;
+        ::CE::Game::AbstractGame& game_;
+        ::CE::Runtime::RunMode mode_;
         Input::PollingOptions polling_;
-        SimulationTimingOptions timing_;
-        RuntimeStats diagnostics_{Diagnostics::next_domain_id()};
+        ::CE::Runtime::Simulation::TimingOptions timing_;
+        ::CE::Runtime::RuntimeStats diagnostics_{::CE::Diagnostics::next_domain_id()};
         const char* phase_ = "reserve_session"; // Platform owner; retained first failing phase.
         std::atomic<bool> run_finished_{false};
         std::uint64_t observed_focus_epoch_ = 0; // Platform owner.
-        SimulationClock::time_point next_timing_report_;
-        SimulationClock::time_point next_platform_report_;
-        SimulationClock::time_point pressure_started_;
+        ::CE::Runtime::Simulation::Clock::time_point next_timing_report_;
+        ::CE::Runtime::Simulation::Clock::time_point next_platform_report_;
+        ::CE::Runtime::Simulation::Clock::time_point pressure_started_;
         std::uint64_t reported_drops_ = 0;
         bool lag_warning_ = false;      // Simulation owner.
         bool pressure_warning_ = false; // Platform owner.
@@ -82,16 +84,16 @@ namespace CE::GFramework {
             std::condition_variable wake;
         };
         std::shared_ptr<Scheduler> scheduler_ = std::make_shared<Scheduler>();
-        Engine::SimulationDispatcher simulation_dispatcher_;
+        ::CE::Runtime::SimulationDispatcher simulation_dispatcher_;
         std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
 
     public:
         GameRuntime(
-            Engine::EngineContext& engine,
-            AbstractGame& game,
-            RunMode mode = RunMode::Sequential,
+            ::CE::Runtime::Context& engine,
+            ::CE::Game::AbstractGame& game,
+            ::CE::Runtime::RunMode mode = ::CE::Runtime::RunMode::Sequential,
             Input::PollingOptions polling = Input::PollingOptions{},
-            SimulationTimingOptions timing = SimulationTimingOptions{}
+            ::CE::Runtime::Simulation::TimingOptions timing = ::CE::Runtime::Simulation::TimingOptions{}
         );
 
         // One blocking session on the platform owner. Borrowed engine/game must remain
@@ -102,11 +104,11 @@ namespace CE::GFramework {
         void stop();
         // Caller synchronizes with run start/return. Query before run or after
         // its return/throw; live sampling rejects. Counters publish after join.
-        [[nodiscard]] RuntimeStats diagnostics() const;
-        [[nodiscard]] Engine::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
+        [[nodiscard]] ::CE::Runtime::RuntimeStats diagnostics() const;
+        [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
-        friend struct RuntimeDetail::GameRuntimeAccess;
+        friend struct ::CE::Runtime::Detail::GameRuntimeAccess;
         void run_sequential();
         void run_concurrent();
         void finish_unstarted_session();
@@ -115,7 +117,7 @@ namespace CE::GFramework {
         void preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next);
         void report_session(bool failed) const noexcept;
         void observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept;
-        void observe_timing(const SimulationBatch& batch) noexcept;
+        void observe_timing(const ::CE::Runtime::Simulation::Batch& batch) noexcept;
         void observe_platform(bool pressure) noexcept;
     };
 }

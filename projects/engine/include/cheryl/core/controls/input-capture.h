@@ -7,9 +7,9 @@
 #include <memory>
 #include <vector>
 
-namespace CE::Input {
+namespace CE::Input::Capture {
     namespace Detail {
-        struct CaptureCounts {
+        struct Counts {
             std::atomic<std::size_t> events{0};
             std::atomic<std::size_t> text{0};
         };
@@ -20,49 +20,54 @@ namespace CE::Input {
      * Move/release on any thread with exclusive access to this particular handle.
      * Retained request state survives collector destruction; it does not retain an adapter.
      */
-    class CaptureLease final {
-        friend class InputCapture;
+    class Lease final {
+        friend class Collector;
 
     public:
-        CaptureLease() = default;
-        ~CaptureLease();
-        CaptureLease(CaptureLease&& other) noexcept;
-        CaptureLease& operator=(CaptureLease&& other) noexcept;
-        CaptureLease(const CaptureLease&) = delete;
-        CaptureLease& operator=(const CaptureLease&) = delete;
+        Lease() = default;
+        ~Lease();
+        Lease(Lease&& other) noexcept;
+        Lease& operator=(Lease&& other) noexcept;
+        Lease(const Lease&) = delete;
+        Lease& operator=(const Lease&) = delete;
         void reset() noexcept;
 
     private:
-        CaptureLease(std::shared_ptr<Detail::CaptureCounts> counts, InputMode mode);
-        std::shared_ptr<Detail::CaptureCounts> counts_;
-        InputMode mode_ = InputMode::State;
+        Lease(std::shared_ptr<Detail::Counts> counts, Channel mode);
+        std::shared_ptr<Detail::Counts> counts_;
+        Channel mode_ = Channel::State;
     };
 
     /** Platform-owned record collector; capture requests may come from any thread.
      * begin_poll() latches activation for the next pump. Collection/publication
      * stay on the platform thread and do not invoke consumers there.
      */
-    class InputCapture final {
+    class Collector final {
     public:
-        InputCapture() = default;
-        InputCapture(const InputCapture&) = delete;
-        InputCapture& operator=(const InputCapture&) = delete;
+        Collector() = default;
+        Collector(const Collector&) = delete;
+        Collector& operator=(const Collector&) = delete;
         // Concurrent requests are supported; invalid modes throw. State is a no-op request.
-        [[nodiscard]] CaptureLease request(InputMode mode);
-        void begin_poll(KeyboardFocus focus = {});
+        [[nodiscard]] Lease request(Channel mode);
+        void begin_poll(CE::Input::Routing::Focus focus = {});
         // Owns data in collector order for active channels only. Captured Text must
         // be a Unicode scalar; observation timestamps and other payloads are not normalized.
-        void record(DeviceId device, DeviceKind kind, InputRecordData data, InputClock::time_point observed_at = InputClock::now());
+        void record(
+            CE::Input::DeviceId device,
+            CE::Input::DeviceKind kind,
+            CE::Input::Events::Payload data,
+            CE::Input::ObservationClock::time_point observed_at = CE::Input::ObservationClock::now()
+        );
         // Transfer the whole pending vector; discard does not revoke outstanding leases.
-        [[nodiscard]] std::vector<InputRecord> complete();
+        [[nodiscard]] std::vector<CE::Input::Events::Record> complete();
         void discard_pending();
 
     private:
-        std::shared_ptr<Detail::CaptureCounts> counts_ = std::make_shared<Detail::CaptureCounts>();
+        std::shared_ptr<Detail::Counts> counts_ = std::make_shared<Detail::Counts>();
         bool events_enabled_ = false;
         bool text_enabled_ = false;
         std::uint64_t next_sequence_ = 1;
-        std::vector<InputRecord> pending_;
-        KeyboardFocus focus_;
+        std::vector<CE::Input::Events::Record> pending_;
+        CE::Input::Routing::Focus focus_;
     };
 }

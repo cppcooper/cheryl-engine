@@ -8,56 +8,56 @@
 #include <string_view>
 #include <variant>
 
-namespace CE::Assets {
-    enum class ShaderStage { Vertex, Fragment };
+namespace CE::Assets::Shaders {
+    enum class Stage { Vertex, Fragment };
 
     // Owned literals deliberately cannot retain images, samplers or backend handles.
-    using ShaderLiteral = std::variant<float, int, unsigned int, bool, glm::vec2, glm::vec3, glm::vec4, glm::mat4>;
+    using Literal = std::variant<float, int, unsigned int, bool, glm::vec2, glm::vec3, glm::vec4, glm::mat4>;
 
-    struct ShaderSource {
-        ShaderStage stage = ShaderStage::Vertex;
+    struct Source {
+        Stage stage = Stage::Vertex;
         std::filesystem::path path;
         std::string bytes;
     };
 
-    struct ShaderProgramRecipe {
+    struct ProgramRecipe {
         std::string id;
-        std::vector<ShaderSource> sources;
+        std::vector<Source> sources;
     };
 
-    struct ShaderParameter {
+    struct ParameterRecipe {
         std::string key;
-        ParameterType type = ParameterType::Float;
+        CE::Rendering::Parameters::Type type = CE::Rendering::Parameters::Type::Float;
         bool required = true;
-        ParameterSemantic semantic = ParameterSemantic::Custom;
-        std::optional<ShaderLiteral> default_value = {};
+        CE::Rendering::Parameters::Semantic semantic = CE::Rendering::Parameters::Semantic::Custom;
+        std::optional<Literal> default_value = {};
     };
 
-    struct ShaderMaterialRecipe {
+    struct MaterialRecipe {
         std::string id;
         std::string program;
-        VertexLayout2D vertex_layout = VertexLayout2D::Position3UV2;
-        PrimitiveTopology topology = PrimitiveTopology::Triangles;
-        PipelineState2D state;
-        std::vector<ShaderParameter> parameters;
-        std::map<std::string, ShaderLiteral, std::less<>> defaults;
+        CE::Rendering::Geometry::Layout2D vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2;
+        CE::Rendering::Geometry::Topology topology = CE::Rendering::Geometry::Topology::Triangles;
+        CE::Rendering::Pipelines::State2D state;
+        std::vector<ParameterRecipe> parameters;
+        std::map<std::string, Literal, std::less<>> defaults;
         // FX policies address sampler parameters, never image assets.
-        std::map<std::string, SamplerOptions, std::less<>> sampling;
+        std::map<std::string, CE::Rendering::Sampling::Options, std::less<>> sampling;
         // Serialized backend payloads are interpreted only by that backend's builder.
         std::map<std::string, std::string, std::less<>> bindings;
     };
 
-    struct ShaderAssetManifest {
+    struct Manifest {
         std::filesystem::path source;
         std::string name_space;
-        std::vector<ShaderProgramRecipe> programs;
-        std::vector<ShaderMaterialRecipe> materials;
+        std::vector<ProgramRecipe> programs;
+        std::vector<MaterialRecipe> materials;
     };
 
-    [[nodiscard]] bool is_shader_asset_id(std::string_view id);
-    [[nodiscard]] ParameterValue shader_parameter_value(const ShaderLiteral& literal);
-    [[nodiscard]] ParameterSet shader_material_defaults(const ShaderMaterialRecipe& recipe);
-    [[nodiscard]] PipelineDefinition shader_pipeline_definition(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program);
-    void validate_shader_program(const ShaderProgramRecipe& recipe);
-    void validate_shader_material(const ShaderMaterialRecipe& recipe, const ShaderProgramRecipe& program);
+    [[nodiscard]] bool is_qualified_id(std::string_view id);
+    [[nodiscard]] CE::Rendering::Parameters::Value parameter_value(const Literal& literal);
+    [[nodiscard]] CE::Rendering::Parameters::Set defaults(const MaterialRecipe& recipe);
+    [[nodiscard]] CE::Rendering::Pipelines::Definition pipeline_definition(const MaterialRecipe& recipe, const ProgramRecipe& program);
+    void validate_program(const ProgramRecipe& recipe);
+    void validate_material(const MaterialRecipe& recipe, const ProgramRecipe& program);
 }

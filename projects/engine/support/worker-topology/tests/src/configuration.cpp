@@ -12,7 +12,6 @@
 #include <vector>
 
 namespace {
-    namespace Engine = CE::Engine;
     constexpr auto document = R"({
         "version": "1.0", "workers": "auto",
         "groups": {
@@ -22,7 +21,7 @@ namespace {
         }
     })";
 
-    void same_policy(const Engine::WorkerGroupPolicy& actual, const Engine::WorkerGroupPolicy& expected) {
+    void same_policy(const CE::Workers::GroupPolicy& actual, const CE::Workers::GroupPolicy& expected) {
         EXPECT_EQ(actual.requested.max_concurrency, expected.requested.max_concurrency);
         EXPECT_EQ(actual.requested.weight, expected.requested.weight);
         EXPECT_EQ(actual.requested.priority, expected.requested.priority);
@@ -40,28 +39,28 @@ namespace {
 }
 
 TEST(worker_json, cpp_equivalence) {
-    auto loaded = Engine::parse_worker_configuration(document);
-    Engine::WorkerConfiguration typed;
+    auto loaded = CE::Workers::Json::parse_configuration(document);
+    CE::Workers::Configuration typed;
     typed.pool.worker_count = 0;
     auto& simulation = typed.groups["simulation"];
     simulation.max_concurrency = 1;
     simulation.weight = 3;
     simulation.priority = 2;
     simulation.cpu.cpus = {2000, 17};
-    simulation.cpu.strength = Engine::WorkerPolicyStrength::Required;
-    simulation.cpu.locality = Engine::WorkerLocalityPolicy::Reuse;
+    simulation.cpu.strength = CE::Workers::PolicyStrength::Required;
+    simulation.cpu.locality = CE::Workers::LocalityPolicy::Reuse;
     simulation.cpu.shared_cache_domain = 88;
     simulation.cpu.prefer_same_worker = false;
-    typed.groups["asset_preparation"].cpu.locality = Engine::WorkerLocalityPolicy::Spread;
+    typed.groups["asset_preparation"].cpu.locality = CE::Workers::LocalityPolicy::Spread;
     auto provider = std::make_shared<CE::Testing::WorkerTopologyProvider>();
     loaded.pool.topology_provider = provider;
     typed.pool.topology_provider = provider;
-    Engine::validate_worker_configuration(loaded);
-    Engine::validate_worker_configuration(typed);
+    CE::Workers::validate_configuration(loaded);
+    CE::Workers::validate_configuration(typed);
     EXPECT_EQ(provider->discoveries, 0u);
     EXPECT_TRUE(provider->bindings().empty());
-    Engine::WorkerPool from_json(loaded.pool);
-    Engine::WorkerPool from_cpp(typed.pool);
+    CE::Workers::Pool from_json(loaded.pool);
+    CE::Workers::Pool from_cpp(typed.pool);
     EXPECT_EQ(from_json.worker_count(), from_cpp.worker_count());
     for (const auto& [name, options] : loaded.groups)
         same_policy(from_json.make_group(options).policy(), from_cpp.make_group(typed.groups.at(name)).policy());
@@ -69,21 +68,21 @@ TEST(worker_json, cpp_equivalence) {
 
 TEST(worker_json, sources) {
     std::istringstream input(document);
-    const auto streamed = Engine::load_worker_configuration(input, "workers.json");
+    const auto streamed = CE::Workers::Json::load_configuration(input, "workers.json");
     EXPECT_EQ(streamed.groups.size(), 2u);
     EXPECT_EQ(streamed.pool.worker_count, 0u);
     EXPECT_FALSE(streamed.pool.topology_provider);
     const auto example = std::filesystem::path{CHERYL_SOURCE_DIR} / "projects/engine/support/worker-topology/examples/workers.json";
-    const auto loaded = Engine::load_worker_configuration(example);
-    EXPECT_EQ(loaded.groups.at("simulation").cpu.locality, Engine::WorkerLocalityPolicy::Reuse);
-    EXPECT_EQ(loaded.groups.at("asset_preparation").cpu.locality, Engine::WorkerLocalityPolicy::Spread);
-    EXPECT_THROW(static_cast<void>(Engine::load_worker_configuration(example / "missing")), CE::Exceptions::invalid_args);
+    const auto loaded = CE::Workers::Json::load_configuration(example);
+    EXPECT_EQ(loaded.groups.at("simulation").cpu.locality, CE::Workers::LocalityPolicy::Reuse);
+    EXPECT_EQ(loaded.groups.at("asset_preparation").cpu.locality, CE::Workers::LocalityPolicy::Spread);
+    EXPECT_THROW(static_cast<void>(CE::Workers::Json::load_configuration(example / "missing")), CE::Exceptions::invalid_args);
     input.setstate(std::ios::badbit);
-    EXPECT_THROW(static_cast<void>(Engine::load_worker_configuration(input, "broken.json")), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(CE::Workers::Json::load_configuration(input, "broken.json")), CE::Exceptions::invalid_args);
 }
 
 TEST(worker_json, defaults) {
-    const auto configuration = Engine::parse_worker_configuration(R"({"version":"1.0","groups":{"a":{}}})");
+    const auto configuration = CE::Workers::Json::parse_configuration(R"({"version":"1.0","groups":{"a":{}}})");
     EXPECT_EQ(configuration.pool.worker_count, 1u);
     const auto& options = configuration.groups.at("a");
     EXPECT_EQ(options.max_concurrency, 0u);
@@ -91,7 +90,7 @@ TEST(worker_json, defaults) {
     EXPECT_EQ(options.priority, 0u);
     EXPECT_FALSE(options.cpu.locality);
     EXPECT_TRUE(options.cpu.cpus.empty());
-    EXPECT_EQ(options.cpu.strength, Engine::WorkerPolicyStrength::Preferred);
+    EXPECT_EQ(options.cpu.strength, CE::Workers::PolicyStrength::Preferred);
 }
 
 TEST(worker_json, invalid_fields) {
@@ -121,7 +120,7 @@ TEST(worker_json, invalid_fields) {
     for (const auto& [value, field] : invalid) {
         SCOPED_TRACE(value);
         try {
-            static_cast<void>(Engine::parse_worker_configuration(value, "invalid-workers.json"));
+            static_cast<void>(CE::Workers::Json::parse_configuration(value, "invalid-workers.json"));
             ADD_FAILURE() << "Invalid configuration was accepted";
         } catch (const CE::Exceptions::invalid_args& error) {
             EXPECT_NE(std::string{error.what()}.find("invalid-workers.json"), std::string::npos);

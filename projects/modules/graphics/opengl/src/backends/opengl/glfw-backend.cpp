@@ -15,15 +15,15 @@
 #include <memory>
 #include <utility>
 
-namespace CE::Engine {
+namespace CE::Application::GLFWOpenGL {
     template <typename InputAdapter>
-    static std::unique_ptr<EngineContext> assemble_context(InputAdapter&& input, const GlfwOpenGLConfig& config) {
+    static std::unique_ptr<CE::Runtime::Context> assemble_context(InputAdapter&& input, const Options& config) {
         if (config.width <= 0 || config.height <= 0 || config.swap_interval < 0)
             throw Exceptions::invalid_args(CE_HERE, "Window dimensions and swap interval must be valid");
 
         // Constructing the GLFW display initializes GLFW; its windows are destroyed before
         // the display releases that library lifetime, even if a later step throws.
-        auto display = std::make_unique<DisplaySystem>();
+        auto display = std::make_unique<CE::Platform::GLFW::DisplaySystem>();
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -35,22 +35,22 @@ namespace CE::Engine {
         auto* window = display->create_window(display->primary_monitor(), config.mode, config.width, config.height, config.title);
         display->activate_window(*window);
 
-        auto surface = std::make_unique<RenderAPIs::GlfwOpenGLContext>(*window, config.swap_interval);
-        auto renderer = std::make_unique<RenderAPIs::OpenGLRenderer>(*surface);
-        auto resources = std::make_unique<Assets::OpenGLResourceProvider>(*renderer);
-        return std::make_unique<EngineContext>(
+        auto surface = std::make_unique<CE::Rendering::OpenGL::GLFWContext>(*window, config.swap_interval);
+        auto renderer = std::make_unique<CE::Rendering::OpenGL::Renderer>(*surface);
+        auto resources = std::make_unique<CE::Rendering::OpenGL::ResourceProvider>(*renderer);
+        return std::make_unique<CE::Runtime::Context>(
             std::move(display), std::move(surface), std::move(renderer), std::move(resources), std::forward<InputAdapter>(input),
             config.execution
         );
     }
 
-    std::unique_ptr<EngineContext> make_glfw_opengl_context(Input::iInputSystem& input, const GlfwOpenGLConfig& config) {
+    std::unique_ptr<CE::Runtime::Context> make_context(CE::Input::System& input, const Options& config) {
         return assemble_context(input, config);
     }
 
 #if CHERYL_NATIVE_INPUT
-    std::unique_ptr<EngineContext> make_glfw_opengl_context(const GlfwOpenGLConfig& config) {
-        return assemble_context(std::make_unique<Input::InputSystem>(), config);
+    std::unique_ptr<CE::Runtime::Context> make_context(const Options& config) {
+        return assemble_context(std::make_unique<CE::Platform::GLFW::InputSystem>(), config);
     }
 #endif
 }

@@ -5,8 +5,8 @@
 #include <cmath>
 #include <utility>
 
-namespace CE::Assets {
-    SpriteAnimation::SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition> definition)
+namespace CE::Assets::Sprites {
+    Animation::Animation(std::shared_ptr<const Clip> definition)
     : definition_(std::move(definition)) {
         if (!definition_ || definition_->frames.empty()) {
             throw Exceptions::bad_request(CE_HERE, "A sprite animation needs at least one frame");
@@ -19,17 +19,17 @@ namespace CE::Assets {
         }
     }
 
-    SpriteAnimation& SpriteAnimation::operator[](const std::size_t frame) {
+    Animation& Animation::operator[](const std::size_t frame) {
         set_frame(frame);
         return *this;
     }
 
-    void SpriteAnimation::set_frame(const std::size_t frame) {
+    void Animation::set_frame(const std::size_t frame) {
         index_ = loops() ? frame % definition_->frames.size() : std::min(frame, definition_->frames.size() - 1);
         elapsed_ = {};
     }
 
-    void SpriteAnimation::advance(const std::chrono::duration<double> delta) {
+    void Animation::advance(const std::chrono::duration<double> delta) {
         if (!std::isfinite(delta.count()) || delta.count() < 0) {
             throw Exceptions::invalid_args(CE_HERE, "Sprite animation time must be finite and nonnegative");
         }
@@ -56,17 +56,17 @@ namespace CE::Assets {
         }
     }
 
-    CellIndex SpriteAnimation::cell() const {
+    CE::Assets::Grids::CellIndex Animation::cell() const {
         return definition_->frames[index_].cell;
     }
 
-    std::chrono::milliseconds SpriteAnimation::frame_duration() const {
+    std::chrono::milliseconds Animation::frame_duration() const {
         return definition_->frames[index_].duration;
     }
 
-    Sprite::Sprite(SpriteData data)
-    : Asset2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)),
-      definition_(std::make_shared<const SpriteDefinition>(std::move(data.definition))) {
+    Asset::Asset(Data data)
+    : Content2D(std::move(data.geometry), std::move(data.texture), std::move(data.material)),
+      definition_(std::make_shared<const Definition>(std::move(data.definition))) {
         const auto cell_count = definition_->grid.cell_count();
         if (cell_count == 0) {
             throw Exceptions::bad_request(CE_HERE, "A sprite needs at least one grid cell");
@@ -90,11 +90,11 @@ namespace CE::Assets {
         }
     }
 
-    std::string Sprite::animation_key(const std::string& animation, const std::optional<std::string>& facing) {
+    std::string Asset::animation_key(const std::string& animation, const std::optional<std::string>& facing) {
         return animation + '\x1f' + facing.value_or("");
     }
 
-    bool Sprite::has_animation(const std::string& animation, const std::optional<std::string> facing) const {
+    bool Asset::has_animation(const std::string& animation, const std::optional<std::string> facing) const {
         if (animation_indices_.contains(animation_key(animation, facing))) {
             return true;
         }
@@ -108,13 +108,13 @@ namespace CE::Assets {
         }) == 1;
     }
 
-    SpriteAnimation Sprite::animation(const std::string& animation_name, const std::optional<std::string> facing) const {
+    Animation Asset::animation(const std::string& animation_name, const std::optional<std::string> facing) const {
         const auto exact = animation_indices_.find(animation_key(animation_name, facing));
         if (exact != animation_indices_.end()) {
-            return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(definition_, &definition_->animations[exact->second]));
+            return Animation(std::shared_ptr<const Clip>(definition_, &definition_->animations[exact->second]));
         }
         if (!facing) {
-            const SpriteAnimationDefinition* match = nullptr;
+            const Clip* match = nullptr;
             for (const auto& animation : definition_->animations) {
                 if (animation.name != animation_name) {
                     continue;
@@ -125,21 +125,21 @@ namespace CE::Assets {
                 match = &animation;
             }
             if (match) {
-                return SpriteAnimation(std::shared_ptr<const SpriteAnimationDefinition>(definition_, match));
+                return Animation(std::shared_ptr<const Clip>(definition_, match));
             }
         }
         throw Exceptions::bad_request(CE_HERE, "Sprite animation '" + animation_name + "' was not loaded for the requested facing");
     }
 
-    SpriteAnimation Sprite::operator[](const std::string& animation_name) const {
+    Animation Asset::operator[](const std::string& animation_name) const {
         return animation(animation_name);
     }
 
-    const ViewDefinition& Sprite::view(const std::string& name) const {
+    const CE::Assets::Grids::View& Asset::view(const std::string& name) const {
         return definition_->views.at(name);
     }
 
-    CellIndex Sprite::orientation(const std::string& name) const {
+    CE::Assets::Grids::CellIndex Asset::orientation(const std::string& name) const {
         return definition_->orientations.at(name);
     }
 }

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace CE::DebugTerminal::Detail {
+namespace CE::Application::DebugTerminal::Detail {
     struct Arguments {
         bool enabled = false;
         bool discovery = false;

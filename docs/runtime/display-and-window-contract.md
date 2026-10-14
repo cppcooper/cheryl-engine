@@ -1,11 +1,11 @@
 # Display and window ownership
 
 The display owns its windows and monitor inventory. Applications borrow window
-pointers and monitor references; copying a `Monitor` retains its value, not its
+pointers and monitor references; copying a `CE::Platform::Monitor` retains its value, not its
 native monitor or display owner. The neutral contracts are
-[iDisplaySystem](../../projects/engine/include/cheryl/core/display/display-system-interface.h),
-[iWindow](../../projects/engine/include/cheryl/core/display/window-interface.h) and
-[Monitor](../../projects/engine/include/cheryl/core/display/monitor.h).
+[CE::Platform::DisplaySystem](../../projects/engine/include/cheryl/core/display/display-system-interface.h),
+[CE::Platform::Window](../../projects/engine/include/cheryl/core/display/window-interface.h) and
+[CE::Platform::Monitor](../../projects/engine/include/cheryl/core/display/monitor.h).
 
 Access native display/window state, create/mutate windows and perform teardown on
 the platform owner. Window size getters do not synchronize cross-thread access.
@@ -16,7 +16,7 @@ graphics owner.
 
 ## Native GLFW inventory and selection
 
-[DisplaySystem](../../projects/modules/platform/native-glfw/include/cheryl/core/display/display-system.h)
+[CE::Platform::GLFW::DisplaySystem](../../projects/modules/platform/native-glfw/include/cheryl/core/display/display-system.h)
 shares GLFW initialization lifetime with other live displays and owns every window
 it creates. Its windows are destroyed before its GLFW lifetime share is released;
 the final display terminates GLFW. Input adapters detach while their window is live,
@@ -55,7 +55,7 @@ Multiple active rendering windows and selection switching are
 
 | Observation | Units and freshness |
 | --- | --- |
-| `Monitor::width/height` | Captured video-mode dimensions; native GLFW does not refresh them. |
+| `CE::Platform::Monitor::width/height` | Captured video-mode dimensions; native GLFW does not refresh them. |
 | `logical_size()` | Cached logical window coordinates, updated by native size callbacks and explicit resize/mode queries. |
 | `framebuffer_size()` | Cached drawable pixels, independently updated by framebuffer callbacks and explicit queries. Zero dimensions can describe an unavailable drawable. |
 | `content_scale(monitor)` | Current GLFW X/Y monitor scale for an inventory ID; this leaves its dimensions unchanged. |
@@ -63,10 +63,12 @@ Multiple active rendering windows and selection switching are
 Pump native events on platform before relying on new callback observations. Logical
 and framebuffer dimensions can differ; use valid positive sizes for pixel mapping
 and avoid division/render submission while the drawable is unavailable.
+`CE::Platform::Dimensions<int>` describes logical dimensions, while
+`CE::Platform::FramebufferSize` describes drawable pixels.
 
 `resize()` requests positive logical dimensions and queries the resulting logical
 and pixel sizes. The platform may accept different dimensions. `set_mode()` restores
-saved windowed placement for `NORMAL`, uses it without decorations for `BORDERLESS`,
+saved windowed placement for `CE::Platform::WindowMode::NORMAL`, uses it without decorations for `BORDERLESS`,
 and attaches the chosen monitor at its captured dimensions for `FULLSCREEN`. Native
 fullscreen switching uses the monitor's queried refresh rate. Mode changes then
 query the resulting sizes. Borderless mode preserves the saved windowed extent;
@@ -74,8 +76,8 @@ it does not itself select a desktop-sized extent.
 `mode()` reflects the selected mode and can already have changed when a transition
 reports a listener failure.
 
-A changed framebuffer size publishes `WindowResized` on the canonical typed
-`CE::window_resized_event` channel. Native GLFW first dispatches the legacy named
+A changed framebuffer size publishes `CE::Platform::WindowResized` on the canonical typed
+`CE::Platform::window_resized_event` channel. Native GLFW first dispatches the legacy named
 `"window-resized"` notification, then the typed channel, using the same saved size
 observation. A logical size change alone does not establish a framebuffer-size
 event. Nested resize delivery can interleave these channels; each payload keeps its

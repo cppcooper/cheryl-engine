@@ -4,54 +4,57 @@
 #include <cstddef>
 #include <vector>
 
-namespace CE::GFramework {
-    using SimulationClock = std::chrono::steady_clock;
+namespace CE::Runtime::Simulation {
+    using Clock = std::chrono::steady_clock;
 
-    enum class SimulationMode { Variable, Fixed };
+    enum class Mode { Variable, Fixed };
     enum class LagRecovery { DropExcessLag, VariableCatchUp };
     enum class UpdateKind { Variable, Fixed, VariableCatchUp };
 
-    struct SimulationTimingOptions {
+    struct TimingOptions {
         // TODO: an optimization configurer may suggest limits after profiling;
         // it must preserve explicitly selected timing/input contracts.
-        SimulationMode mode = SimulationMode::Variable;
-        SimulationClock::duration variable_interval = std::chrono::duration_cast<SimulationClock::duration>(std::chrono::nanoseconds{
-            16666667}); // Zero permits an unpaced variable loop.
-        SimulationClock::duration fixed_step = std::chrono::duration_cast<SimulationClock::duration>(std::chrono::nanoseconds{16666667});
+        ::CE::Runtime::Simulation::Mode mode = ::CE::Runtime::Simulation::Mode::Variable;
+        ::CE::Runtime::Simulation::Clock::duration variable_interval =
+            std::chrono::duration_cast<::CE::Runtime::Simulation::Clock::duration>(
+                std::chrono::nanoseconds{16666667}
+            ); // Zero permits an unpaced variable loop.
+        ::CE::Runtime::Simulation::Clock::duration fixed_step =
+            std::chrono::duration_cast<::CE::Runtime::Simulation::Clock::duration>(std::chrono::nanoseconds{16666667});
         std::size_t max_fixed_updates = 1;
-        LagRecovery recovery = LagRecovery::DropExcessLag;
+        ::CE::Runtime::Simulation::LagRecovery recovery = ::CE::Runtime::Simulation::LagRecovery::DropExcessLag;
         std::size_t fixed_updates_before_recovery = 0;                           // Bounded prefix for an overloaded VariableCatchUp cycle.
-        SimulationClock::duration recovery_cap = std::chrono::milliseconds{100}; // Zero disables the recovery cap.
+        ::CE::Runtime::Simulation::Clock::duration recovery_cap = std::chrono::milliseconds{100}; // Zero disables the recovery cap.
     };
 
-    struct SimulationStep {
-        SimulationClock::duration delta;
-        UpdateKind kind;
+    struct Step {
+        ::CE::Runtime::Simulation::Clock::duration delta;
+        ::CE::Runtime::Simulation::UpdateKind kind;
     };
 
-    struct SimulationBatch {
-        std::vector<SimulationStep> steps;
-        SimulationClock::duration observed_elapsed{};
-        SimulationClock::duration dropped{}; // Report once, on the batch's final actual update.
+    struct Batch {
+        std::vector<::CE::Runtime::Simulation::Step> steps;
+        ::CE::Runtime::Simulation::Clock::duration observed_elapsed{};
+        ::CE::Runtime::Simulation::Clock::duration dropped{}; // Report once, on the batch's final actual update.
     };
 
     /** Clock input is supplied by the owner; scheduling never sleeps or polls input.
      * advance() selects a bounded batch once. Time spent running that batch enters
      * the next cycle, so expensive updates cannot extend the current batch forever.
      */
-    class SimulationScheduler final {
-        SimulationTimingOptions options_;
-        SimulationClock::time_point observed_at_;
-        SimulationClock::duration accumulated_{};
+    class Scheduler final {
+        ::CE::Runtime::Simulation::TimingOptions options_;
+        ::CE::Runtime::Simulation::Clock::time_point observed_at_;
+        ::CE::Runtime::Simulation::Clock::duration accumulated_{};
 
     public:
-        explicit SimulationScheduler(
-            SimulationTimingOptions options = SimulationTimingOptions{},
-            SimulationClock::time_point start = SimulationClock::now()
+        explicit Scheduler(
+            ::CE::Runtime::Simulation::TimingOptions options = ::CE::Runtime::Simulation::TimingOptions{},
+            ::CE::Runtime::Simulation::Clock::time_point start = ::CE::Runtime::Simulation::Clock::now()
         );
 
-        [[nodiscard]] const SimulationTimingOptions& options() const { return options_; }
-        [[nodiscard]] SimulationBatch advance(SimulationClock::time_point now);
-        [[nodiscard]] SimulationClock::time_point next_update_at() const;
+        [[nodiscard]] const ::CE::Runtime::Simulation::TimingOptions& options() const { return options_; }
+        [[nodiscard]] ::CE::Runtime::Simulation::Batch advance(::CE::Runtime::Simulation::Clock::time_point now);
+        [[nodiscard]] ::CE::Runtime::Simulation::Clock::time_point next_update_at() const;
     };
 }

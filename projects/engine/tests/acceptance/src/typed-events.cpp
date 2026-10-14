@@ -14,10 +14,10 @@
 
 namespace {
     struct QueuedTarget {
-        std::vector<CE::SubSystems::EventBus::Work> pending;
+        std::vector<CE::Events::EventBus::Work> pending;
 
-        CE::SubSystems::EventBus::Delivery delivery() {
-            return [this](CE::SubSystems::EventBus::Work work) {
+        CE::Events::EventBus::Delivery delivery() {
+            return [this](CE::Events::EventBus::Work work) {
                 pending.push_back(std::move(work));
                 return true;
             };
@@ -60,9 +60,9 @@ namespace {
 }
 
 TEST(typed_events, queued) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedTarget target;
-    const CE::SubSystems::EventChannel<std::string> channel{"text"};
+    const CE::Events::EventChannel<std::string> channel{"text"};
     auto received = std::make_shared<std::vector<std::string>>();
     auto errors = std::make_shared<std::vector<std::exception_ptr>>();
     const auto id = bus.register_listener(
@@ -85,9 +85,9 @@ TEST(typed_events, queued) {
 }
 
 TEST(typed_events, copy_failure) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedTarget target;
-    const CE::SubSystems::EventChannel<CopyFault> channel{"copy"};
+    const CE::Events::EventChannel<CopyFault> channel{"copy"};
     auto fail = std::make_shared<bool>(true);
     auto errors = std::make_shared<std::vector<std::exception_ptr>>();
     bus.register_listener(
@@ -104,9 +104,9 @@ TEST(typed_events, copy_failure) {
 }
 
 TEST(typed_events, cancellation) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedTarget target;
-    const CE::SubSystems::EventChannel<int> channel{"tick"};
+    const CE::Events::EventChannel<int> channel{"tick"};
     auto errors = std::make_shared<std::vector<std::exception_ptr>>();
     bus.register_listener(
         channel, [](const int&) { throw std::runtime_error("callback failed"); }, target.delivery(),
@@ -132,9 +132,9 @@ TEST(typed_events, cancellation) {
 }
 
 TEST(typed_events, error_owner) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedTarget target;
-    const CE::SubSystems::EventChannel<int> channel{"tick"};
+    const CE::Events::EventChannel<int> channel{"tick"};
     auto errors = std::make_shared<std::vector<std::exception_ptr>>();
     const std::weak_ptr retained = errors;
     const auto id = bus.register_listener(
@@ -149,8 +149,8 @@ TEST(typed_events, error_owner) {
 }
 
 TEST(typed_events, wait) {
-    CE::SubSystems::EventBus bus;
-    const CE::SubSystems::EventChannel<int> channel{"held"};
+    CE::Events::EventBus bus;
+    const CE::Events::EventChannel<int> channel{"held"};
     std::promise<void> entered;
     std::promise<void> release;
     const auto may_finish = release.get_future().share();
@@ -171,14 +171,14 @@ TEST(typed_events, wait) {
 }
 
 TEST(typed_events, fifo) {
-    CE::Engine::WorkerPool pool{2};
+    CE::Workers::Pool pool{2};
     auto group = pool.make_group();
-    CE::SubSystems::EventBus bus;
-    const CE::SubSystems::EventChannel<int> channel{"tick"};
+    CE::Events::EventBus bus;
+    const CE::Events::EventChannel<int> channel{"tick"};
     auto received = std::make_shared<std::vector<int>>();
     auto errors = std::make_shared<std::atomic<unsigned int>>(0);
     bus.register_listener(
-        channel, [received](const int& value) { received->push_back(value); }, CE::Engine::worker_event_delivery(group),
+        channel, [received](const int& value) { received->push_back(value); }, CE::Events::worker_delivery(group),
         [errors](std::exception_ptr) { ++*errors; }
     );
     for (int value = 0; value < 16; ++value)

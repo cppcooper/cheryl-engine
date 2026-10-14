@@ -1,7 +1,8 @@
 # Asset loading
 
-`ManifestLoader` parses graphics manifests 2.0 into CPU-only sprite/tileset and
-shader/material definitions. An owned `Loader` keeps one immutable root:
+`CE::Assets::Manifests::Reader` parses graphics manifests 2.0 into CPU-only
+sprite/tileset definitions and shader/material recipes. An owned
+`CE::Assets::Loading::Loader` keeps one immutable root:
 preparation selects indexed documents, decodes owned RGBA pixels and snapshots
 shader source bytes without a provider; `upload()` constructs resources and
 publishes retained metadata on the provider's loading thread.
@@ -11,11 +12,18 @@ publishes retained metadata on the provider's loading thread.
 After initializing the selected backend, load a root with its provider:
 
 ```cpp
-CE::Assets::Loader loader("assets");
+CE::Assets::Loading::Loader loader("assets");
 loader.load_assets(engine.resources());
-auto actor = CE::Assets::SpriteMgr::get().get_asset("miniworld:soldier_swordsman_cyan");
-auto documents = loader.manifests(); // shared_ptr<const vector<AssetManifest>>
+auto actor = CE::Assets::Sprites::Manager::get().get_asset("miniworld:soldier_swordsman_cyan");
+auto documents = loader.manifests(); // shared_ptr<const vector<CE::Assets::Manifests::Graphics>>
 ```
+
+Each asset family owns its definitions, retained values and cache API. Sprite and
+tileset managers expose `load()` for definitions; the image manager exposes
+`load()` for paths and `upload()` for decoded pixels. Their inherited `get_asset()`
+and `clear_assets()` retain the shared cache contract. The loader's
+`load_assets()` remains the complete-root preparation/upload convenience path.
+The [value guide](asset-values-and-playback.md#api-domains) maps the family names.
 
 Each preparation scans again. Only exact `graphics-manifests.json` indexes select
 documents; schemas and unlisted JSON are not parsed. Index, texture and shader
@@ -39,18 +47,18 @@ selected batch; an unrelated cached material cannot satisfy a missing selection.
 `register_files()` performs discovery/publication of unmanaged paths only, without
 opening JSON, decoding images or requiring a provider.
 
-Preparation can use a tracked context WorkerGroup. Own both the Loader and
-PreparedAssets through the platform handoff; simulation only retrieves ready
+Preparation can use a tracked context worker group. Own both the loader and its
+`CE::Assets::Loading::Prepared` value through the platform handoff; simulation only retrieves ready
 futures, and never blocks on CPU preparation or GPU upload:
 
 ```cpp
 auto workers = engine.make_worker_group();
 auto platform = engine.platform_dispatcher().submission();
-auto loader = std::make_shared<CE::Assets::Loader>("assets");
+auto loader = std::make_shared<CE::Assets::Loading::Loader>("assets");
 auto preparing = workers.submit([loader, platform] {
     auto prepared = loader->prepare();
     return platform.submit(
-        [loader, prepared = std::move(prepared)](CE::Engine::EngineContext& owner) mutable {
+        [loader, prepared = std::move(prepared)](CE::Runtime::Context& owner) mutable {
             loader->upload(std::move(prepared), owner.resources());
             return loader->manifests();
         }
@@ -68,7 +76,7 @@ Use platform submission endpoints rather than borrowed dispatcher pointers.
 
 ## Publication and retry
 
-`PreparedAssets` owns decoded pixels, shader bytes and definitions, with no provider or native
+`CE::Assets::Loading::Prepared` owns decoded pixels, shader bytes and definitions, with no provider or native
 handles. Preparation failure changes no caches or published metadata. Upload
 consumes the supplied value on the provider's loading owner; moving it into a
 request transfers that ownership. Retry needs a fresh preparation or a preserved
@@ -87,7 +95,7 @@ metadata snapshots after another upload or loader destruction.
 Upload checks the optional provider-owned `shader_asset_builder()` capability,
 then publishes programs/materials before images and sprite/tileset resources.
 Providers without that capability reject selected shader recipes explicitly.
-`ShaderAssetMgr` retains each recipe together with its executable generation;
+`CE::Assets::Shaders::Manager` retains each recipe together with its executable generation;
 material construction uses the retained program generation even when an ordinary
 load preserves an existing program. Asset selections retain their material handle.
 
@@ -110,9 +118,9 @@ retrieves an already-initialized singleton.
 The generic loader loads indexed shaders/materials, images, sprites and tilesets.
 The application still chooses fonts explicitly; the
 [file/font discovery guide](file-and-font-discovery.md) defines candidate selection,
-index freshness and FontMgr's default/collection-face policy. The demo selects
+index freshness and the legacy font cache's default/collection-face policy. The demo selects
 `graphics/shaders/graphics-manifests.json` and retrieves `main:text` and `main:images`
-from `ShaderAssetMgr`, including with `--full-assets`. F5 prepares that same index
+from `CE::Assets::Shaders::Manager::find_material()`, including with `--full-assets`. F5 prepares that same index
 and requests explicit replacement. The demo adopts its pair only after both
 replacements succeed; failed reload preserves its previous application pair even
 if the shared catalogue has published an earlier candidate. Fonts remain outside
@@ -120,8 +128,9 @@ the graphics manifest contract. Manual material builders remain supported; the
 [rendering guide](../rendering/pipelines-and-materials.md#manual-material-construction)
 shows the UI example that deliberately retains this path.
 
-`ResourceProvider::create_image` accepts decoded RGBA pixels.
-`upload_geometry(span<const Vertex2D>, topology)` copies the transient view before
+`CE::Rendering::Resources::Provider::create_image()` accepts
+`CE::Assets::Images::Decoded` RGBA pixels.
+`upload_geometry(span<const CE::Rendering::Geometry::Vertex2D>, topology)` copies the transient view before
 returning. The older shared-pointer/count overload keeps its CPU owner only through
 that upload. Atlas cells use independent four-vertex strips; images and glyphs use
 six-vertex triangle quads. Backend handles never retain these CPU buffers. OpenGL
@@ -131,15 +140,16 @@ checks dimension, byte-count, vertex-count, and draw-range limits before use.
 
 Engine definition types retain grid origins, frame sizes, spacing, pivots, views,
 orientations, timed clips and facings, animated tile targets, Wang terrain metadata,
-weighted variants, and neighbor-mask lookup tables. `Sprite::definition()` and
-`Tileset::definition()` expose them after construction. Entity-owned
-`SpriteAnimation` already advances timed clips and publishes resolved cells; the
+weighted variants, and neighbor-mask lookup tables.
+`CE::Assets::Sprites::Asset::definition()` and
+`CE::Assets::Tilesets::Asset::definition()` expose them after construction. Entity-owned
+`CE::Assets::Sprites::Animation` already advances timed clips and publishes resolved cells; the
 cached sprite has no mutable playback cursor. Tile-map neighbor selection and
 application meanings for views/orientations remain gameplay work.
 The [asset value and playback contract](asset-values-and-playback.md) defines direct
 construction limits, borrowed metadata, lookup failure and submission ownership.
 
-Use `ManifestLoader::load(file)` or `parse(stream, source)` for document-only tools.
+Use `CE::Assets::Manifests::Reader::load(file)` or `parse(stream, source)` for document-only tools.
 Use the owning focused runners or `all-tests` for regressions;
 [architecture validation](../development/architecture-validation.md) describes
 selection and coverage limits.

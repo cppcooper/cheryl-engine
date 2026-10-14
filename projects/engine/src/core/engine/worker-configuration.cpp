@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-namespace CE::Engine {
-    bool is_worker_group_name(const std::string_view name) noexcept {
+namespace CE::Workers {
+    bool is_group_name(const std::string_view name) noexcept {
         if (name.empty() || name.front() < 'a' || name.front() > 'z')
             return false;
         return std::ranges::all_of(name, [](const char value) {
@@ -12,16 +12,16 @@ namespace CE::Engine {
         });
     }
 
-    void validate_worker_configuration(const WorkerConfiguration& configuration) {
+    void validate_configuration(const Configuration& configuration) {
         for (const auto& [name, options] : configuration.groups) {
-            if (!is_worker_group_name(name))
+            if (!is_group_name(name))
                 throw Exceptions::invalid_args(CE_HERE, "Worker group name '" + name + "' must match [a-z][a-z0-9_]*");
             try {
-                validate_worker_group_options(options);
+                validate_group_options(options);
             } catch (const Exceptions::invalid_args& error) {
                 throw Exceptions::invalid_args(CE_HERE, "Worker group '" + name + "': " + error.what());
             }
-            if (options.cpu.strength == WorkerPolicyStrength::Required && options.cpu.numa_node)
+            if (options.cpu.strength == PolicyStrength::Required && options.cpu.numa_node)
                 throw Exceptions::invalid_args(CE_HERE, "Worker group '" + name + "' requires unavailable NUMA placement");
         }
     }

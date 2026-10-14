@@ -5,139 +5,139 @@
 #endif
 #include <GLFW/glfw3.h>
 
-namespace CE::Input {
-    KeyboardKey keyboard_key(const int key) {
+namespace CE::Platform::GLFW {
+    CE::Input::KeyboardKey keyboard_key(const int key) {
         // These ranges are contiguous within each enumeration; their numeric
         // values have no cross-backend identity outside this translation.
         if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z)
-            return static_cast<KeyboardKey>(static_cast<int>(KeyboardKey::A) + key - GLFW_KEY_A);
+            return static_cast<CE::Input::KeyboardKey>(static_cast<int>(CE::Input::KeyboardKey::A) + key - GLFW_KEY_A);
         if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
-            return static_cast<KeyboardKey>(static_cast<int>(KeyboardKey::Digit0) + key - GLFW_KEY_0);
+            return static_cast<CE::Input::KeyboardKey>(static_cast<int>(CE::Input::KeyboardKey::Digit0) + key - GLFW_KEY_0);
         if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F25)
-            return static_cast<KeyboardKey>(static_cast<int>(KeyboardKey::F1) + key - GLFW_KEY_F1);
+            return static_cast<CE::Input::KeyboardKey>(static_cast<int>(CE::Input::KeyboardKey::F1) + key - GLFW_KEY_F1);
         if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_9)
-            return static_cast<KeyboardKey>(static_cast<int>(KeyboardKey::Keypad0) + key - GLFW_KEY_KP_0);
+            return static_cast<CE::Input::KeyboardKey>(static_cast<int>(CE::Input::KeyboardKey::Keypad0) + key - GLFW_KEY_KP_0);
 
         switch (key) {
             case GLFW_KEY_SPACE:
-                return KeyboardKey::Space;
+                return CE::Input::KeyboardKey::Space;
             case GLFW_KEY_APOSTROPHE:
-                return KeyboardKey::Apostrophe;
+                return CE::Input::KeyboardKey::Apostrophe;
             case GLFW_KEY_COMMA:
-                return KeyboardKey::Comma;
+                return CE::Input::KeyboardKey::Comma;
             case GLFW_KEY_MINUS:
-                return KeyboardKey::Minus;
+                return CE::Input::KeyboardKey::Minus;
             case GLFW_KEY_PERIOD:
-                return KeyboardKey::Period;
+                return CE::Input::KeyboardKey::Period;
             case GLFW_KEY_SLASH:
-                return KeyboardKey::Slash;
+                return CE::Input::KeyboardKey::Slash;
             case GLFW_KEY_SEMICOLON:
-                return KeyboardKey::Semicolon;
+                return CE::Input::KeyboardKey::Semicolon;
             case GLFW_KEY_EQUAL:
-                return KeyboardKey::Equal;
+                return CE::Input::KeyboardKey::Equal;
             case GLFW_KEY_LEFT_BRACKET:
-                return KeyboardKey::LeftBracket;
+                return CE::Input::KeyboardKey::LeftBracket;
             case GLFW_KEY_BACKSLASH:
-                return KeyboardKey::Backslash;
+                return CE::Input::KeyboardKey::Backslash;
             case GLFW_KEY_RIGHT_BRACKET:
-                return KeyboardKey::RightBracket;
+                return CE::Input::KeyboardKey::RightBracket;
             case GLFW_KEY_GRAVE_ACCENT:
-                return KeyboardKey::GraveAccent;
+                return CE::Input::KeyboardKey::GraveAccent;
             case GLFW_KEY_ESCAPE:
-                return KeyboardKey::Escape;
+                return CE::Input::KeyboardKey::Escape;
             case GLFW_KEY_ENTER:
-                return KeyboardKey::Enter;
+                return CE::Input::KeyboardKey::Enter;
             case GLFW_KEY_TAB:
-                return KeyboardKey::Tab;
+                return CE::Input::KeyboardKey::Tab;
             case GLFW_KEY_BACKSPACE:
-                return KeyboardKey::Backspace;
+                return CE::Input::KeyboardKey::Backspace;
             case GLFW_KEY_INSERT:
-                return KeyboardKey::Insert;
+                return CE::Input::KeyboardKey::Insert;
             case GLFW_KEY_DELETE:
-                return KeyboardKey::Delete;
+                return CE::Input::KeyboardKey::Delete;
             case GLFW_KEY_RIGHT:
-                return KeyboardKey::Right;
+                return CE::Input::KeyboardKey::Right;
             case GLFW_KEY_LEFT:
-                return KeyboardKey::Left;
+                return CE::Input::KeyboardKey::Left;
             case GLFW_KEY_DOWN:
-                return KeyboardKey::Down;
+                return CE::Input::KeyboardKey::Down;
             case GLFW_KEY_UP:
-                return KeyboardKey::Up;
+                return CE::Input::KeyboardKey::Up;
             case GLFW_KEY_PAGE_UP:
-                return KeyboardKey::PageUp;
+                return CE::Input::KeyboardKey::PageUp;
             case GLFW_KEY_PAGE_DOWN:
-                return KeyboardKey::PageDown;
+                return CE::Input::KeyboardKey::PageDown;
             case GLFW_KEY_HOME:
-                return KeyboardKey::Home;
+                return CE::Input::KeyboardKey::Home;
             case GLFW_KEY_END:
-                return KeyboardKey::End;
+                return CE::Input::KeyboardKey::End;
             case GLFW_KEY_CAPS_LOCK:
-                return KeyboardKey::CapsLock;
+                return CE::Input::KeyboardKey::CapsLock;
             case GLFW_KEY_SCROLL_LOCK:
-                return KeyboardKey::ScrollLock;
+                return CE::Input::KeyboardKey::ScrollLock;
             case GLFW_KEY_NUM_LOCK:
-                return KeyboardKey::NumLock;
+                return CE::Input::KeyboardKey::NumLock;
             case GLFW_KEY_PRINT_SCREEN:
-                return KeyboardKey::PrintScreen;
+                return CE::Input::KeyboardKey::PrintScreen;
             case GLFW_KEY_PAUSE:
-                return KeyboardKey::Pause;
+                return CE::Input::KeyboardKey::Pause;
             case GLFW_KEY_KP_DECIMAL:
-                return KeyboardKey::KeypadDecimal;
+                return CE::Input::KeyboardKey::KeypadDecimal;
             case GLFW_KEY_KP_DIVIDE:
-                return KeyboardKey::KeypadDivide;
+                return CE::Input::KeyboardKey::KeypadDivide;
             case GLFW_KEY_KP_MULTIPLY:
-                return KeyboardKey::KeypadMultiply;
+                return CE::Input::KeyboardKey::KeypadMultiply;
             case GLFW_KEY_KP_SUBTRACT:
-                return KeyboardKey::KeypadSubtract;
+                return CE::Input::KeyboardKey::KeypadSubtract;
             case GLFW_KEY_KP_ADD:
-                return KeyboardKey::KeypadAdd;
+                return CE::Input::KeyboardKey::KeypadAdd;
             case GLFW_KEY_KP_ENTER:
-                return KeyboardKey::KeypadEnter;
+                return CE::Input::KeyboardKey::KeypadEnter;
             case GLFW_KEY_KP_EQUAL:
-                return KeyboardKey::KeypadEqual;
+                return CE::Input::KeyboardKey::KeypadEqual;
             case GLFW_KEY_LEFT_SHIFT:
-                return KeyboardKey::LeftShift;
+                return CE::Input::KeyboardKey::LeftShift;
             case GLFW_KEY_LEFT_CONTROL:
-                return KeyboardKey::LeftControl;
+                return CE::Input::KeyboardKey::LeftControl;
             case GLFW_KEY_LEFT_ALT:
-                return KeyboardKey::LeftAlt;
+                return CE::Input::KeyboardKey::LeftAlt;
             case GLFW_KEY_LEFT_SUPER:
-                return KeyboardKey::LeftSuper;
+                return CE::Input::KeyboardKey::LeftSuper;
             case GLFW_KEY_RIGHT_SHIFT:
-                return KeyboardKey::RightShift;
+                return CE::Input::KeyboardKey::RightShift;
             case GLFW_KEY_RIGHT_CONTROL:
-                return KeyboardKey::RightControl;
+                return CE::Input::KeyboardKey::RightControl;
             case GLFW_KEY_RIGHT_ALT:
-                return KeyboardKey::RightAlt;
+                return CE::Input::KeyboardKey::RightAlt;
             case GLFW_KEY_RIGHT_SUPER:
-                return KeyboardKey::RightSuper;
+                return CE::Input::KeyboardKey::RightSuper;
             case GLFW_KEY_MENU:
-                return KeyboardKey::Menu;
+                return CE::Input::KeyboardKey::Menu;
             default:
-                return KeyboardKey::Unknown;
+                return CE::Input::KeyboardKey::Unknown;
         }
     }
 
-    MouseButton mouse_button(const int button) {
+    CE::Input::MouseButton mouse_button(const int button) {
         switch (button) {
             case GLFW_MOUSE_BUTTON_LEFT:
-                return MouseButton::Left;
+                return CE::Input::MouseButton::Left;
             case GLFW_MOUSE_BUTTON_RIGHT:
-                return MouseButton::Right;
+                return CE::Input::MouseButton::Right;
             case GLFW_MOUSE_BUTTON_MIDDLE:
-                return MouseButton::Middle;
+                return CE::Input::MouseButton::Middle;
             case GLFW_MOUSE_BUTTON_4:
-                return MouseButton::Extra1;
+                return CE::Input::MouseButton::Extra1;
             case GLFW_MOUSE_BUTTON_5:
-                return MouseButton::Extra2;
+                return CE::Input::MouseButton::Extra2;
             case GLFW_MOUSE_BUTTON_6:
-                return MouseButton::Extra3;
+                return CE::Input::MouseButton::Extra3;
             case GLFW_MOUSE_BUTTON_7:
-                return MouseButton::Extra4;
+                return CE::Input::MouseButton::Extra4;
             case GLFW_MOUSE_BUTTON_8:
-                return MouseButton::Extra5;
+                return CE::Input::MouseButton::Extra5;
             default:
-                return MouseButton::Unknown;
+                return CE::Input::MouseButton::Unknown;
         }
     }
 

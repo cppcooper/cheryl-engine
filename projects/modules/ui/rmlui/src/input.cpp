@@ -1,8 +1,8 @@
 #include <ui/rmlui/input.h>
 
 namespace CE::UI::RmlUi {
-    Rml::Input::KeyIdentifier keyboard_key(const Input::KeyboardKey key) {
-        using Key = Input::KeyboardKey;
+    Rml::Input::KeyIdentifier keyboard_key(const CE::Input::KeyboardKey key) {
+        using Key = CE::Input::KeyboardKey;
         using namespace Rml::Input;
         if (key >= Key::A && key <= Key::Z)
             return static_cast<KeyIdentifier>(KI_A + static_cast<int>(key) - static_cast<int>(Key::A));
@@ -112,18 +112,18 @@ namespace CE::UI::RmlUi {
         }
     }
 
-    int modifiers(const Input::Modifiers value) {
+    int modifiers(const CE::Input::Modifiers value) {
         int result = 0;
-        const auto add = [&](const Input::Modifiers flag, const Rml::Input::KeyModifier mapped) {
-            if (Input::has_modifier(value, flag))
+        const auto add = [&](const CE::Input::Modifiers flag, const Rml::Input::KeyModifier mapped) {
+            if (CE::Input::has_modifier(value, flag))
                 result |= mapped;
         };
-        add(Input::Modifiers::Control, Rml::Input::KM_CTRL);
-        add(Input::Modifiers::Shift, Rml::Input::KM_SHIFT);
-        add(Input::Modifiers::Alt, Rml::Input::KM_ALT);
-        add(Input::Modifiers::Super, Rml::Input::KM_META);
-        add(Input::Modifiers::CapsLock, Rml::Input::KM_CAPSLOCK);
-        add(Input::Modifiers::NumLock, Rml::Input::KM_NUMLOCK);
+        add(CE::Input::Modifiers::Control, Rml::Input::KM_CTRL);
+        add(CE::Input::Modifiers::Shift, Rml::Input::KM_SHIFT);
+        add(CE::Input::Modifiers::Alt, Rml::Input::KM_ALT);
+        add(CE::Input::Modifiers::Super, Rml::Input::KM_META);
+        add(CE::Input::Modifiers::CapsLock, Rml::Input::KM_CAPSLOCK);
+        add(CE::Input::Modifiers::NumLock, Rml::Input::KM_NUMLOCK);
         return result;
     }
 }

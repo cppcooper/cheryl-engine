@@ -16,24 +16,30 @@
 
 namespace CE::UI::TGUI {
     namespace {
-        Assets::PassConstraints2D ui_constraints() {
-            return {Assets::BlendMode::StraightAlpha, Assets::DepthMode::Disabled, false, Assets::CullMode::None};
+        CE::Rendering::Pipelines::PassConstraints2D ui_constraints() {
+            return {
+                CE::Rendering::Pipelines::Blend::StraightAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
+                CE::Rendering::Pipelines::Cull::None
+            };
         }
 
-        void validate_material(const std::shared_ptr<const Assets::Material>& material) {
+        void validate_material(const std::shared_ptr<const CE::Rendering::Resources::Material>& material) {
             if (!material)
                 throw Exceptions::invalid_args(CE_HERE, "TGUI draw needs an application-supplied material");
             const auto& pipeline = material->definition().pipeline->definition();
             const auto& state = pipeline.state;
-            if (pipeline.vertex_layout != Assets::VertexLayout2D::Position3UV2Color4 ||
-                pipeline.topology != Assets::PrimitiveTopology::Triangles || state.blend != Assets::BlendMode::StraightAlpha ||
-                state.depth != Assets::DepthMode::Disabled || state.depth_write || state.cull != Assets::CullMode::None)
+            if (pipeline.vertex_layout != CE::Rendering::Geometry::Layout2D::Position3UV2Color4 ||
+                pipeline.topology != CE::Rendering::Geometry::Topology::Triangles ||
+                state.blend != CE::Rendering::Pipelines::Blend::StraightAlpha || state.depth != CE::Rendering::Pipelines::Depth::Disabled ||
+                state.depth_write || state.cull != CE::Rendering::Pipelines::Cull::None)
                 throw Exceptions::invalid_args(
                     CE_HERE, "TGUI material needs colored triangles with straight alpha and disabled depth/culling"
                 );
-            if (std::none_of(pipeline.parameters.begin(), pipeline.parameters.end(), [](const Assets::ParameterDefinition& parameter) {
-                    return parameter.semantic == Assets::ParameterSemantic::Projection;
-                }))
+            if (std::none_of(
+                    pipeline.parameters.begin(), pipeline.parameters.end(), [](const CE::Rendering::Parameters::Definition& parameter) {
+                        return parameter.semantic == CE::Rendering::Parameters::Semantic::Projection;
+                    }
+                ))
                 throw Exceptions::invalid_args(CE_HERE, "TGUI material needs Cheryl's projection semantic for its logical coordinates");
         }
 
@@ -50,29 +56,32 @@ namespace CE::UI::TGUI {
                 return;
             validate_material(materials.textured);
             const auto& parameters = materials.textured->definition().pipeline->definition().parameters;
-            const auto parameter = std::find_if(parameters.begin(), parameters.end(), [&](const Assets::ParameterDefinition& value) {
-                return value.key == materials.image_parameter;
-            });
-            if (parameter == parameters.end() || parameter->type != Assets::ParameterType::Sampler2D ||
-                parameter->semantic != Assets::ParameterSemantic::Custom)
+            const auto parameter =
+                std::find_if(parameters.begin(), parameters.end(), [&](const CE::Rendering::Parameters::Definition& value) {
+                    return value.key == materials.image_parameter;
+                });
+            if (parameter == parameters.end() || parameter->type != CE::Rendering::Parameters::Type::Sampler2D ||
+                parameter->semantic != CE::Rendering::Parameters::Semantic::Custom)
                 throw Exceptions::invalid_args(CE_HERE, "TGUI image parameter must name a custom Sampler2D in the textured material");
         }
     }
 
     struct SceneUploader::State {
-        const Diagnostics::DomainId domain;
+        const CE::Diagnostics::DomainId domain;
         const std::thread::id owner;
-        std::map<std::weak_ptr<const Assets::DecodedImage>, std::weak_ptr<const Assets::Image>, std::owner_less<>> images;
-        std::array<std::weak_ptr<const Assets::Sampler>, 2> samplers;
+        std::map<std::weak_ptr<const CE::Assets::Images::Decoded>, std::weak_ptr<const CE::Rendering::Resources::Image>, std::owner_less<>>
+            images;
+        std::array<std::weak_ptr<const CE::Rendering::Sampling::Sampler>, 2> samplers;
 
-        explicit State(const Assets::ResourceProvider& provider)
+        explicit State(const CE::Rendering::Resources::Provider& provider)
         : domain(provider.diagnostic_id()), owner(std::this_thread::get_id()) {}
     };
 
-    SceneUploader::SceneUploader(const Assets::ResourceProvider& provider)
+    SceneUploader::SceneUploader(const CE::Rendering::Resources::Provider& provider)
     : state_(std::make_shared<State>(provider)) {}
 
-    Scene SceneUploader::upload(Assets::ResourceProvider& provider, const RecordedScene& recording, const Materials& materials) const {
+    Scene
+    SceneUploader::upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording, const Materials& materials) const {
         if (std::this_thread::get_id() != state_->owner || provider.diagnostic_id() != state_->domain)
             throw Exceptions::failed_operation(CE_HERE, "TGUI upload requires its original provider and platform owner");
         validate_materials(recording, materials);
@@ -84,28 +93,28 @@ namespace CE::UI::TGUI {
         scene.projection_ = glm::ortho(0.0f, recording.width(), recording.height(), 0.0f);
         scene.pass_parameters_ = materials.pass_parameters;
         scene.draws_.reserve(recording.draws().size());
-        const Assets::ShaderPass pass{scene.projection_, glm::mat4{1}};
+        const CE::Rendering::Parameters::PassSemantics pass{scene.projection_, glm::mat4{1}};
         const auto constraints = ui_constraints();
         std::erase_if(state_->images, [](const auto& entry) { return entry.first.expired() || entry.second.expired(); });
         for (const auto& draw : recording.draws()) {
-            RenderAPIs::DrawStyle2D style;
+            CE::Rendering::DrawStyle2D style;
             style.material = draw.texture ? materials.textured : materials.solid;
             style.clip = draw.clip;
             if (draw.texture) {
                 auto& cached_sampler = state_->samplers[draw.smooth ? 1 : 0];
                 auto sampler = cached_sampler.lock();
                 if (!sampler) {
-                    Assets::SamplerOptions options;
-                    options.minification = draw.smooth ? Assets::ImageFilter::Linear : Assets::ImageFilter::Nearest;
+                    CE::Rendering::Sampling::Options options;
+                    options.minification = draw.smooth ? CE::Rendering::Sampling::Filter::Linear : CE::Rendering::Sampling::Filter::Nearest;
                     options.magnification = options.minification;
-                    options.mipmaps = Assets::MipmapFilter::None;
-                    options.anisotropy = Assets::ImageAnisotropy::Disabled;
+                    options.mipmaps = CE::Rendering::Sampling::MipmapFilter::None;
+                    options.anisotropy = CE::Rendering::Sampling::Anisotropy::Disabled;
                     sampler = provider.create_sampler(options);
                     if (!sampler || sampler->options() != options)
                         throw Exceptions::failed_operation(CE_HERE, "TGUI sampler upload returned missing or incompatible metadata");
                     cached_sampler = sampler;
                 }
-                const std::weak_ptr<const Assets::DecodedImage> generation = draw.texture;
+                const std::weak_ptr<const CE::Assets::Images::Decoded> generation = draw.texture;
                 auto& cached = state_->images[generation];
                 auto image = cached.lock();
                 if (!image) {
@@ -116,11 +125,12 @@ namespace CE::UI::TGUI {
                     cached = image;
                 }
                 style.parameters.emplace(
-                    materials.image_parameter, Assets::ImageBinding{std::move(image), materials.image_unit, std::move(sampler)}
+                    materials.image_parameter,
+                    CE::Rendering::Parameters::ImageBinding{std::move(image), materials.image_unit, std::move(sampler)}
                 );
             }
-            auto geometry = provider.upload_geometry(draw.vertices, Assets::PrimitiveTopology::Triangles);
-            auto packet = RenderAPIs::resolve_draw_packet(
+            auto geometry = provider.upload_geometry(draw.vertices, CE::Rendering::Geometry::Topology::Triangles);
+            auto packet = CE::Rendering::resolve_draw_packet(
                 std::move(geometry), 0, draw.vertices.size(), style, pass, scene.pass_parameters_, constraints
             );
             packet.authored_order = scene.draws_.size();
@@ -130,14 +140,14 @@ namespace CE::UI::TGUI {
     }
 
     std::future<Scene>
-    SceneUploader::submit(const Engine::PlatformDispatcher::Submission& platform, RecordedScene recording, Materials materials) const {
+    SceneUploader::submit(const CE::Runtime::PlatformDispatcher::Submission& platform, RecordedScene recording, Materials materials) const {
         return platform.submit([uploader = *this, recording = std::move(recording),
-                                materials = std::move(materials)](Engine::EngineContext& engine) {
+                                materials = std::move(materials)](CE::Runtime::Context& engine) {
             return uploader.upload(engine.resources(), recording, materials);
         });
     }
 
-    void Scene::write(RenderAPIs::RenderFrameWriter& frame) const {
+    void Scene::write(CE::Rendering::FrameWriter& frame) const {
         if (draws_.empty())
             return;
         auto pass = frame.begin_pass(projection_, glm::mat4{1}, ui_constraints(), pass_parameters_);

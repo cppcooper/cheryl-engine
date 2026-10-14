@@ -22,12 +22,12 @@
 
 namespace {
     struct CheckedOut {
-        CE::Mem::Block block;
+        CE::Memory::ByteBlock block;
         unsigned char pattern;
     };
 
-    bool pooled_range(const CE::Mem::HeapBlock& block) {
-        BlockManagement<void> bookkeeping;
+    bool pooled_range(const CE::Memory::HeapBlock& block) {
+        CE::Memory::BlockManagement<void> bookkeeping;
         std::shared_lock lock(std::get<0>(bookkeeping.pool));
         auto* last = static_cast<unsigned char*>(block.head.get()) + block.length - 1;
         for (const auto& free : std::get<1>(bookkeeping.pool)) {
@@ -42,7 +42,7 @@ namespace {
      * manager's lookup and merge methods. Void managers share this bookkeeping.
      */
     ::testing::AssertionResult valid_partition(const std::vector<CheckedOut>& live) {
-        BlockManagement<void> bm;
+        CE::Memory::BlockManagement<void> bm;
         std::shared_lock reg_lock(std::get<0>(bm.registry), std::defer_lock);
         std::shared_lock sec_lock(std::get<0>(bm.sections), std::defer_lock);
         std::shared_lock pool_lock(std::get<0>(bm.pool), std::defer_lock);
@@ -68,7 +68,7 @@ namespace {
             }
             const auto start = reinterpret_cast<std::uintptr_t>(owner.head.get());
             const auto end = start + owner.length;
-            std::vector<CE::Mem::Block> pieces;
+            std::vector<CE::Memory::ByteBlock> pieces;
             for (const auto& section : sections) {
                 if (section.owner.get() == owner.owner.get())
                     pieces.push_back(section);
@@ -144,7 +144,7 @@ namespace {
 }
 
 TEST(memory, mixed_checkouts_and_returns) {
-    auto& manager = CE::Mem::ExactMMgr::get();
+    auto& manager = CE::Memory::ExactManager::get();
     constexpr unsigned seed = 0xB10C42u;
     std::mt19937 rng(seed);
     std::vector<CheckedOut> live;
@@ -178,7 +178,7 @@ TEST(memory, mixed_checkouts_and_returns) {
         }
         if (step % 13 == 0) {
             ASSERT_TRUE(valid_partition(live));
-            ASSERT_TRUE(checkContiguousBlocksInPool(BlockManagement<void>{}));
+            ASSERT_TRUE(checkContiguousBlocksInPool(CE::Memory::BlockManagement<void>{}));
         }
     }
     // Drain the remaining checkouts, then recheck the bookkeeping with an
@@ -190,7 +190,7 @@ TEST(memory, mixed_checkouts_and_returns) {
 
 TEST(memory, partial_returns) {
     using namespace CE;
-    auto& manager = Mem::ExactMMgr::get();
+    auto& manager = CE::Memory::ExactManager::get();
     auto block = manager.checkout_chunk(256, 64);
     ASSERT_GE(block.length, 256);
     auto* data = static_cast<unsigned char*>(block.head.get());
@@ -210,7 +210,7 @@ TEST(memory, partial_returns) {
     // Verify the returned interior span appears as free in the manager's
     // records while the untouched outer spans retain their byte patterns.
     bool returned_middle = false;
-    for (const auto& free : std::get<1>(BlockManagement<void>::pool)) {
+    for (const auto& free : std::get<1>(CE::Memory::BlockManagement<void>::pool)) {
         if (free.head.get() == data + 32 && free.length == 64) {
             returned_middle = true;
         }
@@ -220,7 +220,7 @@ TEST(memory, partial_returns) {
     // Rejoin the outer spans and verify the owner's final free-set records.
     manager.return_portion(data, 32);
     manager.return_portion(data + 96, block.length - 96);
-    BlockManagement<void> bm;
+    CE::Memory::BlockManagement<void> bm;
     EXPECT_TRUE(checkPoolInSectionsOrInRegistry(bm));
     EXPECT_TRUE(checkPoolInRegistryAlsoInStale(bm));
 }
@@ -228,13 +228,13 @@ TEST(memory, partial_returns) {
 TEST(memory, duplicate_returns) {
     // Once a checkout has been returned, a second return of the same block fails.
     using namespace CE;
-    auto& log = Logger<memlog>::get();
+    auto& log = CE::Logging::Logger<CE::Logging::Categories::memory>::get();
     const auto configuration = log.initial_configuration();
     const auto path = log.get_file_path();
     EXPECT_EQ(path.filename(), "memory.log");
     log.set_level_logger(spdlog::level::critical);
     log.set_level_filesink(spdlog::level::critical);
-    auto& manager = Mem::ExactMMgr::get();
+    auto& manager = CE::Memory::ExactManager::get();
     const auto block = manager.checkout_chunk(64, 64);
     manager.return_chunk(block);
     EXPECT_THROW(manager.return_chunk(block), Exceptions::failed_operation);
@@ -242,7 +242,7 @@ TEST(memory, duplicate_returns) {
     log.close(std::chrono::seconds{2});
     std::ifstream file(path);
     const std::string records{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
-    if constexpr (ctlog::enabled(ctlog::FATAL_))
+    if constexpr (CE::Logging::Compile::enabled(CE::Logging::Compile::FATAL_))
         EXPECT_NE(records.find("Cannot return Block. No such block exists."), std::string::npos);
     else
         EXPECT_EQ(records.find("Cannot return Block. No such block exists."), std::string::npos);
@@ -253,7 +253,7 @@ TEST(memory, duplicate_returns) {
 }
 
 TEST(memory, alignment_on_reuse) {
-    auto& manager = CE::Mem::ExactMMgr::get();
+    auto& manager = CE::Memory::ExactManager::get();
     // Return a low-alignment candidate, then request stronger alignment.
     // Reuse must satisfy the new request regardless of the free candidate.
     auto lower = manager.checkout_chunk(77, 64);
@@ -266,19 +266,19 @@ TEST(memory, alignment_on_reuse) {
 }
 
 TEST(memory, empty_checkouts) {
-    auto& manager = CE::Mem::ExactMMgr::get();
+    auto& manager = CE::Memory::ExactManager::get();
     EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
 }
 
 TEST(memory, late_byte_release) {
-    std::weak_ptr<CE::Mem::ByteReleaseContext> weak;
+    std::weak_ptr<CE::Memory::ByteReleaseContext> weak;
     std::shared_ptr<std::uint64_t> retained;
-    CE::Mem::HeapBlock block;
+    CE::Memory::HeapBlock block;
     {
-        CE::Mem::ExactMMgr facade;
+        CE::Memory::ExactManager facade;
         weak = facade.release_context();
         block = facade.checkout_chunk(256, alignof(std::uint64_t));
-        retained = CE::Mem::make_managed_block<std::uint64_t>(facade, block);
+        retained = CE::Memory::make_managed_block<std::uint64_t>(facade, block);
         *retained = 43;
     }
     EXPECT_FALSE(weak.expired());
@@ -291,10 +291,10 @@ TEST(memory, late_byte_release) {
 }
 
 TEST(memory, retained_byte_context) {
-    std::shared_ptr<CE::Mem::ByteReleaseContext> context;
-    CE::Mem::HeapBlock block;
+    std::shared_ptr<CE::Memory::ByteReleaseContext> context;
+    CE::Memory::HeapBlock block;
     {
-        CE::Mem::ExactMMgr facade;
+        CE::Memory::ExactManager facade;
         context = facade.release_context();
         block = facade.checkout_chunk(256);
     }
@@ -307,10 +307,10 @@ TEST(memory, retained_byte_context) {
 TEST(memory, release_during_teardown) {
     // Only facade teardown overlaps a single return. Concurrent checkout/cull
     // transactions remain a separate contract; this exercises the lifetime boundary.
-    auto facade = std::make_unique<CE::Mem::ExactMMgr>();
+    auto facade = std::make_unique<CE::Memory::ExactManager>();
     auto block = facade->checkout_chunk(256);
-    auto retained = CE::Mem::make_managed_block<unsigned char>(*facade, block);
-    std::weak_ptr<CE::Mem::ByteReleaseContext> weak = facade->release_context();
+    auto retained = CE::Memory::make_managed_block<unsigned char>(*facade, block);
+    std::weak_ptr<CE::Memory::ByteReleaseContext> weak = facade->release_context();
     std::barrier start(2);
     std::thread release([handle = std::move(retained), &start]() mutable {
         start.arrive_and_wait();
@@ -325,8 +325,8 @@ TEST(memory, release_during_teardown) {
 }
 
 TEST(memory, preallocation) {
-    auto& manager = CE::Mem::ExactMMgr::get();
-    BlockManagement<void> bm;
+    auto& manager = CE::Memory::ExactManager::get();
+    CE::Memory::BlockManagement<void> bm;
 
     // Snapshot existing owners so the later assertions describe only the
     // allocation made by this explicit preallocation call.
@@ -346,7 +346,7 @@ TEST(memory, preallocation) {
     EXPECT_EQ(stats_after.total_bytes, stats_before.total_bytes + 80);
     EXPECT_EQ(stats_after.available_bytes, stats_before.available_bytes + 80);
     EXPECT_EQ(stats_after.owners, stats_before.owners + 1);
-    std::vector<CE::Mem::Block> added;
+    std::vector<CE::Memory::ByteBlock> added;
     {
         std::shared_lock lock(std::get<0>(bm.registry));
         for (const auto& owner : std::get<1>(bm.registry)) {
@@ -361,7 +361,7 @@ TEST(memory, preallocation) {
 }
 
 TEST(memory, typed_full_block_return) {
-    CE::Mem::DefaultAllocator<std::uint64_t> allocator;
+    CE::Memory::Allocators::DefaultAllocator<std::uint64_t> allocator;
     constexpr std::size_t count = 5;
     auto* ptr = allocator.allocate(count);
     ASSERT_NE(ptr, nullptr);
@@ -369,7 +369,7 @@ TEST(memory, typed_full_block_return) {
     // return that entire granted span, including any unused tail.
     std::size_t granted_bytes = 0;
     {
-        BlockManagement<void> bm;
+        CE::Memory::BlockManagement<void> bm;
         std::shared_lock sec_lock(std::get<0>(bm.sections));
         for (const auto& section : std::get<1>(bm.sections)) {
             if (section.head.get() == ptr)
@@ -395,7 +395,7 @@ TEST(memory, typed_full_block_return) {
     allocator.deallocate(ptr, count);
     bool all_bytes_returned = false;
     {
-        BlockManagement<void> bm;
+        CE::Memory::BlockManagement<void> bm;
         std::shared_lock lock(std::get<0>(bm.pool));
         const auto last = static_cast<void*>(reinterpret_cast<unsigned char*>(ptr) + granted_bytes - 1);
         for (const auto& free : std::get<1>(bm.pool)) {
@@ -433,8 +433,8 @@ namespace {
         int value_;
     };
 
-    struct AssetCacheProbe : CE::Assets::AssetMgr<TrackedAssetBase, int> {
-        using AssetMgr::allocate;
+    struct AssetCacheProbe : CE::Assets::Cache::Store<TrackedAssetBase, int> {
+        using Store::allocate;
         void retain(int key, const std::shared_ptr<TrackedAsset>& asset) { publish_asset(key, asset); }
     };
 }
@@ -453,7 +453,7 @@ TEST(memory, cached_asset_lifetime) {
         std::set<TrackedAsset*> unique_addresses;
         for (int i = 0; i < 3; ++i) {
             unique_addresses.emplace(assets[i].get());
-            CE::Obj::ObjCtor<TrackedAsset>::construct(assets[i].get(), 1, i + 10);
+            CE::Memory::Objects::Constructor<TrackedAsset>::construct(assets[i].get(), 1, i + 10);
             EXPECT_EQ(assets[i]->value(), i + 10);
         }
         EXPECT_EQ(unique_addresses.size(), 3);
@@ -488,7 +488,7 @@ TEST(memory, empty_asset_request) {
 TEST(memory, independent_pool_handles) {
     TrackedAsset::live = 0;
     TrackedAsset::destroyed = 0;
-    auto& pool = CE::Obj::Pool<TrackedAsset>::get();
+    auto& pool = CE::Memory::Objects::Pool<TrackedAsset>::get();
 
     // Ask for three objects, then release only the middle handle.
     auto objects = pool.retrieve_objects(3, 21);
@@ -509,7 +509,7 @@ TEST(memory, independent_pool_handles) {
 }
 
 TEST(memory, invalid_pool_returns) {
-    auto& pool = CE::Obj::Pool<TrackedAsset>::get();
+    auto& pool = CE::Memory::Objects::Pool<TrackedAsset>::get();
 
     // Whole raw blocks have a separate return path, which rejects duplicate
     // or partial returns after the block is already free.
@@ -523,7 +523,7 @@ TEST(memory, invalid_pool_returns) {
 }
 
 TEST(memory, concurrent_transactions) {
-    CE::Mem::ExactMMgr manager;
+    CE::Memory::ExactManager manager;
     std::barrier start(4);
     std::atomic<bool> valid{true};
     std::vector<std::jthread> workers;
@@ -569,17 +569,15 @@ TEST(memory, concurrent_transactions) {
 }
 
 TEST(memory, request_limits) {
-    CE::Mem::ExactMMgr manager;
+    CE::Memory::ExactManager manager;
     const auto maximum = std::numeric_limits<std::size_t>::max();
     EXPECT_THROW(
         static_cast<void>(manager.checkout_chunk(1, maximum)),
         CE::Exceptions::bad_request);
+    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(maximum, 64, CE::Memory::larger, 1)), CE::Exceptions::bad_request);
     EXPECT_THROW(
-        static_cast<void>(manager.checkout_chunk(maximum, 64, CE::Enum::larger, 1)),
-        CE::Exceptions::bad_request);
-    EXPECT_THROW(
-        static_cast<void>(manager.checkout_chunk(8, 64, CE::Enum::greedy,
-            0, std::numeric_limits<double>::infinity())),
-        CE::Exceptions::bad_request);
+        static_cast<void>(manager.checkout_chunk(8, 64, CE::Memory::greedy, 0, std::numeric_limits<double>::infinity())),
+        CE::Exceptions::bad_request
+    );
     EXPECT_TRUE(valid_partition({}));
 }

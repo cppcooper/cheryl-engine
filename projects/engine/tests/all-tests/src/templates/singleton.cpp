@@ -9,28 +9,28 @@
 #include <thread>
 
 namespace {
-    struct Configured : Singleton_CTS<Configured> {
+    struct Configured : CE::State::Singleton<Configured> {
         int value;
 
         explicit Configured(int value)
         : value(value) {}
     };
 
-    struct Racing : Singleton_CTS<Racing> {
+    struct Racing : CE::State::Singleton<Racing> {
         int value;
 
         explicit Racing(int value)
         : value(value) {}
     };
 
-    struct Retried : Singleton_CTS<Retried> {
+    struct Retried : CE::State::Singleton<Retried> {
         explicit Retried(bool fail) {
             if (fail)
                 throw std::runtime_error("construction rejected");
         }
     };
 
-    struct Pending : Singleton_CTS<Pending> {
+    struct Pending : CE::State::Singleton<Pending> {
         int value = 17;
 
         Pending(std::promise<void>& entered, std::shared_future<void> release) {
@@ -39,8 +39,8 @@ namespace {
         }
     };
 
-    class Private : public Singleton_CTU<Private> {
-        friend class Singleton_CTU<Private>;
+    class Private : public CE::State::FriendSingleton<Private> {
+        friend class CE::State::FriendSingleton<Private>;
         int value_;
 
         explicit Private(int value)
@@ -50,15 +50,15 @@ namespace {
         [[nodiscard]] int value() const { return value_; }
     };
 
-    class DefaultPrivate : public Singleton_CTU<DefaultPrivate> {
-        friend class Singleton_CTU<DefaultPrivate>;
+    class DefaultPrivate : public CE::State::FriendSingleton<DefaultPrivate> {
+        friend class CE::State::FriendSingleton<DefaultPrivate>;
         DefaultPrivate() = default;
 
     public:
         ~DefaultPrivate() = default;
     };
 
-    struct MoveOnly : Singleton_CTS<MoveOnly> {
+    struct MoveOnly : CE::State::Singleton<MoveOnly> {
         std::unique_ptr<int> value;
 
         explicit MoveOnly(std::unique_ptr<int> value)

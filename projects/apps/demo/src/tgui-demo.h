@@ -10,8 +10,8 @@
 #include <memory>
 #include <string_view>
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 }
 
 // Application-owned presentation; Game keeps only neutral status and actions.
@@ -21,14 +21,14 @@ class DemoUi final {
 
 public:
     // Build application materials on platform, without creating toolkit objects.
-    DemoUi(CE::Engine::EngineContext& engine, const std::filesystem::path& asset_root);
+    DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root);
     // Runtime calls deinit after joining simulation; all widget refs die first.
     ~DemoUi();
     DemoUi(const DemoUi&) = delete;
     DemoUi& operator=(const DemoUi&) = delete;
     // First update creates widgets on the actual simulation/UI owner.
     // Returns the panel's camera-reset action, independent of its widget type.
-    bool update(const CE::GFramework::TickContext& tick, const DemoUiStatus& status);
-    void write(CE::RenderAPIs::RenderFrameWriter& frame) const;
+    bool update(const CE::Game::TickContext& tick, const DemoUiStatus& status);
+    void write(CE::Rendering::FrameWriter& frame) const;
     [[nodiscard]] std::string_view error() const;
 };

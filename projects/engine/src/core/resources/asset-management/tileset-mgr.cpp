@@ -10,15 +10,15 @@
 #include <algorithm>
 #include <utility>
 
-namespace CE::Assets {
-    void TilesetMgr::load_assets(const std::vector<TilesetDefinition>& definitions, ResourceProvider& provider) {
+namespace CE::Assets::Tilesets {
+    void Manager::load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider) {
         bind_provider(provider);
         // Reserve for new IDs only; a repeated load does not replace a cached tileset.
-        std::vector<const TilesetDefinition*> pending;
+        std::vector<const Definition*> pending;
         for (const auto& definition : definitions)
             if (!contains(definition.id()))
                 pending.push_back(&definition);
-        auto reservation = reserve<Tileset>(pending.size());
+        auto reservation = reserve<Asset>(pending.size());
         std::size_t slot = 0;
         for (const auto* selected : pending) {
             const auto& definition = *selected;
@@ -26,7 +26,7 @@ namespace CE::Assets {
             if (contains(id)) {
                 continue;
             }
-            const auto texture = TextureMgr::get().get_asset(definition.texture);
+            const auto texture = CE::Assets::Images::Manager::get().get_asset(definition.texture);
             if (!texture) {
                 throw Exceptions::runtime_exception(
                     CE_HERE, "Tileset '" + id + "' references an unloaded texture '" + definition.texture.string() + "'"
@@ -36,20 +36,23 @@ namespace CE::Assets {
             if (texture_size.width == 0 || texture_size.height == 0) {
                 throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' has an empty texture");
             }
-            const auto material = definition.shader ? ShaderAssetMgr::get().get_material(*definition.shader) : nullptr;
+            const auto material = definition.shader ? CE::Assets::Shaders::Manager::get().find_material(*definition.shader) : nullptr;
             if (definition.shader && !material)
                 throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' references an unloaded shader '" + *definition.shader + "'");
             // Translate each grid cell into vertices, upload once, then retain geometry and
             // unconsumed animation/autotile metadata in the cached tileset.
-            auto geometry = make_grid_geometry(definition.grid, definition.pivot, texture_size);
-            auto mesh = provider.upload_geometry(std::move(geometry.vertices), geometry.vertex_count, PrimitiveTopology::TriangleStrip);
+            auto geometry = CE::Assets::Grids::make_geometry(definition.grid, definition.pivot, texture_size);
+            auto mesh = provider.upload_geometry(
+                std::move(geometry.vertices), geometry.vertex_count, CE::Rendering::Geometry::Topology::TriangleStrip
+            );
             if (material) {
-                PassConstraints2D unconstrained;
+                CE::Rendering::Pipelines::PassConstraints2D unconstrained;
                 unconstrained.depth.reset();
                 material->definition().pipeline->validate_draw(*mesh, 0, mesh->vertex_count(), unconstrained);
             }
-            auto asset =
-                reservation.emplace(slot++, TilesetData{.geometry = std::move(mesh), .texture = texture, .definition = definition, .material = material});
+            auto asset = reservation.emplace(
+                slot++, Data{.geometry = std::move(mesh), .texture = texture, .definition = definition, .material = material}
+            );
             publish_asset(id, std::move(asset));
         }
     }

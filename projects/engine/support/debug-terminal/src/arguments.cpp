@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string_view>
 
-namespace CE::DebugTerminal::Detail {
+namespace CE::Application::DebugTerminal::Detail {
     Arguments parse_arguments(const int argc, char** argv, const bool automatic) {
         if (argc <= 0 || !argv || !argv[0])
             throw std::invalid_argument("Terminal startup requires an executable and argument array");

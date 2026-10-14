@@ -5,7 +5,7 @@
 namespace CE::Input {
     // Portable key positions/functions, independent of State binding IDs and
     // native tokens. Letter/punctuation names refer to a US keyboard position;
-    // committed characters always come from TextEvent instead.
+    // committed characters always come from Events::Text instead.
     enum class KeyboardKey : std::uint16_t {
         Unknown,
         A,

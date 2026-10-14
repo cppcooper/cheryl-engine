@@ -22,7 +22,7 @@ namespace {
     // Declare after borrowed recording state so an assertion's early return
     // invalidates tickets before pending pumps destroy their error sinks.
     struct CloseBusOnExit {
-        CE::SubSystems::EventBus& bus;
+        CE::Events::EventBus& bus;
         ~CloseBusOnExit() { bus.close(); }
     };
 
@@ -77,7 +77,7 @@ namespace {
 }
 
 TEST(event_bus, ignored_registration_id) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     int calls = 0;
     bus.register_listener("tick", [&](std::any value) { calls += std::any_cast<int>(value); });
     bus.dispatch("tick", 2);
@@ -86,8 +86,8 @@ TEST(event_bus, ignored_registration_id) {
 }
 
 TEST(event_bus, independent_registrations) {
-    CE::SubSystems::EventBus first;
-    CE::SubSystems::EventBus second;
+    CE::Events::EventBus first;
+    CE::Events::EventBus second;
     int calls = 0;
     first.register_listener("tick", [&](std::any) { ++calls; });
     second.dispatch("tick", 0);
@@ -101,7 +101,7 @@ TEST(event_bus, independent_registrations) {
 }
 
 TEST(event_bus, immediate_delivery_order) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::vector<int> order;
     std::thread::id owner;
     bus.register_listener("tick", [&](std::any) {
@@ -117,7 +117,7 @@ TEST(event_bus, immediate_delivery_order) {
 }
 
 TEST(event_bus, registration_during_dispatch) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::vector<int> order;
     bool added = false;
     bus.register_listener("tick", [&](std::any) {
@@ -134,8 +134,8 @@ TEST(event_bus, registration_during_dispatch) {
 }
 
 TEST(event_bus, unregister_during_dispatch) {
-    CE::SubSystems::EventBus bus;
-    CE::SubSystems::EventBus::Registration second;
+    CE::Events::EventBus bus;
+    CE::Events::EventBus::Registration second;
     int calls = 0;
     bus.register_listener("tick", [&](std::any) { bus.unregister_listener(second); });
     second = bus.register_listener("tick", [&](std::any) { ++calls; });
@@ -145,8 +145,8 @@ TEST(event_bus, unregister_during_dispatch) {
 }
 
 TEST(event_bus, foreign_unregister) {
-    CE::SubSystems::EventBus first;
-    CE::SubSystems::EventBus second;
+    CE::Events::EventBus first;
+    CE::Events::EventBus second;
     int calls = 0;
     const auto first_id = first.register_listener("tick", [](std::any) {});
     second.register_listener("tick", [&](std::any) { ++calls; });
@@ -156,8 +156,8 @@ TEST(event_bus, foreign_unregister) {
 }
 
 TEST(event_bus, self_unregister) {
-    CE::SubSystems::EventBus bus;
-    CE::SubSystems::EventBus::Registration id;
+    CE::Events::EventBus bus;
+    CE::Events::EventBus::Registration id;
     int calls = 0;
     id = bus.register_listener("tick", [&](std::any) {
         ++calls;
@@ -171,7 +171,7 @@ TEST(event_bus, self_unregister) {
 }
 
 TEST(event_bus, running_callback_lifetime) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::promise<void> entered;
     std::promise<void> release;
     auto may_finish = release.get_future().share();
@@ -192,14 +192,14 @@ TEST(event_bus, running_callback_lifetime) {
 }
 
 TEST(event_bus, callback_failure_barrier) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     const auto id = bus.register_listener("tick", [](std::any) { throw std::runtime_error("failed"); });
     EXPECT_THROW(bus.dispatch("tick", 0), std::runtime_error);
     EXPECT_TRUE(bus.unregister_and_wait(id));
 }
 
 TEST(event_bus, closed_bus) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     const auto id = bus.register_listener("tick", [](std::any) {});
     bus.close();
     bus.wait_for_listener(id);
@@ -214,17 +214,17 @@ namespace {
     };
 
     struct QueuedDelivery {
-        std::vector<CE::SubSystems::EventBus::Work> pending;
+        std::vector<CE::Events::EventBus::Work> pending;
 
-        CE::SubSystems::EventBus::Delivery target() {
-            return [this](CE::SubSystems::EventBus::Work work) {
+        CE::Events::EventBus::Delivery target() {
+            return [this](CE::Events::EventBus::Work work) {
                 pending.push_back(std::move(work));
                 return true;
             };
         }
 
         void drain() {
-            std::vector<CE::SubSystems::EventBus::Work> batch;
+            std::vector<CE::Events::EventBus::Work> batch;
             batch.swap(pending);
             for (auto& work : batch)
                 work();
@@ -233,7 +233,7 @@ namespace {
 }
 
 TEST(event_bus, queued_payload_order) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     std::vector<int> received;
     std::vector<std::exception_ptr> errors;
@@ -253,7 +253,7 @@ TEST(event_bus, queued_payload_order) {
 }
 
 TEST(event_bus, queued_unregister) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     int calls = 0;
     int errors = 0;
@@ -270,7 +270,7 @@ TEST(event_bus, queued_unregister) {
 }
 
 TEST(event_bus, close_during_dispatch) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     std::promise<void> entered;
     std::promise<void> release;
@@ -308,7 +308,7 @@ TEST(event_bus, close_during_dispatch) {
 
 TEST(event_bus, capture_release_reentry) {
     for (const bool close_bus : {false, true}) {
-        CE::SubSystems::EventBus bus;
+        CE::Events::EventBus bus;
         bool released = false;
         auto owned = std::shared_ptr<int>(new int{0}, [&](int* value) {
             delete value;
@@ -327,7 +327,7 @@ TEST(event_bus, capture_release_reentry) {
 }
 
 TEST(event_bus, queued_error_reporting) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     std::vector<std::exception_ptr> errors;
     bus.register_listener(
@@ -347,11 +347,11 @@ TEST(event_bus, queued_error_reporting) {
 }
 
 TEST(event_bus, delivery_rejection_reentry) {
-    CE::SubSystems::EventBus bus;
-    CE::SubSystems::EventBus::Registration id;
+    CE::Events::EventBus bus;
+    CE::Events::EventBus::Registration id;
     int failures = 0;
     id = bus.register_listener(
-        "tick", [](std::any) {}, [](CE::SubSystems::EventBus::Work) { return false; },
+        "tick", [](std::any) {}, [](CE::Events::EventBus::Work) { return false; },
         [&](std::exception_ptr error) {
             ++failures;
             EXPECT_THROW(std::rethrow_exception(error), std::future_error);
@@ -364,15 +364,15 @@ TEST(event_bus, delivery_rejection_reentry) {
 }
 
 TEST(event_bus, missing_error_sink) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     EXPECT_THROW(bus.register_listener("tick", [](std::any) {}, target.target()), CE::Exceptions::invalid_args);
 }
 
 TEST(event_bus, payload_copy_failure_reentry) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
-    CE::SubSystems::EventBus::Registration id;
+    CE::Events::EventBus::Registration id;
     int failures = 0;
     int recovered = 0;
     bus.register_listener("recovery", [&](std::any) { ++recovered; });
@@ -399,14 +399,14 @@ TEST(event_bus, payload_copy_failure_reentry) {
 }
 
 TEST(event_bus, delivery_target_failure) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     QueuedDelivery target;
     bool reject = true;
     int failures = 0;
     int calls = 0;
     bus.register_listener(
         "tick", [&](std::any) { ++calls; },
-        [&](CE::SubSystems::EventBus::Work work) {
+        [&](CE::Events::EventBus::Work work) {
             if (reject)
                 throw std::runtime_error("target unavailable");
             return target.target()(std::move(work));
@@ -427,7 +427,7 @@ TEST(event_bus, delivery_target_failure) {
 
 TEST(event_bus, rejected_payload_reentry) {
     for (const bool throwing : {false, true}) {
-        CE::SubSystems::EventBus bus;
+        CE::Events::EventBus bus;
         QueuedDelivery target;
         int offers = 0;
         int failures = 0;
@@ -440,7 +440,7 @@ TEST(event_bus, rejected_payload_reentry) {
         CloseBusOnExit cleanup{bus};
         bus.register_listener(
             "tick", [&](std::any value) { received.push_back(std::any_cast<int>(value)); },
-            [&](CE::SubSystems::EventBus::Work work) {
+            [&](CE::Events::EventBus::Work work) {
                 if (++offers == 1) {
                     if (throwing)
                         throw CE::Exceptions::failed_operation(CE_HERE, "The target rejected its first payload");
@@ -472,10 +472,10 @@ TEST(event_bus, rejected_payload_reentry) {
 }
 
 TEST(event_bus, worker_delivery_order) {
-    CE::Engine::WorkerPool pool(3);
+    CE::Workers::Pool pool(3);
     auto group = pool.make_group();
-    auto delivery = CE::Engine::worker_event_delivery(group);
-    CE::SubSystems::EventBus bus;
+    auto delivery = CE::Events::worker_delivery(group);
+    CE::Events::EventBus bus;
     std::vector<int> received;
     std::atomic<int> errors{0};
     bus.register_listener(
@@ -493,10 +493,10 @@ TEST(event_bus, worker_delivery_order) {
 }
 
 TEST(event_bus, shared_worker_stream) {
-    CE::Engine::WorkerPool pool(3);
+    CE::Workers::Pool pool(3);
     auto group = pool.make_group();
-    auto delivery = CE::Engine::worker_event_delivery(group);
-    CE::SubSystems::EventBus bus;
+    auto delivery = CE::Events::worker_delivery(group);
+    CE::Events::EventBus bus;
     std::vector<int> order;
     const auto report = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected worker delivery error"; };
     bus.register_listener("tick", [&](std::any) { order.push_back(1); }, delivery, report);
@@ -510,9 +510,9 @@ TEST(event_bus, shared_worker_stream) {
 }
 
 TEST(event_bus, expired_worker_target) {
-    auto pool = std::make_unique<CE::Engine::WorkerPool>();
-    auto delivery = CE::Engine::worker_event_delivery(pool->make_group());
-    CE::SubSystems::EventBus bus;
+    auto pool = std::make_unique<CE::Workers::Pool>();
+    auto delivery = CE::Events::worker_delivery(pool->make_group());
+    CE::Events::EventBus bus;
     int errors = 0;
     bus.register_listener("tick", [](std::any) {}, delivery, [&](std::exception_ptr) { ++errors; });
     pool.reset();
@@ -522,10 +522,10 @@ TEST(event_bus, expired_worker_target) {
 }
 
 TEST(event_bus, closed_worker_group) {
-    CE::Engine::WorkerPool pool(2);
+    CE::Workers::Pool pool(2);
     auto group = pool.make_group();
-    const auto delivery = CE::Engine::worker_event_delivery(group);
-    CE::SubSystems::EventBus bus;
+    const auto delivery = CE::Events::worker_delivery(group);
+    CE::Events::EventBus bus;
     std::promise<void> entered;
     auto started = entered.get_future();
     std::promise<void> release;
@@ -550,7 +550,7 @@ TEST(event_bus, closed_worker_group) {
 
     int errors = 0;
     int immediate = 0;
-    CE::SubSystems::EventBus::Registration rejected;
+    CE::Events::EventBus::Registration rejected;
     bus.register_listener("report", [&](std::any) { ++immediate; });
     rejected = bus.register_listener(
         "rejected", [](std::any) { ADD_FAILURE() << "Closed group invoked a new callback"; }, delivery,
@@ -571,9 +571,9 @@ TEST(event_bus, closed_worker_group) {
 }
 
 TEST(event_bus, independent_worker_streams) {
-    CE::Engine::WorkerPool pool(2);
+    CE::Workers::Pool pool(2);
     auto group = pool.make_group();
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::promise<void> entered;
     auto started = entered.get_future();
     std::promise<void> release;
@@ -587,9 +587,9 @@ TEST(event_bus, independent_worker_streams) {
             entered.set_value();
             may_finish.wait();
         },
-        CE::Engine::worker_event_delivery(group), unexpected
+        CE::Events::worker_delivery(group), unexpected
     );
-    bus.register_listener("independent", [&](std::any) { independent.set_value(); }, CE::Engine::worker_event_delivery(group), unexpected);
+    bus.register_listener("independent", [&](std::any) { independent.set_value(); }, CE::Events::worker_delivery(group), unexpected);
     bus.dispatch("held", 0);
     EXPECT_EQ(started.wait_for(std::chrono::seconds{1}), std::future_status::ready);
     bus.dispatch("independent", 0);
@@ -602,12 +602,12 @@ TEST(event_bus, independent_worker_streams) {
 }
 
 TEST(event_bus, unpublished_pump_recovery) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto group = pool.make_group();
-    CE::SubSystems::EventBus bus;
-    std::vector<CE::SubSystems::EventBus::Work> pumps;
+    CE::Events::EventBus bus;
+    std::vector<CE::Events::EventBus::Work> pumps;
     int offers = 0;
-    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group, [&](CE::SubSystems::EventBus::Work pump) {
+    auto delivery = CE::Events::Detail::worker_stream_delivery(group, [&](CE::Events::EventBus::Work pump) {
         if (++offers > 1)
             pumps.push_back(std::move(pump));
         // The first accepted callable is discarded before publication,
@@ -644,13 +644,12 @@ TEST(event_bus, unpublished_pump_recovery) {
 }
 
 TEST(event_bus, published_pump_recovery) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto group = pool.make_group();
-    CE::SubSystems::EventBus bus;
-    std::vector<CE::SubSystems::EventBus::Work> pumps;
-    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group, [&](CE::SubSystems::EventBus::Work pump) {
-        pumps.push_back(std::move(pump));
-    });
+    CE::Events::EventBus bus;
+    std::vector<CE::Events::EventBus::Work> pumps;
+    auto delivery =
+        CE::Events::Detail::worker_stream_delivery(group, [&](CE::Events::EventBus::Work pump) { pumps.push_back(std::move(pump)); });
     int errors = 0;
     int reports = 0;
     std::vector<int> received;
@@ -687,12 +686,12 @@ TEST(event_bus, published_pump_recovery) {
 }
 
 TEST(event_bus, pump_submission_failure) {
-    CE::Engine::WorkerPool pool;
+    CE::Workers::Pool pool;
     auto group = pool.make_group();
-    CE::SubSystems::EventBus bus;
-    std::vector<CE::SubSystems::EventBus::Work> pumps;
+    CE::Events::EventBus bus;
+    std::vector<CE::Events::EventBus::Work> pumps;
     bool reject = true;
-    auto delivery = CE::Engine::DeliveryDetail::worker_stream_delivery(group, [&](CE::SubSystems::EventBus::Work pump) {
+    auto delivery = CE::Events::Detail::worker_stream_delivery(group, [&](CE::Events::EventBus::Work pump) {
         if (reject)
             throw CE::Exceptions::failed_operation(CE_HERE, "Controlled pump submission rejection");
         pumps.push_back(std::move(pump));
@@ -721,17 +720,17 @@ TEST(event_bus, pump_submission_failure) {
 }
 
 TEST(event_bus, concurrent_producer_order) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::vector<std::pair<int, int>> received;
     std::atomic<int> errors{0};
     std::latch ready{2};
     std::promise<void> release;
     auto may_dispatch = release.get_future().share();
-    CE::Engine::WorkerPool pool(3);
+    CE::Workers::Pool pool(3);
     auto group = pool.make_group();
     bus.register_listener(
-        "tick", [&](std::any value) { received.push_back(std::any_cast<std::pair<int, int>>(value)); },
-        CE::Engine::worker_event_delivery(group), [&](std::exception_ptr) { ++errors; }
+        "tick", [&](std::any value) { received.push_back(std::any_cast<std::pair<int, int>>(value)); }, CE::Events::worker_delivery(group),
+        [&](std::exception_ptr) { ++errors; }
     );
     CloseBusOnExit cleanup{bus};
     auto produce = [&](int producer) {
@@ -763,8 +762,8 @@ TEST(event_bus, concurrent_producer_order) {
 }
 
 TEST(event_bus, invalidation_during_copy) {
-    CE::SubSystems::EventBus bus;
-    CE::SubSystems::EventBus::Registration id;
+    CE::Events::EventBus bus;
+    CE::Events::EventBus::Registration id;
     int calls = 0;
     int errors = 0;
     int releases = 0;
@@ -794,7 +793,7 @@ TEST(event_bus, invalidation_during_copy) {
 }
 
 TEST(event_bus, pump_policy_recovery) {
-    CE::SubSystems::EventBus bus;
+    CE::Events::EventBus bus;
     std::promise<void> policy_entered;
     std::promise<void> release;
     auto may_fail = release.get_future().share();
@@ -807,7 +806,7 @@ TEST(event_bus, pump_policy_recovery) {
     std::vector<int> received;
     std::thread::id reporting_thread;
     const auto producer_thread = std::this_thread::get_id();
-    CE::Engine::WorkerDetail::WorkerNativeAdapter adapter;
+    CE::Workers::Detail::NativeAdapter adapter;
     adapter.cpu_affinity = true;
     adapter.query_affinity = [&] { return mask; };
     adapter.set_affinity = [&](const std::vector<unsigned int>& requested) {
@@ -819,12 +818,12 @@ TEST(event_bus, pump_policy_recovery) {
         mask = requested;
     };
     adapter.start_thread = [](std::function<void()> work) { return std::thread(std::move(work)); };
-    auto pool = CE::Engine::WorkerDetail::WorkerPoolAccess::create(1, std::move(adapter));
-    CE::Engine::WorkerGroupOptions options;
+    auto pool = CE::Workers::Detail::PoolAccess::create(1, std::move(adapter));
+    CE::Workers::GroupOptions options;
     options.cpu.cpus = {2};
-    options.cpu.strength = CE::Engine::WorkerPolicyStrength::Required;
+    options.cpu.strength = CE::Workers::PolicyStrength::Required;
     auto group = pool->make_group(options);
-    auto delivery = CE::Engine::worker_event_delivery(group);
+    auto delivery = CE::Events::worker_delivery(group);
     PromiseGate gate{release};
     CloseBusOnExit cleanup{bus};
     auto report = [&](std::exception_ptr error) {
@@ -843,9 +842,9 @@ TEST(event_bus, pump_policy_recovery) {
     );
     bus.register_listener("second", [&](std::any) { ++second_calls; }, delivery, report);
     struct JoinPolicyOnExit {
-        CE::Engine::WorkerPool& pool;
+        CE::Workers::Pool& pool;
         PromiseGate& gate;
-        CE::SubSystems::EventBus& bus;
+        CE::Events::EventBus& bus;
 
         ~JoinPolicyOnExit() {
             // Keep report's borrowed state alive while rejection cleanup can

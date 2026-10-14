@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-namespace CE::TerminalDetail {
+namespace CE::Platform::Linux::DebugTerminal::Detail {
     class Descriptor final {
         int value_ = -1;
 

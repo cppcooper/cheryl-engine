@@ -14,7 +14,7 @@
 #include <memory>
 #include <mutex>
 
-namespace CE {
+namespace CE::Platform::GLFW {
     namespace {
         std::atomic<std::uint64_t> next_monitor_id{1};
         std::mutex glfw_lifetime_mutex;
@@ -27,23 +27,23 @@ namespace CE {
         {
             std::lock_guard lock(glfw_lifetime_mutex);
             if (glfw_displays == 0) {
-                DisplayDetail::install_glfw_diagnostics();
+                Detail::install_glfw_diagnostics();
                 failed = glfwInit() != GLFW_TRUE;
                 if (failed)
-                    DisplayDetail::restore_glfw_diagnostics();
+                    Detail::restore_glfw_diagnostics();
                 else
                     initialized = true;
             }
             if (!failed)
                 ++glfw_displays;
         }
-        DisplayDetail::report_glfw_diagnostics("initialize", failed);
+        Detail::report_glfw_diagnostics("initialize", failed);
         if (failed)
-            throw Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "Failed to initialize GLFW");
         if (initialized)
             CE_LOG_INFO(
-                CE::platformlog, "subsystem=glfw domain={} operation=initialize outcome=ready platform={}",
-                DisplayDetail::glfw_diagnostics().domain, glfwGetPlatform()
+                ::CE::Logging::Categories::platform, "subsystem=glfw domain={} operation=initialize outcome=ready platform={}",
+                Detail::glfw_diagnostics().domain, glfwGetPlatform()
             );
     }
 
@@ -52,17 +52,17 @@ namespace CE {
             std::lock_guard lock(glfw_lifetime_mutex);
             if (--glfw_displays == 0) {
                 glfwTerminate();
-                DisplayDetail::restore_glfw_diagnostics();
+                Detail::restore_glfw_diagnostics();
             }
         }
-        DisplayDetail::report_glfw_diagnostics("terminate", true);
+        Detail::report_glfw_diagnostics("terminate", true);
     }
 
-    Monitor DisplaySystem::create_primary_monitor() {
+    ::CE::Platform::Monitor DisplaySystem::create_primary_monitor() {
         auto* handle = glfwGetPrimaryMonitor();
         const auto* video_mode = handle ? glfwGetVideoMode(handle) : nullptr;
         if (!video_mode)
-            throw Exceptions::runtime_exception(CE_HERE, "No primary monitor or video mode is available");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "No primary monitor or video mode is available");
         return {next_monitor_id++, video_mode->width, video_mode->height};
     }
 
@@ -72,7 +72,7 @@ namespace CE {
         int count = 0;
         GLFWmonitor** handles = glfwGetMonitors(&count);
         if (!handles || count <= 0)
-            throw Exceptions::runtime_exception(CE_HERE, "No monitors are available");
+            throw ::CE::Exceptions::runtime_exception(CE_HERE, "No monitors are available");
 
         monitors_.reserve(static_cast<std::size_t>(count));
         native_monitors_.reserve(static_cast<std::size_t>(count));
@@ -84,38 +84,43 @@ namespace CE {
                 continue;
             const auto* video_mode = glfwGetVideoMode(handles[index]);
             if (video_mode) {
-                monitors_.push_back(Monitor(next_monitor_id++, video_mode->width, video_mode->height));
+                monitors_.push_back(::CE::Platform::Monitor(next_monitor_id++, video_mode->width, video_mode->height));
                 native_monitors_.push_back(handles[index]);
             }
         }
         CE_LOG_INFO(
-            CE::platformlog, "subsystem=display domain={} operation=monitor_snapshot count={}", DisplayDetail::glfw_diagnostics().domain,
-            monitors_.size()
+            ::CE::Logging::Categories::platform, "subsystem=display domain={} operation=monitor_snapshot count={}",
+            Detail::glfw_diagnostics().domain, monitors_.size()
         );
     }
 
-    GLFWmonitor* DisplaySystem::native_monitor(const Monitor& monitor) const {
+    GLFWmonitor* DisplaySystem::native_monitor(const ::CE::Platform::Monitor& monitor) const {
         for (std::size_t index = 0; index < monitors_.size(); ++index) {
             if (monitors_[index].id() == monitor.id())
                 return native_monitors_[index];
         }
-        throw Exceptions::invalid_args(CE_HERE, "Monitor is not owned by this display");
+        throw ::CE::Exceptions::invalid_args(CE_HERE, "Monitor is not owned by this display");
     }
 
-    std::pair<float, float> DisplaySystem::content_scale(const Monitor& monitor) const {
+    std::pair<float, float> DisplaySystem::content_scale(const ::CE::Platform::Monitor& monitor) const {
         float x = 1.0f;
         float y = 1.0f;
         glfwGetMonitorContentScale(native_monitor(monitor), &x, &y);
         return {x, y};
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const int width, const int height) {
+    Window* DisplaySystem::create_window(
+        const ::CE::Platform::Monitor& monitor,
+        const ::CE::Platform::WindowMode mode,
+        const int width,
+        const int height
+    ) {
         return create_window(monitor, mode, width, height, "");
     }
 
     Window* DisplaySystem::create_window(
-        const Monitor& monitor,
-        const Enum::window_mode mode,
+        const ::CE::Platform::Monitor& monitor,
+        const ::CE::Platform::WindowMode mode,
         const int width,
         const int height,
         const std::string& title
@@ -126,21 +131,25 @@ namespace CE {
         return result;
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode, const Resolution resolution) {
+    Window* DisplaySystem::create_window(
+        const ::CE::Platform::Monitor& monitor,
+        const ::CE::Platform::WindowMode mode,
+        const Resolution resolution
+    ) {
         return create_window(monitor, mode, resolution.width, resolution.height);
     }
 
-    Window* DisplaySystem::create_window(const Monitor& monitor, const Enum::window_mode mode) {
+    Window* DisplaySystem::create_window(const ::CE::Platform::Monitor& monitor, const ::CE::Platform::WindowMode mode) {
         return create_window(monitor, mode, monitor.width, monitor.height);
     }
 
-    void DisplaySystem::activate_window(iWindow& window) {
+    void DisplaySystem::activate_window(::CE::Platform::Window& window) {
         // Only display-owned windows may become active, and the current renderer assumes one context.
         const auto owned = std::ranges::any_of(windows_, [&window](const auto& candidate) { return candidate.get() == &window; });
         if (!owned)
-            throw Exceptions::invalid_args(CE_HERE, "Active window must be owned by DisplaySystem");
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Active window must be owned by DisplaySystem");
         if (active_ && active_ != &window)
-            throw Exceptions::failed_operation(CE_HERE, "Switching active rendering windows is not supported");
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Switching active rendering windows is not supported");
         active_ = static_cast<Window*>(&window);
     }
 }

@@ -5,38 +5,38 @@
 #include <string>
 #include <vector>
 
-namespace CE::Engine {
-    enum class WorkerCacheType { Data, Instruction, Unified };
+namespace CE::Workers {
+    enum class CacheType { Data, Instruction, Unified };
 
-    struct WorkerCore {
+    struct Core {
         // IDs belong to one topology snapshot; cpus includes its eligible SMT siblings.
         unsigned int id = 0;
         std::vector<unsigned int> cpus;
     };
 
-    struct WorkerCacheDomain {
+    struct CacheDomain {
         unsigned int id = 0;
         unsigned int level = 0;
-        WorkerCacheType type = WorkerCacheType::Unified;
+        CacheType type = CacheType::Unified;
         std::optional<std::uint64_t> capacity_bytes;
         std::optional<unsigned int> line_bytes;
         std::vector<unsigned int> cpus;
     };
 
-    struct WorkerTopology {
+    struct Topology {
         // OS CPU IDs intersected with the provider creator's inherited affinity.
         std::vector<unsigned int> eligible_cpus;
-        std::vector<WorkerCore> cores;
-        std::vector<WorkerCacheDomain> caches;
+        std::vector<Core> cores;
+        std::vector<CacheDomain> caches;
         bool cpu_affinity = false;
         std::string limitations;
     };
 
-    class WorkerTopologyProvider {
+    class TopologyProvider {
     public:
-        virtual ~WorkerTopologyProvider() = default;
+        virtual ~TopologyProvider() = default;
         // Owned discovery snapshot. Methods must support concurrent pool workers.
-        [[nodiscard]] virtual WorkerTopology topology() const = 0;
+        [[nodiscard]] virtual Topology topology() const = 0;
         // Sorted, distinct OS CPU IDs for the calling thread's actual native mask.
         [[nodiscard]] virtual std::vector<unsigned int> current_thread_cpus() const = 0;
         // Bind only the calling thread, without changing memory placement. The pool

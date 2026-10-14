@@ -2,17 +2,17 @@
 
 #include "context.h"
 
-namespace CE {
+namespace CE::Platform::GLFW {
     class Window;
 }
 
-namespace CE::RenderAPIs {
+namespace CE::Rendering::OpenGL {
     /** Adapts a display-owned GLFW window to the OpenGL presentation contract.
      * DisplaySystem owns GLFW and the window; this adapter borrows the window.
      */
-    class GlfwOpenGLContext final : public iOpenGLContext {
+    class GLFWContext final : public Context {
     public:
-        explicit GlfwOpenGLContext(Window& window, int swap_interval = 1);
+        explicit GLFWContext(::CE::Platform::GLFW::Window& window, int swap_interval = 1);
 
         void make_current() override;
         void release_current() override;
@@ -21,7 +21,7 @@ namespace CE::RenderAPIs {
         void present() override;
 
     private:
-        Window& window_;
+        ::CE::Platform::GLFW::Window& window_;
         int swap_interval_;
     };
 }

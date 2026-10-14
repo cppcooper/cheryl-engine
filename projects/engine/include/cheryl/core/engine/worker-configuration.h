@@ -7,14 +7,14 @@
 #include <string>
 #include <string_view>
 
-namespace CE::Engine {
-    struct WorkerConfiguration {
-        WorkerPoolOptions pool;
-        std::map<std::string, WorkerGroupOptions, std::less<>> groups;
+namespace CE::Workers {
+    struct Configuration {
+        PoolOptions pool;
+        std::map<std::string, GroupOptions, std::less<>> groups;
     };
 
     // Names start with a lowercase ASCII letter and contain lowercase letters,
     // digits and underscores. Configuration is inert until the caller creates work.
-    [[nodiscard]] bool is_worker_group_name(std::string_view name) noexcept;
-    void validate_worker_configuration(const WorkerConfiguration& configuration);
+    [[nodiscard]] bool is_group_name(std::string_view name) noexcept;
+    void validate_configuration(const Configuration& configuration);
 }

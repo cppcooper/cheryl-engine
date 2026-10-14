@@ -11,19 +11,19 @@
 #include <functional>
 #include <memory>
 
-namespace CE::Engine {
-    class EngineContext;
+namespace CE::Runtime {
+    class Context;
 }
 
 // The engine-facing application object. main.cpp owns startup and runtime;
 // this class owns the game lifecycle that the runtime drives.
-class DemoGame final : public CE::GFramework::AbstractGame {
+class DemoGame final : public CE::Game::AbstractGame {
     struct GameState;
     std::unique_ptr<GameState> game_state_;
 
 public:
     DemoGame(
-        CE::Engine::EngineContext& engine,
+        CE::Runtime::Context& engine,
         std::filesystem::path asset_root,
         bool load_all_assets,
         CE::Text::FontSelection fonts,
@@ -40,6 +40,6 @@ public:
 
     void init() override;
     void deinit() override;
-    void update(const CE::GFramework::TickContext& tick) override;
-    void prepare_render_frame(CE::RenderAPIs::RenderFrameWriter& frame) const override;
+    void update(const CE::Game::TickContext& tick) override;
+    void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override;
 };

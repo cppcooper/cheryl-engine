@@ -8,29 +8,30 @@
 #endif
 
 namespace {
-    class MemoryImage final : public CE::Assets::Image {
-        const CE::Assets::PixelSize size_;
+    class MemoryImage final : public CE::Rendering::Resources::Image {
+        const CE::Rendering::Geometry::PixelSize size_;
 
     public:
-        explicit MemoryImage(CE::Assets::PixelSize size)
+        explicit MemoryImage(CE::Rendering::Geometry::PixelSize size)
         : size_(size) {}
-        CE::Assets::PixelSize pixel_size() const override { return size_; }
+        CE::Rendering::Geometry::PixelSize pixel_size() const override { return size_; }
         void bind(std::uint32_t) const override {}
     };
 
-    class MemoryProvider final : public CE::Assets::ResourceProvider {
+    class MemoryProvider final : public CE::Rendering::Resources::Provider {
     public:
-        std::shared_ptr<CE::Assets::Image> create_image(const CE::Assets::DecodedImage& image) override {
+        std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& image) override {
             return std::make_shared<MemoryImage>(image.size);
         }
-        std::shared_ptr<CE::Assets::Image> create_font_atlas(std::span<const unsigned char>, CE::Assets::PixelSize size) override {
+        std::shared_ptr<CE::Rendering::Resources::Image>
+        create_font_atlas(std::span<const unsigned char>, CE::Rendering::Geometry::PixelSize size) override {
             return std::make_shared<MemoryImage>(size);
         }
-        std::shared_ptr<CE::Assets::Geometry2D>
-        upload_geometry(std::span<const CE::Vertex2D>, CE::Assets::PrimitiveTopology) override {
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+        upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D>, CE::Rendering::Geometry::Topology) override {
             throw std::logic_error("The consumer only creates images");
         }
-        std::shared_ptr<CE::Assets::Shader> link_program(const std::vector<std::filesystem::path>&) override {
+        std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override {
             throw std::logic_error("The consumer only creates images");
         }
     };
@@ -38,7 +39,7 @@ namespace {
 
 bool exercise_resources() {
     MemoryProvider provider;
-    const CE::Assets::DecodedImage pixels{{1, 1}, {255, 0, 0, 255}};
+    const CE::Assets::Images::Decoded pixels{{1, 1}, {255, 0, 0, 255}};
     const auto image = provider.create_image(pixels);
     return image->pixel_size().width == 1 && image->pixel_size().height == 1;
 }

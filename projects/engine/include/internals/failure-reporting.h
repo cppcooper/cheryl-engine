@@ -50,7 +50,7 @@ namespace CE::Diagnostics {
             if (failure)
                 std::rethrow_exception(failure);
             append("no exception information");
-        } catch (const Exceptions::exception_base& error) {
+        } catch (const ::CE::Exceptions::exception_base& error) {
             append(error.diagnostic_summary());
         } catch (const std::exception& error) {
             append(error.what());

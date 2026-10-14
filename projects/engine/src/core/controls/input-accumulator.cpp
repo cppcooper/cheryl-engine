@@ -3,8 +3,8 @@
 #include <internals/exceptions.h>
 
 namespace CE::Input {
-    TickInput InputAccumulator::consume_polls(const InputClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls) {
-        std::vector<std::shared_ptr<const ActionSnapshot>> states;
+    Tick Accumulator::consume_polls(const ObservationClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls) {
+        std::vector<std::shared_ptr<const Actions::Snapshot>> states;
         states.reserve(polls.size());
         std::size_t record_count = 0;
         for (const auto& poll : polls) {
@@ -13,7 +13,7 @@ namespace CE::Input {
             states.push_back(poll->state);
             record_count += poll->records.size();
         }
-        TickInput input(previous_, std::move(states), consumed_at_, until);
+        Tick input(previous_, std::move(states), consumed_at_, until);
         input.records_.reserve(record_count);
         // Concatenate the independently captured stream in poll publication order.
         // State summarization never removes, repeats, or reorders these records.

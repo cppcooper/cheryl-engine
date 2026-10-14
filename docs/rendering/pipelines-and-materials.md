@@ -1,29 +1,51 @@
 # Pipelines, materials, and render submission
 
-`PipelineDefinition` describes retained program source paths, position3/UV2 or
+`CE::Rendering::Pipelines::Definition` describes owned program source paths, position3/UV2 or
 position3/UV2/color4 vertex layout, triangle/strip topology, fixed blend/depth/cull
-intent, and a public parameter contract. `MaterialDefinition` references a
+intent, and a public parameter contract. `CE::Rendering::Materials::Definition` references a
 specific shared pipeline generation and supplies defaults, including retained
 image handles and zero-based texture-unit requests. Neither definition contains
 GLSL uniform names. Backend mappings are supplied to explicit OpenGL builders.
 
-`Pipeline` is a backend base with a validated definition snapshot and no value
+`CE::Rendering::Resources::Pipeline` is a backend base with a validated definition snapshot and no value
 copying/slicing. Its backend subclass must retain the linked executable program;
-compiled stages remain transient. `Material` copies its recipe on construction.
+compiled stages remain transient. `CE::Rendering::Resources::Material` copies its
+`CE::Rendering::Materials::Definition` on construction.
 Definition/default access is read-only. Building another pipeline/material
 instance preserves the old logical generation while its readers retain it.
-MaterialMgr publishes complete immutable recipes, including their pipeline
-generation, through explicit application-supplied builders. Indexed definitions
-use the separate `ShaderAssetMgr` catalogue and optional provider-owned
-`ShaderAssetBuilder`. Both paths preserve immutable generations. RenderFrame packets
+`CE::Assets::Materials::Manager` publishes complete immutable materials, including
+their pipeline generation, through explicit application-supplied builders. Indexed
+recipes use `CE::Assets::Shaders::Manager` and the optional provider-owned
+`CE::Assets::Shaders::Builder`. Both paths preserve immutable generations. `CE::Rendering::Frame` packets
 retain those generations for low-level renderer playback.
+
+## API domains
+
+Portable resource interfaces live in `CE::Rendering::Resources`. `Geometry`
+owns coordinates, vertex layouts and uploaded buffers; `Pipelines` owns fixed-state
+definitions and pass constraints; `Materials` owns retained material construction
+inputs. `Parameters`, `Sampling` and `Submission` describe copied draw values,
+immutable sampling and CPU packet resolution. Concrete native implementations
+belong to `CE::Rendering::OpenGL`.
+
+The shader asset family preserves a separate distinction between recipes and
+their retained results:
+
+| API | Role |
+| --- | --- |
+| `CE::Assets::Shaders::ProgramRecipe`, `MaterialRecipe` | Owned CPU sources, identities, literals, contracts and backend payloads. |
+| `CE::Assets::Shaders::Program`, `Material` | Immutable catalogue entries pairing a recipe with its executable or material generation; a material entry also retains its selected program entry. |
+| `CE::Rendering::Resources::Program`, `Material` | Executable-program access and retained material resources used for drawing. |
+| `CE::Rendering::OpenGL::Program`, `Pipeline` | Concrete linked OpenGL resources and validated native playback. |
 
 ## Parameters and ownership
 
-Parameter values own scalars, vectors, matrices, and their map keys. A sampler
-owns a shared `const Image` handle, a binding-unit request and an optional retained
-`const Sampler` override. Each pass and draw
-supplies copied ParameterSet values; material defaults belong to the immutable
+Parameter values own scalars, vectors, matrices, and their map keys.
+`CE::Rendering::Parameters::ImageBinding` owns a shared const image handle,
+a binding-unit request and an optional retained const sampler override.
+`CE::Rendering::Sampling::Sampler` owns immutable sampling options and exposes
+the backend's effective anisotropy. Each pass and draw supplies copied
+`CE::Rendering::Parameters::Set` values; material defaults belong to the immutable
 material snapshot. Resolution returns a new owned set, never a view into the
 caller's inputs.
 
@@ -34,7 +56,8 @@ caller's inputs.
 | Material defaults/resources | Material generation | Overrides pass custom values |
 | Draw custom values | Draw submission | Highest |
 
-Projection/view/model/alpha/scale semantics come from ShaderPass/ShaderDraw.
+Projection/view/model/alpha/scale semantics come from
+`CE::Rendering::Parameters::PassSemantics` and `DrawSemantics`.
 The contract explicitly opts into each semantic; an effect does not inherit
 sprite uniforms automatically. Custom layers cannot override semantic keys.
 Custom values support float/int/uint/bool, float vec2/vec3/vec4, mat4, and sampler2D.
@@ -62,7 +85,7 @@ without mutating each other's recipe or the cached image.
 
 ### Immutable sampling
 
-`SamplerOptions` selects nearest/linear minification and magnification, no/nearest/
+`CE::Rendering::Sampling::Options` selects nearest/linear minification and magnification, no/nearest/
 linear mipmap filtering, clamp/repeat/mirrored-repeat wrapping on each axis and
 disabled/maximum-supported anisotropy. Engine defaults are linear filtering,
 linear mipmaps, clamp-to-edge and maximum-supported anisotropy. OpenGL image
@@ -70,10 +93,10 @@ creation applies those defaults and generates a complete mip chain. Font-atlas
 creation keeps its separate no-mipmap policy. Unsupported anisotropy resolves to
 an effective value of one; the uploaded sampler exposes the effective value.
 
-`ResourceProvider::create_sampler(options)` is an optional capability. Its default
+`CE::Rendering::Resources::Provider::create_sampler(options)` is an optional capability. Its default
 rejects rather than silently dropping overrides. OpenGL creates immutable sampler
 objects on the loading owner and weakly reuses live matching options. An
-`ImageBinding` without an override uses the image's default policy. With an override,
+`CE::Rendering::Parameters::ImageBinding` without an override uses the image's default policy. With an override,
 the packet retains it independently of image pixels. An FX material's named sampling
 policy fills a missing binding sampler; an explicit submitted sampler wins.
 Ordinary indexed materials need no sampling declaration or image knowledge.
@@ -89,27 +112,27 @@ sampling support does not supply atlas padding or prevent every adjacent-cell bl
 ## Frame and recipe integration
 
 OpenGL pipeline builders validate explicit mappings/reflection, required/optional
-values, copied-value uploads, and sampler domains/units. GLSLPipeline::draw applies
+values, copied-value uploads, and sampler domains/units. `CE::Rendering::OpenGL::Pipeline::draw()` applies
 complete fixed state after validating pass constraints, geometry, and parameters.
-RenderFrame packets use that path.
+Frame packets use that path.
 Linked attributes match position3 at location zero and UV2 at location one. The
 colored layout additionally maps float RGBA at location two, with an explicit
-`GLSLPipelineBindings::color_attribute` name. Inactive inputs may be omitted;
-an active color input is rejected for the uncolored layout. `Vertex2D` keeps its
-existing storage; `Vertex2DColor` is a separate immutable upload format. Pipeline
+`CE::Rendering::OpenGL::PipelineBindings::color_attribute` name. Inactive inputs may be omitted;
+an active color input is rejected for the uncolored layout. `CE::Rendering::Geometry::Vertex2D` keeps its
+existing storage; `CE::Rendering::Geometry::Vertex2DColor` is a separate immutable upload format. Pipeline
 and geometry layouts must match. Shaders interpret color values consistently with
 their selected straight/premultiplied blend mode; upload does not convert them.
 Geometry exposes immutable CPU-readable layout/topology/count metadata. Pipeline
 validation checks complete primitives and bounded ranges before publication;
-native drawing additionally checks VAO/program domain identity and the live current
+native drawing additionally checks vertex-array/program domain identity and the live current
 context. Program/image native domains are checked as well.
 
 Common validation is CPU-only and reads stable inputs. Pipeline construction checks
 source paths for emptiness, supported layout/topology/state and parameter contracts;
 it does not read files, link or reflect a program. Material construction validates a
 partial custom-default layer, so required values and sampler collisions are checked
-when resolving a complete draw. `validate_parameter_values()` permits missing keys
-and colliding units in a partial layer; `validate_resolved_parameters()` requires
+when resolving a complete draw. `CE::Rendering::Parameters::validate_values()` permits missing keys
+and colliding units in a partial layer; `CE::Rendering::Parameters::validate_resolved()` requires
 required keys and distinct final sampler units, but does not prove that engine values
 actually came from a camera. Neither checks image domains, backend unit limits,
 numeric finiteness or alpha/scale ranges. Backend binding supplies its additional
@@ -119,12 +142,12 @@ unchanged.
 ### Rectangular clipping
 
 `DrawStyle2D::clip` resolves into a copied optional `DrawPacket2D::clip`. A
-`ClipRegion2D` retains top-left logical edges and positive logical viewport dimensions.
-Edges must be finite and ordered; equal edges mean empty. `intersect_clip_rects`
+`CE::Rendering::ClipRegion2D` retains top-left logical edges and positive logical viewport dimensions.
+Edges must be finite and ordered; equal edges mean empty. `CE::Rendering::intersect_clip_rects`
 combines nested rectangles in the same logical coordinate space. Clipping does not
 transform with the draw's model matrix or change authored order.
 
-Playback maps the retained extent to its current framebuffer. `resolve_clip_region`
+Playback maps the retained extent to its current framebuffer. `CE::Rendering::resolve_clip_region`
 clamps to the logical viewport and rounds nonempty edges outwards (floor left/top,
 ceil right/bottom). Rectangles outside the viewport, zero-area rectangles and a
 zero-sized framebuffer produce no pixels. This is integer rectangular clipping;
@@ -136,15 +159,15 @@ OpenGL converts top-left pixel edges to its bottom-left scissor box after valida
 the complete draw. Empty clips issue no draw; absent clips disable scissor. Full
 frame clears also disable scissor, so a preceding clipped packet cannot restrict
 the next clear. The renderer viewport supplies the framebuffer extent.
-Direct clipped `GLSLPipeline::draw` calls also supply that extent explicitly.
+Direct clipped `CE::Rendering::OpenGL::Pipeline::draw()` calls also supply that extent explicitly.
 
-ShaderMgr publishes Shader handles for explicit program access; DrawStyle2D stores
-an immutable Material handle.
-MaterialMgr::load_material retains an existing key; reload_material builds a full
-candidate outside cache locks, then replaces one recipe after success. Builders
+`CE::Assets::Shaders::ProgramCache` publishes executable program handles for explicit
+program access; `CE::Rendering::DrawStyle2D` stores an immutable material handle.
+`CE::Assets::Materials::Manager::load()` retains an existing key; `reload()` builds a full
+candidate outside cache locks, then replaces one material after success. Builders
 own their typed definitions/backend mappings and validate all dependent resources.
-A throw or null candidate retains the previous complete recipe; retained readers
-keep the old material/pipeline/image generation. Provider teardown clears recipes
+A throw or null candidate retains the previous complete material; retained readers
+keep the old material/pipeline/image generation. Provider teardown clears materials
 before other resource caches, with the same loading-owner/domain exclusion.
 The demo loads indexed `main:text` and `main:images` recipes and reloads them on
 the platform owner.
@@ -164,20 +187,20 @@ state/reload, retained-packet and fixture checks.
 
 ## Native bootstrap and binding
 
-The OpenGL provider implements `ShaderAssetBuilder` without exposing GL types to
+The OpenGL provider implements `CE::Assets::Shaders::Builder` without exposing GL types to
 common loading. It validates opaque `bindings.opengl` payloads and links the owned
 prepared source bytes. It constructs materials from the catalogue's retained program
 recipe/executable pair. These optional APIs coexist with the manual builders below.
 
-`OpenGLResourceProvider::build_pipeline(definition, bindings)` links the definition's
-sources and constructs GLSLPipeline after validating reflection. GLSLPipelineBindings
+`CE::Rendering::OpenGL::ResourceProvider::build_pipeline(definition, bindings)` links the definition's
+sources and constructs a native pipeline after validating reflection. `PipelineBindings`
 maps public parameter keys to uniform names; its attribute-name mapping is also
 backend-owned. `build_material(recipe)` checks that its pipeline and default images
 belong to this provider's live native domain. Both builders require the platform
 owner with its rendering context current. Common resource/definition headers remain
 free of GL names and types.
 
-The pipeline owns the linked GLSLProgram and immutable definition. Native stages
+The native pipeline owns the linked OpenGL program and immutable definition. Native stages
 are marked for deletion after attachment and detached after linking, including a
 failed link, so a retained executable does not retain its compilation stages.
 Failure before linking is covered by the program/stage cleanup guards.
@@ -188,12 +211,13 @@ types must match exactly. The initial API rejects uniform arrays and block stora
 and requires every active uniform to appear in the contract. This prevents an
 undeclared mutable program value from silently affecting another draw.
 
-Material::resolve() produces copied values from engine semantics and custom layers.
-Pass those values to GLSLPipeline::bind_parameters() on the platform owner. The
+`CE::Rendering::Resources::Material::resolve()` produces copied values from engine
+semantics and custom layers. Pass those values to
+`CE::Rendering::OpenGL::Pipeline::bind_parameters()` on the platform owner. The
 binder fills omitted active optional uniforms from contract defaults or the mapping's
 missing_value, then validates the complete set, including fallback sampler collisions.
 It checks all image domains/units before changing the program or texture bindings.
-This method applies parameter/resource values only. GLSLPipeline::draw instead
+This method applies parameter/resource values only. The native pipeline's `draw()`
 validates the complete geometry/state/parameter request, reapplies blend equations
 and factors, depth enable/function/write mask, cull enable/face, and CCW front-face
 winding, then binds parameters and geometry and draws. Every draw sets all supported
@@ -221,19 +245,22 @@ TGUI and RmlUi deliberately keep manual recipes. The demo's
 [RmlUi builder](../../projects/apps/demo/src/rmlui-demo.cpp) show adding typed
 definitions and wiring their bindings explicitly. On the OpenGL loading owner,
 with its context current, a textured TGUI material can be built as follows
-(`native` is an `OpenGLResourceProvider&`, `root` is the asset root):
+(`native` is a `CE::Rendering::OpenGL::ResourceProvider&`, `root` is the asset root):
 
 ```cpp
-using namespace CE::Assets;
-PipelineDefinition definition;
-definition.vertex_layout = VertexLayout2D::Position3UV2Color4;
-definition.topology = PrimitiveTopology::Triangles;
-definition.state = {BlendMode::StraightAlpha, DepthMode::Disabled, false, CullMode::None};
+CE::Rendering::Pipelines::Definition definition;
+definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+definition.topology = CE::Rendering::Geometry::Topology::Triangles;
+definition.state = {CE::Rendering::Pipelines::Blend::StraightAlpha,
+                    CE::Rendering::Pipelines::Depth::Disabled, false,
+                    CE::Rendering::Pipelines::Cull::None};
 definition.program_sources = {root / "graphics/shaders/tgui.vert",
                               root / "graphics/shaders/tgui-textured.frag"};
-definition.parameters = {{"projection", ParameterType::Mat4, true, ParameterSemantic::Projection},
-                         {"image", ParameterType::Sampler2D}};
-GLSLPipelineBindings bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
+definition.parameters = {{"projection", CE::Rendering::Parameters::Type::Mat4, true,
+                          CE::Rendering::Parameters::Semantic::Projection},
+                         {"image", CE::Rendering::Parameters::Type::Sampler2D}};
+CE::Rendering::OpenGL::PipelineBindings bindings{{{"projection", "projectionMatrix"},
+                                                {"image", "mytexture"}}};
 auto material = native.build_material({native.build_pipeline(std::move(definition), bindings), {}});
 ```
 
@@ -251,37 +278,38 @@ remain unverified.
 
 ## CPU submission
 
-DrawPacket2D retains geometry, an immutable material generation, and copied resolved
+`CE::Rendering::DrawPacket2D` retains geometry, an immutable material generation, and copied resolved
 parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
 and laid-out font glyphs before rendering, without binding native resources.
-ImageParameter2D selects a public sampler key and unit explicitly. Text layout is
-const and returns glyph placements; deprecated FFont bank selection remains typed.
+`CE::Rendering::Submission::ImageParameter2D` selects a public sampler key and unit explicitly. Text layout is
+const and returns glyph placements; deprecated BitmapFont bank selection remains typed.
 Resolved glyph packets retain the geometry/atlas even after the Font object is released.
-RenderPassWriter validates individual packets or a whole glyph group before publication
-and assigns stable authored order. RenderFrame keeps reusable vector capacity and
+`CE::Rendering::PassWriter` validates individual packets or a whole glyph group before publication
+and assigns stable authored order. `CE::Rendering::Frame` keeps reusable vector capacity and
 releases packet/pass handles on recycle. The OpenGL renderer checks its native
 pipeline domain, then calls the validated fixed-state draw path in authored order.
-Graphic/Tile/TileAnimation and text drawing use CPU submission helpers.
+Whole-image graphics, tiles, tile-animation values and text use
+`CE::Rendering::Submission` CPU helpers.
 Their [asset/playback contract](../assets/asset-values-and-playback.md) defines
 metadata and glyph units, direct-construction limits and image-key insertion.
 Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
-FFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
-place and rotate text through DrawStyle2D.model_matrix. Legacy STBFont uses a supplied
+BitmapFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
+place and rotate text through `CE::Rendering::DrawStyle2D::model_matrix`. Legacy AsciiFont uses a supplied
 font file and an ASCII atlas. The [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
-provides retained shaped glyph pages through its `RenderedText` submission overload.
+provides retained shaped glyph pages through its `CE::Text::Rendering::Generation` submission overload.
 Opt-in [positioned text runs](../assets/text-layout.md#positioned-text-runs) prepare
 placements once and submit contiguous atlas-page ranges with a whole-text transform.
 They preserve order, clipping, sampling and retained generations. General packet
 merging and reorder-safe sorting remain separate extensions; the renderer still
 plays authored packets in order.
-See [FFont deprecation](../resources/legacy-ffont.md).
+See [BitmapFont deprecation](../resources/legacy-ffont.md).
 
 ### Frame storage and writers
 
 Frame writers borrow a slot; they do not lock it or publish it across threads.
 The runtime's [frame boundary](../runtime/runtime-frame-boundary.md) owns that transfer.
 Only active passes are visible through `passes()`, whose span borrows the slot and
-is invalidated by outer-vector growth. A RenderPassWriter uses an index that survives
+is invalidated by outer-vector growth. A pass writer uses an index that survives
 that growth, but references from `parameters()`/`constraints()` do not. Keep every
 writer within one exclusive preparation phase, before publication or recycling.
 
@@ -302,7 +330,7 @@ over backend execution.
 
 ### Camera observations
 
-CameraBase is unsynchronized mutable CPU state. Setters and matrix references belong
+`CE::Rendering::CameraBase` is unsynchronized mutable CPU state. Setters and matrix references belong
 to one owner; a revision is a change counter, not an atomic publication mechanism.
 Copy matrices into a pass before sharing them with playback. Changed framebuffer
 size, view or perspective advances the revision once, while equal configurations
@@ -311,8 +339,8 @@ checked for finiteness or invertibility.
 
 Framebuffer dimensions are pixels. Negative dimensions throw before changing the
 camera; zero dimensions are retained while projection clamps each axis to at least
-one. Camera2D uses GLM orthographic bounds `[0, width]` and `[0, height]`, Y-up, with
-near/far 0/1. Camera3D uses vertical FOV in degrees and framebuffer aspect; finite
+one. `CE::Rendering::Camera2D` uses GLM orthographic bounds `[0, width]` and `[0, height]`, Y-up, with
+near/far 0/1. `CE::Rendering::Camera3D` uses vertical FOV in degrees and framebuffer aspect; finite
 `0 < FOV < 180` and `0 < near < far` are required, with plane distances in view units.
 Invalid perspective values leave the old configuration unchanged. Neither camera
 selects renderer depth policy or converts logical window coordinates to framebuffer

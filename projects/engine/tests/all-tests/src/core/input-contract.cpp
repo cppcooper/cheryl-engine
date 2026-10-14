@@ -12,32 +12,32 @@
 #endif
 
 namespace {
-    constexpr CE::Input::DeviceButtonId test_button = 65;
+    constexpr CE::Input::ControlId test_button = 65;
 
-    class TestWindow final : public CE::iWindow {
+    class TestWindow final : public CE::Platform::Window {
     public:
-        [[nodiscard]] CE::ViewPort<int> logical_size() const override { return {640, 480}; }
-        [[nodiscard]] CE::FramebufferSize framebuffer_size() const override { return {640, 480}; }
-        [[nodiscard]] CE::Enum::window_mode mode() const override { return CE::Enum::window_mode::NORMAL; }
+        [[nodiscard]] CE::Platform::Dimensions<int> logical_size() const override { return {640, 480}; }
+        [[nodiscard]] CE::Platform::FramebufferSize framebuffer_size() const override { return {640, 480}; }
+        [[nodiscard]] CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
         [[nodiscard]] bool should_close() const override { return false; }
         void resize(int, int) override {}
-        void set_mode(CE::Enum::window_mode) override {}
+        void set_mode(CE::Platform::WindowMode) override {}
         void hide_cursor(bool) const override {}
     };
 
     /** Emits a button transition while attached; rejects polls after detachment. */
-    class BufferedInput final : public CE::Input::iInputSystem {
-        CE::iWindow* window_ = nullptr;
-        CE::Input::InputBindings bindings_;
+    class BufferedInput final : public CE::Input::System {
+        CE::Platform::Window* window_ = nullptr;
+        CE::Input::Actions::Bindings bindings_;
 
     public:
         bool advertises_events = false;
 
-        [[nodiscard]] bool supports(CE::Input::InputMode mode) const override {
-            return mode == CE::Input::InputMode::State || (advertises_events && mode == CE::Input::InputMode::Events);
+        [[nodiscard]] bool supports(CE::Input::Capture::Channel mode) const override {
+            return mode == CE::Input::Capture::Channel::State || (advertises_events && mode == CE::Input::Capture::Channel::Events);
         }
 
-        void initialize(CE::iWindow& window) override { window_ = &window; }
+        void initialize(CE::Platform::Window& window) override { window_ = &window; }
 
         void poll() override {
             if (!window_)
@@ -48,7 +48,7 @@ namespace {
 
         void deinitialize() override { window_ = nullptr; }
 
-        [[nodiscard]] CE::Input::InputBindings& bindings() override { return bindings_; }
+        [[nodiscard]] CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
         [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
         [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
@@ -59,9 +59,9 @@ TEST(input_contract, alternate_window) {
     // Attach the in-memory input system to an interface-only window and bind
     // one keyboard event before polling the adapter.
     TestWindow window;
-    std::unique_ptr<CE::Input::iInputSystem> input = std::make_unique<BufferedInput>();
+    std::unique_ptr<CE::Input::System> input = std::make_unique<BufferedInput>();
     input->initialize(window);
-    constexpr CE::Input::ActionId action{1};
+    constexpr CE::Input::Actions::Id action{1};
     (void)input->bindings().bind_button({input->keyboard_id(), test_button}, action);
     input->poll();
     const auto published = input->action_snapshot();
@@ -74,9 +74,9 @@ TEST(input_contract, alternate_window) {
 
 TEST(input_contract, unsupported_capabilities) {
     BufferedInput input;
-    auto state = input.capture(CE::Input::InputMode::State);
-    EXPECT_THROW((void)input.capture(CE::Input::InputMode::Events), CE::Exceptions::failed_operation);
-    EXPECT_THROW((void)input.capture(CE::Input::InputMode::Text), CE::Exceptions::failed_operation);
+    auto state = input.capture(CE::Input::Capture::Channel::State);
+    EXPECT_THROW((void)input.capture(CE::Input::Capture::Channel::Events), CE::Exceptions::failed_operation);
+    EXPECT_THROW((void)input.capture(CE::Input::Capture::Channel::Text), CE::Exceptions::failed_operation);
     EXPECT_THROW((void)input.routing(), CE::Exceptions::failed_operation);
 }
 

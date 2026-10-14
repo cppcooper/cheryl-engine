@@ -14,31 +14,36 @@ namespace {
     using namespace CE::Input;
     using namespace CE::UI::TGUI;
 
-    class Input final : public iInputSystem {
-        InputBindings bindings_;
+    class Input final : public CE::Input::System {
+        CE::Input::Actions::Bindings bindings_;
 
     public:
         bool text_supported = true;
         bool focus_supported = true;
 
-        void initialize(CE::iWindow&) override {}
+        void initialize(CE::Platform::Window&) override {}
         void poll() override {}
         void deinitialize() override {}
-        InputBindings& bindings() override { return bindings_; }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         DeviceId keyboard_id() const override { return 1; }
         DeviceId mouse_id() const override { return 2; }
         DeviceId gamepad_id() const override { return 3; }
-        bool supports(const InputMode mode) const override { return mode != InputMode::Text || text_supported; }
+        bool supports(const CE::Input::Capture::Channel mode) const override {
+            return mode != CE::Input::Capture::Channel::Text || text_supported;
+        }
         bool supports_focus() const override { return focus_supported; }
 
-        std::shared_ptr<const PollSnapshot> emit(const InputRecordData data, const DeviceKind kind = DeviceKind::Keyboard) {
+        std::shared_ptr<const PollSnapshot> emit(const CE::Input::Events::Payload data, const DeviceKind kind = DeviceKind::Keyboard) {
             begin_input_poll();
             capture_buffer().record(kind == DeviceKind::Mouse ? mouse_id() : keyboard_id(), kind, data);
             return publish_input();
         }
     };
 
-    ButtonEvent key(const KeyboardKey id, const Modifiers modifiers = Modifiers::None, const ButtonPhase phase = ButtonPhase::Press) {
+    CE::Input::Events::Button
+    key(const KeyboardKey id,
+        const Modifiers modifiers = Modifiers::None,
+        const CE::Input::Events::ButtonPhase phase = CE::Input::Events::ButtonPhase::Press) {
         return {800, phase, modifiers, -1, -1, id};
     }
 }
@@ -59,12 +64,12 @@ TEST(ui_tgui_session, lifecycle) {
         EXPECT_FALSE(capabilities.cursor);
         EXPECT_FALSE(capabilities.ime);
         EXPECT_TRUE(session.owns_keyboard_focus());
-        const auto text = input.emit(TextEvent{U'a'});
+        const auto text = input.emit(CE::Input::Events::Text{U'a'});
         ASSERT_EQ(text->records.size(), 1u);
         EXPECT_EQ(text->records[0].target, 7u);
         session.release_keyboard_focus();
         EXPECT_FALSE(session.owns_keyboard_focus());
-        EXPECT_TRUE(input.emit(TextEvent{U'a'})->records.empty());
+        EXPECT_TRUE(input.emit(CE::Input::Events::Text{U'a'})->records.empty());
     }
     EXPECT_FALSE(tgui::isBackendSet());
     EXPECT_TRUE(input.emit(key(KeyboardKey::A))->records.empty());
@@ -81,7 +86,7 @@ TEST(ui_tgui_session, routing) {
     session.gui().add(field);
     session.request_keyboard_focus();
     field->setFocused(true);
-    const auto first = input.emit(TextEvent{U'a'});
+    const auto first = input.emit(CE::Input::Events::Text{U'a'});
     session.handle_input(first->records, false);
     EXPECT_EQ(field->getText(), "a");
     auto foreign = first->records;
@@ -91,7 +96,7 @@ TEST(ui_tgui_session, routing) {
     session.request_keyboard_focus();
     session.handle_input(first->records, false); // Same target, obsolete lease.
     EXPECT_EQ(field->getText(), "a");
-    const auto pending = input.emit(TextEvent{U'b'});
+    const auto pending = input.emit(CE::Input::Events::Text{U'b'});
     auto newer_owner = input.routing().focus(9);
     session.handle_input(pending->records, false); // Poll-latched delivery drains.
     EXPECT_EQ(field->getText(), "ab");
@@ -124,7 +129,7 @@ TEST(ui_tgui_session, modifiers_clipboard) {
     const auto shift = input.emit(key(KeyboardKey::LeftShift, Modifiers::Shift));
     session.handle_input(shift->records, false);
     EXPECT_TRUE(session.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
-    auto release = input.emit(key(KeyboardKey::LeftShift, Modifiers::None, ButtonPhase::Release))->records;
+    auto release = input.emit(key(KeyboardKey::LeftShift, Modifiers::None, CE::Input::Events::ButtonPhase::Release))->records;
     release[0].target = 99; // Even an unselected release updates the snapshot.
     session.handle_input(release, false);
     EXPECT_FALSE(session.gui().isKeyboardModifierPressed(tgui::Event::KeyModifier::Shift));
@@ -168,7 +173,10 @@ TEST(ui_tgui_session, pointer_selection) {
     field->setSize({200, 30});
     session.gui().add(field);
     const auto click = input.emit(
-        ButtonEvent{800, ButtonPhase::Press, Modifiers::None, -1, -1, KeyboardKey::Unknown, MouseButton::Left, PointerEvent{20, 20}},
+        CE::Input::Events::Button{
+            800, CE::Input::Events::ButtonPhase::Press, Modifiers::None, -1, -1, KeyboardKey::Unknown, MouseButton::Left,
+            CE::Input::Events::Pointer{20, 20}
+        },
         DeviceKind::Mouse
     );
     session.handle_input(click->records, false);
@@ -176,7 +184,7 @@ TEST(ui_tgui_session, pointer_selection) {
     session.request_keyboard_focus();
     session.handle_input(click->records, true);
     EXPECT_TRUE(field->isFocused());
-    const auto text = input.emit(TextEvent{U'a'});
+    const auto text = input.emit(CE::Input::Events::Text{U'a'});
     session.handle_input(text->records, true);
     EXPECT_EQ(field->getText(), "a");
 }
@@ -189,7 +197,7 @@ TEST(ui_tgui_session, font_generations) {
     label->setTextSize(32);
     session.gui().add(label);
     const auto first = session.record();
-    std::shared_ptr<const CE::Assets::DecodedImage> atlas;
+    std::shared_ptr<const CE::Assets::Images::Decoded> atlas;
     for (const auto& draw : first.draws())
         if (draw.texture)
             atlas = draw.texture;

@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace CE::SubSystems {
+namespace CE::Events {
     void EventSystem::dispatch(const std::string& event, const std::any& payload) {
         bus_.dispatch(event, payload);
     }

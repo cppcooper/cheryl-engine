@@ -79,9 +79,17 @@ endif()
 if(CHERYL_BUILD_DEMO AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
     add_subdirectory(projects/apps/demo)
 endif()
+if(CHERYL_BUILD_FIRST_GAME AND CHERYL_BUILD_NATIVE_GLFW AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
+    add_subdirectory(projects/apps/first-game)
+endif()
 
 if(CHERYL_BUILD_SDK)
     include(cmake/CherylSdk.cmake)
 endif()
 
 cheryl_check_option_requirements()
+
+if(CHERYL_BUILD_DOCS)
+    include(cmake/CherylDocumentation.cmake)
+    cheryl_add_documentation_targets("${CHERYL_REPOSITORY_ROOT}")
+endif()

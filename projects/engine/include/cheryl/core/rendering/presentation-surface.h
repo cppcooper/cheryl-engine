@@ -1,14 +1,14 @@
 #pragma once
 
-namespace CE::RenderAPIs {
+namespace CE::Rendering {
     /** Presents a completed frame on a window owned by the display adapter.
      * A graphics backend can extend this interface with its context requirements.
      * Call on the platform/presentation owner while that borrowed window is alive;
-     * presentation does not publish simulation state or retain a RenderFrame.
+     * presentation does not publish simulation state or retain a CE::Rendering::Frame.
      */
-    class iPresentationSurface {
+    class PresentationSurface {
     public:
-        virtual ~iPresentationSurface() = default;
+        virtual ~PresentationSurface() = default;
         virtual void present() = 0;
     };
 }

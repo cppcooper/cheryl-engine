@@ -9,42 +9,47 @@
 #endif
 
 namespace {
-    class ContractGeometry final : public CE::Assets::Geometry2D {
+    class ContractGeometry final : public CE::Rendering::Geometry::Buffer2D {
     public:
-        CE::Assets::VertexLayout2D vertex_layout() const noexcept override { return CE::Assets::VertexLayout2D::Position3UV2; }
-        CE::Assets::PrimitiveTopology topology() const noexcept override { return CE::Assets::PrimitiveTopology::Triangles; }
+        CE::Rendering::Geometry::Layout2D vertex_layout() const noexcept override {
+            return CE::Rendering::Geometry::Layout2D::Position3UV2;
+        }
+        CE::Rendering::Geometry::Topology topology() const noexcept override { return CE::Rendering::Geometry::Topology::Triangles; }
         std::size_t vertex_count() const noexcept override { return 6; }
         void bind() const override { FAIL() << "Resolution must not bind geometry"; }
         void draw(std::size_t, std::size_t) const override { FAIL() << "Resolution must not issue native draws"; }
     };
-    class ContractPipeline final : public CE::Assets::Pipeline {
+    class ContractPipeline final : public CE::Rendering::Resources::Pipeline {
     public:
         ContractPipeline()
-        : Pipeline(make_definition()) {}
+        : CE::Rendering::Resources::Pipeline(make_definition()) {}
 
     private:
-        static CE::Assets::PipelineDefinition make_definition() {
-            using namespace CE::Assets;
-            PipelineDefinition definition;
+        static CE::Rendering::Pipelines::Definition make_definition() {
+            CE::Rendering::Pipelines::Definition definition;
             definition.program_sources = {"contract.vert", "contract.frag"};
-            definition.parameters = {{"view", ParameterType::Mat4, true, ParameterSemantic::View},
-                {"model", ParameterType::Mat4, true, ParameterSemantic::Model},
-                {"alpha", ParameterType::Float, true, ParameterSemantic::Alpha},
-                {"scale", ParameterType::Float, true, ParameterSemantic::Scale}};
+            definition.parameters = {
+                {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View},
+                {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+                {"alpha", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Alpha},
+                {"scale", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Scale}
+            };
             return definition;
         }
     };
 }
 
 TEST(draw_contract, material_resolution) {
-    CE::RenderAPIs::DrawStyle2D style;
-    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<ContractPipeline>(), {}});
+    CE::Rendering::DrawStyle2D style;
+    style.material = std::make_shared<CE::Rendering::Resources::Material>(
+        CE::Rendering::Materials::Definition{std::make_shared<ContractPipeline>(), {}}
+    );
     style.alpha = 0.4f;
     style.scale = 2.0f;
     style.model_matrix[3][0] = 42.0f;
-    CE::Assets::ShaderPass pass;
+    CE::Rendering::Parameters::PassSemantics pass;
     pass.view[3][1] = 19.0f;
-    const auto packet = CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, pass, {}, {});
+    const auto packet = CE::Rendering::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, pass, {}, {});
     pass.view[3][1] = 100.0f;
     style.model_matrix[3][0] = 0.0f;
     style.material.reset();
@@ -56,14 +61,18 @@ TEST(draw_contract, material_resolution) {
 }
 
 TEST(draw_contract, copied_clip) {
-    CE::RenderAPIs::DrawStyle2D style;
-    style.material = std::make_shared<CE::Assets::Material>(CE::Assets::MaterialDefinition{std::make_shared<ContractPipeline>(), {}});
-    style.clip = CE::RenderAPIs::ClipRegion2D{{10, 20, 40, 60}, 100, 100};
-    const auto packet = CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {});
+    CE::Rendering::DrawStyle2D style;
+    style.material = std::make_shared<CE::Rendering::Resources::Material>(
+        CE::Rendering::Materials::Definition{std::make_shared<ContractPipeline>(), {}}
+    );
+    style.clip = CE::Rendering::ClipRegion2D{{10, 20, 40, 60}, 100, 100};
+    const auto packet = CE::Rendering::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {});
     style.clip->rectangle.right = 80;
     ASSERT_TRUE(packet.clip);
     EXPECT_EQ(packet.clip->rectangle.right, 40);
     style.clip->logical_width = 0;
-    EXPECT_THROW((void)CE::RenderAPIs::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {}),
-        CE::Exceptions::invalid_args);
+    EXPECT_THROW(
+        (void)CE::Rendering::resolve_draw_packet(std::make_shared<ContractGeometry>(), 0, 6, style, {}, {}, {}),
+        CE::Exceptions::invalid_args
+    );
 }

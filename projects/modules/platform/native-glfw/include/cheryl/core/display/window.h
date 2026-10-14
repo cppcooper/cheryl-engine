@@ -10,7 +10,9 @@
 class GLFWwindow;
 class GLFWmonitor;
 
-namespace CE {
+namespace CE::Platform::GLFW {
+    class DisplaySystem;
+
     /** Owns a GLFW window and its logical/framebuffer dimensions on the platform
      * thread. Native callbacks retain their first failure; normal polling and
      * explicit resize/mode boundaries consume it through check_native_failure().
@@ -18,11 +20,11 @@ namespace CE {
      * resize/mode queries; they neither pump events nor synchronize cross-thread reads.
      * Input and graphics users release this borrowed native window before destruction.
      */
-    class Window final : public iWindow {
-        ViewPort<int> logical_size_;
-        FramebufferSize framebuffer_size_{};
-        Enum::window_mode window_mode_;
-        Monitor monitor_;
+    class Window final : public ::CE::Platform::Window {
+        ::CE::Platform::Dimensions<int> logical_size_;
+        ::CE::Platform::FramebufferSize framebuffer_size_{};
+        ::CE::Platform::WindowMode window_mode_;
+        ::CE::Platform::Monitor monitor_;
         GLFWmonitor* glfw_monitor_;
         GLFWwindow* glfw_window_;
         int windowed_x_ = 0;
@@ -30,7 +32,7 @@ namespace CE {
         int windowed_width_;
         int windowed_height_;
         mutable std::exception_ptr native_failure_;
-        const Diagnostics::DomainId domain_ = Diagnostics::next_domain_id();
+        const ::CE::Diagnostics::DomainId domain_ = ::CE::Diagnostics::next_domain_id();
         mutable std::uint64_t resize_observations_ = 0;
         mutable std::chrono::steady_clock::time_point next_diagnostic_;
 
@@ -43,11 +45,11 @@ namespace CE {
 
         // Borrowed until destruction. Preserve Window's GLFW user pointer and callbacks.
         [[nodiscard]] GLFWwindow* native_handle() const { return glfw_window_; }
-        [[nodiscard]] Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
-        [[nodiscard]] ViewPort<int> logical_size() const override { return logical_size_; }
-        [[nodiscard]] FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
+        [[nodiscard]] ::CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
+        [[nodiscard]] ::CE::Platform::Dimensions<int> logical_size() const override { return logical_size_; }
+        [[nodiscard]] ::CE::Platform::FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
         // Selected mode; a later callback failure does not roll this value back.
-        [[nodiscard]] Enum::window_mode mode() const override { return window_mode_; }
+        [[nodiscard]] ::CE::Platform::WindowMode mode() const override { return window_mode_; }
         [[nodiscard]] bool should_close() const override;
         void check_native_failure() const override;
 
@@ -59,15 +61,15 @@ namespace CE {
          * FULLSCREEN attaches the selected monitor at its captured dimensions. Refresh
          * observed sizes afterward. Unknown modes fail; callback failures do not roll back.
          */
-        void set_mode(Enum::window_mode mode) override;
+        void set_mode(::CE::Platform::WindowMode mode) override;
         void hide_cursor(bool hide) const override;
 
     private:
-        friend class DisplaySystem;
+        friend class ::CE::Platform::GLFW::DisplaySystem;
         Window(
-            const Monitor& monitor,
+            const ::CE::Platform::Monitor& monitor,
             GLFWmonitor* native_monitor,
-            Enum::window_mode mode,
+            ::CE::Platform::WindowMode mode,
             int width,
             int height,
             const std::string& title
@@ -76,6 +78,5 @@ namespace CE {
         static void on_window_size(GLFWwindow* window, int width, int height) noexcept;
         static void on_framebuffer_size(GLFWwindow* window, int width, int height) noexcept;
         void update_framebuffer_size(int width, int height);
-
     };
 }

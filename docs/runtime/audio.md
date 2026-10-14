@@ -2,12 +2,12 @@
 
 The public [audio contracts](../../projects/engine/include/cheryl/audio.h) belong
 to Engine and contain no SDK, device or graphics types. Applications own an audio
-system independently of `EngineContext` and compose a selected audio module through
+system independently of `CE::Runtime::Context` and compose a selected audio module through
 its public CMake target. Engine has no reverse dependency on that module.
 
 ## Clips and voices
 
-`Audio::Clip::from_samples` takes owned interleaved float PCM, with mono/stereo
+`CE::Audio::Clip::from_samples` takes owned interleaved float PCM, with mono/stereo
 channels and a sample rate between 8 and 192 kHz. Data is nonempty, frames are
 complete, and every sample is finite. The nominal sample range is `[-1, 1]`;
 storage does not clamp samples or change their rate. Copies share immutable
@@ -15,7 +15,7 @@ storage. Moving preserves the original valid snapshot. Clip creation does not
 open a device. Its frame count and duration describe source audio, independently
 of a mixer's output rate.
 
-`Audio::System::play` creates a voice with an independent cursor. Voices can share
+`CE::Audio::System::play` creates a voice with an independent cursor. Voices can share
 a clip without sharing playback progress. `stream` opens file-backed playback for
 music; the file must remain available until playback ends. Decode and initial file
 opening are synchronous preparation operations, so applications perform them at
@@ -60,6 +60,8 @@ Create the system before playback. Settle all producers before destroying it.
 and leaves surviving handles safe. A system cannot reopen; construct another
 system for a new session. Audio need not share the graphics owner's thread, and
 this contract does not add audio to the runtime's existing adapter teardown.
+
+## Backends and limits
 
 The [miniaudio module](../../projects/modules/audio/miniaudio/README.md) supplies CPU
 decode, explicit device/offline output and streamed playback. Its independent

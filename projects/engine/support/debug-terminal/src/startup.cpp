@@ -5,8 +5,8 @@
 #include <cstdio>
 #include <exception>
 
-namespace CE::DebugTerminal {
-    int run(const int argc, char** argv, const ApplicationMain application, const Start start) {
+namespace CE::Application::DebugTerminal {
+    int run(const int argc, char** argv, const Main application, const Start start) {
         if (!start)
             return application(argc, argv);
 
@@ -14,9 +14,12 @@ namespace CE::DebugTerminal {
         try {
             arguments = Detail::parse_arguments(argc, argv, CHERYL_TERMINAL_AUTOMATIC != 0);
             if (arguments.help) {
-                std::fputs("Debug terminal options:\n"
-                           "  --debug-terminal     Display the native output terminal (automatic in Debug)\n"
-                           "  --no-debug-terminal  Use inherited output without a native terminal\n\n", stdout);
+                std::fputs(
+                    "Debug terminal options:\n"
+                    "  --debug-terminal     Display the native output terminal (automatic in Debug)\n"
+                    "  --no-debug-terminal  Use inherited output without a native terminal\n\n",
+                    stdout
+                );
             }
             if (arguments.enabled && !Detail::discovery_environment())
                 start();
