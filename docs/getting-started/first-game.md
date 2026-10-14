@@ -322,7 +322,8 @@ The vertex shader applies the copied pass and draw transforms:
 Material bindings map public parameter keys to the shader's native uniform names.
 Your common submission code uses `image`, while this OpenGL recipe maps it to
 `mytexture`. {cpp:func}`CE::Assets::resolve_sprite` and
-{cpp:func}`CE::Assets::resolve_text` resolve complete CPU packets without binding
+{cpp:func}`CE::Assets::resolve_text <CE::Assets::resolve_text(const RenderedText&, const RenderAPIs::DrawStyle2D&, const SubmissionContext2D&)>`
+resolve complete CPU packets without binding
 graphics state or uploading resources. Adding those packets to the pass retains
 their geometry, materials, and selected images and copies their parameter values.
 The renderer receives no borrowed actor, camera, or playback cursor. The
