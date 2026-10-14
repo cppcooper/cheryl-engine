@@ -39,6 +39,7 @@ def main(arguments=None):
                  f"-DCHERYL_BUILD_TESTS={flag(testing)}", "-DCHERYL_BUILD_ALL_TESTS=OFF",
                  f"-DCHERYL_BUILD_ACCEPTANCE_TESTS={flag(testing)}", "-DCHERYL_BUILD_CONSUMER_TESTS=ON",
                  "-DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF", f"-DCHERYL_BUILD_DEMO={flag(modules)}",
+                 f"-DCHERYL_BUILD_FIRST_GAME={flag(modules)}",
                  f"-DCHERYL_BUILD_NATIVE_GLFW={flag(modules)}", f"-DCHERYL_BUILD_OPENGL={flag(modules)}",
                  f"-DCHERYL_BUILD_UI_TGUI={flag(modules)}", f"-DCHERYL_BUILD_UI_RMLUI={flag(modules)}",
                  f"-DCHERYL_BUILD_AUDIO_MINIAUDIO={flag(modules)}",
@@ -72,7 +73,7 @@ def main(arguments=None):
     if modules:
         owners = ("native-glfw", "opengl", "ui-tgui", "ui-rmlui", "audio-miniaudio")
         module_suites = [f"tests-{owner}" for owner in owners] + ["tests-ui-coexist"]
-        targets += module_suites + [f"consumer-module-{owner}" for owner in owners] + ["demo"]
+        targets += module_suites + [f"consumer-module-{owner}" for owner in owners] + ["demo", "first-game"]
         suites += module_suites
         consumers += [f"cheryl-{owner}-consumer" for owner in owners]
     run(configure, source, environment)
