@@ -347,7 +347,7 @@ Source-target composition does not prove installed/imported package support.
 and rendering in both runtime modes. It checks ordered colored/clipped packets,
 keyboard/text focus with controller gameplay, queued immutable image replacement
 and retained resources through teardown. It supplies synthetic ASCII metrics to
-legacy STBFont, so it needs no host font and does not establish Unicode appearance.
+legacy `CE::Text::Legacy::AsciiFont`, so it needs no host font and does not establish Unicode appearance.
 
 With the Engine-only configuration above and acceptance selected, run:
 

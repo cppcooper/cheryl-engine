@@ -77,8 +77,8 @@ not establish those graphics and input observations.
 ## 2. Start the engine and keep its owners alive
 
 The application's entry point creates
-{cpp:class}`CE::Engine::Startup` through
-{cpp:func}`CE::Engine::make_glfw_opengl_startup`. That factory selects the native
+{cpp:class}`CE::Application::Startup` through
+{cpp:func}`CE::Application::GLFWOpenGL::make_startup`. That factory selects the native
 GLFW window/input adapter and the OpenGL renderer and resource provider.
 
 ```{literalinclude} ../../projects/apps/first-game/src/main.cpp
@@ -94,20 +94,20 @@ supplied by the example's CMake target, so launching the executable from another
 directory still selects the same assets. An explicit relative override resolves
 from the application's working directory.
 
-Help and argument errors return a {cpp:struct}`CE::Engine::StartupResult` with no
+Help and argument errors return a {cpp:struct}`CE::Application::StartupResult` with no
 engine; return its exit code when `should_start()` is false. On success, construct
 your game from the owned context and use `make_runtime(game)` to apply the parsed
 execution, input polling, and timing options together.
 
 Declare the result, game, and runtime in that order. The game borrows the
-{cpp:class}`CE::Engine::EngineContext`, and the runtime borrows both. Their
+{cpp:class}`CE::Runtime::Context`, and the runtime borrows both. Their
 declaration order keeps those owners alive through runtime destruction. Add
 `--concurrent` when launching to place simulation on a separate thread; the same
 game hooks and resource ownership rules apply.
 
 ## 3. Give the game its hooks and controls
 
-Implement {cpp:struct}`CE::GFramework::AbstractGame` and keep the state your game
+Implement {cpp:struct}`CE::Game::AbstractGame` and keep the state your game
 needs in that object. The example owns its camera, bindings, resources, and actor:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.h
@@ -137,7 +137,7 @@ the platform owner, so define them during initialization:
 ```
 
 The native key codes appear at this boundary. Gameplay reads the game's semantic
-{cpp:struct}`CE::Input::ActionId` values instead. Retaining each returned binding
+{cpp:struct}`CE::Input::Actions::Id` values instead. Retaining each returned binding
 ID lets the game remove its own mappings during cleanup. The
 [input guide](../runtime/input-state-model.md) covers additional actions, events,
 and focus handling.
@@ -168,7 +168,7 @@ Unlisted JSON files are ignored. The listed paths, texture references, and shade
 source references resolve from the enclosing `graphics` directory. The `$schema`
 URLs support editor validation; runtime loading uses local files.
 
-Create an owned {cpp:struct}`CE::Assets::Loader` and load the root during `init()`:
+Create an owned {cpp:struct}`CE::Assets::Loading::Loader` and load the root during `init()`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -191,8 +191,8 @@ The [asset-loading guide](../assets/asset-loading.md) explains publication and
 retry behavior.
 
 Resolve required named resources during initialization and check each result.
-{cpp:struct}`CE::Assets::SpriteMgr` returns a retained sprite handle or null;
-{cpp:struct}`CE::Assets::ShaderAssetMgr` supplies the materials used for drawing.
+{cpp:struct}`CE::Assets::Sprites::Manager` returns a retained sprite handle or null;
+{cpp:struct}`CE::Assets::Shaders::Manager` supplies the materials used for drawing.
 For this manifest, `get_asset("first-game", "actor")` identifies
 `first-game:actor` exactly. `get_assets("first-game")` provides a namespace
 collection keyed by local names when your game needs several sprites.
@@ -242,9 +242,9 @@ is still considered. A missing family is skipped, so the score remains usable
 without that system installation.
 
 {cpp:func}`CE::Text::layout_text` shapes the UTF-8 message using the selected
-font data. {cpp:func}`CE::Assets::prepare_text` creates owned CPU atlas pages and
-glyph geometry. {cpp:func}`CE::Assets::upload_text` uses the resource provider to
-create a {cpp:class}`CE::Assets::RenderedText` generation. Initial upload is safe
+font data. {cpp:func}`CE::Text::Rendering::prepare` creates owned CPU atlas pages and
+glyph geometry. {cpp:func}`CE::Text::Rendering::upload` uses the resource provider to
+create a {cpp:class}`CE::Text::Rendering::Generation` generation. Initial upload is safe
 here because `init()` runs on the graphics owner.
 
 The retained text owns the layout and matching resources it needs after the local
@@ -256,7 +256,7 @@ replacement ownership.
 
 ## 7. Update simulation and select image cells
 
-Use {cpp:struct}`CE::GFramework::TickContext` during each update. It supplies the
+Use {cpp:struct}`CE::Game::TickContext` during each update. It supplies the
 simulation delta, accumulated semantic input, and copied window dimensions:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
@@ -280,7 +280,7 @@ The sprite definition divides the 32 × 16 PNG into two 16 × 16 cells:
 A grid describes which image rectangle each cell selects. Space advances the
 actor's cell index explicitly. This manifest supplies no timed animation clip.
 For a sprite with authored timed clips, keep a separate
-{cpp:class}`CE::Assets::SpriteAnimation` cursor per entity and advance it using
+{cpp:class}`CE::Assets::Sprites::Animation` cursor per entity and advance it using
 simulation time. The shared cached sprite holds definitions and resources;
 its entities choose playback. See
 [asset values and playback](../assets/asset-values-and-playback.md).
@@ -297,11 +297,11 @@ retained resources. The renderer consumes those resolved packets later:
 :dedent: 4
 ```
 
-{cpp:class}`CE::Camera2D` uses Y-up pixel coordinates. Opening a pass copies its
+{cpp:class}`CE::Rendering::Camera2D` uses Y-up pixel coordinates. Opening a pass copies its
 projection and view matrices. The
-{cpp:struct}`CE::Assets::SubmissionContext2D` carries those pass values and
+{cpp:struct}`CE::Rendering::Submission::Context2D` carries those pass values and
 selects the public `image` parameter at texture unit zero. Each
-{cpp:struct}`CE::RenderAPIs::DrawStyle2D` chooses a material and supplies the
+{cpp:struct}`CE::Rendering::DrawStyle2D` chooses a material and supplies the
 draw's model transform, scale, and alpha.
 
 The checked-in
@@ -321,8 +321,8 @@ The vertex shader applies the copied pass and draw transforms:
 
 Material bindings map public parameter keys to the shader's native uniform names.
 Your common submission code uses `image`, while this OpenGL recipe maps it to
-`mytexture`. {cpp:func}`CE::Assets::resolve_sprite` and
-{cpp:func}`CE::Assets::resolve_text <std::vector<RenderAPIs::DrawPacket2D> CE::Assets::resolve_text(const RenderedText&, const RenderAPIs::DrawStyle2D&, const SubmissionContext2D&)>`
+`mytexture`. {cpp:func}`CE::Rendering::Submission::resolve_sprite` and
+{cpp:func}`CE::Rendering::Submission::resolve_text <std::vector<CE::Rendering::DrawPacket2D> CE::Rendering::Submission::resolve_text(const CE::Text::Rendering::Generation&, const CE::Rendering::DrawStyle2D&, const CE::Rendering::Submission::Context2D&)>`
 resolve complete CPU packets without binding
 graphics state or uploading resources. Adding those packets to the pass retains
 their geometry, materials, and selected images and copies their parameter values.
@@ -354,7 +354,7 @@ defines the complete shutdown ordering.
 
 The synchronous path makes initial ownership clear. For larger loads, use an
 Engine worker group for `Loader::prepare()` and submit the resulting owned
-`PreparedAssets` to the platform dispatcher for `upload()`. Simulation checks
+`CE::Assets::Loading::Prepared` to the platform dispatcher for `upload()`. Simulation checks
 futures for readiness and adopts complete retained results during update. Keep
 the loader alive through preparation and handoff, and keep the prior resource
 generation while its replacement is pending. Avoid waiting on the thread that

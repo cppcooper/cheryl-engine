@@ -10,15 +10,23 @@ wider CJK/script acceptance remains in the
 Display source maps do not establish caret movement, selection or IME/preedit.
 
 The service pairs face-qualified glyph placements with complete immutable page
-generations. Legacy `Font` exposes one atlas/geometry pair, which cannot represent
-that fallback model; its STBFont/FFont interfaces and toolkit-owned text retain
-their separate roles.
+generations. Its public stages have separate owners:
+
+| Namespace | Ownership |
+| --- | --- |
+| `CE::Text` | Immutable font collections, UTF-8/source records and shaped layouts; no uploaded resources. |
+| `CE::Text::Rendering` | `Prepared` owns CPU layout/raster pages; `Generation` retains their uploaded geometry/atlas handles. |
+| `CE::Rendering::Submission` | `resolve_text()` and `resolve_text_runs()` copy draw values into retained packets. |
+
+`CE::Text::Legacy::Font` exposes one atlas/geometry pair, which cannot represent
+that fallback model. Its `AsciiFont`/`BitmapFont` implementations and toolkit-owned
+text retain their separate roles.
 
 ## Font selection
 
 `CE::Text::FontCollection::load(selection)` creates an immutable CPU snapshot of font
-bytes. `FontSelection::preferred` interleaves application `FontFile` paths/collection
-face indices and `SystemFontFamily` names in the application's desired order. Face
+bytes. `FontSelection::preferred` interleaves application `CE::Text::FontFile` paths/collection
+face indices and `CE::Text::SystemFontFamily` names in the application's desired order. Face
 indices select ordinary collection faces, with a variable font's default coordinates;
 named variation instances are not selected through that index. File
 entries are strict: missing, unreadable, corrupt, nonscalable or non-Unicode faces
@@ -57,12 +65,12 @@ face/size state between CPU workers. Library-native types stay out of public hea
 
 ## Shaping, direction and width
 
-`layout_text(fonts, utf8, options)` returns immutable `ShapedText`: original
+`CE::Text::layout_text(fonts, utf8, options)` returns immutable `CE::Text::ShapedText`: original
 [decoded scalar records](text-encoding.md), face-qualified glyph IDs/positions,
 shaping-cluster byte/scalar ranges and line metrics. It retains its font collection
 and copied options but no borrowed text, provider or uploaded resource. The font
 size is an em size in local pixels, with Y-up baseline coordinates. It is independent
-of camera/screen units and does not change the legacy STBFont/FFont metric contract.
+of camera/screen units and does not change the legacy AsciiFont/BitmapFont metric contract.
 
 [HarfBuzz](https://harfbuzz.github.io/what-is-harfbuzz.html) handles OpenType shaping,
 kerning and ligatures. A precomposed accent and its combining sequence can produce
@@ -113,7 +121,7 @@ while retaining the actual accepted-line width and source/bidi contracts.
 
 ## Preparation, upload and retained submission
 
-`CE::Assets::prepare_text(shaped, raster_options)` owns the layout and prepares
+`CE::Text::Rendering::prepare(shaped, raster_options)` owns the layout and prepares
 grayscale alpha pages and six-vertex glyph quads on the CPU. It rasterizes each
 distinct face-qualified glyph once for that message, retaining glyph bearings and
 shaped placement offsets. Spaces/empty outlines advance without drawing. Pages use
@@ -122,16 +130,16 @@ font provider's row/UV order. The configured maximum page extent is 4..4096 pixe
 (default 1024); a glyph too large for one padded page fails before a bitmap allocation.
 There is no shared glyph cache, in-place repack, eviction or residency budget.
 
-`upload_text(prepared, provider)` copies CPU buffers into fresh immutable page
+`CE::Text::Rendering::upload(prepared, provider)` copies CPU buffers into fresh immutable page
 geometry/atlas handles on the provider's upload owner. Passing a copy preserves CPU
 preparation for retry; moving it into an owned
 [dispatcher request](../runtime/thread-dispatch.md) transfers that
-value. A successful call returns one `RenderedText` generation with its matching
+value. A successful call returns one `CE::Text::Rendering::Generation` with its matching
 placements and resources. A failure returns no generation and publishes no replacement.
 Already created transient resources follow backend retirement; this is not an atomic
 native-resource transaction. Callers publish a complete candidate only after success.
 
-`resolve_text(rendered, style, context)` performs CPU packet resolution alongside
+`CE::Rendering::Submission::resolve_text(rendered, style, context)` performs CPU packet resolution alongside
 the legacy font overload. Supply a nonempty `context.image` pipeline key/unit so
 each glyph selects its own generation page; that key must be absent from draw
 parameters. Glyph offsets are scaled and transformed by the supplied model exactly
@@ -143,14 +151,14 @@ upload, binding or drawing.
 
 ### Positioned text runs
 
-Set `TextRasterOptions::positioned_runs = true` during `prepare_text()` to retain
+Set `CE::Text::Rendering::RasterOptions::positioned_runs = true` during `CE::Text::Rendering::prepare()` to retain
 additional geometry with glyph placements baked into its vertices. Ordinary page
 geometry remains available for per-glyph submission; opting in trades preparation,
 upload and geometry storage for fewer per-frame packets. The extra geometry repeats
 quads in authored glyph order and records each contiguous atlas-page range. A page
 sequence A/B/A remains three runs rather than grouping both A ranges together.
 
-After upload, call `resolve_text_runs(rendered, style, context)` to emit one packet
+After upload, call `CE::Rendering::Submission::resolve_text_runs(rendered, style, context)` to emit one packet
 per run. Preparation must have opted in; an ordinary generation rejects this call.
 The image key/unit, immutable sampling, clipping, material and whole-text model/scale
 remain those selected by the caller. Packets retain the positioned geometry and
@@ -158,7 +166,7 @@ matching atlas generation through replacement/release; empty text emits no draws
 
 This overload requires a shader applying the common scale/model transform to the
 positioned vertices, without per-glyph or draw-identity semantics. The API cannot
-infer that contract from arbitrary shaders. Use `resolve_text()` for those shaders
+infer that contract from arbitrary shaders. Use `CE::Rendering::Submission::resolve_text()` for those shaders
 or when the original per-glyph raster evaluation is required: regrouping floating-point
 transforms can change coverage of exact boundary pixels. The default preparation
 and submission remain per glyph. This facility does not merge arbitrary frame

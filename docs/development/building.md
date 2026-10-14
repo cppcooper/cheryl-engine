@@ -163,7 +163,7 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 | GLFW cannot find Wayland tools/libraries | Install the requirements or set `GLFW_BUILD_WAYLAND=OFF`. |
 | CMake 4 rejects an old dependency policy | Set `CMAKE_POLICY_VERSION_MINIMUM=3.5`. |
 | Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or provide verified target/configuration metadata according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
-| Standard C++ headers cannot find `math.h` or `stdlib.h` | Inspect stale compiler discovery before editing includes; see [recovery](consuming-engine.md#standard-headers-in-an-existing-build). |
+| Standard C++ headers cannot find `CE::Math.h` or `stdlib.h` | Inspect stale compiler discovery before editing includes; see [recovery](consuming-engine.md#standard-headers-in-an-existing-build). |
 
 Successful configuration/build does not establish native platform coverage. The
 [test guide](testing.md) and [architecture validation](architecture-validation.md)

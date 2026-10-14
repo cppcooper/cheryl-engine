@@ -51,7 +51,7 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 - [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
 - [CPU memory lifetime and reservation](resources/resource-lifetime.md)
-- [FFont deprecation, recovered inputs and font-file migration](resources/legacy-ffont.md)
+- [Legacy bitmap font inputs and migration](resources/legacy-ffont.md)
 
 ## Development
 

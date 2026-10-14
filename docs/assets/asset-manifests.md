@@ -80,7 +80,7 @@ bottom = (pivot.y - 1) * height
 top    = pivot.y * height
 ```
 
-The runtime retains numeric pivots for arbitrary normalized positions. `AnchorType` also covers all nine standard positions, including bottom center, so older named-anchor call sites remain available without rounding manifest values.
+The runtime retains numeric pivots for arbitrary normalized positions. `CE::Rendering::Geometry::AnchorType` also covers all nine standard positions, including bottom center, so older named-anchor call sites remain available without rounding manifest values.
 
 ## Animations
 
@@ -121,6 +121,13 @@ changing that manifest; a different sheet layout cannot preserve those IDs.
 
 ## Runtime implementation
 
+Parsing produces `CE::Assets::Sprites::Definition` and
+`CE::Assets::Tilesets::Definition` values inside `CE::Assets::Manifests::Graphics`.
+The family-specific `Clip` types share `CE::Assets::Animation::TimedFrame` metadata;
+tileset rules and their CPU selector belong to `CE::Assets::Tilesets` and its
+`Selection` namespace. These C++ names leave the version 2.0 JSON fields and
+qualified asset identities unchanged.
+
 The manifest parser, typed asset dispatch, pivot/grid construction, animation
 expansion, autotile lookup data, CPU-only rule selector and Tileset animated-target
 substitution are implemented. See
@@ -132,6 +139,10 @@ selection and simulation-time substitution follow the
 source rule acceptance does not supply missing artwork metadata.
 
 ## Shader/material definitions
+
+`CE::Assets::Shaders::ProgramRecipe`, `MaterialRecipe` and `Manifest` own this
+document's CPU data. Their loaded catalogue entries retain executable/material
+generations through the [publication contract](asset-loading.md#publication-and-retry).
 
 A shader document contains named `programs` and `materials`. Each program owns
 `stages.vertex` and `stages.fragment` source references. Each material names its
@@ -179,5 +190,5 @@ bottom-left tile pivots follow the recovered v2 loader conventions; Rover and
 Tileset descriptions identify where their sources supplied no explicit anchor.
 Duplicate `donotuse.dat` and the annotated, conflicting Rover draft do not create
 additional runtime assets. Original data files remain available for comparison.
-The font width conversion is separate [FFont compatibility metadata](../resources/legacy-ffont.md),
+The font width conversion is separate [BitmapFont compatibility metadata](../resources/legacy-ffont.md),
 not a loadable graphics manifest.

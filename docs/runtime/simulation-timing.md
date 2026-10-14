@@ -1,9 +1,9 @@
 # Simulation timing
 
-`GameRuntime(engine, game, mode, polling, timing)` uses the same
-`SimulationTimingOptions` in sequential and concurrent execution. Execution mode
+`CE::Runtime::GameRuntime(engine, game, mode, polling, timing)` uses the same
+`CE::Runtime::Simulation::TimingOptions` in sequential and concurrent execution. `CE::Runtime::RunMode`
 selects the owning thread; it does not select a different timing policy.
-`SimulationScheduler` receives monotonic clock values through `advance(now)` and
+`CE::Runtime::Simulation::Scheduler` receives monotonic clock values through `advance(now)` and
 `next_update_at()`. It never polls input, calls the game, or sleeps. Regression
 sources can therefore describe clock advances without depending on OS scheduling.
 
@@ -20,19 +20,19 @@ or simulation can delay eligible polls; concurrent execution can poll during an 
 
 ## Fixed steps
 
-In fixed mode the scheduler accumulates observed elapsed time. A normal update
+With `CE::Runtime::Simulation::Mode::Fixed` the scheduler accumulates observed elapsed time. A normal update
 always uses `fixed_step`, regardless of the duration reported by its input view.
 `max_fixed_updates` bounds the fixed sequence selected in one scheduler cycle;
-the default is one. `DropExcessLag` discards excess whole steps and retains only
+the default is one. `CE::Runtime::Simulation::LagRecovery::DropExcessLag` discards excess whole steps and retains only
 the sub-step remainder. With a 30 ms step, two allowed updates, and a 500 ms stall,
 the batch uses 60 ms, drops 420 ms, and retains 20 ms for the next deadline.
 
 ## Catch-up recovery
 
-`VariableCatchUp` applies when the due whole-step count exceeds
+`CE::Runtime::Simulation::LagRecovery::VariableCatchUp` applies when the due whole-step count exceeds
 `max_fixed_updates`. `fixed_updates_before_recovery` selects an explicit fixed
 prefix, between zero and that limit. Zero requests one larger update directly.
-The prefix is followed by exactly one `UpdateKind::VariableCatchUp` update using
+The prefix is followed by exactly one `CE::Runtime::Simulation::UpdateKind::VariableCatchUp` update using
 the remaining accumulated time, capped at `recovery_cap` (100 ms by default).
 A zero cap explicitly disables that limit. The rest is dropped; no lingering debt
 or fractional remainder remains after this larger recovery. The total hybrid
@@ -53,14 +53,14 @@ persistent State; edges, counts, relative motion, Events, and Text from an earli
 update are never replayed. Mailbox work posted during its drain belongs to a later
 actual update, which can be another update in the same bounded recovery batch.
 
-`TickContext::delta_seconds` is simulation time. `update_kind` explains whether
+`CE::Game::TickContext::delta_seconds` is simulation time. `update_kind` explains whether
 that delta is variable, fixed, or larger recovery. `observed_seconds()` and all raw
-`TickInput` durations use the real consumption interval. `dropped_seconds` reports
+`CE::Input::Tick` durations use the real consumption interval. `dropped_seconds` reports
 the batch's discarded time once, on its final selected update; sum it across ticks
 instead of multiplying it by the number of updates. An interrupted batch has no
 guaranteed final timing report because simulation is ending.
 
-`button_simulation_seconds(action)` is a derived movement policy. It multiplies
+`CE::Game::TickContext::button_simulation_seconds(action)` is a derived movement policy. It multiplies
 the observed down-time fraction by the selected simulation delta. A 50 ms tap
 inside a 500 ms observation interval contributes 2 ms to a 20 ms fixed update,
 or 10 ms to a 100 ms recovery update. The raw down duration remains 50 ms. With a

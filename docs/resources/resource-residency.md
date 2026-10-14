@@ -2,7 +2,7 @@
 
 ## Cache ownership
 
-`AssetCacheContext` is the shared provider/loading-owner guard used by all asset
+`CE::Assets::Cache::Context` is the shared provider/loading-owner guard used by all asset
 caches. It allows one active provider domain and one loading owner at a time.
 It protects publication and teardown, rather than implementing a cache eviction
 policy. Each cache map retains a strong `shared_ptr` until explicit clear,
@@ -20,7 +20,7 @@ renderer/context lifetime and cannot be used after that lifetime closes.
 
 ## Immutable resource publication
 
-`ResourceProvider::create_image` copies owned RGBA pixels into a new backend handle.
+`CE::Rendering::Resources::Provider::create_image()` copies owned RGBA pixels into a new backend handle.
 Changed images or geometry use fresh immutable handles and replacement materials
 or frames. Published packets retain their selected geometry, material, program and
 image/sampler generations; replacing a cache entry releases only that cache's old owner.
@@ -30,8 +30,8 @@ owned CPU images and expanded triangles; the
 publishes complete message-specific glyph-page generations after successful upload.
 Neither requires a shared glyph-residency cache.
 
-Colored geometry uploads use `Vertex2DColor` and a `Position3UV2Color4` pipeline.
-A provider that does not implement that overload rejects it explicitly; `Vertex2D`
+Colored geometry uploads use `CE::Rendering::Geometry::Vertex2DColor` and a `Position3UV2Color4` pipeline.
+A provider that does not implement that overload rejects it explicitly; `CE::Rendering::Geometry::Vertex2D`
 retains its existing layout. The
 [render contract](../rendering/pipelines-and-materials.md#frame-and-recipe-integration)
 defines layout and alpha validation. Generic asset batches follow the separate
@@ -39,29 +39,30 @@ defines layout and alpha validation. Generic asset batches follow the separate
 
 ## Native retirement and maintenance
 
-Strong owners and their native retirement paths are:
+Strong owners and their native retirement paths are below. Namespace names in
+the table are relative to `CE`.
 
 | Resource | Strong logical ownership | Native retirement |
 | --- | --- | --- |
-| Image/texture | Texture cache, Asset2D, STBFont, application handles | Texture owns one move-only OpenGLHandle. |
-| Sampler | Explicit image bindings, material FX policy and retained packets; provider/uploader reuse tables are weak | OpenGLSampler owns one move-only OpenGLHandle and uses deferred sampler deletion. |
-| Geometry | Asset2D, STBFont, application handles | VAO owns vertex-array registration plus one 2D VBO; the legacy mesh also owns its index buffer. |
-| Linked program | Shader cache, GLSLPipeline, application handles | GLSLProgram owns one tracked program handle; successful replacement preserves old owners. |
+| Image/texture | `Assets::Images::Manager`, `Assets::Content2D`, `Text::Legacy::AsciiFont`, application handles | `Rendering::OpenGL::Texture` owns one move-only native `Handle`. |
+| Sampler | Explicit image bindings, material FX policy and retained packets; provider/uploader reuse tables are weak | `Rendering::OpenGL::Sampler` owns one move-only native `Handle` and uses deferred sampler deletion. |
+| Geometry | `Assets::Content2D`, `Text::Legacy::AsciiFont`, application handles | `Rendering::OpenGL::VertexArray` owns vertex-array registration plus one 2D VBO; the legacy mesh also owns its index buffer. |
+| Linked program | `Assets::Shaders::ProgramCache`, native pipelines, application handles | `Rendering::OpenGL::Program` owns one tracked program handle; successful replacement preserves old owners. |
 | Compiled stage | Local shader-link guard and temporary program attachment | Mark for deletion after compilation; detach every stage after linking so retained programs do not retain stages. Failure destroys the guarded program and its remaining attachments. |
-| Font atlas/glyphs | Font cache and STBFont's image/geometry composition | Texture/VAO final-owner retirement; layout metadata has independent CPU ownership. |
-| Sprite/tileset/graphic | Strong cache or application handle; const Asset2D image/geometry handles | Composite release drops constituent owners; no second native deleter. |
+| Font atlas/glyphs | `Text::Legacy::Manager` and `AsciiFont`'s image/geometry composition; `Text::Rendering::Generation` retains uploaded Unicode pages | Texture/vertex-array final-owner retirement; layout metadata has independent CPU ownership. |
+| Sprite/tileset/graphic | Strong cache or application handle; const `Assets::Content2D` image/geometry handles | Composite release drops constituent owners; no second native deleter. |
 | Published frame | Each packet retains geometry/material and copied image/sampler parameter handles; pass parameters retain their own bindings | Platform recycling releases the frame's owners; other owners can keep resources resident. |
-| Pipeline/material | GLSLPipeline retains its program, contract defaults and backend missing-value bindings; Material retains its pipeline, default parameter bindings and FX sampler overrides. Resolved values retain image/sampler handles; frames retain immutable material generations. | Native handles retire through the same program/image/sampler owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
-| Indexed shader catalogue | ShaderAssetMgr retains CPU recipes paired with executable programs/materials; material entries retain their selected program generation | Catalogue replacement/clear drops its owners; native resources retire through their underlying handles. |
+| Pipeline/material | `Rendering::OpenGL::Pipeline` retains its program, contract defaults and backend missing-value bindings; `Rendering::Resources::Material` retains its pipeline, default parameter bindings and FX sampler overrides. Resolved values retain image/sampler handles; frames retain immutable material generations. | Native handles retire through the same program/image/sampler owners. Successful replacement preserves old frame owners; failed reload preserves the cache entry. |
+| Indexed shader catalogue | `Assets::Shaders::Manager` retains CPU recipes paired with executable programs/materials; material entries retain their selected program generation | Catalogue replacement/clear drops its owners; native resources retire through their underlying handles. |
 
-`OpenGLHandle` registration is move-only. Destruction from any thread marks its
+`CE::Rendering::OpenGL::Handle` registration is move-only. Destruction from any thread marks its
 registration pending; it never calls GL. Duplicate pending retirement is ignored,
 and collected registration slots can be reused only after deletion. Renderer
 shutdown deletes all remaining tracked IDs, including resources with external
 logical owners, and closes the lifetime. A later release does not delete again.
 Using a closed handle fails before querying its borrowed context.
 
-`iRenderer::maintain_resources()` is the backend-neutral platform maintenance
+`CE::Rendering::Renderer::maintain_resources()` is the backend-neutral platform maintenance
 operation. OpenGL validates the selected current context, unbinds its last program,
 then runs the context-owned retirement collector. A deleted current program stays
 alive until it is unbound; this also happens before the shutdown sweep while a
@@ -91,11 +92,11 @@ another context's IDs valid. Native pipeline/geometry/image domain validation pr
 ## Failure and recovery
 
 Native creation guards retain an untracked ID until registration succeeds.
-Program linking then transfers ownership to an OpenGLHandle before constructing
-the logical GLSLProgram, so later allocation failure has only one retirement
+Program linking then transfers ownership to a `CE::Rendering::OpenGL::Handle` before constructing
+the logical `CE::Rendering::OpenGL::Program`, so later allocation failure has only one retirement
 owner. Logical program adoption validates that this registration is a program,
 preserving retirement when another native resource kind is rejected.
-Texture/VAO/buffer failure guards and program/stage guards use
+Texture, vertex-array and buffer failure guards and program/stage guards use
 `discard_untracked()`: it checks owner/current context and cannot replace the
 original failure. If the context is unavailable, it leaves native cleanup to
 platform context destruction. Renderer destruction similarly uses `abandon()`

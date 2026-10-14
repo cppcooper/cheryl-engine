@@ -1,20 +1,20 @@
 # File indexing and font discovery
 
 File indexing, font discovery and asset loading have separate policies. The
-[asset loader](asset-loading.md) performs a fresh discovery pass for each preparation;
-it does not use the persistent `FileMgr` index. Applications choose fonts explicitly
+[asset loader](asset-loading.md) constructs a fresh `CE::Files::FileIndex` for each
+preparation. Applications choose fonts explicitly
 before loading them through their resource provider.
 
 Automatic graphics preparation registers JSON, WAV and shader paths in a fresh
-private `FileRegistry`; only exact `graphics-manifests.json` indexes select documents.
+private `CE::Assets::Loading::FileRegistry`; only exact `graphics-manifests.json` indexes select documents.
 Unlisted JSON remains unopened. `Loader::register_files()` can publish unmanaged
-paths without parsing/decoding; it does not initialize fonts or load FFont. The
+paths without parsing/decoding; it does not initialize fonts or load BitmapFont. The
 [graphics path contract](asset-manifests.md#index-selection-and-paths) uses the
 enclosing `graphics/` directory for index, texture and source references.
 
-## FileMgr
+## File index
 
-[FileMgr](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h)
+[CE::Files::FileIndex](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h)
 is an independent, incremental index. Construction scans the supplied root;
 `search_directory()` appends an unvisited directory tree. Missing and non-directory
 roots add nothing. Directories encountered during a scan are marked visited, so
@@ -47,7 +47,7 @@ automatic recovery from changed files.
 ## System-font candidates
 
 [fonts-system.h](../../projects/engine/include/cheryl/core/resources/fileio/fonts-system.h)
-returns owned paths and performs no provider work. `system_font_directories()` lists
+returns owned paths and performs no provider work. `CE::Text::system_font_directories()` lists
 `/usr/share/fonts`, `/usr/local/share/fonts`, `/Library/Fonts` and
 `/System/Library/Fonts`, then appends paths derived from nonempty environment values:
 
@@ -61,7 +61,7 @@ returns owned paths and performs no provider work. `system_font_directories()` l
 These are candidates on every platform; the list does not check existence or remove
 duplicates. Keep environment mutation serialized with calls that read it.
 
-`find_system_fonts()` scans those roots. The explicit-root overload recursively
+`CE::Text::find_system_fonts()` scans those roots. The explicit-root overload recursively
 collects regular files with case-insensitive `.ttf`, `.otf`, `.ttc` or `.otc`
 extensions. It skips missing, non-directory and inaccessible roots and permission-
 denied subtrees. Other filesystem errors may truncate a root's results without
@@ -74,7 +74,7 @@ equality. This does not canonicalize aliases or establish that two paths refer t
 different files. Discovery validates neither file contents nor supported glyphs.
 Files may change between discovery and loading.
 
-`select_default_system_font()` checks case-insensitive filenames in this order:
+`CE::Text::select_default_system_font()` checks case-insensitive filenames in this order:
 `arial.ttf`, `helvetica.ttc`, `dejavusans.ttf`, `liberationsans-regular.ttf`,
 `nimbussans-regular.otf`, `notosans-regular.ttf`, `freesans.ttf`, `segoeui.ttf`,
 `roboto-regular.ttf`, `calibri.ttf`, `consola.ttf`, `proggyvector regular.ttf`.
@@ -83,9 +83,9 @@ Without a preferred name, the minimum path wins regardless of supplied order; an
 empty list produces `nullopt`. This heuristic performs no I/O or family/coverage
 inspection and does not try another candidate if later loading fails.
 
-## FontMgr loading and default lifetime
+## Legacy font cache
 
-[FontMgr](../../projects/engine/include/cheryl/core/resources/asset-management/font-mgr.h)
+[CE::Text::Legacy::Manager](../../projects/engine/include/cheryl/core/resources/asset-management/font-mgr.h)
 loads on the active provider's loading owner under the
 [cache ownership contract](../resources/resource-residency.md#cache-ownership). It uses
 lexically normalized paths as cache keys, processes the supplied order and retains
@@ -93,7 +93,8 @@ already loaded entries. The first successful publication when no default exists
 selects the default; later loads do not replace it. A later failure retains earlier
 cache publications and their default selection.
 
-FontMgr loads `STBFont` at size 32 with printable ASCII and collection face zero.
+`load(paths, provider)` loads `CE::Text::Legacy::AsciiFont` at size 32 with
+printable ASCII and collection face zero.
 Discovery includes collection paths, but this legacy API does not select other
 faces. The separate [Unicode service](text-layout.md#font-selection) selects family
 metadata, collection faces and whole-grapheme fallback; the filename heuristic

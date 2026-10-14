@@ -1,13 +1,17 @@
 # Thread dispatch
 
-PlatformDispatcher accepts owned `work(EngineContext&)` and runs it on the
-platform/graphics owner. SimulationDispatcher accepts owned `work()` and runs it
-on the simulation owner. Both return futures and expose a copyable `submission()`
+`CE::Runtime::PlatformDispatcher` accepts owned `work(CE::Runtime::Context&)`
+and runs it on the platform/graphics owner. `CE::Runtime::SimulationDispatcher`
+accepts owned `work()` and runs it on the simulation owner. Both return futures and expose a copyable `submission()`
 endpoint. Saved endpoints contain no borrowed service pointer and reject with
-`failed_operation` before opening, after closing, and after service destruction.
+`CE::Exceptions::failed_operation` before opening, after closing, and after
+service destruction.
 
-The runtime owns queue opening, draining, and closing. Initialization can submit
-simulation work before a concurrent worker starts; that worker binds execution
+These owner queues belong to `CE::Runtime`, which coordinates a game session and
+its thread-affine adapters. Generic CPU jobs use the independently owned
+[`CE::Workers` pools and groups](worker-execution.md). The runtime owns queue
+opening, draining, and closing. Initialization can submit simulation work before
+a concurrent worker starts; that worker binds execution
 ownership before draining. Sequential mode binds the calling thread instead.
 A failed initialization may close the still-unbound simulation dispatcher on the
 platform because simulation ownership was never established.
@@ -32,9 +36,9 @@ lifetime. Reference captures and reference-valued results still borrow their tar
 batch has finished or that acceptance has closed. Diagnostics are owned observations,
 not completion barriers. Use the returned future and runtime lifecycle for completion.
 
-Event delivery adapters use these saved endpoints through a callable. EventBus
-remains independent of both dispatcher types; the adapters belong to composition
-code. See [event-delivery.md](event-delivery.md).
+Event delivery adapters in `CE::Events` use these saved endpoints through a
+callable. `CE::Events::EventBus` remains independent of both dispatcher types; the
+adapters belong to composition code. See [event-delivery.md](event-delivery.md).
 
 ## Simulation boundary
 
@@ -48,9 +52,9 @@ input and mailbox producers.
 
 In concurrent mode submission notifies the shared scheduler but does not advance
 the scheduled update deadline. Delivery occurs at the next scheduled simulation
-boundary; posting must not create an early simulation tick. SimulationTimingOptions
-configures that cadence independently of polling. In sequential mode the same boundary runs on the calling
-thread. Owner callbacks execute without the scheduler lock, permitting `stop()`
+boundary; posting must not create an early simulation tick.
+`CE::Runtime::Simulation::TimingOptions` configures that cadence independently of
+polling. In sequential mode the same boundary runs on the calling thread. Owner callbacks execute without the scheduler lock, permitting `stop()`
 and further platform/simulation submissions.
 
 The runtime's [shutdown sequence](runtime-frame-boundary.md#shutdown) coordinates

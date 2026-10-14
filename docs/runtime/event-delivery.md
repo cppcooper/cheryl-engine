@@ -1,14 +1,14 @@
 # Event buses and persistent registration
 
-EventSystem remains the global default access layer. Its owned EventBus contains
-registrations. A subsystem may instead own an EventBus to isolate its channels and
+`CE::Events::EventSystem` provides the global default access layer. Its owned
+`CE::Events::EventBus` contains registrations. A subsystem may instead own a bus to isolate its channels and
 lifecycle; a bus is a registry, not a thread or worker pool.
 
 ```cpp
-CE::SubSystems::EventBus local_bus;
+CE::Events::EventBus local_bus;
 auto id = local_bus.register_listener("level-loaded", callback);
 local_bus.dispatch("level-loaded", payload);
-// EventSystem::get() exposes the same API through its default bus.
+// CE::Events::EventSystem::get() exposes the same API through its default bus.
 ```
 
 ## Registrations
@@ -51,7 +51,7 @@ without permitting a fresh invocation after invalidation. Queued delivery is opt
 
 ## Typed channels
 
-`EventChannel<Payload>` owns an exact channel name. Its name plus its unqualified,
+`CE::Events::EventChannel<Payload>` owns an exact channel name. Its name plus its unqualified,
 copy-constructible payload type identify a channel within each bus. Equivalent
 name/type values share registrations, independent of token lifetime; another
 payload type with the same name is a separate channel. Legacy string/`std::any`
@@ -62,7 +62,7 @@ channels. Type identity is in-process; names and RTTI are not a serialized proto
 struct LevelLoaded {
     int level;
 };
-const CE::SubSystems::EventChannel<LevelLoaded> loaded{"level-loaded"};
+const CE::Events::EventChannel<LevelLoaded> loaded{"level-loaded"};
 int last_level = 0;
 auto id = local_bus.register_listener(loaded, [&](const LevelLoaded& event) {
     last_level = event.level;
@@ -81,7 +81,7 @@ the typed callback; inconsistent internal payloads throw `bad_any_cast` instead 
 reaching that callback. Public named producers cannot target a typed channel.
 
 Persistent registration, snapshot order, invalidation, waits, close and optional
-delivery use the same listener machinery as named channels. `EventSystem` forwards
+delivery use the same listener machinery as named channels. `CE::Events::EventSystem` forwards
 both APIs to its default bus. Initial typed-payload construction failures reach the
 producer before the registry dispatch begins. Per-listener queued copying,
 callback/target failures and cancellation still belong to the registered error sink;
@@ -89,11 +89,11 @@ invalidation waits protect the callback's borrowed target, not that error sink's
 independent lifetime through pending-ticket destruction. No typed API chooses a
 thread or changes worker-stream ordering.
 
-`CE::window_resized_event` in `core/display/window-interface.h` is the canonical
-typed channel for `WindowResized`. Native GLFW explicitly publishes both it and the
+`CE::Platform::window_resized_event` in `core/display/window-interface.h` is the canonical
+typed channel for `CE::Platform::WindowResized`. Native GLFW explicitly publishes both it and the
 legacy named `"window-resized"` notification; this producer bridge does not make
 generic named and typed channels equivalent. Register with the typed channel to
-receive a checked `const WindowResized&`, optionally selecting platform or simulation
+receive a checked `const CE::Platform::WindowResized&`, optionally selecting platform or simulation
 delivery as below. Its dimensions are copied, while its window pointer remains
 borrowed and cannot be dereferenced on simulation. The
 [display/window contract](display-and-window-contract.md#sizes-modes-and-observation)
@@ -130,10 +130,12 @@ sink is independent: prefer an owned logging/reporting handle, not the same raw
 `this`. Unregister can race a delivery already being offered; that task can still
 be accepted but will not enter the invalidated listener.
 
-`platform_event_delivery(engine.platform_dispatcher().submission())` and
-`simulation_event_delivery(runtime.simulation_dispatcher().submission())` are
-optional composition adapters in `core/engine/event-delivery.h`. Their saved
-endpoints reject safely after service closure. `worker_event_delivery(group)` provides one serial drain stream on the group's
+`CE::Events::platform_delivery(engine.platform_dispatcher().submission())` and
+`CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission())` are
+optional composition adapters in `core/engine/event-delivery.h`. Their namespace
+is `CE::Events`; this separate composition header keeps the bus
+independent of `CE::Runtime` and `CE::Workers`. Their saved
+endpoints reject safely after service closure. `CE::Events::worker_delivery(group)` provides one serial drain stream on the group's
 shared parallel capacity. Copies of that delivery callable share FIFO execution
 and completion order, including across listeners. Separate adapter construction
 creates independent streams. Ordinary jobs in the group remain parallel; a pool's

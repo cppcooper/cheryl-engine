@@ -1,6 +1,6 @@
 # Runtime frame boundary
 
-`GameRuntime` coordinates input polling, simulation, rendering, presentation, and
+`CE::Runtime::GameRuntime` coordinates input polling, simulation, rendering, presentation, and
 shutdown. Both execution modes use the [same configurable timing policy](simulation-timing.md), with variable/fixed steps and bounded direct/hybrid recovery. The application chooses a compatible platform, graphics context,
 renderer, resources, and input adapter. The renderer uses the selected context
 and render target; it does not own the display system or read live game state.
@@ -12,15 +12,15 @@ and loads OpenGL entry points before game initialization uploads assets.
 
 ## Input and owner threads
 
-Each platform poll produces a timestamped `ActionSnapshot`. Each independently
-scheduled `update()` consumes the complete pending batch in one `TickInput`.
+Each platform poll produces a timestamped `CE::Input::Actions::Snapshot`. Each independently
+scheduled `update()` consumes the complete pending batch in one `CE::Input::Tick`.
 Input supplies edges, counts, and observed hold durations; it never subdivides
 simulation time or schedules extra updates. Simulation
 produces complete render state, which remains stable while rendering consumes it. The
 renderer must never access mutable simulation objects across that boundary.
-Each complete `PollSnapshot` carries State and independently captured ordered
+Each complete `CE::Input::PollSnapshot` carries State and independently captured ordered
 Events/Text records. The runtime transfers both at the same consumption boundary;
-`TickInput::records()` retains their shared observation order. Scoped capture
+`CE::Input::Tick::records()` retains their shared observation order. Scoped capture
 requests and backend fidelity are documented in
 [input-state-model.md](input-state-model.md#ordered-events-and-os-text).
 Each tick also carries logical window and framebuffer dimensions sampled together
@@ -33,7 +33,7 @@ one may be rendered, one may be the latest completed frame, and one may be in
 preparation. Platform event polling and graphics-context use respect their
 respective thread affinity.
 
-The caller of `GameRuntime::run()` owns platform polling and the graphics context
+The caller of `CE::Runtime::GameRuntime::run()` owns platform polling and the graphics context
 in both modes. Sequential mode polls, updates, prepares, renders, and presents on
 that thread. Concurrent mode runs only `update()` and `prepare_render_frame()` on
 one simulation worker; it passes complete polling batches and framebuffer dimensions
@@ -63,7 +63,7 @@ Accepted dependencies settle under the [shutdown sequence](#shutdown) below.
 Callbacks must preserve the session's current graphics context. Backend resource
 guards reject another context even when it is selected on the correct thread.
 Game code calls `tick.request_stop()` to request graceful shutdown from `update()`.
-Every runtime tick shares the session's `std::stop_source` with `GameRuntime::stop()`;
+Every `CE::Game::TickContext` shares the session's `std::stop_source` with `CE::Runtime::GameRuntime::stop()`;
 both entry points wake scheduler waits and are safe to repeat. The request ends
 further simulation updates and uses the normal join, quiesce and cleanup sequence.
 It does not interrupt the current `update()`; return early when further game work
@@ -76,16 +76,16 @@ constructed ticks default to no runtime stop source; `request_stop()` then throw
 
 ## Frame publication and recycling
 
-`AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
+`CE::Game::AbstractGame::prepare_render_frame(writer)` runs on the simulation thread after
 the final useful update of a bounded batch when a slot is free. If all slots are occupied, the update still
 advances the simulation and only that tick's visual snapshot is skipped. The
-runtime lends the game a reusable `RenderFrame` slot through the writer. The game
+runtime lends the game a reusable `CE::Rendering::Frame` slot through the writer. The game
 fills ordered passes with copied camera values, custom pass parameters, constraints,
-and resolved DrawPacket2D values. Asset helpers select geometry ranges and lay out
+and resolved `CE::Rendering::DrawPacket2D` values. Asset helpers select geometry ranges and lay out
 text on simulation, resolving transforms, engine semantics, custom parameters, and
 image requests into owned values. Packets retain geometry and material generations;
-no asset, Font, string, animation cursor, or live entity is needed by playback.
-The caller model carries placement/rotation; DrawStyle2D.scale also scales local
+no asset, font interface, string, animation cursor, or live entity is needed by playback.
+The caller model carries placement/rotation; `CE::Rendering::DrawStyle2D::scale` also scales local
 geometry and glyph offsets explicitly. The runtime publishes the complete slot without
 copying it and prevents further mutation while the renderer consumes it.
 

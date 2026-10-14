@@ -1,7 +1,7 @@
 # Text encoding and source indices
 
 `CE::Text::decode_utf8_scalar(text, offset)` reads one scalar from a complete UTF-8
-view. `decode_utf8(text)` returns owned `Utf8Scalar` records for the entire view.
+view. `CE::Text::decode_utf8(text)` returns owned `CE::Text::Utf8Scalar` records for the entire view.
 Each record stores the scalar, original byte offset/count and a `replaced` flag;
 destroying or changing the source after the call does not change those records.
 The single-scalar operation allocates nothing and returns no value at or beyond
@@ -33,12 +33,12 @@ address the original view; scalar indices address record order. Combining marks,
 ligatures and emoji sequences require separate grapheme/shaping-cluster mappings,
 and glyph indices are not interchangeable with either source index.
 
-`STBFont::layout()` and `for_each_glyph()` use the scalar decoder without changing
+`CE::Text::Legacy::AsciiFont::layout()` and `for_each_glyph()` use the scalar decoder without changing
 the baked printable-ASCII atlas. Each unsupported scalar or malformed subpart draws
 one `?`, so a valid two-, three- or four-byte character no longer expands into one
 fallback per byte. Printable ASCII and newline/CR/tab handling retain their previous
 metrics. Embedded NUL remains an unsupported scalar rather than ending the view.
-FFont retains its deprecated byte-oriented contract. See
+BitmapFont retains its deprecated byte-oriented contract. See
 [font submission](asset-values-and-playback.md#fonts-and-cpu-submission).
 
 The separate [Unicode layout API](text-layout.md) supplies owned font selection,

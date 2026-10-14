@@ -14,17 +14,21 @@ EXTRACT_LOCAL_CLASSES  = NO
 EXTRACT_ANON_NSPACES   = NO
 # Implementation namespaces are source-linked rather than published as API pages.
 EXCLUDE_SYMBOLS        = "CE::Text::Detail" "CE::Text::Detail::*" \
-                         "CE::Input::Detail" "CE::Input::Detail::*" \
-                         "CE::Engine::ContextDetail" "CE::Engine::ContextDetail::*" \
-                         "CE::Engine::WorkerDetail" "CE::Engine::WorkerDetail::*" \
-                         "CE::GFramework::RuntimeDetail" "CE::GFramework::RuntimeDetail::*" \
-                         "CE::RenderAPIs::RendererDetail" "CE::RenderAPIs::RendererDetail::*" \
-                         "CE::RenderAPIs::ResourceDetail" "CE::RenderAPIs::ResourceDetail::*" \
-                         "CE::DisplayDetail" "CE::DisplayDetail::*" \
-                         "CE::LogDetail" "CE::LogDetail::*" \
-                         "spdlog::CE" "spdlog::CE::*" \
+                         "CE::Text::Legacy::Detail" "CE::Text::Legacy::Detail::*" \
+                         "CE::Input::Capture::Detail" "CE::Input::Capture::Detail::*" \
+                         "CE::Input::Routing::Detail" "CE::Input::Routing::Detail::*" \
+                         "CE::Runtime::Detail" "CE::Runtime::Detail::*" \
+                         "CE::Workers::Detail" "CE::Workers::Detail::*" \
+                         "CE::Events::Detail" "CE::Events::Detail::*" \
+                         "CE::Rendering::OpenGL::Detail" "CE::Rendering::OpenGL::Detail::*" \
+                         "CE::Platform::GLFW::Detail" "CE::Platform::GLFW::Detail::*" \
+                         "CE::Platform::Linux::DebugTerminal::Detail" "CE::Platform::Linux::DebugTerminal::Detail::*" \
+                         "CE::Application::DebugTerminal::Detail" "CE::Application::DebugTerminal::Detail::*" \
+                         "CE::Logging::Detail" "CE::Logging::Detail::*" \
+                         "CE::Diagnostics::Detail" "CE::Diagnostics::Detail::*" \
+                         "CE::Assets::Manifests::Detail" "CE::Assets::Manifests::Detail::*" \
                          "CE::Audio::Miniaudio::Detail" "CE::Audio::Miniaudio::Detail::*" \
-                         "CE::math::Detail" "CE::math::Detail::*" \
+                         "CE::Math::Detail" "CE::Math::Detail::*" \
                          "ASSET2D_H"
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
