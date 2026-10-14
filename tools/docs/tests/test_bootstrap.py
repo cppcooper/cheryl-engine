@@ -323,7 +323,7 @@ class SelectionTests(TemporaryCase):
         native = self.root / "system-doxygen"
         with (
             mock.patch.object(bootstrap, "probe_python", return_value=versions),
-            mock.patch.object(bootstrap, "select_doxygen", return_value=(native, "99.0.0")),
+            mock.patch.object(bootstrap, "select_doxygen", return_value=(native, "99.0.0")) as select_native,
             mock.patch.object(bootstrap, "cached_python") as cached,
         ):
             tools = bootstrap.select_tools(self.cache, install=True)
@@ -331,6 +331,7 @@ class SelectionTests(TemporaryCase):
         self.assertEqual(tools["python"], sys.executable)
         self.assertEqual(tools["packages"], versions)
         cached.assert_not_called()
+        select_native.assert_called_once_with(self.cache, False, True)
         self.assertFalse(self.cache.exists())
 
     def test_force_pinned(self):
@@ -344,6 +345,109 @@ class SelectionTests(TemporaryCase):
         system_probe.assert_not_called()
         self.assertEqual(tools["python_source"], "pinned")
         self.assertEqual(tools["python"], str(python))
+
+    def test_explicit_tool(self):
+        native = self.root / "explicit-doxygen"
+        native.write_bytes(b"fixture executable")
+        versions = {name: "99.0.0" for name in bootstrap.MINIMUM_PACKAGES}
+        with (
+            mock.patch.object(bootstrap, "doxygen_version", return_value="99.0.0"),
+            mock.patch.object(bootstrap, "probe_python", return_value=versions),
+            mock.patch.object(bootstrap, "select_doxygen") as fallback,
+            mock.patch.object(bootstrap, "download_archive") as download,
+            mock.patch.object(bootstrap, "cached_python") as cached,
+        ):
+            tools = bootstrap.select_tools(self.cache, install=True, doxygen=native)
+        self.assertEqual(tools["doxygen"], str(native.resolve()))
+        self.assertEqual(tools["doxygen_version"], "99.0.0")
+        self.assertEqual(tools["python_source"], "system")
+        fallback.assert_not_called()
+        download.assert_not_called()
+        cached.assert_not_called()
+        self.assertFalse(self.cache.exists())
+
+    def test_named_tool(self):
+        native = self.root / "custom-doxygen"
+        native.write_bytes(b"fixture executable")
+        with (
+            mock.patch.object(bootstrap.shutil, "which", return_value=str(native)) as lookup,
+            mock.patch.object(bootstrap, "doxygen_version", return_value="99.0.0"),
+            mock.patch.object(bootstrap, "probe_python", return_value={"fixture": "1.0.0"}),
+            mock.patch.object(bootstrap, "select_doxygen") as fallback,
+        ):
+            tools = bootstrap.select_tools(self.cache, doxygen="chosen-doxygen")
+        lookup.assert_called_once_with("chosen-doxygen")
+        self.assertEqual(tools["doxygen"], str(native.resolve()))
+        fallback.assert_not_called()
+
+    def test_invalid_tool(self):
+        native = self.root / "explicit-doxygen"
+        native.write_bytes(b"fixture executable")
+        for version in (None, "0.1.0"):
+            with (
+                self.subTest(version=version),
+                mock.patch.object(bootstrap, "doxygen_version", return_value=version),
+                mock.patch.object(bootstrap, "probe_python") as probe,
+                mock.patch.object(bootstrap, "cached_python") as cached,
+                mock.patch.object(bootstrap, "select_doxygen") as fallback,
+            ):
+                with self.assertRaises(bootstrap.ToolError):
+                    bootstrap.select_tools(self.cache, install=True, doxygen=native)
+                probe.assert_not_called()
+                cached.assert_not_called()
+                fallback.assert_not_called()
+                self.assertFalse(self.cache.exists())
+
+    def test_missing_tool(self):
+        with (
+            mock.patch.object(bootstrap.shutil, "which", return_value=None),
+            mock.patch.object(bootstrap, "doxygen_version") as version,
+            mock.patch.object(bootstrap, "probe_python") as probe,
+            mock.patch.object(bootstrap, "select_doxygen") as fallback,
+        ):
+            with self.assertRaisesRegex(bootstrap.ToolError, "not found"):
+                bootstrap.select_tools(self.cache, install=True, doxygen=str(self.root / "missing-doxygen"))
+        version.assert_not_called()
+        probe.assert_not_called()
+        fallback.assert_not_called()
+        self.assertFalse(self.cache.exists())
+
+    def test_pinned_conflict(self):
+        with (
+            mock.patch.object(bootstrap, "validate_doxygen") as validation,
+            mock.patch.object(bootstrap, "probe_python") as probe,
+            mock.patch.object(bootstrap, "cached_python") as cached,
+            mock.patch.object(bootstrap, "select_doxygen") as fallback,
+        ):
+            with self.assertRaisesRegex(bootstrap.ToolError, "--doxygen.*--force-pinned"):
+                bootstrap.select_tools(self.cache, force_pinned=True, install=True, doxygen="explicit-doxygen")
+        validation.assert_not_called()
+        probe.assert_not_called()
+        cached.assert_not_called()
+        fallback.assert_not_called()
+        self.assertFalse(self.cache.exists())
+
+    def test_exec_selection(self):
+        tools = {
+            "python": str(self.root / "python"), "python_source": "system", "packages": {"fixture": "1.0.0"},
+            "doxygen": str(self.root / "doxygen"), "doxygen_version": "99.0.0",
+        }
+        for forced in (False, True):
+            with (
+                self.subTest(forced=forced),
+                mock.patch.object(bootstrap, "select_tools", return_value=tools) as selection,
+                mock.patch.object(bootstrap.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as command,
+            ):
+                arguments = ["exec", "--cache-dir", str(self.cache)]
+                arguments += ["--force-pinned"] if forced else ["--doxygen", tools["doxygen"]]
+                self.assertEqual(bootstrap.main([*arguments, "--", "python", "-c", "pass"]), 0)
+                selection.assert_called_once_with(
+                    self.cache.resolve(), forced, install=True, doxygen=None if forced else tools["doxygen"]
+                )
+                self.assertEqual(command.call_args.args[0], [tools["python"], "-c", "pass"])
+                environment = command.call_args.kwargs["env"]
+                self.assertEqual(environment["CHERYL_DOCS_FORCE_PINNED"], "1" if forced else "0")
+                self.assertEqual(environment["CHERYL_DOCS_DOXYGEN"], tools["doxygen"])
 
 
 class ArchiveTests(TemporaryCase):

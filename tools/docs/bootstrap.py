@@ -274,6 +274,16 @@ def validate_doxygen(executable: Path) -> str:
     return version
 
 
+def resolve_doxygen(executable: str | Path) -> Path:
+    candidate = Path(executable).expanduser()
+    if candidate.is_file():
+        return candidate.resolve()
+    installed = shutil.which(str(candidate))
+    if installed:
+        return Path(installed).resolve()
+    raise ToolError(f"Doxygen executable not found: {executable}")
+
+
 def archive_path(root: Path, name: str) -> Path:
     normalized = PurePosixPath(name.replace("\\", "/"))
     if normalized.is_absolute() or ".." in normalized.parts or any(":" in part for part in normalized.parts):
@@ -402,8 +412,14 @@ def select_doxygen(cache: Path, force_pinned: bool, install: bool):
     return selected
 
 
-def select_tools(cache: Path, force_pinned: bool = False, install: bool = False):
-    doxygen, native_version = select_doxygen(cache, force_pinned, install)
+def select_tools(cache: Path, force_pinned: bool = False, install: bool = False, doxygen: str | Path | None = None):
+    if doxygen is not None:
+        if force_pinned:
+            raise ToolError("--doxygen cannot be combined with --force-pinned")
+        selected_doxygen = resolve_doxygen(doxygen)
+        native_version = validate_doxygen(selected_doxygen)
+    else:
+        selected_doxygen, native_version = select_doxygen(cache, force_pinned, install)
     versions = None if force_pinned else probe_python(Path(sys.executable), MINIMUM_PACKAGES, exact=False)
     if versions:
         python = Path(sys.executable)
@@ -412,7 +428,7 @@ def select_tools(cache: Path, force_pinned: bool = False, install: bool = False)
         python, versions = cached_python(cache, install)
         source = "pinned"
     return {"python": str(python), "python_source": source, "packages": versions,
-            "doxygen": str(doxygen), "doxygen_version": native_version}
+            "doxygen": str(selected_doxygen), "doxygen_version": native_version}
 
 
 def main(argv=None) -> int:
@@ -420,6 +436,7 @@ def main(argv=None) -> int:
     parser.add_argument("operation", choices=("setup", "status", "exec"))
     parser.add_argument("--cache-dir", type=Path, default=default_cache())
     parser.add_argument("--force-pinned", action="store_true", help="Use the locked fallback even if system tools qualify")
+    parser.add_argument("--doxygen", metavar="PATH", help="Use a compatible Doxygen path or executable name explicitly")
     arguments, command = parser.parse_known_args(argv)
     if command and command[0] == "--":
         command = command[1:]
@@ -430,7 +447,7 @@ def main(argv=None) -> int:
     if sys.version_info < (3, 11):
         raise ToolError("Documentation setup requires Python 3.11 or newer")
     tools = select_tools(arguments.cache_dir.expanduser().resolve(), arguments.force_pinned,
-                         install=arguments.operation != "status")
+                         install=arguments.operation != "status", doxygen=arguments.doxygen)
     if arguments.operation != "exec":
         print(json.dumps(tools, indent=2))
         return 0
@@ -439,6 +456,7 @@ def main(argv=None) -> int:
     python_bin = str(Path(tools["python"]).parent)
     native_bin = str(Path(tools["doxygen"]).parent)
     environment = {**os.environ, "CHERYL_DOCS_TOOLS_ACTIVE": "1",
+                   "CHERYL_DOCS_FORCE_PINNED": "1" if arguments.force_pinned else "0",
                    "CHERYL_DOCS_DOXYGEN": tools["doxygen"],
                    "CHERYL_DOCS_TOOLCHAIN": json.dumps(tools),
                    "CHERYL_DOCS_CACHE_DIR": str(arguments.cache_dir.expanduser().resolve()),
