@@ -36,6 +36,18 @@ revision. Successful extraction does not establish that every declaration has
 useful prose, examples or a complete contract. Review public comments and the
 [API index](../api/index.md) separately.
 
+Ordinary inline code in the manual and API prose links automatically when its name
+identifies one published declaration. This includes qualified names, unique short
+names, template types, calls such as `CE::Text::Rendering::prepare(shaped, raster_options)`,
+and qualified member assignments. The displayed code stays unchanged. Call
+arguments are expressions, so they do not select an overload: ambiguous names,
+unknown names and private implementation details stay plain code. Code blocks,
+declaration signatures and existing links are left alone. Explicit C++ roles remain
+available when a specific overload is needed. The linker builds one lookup from
+Sphinx's declaration inventory, then checks inline literals without reparsing
+headers or XML for each reference.
+The build log reports its indexing and linking time for serial Sphinx builds.
+
 Derived pages link to the declaring base for inherited interfaces. Public nested
 types have their own pages rather than repeated declarations in the outer class.
 The reference adds Doxygen's `final`, `[[nodiscard]]` and template constraints as

@@ -23,7 +23,7 @@ version = release
 source_repository = "https://github.com/cppcooper/cheryl-engine"
 source_repository_root = str(REPO_ROOT)
 
-extensions = ["myst_parser", "breathe", "exhale", "api_rendering", "repository_links"]
+extensions = ["myst_parser", "breathe", "exhale", "api_rendering", "repository_links", "inline_api"]
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 root_doc = "index"
 exclude_patterns = [

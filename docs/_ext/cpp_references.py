@@ -33,6 +33,7 @@ class CppReferences:
         self.sources = {}
         self.documents = {}
         self.hidden_sources = {}
+        self.templates = set()
         index = ET.parse(directory / "index.xml")
         indexed = {compound.get("refid") for compound in index.findall("compound")}
         configuration = ET.parse(directory / "Doxyfile.xml")
@@ -48,6 +49,8 @@ class CppReferences:
                 continue
             kind = compound.get("kind")
             name = declaration.findtext("compoundname", "") if kind != "file" else ""
+            if name and declaration.findall("templateparamlist/param"):
+                self.templates.add(plain_name(name))
             document = "api/generated/" + identifier
             if kind in {"class", "struct", "concept"}:
                 self.symbols[plain_name(name)].add((document, identifier))
@@ -58,6 +61,9 @@ class CppReferences:
             if location is not None:
                 self.sources[document] = location
             for member in declaration.findall(".//memberdef"):
+                if member.findall("templateparamlist/param"):
+                    qualified = member.findtext("qualifiedname") or "::".join(part for part in (name, member.findtext("name")) if part)
+                    self.templates.add(plain_name(qualified))
                 member_kind = member.get("kind")
                 if member_kind not in {"typedef", "variable", "enum", "define"}:
                     continue
