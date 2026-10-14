@@ -25,6 +25,8 @@ declared only when RmlUi is selected.
 | `CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED` | `OFF` | Attests that a supplied RmlUi library includes the placeholder hit-testing correction. Set only after verification; Cheryl-owned source builds declare their correction automatically. |
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
+| `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
+| `CHERYL_BUILD_DOCS` | `OFF` | Adds the optional `docs-tools` and `docs` targets; tools are selected when these targets run. |
 | `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |
 | `CHERYL_BUILD_ACCEPTANCE_TESTS` | `OFF` | Includes acceptance runners in the default build; requires tests. |
@@ -166,6 +168,10 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 Successful configuration/build does not establish native platform coverage. The
 [test guide](testing.md) and [architecture validation](architecture-validation.md)
 describe the relevant checks and prerequisites.
+
+Documentation has a separate [generation entry point](documentation.md) that
+does not configure or compile the engine. The docs-only CMake project exposes
+the same targets without graphics or native development dependencies.
 
 ## Optional worker support
 

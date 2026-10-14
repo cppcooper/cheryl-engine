@@ -1,5 +1,9 @@
 # Consuming the engine
 
+Start with the [first-game walkthrough](../getting-started/first-game.md) for a
+maintained application covering startup, controls, asset loading, and sprite/text
+submission. This page describes the source and SDK consumption contracts.
+
 Applications can compose source targets from a checkout or link a prebuilt
 [development SDK](#prebuilt-development-sdks). `projects/engine/` owns the neutral
 `Cheryl::Engine` target, backed by the build

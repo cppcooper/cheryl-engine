@@ -86,6 +86,8 @@ the public aliases to inherit headers and dependencies.
 | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | RML/RCSS documents and retained scene bridge. |
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
 | `demo` | — | Example native application. |
+| `first-game` | — | Opt-in maintained game from the [walkthrough](docs/getting-started/first-game.md), with its own assets. |
+| `docs`, `docs-tools` | — | Optional documentation generation and shared tool setup; also available through the docs-only CMake project. |
 | `cheryl-sdk` | — | Builds selected installable libraries when `CHERYL_BUILD_SDK=ON`. |
 
 See the [module index](projects/modules/README.md) for each owner's API and the
@@ -147,7 +149,8 @@ for the steps required to add an owner.
 | **CMake configuration** and **builds** | [Options and defaults](docs/development/building.md#configuration-options), [build configurations](docs/development/building.md#build-configurations) and [engine-only builds](docs/development/building.md#engine-only-configuration) |
 | Dependencies                           | [SDK selection and toolchain settings](docs/development/building.md#dependency-and-toolchain-settings), [system requirements](docs/development/building.md#system-dependencies) and [public headers and link requirements](docs/development/consuming-engine.md#dependencies-and-headers) |
 | Targets and artifacts                  | [Module targets and aliases](projects/modules/README.md), [test targets](docs/development/testing.md#runner-selection) and [artifact name definitions](cmake/CherylOutputs.cmake) |
-| Writing a game                         | [Application composition and startup](docs/development/consuming-engine.md), [game hooks and ownership](docs/development/consuming-engine.md#game-hooks-and-ownership) and [minimal native application](docs/development/consuming-engine.md#minimal-native-application) |
+| Writing a game                         | [First-game walkthrough](docs/getting-started/first-game.md), [application composition and startup](docs/development/consuming-engine.md) and [game hooks and ownership](docs/development/consuming-engine.md#game-hooks-and-ownership) |
+| Documentation generation and hosting   | [Local generation, shared tools and versioned Read the Docs setup](docs/development/documentation.md), [generated API entry points](docs/api/index.md) |
 | Adding a module                        | [Module authoring](docs/development/modules.md#add-a-module), [standalone composition](docs/development/modules.md#standalone-modules) and [UI adapters](docs/development/ui-adapters.md) |
 | Platform and graphics APIs             | [Native GLFW](projects/modules/platform/native-glfw/README.md) and [OpenGL](projects/modules/graphics/opengl/README.md) |
 | UI APIs                                | [TGUI](projects/modules/ui/tgui/README.md) and [RmlUi](projects/modules/ui/rmlui/README.md) |
