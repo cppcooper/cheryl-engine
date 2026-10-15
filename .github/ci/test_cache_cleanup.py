@@ -82,6 +82,7 @@ class PlanTests(unittest.TestCase):
             "unrelated-12345-2",
             f"{COMPILER}-12345-retry",
             "build-deps-v2-Linux-X64-main-sources-12345-2",
+            "build-deps-v2-Linux-X64-main-sources-" + "a" * 64,
             "actions-env-cache-v2-Linux-X64-modules-identity-tools-12345-2",
         ):
             with self.subTest(key=key):
@@ -117,6 +118,33 @@ class PlanTests(unittest.TestCase):
         rows = [cache(1, key=prefix + "a" * 64, ref="refs/heads/main"),
                 cache(2, key=prefix + "b" * 64, ref="refs/heads/main")]
         self.assertEqual(removed(plan(rows)), {})
+
+    def test_source_priorities(self):
+        main = "build-deps-v2-Linux-X64-main-sources-"
+        develop = main.replace("-main-", "-develop-")
+        rows = [cache(1, key=main + "a" * 64, ref="refs/heads/main", size=GIB, accessed=1800),
+                cache(2, key=main + "b" * 64, ref="refs/heads/main", size=GIB, age=7200, accessed=18000),
+                cache(3, key=develop + "a" * 64, size=GIB, accessed=1800),
+                cache(4, key=develop + "b" * 64, size=GIB, age=7200, accessed=14400),
+                cache(5, key="ordinary", ref="refs/heads/feature", size=GIB)]
+        result = plan(rows, default_branch="main", budget_bytes=2 * GIB)
+        self.assertEqual(removed(result), {1: "least recently used", 3: "least recently used",
+                                           5: "least recently used"})
+        result = plan(rows, default_branch="main", budget_bytes=GIB)
+        self.assertEqual(removed(result), {1: "least recently used", 3: "least recently used",
+                                           5: "least recently used", 4: "develop baseline"})
+
+    def test_source_isolation(self):
+        prefix = "build-deps-v2-Linux-X64-main-sources-"
+        rows = [cache(1, key=prefix + "a" * 64, ref="refs/heads/main", size=GIB),
+                cache(2, key=prefix + "b" * 64, ref="refs/heads/main", size=GIB, age=7200),
+                cache(3, key=prefix.replace("Linux-X64", "Windows-X64") + "a" * 64,
+                      ref="refs/heads/main", size=GIB, accessed=18000),
+                cache(4, key=prefix + "a" * 64, size=GIB, accessed=14400),
+                cache(5, key=prefix + "a" * 64, ref="refs/heads/main", version="other-path",
+                      size=GIB, accessed=10800)]
+        result = plan(rows, default_branch="main", budget_bytes=4 * GIB)
+        self.assertEqual(removed(result), {1: "least recently used"})
 
     def test_build_compaction(self):
         rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main", age=18000),

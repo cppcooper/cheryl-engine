@@ -53,16 +53,18 @@ jobs:
         with:
           path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
           key: ${{ steps.environment.outputs.environment-prefix }}-tools-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/generation/requirements.txt', 'docs/generation/native-tools.json', 'docs/generation/bootstrap.py') }}
-      - name: Generate and check documentation
-        run: |
-          mkdir -p docs/generation/generated
-          python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean 2>&1 | tee docs/generation/generated/generation.log
+      - name: Prepare pinned documentation tools
+        run: python docs/generation/bootstrap.py setup --force-pinned
       - name: Save shared documentation tools
         if: steps.environment.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
           key: ${{ steps.tools.outputs.cache-primary-key }}
+      - name: Generate and check documentation
+        run: |
+          mkdir -p docs/generation/generated
+          python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean 2>&1 | tee docs/generation/generated/generation.log
       - name: Retain checked HTML
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

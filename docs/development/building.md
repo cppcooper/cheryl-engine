@@ -368,8 +368,15 @@ intentionally skipped on PR, `develop` and manual runs.
 ### Actions cache retention
 
 Compiler and dependency caches speed up subsequent CI runs. They are separate
-from the SDK and diagnostic artifacts above. Each compiler matrix configuration
-has separate ccache layers:
+from the SDK and diagnostic artifacts above, and from each other:
+
+| Cache | Key family | Contents and ownership |
+| --- | --- | --- |
+| Compiler results | `ccache-v2` | Main, develop and PR layers, described below. |
+| X: build dependencies | `build-deps-v2` | Separate main/develop submodule Git data and Windows vcpkg package archives/downloads. PRs read their base branch's X. |
+| Y: Actions environment | `actions-env-cache-v2` | Shared tools, Linux package downloads, Python wheels/downloads and prepared documentation tools, published by main. |
+
+Each compiler matrix configuration has separate ccache layers:
 
 | Build | Readable layers | Writable layer saved after building |
 | --- | --- | --- |
@@ -398,20 +405,48 @@ writable layer and the main baseline. These are
 Missing parents cause normal cache misses until their builds populate them.
 The `ccache-v2` keys distinguish this file-backend layout from the previous
 ordinary local-cache archives; the first build of each configuration seeds the
-new format. Windows dependency and pip caches continue using full snapshots.
-All updated snapshots use new run-specific keys because saved GitHub caches are
-immutable.
+new format. Compiler layers and Windows binary dependency snapshots use new
+run-specific keys because saved GitHub caches are immutable.
+
+Cache X's source key hashes `.gitmodules` and the recorded submodule commits.
+Updating a submodule selects a new source snapshot automatically; an older X can
+seed Git objects before checkout fetches the requested commits. The binary
+component follows the vcpkg manifest and runner image, with vcpkg validating each
+package's binary compatibility when using a fallback snapshot. Vendored libraries
+remain ordinary CMake targets and reuse their compiler results through ccache.
+Only main/develop push and manual runs publish X; PRs fetch or build missing
+dependencies locally.
+
+To update Y, change package/tool selections in
+[environment.json](../../.github/ci/environment.json), generator packages in
+[requirements-modules.txt](../../.github/ci/requirements-modules.txt), or the
+documentation tool manifests. Bump `cache_version` from `2` to `3` when revising
+the Actions environment or forcing a refresh; this changes the family to
+`actions-env-cache-v3`. Environment inputs are also hashed so package changes
+cannot silently reuse a mismatched key. Y has separate immutable components for
+each OS/architecture, runner image and environment composition. Resolved Linux
+package versions, Python ABI and tool manifests further identify their payloads;
+submodule commits and run IDs do not affect Y.
+
+Every branch restores Y, while only trusted main push/manual runs publish it.
+Develop and PR changes to the environment install normally on a cache miss;
+main publishes the updated Y after those changes reach it. Package installers
+still run on each fresh runner; cached downloads avoid fetching the same packages
+again. Documentation tooling is prepared and cached before document generation,
+so a later documentation failure does not discard the prepared environment.
 
 [cache-maintenance.yml](../../.github/workflows/cache-maintenance.yml) runs after
 the build or documentation workflow finishes and daily at 04:23 UTC. It removes
-caches belonging to closed pull requests, keeps the newest compiler/dependency/pip
-snapshot per branch, configuration and cache version, and trims older caches
+caches belonging to closed pull requests, keeps the newest mutable compiler and
+dependency snapshot per branch, configuration and cache version, and trims older caches
 toward an 8 GiB repository budget. Active workflow refs and caches created or
 accessed within the last 15 minutes are protected. After removing redundant
 snapshots, budget eviction removes ordinary old caches first, then the latest
-open-PR compiler layers, then develop layers, and finally main layers. Known
-default-branch tooling caches have the same priority as develop layers. Each
-tier uses oldest access first. Old-format compiler snapshots lose their branch
+open-PR compiler/dependency snapshots, then develop snapshots, and finally main
+snapshots. Known default-branch tooling caches have the same priority as develop
+layers. Each tier uses oldest access first. The newest X source snapshot per
+branch and runner receives that branch's priority; older submodule pins remain
+ordinary eviction candidates. Old-format compiler snapshots lose their branch
 priority once the same branch and configuration has a new-format replacement.
 These priorities preserve useful branch caches where space allows; the budget
 can still require evicting a current layer. The budget is a target: concurrent

@@ -21,6 +21,7 @@ PULL_REF = re.compile(r"^refs/pull/([1-9][0-9]*)/merge$")
 KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
                   "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-", "build-deps-v2-")
 ENVIRONMENT_KEY = re.compile(r"actions-env-cache-v[1-9][0-9]*-.+")
+SOURCE_KEY = re.compile(r"(build-deps-v2-.+-(?:main|develop)-sources-)[0-9a-f]{64}")
 MAINTENANCE_PATH = ".github/workflows/cache-maintenance.yml"
 
 
@@ -105,6 +106,7 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
     baseline_policy = {}
     for record in entries:
         cache, created, _, logical = record
+        source = SOURCE_KEY.fullmatch(cache["key"])
         if logical is not None:
             bucket = (cache["ref"], cache["version"], logical)
             if bucket not in newest or (created, cache["id"]) > (newest[bucket][1], newest[bucket][0]["id"]):
@@ -115,7 +117,7 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
             known = cache["key"].startswith(KNOWN_PREFIXES) or ENVIRONMENT_KEY.fullmatch(cache["key"])
             if cache["ref"] == "refs/heads/" + default_branch and known:
                 priority, reason = 2, "default-branch baseline"
-            if logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-", "build-deps-v2-")):
+            if source or (logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-", "build-deps-v2-"))):
                 match = PULL_REF.fullmatch(cache["ref"])
                 if cache["ref"] == "refs/heads/main":
                     priority, reason = 3, "main baseline"
@@ -124,7 +126,7 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
                 elif match and int(match.group(1)) in open_prs:
                     priority, reason = 1, "open pull request baseline"
         if priority:
-            bucket = (cache["ref"], cache["version"], logical or cache["key"])
+            bucket = (cache["ref"], cache["version"], source.group(1) if source else logical or cache["key"])
             if bucket not in baseline or (created, cache["id"]) > (baseline[bucket][1], baseline[bucket][0]["id"]):
                 baseline[bucket] = record
                 baseline_policy[bucket] = (priority, reason)
