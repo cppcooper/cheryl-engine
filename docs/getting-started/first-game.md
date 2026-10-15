@@ -58,10 +58,16 @@ not establish those graphics and input observations.
 
 ### Startup options, including your own
 
-{cpp:func}`CE::Application::GLFWOpenGL::make_startup` selects the native GLFW
-window/input adapter and OpenGL rendering/resource adapters. Its configuration
-provides the application's defaults. Register custom command-line options before
-calling `initialize()`:
+{cpp:func}`CE::Application::GLFWOpenGL::make_startup` is a **factory function**:
+it constructs and returns a {cpp:class}`CE::Application::Startup` object. The
+example stores that object in the variable `startup`. It holds the command-line
+parser and the configuration used to create the engine context.
+
+This function selects GLFW for the window/input implementation and OpenGL for
+drawing and graphics resource creation. These implementations are the
+**backends**; their objects implement the engine's window, input, rendering, and
+resource interfaces. Register your game's command-line options on `startup`
+before calling `startup.initialize()`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/main.cpp
 :language: cpp
@@ -71,61 +77,92 @@ calling `initialize()`:
 :dedent: 8
 ```
 
-The factory's first argument is the command-line description. The configuration
-sets a 640 × 360 window and its title. Cheryl also registers engine/backend
-options: use `--help` to see those available in this build. For example,
-`--window-width` overrides the initial width, `--worker-count` controls CPU worker
-capacity, and `--concurrent` selects the separate simulation thread.
+In `make_startup("Cheryl first game", {...})`, the first argument is the text
+shown in command-line help. The second argument, `{.width = 640, ...}`, is a
+`CE::Application::GLFWOpenGL::Options` configuration value: it supplies defaults
+such as window size and title.
 
-`add_application_options()` lets your game use the same CLI11 parser. Here,
-`--assets` writes into `asset_root`, which stays alive through parsing. CMake
+The calls in `main()` act on different objects:
+
+| Call in the example | Object and role |
+| --- | --- |
+| `startup.add_application_options(...)` | A `Startup` member function. It immediately calls the supplied lambda to register your game's options. |
+| `options.add_option("--assets", asset_root, ...)` | A CLI11 member function. The lambda's `CLI::App& options` refers to the **Application option group** within `startup`'s parser. This call registers `--assets` and binds its value to `asset_root`. |
+| `startup.initialize(argc, argv)` | Parses the command line, creates the engine context, and returns the `StartupResult` stored in `result`. |
+| `result.make_runtime(game)` | Creates the `GameRuntime` stored in `runtime`, using the parsed settings and your `game` object. |
+| `runtime.run()` | Runs the engine loop and calls your game's lifecycle functions. |
+
+The callback's `options` parameter is a parser interface; the `Options` value
+passed to `make_startup()` is configuration data. Cheryl also registers its own
+engine/backend options: use `--help` to see those available in this build.
+For example, `--window-width` overrides the initial width, `--worker-count`
+controls CPU worker capacity, and `--concurrent` selects the separate simulation
+thread.
+
+When `startup.initialize()` parses `--assets`, it writes into the `asset_root`
+string captured by the lambda. Keep that string alive through parsing. CMake
 supplies its default as an absolute path, so launching from another directory
 still finds the same assets. An explicit relative override resolves from the
 process's working directory. Add other game-specific options in that callback
-and keep their destination variables alive until `initialize()` returns.
+and keep their destination variables alive until `startup.initialize()` returns.
 
 ### Configure the context and run the game
 
-The factory's {cpp:struct}`CE::Application::GLFWOpenGL::Options` configuration
+The second argument to `make_startup()`, the
+{cpp:struct}`CE::Application::GLFWOpenGL::Options` value,
 selects the initial window dimensions, title, window mode, and swap interval.
 Its `execution` member configures the context's CPU execution service, including
-worker count and an optional shared pool. The factory also accepts
-{cpp:struct}`CE::Application::RuntimeOptions` for loop defaults such as execution
-mode and simulation timing. Parsed command-line options override these defaults.
+worker count and an optional shared pool of threads for background tasks.
+`make_startup()` also accepts a {cpp:struct}`CE::Application::RuntimeOptions`
+value as an optional third argument, omitted above. It supplies loop defaults
+such as execution mode and simulation timing. Parsed command-line options
+override these defaults.
 See [application startup](../development/consuming-engine.md#command-line-startup)
 for the complete option and validation contract.
 
-`initialize(argc, argv)` parses and validates options, then creates the owned
-{cpp:class}`CE::Runtime::Context` and native window with the chosen adapters and
-services. Help and argument errors return without a context: check
-`should_start()` before using it and return the supplied exit code. Backend
-creation failures can throw; the complete example wraps `main()`'s body in an
-exception handler.
+`result` is a {cpp:struct}`CE::Application::StartupResult`.
+On successful initialization, its `result.context` member owns a
+{cpp:class}`CE::Runtime::Context`, the object grouping the chosen engine services
+and backend implementations. The GLFW window exists at this point. Help and
+argument errors return without a context: check `result.should_start()` before
+using it and return `result.exit_code`. Backend creation failures can throw; the
+complete example wraps `main()`'s body in an exception handler.
 
-Construct your game with that context, then use `result.make_runtime(game)` to
-apply the parsed loop settings together. `runtime.run()` starts the rendering
-and input adapters, calls the game hooks, runs until stopped, and shuts those
-adapters down. Resource upload becomes available inside `Game::init()`.
+Construct the `FirstGame::Game` instance named `game` with `*result.context`.
+`result.make_runtime(game)` returns a {cpp:class}`CE::Runtime::GameRuntime`,
+stored in `runtime`, with the parsed loop settings. `runtime.run()` starts the
+rendering and input implementations, calls the game's lifecycle functions, runs
+until stopped, and shuts rendering and input down. Uploading graphics resources
+becomes available inside `Game::init()`.
 
-Declare the startup result, game, and runtime in that order. The game borrows the
-context; the runtime borrows both. Reverse destruction order keeps each owner
-alive for its borrowers. The context provides services; the runtime owns the
-loop that calls your game.
+Declare `result`, `game`, and `runtime` in that order. Here, **owns** means being
+responsible for an object's lifetime; **borrows** means using an object that
+someone else must keep alive. The game borrows the context, and the runtime
+borrows both. Reverse destruction order keeps those dependencies alive. The
+context provides services; the runtime controls the loop that calls your game.
 
 ## Engine architecture: the game developer's view
 
 ### Game state and lifecycle
 
-Implement {cpp:struct}`CE::Game::AbstractGame`. Keep the camera, actors, selected
-resources, controls, and other game state in your implementation:
+{cpp:struct}`CE::Game::AbstractGame` is the base interface for a game. Derive your
+own class from it and implement its virtual member functions, called **hooks**
+because the runtime calls them at defined points in the lifecycle. The example's
+implementation is `FirstGame::Game`, the class instantiated as `game` in `main()`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.h
 :language: cpp
-:caption: Game — initial state is prepared in init(), then managed by simulation
+:caption: FirstGame::Game — initial state is prepared in init(), then managed by simulation
 :start-after: // [game]
 :end-before: // [/game]
 :dedent: 4
 ```
+
+Its `engine_` member is a `CE::Runtime::Context&` referring to `*result.context`.
+Thus calls such as `engine_.input()` use the context created in `main()`.
+`camera_` stores the view, `actor_` stores the sprite actor, `score_` stores the
+uploaded text label, and `images_`/`text_` retain their drawing materials. The
+sprite and text sections below introduce those resource types.
 
 The **platform thread** is the thread calling `runtime.run()`. It polls native
 events and owns the graphics context. The **simulation owner** runs your game
@@ -139,11 +176,12 @@ still run in order on that owner.
 | `update(tick)` | Simulation owner | Change game state using copied input, dimensions, and simulation time. Request a stop when appropriate. |
 | `prepare_render_frame(frame) const` | Same simulation owner | Turn current state into a complete frame of draw values and retained resources. Keep gameplay progression in `update()`; frame preparation can be skipped when no frame slot is available. |
 | `quiesce()` | Platform thread, after simulation stops and joins | Detach external listeners and stop producers that could submit more work. The default hook is enough for this example. |
-| `deinit()` | Platform/graphics thread, after accepted work settles and frames are recycled | Remove bindings and release game-owned resources while input and graphics still exist. |
+| `deinit()` | Platform/graphics thread, after submitted background work finishes and frames are released for reuse | Remove bindings and release game-owned resources while input and graphics still exist. |
 
 Initialization prepares the state on the platform thread before simulation
 begins. During the loop, simulation owns changes to that state. Rendering reads a
-**published frame**: copied camera/draw values and retained resource handles.
+**published frame**: a complete set of drawing instructions for one window
+image, containing copied camera/draw values and retained resources.
 After your frame-preparation hook returns, the runtime publishes the completed
 frame.
 
@@ -151,19 +189,27 @@ That boundary lets native events and graphics stay on their required thread
 while simulation can run independently. Reading a live actor position from the
 renderer while simulation changes it would be a data race. Instead, the renderer
 can draw an earlier frame's copied position while the actor moves again.
-`shared_ptr` keeps a resource alive; it does not make concurrent mutation safe.
+The sprite/material **handles** in this example are `shared_ptr` values: holding
+one keeps the referenced resource alive. That does not make concurrent mutation
+safe.
 Publish a new resource version when its contents change.
 
 ### Interfaces you use
 
+`engine_` gives the game access to these interfaces. An **interface** describes
+the operations an implementation provides; for example, `engine_.resources()`
+returns a `CE::Rendering::Resources::Provider&`. That **resource provider** creates
+the backend's graphics resources from prepared data. Later snippets store this
+reference in the local variable `resources`.
+
 | Interface | When and why your game uses it |
 | --- | --- |
-| `Context::input()` | Bind actions in `init()` and unbind them in `deinit()`. Read gameplay input from `tick.input` during updates. |
-| `Context::window()` | Read native window state on the platform thread. During updates, use `tick.framebuffer_size`, the copied dimensions for simulation. |
-| `Context::resources()` | Upload prepared graphics resources on the graphics owner, initially in `init()`. |
-| `TickContext` | Read the simulation delta/input/dimensions and call `request_stop()`. Its borrowed data is valid for that update. |
-| `FrameWriter` and its passes | Build a CPU-side frame during `prepare_render_frame()`. Do not retain the writer or passes after the hook returns. |
-| `Context::make_worker_group()` and `platform_dispatcher()` | Later, prepare expensive resources on tracked CPU workers and hand owned upload requests to the platform thread. |
+| `engine_.input()` | Bind actions in `init()` and unbind them in `deinit()`. Read gameplay input from `tick.input` during updates. |
+| `engine_.window()` | Read native window state on the platform thread. During updates, use `tick.framebuffer_size`, the copied dimensions for simulation. |
+| `engine_.resources()` | Obtain the resource provider for uploads on the graphics owner, initially in `init()`. |
+| `tick`, the `TickContext` parameter of `update()` | Read the simulation delta/input/dimensions and call `tick.request_stop()`. Its borrowed data is valid for that update. |
+| `frame`, the `FrameWriter` parameter of `prepare_render_frame()` | Build drawing instructions on the CPU. Do not retain the writer or passes after the hook returns. |
+| `engine_.make_worker_group()` and `engine_.platform_dispatcher()` | Later, prepare expensive resources on background CPU threads and queue upload requests for the platform thread. |
 
 Calling a context accessor does not move execution to another thread. In
 particular, graphics uploads in concurrent `update()` would run on the wrong
@@ -185,11 +231,12 @@ which generation to submit. Keep those choices with simulation.
 | Font and rendered text | Load a font collection, lay out the message, prepare CPU images/triangles, then upload a text generation. | Retain the generation and resolve it into each frame that displays the label. | Replace or reset the generation; local font/layout variables need not remain in scope. |
 | Sound effect or music | With the optional audio module, decode a clip, then play it through an application-owned audio system; or open a stream there. | Playback voices run on the audio system's own timeline; they do not pass through rendering frames. | Explicitly stop a voice when playback should end; dropping a voice handle alone does not stop it. Close the audio system after its producers stop. |
 
-Releasing a game handle ends that owner's use. Caches and published frames may
-still retain the resource, so it does not promise immediate native destruction.
-Do not clear a shared cache just because an actor disappears. Keep the originating
-backend alive until its resources have been released and retired; runtime
-shutdown provides that ordering for this game's graphics. See
+Releasing a game handle ends that owner's use. The shared asset caches and
+published frames may still retain the resource, so this does not immediately
+delete its GPU textures or buffers. Do not clear a shared cache just because an
+actor disappears. Keep the backend that created the resources alive until their
+references are released and backend cleanup finishes; runtime shutdown provides
+that ordering for this game's graphics. See
 [resource ownership](../resources/resource-residency.md) and
 [audio playback](../runtime/audio.md) for their respective lifetime contracts.
 
@@ -199,8 +246,12 @@ These are shared foundations for the sprite and text examples below.
 
 ### Bind controls during initialization
 
-Native key codes become semantic game actions at the input boundary. Retain the
-returned IDs so cleanup can remove this game's bindings:
+An **action** is a game-defined input name represented by a
+`CE::Input::Actions::Id`; here, `left_`, `right_`, `next_cell_`, and `quit_` are
+those IDs. A **binding** maps a device input to an action. In the following code,
+`bindings` is the binding interface returned by `engine_.input().bindings()`.
+Its `bind_button()` calls map Gainput key codes to the game's actions and return
+binding IDs, stored in the `bindings_` member for cleanup:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -216,9 +267,11 @@ actions, events, and focus handling.
 
 ### Understand what a draw needs
 
-A sprite or uploaded label supplies geometry and images. A **material** supplies
-the drawing recipe: shader program, geometry topology, sampling, and parameter
-bindings. The example loads both recipes from its
+A sprite or uploaded label supplies geometry (vertices forming shapes) and image
+pixels. A **material**, represented by `CE::Rendering::Resources::Material`,
+supplies the drawing recipe: a shader program to run on the GPU, how vertices
+form triangles (topology), how image pixels are sampled, and named parameters.
+The members `images_` and `text_` retain the two materials loaded from the
 [material manifest](../../projects/apps/first-game/assets/graphics/shaders/materials.json):
 
 | Material | Geometry and sampling |
@@ -237,9 +290,13 @@ it from the actual framebuffer dimensions before placing the actor:
 :dedent: 8
 ```
 
-Updates will keep the camera's dimensions current using the tick's copied size.
-During frame preparation, open a pass with that camera and describe its common
-image parameter:
+Updates will keep `camera_`'s dimensions current using the tick's copied size.
+In `prepare_render_frame(CE::Rendering::FrameWriter& frame)`, `frame` is the
+runtime's borrowed **frame writer**, used to assemble this frame's instructions.
+`frame.begin_pass(...)` returns the local `pass`, a
+`CE::Rendering::PassWriter`. A **pass** groups draws that share camera and pass
+settings. The local `context` is a `CE::Rendering::Submission::Context2D` value
+containing those settings for the draw-resolution functions below:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -249,15 +306,22 @@ image parameter:
 :dedent: 8
 ```
 
-`begin_pass()` copies the {cpp:class}`CE::Rendering::Camera2D` projection and view
-matrices.
-{cpp:struct}`CE::Rendering::Submission::Context2D` describes the pass values and
-selects the public `image` parameter at texture unit zero. Each draw then adds a
-{cpp:struct}`CE::Rendering::DrawStyle2D` with its material, model transform, scale,
-and alpha. The following two walkthroughs add to this same pass.
+`frame.begin_pass()` copies `camera_`'s projection and view matrices, which map
+game coordinates to the window. The draw-settings value `context` is separate
+from the engine's `CE::Runtime::Context` referenced by `engine_`. Its
+`ImageParameter2D{"image", 0}` tells resolution where to place each asset's image:
+the material parameter named `image`, using texture binding slot zero.
 
-The material maps public parameter names to native shader uniforms: the code
-uses `image`, while this OpenGL recipe calls that sampler `mytexture`. The
+For each draw, the local `image_style` or `text_style` is a
+{cpp:struct}`CE::Rendering::DrawStyle2D` value. It selects a material and supplies
+the model transform (position/orientation), scale, and alpha (opacity). Resolution
+combines an asset, a style, and the pass settings into a
+`CE::Rendering::DrawPacket2D`: an owned drawing instruction. The following two
+walkthroughs add those packets to this same `pass` with `pass.add(...)`.
+
+The material maps public parameter names to named shader inputs, called
+**uniforms** in OpenGL: the code uses `image`, while this shader calls that image
+input `mytexture`. The
 [vertex shader](../../projects/apps/first-game/assets/graphics/shaders/first-game.vert)
 combines the pass's projection/view with each draw's model transform. See
 [pipelines and materials](../rendering/pipelines-and-materials.md) when writing
@@ -283,7 +347,9 @@ assets/
     └── textures/actor.png
 ```
 
-The index chooses which definition files to load:
+`graphics-manifests.json` is an **index**: it lists the JSON definition files
+the loader should read. Each listed **manifest** describes named assets or
+drawing materials:
 
 ```{literalinclude} ../../projects/apps/first-game/assets/graphics/graphics-manifests.json
 :language: json
@@ -313,7 +379,11 @@ as game-owned values:
 :dedent: 4
 ```
 
-Load the root, check the required named resources, and construct the actor:
+The local `loader` is a `CE::Assets::Loading::Loader` that reads this asset root.
+`resources` refers to the resource provider from `engine_.resources()`.
+`Sprites::Manager::get()` and `Shaders::Manager::get()` access the shared caches
+used to look up loaded sprites and materials. Load the root, check the required
+resources, and construct `actor_`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -331,9 +401,12 @@ assets, so loading does not also select unrelated or optional artwork.
 An upload failure can leave already completed cache entries; the
 [asset-loading guide](../assets/asset-loading.md) explains validation and retry.
 
-`get_asset("first-game", "actor")` looks up `first-game:actor` and returns a
-retained handle or null. `get_assets("first-game")` returns that namespace keyed
-by local name when a game system needs several sprites. Resolve names once and
+The sprite manifest's `"namespace": "first-game"` groups asset names; its
+`"sprites"` object contains the local name `"actor"`. Together they identify
+`first-game:actor`. This asset namespace is a naming group within the loaded
+resources. `get_asset("first-game", "actor")` returns its shared sprite handle
+or null. `get_assets("first-game")` returns that group keyed by local name when a
+game system needs several sprites. Resolve names once and
 pass handles into the owning actors/managers; collection iteration order is not
 gameplay identity. The local loader can go out of scope after initialization.
 The actor's retained handle remains valid within its backend's lifetime.
@@ -353,8 +426,9 @@ without reading the live native window. Escape requests normal runtime shutdown.
 Space advances the actor's selected image cell; the shared sprite stays unchanged.
 
 This asset has no timed animation clip. For authored clips, keep a separate
-{cpp:class}`CE::Assets::Sprites::Animation` cursor per actor and advance it with
-simulation time. See [asset values and playback](../assets/asset-values-and-playback.md).
+{cpp:class}`CE::Assets::Sprites::Animation` object per actor to hold its playback
+position, and advance it with simulation time. See
+[asset values and playback](../assets/asset-values-and-playback.md).
 
 ### Prepare a frame: publish the actor's current appearance
 
@@ -391,15 +465,16 @@ The string literal in this example follows that same path.
 
 ### Init: turn the message into a drawable label
 
-Each stage answers a different question:
+`selection` is a `CE::Text::FontSelection` value describing which fonts to look
+for and where to search. The calls below produce these successive values:
 
 | Stage | What it produces and why |
 | --- | --- |
-| `FontCollection::load(selection)` | Font data describing letter and symbol shapes, with fallback fonts for missing characters. |
-| {cpp:func}`CE::Text::layout_text` | **Which glyphs to draw and where to put them**, at the requested font size. A glyph is a font's drawing for a letter, symbol, or group of characters. Choosing glyphs and adjusting their spacing is called **shaping**; letters can join or share a glyph. Layout also handles direction and line breaks. It produces no pixels. |
-| {cpp:func}`CE::Text::Rendering::prepare` | CPU images of the needed glyphs packed into sheets called **atlas pages**, plus triangles selecting each glyph's image. This turns font outlines into drawable pixels. |
-| {cpp:func}`CE::Text::Rendering::upload` | A {cpp:class}`CE::Text::Rendering::Generation` holding the layout and graphics resources. In this application, images and triangles become OpenGL textures and buffers. |
-| `resolve_text()` and `pass.add()` below | A frame's drawing instructions combining that uploaded label with a material and position. The runtime's renderer executes them to display the text. |
+| `FontCollection::load(selection)` | `fonts`, a `CE::Text::FontCollection` containing font data describing letter and symbol shapes, with fallback fonts for missing characters. |
+| {cpp:func}`CE::Text::layout_text` | `layout`, a `CE::Text::ShapedText` describing **which glyphs to draw and where to put them**, at the requested font size. A glyph is a font's drawing for a letter, symbol, or group of characters. Choosing glyphs and adjusting their spacing is called **shaping**; letters can join or share a glyph. Layout also handles direction and line breaks. It produces no pixels. |
+| {cpp:func}`CE::Text::Rendering::prepare` | A `CE::Text::Rendering::Prepared` value: CPU images of the needed glyphs packed into sheets called **atlas pages**, plus triangles selecting each glyph's image. This turns font outlines into drawable pixels. |
+| {cpp:func}`CE::Text::Rendering::upload` | A {cpp:class}`CE::Text::Rendering::Generation`, stored in the game's `score_` member, holding the layout and graphics resources. In this application, images and triangles become OpenGL textures and buffers. |
+| `resolve_text()` and `pass.add()` below | `DrawPacket2D` drawing instructions combining that uploaded label with a material and position, added to `pass`. The runtime's renderer executes the published frame to display the text. |
 
 The initialization code follows those stages. `resources` is the provider
 reference obtained in the asset-loading excerpt:
@@ -468,8 +543,8 @@ to draw and present.
 ### Deinit: release the uploaded label
 
 `score_.reset()` and `text_.reset()` release this game's generation and text
-material on the platform thread during the cleanup hook below. Backend resource
-retirement follows retained ownership. See the
+material on the platform thread during the cleanup hook below. Frames and caches
+can still retain their resources, as described in the ownership section. See the
 [Unicode text guide](../assets/text-layout.md) for wrapping and more advanced
 replacement behavior.
 
@@ -499,15 +574,23 @@ shutdown and failure ordering.
 
 ## Load or replace resources during play
 
-The same resource path can span threads when preparation is expensive:
+The same resource path can span threads when preparation is expensive.
+`engine_.make_worker_group()` returns a `CE::Workers::Group`, which tracks jobs
+submitted to background CPU threads. `engine_.platform_dispatcher()` returns a
+`CE::Runtime::PlatformDispatcher&`, the queue for work that must run on the
+platform thread. Its submitted callback receives a `CE::Runtime::Context&` to
+use on that thread; a worker-group callback takes no engine argument. Either
+object's `submit(...)` returns a `std::future<T>`: a way to retrieve the eventual
+result of that job.
 
 1. **Simulation:** request a load through an Engine worker group and keep the
    current resource while the request is pending.
 2. **CPU worker:** prepare owned data, such as `Loader::prepare()` results or a
    text layout and atlas. Keep the loader and request inputs alive through their
    work.
-3. **Platform/graphics thread:** receive the owned prepared value through the
-   platform dispatcher, upload it, and return retained resources through a future.
+3. **Platform/graphics thread:** receive the owned prepared value through
+   `engine_.platform_dispatcher().submit(...)`, upload it, and return retained
+   resources through that request's future.
 4. **Simulation, during `update()`:** check readiness and adopt the completed
    result. Later frames select the new version; earlier frames retain the old one.
 

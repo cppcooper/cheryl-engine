@@ -1,15 +1,17 @@
 # Project setup
 
-Choose how your game obtains Cheryl before writing its entry point. During
+Choose how your game obtains Cheryl before writing `main()`. During
 development, adding a source checkout to your game's CMake project is sufficient:
-building the game also builds the libraries it uses. An installed development SDK
-is an alternative when you want to consume already compiled libraries. Both paths
-provide the same CMake target names and public `cheryl/` headers.
+building the game also builds the libraries it uses. A development **SDK** is a
+directory containing compiled libraries, public headers and CMake package files;
+use it when you want to link already compiled Cheryl libraries. Both paths
+provide the same public CMake names, such as `Cheryl::Cheryl`, for
+`target_link_libraries()`, and the same `cheryl/` headers.
 
 After setup, continue with [Your first game](first-game.md). It introduces startup,
 the game hooks and resource ownership before putting a sprite and text on screen.
-The [consumption reference](../development/consuming-engine.md) covers other target
-compositions and the full SDK contract.
+The [consumption reference](../development/consuming-engine.md) covers other
+library selections and the full SDK requirements.
 
 ## Dependencies
 
@@ -17,19 +19,20 @@ Use CMake 3.28 or newer, Ninja, and a C++23 compiler and standard library with
 `std::format` support. Install the
 [system dependencies](../development/building.md#system-dependencies) required by
 your selected modules. The first game uses FreeType, HarfBuzz and ICU for text,
-plus Native GLFW, native input and OpenGL for its window, controls and rendering.
+plus `Cheryl::NativeGLFW` for its window/input and `Cheryl::OpenGL` for rendering.
 It needs a desktop graphics driver supporting an OpenGL 3.3 core context.
 
 For source builds, initialize the checkout's recorded recursive submodules. Python
 and Jinja2 are needed when GLAD generates OpenGL bindings. The first game supplies
-its own sprite, shaders and manifests; the embedded fallback font comes from the
-assets submodule. No optional artwork download is needed.
+its own sprite image, shaders and `assets/graphics/graphics-manifests.json`, an
+index selecting its graphics definitions. The embedded fallback font comes from
+the engine checkout's `assets/` submodule. No optional artwork download is needed.
 
 For an SDK, install its
 [consumer prerequisites](../development/consuming-engine.md#prebuilt-development-sdks)
 instead of rebuilding Cheryl. Some native development/runtime libraries remain
-external on Linux; Windows SDKs include a dependency prefix whose DLLs must be
-available at runtime.
+external on Linux; Windows SDKs bundle native libraries under `dependencies/`,
+whose `.dll` files must be available when your game runs.
 
 ## Build your game with a source checkout
 
@@ -63,10 +66,10 @@ your chosen parent directory. This block preserves your shell's starting directo
 
 Copy the maintained [first game's](../../projects/apps/first-game/) `src/` and
 `assets/` directories into `my-game/` to use its code unchanged. Create
-`my-game/CMakeLists.txt` as follows. The options select the first game's
-native graphics/input composition and omit unrelated applications and integrations.
-The block scopes those settings to Cheryl; it does not force changes into your
-project's CMake cache.
+`my-game/CMakeLists.txt` as follows. The `CHERYL_BUILD_*` options select the first
+game's Native GLFW/OpenGL libraries and omit unrelated applications and integrations.
+`block(SCOPE_FOR VARIABLES)` limits those settings to the enclosed Cheryl setup;
+it does not replace saved command-line/IDE options in `CMakeCache.txt`.
 
 ```cmake
 cmake_minimum_required(VERSION 3.28)
@@ -101,21 +104,31 @@ target_compile_definitions(my_game PRIVATE
     CHERYL_FIRST_GAME_ASSETS="${CMAKE_CURRENT_SOURCE_DIR}/assets")
 ```
 
-The scoped `set()` values fix this template's component selection; edit them
+`add_subdirectory()` reads the engine checkout's CMake project and places its
+build files under the game's `cheryl/` build subdirectory. `add_executable()`
+creates the executable target named `my_game`; `target_link_libraries()` attaches
+the selected Cheryl libraries and their compiler settings to it.
+
+The scoped `set()` values fix this template's module selection; edit them
 when adding a module. A same-name `-D` cache option does not override those local
 values.
 
 `CHERYL_FIRST_GAME_ASSETS` supplies the example's default asset-root string, so
 launching from an IDE or another directory still finds your game's files. As you
 replace the example with your own game, keep that explicit connection between
-the CMake target and the asset path used by startup.
+the executable target and the asset path read by `main()`.
 
-`Cheryl::Cheryl` provides Engine and the selected modules/support, including their
-include directories, feature definitions and dependencies. Your sources can use
-`#include <cheryl/cheryl.h>` without collecting individual include paths. Changing
-a `CHERYL_BUILD_*` option makes a component available; linking its target is what
-provides that component to the application. The facade links the configured set.
-Reload CMake in the IDE after changing selections.
+`Cheryl::Cheryl` is an **interface target**: it links Engine and the selected
+module/support libraries and supplies their include directories and preprocessor
+definitions. It produces no combined library of its own. Your sources can use
+`#include <cheryl/cheryl.h>`: this aggregate header includes Engine and the public
+module/support headers selected by those definitions. For example, linking
+`Cheryl::OpenGL` supplies `CHERYL_HAS_OPENGL=1`, which enables
+`<cheryl/modules/opengl.h>` inside the aggregate header.
+
+A module option such as `CHERYL_BUILD_OPENGL` makes `Cheryl::OpenGL` available;
+linking its target supplies that library to your game. `Cheryl::Cheryl` links the
+configured set. Reload CMake in the IDE after changing selections.
 
 Configure and build from the game directory. Replace
 `/path/to/projects/my-game` with its location:
@@ -131,6 +144,11 @@ Configure and build from the game directory. Replace
 )
 ```
 
+`cmake -S . -B build/release` configures the build. `CMAKE_BUILD_TYPE=Release`
+selects the optimization/debug/logging configuration; module options such as
+`CHERYL_BUILD_OPENGL` select libraries. `cmake --build ... --target my_game`
+then compiles that executable and the libraries it links.
+
 The policy setting accommodates pinned legacy dependencies on CMake 4 hosts.
 The GLFW setting chooses X11 on Linux; the Gainput setting avoids the optional
 HID backend and its dependency download. Use the
@@ -141,37 +159,46 @@ follow [First game: setup](first-game.md#setup).
 
 ### Choose smaller target sets when needed
 
-The facade is convenient for a game using the configured assembly. Granular
-targets let a game select fewer dependencies:
+Link `Cheryl::Cheryl` for all selected libraries, or choose individual public
+targets for fewer dependencies:
 
 | Link target | What the game obtains |
 | --- | --- |
-| `Cheryl::Cheryl` | Engine and the configured module/support assembly, including the Linux Debug terminal when selected in a source build. |
-| `Cheryl::OpenGL::Startup` | Common command-line startup plus Native GLFW/OpenGL and their Engine requirements; enough for the first game's startup path. |
-| `Cheryl::Engine` | Neutral Engine contracts and implementation, without selecting a native backend. |
+| `Cheryl::Cheryl` | Engine and the configured module/support libraries, including the Linux Debug terminal when selected in a source build. |
+| `Cheryl::OpenGL::Startup` | The `CE::Application::GLFWOpenGL::make_startup(...)` function used by `main()`, plus common startup, Native GLFW/OpenGL and their Engine requirements. |
+| `Cheryl::Engine` | Neutral Engine interfaces and implementation, without selecting a window or graphics implementation. |
 | `Cheryl::Audio::Miniaudio` | Selected audio integration; add it when your game needs sound. |
 | `Cheryl::UI::TGUI` or `Cheryl::UI::RmlUi` | The selected UI integration. |
 
-For example, replace the facade link with
+For example, replace the `Cheryl::Cheryl` link with
 `target_link_libraries(my_game PRIVATE Cheryl::OpenGL::Startup)` for the native
-startup composition alone. The [target reference](../../README.md#targets) lists
-additional support targets. Header umbrellas expose only components supplied by
-the linked targets, so a narrower link can make a feature's conditional include
-inactive even when its build option is enabled.
+startup libraries alone. In source builds, names such as `Cheryl::Engine` are
+**aliases** for concrete build targets: link `Cheryl::Engine`, but use
+`cmake --build ... --target cengine` to build its library directly. SDKs expose
+the same public names as imported targets referring to existing libraries. The
+[target reference](../../README.md#targets) maps the other public and build names.
+
+`<cheryl/cheryl.h>` includes only the modules supplied by linked targets, so a
+narrower link can make a feature's conditional include inactive even when its
+build option is enabled.
 
 ## Use an installed SDK instead
 
-Choose an SDK containing Native GLFW, OpenGL, native input and Startup for the
-first game. Its package must match your OS, architecture, compiler/standard-library
-ABI and configuration. With an extracted SDK, replace the source-checkout block
-in the game CMake file with:
+Choose an SDK providing `Cheryl::OpenGL::Startup` and Native GLFW with native input
+for the first game. Its package must match your OS, CPU architecture,
+compiler/standard-library **ABI** (the binary conventions needed to link C++ code)
+and build configuration, such as Release. With an extracted SDK, replace the
+source-checkout `block(...)` through `endblock()` in the game CMake file with:
 
 ```cmake
 find_package(Cheryl 4 CONFIG REQUIRED)
 ```
 
-Keep `add_executable`, `target_link_libraries` and your asset-root definition.
-Configure with the extracted SDK prefix; replace both paths below:
+`find_package()` loads the SDK's `CherylConfig.cmake`, which provides its public
+targets and dependency settings. Keep `add_executable`, `target_link_libraries`
+and your asset-root definition. The **SDK prefix** is the extracted root directory
+containing `include/`, libraries and CMake package files. Set `CMAKE_PREFIX_PATH`
+to that directory so `find_package()` can locate it; replace both paths below:
 
 ```sh
 (
@@ -192,9 +219,10 @@ in SDKs.
 
 ## Build the maintained example independently
 
-The first game's own CMake entry point also works outside the engine's top-level
-build, without copying its files or writing another CMake project. From anywhere
-inside the checkout, configure against engine source:
+The first game's own `projects/apps/first-game/CMakeLists.txt` also works outside
+the engine's top-level build, without copying files or writing another CMake
+project. `CHERYL_FIRST_GAME_ENGINE_SOURCE` selects an engine checkout for that
+project. From anywhere inside the checkout, configure against engine source:
 
 ```sh
 (
@@ -209,8 +237,9 @@ inside the checkout, configure against engine source:
 )
 ```
 
-Alternatively, leave the source option empty and select a compatible SDK
-containing Native GLFW, native input, OpenGL, and Startup:
+Alternatively, leave `CHERYL_FIRST_GAME_ENGINE_SOURCE` empty to use
+`find_package(Cheryl)` and select a compatible SDK containing
+`Cheryl::OpenGL::Startup` and Native GLFW with native input:
 
 ```sh
 (
@@ -230,35 +259,35 @@ have an `.exe` suffix.
 
 ## Produce engine artifacts
 
-The SDK is optional for source consumers. When producing engine artifacts for
-others, choose the corresponding operation rather than building every target:
+The SDK is optional for source consumers. To produce a file or directory for
+others, choose its build, install or packaging operation:
 
 | Need | Operation | Result |
 | --- | --- | --- |
 | Run the maintained tutorial | Select `CHERYL_BUILD_FIRST_GAME=ON`; build `first-game`. | The tutorial executable and its linked libraries. |
 | Build a library directly | Build `cengine`, `module_opengl` or another concrete library target. | The selected library and dependencies in the build tree. |
-| Build selected SDK libraries | Select `CHERYL_BUILD_SDK=ON`; build `cheryl-sdk`. | Compiled installable libraries; headers have not yet been collected. |
-| Collect libraries and headers | After that build, install component `CherylSDK` to a prefix. | One SDK tree with headers, libraries, CMake imports and licenses. |
-| Create a distributable SDK archive | Run `.github/ci/package.py` after the SDK build. | Archive, manifest and checksums; Windows also bundles its native dependencies. |
-| Build the website and API reference | Build `docs` in the documentation-only project. | Generated HTML, without compiling Engine. |
+| Build selected SDK libraries | Select `CHERYL_BUILD_SDK=ON`; build custom target `cheryl-sdk`, which builds the selected libraries together. | Compiled installable libraries; headers have not yet been collected. |
+| Collect libraries and headers | After that build, use `cmake --install` with `--component CherylSDK` and a destination `--prefix`. | One SDK directory with headers, libraries, CMake package files and licenses. |
+| Create a distributable SDK archive | Run `.github/ci/package.py` after the SDK build. | Archive, `SDK-MANIFEST.json` describing its build, and `SHA256SUMS` for archive verification; Windows also bundles its native dependencies. |
+| Build the website and API reference | Run `./generate-docs.sh`, or build `docs` in the documentation-only project. | Generated HTML, without compiling Engine. |
 
 Use the [artifact commands](../development/building.md#choose-the-artifact) for
-exact configuration, build, install and packaging blocks. `Cheryl::Cheryl` is an
-interface joining targets; it does not produce one combined binary.
+exact configuration, build, install and packaging blocks.
 
 ### Keep headers and binaries matched
 
-A build's selections determine which module libraries, support libraries and
-dependencies exist. Configuration also affects compiled logging and Debug
-instrumentation. Keep separate build/prefix directories for different configurations
-and module selections, and compile game translation units against the headers and
+A build's module selections determine which libraries and dependencies exist.
+`CMAKE_BUILD_TYPE` also affects compiled logging and Debug instrumentation. Keep
+separate build directories and installed SDK prefixes for different configurations
+and module selections. Compile each game `.cpp` file against the headers and
 target settings that belong to those libraries. For a packaged SDK, check its
 `SDK-MANIFEST.json` for the producer's source/submodule revisions, features,
 toolchain and configuration. Matching filenames alone do not establish compatibility.
 
-Engine, Startup and the current compiled module implementations explicitly build
-as static libraries. Setting `BUILD_SHARED_LIBS=ON` does not convert these targets
-to shared libraries. Some third-party/native dependencies have their own linkage
-choices. A shared-library distribution and its binary compatibility policy require
-a separate design decision; use the current source-target or matched-SDK contract
+`Cheryl::Engine`, `Cheryl::Startup` and the current compiled module implementations
+build as static libraries, whose code is linked into the executable. Setting
+`BUILD_SHARED_LIBS=ON` does not convert these targets to shared libraries loaded
+at runtime. Some third-party/native dependencies have their own linkage choices.
+A shared-library distribution and its binary compatibility policy require a
+separate design decision; use the current source-build or matched-SDK approach
 for this walkthrough.
