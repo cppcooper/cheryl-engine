@@ -56,7 +56,9 @@ jobs:
         id: ccache-ready
         run: ccache --zero-stats
       - name: Check CI tools
-        run: python .github/ci/test_ci.py
+        run: |
+          python .github/ci/test_ci.py
+          python .github/ci/test_cache_cleanup.py
       - name: Build and test Linux
         if: runner.os == 'Linux'
         env:

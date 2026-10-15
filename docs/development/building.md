@@ -365,6 +365,39 @@ SDK consumers are accepted. The first main-push artifact collection remains
 [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection); collection is
 intentionally skipped on PR, `develop` and manual runs.
 
+### Actions cache retention
+
+Compiler and dependency caches speed up subsequent CI runs. They are separate
+from the SDK and diagnostic artifacts above. `CCACHE_MAXSIZE=1G` limits each
+job's compiler cache, rather than the repository's total Actions cache storage.
+Compiler, Windows dependency and pip caches use new run-specific keys so their
+contents can grow between builds: GitHub caches are immutable after saving.
+
+[cache-maintenance.yml](../../.github/workflows/cache-maintenance.yml) runs after
+the build or documentation workflow finishes and daily at 04:23 UTC. It removes
+caches belonging to closed pull requests, keeps the newest compiler/dependency/pip
+snapshot per branch, configuration and cache version, and trims older caches
+toward an 8 GiB repository budget. Active workflow refs and caches created or
+accessed within the last 15 minutes are protected. The newest known default-branch
+snapshots are evicted last if the budget requires it. The budget is a target:
+concurrent uploads and protected caches can temporarily keep usage above it.
+Cleanup deletes cached build inputs, without deleting SDK artifacts or changing
+build results; an evicted cache is regenerated when next needed.
+
+To inspect or apply cleanup, open **Actions → Maintain Actions caches → Run
+workflow** after this workflow has reached the repository's default branch.
+Leave **dry_run** enabled to preview cache IDs, keys, refs, sizes and deletion
+reasons. Optionally enter a closed PR number in **closed_pr** to restrict the
+operation to that PR's caches. Review the run's report, then dispatch again with
+**dry_run** disabled to apply the current plan. Automatic runs apply cleanup;
+they execute the default branch's script without loading PR code, artifacts or
+cached executables.
+
+GitHub also [expires unused caches and evicts old entries at its storage
+limit](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#usage-limits-and-eviction-policy).
+The maintenance policy removes redundant snapshots before that limit causes
+frequent replacement of useful caches.
+
 ### Hosted Windows coverage limits
 
 Both Windows profiles leave these focused cases unaccepted:
