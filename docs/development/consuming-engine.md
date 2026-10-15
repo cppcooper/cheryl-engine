@@ -1,8 +1,9 @@
 # Consuming the engine
 
-Start with the [first-game walkthrough](../getting-started/first-game.md) for a
-maintained application covering startup, controls, asset loading, and sprite/text
-submission. This page describes the source and SDK consumption contracts.
+Start with [project setup](../getting-started/project-setup.md) to choose source
+or SDK consumption, then follow the [first-game walkthrough](../getting-started/first-game.md)
+from startup and resource ownership through sprite/text submission. This page
+provides the detailed source and SDK consumption contracts.
 
 Applications can compose source targets from a checkout or link a prebuilt
 [development SDK](#prebuilt-development-sdks). Link `Cheryl::Cheryl` to use the

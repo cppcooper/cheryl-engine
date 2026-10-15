@@ -6,7 +6,7 @@ Choose an entry point for the work you are doing:
 | --- | --- |
 | Check implemented, partial, planned or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
 | Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
-| Write a game | [First-game walkthrough](getting-started/first-game.md), then [application composition and game hooks](development/consuming-engine.md) |
+| Write a game | [Project setup](getting-started/project-setup.md), then [First-game walkthrough](getting-started/first-game.md) |
 | Browse the generated API or build the manual | [API entry points](api/index.md) and [documentation tooling and publishing](development/documentation.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
 | Run checks | [Test selection](development/testing.md) and [pending checks and QA](testing-requests.md) |
@@ -15,6 +15,11 @@ Choose an entry point for the work you are doing:
 
 The system references below describe API contracts, ownership, units and failure
 behavior. Read the relevant subject rather than the whole documentation tree.
+
+## Getting started
+
+- [Project setup, CMake, and source/SDK choices](getting-started/project-setup.md)
+- [First game: startup, architecture, sprites, and text](getting-started/first-game.md)
 
 ## Runtime
 
@@ -55,7 +60,6 @@ behavior. Read the relevant subject rather than the whole documentation tree.
 
 ## Development
 
-- [First-game walkthrough](getting-started/first-game.md)
 - [Generated C++ API entry points](api/index.md)
 - [Documentation generation and versioned Read the Docs publishing](development/documentation.md)
 - [Pending automated and QA testing requests](testing-requests.md)

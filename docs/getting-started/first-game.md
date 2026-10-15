@@ -1,47 +1,26 @@
 # Your first game
 
-Start with a small application that opens a window, loads its own sprite and
-shaders, and draws the sprite and a score label. The Left and Right arrow keys
-move the sprite, Space selects its other image cell, and Escape closes the
-application. The score stays at zero while you establish the application and
-resource flow.
+Build a small game that opens a window, moves a sprite with the arrow keys,
+changes its image with Space, and displays `Score: 0`. Escape closes the window.
+The score stays at zero while you establish the application and resource flow.
 
-The maintained source lives in
-[projects/apps/first-game](../../projects/apps/first-game/). The excerpts below
-come directly from that example, so you can inspect the complete application as
-you work through each step.
+Start with setup and `main()`, then learn which parts of the engine your game
+uses and who owns its state. The sprite and text walkthroughs apply those rules
+from initialization through drawing and cleanup. All excerpts come from the
+maintained [first-game application](../../projects/apps/first-game/); they are
+parts of the same implementation, with the enclosing function and thread named
+above each excerpt.
 
-## 1. Set up the checkout and build the application
+## Setup
 
-Install Git, CMake 3.28 or newer, Ninja, and a C++23 compiler and standard library
-with `std::format`. Follow the
-[system dependency table](../development/building.md#system-dependencies) for
-FreeType, HarfBuzz, ICU, and the native GLFW/OpenGL requirements. On Linux, this
-example uses X11 and needs a desktop driver supporting an OpenGL 3.3 core context.
-Python and Jinja2 are required when GLAD is generated during the source build.
+Follow [Project setup](project-setup.md) for dependencies, a game CMake project,
+source or SDK consumption, and the commands that produce libraries, an SDK, or
+documentation. Building your game against a source checkout also builds the
+libraries it needs; a separate SDK build is optional.
 
-Choose a checkout location and a revision matching the documentation you are
-reading. Use `main` for stable documentation, `develop` for latest documentation,
-or the corresponding release tag for a versioned manual. Replace
-`/path/to/cheryl-engine` with your desired checkout location:
-
-```sh
-(
-  set -e
-  cheryl_version=main
-  git clone --branch "$cheryl_version" https://github.com/cppcooper/cheryl-engine.git /path/to/cheryl-engine
-  cd /path/to/cheryl-engine
-  git submodule update --init --recursive
-)
-```
-
-The example's PNG, shader sources, and manifests are checked in under its own
-`assets` directory. The Engine's embedded fallback font comes from the pinned
-assets submodule. This walkthrough needs no optional artwork downloads or asset
-initialization script.
-
-Run the following block from anywhere inside the checkout. It selects only the
-native graphics/input composition and this application:
+To run the maintained example in the checkout first, use this block from anywhere
+inside that checkout. It selects the native graphics/input composition and the
+first-game executable:
 
 ```sh
 (
@@ -63,88 +42,235 @@ native graphics/input composition and this application:
 )
 ```
 
-`CMAKE_POLICY_VERSION_MINIMUM=3.5` accommodates the pinned legacy dependency
-projects on CMake 4 hosts. `GLFW_BUILD_WAYLAND=OFF` selects the Linux X11 route;
-`GAINPUT_ENABLE_HID=OFF` avoids the separate HID dependency download. See the
-[build reference](../development/building.md) for other platform and toolchain
-choices. Windows executables have an `.exe` suffix.
+The policy setting accommodates pinned legacy dependencies on CMake 4 hosts.
+The GLFW setting chooses X11 on Linux; the Gainput setting avoids the optional
+HID dependency download. See the [build reference](../development/building.md)
+for other platform choices. Windows executables have an `.exe` suffix.
 
-The expected result is a 640 × 360 window containing a cyan sprite and
-"Score: 0". Space changes the sprite to amber. Check movement, cell selection,
-resizing, and Escape on the desktop; compilation and command-line help alone do
+The example's PNG, shaders, and manifests live in its own `assets` directory; the
+embedded fallback font comes from the pinned assets submodule. No optional
+artwork downloads are needed. Expect a 640 × 360 window with a cyan sprite and
+the score label. Check movement, Space changing the sprite to amber, resizing,
+and Escape on the desktop; compiling or displaying command-line help alone does
 not establish those graphics and input observations.
 
-## 2. Start the engine and keep its owners alive
+## Main: configure and start the engine
 
-The application's entry point creates
-{cpp:class}`CE::Application::Startup` through
-{cpp:func}`CE::Application::GLFWOpenGL::make_startup`. That factory selects the native
-GLFW window/input adapter and the OpenGL renderer and resource provider.
+### Startup options, including your own
+
+{cpp:func}`CE::Application::GLFWOpenGL::make_startup` selects the native GLFW
+window/input adapter and OpenGL rendering/resource adapters. Its configuration
+provides the application's defaults. Register custom command-line options before
+calling `initialize()`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/main.cpp
 :language: cpp
+:caption: main() — platform thread; owners live through runtime.run()
 :start-after: // [startup]
 :end-before: // [/startup]
 :dedent: 8
 ```
 
-Register your own options before calling `initialize()`. Here, `--assets` binds a
-string that stays alive until parsing completes. Its default is an absolute path
-supplied by the example's CMake target, so launching the executable from another
-directory still selects the same assets. An explicit relative override resolves
-from the application's working directory.
+The factory's first argument is the command-line description. The configuration
+sets a 640 × 360 window and its title. Cheryl also registers engine/backend
+options: use `--help` to see those available in this build. For example,
+`--window-width` overrides the initial width, `--worker-count` controls CPU worker
+capacity, and `--concurrent` selects the separate simulation thread.
 
-Help and argument errors return a {cpp:struct}`CE::Application::StartupResult` with no
-context; return its exit code when `should_start()` is false. On success, construct
-your game from the owned context and use `make_runtime(game)` to apply the parsed
-execution, input polling, and timing options together.
+`add_application_options()` lets your game use the same CLI11 parser. Here,
+`--assets` writes into `asset_root`, which stays alive through parsing. CMake
+supplies its default as an absolute path, so launching from another directory
+still finds the same assets. An explicit relative override resolves from the
+process's working directory. Add other game-specific options in that callback
+and keep their destination variables alive until `initialize()` returns.
 
-Declare the result, game, and runtime in that order. The game borrows the
-{cpp:class}`CE::Runtime::Context`, and the runtime borrows both. Their
-declaration order keeps those owners alive through runtime destruction. Add
-`--concurrent` when launching to place simulation on a separate thread; the same
-game hooks and resource ownership rules apply.
+### Configure the context and run the game
 
-## 3. Give the game its hooks and controls
+The factory's {cpp:struct}`CE::Application::GLFWOpenGL::Options` configuration
+selects the initial window dimensions, title, window mode, and swap interval.
+Its `execution` member configures the context's CPU execution service, including
+worker count and an optional shared pool. The factory also accepts
+{cpp:struct}`CE::Application::RuntimeOptions` for loop defaults such as execution
+mode and simulation timing. Parsed command-line options override these defaults.
+See [application startup](../development/consuming-engine.md#command-line-startup)
+for the complete option and validation contract.
 
-Implement {cpp:struct}`CE::Game::AbstractGame` and keep the state your game
-needs in that object. The example owns its camera, bindings, resources, and actor:
+`initialize(argc, argv)` parses and validates options, then creates the owned
+{cpp:class}`CE::Runtime::Context` and native window with the chosen adapters and
+services. Help and argument errors return without a context: check
+`should_start()` before using it and return the supplied exit code. Backend
+creation failures can throw; the complete example wraps `main()`'s body in an
+exception handler.
+
+Construct your game with that context, then use `result.make_runtime(game)` to
+apply the parsed loop settings together. `runtime.run()` starts the rendering
+and input adapters, calls the game hooks, runs until stopped, and shuts those
+adapters down. Resource upload becomes available inside `Game::init()`.
+
+Declare the startup result, game, and runtime in that order. The game borrows the
+context; the runtime borrows both. Reverse destruction order keeps each owner
+alive for its borrowers. The context provides services; the runtime owns the
+loop that calls your game.
+
+## Engine architecture: the game developer's view
+
+### Game state and lifecycle
+
+Implement {cpp:struct}`CE::Game::AbstractGame`. Keep the camera, actors, selected
+resources, controls, and other game state in your implementation:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.h
 :language: cpp
+:caption: Game — initial state is prepared in init(), then managed by simulation
 :start-after: // [game]
 :end-before: // [/game]
 :dedent: 4
 ```
 
-| Hook | What belongs here |
-| --- | --- |
-| `init()` | Bind controls and create initial resources after the platform and graphics adapters start. |
-| `update(tick)` | Advance game state using the supplied input and simulation delta. |
-| `prepare_render_frame(frame) const` | Resolve that state into complete render submissions. |
-| `quiesce()` | Stop external producers before final cleanup when your game adds them. |
-| `deinit()` | Release game-owned resources and registrations after simulation and accepted work settle. |
+The **platform thread** is the thread calling `runtime.run()`. It polls native
+events and owns the graphics context. The **simulation owner** runs your game
+updates and frame preparation. By default, it is that same thread. With
+`--concurrent`, it is one dedicated simulation thread; your two simulation hooks
+still run in order on that owner.
 
-`init()` and `deinit()` run on the platform/graphics owner. In concurrent mode,
-`update()` and frame preparation run on the simulation thread. Bindings belong to
-the platform owner, so define them during initialization:
+| Stage, in lifecycle order | Owner | Your responsibility |
+| --- | --- | --- |
+| `init()` | Platform/graphics thread, before simulation starts | Bind controls, acquire resources, and prepare initial game state. |
+| `update(tick)` | Simulation owner | Change game state using copied input, dimensions, and simulation time. Request a stop when appropriate. |
+| `prepare_render_frame(frame) const` | Same simulation owner | Turn current state into a complete frame of draw values and retained resources. Keep gameplay progression in `update()`; frame preparation can be skipped when no frame slot is available. |
+| `quiesce()` | Platform thread, after simulation stops and joins | Detach external listeners and stop producers that could submit more work. The default hook is enough for this example. |
+| `deinit()` | Platform/graphics thread, after accepted work settles and frames are recycled | Remove bindings and release game-owned resources while input and graphics still exist. |
+
+Initialization prepares the state on the platform thread before simulation
+begins. During the loop, simulation owns changes to that state. Rendering reads a
+**published frame**: copied camera/draw values and retained resource handles.
+After your frame-preparation hook returns, the runtime publishes the completed
+frame.
+
+That boundary lets native events and graphics stay on their required thread
+while simulation can run independently. Reading a live actor position from the
+renderer while simulation changes it would be a data race. Instead, the renderer
+can draw an earlier frame's copied position while the actor moves again.
+`shared_ptr` keeps a resource alive; it does not make concurrent mutation safe.
+Publish a new resource version when its contents change.
+
+### Interfaces you use
+
+| Interface | When and why your game uses it |
+| --- | --- |
+| `Context::input()` | Bind actions in `init()` and unbind them in `deinit()`. Read gameplay input from `tick.input` during updates. |
+| `Context::window()` | Read native window state on the platform thread. During updates, use `tick.framebuffer_size`, the copied dimensions for simulation. |
+| `Context::resources()` | Upload prepared graphics resources on the graphics owner, initially in `init()`. |
+| `TickContext` | Read the simulation delta/input/dimensions and call `request_stop()`. Its borrowed data is valid for that update. |
+| `FrameWriter` and its passes | Build a CPU-side frame during `prepare_render_frame()`. Do not retain the writer or passes after the hook returns. |
+| `Context::make_worker_group()` and `platform_dispatcher()` | Later, prepare expensive resources on tracked CPU workers and hand owned upload requests to the platform thread. |
+
+Calling a context accessor does not move execution to another thread. In
+particular, graphics uploads in concurrent `update()` would run on the wrong
+thread. Your game supplies frame data; the runtime calls the renderer and
+presents the window. The
+[runtime architecture](../runtime/runtime-architecture.md) and
+[frame boundary](../runtime/runtime-frame-boundary.md) describe the wider design.
+
+### Obtain, use, and stop using resources
+
+Separate shared resource contents from the mutable state that uses them. A
+sprite contains image/grid data; each actor owns its position and selected cell.
+A text generation contains an uploaded label; the game chooses its position and
+which generation to submit. Keep those choices with simulation.
+
+| Resource | Obtain | Use | Stop using |
+| --- | --- | --- | --- |
+| Sprite and material | Load graphics assets through the provider, then retain named cache results. | Simulation chooses a cell/transform; frame preparation submits those values and retains the resources. | Stop submitting them and reset the game's handles during cleanup or replacement. |
+| Font and rendered text | Load a font collection, lay out the message, prepare CPU images/triangles, then upload a text generation. | Retain the generation and resolve it into each frame that displays the label. | Replace or reset the generation; local font/layout variables need not remain in scope. |
+| Sound effect or music | With the optional audio module, decode a clip, then play it through an application-owned audio system; or open a stream there. | Playback voices run on the audio system's own timeline; they do not pass through rendering frames. | Explicitly stop a voice when playback should end; dropping a voice handle alone does not stop it. Close the audio system after its producers stop. |
+
+Releasing a game handle ends that owner's use. Caches and published frames may
+still retain the resource, so it does not promise immediate native destruction.
+Do not clear a shared cache just because an actor disappears. Keep the originating
+backend alive until its resources have been released and retired; runtime
+shutdown provides that ordering for this game's graphics. See
+[resource ownership](../resources/resource-residency.md) and
+[audio playback](../runtime/audio.md) for their respective lifetime contracts.
+
+## Prepare controls and a drawing pass
+
+These are shared foundations for the sprite and text examples below.
+
+### Bind controls during initialization
+
+Native key codes become semantic game actions at the input boundary. Retain the
+returned IDs so cleanup can remove this game's bindings:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
+:caption: Inside Game::init() — platform thread
 :start-after: // [bindings]
 :end-before: // [/bindings]
 :dedent: 8
 ```
 
-The native key codes appear at this boundary. Gameplay reads the game's semantic
-{cpp:struct}`CE::Input::Actions::Id` values instead. Retaining each returned binding
-ID lets the game remove its own mappings during cleanup. The
-[input guide](../runtime/input-state-model.md) covers additional actions, events,
-and focus handling.
+Updates read the action IDs (`left_`, `right_`, `next_cell_`, `quit_`) rather than
+native key codes. See the [input guide](../runtime/input-state-model.md) for other
+actions, events, and focus handling.
 
-## 4. Load a controlled game asset directory
+### Understand what a draw needs
 
-Put the resources required by this game under one root. The example uses:
+A sprite or uploaded label supplies geometry and images. A **material** supplies
+the drawing recipe: shader program, geometry topology, sampling, and parameter
+bindings. The example loads both recipes from its
+[material manifest](../../projects/apps/first-game/assets/graphics/shaders/materials.json):
+
+| Material | Geometry and sampling |
+| --- | --- |
+| `first-game:images` | Four-vertex triangle strips for sprite cells; nearest sampling for the small image. |
+| `first-game:text` | Six-vertex glyph quads as triangles; linear sampling for the text's alpha atlas. |
+
+The camera converts Y-up pixel coordinates into the renderer's view. Initialize
+it from the actual framebuffer dimensions before placing the actor:
+
+```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
+:language: cpp
+:caption: Inside Game::init() — platform/graphics thread, before bindings and asset loading
+:start-after:     void Game::init() {
+:end-before:         // [bindings]
+:dedent: 8
+```
+
+Updates will keep the camera's dimensions current using the tick's copied size.
+During frame preparation, open a pass with that camera and describe its common
+image parameter:
+
+```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
+:language: cpp
+:caption: Inside Game::prepare_render_frame() — simulation owner; common to both draws
+:start-at:         auto pass = frame.begin_pass
+:end-before:         CE::Rendering::DrawStyle2D image_style;
+:dedent: 8
+```
+
+`begin_pass()` copies the {cpp:class}`CE::Rendering::Camera2D` projection and view
+matrices.
+{cpp:struct}`CE::Rendering::Submission::Context2D` describes the pass values and
+selects the public `image` parameter at texture unit zero. Each draw then adds a
+{cpp:struct}`CE::Rendering::DrawStyle2D` with its material, model transform, scale,
+and alpha. The following two walkthroughs add to this same pass.
+
+The material maps public parameter names to native shader uniforms: the code
+uses `image`, while this OpenGL recipe calls that sampler `mytexture`. The
+[vertex shader](../../projects/apps/first-game/assets/graphics/shaders/first-game.vert)
+combines the pass's projection/view with each draw's model transform. See
+[pipelines and materials](../rendering/pipelines-and-materials.md) when writing
+your own recipe.
+
+## Put a sprite on screen
+
+The complete path is: **load image/grid/material → retain a sprite in an actor →
+update position/cell → submit a draw → release the actor and material**.
+
+### Init: load assets and create the actor
+
+Keep this game's resources under one controlled asset root:
 
 ```text
 assets/
@@ -157,284 +283,242 @@ assets/
     └── textures/actor.png
 ```
 
-The index selects the sprite and shader/material definitions:
+The index chooses which definition files to load:
 
 ```{literalinclude} ../../projects/apps/first-game/assets/graphics/graphics-manifests.json
 :language: json
+:caption: graphics-manifests.json — index for this asset root
 ```
 
-Only files named `graphics-manifests.json` select definitions automatically.
-Unlisted JSON files are ignored. The listed paths, texture references, and shader
-source references resolve from the enclosing `graphics` directory. The `$schema`
-URLs support editor validation; runtime loading uses local files.
+Only files named `graphics-manifests.json` select definitions automatically;
+unlisted JSON files are ignored. Paths in those definitions resolve from their
+enclosing `graphics` directory. `$schema` URLs help the editor validate JSON;
+runtime loading uses the local files.
 
-Create an owned {cpp:struct}`CE::Assets::Loading::Loader` and load the root during `init()`:
+The sprite definition divides a 32 × 16 image into two 16 × 16 cells:
 
-```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
-:language: cpp
-:start-after: // [assets]
-:end-before: // [/assets]
-:dedent: 8
+```{literalinclude} ../../projects/apps/first-game/assets/graphics/definitions/sprites.json
+:language: json
+:caption: Sprite definition — two selectable cells with a centered pivot
 ```
 
-`load_assets()` performs CPU preparation followed by upload on the active
-provider's loading owner. It processes indexed programs/materials, images,
-sprites, and tilesets, along with standalone PNGs below the root. Fonts and audio
-use separate loading paths. Preparation validates definitions and image bounds
-before publication; an upload failure can leave already completed cache entries.
-
-Use a controlled root containing just this game's required assets. Pointing the
-general loader at the repository's larger asset collection also selects its
-optional downloaded artwork. `register_files()` only registers paths for manual
-loading; it does not parse definitions, decode images, or upload resources.
-The [asset-loading guide](../assets/asset-loading.md) explains publication and
-retry behavior.
-
-Resolve required named resources during initialization and check each result.
-{cpp:struct}`CE::Assets::Sprites::Manager` returns a retained sprite handle or null;
-{cpp:struct}`CE::Assets::Shaders::Manager` supplies the materials used for drawing.
-For this manifest, `get_asset("first-game", "actor")` identifies
-`first-game:actor` exactly. `get_assets("first-game")` provides a namespace
-collection keyed by local names when your game needs several sprites.
-
-## 5. Pass retained resources into game-owned state
-
-The sprite is shared resource data. The actor owns its position and selected
-cell, while retaining the sprite passed into its constructor:
+An actor retains that shared sprite while keeping its position and current cell
+as game-owned values:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.h
 :language: cpp
+:caption: Actor — resource handle plus per-actor simulation state
 :start-after: // [actor]
 :end-before: // [/actor]
 :dedent: 4
 ```
 
-The `actor_.emplace(...)` call above transfers a retained handle into this small
-game-owned structure. Use the same approach when an enemy manager or another
-game system needs a sprite collection: resolve the required names once, then
-pass the handles into that system. Keep per-entity transforms, counters, and
-playback state with their application owners. A namespace collection's iteration
-order supplies no gameplay identity.
-
-The loader can go out of scope after initialization. Cache lookups and the
-actor's retained handles have their own lifetimes. The resources still belong to
-their original backend domain; retaining a handle does not make it usable after
-that backend has been destroyed. See the
-[resource ownership guide](../resources/resource-residency.md).
-
-## 6. Select a font and prepare the score label
-
-A `std::string` containing `"Score: 0"` supplies UTF-8 bytes. To display it, Cheryl
-turns those bytes into font shapes, then pixels and triangles that the renderer
-can draw. Pass that string directly to `layout_text(fonts, message, options)`;
-the string literal in this example works the same way. The example prepares and
-uploads the label during `init()`:
+Load the root, check the required named resources, and construct the actor:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:start-after: // [score]
-:end-before: // [/score]
+:caption: Inside Game::init() — platform/graphics thread
+:start-after: // [assets]
+:end-before: // [/assets]
 :dedent: 8
 ```
 
-Here is the path from that string to the window:
+`load_assets()` prepares CPU data and uploads through the active resource
+provider. It loads indexed graphics definitions and standalone PNGs under the
+root; fonts and audio have separate paths. Keep the root limited to this game's
+assets, so loading does not also select unrelated or optional artwork.
+`register_files()` alone only registers paths; it does not perform this loading.
+An upload failure can leave already completed cache entries; the
+[asset-loading guide](../assets/asset-loading.md) explains validation and retry.
 
-| Stage | What it produces and why |
-| --- | --- |
-| `FontCollection::load(selection)` | Font data describing how letters and symbols look, with fallback fonts for missing characters. |
-| {cpp:func}`CE::Text::layout_text` | **Glyph choices and positions** at the requested font size. A glyph is a font's drawing for a letter, symbol, or group of characters. Choosing those drawings and adjusting their spacing is called **shaping**; for example, letters can join or share a glyph. Layout also handles text direction and line breaks. It produces no pixels. |
-| {cpp:func}`CE::Text::Rendering::prepare` | CPU images of the needed glyphs, packed into image sheets called **atlas pages**, plus triangles that select each glyph's image. This turns the font's outlines into drawable pixels. |
-| {cpp:func}`CE::Text::Rendering::upload` | A {cpp:class}`CE::Text::Rendering::Generation`: the layout paired with graphics resources created through the active resource provider. For this OpenGL application, the images and triangles become GPU textures and buffers. |
-| `resolve_text()` and `pass.add()` in [step 8](#8-submit-the-sprite-and-text-as-a-complete-frame) | Per-frame drawing instructions combining the uploaded label with its material and position in the window. The renderer executes the submitted frame to display it. |
+`get_asset("first-game", "actor")` looks up `first-game:actor` and returns a
+retained handle or null. `get_assets("first-game")` returns that namespace keyed
+by local name when a game system needs several sprites. Resolve names once and
+pass handles into the owning actors/managers; collection iteration order is not
+gameplay identity. The local loader can go out of scope after initialization.
+The actor's retained handle remains valid within its backend's lifetime.
 
-These stages separate reusable text content from its placement in each frame.
-Layout and preparation can run on a CPU worker. Upload must run on the thread
-that owns the graphics context, as `init()` does here.
-
-{cpp:class}`CE::Text::FontCollection` resolves the preferred `DejaVu Sans` family
-from the selected application asset root first, then the system's font directories,
-and appends the embedded fallback. The family name comes from the font's metadata;
-it need not match its filename. A filename such as `DejaVuSans.ttf` can also select
-an application font nested anywhere below `selection.asset_directories`.
-
-The engine discovers installed fonts automatically. `automatic_system_fonts=false`
-disables additional automatic family choices; explicitly preferred names still
-resolve against both application and system fonts. Missing names are skipped, so
-the score remains usable without that font installation. If an asset font and an
-installed font share the requested name, the asset version wins. See the
-[font-selection example](../assets/text-layout.md#font-selection) for several
-ordered preferences and direct file selection.
-
-Keep `score_` and reuse it every frame. Moving the label only changes the draw
-style in step 8; it does not require repeating layout, preparation, or upload.
-When the message, selected fonts, or layout font size changes, repeat those three
-stages and replace `score_` only after upload succeeds. Changing the original
-string alone does not update an existing label: the layout retains its own
-results rather than borrowing the string. The uploaded label retains the font
-data and matching resources after local variables leave scope, while the engine's
-backend must remain alive to draw them. The
-[Unicode text guide](../assets/text-layout.md) covers fallback, wrapping, and
-replacement ownership.
-
-## 7. Update simulation and select image cells
-
-Use {cpp:struct}`CE::Game::TickContext` during each update. It supplies the
-simulation delta, accumulated semantic input, and copied window dimensions:
+### Update: move the actor and choose a cell
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
+:caption: Game::update() — simulation owner, once per simulation step
 :start-after: // [update]
 :end-before: // [/update]
 :dedent: 4
 ```
 
-Movement uses `delta_seconds`, and the camera follows the tick's framebuffer
-size. This supports concurrent mode without querying a live window from the
-simulation thread. Escape requests a stop through the tick; the runtime performs
-its normal cleanup after the update returns.
+Movement uses `tick.delta_seconds`. The camera follows `tick.framebuffer_size`
+without reading the live native window. Escape requests normal runtime shutdown.
+Space advances the actor's selected image cell; the shared sprite stays unchanged.
 
-The sprite definition divides the 32 × 16 PNG into two 16 × 16 cells:
+This asset has no timed animation clip. For authored clips, keep a separate
+{cpp:class}`CE::Assets::Sprites::Animation` cursor per actor and advance it with
+simulation time. See [asset values and playback](../assets/asset-values-and-playback.md).
 
-```{literalinclude} ../../projects/apps/first-game/assets/graphics/definitions/sprites.json
-:language: json
-```
+### Prepare a frame: publish the actor's current appearance
 
-A grid describes which image rectangle each cell selects. Space advances the
-actor's cell index explicitly. This manifest supplies no timed animation clip.
-For a sprite with authored timed clips, keep a separate
-{cpp:class}`CE::Assets::Sprites::Animation` cursor per entity and advance it using
-simulation time. The shared cached sprite holds definitions and resources;
-its entities choose playback. See
-[asset values and playback](../assets/asset-values-and-playback.md).
-
-## 8. Submit the sprite and text as a complete frame
-
-Frame preparation copies the simulation's current transforms and selects
-retained resources. The renderer consumes those resolved packets later:
+Use the common pass above to submit the current cell and transform:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
-:start-after: // [render]
-:end-before: // [/render]
-:dedent: 4
+:caption: Inside Game::prepare_render_frame() — simulation owner
+:start-at:         CE::Rendering::DrawStyle2D image_style;
+:end-before:         CE::Rendering::DrawStyle2D text_style;
+:dedent: 8
 ```
 
-{cpp:class}`CE::Rendering::Camera2D` uses Y-up pixel coordinates. Opening a pass copies its
-projection and view matrices. The
-{cpp:struct}`CE::Rendering::Submission::Context2D` carries those pass values and
-selects the public `image` parameter at texture unit zero. Each
-{cpp:struct}`CE::Rendering::DrawStyle2D` chooses a material and supplies the
-draw's model transform, scale, and alpha.
+{cpp:func}`CE::Rendering::Submission::resolve_sprite` builds CPU draw packets.
+`pass.add()` copies the draw values and retains the geometry, material, and
+selected image in the frame. After publication, the platform renderer draws
+those packets and presents the window. The actor can move again without changing
+the submitted frame.
 
-The checked-in
-[material manifest](../../projects/apps/first-game/assets/graphics/shaders/materials.json)
-gives the shared shader program two compatible draw recipes:
+### Deinit: release this game's use
 
-| Material | Geometry topology | Why it is separate |
-| --- | --- | --- |
-| `first-game:images` | Triangle strip | Each sprite cell uses a four-vertex strip, with nearest sampling for the small image. |
-| `first-game:text` | Triangles | Each uploaded glyph uses a six-vertex quad, with linear sampling for its alpha atlas. |
+On the platform thread, `actor_.reset()` releases the actor and its sprite handle;
+`images_.reset()` releases the game's image material handle. They appear in the
+[complete cleanup hook](#finish-the-game-and-release-resources) below, together
+with input and text cleanup. Earlier frames and cache ownership follow the
+resource lifetime rules already described.
 
-The vertex shader applies the copied pass and draw transforms:
+## Put text on screen
 
-```{literalinclude} ../../projects/apps/first-game/assets/graphics/shaders/first-game.vert
-:language: glsl
+Start with a UTF-8 `std::string`, such as `std::string message = "Score: 0"`.
+The complete path is: **choose fonts → choose/position glyphs → build their
+images and triangles → upload → submit a draw → release the uploaded label**.
+The string literal in this example follows that same path.
+
+### Init: turn the message into a drawable label
+
+Each stage answers a different question:
+
+| Stage | What it produces and why |
+| --- | --- |
+| `FontCollection::load(selection)` | Font data describing letter and symbol shapes, with fallback fonts for missing characters. |
+| {cpp:func}`CE::Text::layout_text` | **Which glyphs to draw and where to put them**, at the requested font size. A glyph is a font's drawing for a letter, symbol, or group of characters. Choosing glyphs and adjusting their spacing is called **shaping**; letters can join or share a glyph. Layout also handles direction and line breaks. It produces no pixels. |
+| {cpp:func}`CE::Text::Rendering::prepare` | CPU images of the needed glyphs packed into sheets called **atlas pages**, plus triangles selecting each glyph's image. This turns font outlines into drawable pixels. |
+| {cpp:func}`CE::Text::Rendering::upload` | A {cpp:class}`CE::Text::Rendering::Generation` holding the layout and graphics resources. In this application, images and triangles become OpenGL textures and buffers. |
+| `resolve_text()` and `pass.add()` below | A frame's drawing instructions combining that uploaded label with a material and position. The runtime's renderer executes them to display the text. |
+
+The initialization code follows those stages. `resources` is the provider
+reference obtained in the asset-loading excerpt:
+
+```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
+:language: cpp
+:caption: Inside Game::init() — platform/graphics thread
+:start-after: // [score]
+:end-before: // [/score]
+:dedent: 8
 ```
 
-Material bindings map public parameter keys to the shader's native uniform names.
-Your common submission code uses `image`, while this OpenGL recipe maps it to
-`mytexture`. {cpp:func}`CE::Rendering::Submission::resolve_sprite` and
+These stages let you reuse prepared text while changing its placement. Layout
+and preparation are CPU work; upload must run on the graphics owner, as it does
+here during `init()`. Keep the resulting `score_` in the game for simulation to
+select and publish in later frames. Local font/layout variables can leave scope;
+the generation retains the data and resources it needs.
+
+The preferred `DejaVu Sans` name means a font **family from its metadata**, not a
+system file path. Cheryl searches the selected asset directories recursively,
+then installed system fonts, and appends its embedded fallback. Asset filenames
+such as `DejaVuSans.ttf` also work as aliases. You do not supply a system font
+directory. Asset fonts win name conflicts; missing preferences are skipped and
+available fonts still load.
+
+`automatic_system_fonts=false` disables additional automatic family choices;
+explicit preferences still resolve from assets and the system. See
+[font selection](../assets/text-layout.md#font-selection) for ordered preferences,
+direct files, and fallback coverage.
+
+### Update: retain or replace the label
+
+This example's message is static, so `update()` keeps the same `score_`. Moving
+the label changes only its draw transform. When the message, fonts, or layout
+font size changes, repeat layout, preparation, and upload, then let simulation
+adopt the completed replacement generation. Changing the original string alone
+does not update an uploaded label.
+
+For a small initial label, synchronous `init()` is enough. For text that changes
+during play, use the [background-loading handoff](#load-or-replace-resources-during-play)
+below: prepare CPU data, dispatch upload to the graphics owner, then adopt its
+result during `update()`. Keep the previous generation while the replacement is
+pending; published frames retain the version they already selected.
+
+### Prepare a frame: place and publish the label
+
+Add the uploaded label to the same camera/pass used for the sprite:
+
+```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
+:language: cpp
+:caption: Inside Game::prepare_render_frame() — simulation owner
+:start-at:         CE::Rendering::DrawStyle2D text_style;
+:end-at:         pass.add(CE::Rendering::Submission::resolve_text
+:dedent: 8
+```
+
+The model transform places the label's origin 24 pixels from the left and 48 below
+the framebuffer's top in the Y-up camera. The `first-game:text` material draws its
+glyph triangles with the uploaded atlas images.
 {cpp:func}`CE::Rendering::Submission::resolve_text <std::vector<DrawPacket2D> CE::Rendering::Submission::resolve_text(const CE::Text::Rendering::Generation&, const DrawStyle2D&, const Context2D&)>`
-resolve complete CPU packets without binding
-graphics state or uploading resources. Adding those packets to the pass retains
-their geometry, materials, and selected images and copies their parameter values.
-The renderer receives no borrowed actor, camera, or playback cursor. The
-[pipeline and material guide](../rendering/pipelines-and-materials.md) explains
-the contracts and additional recipes.
+performs CPU packet construction; it does not upload or draw. `pass.add()`
+retains the selected resources and copies parameters into the frame. After the
+hook returns, the runtime publishes the complete frame for the platform renderer
+to draw and present.
 
-## 9. Release the game's resources
+### Deinit: release the uploaded label
 
-The runtime joins simulation and recycles accepted frames before calling
-`deinit()` on the platform/graphics owner. Remove the game's mappings and release
-its retained generations there:
+`score_.reset()` and `text_.reset()` release this game's generation and text
+material on the platform thread during the cleanup hook below. Backend resource
+retirement follows retained ownership. See the
+[Unicode text guide](../assets/text-layout.md) for wrapping and more advanced
+replacement behavior.
+
+## Finish the game and release resources
+
+The full cleanup hook removes the bindings and releases both examples' handles:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
+:caption: Game::deinit() — platform/graphics thread, after simulation and accepted work finish
 :start-after: // [cleanup]
 :end-before: // [/cleanup]
 :dedent: 4
 ```
 
-Cleanup also follows attempted initialization, so these resets tolerate resources
-that were never created. The example uses the default `quiesce()` because it has
-no external producers. Games that add listeners, audio producers, or background
-services should stop those producers in `quiesce()` while their dependencies
-remain alive. The [runtime frame boundary](../runtime/runtime-frame-boundary.md)
-defines the complete shutdown ordering.
+Cleanup also follows attempted initialization, so tolerate resources that were
+never created. The runtime stops and joins simulation, calls `quiesce()`, settles
+accepted work while servicing required platform dispatch, recycles frames, and
+calls `deinit()` before input and graphics shutdown.
 
-## Continue with background loading
+This game uses the default `quiesce()` because it has no external producers.
+When adding listeners or background services, detach/stop those producers there
+while their dependencies still exist. Do not wait in `quiesce()` for work that
+needs platform dispatch; settling accepted work follows that hook. The
+[frame-boundary guide](../runtime/runtime-frame-boundary.md) defines the complete
+shutdown and failure ordering.
 
-The synchronous path makes initial ownership clear. For larger loads, use an
-Engine worker group for `Loader::prepare()` and submit the resulting owned
-`CE::Assets::Loading::Prepared` to the platform dispatcher for `upload()`. Simulation checks
-futures for readiness and adopts complete retained results during update. Keep
-the loader alive through preparation and handoff, and keep the prior resource
-generation while its replacement is pending. Avoid waiting on the thread that
-must complete the upload.
+## Load or replace resources during play
 
-Text follows the same boundary: font/layout preparation can run on workers;
-upload remains on the graphics owner. Follow the working sequences in
-[asset loading](../assets/asset-loading.md),
+The same resource path can span threads when preparation is expensive:
+
+1. **Simulation:** request a load through an Engine worker group and keep the
+   current resource while the request is pending.
+2. **CPU worker:** prepare owned data, such as `Loader::prepare()` results or a
+   text layout and atlas. Keep the loader and request inputs alive through their
+   work.
+3. **Platform/graphics thread:** receive the owned prepared value through the
+   platform dispatcher, upload it, and return retained resources through a future.
+4. **Simulation, during `update()`:** check readiness and adopt the completed
+   result. Later frames select the new version; earlier frames retain the old one.
+
+Pass owned request data across that boundary. A platform upload callback should
+return a result rather than mutate live simulation state through a captured
+`this`. Avoid blocking the thread needed to complete the upload. Tracked work and
+the runtime shutdown sequence keep the graphics owner available while accepted
+requests settle.
+
+Follow the working sequences in [asset loading](../assets/asset-loading.md),
 [worker execution](../runtime/worker-execution.md), and
-[thread dispatch](../runtime/thread-dispatch.md) when you add that flow. This
-example keeps initialization synchronous and frame preparation CPU-only.
-
-## Use the example as an independent project
-
-The example's own CMake entry point supports source and installed SDK consumers.
-Its application target links the public owners explicitly:
-
-```{literalinclude} ../../projects/apps/first-game/CMakeLists.txt
-:language: cmake
-:start-at: add_executable
-:end-before: Source Debug
-```
-
-To configure the example directly against the checkout, use a separate build
-directory. Its bootstrap selects the required Engine, Native GLFW, OpenGL, and
-startup targets and disables unrelated applications and modules:
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S projects/apps/first-game -B build/first-game-source -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DCHERYL_FIRST_GAME_ENGINE_SOURCE="$PWD" \
-    -DGLFW_BUILD_WAYLAND=OFF -DGAINPUT_ENABLE_HID=OFF
-  cmake --build build/first-game-source --target first-game --parallel
-  ./build/first-game-source/first-game
-)
-```
-
-For an installed SDK, leave `CHERYL_FIRST_GAME_ENGINE_SOURCE` empty and supply a
-compatible SDK through `CMAKE_PREFIX_PATH`. It must include Native GLFW with
-native input, OpenGL, and OpenGL startup. The SDK contains libraries and headers;
-keep this example's source and `assets` directory alongside its CMake project:
-
-```sh
-(
-  set -e
-  cd "$(git rev-parse --show-toplevel)"
-  cmake -S projects/apps/first-game -B build/first-game-sdk -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release -DCHERYL_FIRST_GAME_ENGINE_SOURCE= \
-    -DCMAKE_PREFIX_PATH=/absolute/path/to/extracted-sdk
-  cmake --build build/first-game-sdk --target first-game --parallel
-  ./build/first-game-sdk/first-game
-)
-```
-
-The application's compiled default asset path names its source `assets`
-directory. Use `--assets` when relocating those files with a packaged application.
-For SDK ABI/configuration matching and Windows runtime DLL paths, follow
-[consuming the engine](../development/consuming-engine.md#prebuilt-development-sdks).
+[thread dispatch](../runtime/thread-dispatch.md) when adding this flow. Continue
+with [audio playback](../runtime/audio.md) for clips, streams, and voices, which
+use the audio system's own lifetime and playback path.

@@ -1,15 +1,16 @@
 # Cheryl Engine
 
 Build a game with Cheryl's application lifecycle, input actions, retained assets,
-and rendering interfaces. Follow the first-game walkthrough to assemble a small
-application, then use the task guides and generated reference as you add features.
+and rendering interfaces. Set up your project, then follow the first-game
+walkthrough from startup and resource ownership to sprites and text on screen.
+Use the task guides and generated reference as you add features.
 
 ```{toctree}
 :maxdepth: 2
 :caption: Getting started
 
+Project setup <getting-started/project-setup>
 First game <getting-started/first-game>
-Project setup <development/consuming-engine>
 ```
 
 ```{toctree}
@@ -72,6 +73,7 @@ Utilities <runtime/utility-contracts>
 :caption: Development
 
 Build <development/building>
+Consuming Cheryl <development/consuming-engine>
 Modules <development/modules>
 UI adapters <development/ui-adapters>
 Documentation <development/documentation>
