@@ -1,0 +1,220 @@
+#pragma once
+#include <core/diagnostics.h>
+#include <core/resources/allocators.h>
+#include <core/resources/objects/object-reservation.hpp>
+#include <internals/exceptions.h>
+
+#include "block.h"
+
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+namespace CE::Rendering::Resources {
+    struct Provider;
+}
+
+namespace CE::Assets::Cache {
+    struct Stats {
+        CE::Diagnostics::DomainId domain = 0;
+        std::uint64_t entries = 0;
+        std::uint64_t publications = 0;
+        std::uint64_t replacements = 0;
+    };
+
+    /** Guards the single active provider/loading-owner domain shared by all caches.
+     * This is publication/teardown context, not an eviction or residency manager.
+     * Cache maps retain strong handles until explicit clear/replacement or provider
+     * teardown; readers retain independent handles across either operation.
+     * Distinct owned Loaders still share this domain. Teardown rejects publication;
+     * after release, a later provider may bind it. Old handles keep their old native
+     * domain and cannot migrate to the replacement provider.
+     */
+    class Context {
+        friend struct CE::Rendering::Resources::Provider;
+        inline static std::mutex provider_mutex_;
+        inline static const CE::Rendering::Resources::Provider* bound_provider_ = nullptr;
+        inline static std::thread::id owner_;
+        inline static bool releasing_ = false;
+
+    public:
+        static void verify_provider(const CE::Rendering::Resources::Provider& provider) {
+            std::lock_guard lock(provider_mutex_);
+            verify_locked(provider);
+        }
+        [[nodiscard]] static bool is_bound_to(const CE::Rendering::Resources::Provider& provider) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            return bound_provider_ == &provider;
+        }
+
+    protected:
+        static void bind_provider(const CE::Rendering::Resources::Provider& provider) {
+            std::lock_guard lock(provider_mutex_);
+            verify_locked(provider);
+            if (!bound_provider_) {
+                bound_provider_ = &provider;
+                owner_ = std::this_thread::get_id();
+            }
+        }
+
+    private:
+        static bool begin_provider_release(const CE::Rendering::Resources::Provider& provider) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            if (bound_provider_ != &provider)
+                return false;
+            releasing_ = true;
+            return true;
+        }
+        static void release_provider(const CE::Rendering::Resources::Provider& provider) noexcept {
+            std::lock_guard lock(provider_mutex_);
+            if (bound_provider_ != &provider)
+                return;
+            bound_provider_ = nullptr;
+            owner_ = {};
+            releasing_ = false;
+        }
+        static void verify_locked(const CE::Rendering::Resources::Provider& provider) {
+            if (bound_provider_ && bound_provider_ != &provider)
+                throw Exceptions::failed_operation(CE_HERE, "Asset caches are bound to another resource provider");
+            if (bound_provider_ && (releasing_ || owner_ != std::this_thread::get_id()))
+                throw Exceptions::failed_operation(CE_HERE, "Asset loading requires the active provider's owner thread");
+        }
+    };
+
+    /**
+     * Caches constructed assets by key. reserve() provides storage whose slots
+     * callers construct selectively with emplace(); the older allocate()
+     * interface returns unconstructed handles for manual construction.
+     * Publish complete assets under a unique lock; readers copy retained handles
+     * under a shared lock. Construction and final release happen outside the lock.
+     */
+    template <
+        typename AssetType,
+        typename Key = std::filesystem::path,
+        typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
+    struct Store : Context {
+        using Handle = std::shared_ptr<AssetType>;
+        using key_type = Key;
+
+    protected:
+        mutable std::shared_mutex assets_mutex_;
+        std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
+        std::uint64_t publications_ = 0;
+        std::uint64_t replacements_ = 0;
+
+    public:
+        Store() = default;
+        virtual ~Store() { clear_assets(); }
+        [[nodiscard]] virtual Handle get_asset(const Key& key) const {
+            std::shared_lock lock(assets_mutex_);
+            if (const auto asset = loaded_assets.find(key); asset != loaded_assets.end()) {
+                return asset->second;
+            }
+            return nullptr;
+        }
+        [[nodiscard]] bool contains(const Key& key) const {
+            std::shared_lock lock(assets_mutex_);
+            return loaded_assets.contains(key);
+        }
+        [[nodiscard]] std::size_t size() const {
+            std::shared_lock lock(assets_mutex_);
+            return loaded_assets.size();
+        }
+        [[nodiscard]] Stats diagnostics() const {
+            std::shared_lock lock(assets_mutex_);
+            return {domain_, loaded_assets.size(), publications_, replacements_};
+        }
+        virtual void clear_assets() noexcept {
+            // Preserve allocator identity: swapping maps with unequal, nonpropagating
+            // allocators is invalid. Default production caches still use std::allocator.
+            const auto allocator = [this] {
+                std::shared_lock lock(assets_mutex_);
+                return loaded_assets.get_allocator();
+            }();
+            decltype(loaded_assets) retired(allocator);
+            {
+                std::unique_lock lock(assets_mutex_);
+                retired.swap(loaded_assets);
+            }
+            // A deleter can inspect this cache without re-entering its write lock.
+        }
+
+    protected:
+        explicit Store(const Allocator& allocator)
+        : loaded_assets(allocator) {}
+
+        Handle publish_asset(const Key& key, Handle asset) {
+            return publish_asset(key, std::move(asset), []() noexcept {});
+        }
+
+        // A derived cache can commit prepared metadata in the publication lock.
+        // The callback must not throw or reenter this cache.
+        template <typename Published> Handle publish_asset(const Key& key, Handle asset, Published&& published) {
+            static_assert(std::is_nothrow_invocable_v<Published>);
+            if (!asset)
+                throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
+            std::unique_lock lock(assets_mutex_);
+            // Keep this local owner until the lock has unwound. Node/rehash
+            // failure may destroy an insertion candidate while still inside
+            // try_emplace; that must not run its final deleter under this lock.
+            const auto [entry, inserted] = loaded_assets.try_emplace(key, asset);
+            if (inserted)
+                ++publications_;
+            std::forward<Published>(published)();
+            return entry->second;
+        }
+        Handle replace_asset(const Key& key, Handle asset) {
+            if (!asset)
+                throw Exceptions::failed_operation(CE_HERE, "Cannot publish an empty asset");
+            Handle retired;
+            Handle result;
+            {
+                std::unique_lock lock(assets_mutex_);
+                const auto [entry, inserted] = loaded_assets.try_emplace(key, Handle{});
+                if (inserted)
+                    ++publications_;
+                else
+                    ++replacements_;
+                retired = std::exchange(entry->second, std::move(asset));
+                result = entry->second;
+            }
+            return result;
+        }
+        /** Reserve raw slots for selective construction with emplace(). */
+        template <typename Derived> auto reserve(const std::size_t N) {
+            static_assert(std::is_base_of_v<AssetType, Derived>);
+            return CE::Memory::Objects::Reservation<Derived, CE::Memory::Allocators::ObjectPoolAllocator<Derived>>(N);
+        }
+
+        /** Provide raw object handles for callers that construct slots manually. */
+        template <typename Derived> std::vector<std::shared_ptr<Derived>> allocate(const std::size_t N) {
+            static_assert(std::is_base_of_v<AssetType, Derived>, "The allocated class type must be derived from the managed type.");
+            if (N == 0) {
+                return {};
+            }
+            using A_OPA = std::allocator_traits<CE::Memory::Allocators::ObjectPoolAllocator<Derived>>;
+            CE::Memory::Allocators::ObjectPoolAllocator<Derived> allocator;
+            auto context = allocator.context();
+            // Allocate one raw batch, then hand out independent per-slot
+            // handles; the pool context outlives this temporary allocator.
+            auto raw = A_OPA::allocate(allocator, N);
+            std::shared_ptr<Derived> owner(raw, [](void* p) {});
+            CE::Memory::Block<Derived> block{owner, owner, CE::Memory::Pointers::calculate_alignment(raw), N};
+            // Manual callers must construct slots themselves. Their final
+            // handle destroys its slot and returns exactly that slot to pool.
+            return block.vector([context](Derived* p) noexcept {
+                context->construction_context()->destroy(p);
+                context->release_owned(p, 1);
+            });
+        }
+    };
+}

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cppcooper/assets/5603c1974bff4054459edb23d36a52869cba863d/schemas/graphics-manifest-index-2.0.schema.json",
+  "version": "2.0",
+  "manifests": ["definitions/sprites.json", "shaders/materials.json"]
+}

@@ -1,0 +1,285 @@
+#include "tgui-demo.h"
+
+#include <backends/opengl/resource-provider.h>
+#include <core/engine/engine-context.h>
+#include <internals/exceptions.h>
+#include <ui/tgui/input.h>
+#include <ui/tgui/scene.h>
+#include <ui/tgui/session.h>
+
+#include <TGUI/Widgets/Button.hpp>
+#include <TGUI/Widgets/EditBox.hpp>
+#include <TGUI/Widgets/Label.hpp>
+#include <TGUI/Widgets/Panel.hpp>
+#include <TGUI/Widgets/Picture.hpp>
+#include <TGUI/Widgets/ScrollablePanel.hpp>
+
+#include <array>
+#include <exception>
+#include <format>
+#include <future>
+#include <string>
+#include <utility>
+
+namespace {
+    CE::UI::TGUI::Materials materials(CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root) {
+        auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
+        if (!native)
+            throw CE::Exceptions::invalid_args(CE_HERE, "The demo UI requires an OpenGL material provider");
+        CE::Rendering::Pipelines::Definition definition;
+        definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+        definition.topology = CE::Rendering::Geometry::Topology::Triangles;
+        definition.state = {
+            CE::Rendering::Pipelines::Blend::StraightAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
+            CE::Rendering::Pipelines::Cull::None
+        };
+        definition.parameters = {
+            {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
+        };
+        definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
+        const CE::Rendering::OpenGL::PipelineBindings solid_bindings{{{"projection", "projectionMatrix"}}};
+        CE::UI::TGUI::Materials result;
+        result.solid = native->build_material({native->build_pipeline(definition, solid_bindings), {}});
+        definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
+        definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+        const CE::Rendering::OpenGL::PipelineBindings textured_bindings{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
+        result.textured = native->build_material({native->build_pipeline(std::move(definition), textured_bindings), {}});
+        return result;
+    }
+
+    tgui::Texture image(const bool alternate) {
+        constexpr unsigned int extent = 16;
+        std::array<std::uint8_t, extent * extent * 4> pixels{};
+        constexpr std::array<tgui::Color, 4> colors{tgui::Color{240, 90, 85}, tgui::Color{80, 210, 140}, tgui::Color{75, 145, 245},
+                                                    tgui::Color{245, 205, 85}};
+        for (unsigned int y = 0; y < extent; ++y)
+            for (unsigned int x = 0; x < extent; ++x) {
+                const auto color = colors[((x >= extent / 2) + 2 * (y >= extent / 2) + (alternate ? 1 : 0)) % colors.size()];
+                const auto offset = (y * extent + x) * 4;
+                pixels[offset] = color.getRed();
+                pixels[offset + 1] = color.getGreen();
+                pixels[offset + 2] = color.getBlue();
+                pixels[offset + 3] = 255;
+            }
+        tgui::Texture texture;
+        texture.loadFromPixelData({extent, extent}, pixels.data(), {}, {}, true);
+        return texture;
+    }
+
+    tgui::Label::Ptr label(const tgui::String& text, const unsigned int size = 16) {
+        auto widget = tgui::Label::create(text);
+        widget->setTextSize(size);
+        widget->getRenderer()->setTextColor({235, 240, 250});
+        return widget;
+    }
+}
+
+struct DemoUi::TguiState {
+    CE::Input::System& input;
+    CE::Runtime::PlatformDispatcher::Submission platform;
+    CE::UI::TGUI::SceneUploader uploader;
+    CE::UI::TGUI::Materials materials;
+    // External widget handles are declared after session and destroyed first.
+    std::unique_ptr<CE::UI::TGUI::Session> session;
+    tgui::Panel::Ptr panel;
+    tgui::Label::Ptr status_label;
+    tgui::EditBox::Ptr field;
+    tgui::Picture::Ptr picture;
+    tgui::Button::Ptr edge;
+    CE::UI::TGUI::Scene scene;
+    std::future<CE::UI::TGUI::Scene> pending;
+    std::string upload_error;
+    bool visible = true;
+    bool reset_requested = false;
+    bool alternate_image = false;
+
+    TguiState(CE::Runtime::Context& engine, const std::filesystem::path& root)
+    : input(engine.input()),
+      platform(engine.platform_dispatcher().submission()),
+      uploader(engine.resources()),
+      materials(::materials(engine.resources(), root)) {}
+
+    void create_widgets(const CE::Game::TickContext& tick) {
+        using CE::UI::TGUI::Scalable;
+
+        session = std::make_unique<CE::UI::TGUI::Session>(input, 2);
+        session->set_view(tick.logical_size, tick.framebuffer_size);
+        auto& gui = session->gui();
+        gui.setTextSize(16);
+        gui.setKeyboardNavigationEnabled(true);
+        panel = tgui::Panel::create({426, 500});
+        panel->getRenderer()->setBackgroundColor({28, 36, 54, 225});
+        panel->getRenderer()->setBorderColor({95, 125, 170});
+        panel->getRenderer()->setBorders(1);
+        gui.add(panel, "demo-panel");
+        session->set_layout(
+            panel, {.anchor = {1, 0},
+                    .offset = {.fixed = {-24, 24}},
+                    .scalable =
+                        Scalable{.width = 0.35f, .height = 0.75f, .min_width = 394, .max_width = 640, .min_height = 500, .max_height = 800}}
+        );
+        constexpr float side_margin = 18;
+        constexpr float list_top = 270;
+        constexpr float image_height = 68;
+        constexpr float image_bottom = 14;
+        constexpr float region_gap = 12;
+        const auto content_width = tgui::bindInnerWidth(panel) - 2 * side_margin;
+        const auto list_height = tgui::bindInnerHeight(panel) - list_top - region_gap - image_height - image_bottom;
+
+        auto title = label("Cheryl UI", 24);
+        panel->add(title);
+        session->set_layout(title, {.offset = {.fixed = {18, 12}}});
+        auto instructions = label("F2: edit   Esc: release focus   F3: hide/show");
+        panel->add(instructions);
+        session->set_layout(instructions, {.offset = {.fixed = {18, 48}}});
+        status_label = label("");
+        panel->add(status_label);
+        session->set_layout(status_label, {.offset = {.fixed = {18, 80}}});
+
+        auto reset = tgui::Button::create("Reset camera");
+        reset->setSize({180, 32});
+        reset->onPress([this] { reset_requested = true; });
+        panel->add(reset);
+        session->set_layout(reset, {.offset = {.fixed = {18, 148}}});
+        field = tgui::EditBox::create();
+        field->setSize({content_width, 34});
+        field->setDefaultText("Click here and type");
+        field->getRenderer()->setBackgroundColor({240, 244, 250});
+        panel->add(field, "text-field");
+        session->set_layout(field, {.offset = {.fixed = {side_margin, 198}}});
+        auto editing = label("Arrows, Home/End and Backspace work here");
+        editing->setTextSize(14);
+        panel->add(editing);
+        session->set_layout(editing, {.offset = {.fixed = {18, 240}}});
+
+        auto scroll = tgui::ScrollablePanel::create({content_width, list_height});
+        scroll->getRenderer()->setBackgroundColor({45, 60, 85, 180});
+        scroll->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never);
+        panel->add(scroll);
+        session->set_layout(scroll, {.offset = {.fixed = {side_margin, list_top}}});
+        const auto row_width = tgui::bindInnerWidth(scroll) - 16;
+        for (unsigned int i = 0; i < 8; ++i) {
+            auto row = tgui::Panel::create({row_width, 34});
+            row->getRenderer()->setBackgroundColor({70, 105, 145, static_cast<std::uint8_t>(i % 2 ? 150 : 90)});
+            scroll->add(row);
+            session->set_layout(row, {.offset = {.fixed = {8, 8 + i * 38.0f}}});
+            auto text = label(std::format("Scroll item {}", i + 1));
+            row->add(text);
+            session->set_layout(text, {.offset = {.fixed = {8, 6}}});
+        }
+
+        auto image_panel = tgui::Panel::create({content_width, image_height});
+        image_panel->getRenderer()->setBackgroundColor({85, 75, 115, 130});
+        panel->add(image_panel);
+        session->set_layout(image_panel, {.anchor = {0, 1}, .offset = {.fixed = {side_margin, -image_bottom}}});
+        picture = tgui::Picture::create(image(false));
+        picture->setSize({52, 52});
+        image_panel->add(picture);
+        session->set_layout(picture, {.offset = {.fixed = {8, 8}}});
+        auto change = tgui::Button::create("Change image");
+        change->setSize({180, 32});
+        change->onPress([this] {
+            alternate_image = !alternate_image;
+            picture->getRenderer()->setTexture(image(alternate_image));
+        });
+        image_panel->add(change);
+        session->set_layout(change, {.offset = {.fixed = {82, 17}}});
+
+        // Keep the badge inside its parent clip, beside the title.
+        auto badge = tgui::Panel::create({100, 28});
+        badge->getRenderer()->setBackgroundColor({80, 140, 170, 170});
+        panel->add(badge);
+        session->set_layout(badge, {.anchor = {1, 0}, .offset = {.fixed = {-8, 12}, .relative = {-0.02f, 0}}});
+        auto badge_text = label("TGUI", 16);
+        badge->add(badge_text);
+        session->set_layout(badge_text, {.anchor = {0.5f, 0.5f}});
+
+        edge = tgui::Button::create("?");
+        edge->setSize({28, 28});
+        auto tooltip = label("This tooltip stays inside the window.");
+        tooltip->setTextSize(14);
+        tooltip->getRenderer()->setBackgroundColor({30, 45, 65, 240});
+        edge->setToolTip(tooltip);
+        gui.add(edge, "edge-tooltip");
+        session->set_layout(edge, {.anchor = {1, 1}, .offset = {.fixed = {-18, -18}}});
+    }
+
+    void handle_input(const CE::Game::TickContext& tick) {
+        using namespace CE::Input;
+        session->handle_input(tick.input.records(), visible, [&](const CE::Input::Events::Record& record) {
+            const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
+            if (button && record.device_kind == DeviceKind::Keyboard && button->phase == CE::Input::Events::ButtonPhase::Press) {
+                if (button->key == KeyboardKey::F2 && visible) {
+                    if (session->owns_keyboard_focus())
+                        session->release_keyboard_focus();
+                    else {
+                        session->request_keyboard_focus();
+                        field->setFocused(true);
+                    }
+                } else if (button->key == KeyboardKey::F3) {
+                    visible = !visible;
+                    panel->setVisible(visible);
+                    edge->setVisible(visible);
+                    if (!visible)
+                        session->release_keyboard_focus();
+                } else if (button->key == KeyboardKey::Escape && session->owns_keyboard_focus())
+                    session->release_keyboard_focus();
+            }
+            if (visible && tick.logical_size.width > 0 && tick.logical_size.height > 0 && button &&
+                record.device_kind == DeviceKind::Mouse && button->mouse_button == MouseButton::Left &&
+                button->phase == CE::Input::Events::ButtonPhase::Press) {
+                const auto event = CE::UI::TGUI::translate_event(record);
+                if (event) {
+                    auto& gui = session->gui();
+                    const auto point = gui.mapPixelToCoords({event->mouseButton.x, event->mouseButton.y});
+                    if (gui.getWidgetAtPos(point, true)) {
+                        if (!session->owns_keyboard_focus())
+                            session->request_keyboard_focus();
+                    } else
+                        session->release_keyboard_focus();
+                }
+            }
+            return visible;
+        });
+    }
+};
+
+DemoUi::DemoUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root)
+: tgui_state_(std::make_unique<TguiState>(engine, asset_root)) {}
+
+DemoUi::~DemoUi() = default;
+
+bool DemoUi::update(const CE::Game::TickContext& tick, const DemoUiStatus& status) {
+    auto& tgui = *tgui_state_;
+    if (!tgui.session)
+        tgui.create_widgets(tick);
+    else
+        tgui.session->set_view(tick.logical_size, tick.framebuffer_size);
+    tgui.handle_input(tick);
+    tgui.session->update_time(tick.delta_seconds);
+    tgui.status_label->setText(
+        std::format(
+            "Updates: {}   Camera: {:.0f}, {:.0f}\nClicks: {}   Wheel: {:.2f}\nGamepad A: {} presses", status.updates, status.pan_x,
+            status.pan_y, status.clicks, status.wheel, status.gamepad_presses
+        )
+    );
+    try {
+        if (CE::UI::TGUI::adopt_scene(tgui.pending, tgui.scene))
+            tgui.upload_error.clear();
+        // No queue growth: keep one complete scene while its replacement waits.
+        if (!tgui.pending.valid())
+            tgui.pending = tgui.uploader.submit(tgui.platform, tgui.session->record(), tgui.materials);
+    } catch (const std::exception& error) {
+        tgui.upload_error = error.what(); // The last complete scene remains usable.
+    }
+    return std::exchange(tgui.reset_requested, false);
+}
+
+void DemoUi::write(CE::Rendering::FrameWriter& frame) const {
+    if (tgui_state_->visible)
+        tgui_state_->scene.write(frame);
+}
+
+std::string_view DemoUi::error() const {
+    return tgui_state_->upload_error;
+}

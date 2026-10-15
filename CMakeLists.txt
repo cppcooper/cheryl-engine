@@ -1,9 +1,25 @@
 cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
-project(cheryl)
+include(cmake/CherylVersions.cmake)
+project(cheryl
+        VERSION ${VERSION_PROJECT_CHERYL}
+        LANGUAGES C CXX
+)
 
-option(WARN "Enable compiler warnings [-Wall]" OFF)
-option(CHERYL_SANDBOX_BUILD "Build without X11 and Gainput for sandbox environments" OFF)
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
+# Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
+include(cmake/CherylOptions.cmake)
+cheryl_configure_root_options()
+include(cmake/CherylTargets.cmake)
+include(cmake/CherylOutputs.cmake)
+include(cmake/CherylLinkage.cmake)
+
+set(CHERYL_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
+
 if(WARN)
     set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
@@ -14,114 +30,66 @@ if (NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("-fsanitize=address,undefined")
 endif()
 
-# target names
-set(LIB_TARGET cherylGL)
-set(TEST_TARGET all-tests)
+include(cmake/CherylDependencies.cmake)
+include(cmake/CherylModules.cmake)
 
-# Keep GLFW's null platform available while avoiding native display dependencies.
-if(CHERYL_SANDBOX_BUILD AND UNIX AND NOT APPLE)
-    set(GLFW_BUILD_X11 OFF)
-    set(GLFW_BUILD_WAYLAND OFF)
-endif()
-
-# source files
-if(NOT CHERYL_SANDBOX_BUILD)
-    if(UNIX AND NOT APPLE)
-        find_package(X11 REQUIRED)
-    endif()
-endif()
-file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS LIST_DIRECTORIES false src/* ${CMAKE_CURRENT_BINARY_DIR}/_deps/glad-src/src/*)
-file(GLOB_RECURSE GTEST_SOURCES CONFIGURE_DEPENDS LIST_DIRECTORIES false tests/executables/gtest/*)
-if(CHERYL_SANDBOX_BUILD)
-    list(FILTER LIB_SOURCES EXCLUDE REGEX "/(glfw-bindings|input-mapper|input-system)\\.cpp$")
-endif()
-message("Library sources: ${LIB_SOURCES}")
-message("Common test sources: ${TEST_SOURCES}")
-
-# dependencies
-find_package(Threads REQUIRED)
-set(BACKWARD_SHARED STATIC)
-set(SPDLOG_USE_STD_FORMAT ON)
-set(GLM_ENABLE_EXPERIMENTAL ON)
-
-add_subdirectory(extern/googletest EXCLUDE_FROM_ALL)
-add_subdirectory(extern/ctti EXCLUDE_FROM_ALL)
-add_subdirectory(extern/backward-cpp EXCLUDE_FROM_ALL)
-add_subdirectory(extern/spdlog EXCLUDE_FROM_ALL)
-if(NOT CHERYL_SANDBOX_BUILD)
-    add_subdirectory(extern/gainput EXCLUDE_FROM_ALL)
-endif()
-add_subdirectory(extern/glad/cmake)
-add_subdirectory(extern/glm EXCLUDE_FROM_ALL)
-add_subdirectory(extern/glfw EXCLUDE_FROM_ALL)
-
-# Use the pinned GLAD specification instead of downloading a newer one during compilation.
-glad_add_library(gl46 STATIC EXCLUDE_FROM_ALL REPRODUCIBLE API gl:core=4.6 EXTENSIONS GL_EXT_texture_filter_anisotropic )
-
-# includes
-include_directories(include)
-include_directories(include/cheryl)
-include_directories(extern/googletest/googletest/include)
-include_directories(extern/ctti/include)
-include_directories(extern/backward-cpp)
-include_directories(extern/spdlog/include)
-if(NOT CHERYL_SANDBOX_BUILD)
-    include_directories(extern/gainput/lib/include)
-endif()
-include_directories(extern/stb)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/gladsources/gl46/include)
-include_directories(extern/glm/glm)
-include_directories(extern/glfw/include)
-include_directories(extern/json/single_include)
-
-message("-- Build directory: ${CMAKE_CURRENT_BINARY_DIR}")
-
-# Disable the fallthrough warning for GCC/Clang
-if(NOT CHERYL_SANDBOX_BUILD AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(gainputstatic PRIVATE -Wno-implicit-fallthrough -Wno-unused-parameter)
-endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wno-deprecated-declarations)
 endif()
-
-# library
-add_library(${LIB_TARGET} STATIC ${LIB_SOURCES})
-target_link_libraries(${LIB_TARGET} PUBLIC Threads::Threads)
-if(CHERYL_SANDBOX_BUILD)
-    target_compile_definitions(${LIB_TARGET} PUBLIC CHERYL_SANDBOX_BUILD=1)
+if(CHERYL_BUILD_TESTS)
+    include(GoogleTest)
+    enable_testing()
 endif()
-add_dependencies(${LIB_TARGET} gl46)
 
-# testing
-include(GoogleTest)
-enable_testing()
-add_executable(${TEST_TARGET} tests/executables/gtest.cpp ${GTEST_SOURCES} ${LIB_SOURCES})
-target_link_libraries(${TEST_TARGET} PRIVATE Threads::Threads)
-TARGET_INCLUDE_DIRECTORIES(${TEST_TARGET} PRIVATE tests/include src)
-target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND GLFW_BUILD_X11 AND NOT CHERYL_SANDBOX_BUILD)
-    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/executables/gtest/backends/native-opengl.cpp"
-        APPEND PROPERTY COMPILE_DEFINITIONS CHERYL_NATIVE_X11_TESTS=1)
+add_subdirectory(projects/engine)
+
+if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
+    add_subdirectory(projects/modules/platform/debug-terminal-linux)
+    if(NOT TARGET Cheryl::DebugTerminal)
+        add_library(Cheryl::DebugTerminal ALIAS ${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX})
+    endif()
 endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    # backward-cpp's fallback resolver reads exported symbols in Release builds.
-    target_link_options(${TEST_TARGET} PRIVATE -rdynamic)
+
+if(CHERYL_BUILD_NATIVE_GLFW)
+    add_subdirectory(projects/modules/platform/native-glfw)
 endif()
-if(CHERYL_SANDBOX_BUILD)
-    target_compile_definitions(${TEST_TARGET} PRIVATE CHERYL_SANDBOX_BUILD=1)
-    target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object glfw gl46 GL)
-else()
-    target_link_libraries(${TEST_TARGET} PRIVATE gtest spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
+if(CHERYL_BUILD_OPENGL)
+    add_subdirectory(projects/modules/graphics/opengl)
 endif()
-gtest_discover_tests(${TEST_TARGET})
+if(CHERYL_BUILD_UI_TGUI)
+    add_subdirectory(projects/modules/ui/tgui)
+endif()
+if(CHERYL_BUILD_UI_RMLUI)
+    add_subdirectory(projects/modules/ui/rmlui)
+endif()
+if(CHERYL_BUILD_AUDIO_MINIAUDIO)
+    add_subdirectory(projects/modules/audio/miniaudio)
+endif()
 
-add_executable(backward-cpp tests/executables/backward.cpp)
-target_link_libraries(backward-cpp PUBLIC Backward::Backward)
+if(CHERYL_BUILD_TESTS)
+    add_subdirectory(projects/tests)
+endif()
 
-add_executable(cpp-testing tests/executables/cpp-testing.cpp)
+if(CHERYL_BUILD_CONSUMER_TESTS)
+    add_subdirectory(projects/engine/tests/consumer)
+endif()
+if(CHERYL_BUILD_TESTS)
+    add_subdirectory(projects/dependency-checks/backward-cpp)
+endif()
+if(CHERYL_BUILD_DEMO AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
+    add_subdirectory(projects/apps/demo)
+endif()
+if(CHERYL_BUILD_FIRST_GAME AND CHERYL_BUILD_NATIVE_GLFW AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
+    add_subdirectory(projects/apps/first-game)
+endif()
 
-if(NOT CHERYL_SANDBOX_BUILD)
-    add_executable(demo tests/executables/demo.cpp)
-    target_compile_definitions(demo PRIVATE CHERYL_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-    target_link_libraries(demo PUBLIC cherylGL spdlog Backward::Object gainputstatic ${X11_LIBRARIES} glfw gl46 GL)
+if(CHERYL_BUILD_SDK)
+    include(cmake/CherylSdk.cmake)
+endif()
+
+cheryl_check_option_requirements()
+
+if(CHERYL_BUILD_DOCS)
+    include(cmake/CherylDocumentation.cmake)
+    cheryl_add_documentation_targets("${CHERYL_REPOSITORY_ROOT}")
 endif()

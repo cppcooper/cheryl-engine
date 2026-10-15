@@ -1,0 +1,374 @@
+#include <gtest/gtest.h>
+
+#include <array>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <variant>
+
+#include <assets/types/primitives/vertex.h>
+#include <enums/fit-type.h>
+#include <internals/exceptions.h>
+#include <math/anchor.h>
+#include <math/binary.h>
+#include <math/bytes.h>
+#include <math/fit.h>
+#include <math/pointers.h>
+#include <math/time.h>
+
+namespace {
+    template <typename T> constexpr bool is_power_of_two(const T value) {
+        return value != 0 && (value & (value - 1)) == 0;
+    }
+}
+
+TEST(math_binary, compact_storage) {
+    using namespace CE::Math::Detail;
+
+    // Each width uses the smallest fixed-width integer available without
+    // exceeding the platform's native word width.
+    using expected_9 = std::conditional_t<(native_bits >= 16), std::uint16_t, native_word>;
+    using expected_17 = std::conditional_t<(native_bits >= 32), std::uint32_t, native_word>;
+    using expected_33 = std::conditional_t<(native_bits >= 64), std::uint64_t, native_word>;
+
+    static_assert(std::is_same_v<bit_word_t<1>, std::uint8_t>);
+    static_assert(std::is_same_v<bit_word_t<8>, std::uint8_t>);
+    static_assert(std::is_same_v<bit_word_t<9>, expected_9>);
+    static_assert(std::is_same_v<bit_word_t<17>, expected_17>);
+    static_assert(std::is_same_v<bit_word_t<33>, expected_33>);
+
+    // Crossing the native-word boundary changes storage from one scalar to
+    // two native words without changing the BitArray interface.
+    static_assert(bit_word_count<native_bits> == 1);
+    static_assert(bit_word_count<native_bits + 1> == 2);
+
+    EXPECT_EQ(sizeof(CE::Math::BitArray<8>), sizeof(std::uint8_t));
+    EXPECT_EQ(sizeof(CE::Math::BitArray<native_bits + 1>), sizeof(native_word) * 2);
+}
+
+TEST(math_binary, individual_bits) {
+    CE::Math::BitArray<8> bits;
+    const auto& readable = bits;
+
+    // Light two flags, then clear only the first. Read each change through
+    // the const interface that consumers use to inspect the flags.
+    EXPECT_FALSE(readable[0]);
+    EXPECT_FALSE(readable[1]);
+    bits[0] = true;
+    EXPECT_TRUE(readable[0]);
+    bits[1] = true;
+    EXPECT_TRUE(readable[1]);
+    bits[0] = false;
+    EXPECT_FALSE(readable[0]);
+    EXPECT_TRUE(readable[1]);
+}
+
+TEST(math_binary, bit_assignment) {
+    CE::Math::BitArray<8> bits;
+    bits[0] = true;
+
+    // Copy both a set flag and a clear flag; neither assignment moves the
+    // proxy's destination to the source position.
+    bits[1] = bits[0];
+    EXPECT_EQ(bits.words()[0], std::uint8_t{3});
+    bits[0] = bits[2];
+    EXPECT_EQ(bits.words()[0], std::uint8_t{2});
+
+    // Self-assignment also keeps the represented flag intact.
+    auto reference = bits[1];
+    reference = reference;
+    EXPECT_EQ(bits.words()[0], std::uint8_t{2});
+}
+
+TEST(math_binary, word_access) {
+    CE::Math::BitArray<8> bits;
+    auto words = bits.words();
+
+    // Changing a bit changes the word containing it.
+    EXPECT_EQ(words[0], std::uint8_t{0});
+    bits[0] = true;
+    EXPECT_EQ(words[0], std::uint8_t{1});
+
+    // Writing the word changes the individual bits.
+    words[0] = std::uint8_t{3};
+    const auto& readable = bits;
+    EXPECT_TRUE(readable[0]);
+    EXPECT_TRUE(readable[1]);
+    EXPECT_FALSE(readable[2]);
+    EXPECT_EQ(readable.words()[0], std::uint8_t{3});
+}
+
+TEST(math_binary, word_boundary) {
+    constexpr std::size_t boundary = CE::Math::Detail::native_bits;
+    using Array = CE::Math::BitArray<boundary + 2>;
+    using word_type = Array::word_type;
+
+    Array bits;
+    auto words = bits.words();
+
+    // The bits immediately before and after the boundary belong to different words.
+    bits[boundary - 1] = true;
+    bits[boundary] = true;
+    EXPECT_EQ(words[0], word_type{1} << (boundary - 1));
+    EXPECT_EQ(words[1], word_type{1});
+
+    words[1] = word_type{2};
+    const auto& readable = bits;
+    EXPECT_EQ(readable.words()[0], word_type{1} << (boundary - 1));
+    EXPECT_EQ(readable.words()[1], word_type{2});
+    EXPECT_TRUE(readable[boundary - 1]);
+    EXPECT_FALSE(readable[boundary]);
+    EXPECT_TRUE(readable[boundary + 1]);
+}
+
+TEST(math_binary, last_bit) {
+    constexpr std::size_t boundary = CE::Math::Detail::native_bits;
+    using Array = CE::Math::BitArray<boundary + 3>;
+    Array bits;
+
+    // The final represented flag lies two positions into the second word.
+    bits[boundary + 2] = true;
+    const auto& readable = bits;
+    EXPECT_TRUE(readable[boundary + 2]);
+    EXPECT_FALSE(readable[boundary + 1]);
+    EXPECT_EQ(readable.words()[1], Array::word_type{4});
+}
+
+TEST(math_binary, stream_output) {
+    CE::Math::BitArray<8> bits;
+    bits[0] = true;
+    bits[2] = true;
+    bits[7] = true;
+
+    // Stream output is most-significant to least-significant, while indexing
+    // remains least-significant bit first.
+    std::ostringstream out;
+    out << bits;
+
+    EXPECT_EQ(out.str(), "10000101");
+}
+
+TEST(math_anchor, named_anchors) {
+    using namespace CE::Memory;
+
+    struct AnchorCase {
+        const char* name;
+        CE::Rendering::Geometry::AnchorType type;
+        CE::Rendering::Geometry::Pivot pivot;
+    };
+
+    constexpr std::array cases{
+        AnchorCase{"TL", CE::Rendering::Geometry::TopLeft, {0.0f, 0.0f}},
+        AnchorCase{"TC", CE::Rendering::Geometry::TopCenter, {0.5f, 0.0f}},
+        AnchorCase{"TR", CE::Rendering::Geometry::TopRight, {1.0f, 0.0f}},
+        AnchorCase{"CL", CE::Rendering::Geometry::CenterLeft, {0.0f, 0.5f}},
+        AnchorCase{"ML", CE::Rendering::Geometry::CenterLeft, {0.0f, 0.5f}},
+        AnchorCase{"CR", CE::Rendering::Geometry::CenterRight, {1.0f, 0.5f}},
+        AnchorCase{"MR", CE::Rendering::Geometry::CenterRight, {1.0f, 0.5f}},
+        AnchorCase{"BL", CE::Rendering::Geometry::BottomLeft, {0.0f, 1.0f}},
+        AnchorCase{"BC", CE::Rendering::Geometry::BottomCenter, {0.5f, 1.0f}},
+        AnchorCase{"BR", CE::Rendering::Geometry::BottomRight, {1.0f, 1.0f}}
+    };
+
+    // Names and aliases must resolve to the same normalized pivots used by the
+    // geometry-building helpers.
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.name);
+        EXPECT_EQ(CE::Rendering::Geometry::get_anchor(test.name), test.type);
+        EXPECT_EQ(CE::Rendering::Geometry::get_pivot(test.type), test.pivot);
+    }
+
+    EXPECT_EQ(CE::Rendering::Geometry::get_anchor("unknown"), CE::Rendering::Geometry::Center);
+    EXPECT_EQ(CE::Rendering::Geometry::get_pivot(CE::Rendering::Geometry::Center), (CE::Rendering::Geometry::Pivot{0.5f, 0.5f}));
+}
+
+TEST(math_anchor, quad_geometry) {
+    using namespace CE::Memory;
+
+    constexpr CE::Rendering::Geometry::Pivot pivot{0.5f, 1.0f};
+    constexpr std::uint32_t texture_width = 64;
+    constexpr std::uint32_t texture_height = 32;
+    constexpr std::uint32_t width = 16;
+    constexpr std::uint32_t height = 8;
+    constexpr std::uint32_t x = 16;
+    constexpr std::uint32_t y = 8;
+
+    CE::Rendering::Geometry::Vertex2D typed[CE::Rendering::Geometry::vertices_per_quad]{};
+    std::array<float, CE::Rendering::Geometry::floats_per_quad> raw{};
+
+    // The quad owns two triangles; both pointer overloads copy that same layout.
+    const auto quad = CE::Rendering::Geometry::Anchor::MakeQuad(pivot, texture_width, texture_height, width, height, x, y);
+    CE::Rendering::Geometry::Anchor::MakePivot(pivot, typed, texture_width, texture_height, width, height, x, y);
+    CE::Rendering::Geometry::Anchor::MakePivot(pivot, raw.data(), texture_width, texture_height, width, height, x, y);
+
+    EXPECT_FLOAT_EQ(typed[0].x, -8.0f);
+    EXPECT_FLOAT_EQ(typed[0].y, 0.0f);
+    EXPECT_FLOAT_EQ(typed[2].x, 8.0f);
+    EXPECT_FLOAT_EQ(typed[2].y, 8.0f);
+    EXPECT_FLOAT_EQ(typed[5].x, -8.0f);
+    EXPECT_FLOAT_EQ(typed[5].y, 8.0f);
+    EXPECT_FLOAT_EQ(typed[0].u, 0.25f);
+    EXPECT_FLOAT_EQ(typed[0].v, 0.5f);
+    EXPECT_FLOAT_EQ(typed[2].u, 0.5f);
+    EXPECT_FLOAT_EQ(typed[2].v, 0.75f);
+
+    for (std::size_t i = 0; i < CE::Rendering::Geometry::vertices_per_quad; ++i) {
+        const auto offset = i * CE::Rendering::Geometry::floats_per_quad_vertex;
+        EXPECT_FLOAT_EQ(typed[i].x, quad.vertices[i].x);
+        EXPECT_FLOAT_EQ(typed[i].y, quad.vertices[i].y);
+        EXPECT_FLOAT_EQ(raw[offset], typed[i].x);
+        EXPECT_FLOAT_EQ(raw[offset + 1], typed[i].y);
+        EXPECT_FLOAT_EQ(raw[offset + 2], typed[i].z);
+        EXPECT_FLOAT_EQ(raw[offset + 3], typed[i].u);
+        EXPECT_FLOAT_EQ(raw[offset + 4], typed[i].v);
+    }
+
+    // The two triangles repeat their shared diagonal in the standalone quad.
+    EXPECT_FLOAT_EQ(typed[0].x, typed[3].x);
+    EXPECT_FLOAT_EQ(typed[2].x, typed[4].x);
+}
+
+TEST(math_anchor, invalid_pivots) {
+    using namespace CE::Memory;
+
+    std::array<float, CE::Rendering::Geometry::floats_per_quad> vertices{};
+
+    // A pivot has to identify a finite point within the image's unit square.
+    EXPECT_THROW(
+        CE::Rendering::Geometry::Anchor::MakePivot({std::numeric_limits<float>::quiet_NaN(), 0.5f}, vertices.data(), 64, 32, 16, 8),
+        CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(CE::Rendering::Geometry::Anchor::MakePivot({-0.01f, 0.5f}, vertices.data(), 64, 32, 16, 8), CE::Exceptions::invalid_args);
+    EXPECT_THROW(CE::Rendering::Geometry::Anchor::MakePivot({0.5f, 1.01f}, vertices.data(), 64, 32, 16, 8), CE::Exceptions::invalid_args);
+}
+
+TEST(math_anchor, zero_image_dimensions) {
+    using namespace CE::Memory;
+    std::array<float, CE::Rendering::Geometry::floats_per_quad> vertices{};
+
+    // Either missing dimension makes texture coordinates impossible to compute.
+    EXPECT_THROW(CE::Rendering::Geometry::Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 0, 32, 16, 8), CE::Exceptions::invalid_args);
+    EXPECT_THROW(CE::Rendering::Geometry::Anchor::MakePivot({0.5f, 0.5f}, vertices.data(), 64, 0, 16, 8), CE::Exceptions::invalid_args);
+}
+
+TEST(math_pointers, range_endpoints) {
+    std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
+    auto* end = begin + memory.size();
+
+    // Ranges are inclusive at the beginning and exclusive at the end.
+    EXPECT_TRUE(CE::Memory::Pointers::is_in_range(begin, end, begin));
+    EXPECT_TRUE(CE::Memory::Pointers::is_in_range(begin, end, begin + 127));
+    EXPECT_FALSE(CE::Memory::Pointers::is_in_range(begin, end, end));
+}
+
+TEST(math_pointers, byte_offsets) {
+    std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
+
+    // The two helpers agree on where a byte offset lands in this allocation.
+    EXPECT_EQ(CE::Memory::Pointers::offset_address(begin, 17), reinterpret_cast<std::uintptr_t>(begin + 17));
+    EXPECT_EQ(CE::Memory::Pointers::add_offset<std::byte>(begin, 17), begin + 17);
+}
+
+TEST(math_pointers, alignment_offsets) {
+    alignas(64) std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
+
+    // A deliberately aligned base needs no correction. Moving three bytes from
+    // it requires thirteen more bytes to reach the next 16-byte boundary.
+    EXPECT_EQ(CE::Memory::Pointers::get_alignment_offset(begin, std::align_val_t{64}), std::size_t{0});
+    EXPECT_EQ(CE::Memory::Pointers::get_alignment_offset(begin + 3, std::align_val_t{16}), std::size_t{13});
+    EXPECT_EQ(CE::Memory::Pointers::align_offset(begin, 3, std::align_val_t{16}), std::size_t{16});
+}
+
+TEST(math_pointers, address_alignment) {
+    alignas(64) std::array<std::byte, 128> memory{};
+    auto* begin = memory.data();
+
+    // calculate_alignment reports the largest power of two dividing an address.
+    EXPECT_EQ(CE::Memory::Pointers::calculate_alignment(std::uintptr_t{0x120}), std::size_t{32});
+
+    const auto actual_alignment = static_cast<std::size_t>(CE::Memory::Pointers::calculate_alignment(begin));
+    EXPECT_GE(actual_alignment, std::size_t{64});
+    EXPECT_TRUE(is_power_of_two(actual_alignment));
+}
+
+TEST(math_pointers, pointer_hashes) {
+    int value = 0;
+    void* pointer = &value;
+
+    // The requested byte width controls the variant alternative while hashing
+    // the same address remains deterministic.
+    const auto hash8 = CE::Memory::Pointers::pointer_to_hash(pointer, 1);
+    const auto hash16 = CE::Memory::Pointers::pointer_to_hash(pointer, 2);
+    const auto hash32 = CE::Memory::Pointers::pointer_to_hash(pointer, 4);
+    const auto hash64 = CE::Memory::Pointers::pointer_to_hash(pointer, 8);
+
+    EXPECT_TRUE(std::holds_alternative<std::uint8_t>(hash8));
+    EXPECT_TRUE(std::holds_alternative<std::uint16_t>(hash16));
+    EXPECT_TRUE(std::holds_alternative<std::uint32_t>(hash32));
+    EXPECT_TRUE(std::holds_alternative<std::uint64_t>(hash64));
+    EXPECT_EQ(hash32, CE::Memory::Pointers::pointer_to_hash(pointer, 4));
+
+    EXPECT_THROW(static_cast<void>(CE::Memory::Pointers::pointer_to_hash(pointer, 3)), CE::Exceptions::invalid_args);
+}
+
+TEST(math_fit, growth_policies) {
+    // exact preserves the request, larger adds fixed growth, and greedy applies
+    // multiplicative growth before adding the same fixed amount.
+    EXPECT_EQ(CE::Memory::adjust_length(100, CE::Memory::exact, 8, 1.5), std::size_t{100});
+    EXPECT_EQ(CE::Memory::adjust_length(100, CE::Memory::larger, 8, 1.5), std::size_t{108});
+    EXPECT_EQ(CE::Memory::adjust_length(100, CE::Memory::greedy, 8, 1.5), std::size_t{158});
+}
+
+TEST(math_fit, reducing_growth) {
+    // Each reduction relaxes one growth policy until exact is reached.
+    EXPECT_EQ(CE::Memory::reduce_fit_policy(CE::Memory::greedy), CE::Memory::larger);
+    EXPECT_EQ(CE::Memory::reduce_fit_policy(CE::Memory::larger), CE::Memory::exact);
+    EXPECT_EQ(CE::Memory::reduce_fit_policy(CE::Memory::exact), CE::Memory::exact);
+}
+
+TEST(math_time, duration_conversions) {
+    static_assert(CE::Time::is_chrono_duration_v<CE::Time::Milliseconds>);
+    static_assert(CE::Time::is_chrono_duration_v<CE::Time::Seconds>);
+    static_assert(!CE::Time::is_chrono_duration_v<int>);
+
+    // duration_cast semantics intentionally truncate fractional destination units.
+    const auto seconds = CE::Time::duration_cast<CE::Time::Milliseconds, CE::Time::Seconds>(CE::Time::Milliseconds{1500});
+    EXPECT_EQ(seconds, CE::Time::Seconds{1});
+    EXPECT_EQ(CE::Time::to_milliseconds(CE::Time::Seconds{2}), CE::Time::Milliseconds{2000});
+    EXPECT_EQ(CE::Time::to_seconds(CE::Time::Milliseconds{2500}), CE::Time::Seconds{2});
+    EXPECT_EQ(CE::Time::to_minutes(CE::Time::Hours{2}), CE::Time::Minutes{120});
+    EXPECT_EQ(CE::Time::to_hours(CE::Time::Minutes{120}), CE::Time::Hours{2});
+}
+
+TEST(math_bytes, readable_byte_sizes) {
+    EXPECT_EQ(CE::Memory::format_bytes(0), "0.0 bytes");
+    EXPECT_EQ(CE::Memory::format_bytes(512), "512.0 bytes");
+    EXPECT_EQ(CE::Memory::format_bytes(1536), "1.5KiB");
+    EXPECT_EQ(CE::Memory::format_bytes(std::size_t{1536} * 1024), "1.5MiB");
+}
+
+TEST(math_bytes, unit_boundaries) {
+    struct Case {
+        std::uint64_t bytes;
+        const char* expected;
+    };
+    constexpr Case cases[]{
+        {1023, "1023.0 bytes"}, {1024, "1.0KiB"}, {1025, "1.0KiB"},
+        {(std::uint64_t{1} << 20) - 1, "1024.0KiB"}, {std::uint64_t{1} << 20, "1.0MiB"},
+        {std::uint64_t{1} << 30, "1.0GiB"}, {(std::uint64_t{1} << 40) - 1, "1024.0GiB"},
+        {std::uint64_t{1} << 40, "1.0TiB"}, {(std::uint64_t{1} << 50) - 1, "1024.0TiB"},
+        {std::uint64_t{1} << 50, "1.0PiB"}, {(std::uint64_t{1} << 60) - 1, "1024.0PiB"},
+        {std::uint64_t{1} << 60, "1.0EiB"}, {std::numeric_limits<std::uint64_t>::max(), "16.0EiB"}
+    };
+    for (const auto& entry : cases) {
+        if (entry.bytes <= std::numeric_limits<std::size_t>::max())
+            EXPECT_EQ(CE::Memory::format_bytes(static_cast<std::size_t>(entry.bytes)), entry.expected) << entry.bytes;
+    }
+}

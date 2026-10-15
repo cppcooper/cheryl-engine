@@ -1,0 +1,298 @@
+# RmlUi UI integration
+
+`Cheryl::UI::RmlUi` is the optional, independently selected RmlUi 6.3 owner.
+It links `Cheryl::Engine` and `RmlUi::Core` with the stock FreeType font engine.
+The module provides native document sessions, portable input translation, CPU
+recording and retained scene upload. The
+[adapter-author guide](../../../../docs/development/ui-adapters.md) describes the
+engine boundaries; RmlUi keeps its native context, RML and RCSS authoring API.
+
+This core integration is sufficient for the selected Linux root-composition scope.
+Further rendering effects are
+[planned extensions](../../../../docs/planning/long-term/README.md#ui-adapters),
+including any required graphics-backend support. OS services remain deferred.
+Dedicated regression and supplied-Core acceptance gaps remain in the
+[startup/UI follow-up](../../../../docs/planning/develop-review-and-development-plan.md#startup-and-ui-follow-up).
+
+## Selection and dependency
+
+Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,
+`tests-ui-rmlui` and `all-ui-rmlui` when tests are selected. The root option defaults
+to `OFF`; TGUI and RmlUi can be selected separately or together. The module library's
+output name is `cheryl-module-ui-rmlui`.
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::UI::RmlUi)
+```
+
+The module reuses an existing `RmlUi::Core`. Otherwise it uses an explicit
+`CHERYL_RMLUI_SOURCE`, an explicit package location in `RmlUi_DIR`, the pinned
+`extern/rmlui` submodule, or the exact package, in that order. Initialize the bundled
+dependency with `git submodule update --init extern/rmlui`; CMake does not download
+it. Supplied targets must declare `RMLUI_FONT_ENGINE=freetype`; ordinary source and
+package configurations provide that metadata.
+
+An owned source configuration selects FreeType/Core and excludes samples, toolkit
+tests, native backends, Lua and optional plugins. Conflicting settings reject
+instead of rewriting a host's choices. The module links Core directly, leaving
+the upstream debugger outside the adapter dependency graph.
+
+For a standalone module or its `tests/consumer/` entry point, set
+`CHERYL_REPOSITORY_ROOT` to the Cheryl checkout. The module reuses a supplied
+`Cheryl::Engine` or bootstraps Engine from that root, suppressing other
+module/demo/test selection in its local scope. Consumer/header checks are selected
+through `CHERYL_BUILD_CONSUMER_TESTS` at the root or by configuring the consumer
+entry point independently.
+
+## Placeholder dependency contract
+
+The selected RmlUi 6.3 Core must include the empty-value correction in
+`WidgetTextInput::CalculateCharacterIndex`. Uncorrected code forms a range into
+the empty editable value using the displayed placeholder's line length.
+
+When Cheryl creates Core from `CHERYL_RMLUI_SOURCE` or the bundled source, its
+[helper](cmake/RmlUi.cmake) compiles a generated copy of `WidgetTextInput.cpp` with
+an early `GetValue().empty()` return. It excludes the original translation unit,
+preserves its include directory and leaves the dependency checkout unchanged.
+An already guarded source is reused; an unrecognized entry/source layout rejects
+configuration. The helper then marks the concrete Core target with
+`CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE`.
+
+Existing targets and installed packages bypass that helper. They must supply the
+same target property or the consumer must set
+`CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=ON` after verifying the actual library
+contains the correction. Neither declaration patches a supplied binary or proves
+its runtime behavior. Missing declarations reject configuration with the source,
+property and verification alternatives. Supplied dependency targets remain unchanged.
+
+The [placeholder investigation](../../../../docs/external-work/rmlui-placeholder-issue.md)
+preserves the source diagnosis, unmodified-upstream reproduction requirements and
+contribution guidance. The Cheryl-owned correction has accepted placeholder
+hit-testing observations in the Linux/X11/OpenGL demo; existing session tests do
+not directly exercise that correction. Supplied targets/packages still require
+independent host acceptance and correction declarations.
+
+## Input identities
+
+`keyboard_key` maps portable physical keyboard identities to RmlUi keys; unknown
+keys remain `KI_UNKNOWN`. Committed characters come from `TextEvent`, not from
+this mapping. `modifiers` preserves Control, Shift, Alt, Super, Caps Lock and Num
+Lock flags in RmlUi's modifier representation.
+
+## Material construction
+
+The demo retains manual pipeline/material construction on the graphics owner;
+the adapter receives compatible premultiplied materials from its caller. The
+[manual example](../../../../docs/rendering/pipelines-and-materials.md#manual-material-construction)
+shows typed definitions and explicit uniform wiring. Indexed loading migrates
+only main text/image materials. A later UI migration targets TGUI first; migrating
+RmlUi also requires preserving a separately usable manual example. Core support
+and planned effects remain independently scoped.
+
+## Focused checks
+
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-ui-rmlui` | `tests-ui-rmlui` | `CHERYL_BUILD_TESTS`: input, recording, sessions and controlled runtime cases. |
+| `all-ui-rmlui` | `tests-all-ui-rmlui` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-ui-rmlui` | `cheryl-ui-rmlui-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: native document editing and retained CPU draws. |
+| `consumer-module-headers--ui-rmlui` | Object library | Consumer's first-include header probes; built with the consumer. |
+
+`ui_rmlui_input.*` covers representative keys and combined modifiers.
+`ui_rmlui_recording.*`, `ui_rmlui_texture.*` and `ui_rmlui_scene.*` cover owned
+geometry/pixels, alpha/orientation, clipping, retained frames, provider ownership,
+material validation and failure-preserving adoption. A checked-in two-row image
+distinguishes file premultiplication and row order from generated texture handling.
+`ui_rmlui_session.*` uses real documents, input elements and FreeType fonts.
+`ui_rmlui_runtime.sequential` and `.concurrent` exercise queued old/new image
+publication, real runtime playback, owner threads and retained frames through
+toolkit/provider teardown. They use controlled engine adapters without a display.
+Their in-memory document has a source URL in the fixtures directory; relative image
+names resolve against it, avoiding Core's removal of a leading slash from image URLs.
+The independent consumer loads a document, edits its field and retains CPU draws
+after session destruction; header probes use public headers as the first include.
+
+Checks use the selected SDK's `Samples/assets/LatoLatin-Regular.ttf` fixture or
+an explicit `CHERYL_RMLUI_TEST_FONT` file. Missing fonts reject configuration;
+these cases do not silently skip font coverage or search the host's system fonts.
+
+## Recording and publication
+
+`RenderTarget` implements the Core render interface without graphics calls. It
+copies indexed triangles during compilation and translated draws during recording.
+Texture handles retain immutable decoded generations; releasing a toolkit handle
+does not invalidate a completed recording. Generated premultiplied pixels remain
+unchanged; decoded file RGB is multiplied by alpha once. Texture V coordinates
+map RmlUi's downward-positive convention to Cheryl's upward-positive image UVs.
+
+Rectangular scissor edges and logical dimensions travel with every draw. Zero
+dimensions or empty clips produce no draws. Masks, nonidentity transforms, layers,
+filters, custom shaders and repeating texture coordinates reject publication.
+The failure stays latched for that renderer because the toolkit may cache an
+unsupported compiled property without offering it again. Recreate the session
+after removing such a property. SDK callbacks allow render-stack cleanup to finish
+before the recording reports the error.
+
+Session texture bounds are at least 1024, matching the stock FreeType atlas's
+maximum dimension; the default bound is 4096. File/generated images must fit the
+configured bound. Standalone CPU `RenderTarget` checks can use smaller bounds.
+
+The application supplies `Materials` with colored triangle pipelines,
+`PremultipliedAlpha`, disabled depth/write/culling, a projection semantic and a
+custom image sampler for textured draws. Shaders multiply image RGBA by vertex
+RGBA without an additional premultiplication. `SceneUploader` belongs to one
+provider/domain and platform owner; `submit` transfers owned recording data through
+Cheryl's dispatcher. `adopt_scene` never waits and replaces the retained scene only
+after a complete successful upload. Failure or cancellation preserves its predecessor.
+
+## Native documents and input
+
+Create `Session` on the simulation/UI owner and call `context()` for native RML
+document loading, RCSS styling, elements and listeners. The adapter contains no
+layout string parser or common widget API. `load_font` registers a named family
+from an owned file buffer or copied memory bytes. Both remain valid through Core
+shutdown. The session owns one global Core initialization; a second session or
+host-installed interface rejects instead of replacing the host's SDK state.
+
+Supply copied logical/framebuffer dimensions with `set_view`. Context dimensions
+are logical units and its density-independent ratio is one; framebuffer scaling
+belongs to Cheryl's clip/projection playback. `update_time` advances the supplied
+simulation duration and updates native layout/animation. `record` updates pending
+authoring/input changes before rendering without advancing the clock again.
+
+The session holds Events capture. `request_keyboard_focus` acquires Text capture
+and a keyboard routing lease for its target.
+`handle_input` observes modifier snapshots but delivers keyboard/text only for its
+target and requested epoch saved at call entry. Pass the complete immutable tick
+record batch once: poll-latched records drain before external focus preemption
+clears native editing, including when the batch is empty.
+
+The three-argument overload calls `before_record(record)` before each delivery
+and uses its return value as that record's pointer selection. Application controls
+can request focus or show/hide a view in that callback without changing the entry
+epoch used to select keyboard/text for the rest of the batch. Future polls observe
+the new routing lease; existing records retain their original targets/epochs.
+The two-argument overload keeps a constant pointer selection. Unselected pointer
+delivery sends mouse-leave when necessary. Mouse buttons and fractional wheel
+input apply their observation-time coordinates before delivery. Physical keys,
+repeats and releases stay independent of committed Unicode text.
+
+Capabilities report keyboard/text support and rectangular clipping. Clipboard,
+cursor changes, IME and advanced effects are unavailable. Clipboard shortcuts are
+suppressed before they change a selection; explicit clipboard interface calls
+reject. The adapter never runs a native toolkit backend or window event loop.
+
+Release external element, event-listener and toolkit-resource references before
+session destruction. After the runtime joins simulation, `close_after_quiescence`
+permits final platform-owner teardown. Native contexts and font globals shut down
+while interface/font storage is still live. CPU recordings and uploaded Cheryl
+frames retain their own geometry/pixels/resources independently.
+
+## Acceptance procedure
+
+For changes affecting RmlUi, reuse the existing native/OpenGL profile with tests
+and both UI adapters selected. `demo` also requires native input. From the repository
+root:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  git submodule update --init extern/rmlui
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON -G Ninja \
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/debug --parallel \
+    --target demo all-ui-rmlui tests-ui-coexist tests-engine tests-native-glfw
+)
+```
+
+Run the focused checks:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/debug/tests-all-ui-rmlui
+  ./build/debug/tests-ui-coexist
+  ./build/debug/tests-engine \
+    --gtest_filter='runtime_contract.*:input_capture.portable_buttons:tick_context.unbound_stop'
+  ./build/debug/tests-native-glfw --gtest_filter='glfw_bindings.portable_*'
+)
+```
+
+`tests-ui-coexist` belongs to `projects/tests/`, and also joins the combined
+`all-tests` runner. It checks poll-latched text delivery, focus preemption and
+stale-lease release across both native toolkits, distinct alpha passes, and frames
+retained through independent toolkit/provider teardown. Do not run both runners
+for the same cases. Run the affected TGUI session checks as well when shared
+routing/session paths change. The accepted root selections and remaining dedicated
+regression limits are in the
+[UI validation guide](../../../../docs/development/ui-adapters.md#repeating-linux-root-validation).
+Native interaction is accepted in the selected Linux root composition; the
+[demo procedure](../../../apps/demo/README.md#startup-and-ui-validation) preserves
+its scope and reusable observations.
+
+An independently configured consumer establishes standalone source composition
+and first-include headers without selecting TGUI, Native GLFW or OpenGL. Run it
+after the root checks settle, so any fixes precede a separate compilation:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/ui/rmlui/tests/consumer -B build/rmlui-consumer -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCHERYL_RMLUI_SOURCE="$PWD/extern/rmlui"
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/rmlui-consumer --parallel \
+    --target consumer-module-ui-rmlui
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/rmlui-consumer/cheryl-ui-rmlui-consumer
+)
+```
+
+Verify that `consumer-module-ui-rmlui` depends on
+`consumer-module-headers--ui-rmlui` and compiles its input, rendering, scene and
+session probes. The independent graph must exclude TGUI, Native GLFW and OpenGL.
+Root consumers alone do not prove isolation; supplied-target/package composition
+needs its own check when used. TGUI's independent procedure stays in its
+[module guide](../tgui/README.md#focused-checks).
+
+Follow the [demo procedure](../../../apps/demo/README.md#interaction-checks) in
+normal and `--concurrent` modes for native alpha/orientation, fonts, focus,
+scrolling, bounded resize/DPI, image replacement and shutdown. Controlled cases
+do not establish compositor behavior, physical input or GPU resource retirement.
+The [demo guide](../../../apps/demo/README.md#interaction-checks) retains selected
+platform limits.
+
+For a toolkit upgrade, recheck Core/FreeType feature metadata, premultiplied file
+and generated images, font-byte lifetime, placeholder correction/declarations and
+retained frames through teardown.
+Accept changed behavior independently before extending native consumers or the
+cross-toolkit coexistence suite.

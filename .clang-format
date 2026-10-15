@@ -3,7 +3,7 @@ Language: Cpp
 BasedOnStyle: LLVM
 
 # Cheryl Engine C++ style.
-# Target: clang-format 23+.
+# Target: CLion 2026.2 bundled clang-format 22.0.0git.
 # Derived from the CLion code-style scheme and the current repository style.
 
 # Width / indentation
@@ -46,32 +46,25 @@ SortIncludes: Never
 IncludeBlocks: Preserve
 
 # Function declarations / definitions.
-# Break parameters as a block for declarations/definitions, but do not apply
-# the same rule to ordinary function calls.
-BreakFunctionDeclarationParameters: true
-BreakFunctionDefinitionParameters: true
-PackParameters:
-  BinPack: OnePerLine
+# Keep short signatures on one line. If a parameter list exceeds the column
+# limit, wrap it as a block with one parameter per line.
+BreakFunctionDefinitionParameters: false
+BinPackParameters: OnePerLine
 AllowAllParametersOfDeclarationOnNextLine: false
-AlignAfterOpenBracket: false
 
-# Cheryl places the closing ')' of multiline declarations/definitions on its
-# own line. clang-format applies this setting to multiline calls as well; this
-# is the closest available match to CLion's declaration-only rule.
-BreakBeforeCloseBracketFunction: true
-BreakAfterOpenBracketFunction: false
+# Lists that exceed the column limit break after '(' and before ')'. These
+# conditional rules apply to declarations, definitions, and function calls.
+# The bundled formatter also applies this rule to braced initializer lists.
+AlignAfterOpenBracket: BlockIndent
 
-# Function calls stay dense when they need to wrap.
-PackArguments:
-  BinPack: BinPack
+# Function calls can pack multiple arguments per line inside a wrapped block.
+BinPackArguments: true
 AllowAllArgumentsOnNextLine: true
 
 # Braced initializer lists: WRAP IF LONG, DO NOT AUTOMATICALLY CHOP.
 # C++11 braced lists are formatted like function calls, so values are packed
 # onto each line up to ColumnLimit rather than forced one-per-line.
-Cpp11BracedListStyle: FunctionCall
-BreakAfterOpenBracketBracedList: false
-BreakBeforeCloseBracketBracedList: false
+Cpp11BracedListStyle: true
 SpaceBeforeCpp11BracedList: false
 
 # Constructor initializer lists remain a distinct policy: move to the next

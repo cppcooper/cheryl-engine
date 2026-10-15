@@ -1,0 +1,583 @@
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <barrier>
+#include <chrono>
+#include <core/logging.h>
+#include <core/resources/memory.h>
+#include <core/resources/memory/managed-block.hpp>
+#include <core/resources/objects/object-construction.hpp>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <gtest/gtest.h>
+#include <internals/macros/int-literals.h>
+#include <iterator>
+#include <limits>
+#include <random>
+#include <set>
+#include <thread>
+#include <templates/asset-mgr.h>
+#include <testing/block.h>
+
+namespace {
+    struct CheckedOut {
+        CE::Memory::ByteBlock block;
+        unsigned char pattern;
+    };
+
+    bool pooled_range(const CE::Memory::HeapBlock& block) {
+        CE::Memory::BlockManagement<void> bookkeeping;
+        std::shared_lock lock(std::get<0>(bookkeeping.pool));
+        auto* last = static_cast<unsigned char*>(block.head.get()) + block.length - 1;
+        for (const auto& free : std::get<1>(bookkeeping.pool)) {
+            if (free.contains(block.head.get()) && free.contains(last))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check each owner's complete address partition independently of the
+     * manager's lookup and merge methods. Void managers share this bookkeeping.
+     */
+    ::testing::AssertionResult valid_partition(const std::vector<CheckedOut>& live) {
+        CE::Memory::BlockManagement<void> bm;
+        std::shared_lock reg_lock(std::get<0>(bm.registry), std::defer_lock);
+        std::shared_lock sec_lock(std::get<0>(bm.sections), std::defer_lock);
+        std::shared_lock pool_lock(std::get<0>(bm.pool), std::defer_lock);
+        std::shared_lock stale_lock(std::get<0>(bm.stale), std::defer_lock);
+        std::shared_lock release_lock(std::get<0>(bm.release), std::defer_lock);
+        std::lock(reg_lock, sec_lock, pool_lock, stale_lock, release_lock);
+        const auto& registry = std::get<1>(bm.registry);
+        const auto& sections = std::get<1>(bm.sections);
+        const auto& pool = std::get<1>(bm.pool);
+        const auto& stale = std::get<1>(bm.stale);
+        const auto& release = std::get<1>(bm.release);
+        // Set comparators may match a section at the owner's head. Require
+        // exact block equality when checking membership across sets.
+        auto exact = [](const auto& set, const auto& block) {
+            const auto it = set.find(block);
+            return it != set.end() && *it == block;
+        };
+        // Each owner is either whole or covered exactly by ordered sections,
+        // with no gaps or overlap. Whole free owners carry stale/release markers.
+        for (const auto& owner : registry) {
+            if (owner.owner.get() != owner.head.get() || owner.length == 0) {
+                return ::testing::AssertionFailure() << "Invalid owner " << owner;
+            }
+            const auto start = reinterpret_cast<std::uintptr_t>(owner.head.get());
+            const auto end = start + owner.length;
+            std::vector<CE::Memory::ByteBlock> pieces;
+            for (const auto& section : sections) {
+                if (section.owner.get() == owner.owner.get())
+                    pieces.push_back(section);
+            }
+            std::sort(pieces.begin(), pieces.end(), [](const auto& a, const auto& b) { return a.head.get() < b.head.get(); });
+            if (pieces.empty()) {
+                if (exact(pool, owner) != (stale.contains(owner) || exact(release, owner))) {
+                    return ::testing::AssertionFailure() << "Owner pool/stale mismatch " << owner;
+                }
+            } else {
+                if (exact(pool, owner))
+                    return ::testing::AssertionFailure() << "Pooled owner has sections " << owner;
+                auto cursor = start;
+                for (const auto& piece : pieces) {
+                    if (piece.length == 0 || reinterpret_cast<std::uintptr_t>(piece.head.get()) != cursor) {
+                        return ::testing::AssertionFailure() << "Hole or overlap at " << piece;
+                    }
+                    cursor += piece.length;
+                    if (cursor > end)
+                        return ::testing::AssertionFailure() << "Section exceeds owner " << piece;
+                }
+                if (cursor != end)
+                    return ::testing::AssertionFailure() << "Uncovered owner tail " << owner;
+            }
+        }
+        // Cross-check free, stale, and pending entries against their owner.
+        // A free block lives in exactly one of registry or sections.
+        for (const auto& block : pool) {
+            if (exact(registry, block) == exact(sections, block)) {
+                return ::testing::AssertionFailure() << "Pooled range has zero or two locations " << block;
+            }
+        }
+        for (const auto& section : sections) {
+            const auto owner =
+                std::find_if(registry.begin(), registry.end(), [&](const auto& block) { return block.owner.get() == section.owner.get(); });
+            if (owner == registry.end()) {
+                return ::testing::AssertionFailure() << "Section has no owner " << section;
+            }
+        }
+        for (const auto& stale_entry : stale) {
+            const auto& block = stale_entry.first;
+            if (!exact(registry, block) || !exact(pool, block)) {
+                return ::testing::AssertionFailure() << "Stale block is not a free owner " << block;
+            }
+        }
+        for (const auto& block : release) {
+            if (!exact(registry, block) || !exact(pool, block)) {
+                return ::testing::AssertionFailure() << "Release block is not a free owner " << block;
+            }
+        }
+        // Compare the independent list of checked-out ranges with the manager's
+        // free ranges so bookkeeping cannot silently reuse still-live bytes.
+        for (const auto& entry : live) {
+            const auto& block = entry.block;
+            if (!exact(registry, block) && !exact(sections, block)) {
+                return ::testing::AssertionFailure() << "Live block is untracked " << block;
+            }
+            if (exact(pool, block))
+                return ::testing::AssertionFailure() << "Live block is pooled " << block;
+            const auto first = reinterpret_cast<std::uintptr_t>(block.head.get());
+            const auto last = first + block.length;
+            for (const auto& free : pool) {
+                if (free.owner.get() == block.owner.get()) {
+                    const auto free_first = reinterpret_cast<std::uintptr_t>(free.head.get());
+                    if (first < free_first + free.length && free_first < last) {
+                        return ::testing::AssertionFailure() << "Live and free bytes overlap " << block;
+                    }
+                }
+            }
+        }
+        return ::testing::AssertionSuccess();
+    }
+}
+
+TEST(memory, mixed_checkouts_and_returns) {
+    auto& manager = CE::Memory::ExactManager::get();
+    constexpr unsigned seed = 0xB10C42u;
+    std::mt19937 rng(seed);
+    std::vector<CheckedOut> live;
+    constexpr std::array<std::size_t, 4> alignments{0, 64, 128, 256};
+
+    // A fixed seed makes any failing operation reproducible; varying sizes,
+    // alignments, and return order repeatedly changes the owner partition.
+    for (int step = 0; step < 500; ++step) {
+        SCOPED_TRACE(::testing::Message() << "seed=" << seed << " step=" << step);
+        if (live.empty() || (live.size() < 40 && rng() % 3 != 0)) {
+            const auto length = 1 + rng() % 288;
+            const auto alignment = alignments[rng() % alignments.size()];
+            auto block = manager.checkout_chunk(length, alignment);
+            ASSERT_GE(block.length, length);
+            ASSERT_EQ(reinterpret_cast<std::uintptr_t>(block.head.get()) % std::max(alignment, std::size_t{64}), 0);
+            const auto pattern = static_cast<unsigned char>(1 + step % 250);
+            std::memset(block.head.get(), pattern, block.length);
+            live.push_back({block, pattern});
+        } else {
+            const auto index = rng() % live.size();
+            manager.return_chunk(live[index].block);
+            live.erase(live.begin() + index);
+        }
+        // Stored patterns detect accidental reuse even if the lookup records
+        // appear valid. Periodically check the whole partition as well.
+        for (const auto& entry : live) {
+            const auto* bytes = static_cast<const unsigned char*>(entry.block.head.get());
+            for (std::size_t i = 0; i < entry.block.length; ++i) {
+                ASSERT_EQ(bytes[i], entry.pattern) << "Live block changed at byte " << i;
+            }
+        }
+        if (step % 13 == 0) {
+            ASSERT_TRUE(valid_partition(live));
+            ASSERT_TRUE(checkContiguousBlocksInPool(CE::Memory::BlockManagement<void>{}));
+        }
+    }
+    // Drain the remaining checkouts, then recheck the bookkeeping with an
+    // empty independent list of live ranges.
+    for (const auto& entry : live)
+        manager.return_chunk(entry.block);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, partial_returns) {
+    using namespace CE;
+    auto& manager = CE::Memory::ExactManager::get();
+    auto block = manager.checkout_chunk(256, 64);
+    ASSERT_GE(block.length, 256);
+    auto* data = static_cast<unsigned char*>(block.head.get());
+    std::memset(data, 0x19, 32);
+    std::memset(data + 96, 0x37, 64);
+
+    // Returning only the middle must neither free the outer bytes nor allow
+    // that same middle span to be returned twice.
+    manager.return_portion(data + 32, 64);
+    EXPECT_THROW(manager.return_portion(data + 32, 64), Exceptions::bad_request);
+    EXPECT_THROW(manager.return_portion(data + 96, block.length), Exceptions::bad_request);
+    EXPECT_EQ(data[0], 0x19);
+    EXPECT_EQ(data[31], 0x19);
+    EXPECT_EQ(data[96], 0x37);
+    EXPECT_EQ(data[159], 0x37);
+
+    // Verify the returned interior span appears as free in the manager's
+    // records while the untouched outer spans retain their byte patterns.
+    bool returned_middle = false;
+    for (const auto& free : std::get<1>(CE::Memory::BlockManagement<void>::pool)) {
+        if (free.head.get() == data + 32 && free.length == 64) {
+            returned_middle = true;
+        }
+    }
+    EXPECT_TRUE(returned_middle);
+
+    // Rejoin the outer spans and verify the owner's final free-set records.
+    manager.return_portion(data, 32);
+    manager.return_portion(data + 96, block.length - 96);
+    CE::Memory::BlockManagement<void> bm;
+    EXPECT_TRUE(checkPoolInSectionsOrInRegistry(bm));
+    EXPECT_TRUE(checkPoolInRegistryAlsoInStale(bm));
+}
+
+TEST(memory, duplicate_returns) {
+    // Once a checkout has been returned, a second return of the same block fails.
+    using namespace CE;
+    auto& log = CE::Logging::Logger<CE::Logging::Categories::memory>::get();
+    const auto configuration = log.initial_configuration();
+    const auto path = log.get_file_path();
+    EXPECT_EQ(path.filename(), "memory.log");
+    log.set_level_logger(spdlog::level::critical);
+    log.set_level_filesink(spdlog::level::critical);
+    auto& manager = CE::Memory::ExactManager::get();
+    const auto block = manager.checkout_chunk(64, 64);
+    manager.return_chunk(block);
+    EXPECT_THROW(manager.return_chunk(block), Exceptions::failed_operation);
+
+    log.close(std::chrono::seconds{2});
+    std::ifstream file(path);
+    const std::string records{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+    if constexpr (CE::Logging::Compile::enabled(CE::Logging::Compile::FATAL_))
+        EXPECT_NE(records.find("Cannot return Block. No such block exists."), std::string::npos);
+    else
+        EXPECT_EQ(records.find("Cannot return Block. No such block exists."), std::string::npos);
+    file.close();
+    log.reopen();
+    log.set_level_logger(configuration.logger_level);
+    log.set_level_filesink(configuration.file_level);
+}
+
+TEST(memory, alignment_on_reuse) {
+    auto& manager = CE::Memory::ExactManager::get();
+    // Return a low-alignment candidate, then request stronger alignment.
+    // Reuse must satisfy the new request regardless of the free candidate.
+    auto lower = manager.checkout_chunk(77, 64);
+    manager.return_chunk(lower);
+    auto higher = manager.checkout_chunk(77, 256);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(higher.head.get()) % 256, 0);
+    EXPECT_GE(higher.alignment, std::align_val_t{256});
+    manager.return_chunk(higher);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, empty_checkouts) {
+    auto& manager = CE::Memory::ExactManager::get();
+    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(0)), CE::Exceptions::bad_request);
+}
+
+TEST(memory, late_byte_release) {
+    std::weak_ptr<CE::Memory::ByteReleaseContext> weak;
+    std::shared_ptr<std::uint64_t> retained;
+    CE::Memory::HeapBlock block;
+    {
+        CE::Memory::ExactManager facade;
+        weak = facade.release_context();
+        block = facade.checkout_chunk(256, alignof(std::uint64_t));
+        retained = CE::Memory::make_managed_block<std::uint64_t>(facade, block);
+        *retained = 43;
+    }
+    EXPECT_FALSE(weak.expired());
+    EXPECT_EQ(*retained, 43);
+    EXPECT_FALSE(pooled_range(block));
+    retained.reset();
+    EXPECT_TRUE(weak.expired());
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, retained_byte_context) {
+    std::shared_ptr<CE::Memory::ByteReleaseContext> context;
+    CE::Memory::HeapBlock block;
+    {
+        CE::Memory::ExactManager facade;
+        context = facade.release_context();
+        block = facade.checkout_chunk(256);
+    }
+    context->return_chunk(block);
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_THROW(context->return_chunk(block), CE::Exceptions::failed_operation);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, release_during_teardown) {
+    // Only facade teardown overlaps a single return. Concurrent checkout/cull
+    // transactions remain a separate contract; this exercises the lifetime boundary.
+    auto facade = std::make_unique<CE::Memory::ExactManager>();
+    auto block = facade->checkout_chunk(256);
+    auto retained = CE::Memory::make_managed_block<unsigned char>(*facade, block);
+    std::weak_ptr<CE::Memory::ByteReleaseContext> weak = facade->release_context();
+    std::barrier start(2);
+    std::thread release([handle = std::move(retained), &start]() mutable {
+        start.arrive_and_wait();
+        handle.reset();
+    });
+    start.arrive_and_wait();
+    facade.reset();
+    release.join();
+    EXPECT_TRUE(weak.expired());
+    EXPECT_TRUE(pooled_range(block));
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, preallocation) {
+    auto& manager = CE::Memory::ExactManager::get();
+    CE::Memory::BlockManagement<void> bm;
+
+    // Snapshot existing owners so the later assertions describe only the
+    // allocation made by this explicit preallocation call.
+    std::set<void*> before;
+    {
+        std::shared_lock lock(std::get<0>(bm.registry));
+        for (const auto& owner : std::get<1>(bm.registry))
+            before.emplace(owner.head.get());
+    }
+    // Grow 32 bytes by a factor of two, then add 16: one new 80-byte owner
+    // should satisfy the requested 128-byte alignment.
+    const auto stats_before = manager.diagnostics();
+    manager.preallocate(1, 32, 16, 2.0, std::align_val_t{128});
+    const auto stats_after = manager.diagnostics();
+    EXPECT_EQ(stats_after.domain, stats_before.domain);
+    EXPECT_NE(stats_after.domain, 0u);
+    EXPECT_EQ(stats_after.total_bytes, stats_before.total_bytes + 80);
+    EXPECT_EQ(stats_after.available_bytes, stats_before.available_bytes + 80);
+    EXPECT_EQ(stats_after.owners, stats_before.owners + 1);
+    std::vector<CE::Memory::ByteBlock> added;
+    {
+        std::shared_lock lock(std::get<0>(bm.registry));
+        for (const auto& owner : std::get<1>(bm.registry)) {
+            if (!before.contains(owner.head.get()))
+                added.push_back(owner);
+        }
+    }
+    ASSERT_EQ(added.size(), 1);
+    EXPECT_EQ(added.front().length, 80);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(added.front().head.get()) % 128, 0);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, typed_full_block_return) {
+    CE::Memory::Allocators::DefaultAllocator<std::uint64_t> allocator;
+    constexpr std::size_t count = 5;
+    auto* ptr = allocator.allocate(count);
+    ASSERT_NE(ptr, nullptr);
+    // The manager may grant more bytes than requested. Deallocation must
+    // return that entire granted span, including any unused tail.
+    std::size_t granted_bytes = 0;
+    {
+        CE::Memory::BlockManagement<void> bm;
+        std::shared_lock sec_lock(std::get<0>(bm.sections));
+        for (const auto& section : std::get<1>(bm.sections)) {
+            if (section.head.get() == ptr)
+                granted_bytes = section.length;
+        }
+        if (granted_bytes == 0) {
+            std::shared_lock reg_lock(std::get<0>(bm.registry));
+            for (const auto& owner : std::get<1>(bm.registry)) {
+                if (owner.head.get() == ptr)
+                    granted_bytes = owner.length;
+            }
+        }
+    }
+    ASSERT_GE(granted_bytes, sizeof(*ptr) * count);
+    // Write through the requested typed elements before releasing storage.
+    for (std::size_t i = 0; i < count; ++i)
+        ptr[i] = i + 100;
+    for (std::size_t i = 0; i < count; ++i)
+        EXPECT_EQ(ptr[i], i + 100);
+
+    // Deallocate using the requested count, then verify the pool covers the
+    // full manager-granted byte span, including its tail.
+    allocator.deallocate(ptr, count);
+    bool all_bytes_returned = false;
+    {
+        CE::Memory::BlockManagement<void> bm;
+        std::shared_lock lock(std::get<0>(bm.pool));
+        const auto last = static_cast<void*>(reinterpret_cast<unsigned char*>(ptr) + granted_bytes - 1);
+        for (const auto& free : std::get<1>(bm.pool)) {
+            if (free.contains(ptr) && free.contains(last))
+                all_bytes_returned = true;
+        }
+    }
+    EXPECT_TRUE(all_bytes_returned);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+namespace {
+    struct TrackedAssetBase {
+        virtual ~TrackedAssetBase() = default;
+        [[nodiscard]] virtual int value() const = 0;
+    };
+
+    struct TrackedAsset final : TrackedAssetBase {
+        static inline int live = 0;
+        static inline int destroyed = 0;
+
+        explicit TrackedAsset(int value)
+        : value_(value) {
+            ++live;
+        }
+
+        ~TrackedAsset() override {
+            --live;
+            ++destroyed;
+        }
+
+        [[nodiscard]] int value() const override { return value_; }
+
+    private:
+        int value_;
+    };
+
+    struct AssetCacheProbe : CE::Assets::Cache::Store<TrackedAssetBase, int> {
+        using Store::allocate;
+        void retain(int key, const std::shared_ptr<TrackedAsset>& asset) { publish_asset(key, asset); }
+    };
+}
+
+TEST(memory, cached_asset_lifetime) {
+    TrackedAsset::live = 0;
+    TrackedAsset::destroyed = 0;
+    std::shared_ptr<TrackedAssetBase> retained;
+    {
+        AssetCacheProbe cache;
+        EXPECT_EQ(cache.get_asset(42), nullptr);
+        auto assets = cache.allocate<TrackedAsset>(3);
+        ASSERT_EQ(assets.size(), 3);
+        // The legacy allocate interface provides raw slots; this caller
+        // constructs them explicitly before giving one to the cache.
+        std::set<TrackedAsset*> unique_addresses;
+        for (int i = 0; i < 3; ++i) {
+            unique_addresses.emplace(assets[i].get());
+            CE::Memory::Objects::Constructor<TrackedAsset>::construct(assets[i].get(), 1, i + 10);
+            EXPECT_EQ(assets[i]->value(), i + 10);
+        }
+        EXPECT_EQ(unique_addresses.size(), 3);
+        EXPECT_EQ(TrackedAsset::live, 3);
+
+        // Cache only the middle object and take another handle to it. The
+        // other two have no owners once the original batch is released.
+        cache.retain(42, assets[1]);
+        retained = cache.get_asset(42);
+        ASSERT_EQ(retained.get(), assets[1].get());
+        EXPECT_TRUE(cache.contains(42));
+        EXPECT_EQ(cache.size(), 1);
+        // Dropping the batch destroys the uncached objects. The remaining
+        // handle must also survive the cache itself going out of scope.
+        assets.clear();
+        EXPECT_EQ(TrackedAsset::live, 1);
+    }
+    EXPECT_EQ(TrackedAsset::live, 1);
+    EXPECT_EQ(retained->value(), 11);
+
+    // Dropping the last external handle finally destroys the cached object.
+    retained.reset();
+    EXPECT_EQ(TrackedAsset::live, 0);
+    EXPECT_EQ(TrackedAsset::destroyed, 3);
+}
+
+TEST(memory, empty_asset_request) {
+    AssetCacheProbe cache;
+    EXPECT_TRUE(cache.allocate<TrackedAsset>(0).empty());
+}
+
+TEST(memory, independent_pool_handles) {
+    TrackedAsset::live = 0;
+    TrackedAsset::destroyed = 0;
+    auto& pool = CE::Memory::Objects::Pool<TrackedAsset>::get();
+
+    // Ask for three objects, then release only the middle handle.
+    auto objects = pool.retrieve_objects(3, 21);
+    ASSERT_EQ(objects.size(), 3);
+    EXPECT_EQ(TrackedAsset::live, 3);
+    for (const auto& object : objects)
+        EXPECT_EQ(object->value(), 21);
+
+    // An interior object's handle returns only its own slot; its neighbors
+    // remain constructed until their handles are released.
+    objects[1].reset();
+    EXPECT_EQ(TrackedAsset::live, 2);
+    EXPECT_EQ(objects[0]->value(), 21);
+    EXPECT_EQ(objects[2]->value(), 21);
+    objects.clear();
+    EXPECT_EQ(TrackedAsset::live, 0);
+    EXPECT_EQ(TrackedAsset::destroyed, 3);
+}
+
+TEST(memory, invalid_pool_returns) {
+    auto& pool = CE::Memory::Objects::Pool<TrackedAsset>::get();
+
+    // Whole raw blocks have a separate return path, which rejects duplicate
+    // or partial returns after the block is already free.
+    EXPECT_TRUE(pool.retrieve_objects(0, 21).empty());
+    EXPECT_THROW(pool.retrieve_block(0), CE::Exceptions::bad_request);
+    const auto raw = pool.retrieve_block(2);
+    pool.return_block(raw);
+    EXPECT_THROW(pool.return_block(raw), CE::Exceptions::failed_operation);
+    EXPECT_THROW(pool.return_objects(raw.head.get(), 1), CE::Exceptions::bad_request);
+    EXPECT_THROW(pool.return_objects(raw.head.get(), 0), CE::Exceptions::bad_request);
+}
+
+TEST(memory, concurrent_transactions) {
+    CE::Memory::ExactManager manager;
+    std::barrier start(4);
+    std::atomic<bool> valid{true};
+    std::vector<std::jthread> workers;
+    for (int worker = 0; worker < 3; ++worker) {
+        workers.emplace_back([&, worker] {
+            start.arrive_and_wait();
+            try {
+                for (int iteration = 0; iteration < 80; ++iteration) {
+                    const auto block = manager.checkout_chunk(256, 64);
+                    auto* bytes = static_cast<unsigned char*>(block.head.get());
+                    const auto pattern = static_cast<unsigned char>(worker + 17);
+                    std::memset(bytes, pattern, block.length);
+                    manager.return_portion(bytes + 32, 64);
+                    for (std::size_t index = 0; index < block.length; ++index) {
+                        if ((index < 32 || index >= 96) && bytes[index] != pattern)
+                            valid = false;
+                    }
+                    manager.return_ptr(bytes);
+                    manager.return_ptr(bytes + 96);
+                }
+            } catch (...) {
+                valid = false;
+            }
+        });
+    }
+    workers.emplace_back([&] {
+        start.arrive_and_wait();
+        try {
+            for (int iteration = 0; iteration < 80; ++iteration) {
+                manager.cull(std::chrono::minutes{0});
+                manager.release_culled();
+                const auto snapshot = manager.stats();
+                if (snapshot.find("nan") != std::string::npos || snapshot.find("inf") != std::string::npos)
+                    valid = false;
+            }
+        } catch (...) {
+            valid = false;
+        }
+    });
+    workers.clear();
+    EXPECT_TRUE(valid);
+    EXPECT_TRUE(valid_partition({}));
+}
+
+TEST(memory, request_limits) {
+    CE::Memory::ExactManager manager;
+    const auto maximum = std::numeric_limits<std::size_t>::max();
+    EXPECT_THROW(
+        static_cast<void>(manager.checkout_chunk(1, maximum)),
+        CE::Exceptions::bad_request);
+    EXPECT_THROW(static_cast<void>(manager.checkout_chunk(maximum, 64, CE::Memory::larger, 1)), CE::Exceptions::bad_request);
+    EXPECT_THROW(
+        static_cast<void>(manager.checkout_chunk(8, 64, CE::Memory::greedy, 0, std::numeric_limits<double>::infinity())),
+        CE::Exceptions::bad_request
+    );
+    EXPECT_TRUE(valid_partition({}));
+}
