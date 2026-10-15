@@ -4,6 +4,10 @@ inputs:
   profile:
     description: CI composition, headless or modules.
     required: true
+outputs:
+  dependency-cache-writer:
+    description: Whether this run may publish its main or develop build dependency cache.
+    value: ${{ steps.metadata.outputs.dependency-cache-writer }}
 runs:
   using: composite
   steps:
@@ -19,13 +23,16 @@ runs:
       with:
         path: ${{ steps.metadata.outputs.submodule-path }}
         key: ${{ steps.metadata.outputs.submodule-key }}
+        restore-keys: |
+          ${{ steps.metadata.outputs.submodule-prefix }}
+          ${{ steps.metadata.outputs.submodule-main-prefix }}
     - name: Check out pinned submodules
       shell: bash
       env:
         CHERYL_SUBMODULE_TOKEN: ${{ github.token }}
       run: python .github/ci/dependencies.py submodules
     - name: Save submodule Git objects
-      if: steps.submodules.outputs.cache-hit != 'true'
+      if: steps.metadata.outputs.dependency-cache-writer == 'true' && steps.submodules.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.submodule-path }}
@@ -58,7 +65,7 @@ runs:
       shell: bash
       run: python .github/ci/dependencies.py windows-tools
     - name: Save Windows tools
-      if: runner.os == 'Windows' && steps.tools.outputs.cache-hit != 'true'
+      if: runner.os == 'Windows' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
@@ -72,9 +79,6 @@ runs:
       with:
         path: ${{ steps.metadata.outputs.pip-path }}
         key: ${{ steps.metadata.outputs.pip-key }}
-        restore-keys: |
-          ${{ steps.metadata.outputs.pip-exact-prefix }}
-          ${{ steps.metadata.outputs.pip-prefix }}
     - name: Snapshot Python cache
       if: runner.os == 'Windows' && inputs.profile == 'modules'
       shell: bash
@@ -89,7 +93,7 @@ runs:
       shell: bash
       run: python .github/ci/dependencies.py cache-state --cache pip
     - name: Save Python downloads and wheels
-      if: runner.os == 'Windows' && inputs.profile == 'modules' && steps.pip-state.outputs.changed == 'true'
+      if: runner.os == 'Windows' && inputs.profile == 'modules' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.pip.outputs.cache-hit != 'true' && steps.pip-state.outputs.changed == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.pip-path }}
@@ -119,7 +123,7 @@ runs:
         DEPENDENCY_PROFILE: ${{ inputs.profile }}
       run: python .github/ci/dependencies.py apt-install --profile "$DEPENDENCY_PROFILE"
     - name: Save Linux package binaries
-      if: runner.os == 'Linux' && steps.apt-plan.outputs.needed == 'true' && steps.apt.outputs.cache-hit != 'true'
+      if: runner.os == 'Linux' && steps.metadata.outputs.environment-cache-writer == 'true' && steps.apt-plan.outputs.needed == 'true' && steps.apt.outputs.cache-hit != 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.dependency-path }}/apt/*.deb

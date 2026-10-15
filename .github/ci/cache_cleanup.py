@@ -14,10 +14,13 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 GIB = 1024 ** 3
-SNAPSHOT = re.compile(r"^((?:ccache-v[12]|dependencies-v1|pip-v1)-.+)-[0-9]+-[0-9]+$")
+SNAPSHOT = re.compile(
+    r"^((?:ccache-v[12]|dependencies-v1|pip-v1)-.+|build-deps-v2-.+-binaries-[0-9a-f]+)-[0-9]+-[0-9]+$"
+)
 PULL_REF = re.compile(r"^refs/pull/([1-9][0-9]*)/merge$")
 KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
-                  "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-")
+                  "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-", "build-deps-v2-")
+ENVIRONMENT_KEY = re.compile(r"actions-env-cache-v[1-9][0-9]*-.+")
 MAINTENANCE_PATH = ".github/workflows/cache-maintenance.yml"
 
 
@@ -42,8 +45,8 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
 
     Active/unresolved refs and recently created or accessed entries are protected.
     Exact-PR mode never compacts or trims entries outside that confirmed closed PR.
-    Newest compiler snapshots prefer main, develop, then confirmed open PRs when
-    the budget requires eviction; these priorities do not reserve storage.
+    Newest compiler and build-dependency snapshots prefer main, develop, then
+    confirmed open PRs when the budget requires eviction. Priorities reserve no storage.
     """
     if not isinstance(default_branch, str) or not default_branch or now.tzinfo is None:
         raise ValueError("A default branch and timezone-aware current time are required")
@@ -109,9 +112,10 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
         priority, reason = 0, "least recently used"
         replaced = cache["key"].startswith("ccache-v1-") and (cache["ref"], logical) in layered_profiles
         if not replaced:
-            if cache["ref"] == "refs/heads/" + default_branch and cache["key"].startswith(KNOWN_PREFIXES):
+            known = cache["key"].startswith(KNOWN_PREFIXES) or ENVIRONMENT_KEY.fullmatch(cache["key"])
+            if cache["ref"] == "refs/heads/" + default_branch and known:
                 priority, reason = 2, "default-branch baseline"
-            if logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-")):
+            if logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-", "build-deps-v2-")):
                 match = PULL_REF.fullmatch(cache["ref"])
                 if cache["ref"] == "refs/heads/main":
                     priority, reason = 3, "main baseline"

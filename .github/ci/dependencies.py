@@ -12,15 +12,75 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CCACHE_VERSION = "4.14"
-CCACHE_PACKAGE_VERSION = "4.14.0"
-APT_COMMON = ["ccache", "ninja-build", "pkg-config", "g++-14", "libfreetype-dev", "libharfbuzz-dev",
-              "libicu-dev", "libhwloc-dev", "libdw-dev", "libelf-dev", "fonts-urw-base35"]
-APT_EXTRA = {
-    "headless": ["clang-18", "clang-tools-18"],
-    "modules": ["libgl-dev", "libx11-dev", "libxrandr-dev", "libxinerama-dev", "libxcursor-dev",
-                "libxi-dev", "libxext-dev", "python3-jinja2"],
-}
+
+
+def dependency_scope(*, environment=None):
+    environment = os.environ if environment is None else environment
+    ref = environment.get("GITHUB_REF")
+    event = environment.get("GITHUB_EVENT_NAME")
+    branch = environment.get("GITHUB_BASE_REF") if event == "pull_request" else {
+        "refs/heads/main": "main", "refs/heads/develop": "develop"
+    }.get(ref)
+    writer = (environment.get("GITHUB_REPOSITORY") == "cppcooper/cheryl-engine"
+              and ref in {"refs/heads/main", "refs/heads/develop"}
+              and event in {"push", "workflow_dispatch"})
+    return {"dependency-role": "develop" if branch == "develop" else "main",
+            "dependency-cache-writer": str(writer).lower()}
+
+
+def environment_configuration():
+    with (ROOT / ".github/ci/environment.json").open(encoding="utf-8") as source:
+        return json.load(source)
+
+
+def environment_metadata(profile, *, environment=None, configuration=None):
+    """Describe immutable environment caches without inspecting Git or source revisions."""
+    environment = os.environ if environment is None else environment
+    configuration = environment_configuration() if configuration is None else configuration
+    if profile not in {"headless", "modules", "docs"}:
+        raise ValueError("Unknown environment cache profile")
+    revision = configuration.get("cache_version") if isinstance(configuration, dict) else None
+    if type(revision) is not int or revision <= 0:
+        raise ValueError("The environment cache version must be a positive integer")
+    runner = [environment.get(name) for name in ("RUNNER_OS", "RUNNER_ARCH")]
+    if any(not isinstance(value, str) or not value or any(
+            not (character.isascii() and (character.isalnum() or character in "_.-"))
+            for character in value) for value in runner):
+        raise ValueError("Environment cache keys require a runner OS and architecture")
+    image = {name: environment.get(name, "") for name in ("ImageOS", "ImageVersion")}
+    if any(not isinstance(value, str) for value in image.values()):
+        raise ValueError("Runner image identities must be strings")
+    identity = digest(json.dumps({"configuration": configuration, "image": image},
+                                 sort_keys=True, separators=(",", ":")).encode())
+    writer = (environment.get("GITHUB_REPOSITORY") == "cppcooper/cheryl-engine"
+              and environment.get("GITHUB_REF") == "refs/heads/main"
+              and environment.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"})
+    return {"environment-prefix": f"actions-env-cache-v{revision}-{'-'.join(runner)}-{profile}-{identity}",
+            "environment-cache-writer": str(writer).lower()}
+
+
+def environment_keys(profile, baseline, requirements, *, python_tag, environment=None, configuration=None):
+    if not isinstance(baseline, str) or not baseline:
+        raise ValueError("The vcpkg tool baseline must be nonempty")
+    if not isinstance(requirements, bytes) or not isinstance(python_tag, str) or not python_tag or any(
+            not (character.isascii() and (character.isalnum() or character in "_.-")) for character in python_tag):
+        raise ValueError("Python cache keys require requirement bytes and an interpreter ABI tag")
+    values = environment_metadata(profile, environment=environment, configuration=configuration)
+    prefix = values["environment-prefix"]
+    values.update({"tools-key": f"{prefix}-tools-{digest(baseline.encode())}",
+                   "pip-key": f"{prefix}-pip-{python_tag}-{digest(requirements)}"})
+    return values
+
+
+def apt_cache_key(profile, uris, *, environment=None, configuration=None):
+    if isinstance(uris, str):
+        raise ValueError("APT cache keys require a sequence of resolved package URI lines")
+    uris = tuple(uris)
+    if any(not isinstance(value, str) for value in uris):
+        raise ValueError("APT cache keys require a sequence of resolved package URI lines")
+    prefix = environment_metadata(profile, environment=environment, configuration=configuration)["environment-prefix"]
+    downloads = digest("\n".join(sorted(uris)).encode())
+    return f"{prefix}-apt-{downloads}"
 
 
 def run(command, *, capture=False, cwd=ROOT, environment=None):
@@ -45,6 +105,8 @@ def digest(value):
 
 
 def metadata(profile):
+    if profile not in {"headless", "modules"}:
+        raise ValueError("Dependency preparation requires the headless or modules profile")
     runner = f"{os.environ['RUNNER_OS']}-{os.environ['RUNNER_ARCH']}"
     manifest = (ROOT / ".github/ci/vcpkg.json").read_bytes()
     baseline = json.loads(manifest)["builtin-baseline"]
@@ -58,27 +120,30 @@ def metadata(profile):
     cache = ROOT / "build/cache/dependencies"
     vcpkg = Path(os.environ["RUNNER_TEMP"]).resolve() / "vcpkg"
     ccache = ROOT / "build/cache/tools/ccache"
-    dependency_prefix = f"dependencies-v1-{runner}-{profile}-"
-    dependency_tag = digest(manifest + b"\0" + requirements)
+    scope = dependency_scope()
+    role = scope["dependency-role"]
+    source_prefix = f"build-deps-v2-{runner}-{role}-sources-"
+    dependency_prefix = f"build-deps-v2-{runner}-{role}-{profile}-binaries-"
+    image = {name: os.environ.get(name, "") for name in ("ImageOS", "ImageVersion")}
+    dependency_tag = digest(manifest + b"\0" + json.dumps(image, sort_keys=True).encode())
     run_id = f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}"
     dependency_key = f"{dependency_prefix}{dependency_tag}-{run_id}"
-    pip_prefix = f"pip-v1-{runner}-{sys.implementation.cache_tag}-"
     pip = ROOT / "build/cache/pip"
     emit("GITHUB_OUTPUT", {
-        "submodule-key": f"submodule-git-v1-{runner}-{submodules}",
+        **environment_keys(profile, baseline, requirements, python_tag=sys.implementation.cache_tag),
+        **scope,
+        "submodule-key": source_prefix + submodules,
+        "submodule-prefix": source_prefix,
+        "submodule-main-prefix": f"build-deps-v2-{runner}-main-sources-",
         "submodule-path": modules_path.resolve().as_posix(),
-        "tools-key": f"windows-tools-v1-{runner}-{baseline}-ccache-{CCACHE_PACKAGE_VERSION}",
         "vcpkg-root": vcpkg.as_posix(),
         "ccache-tools": ccache.as_posix(),
         "dependency-path": cache.as_posix(),
         "dependency-key": dependency_key,
         "dependency-exact-prefix": f"{dependency_prefix}{dependency_tag}-",
         "dependency-profile-prefix": dependency_prefix,
-        "dependency-runner-prefix": f"dependencies-v1-{runner}-",
+        "dependency-runner-prefix": f"build-deps-v2-{runner}-main-{profile}-binaries-",
         "pip-path": pip.as_posix(),
-        "pip-key": f"{pip_prefix}{digest(requirements)}-{run_id}",
-        "pip-exact-prefix": f"{pip_prefix}{digest(requirements)}-",
-        "pip-prefix": pip_prefix,
     })
     environment = {
         "CHERYL_CI_DEPENDENCY_CACHE_DIR": cache.as_posix(),
@@ -120,6 +185,7 @@ def submodules():
 
 
 def windows_tools():
+    versions = environment_configuration()["windows"]
     baseline = json.loads((ROOT / ".github/ci/vcpkg.json").read_text(encoding="utf-8"))["builtin-baseline"]
     vcpkg = Path(os.environ["CHERYL_CI_VCPKG_ROOT"])
     if not (vcpkg / ".git").exists():
@@ -133,14 +199,14 @@ def windows_tools():
     tools = Path(os.environ["CHERYL_CI_CCACHE_TOOLS"])
     executable = tools / "ccache.exe"
     if not executable.is_file():
-        run(["choco", "install", "ccache", f"--version={CCACHE_PACKAGE_VERSION}", "--yes", "--no-progress"])
+        run(["choco", "install", "ccache", f"--version={versions['ccache_package_version']}", "--yes", "--no-progress"])
         installed = Path(os.environ["ChocolateyInstall"]) / "lib/ccache/tools"
         candidates = sorted(installed.rglob("ccache.exe"))
         if not candidates:
             raise RuntimeError("ccache executable is unavailable")
         shutil.copytree(candidates[0].parent, tools, dirs_exist_ok=True)
     version = run([str(executable), "--version"], capture=True).splitlines()[0]
-    if version != f"ccache version {CCACHE_VERSION}":
+    if version != f"ccache version {versions['ccache_version']}":
         raise RuntimeError(f"Unexpected ccache version: {version}")
     print(version, flush=True)
     with Path(os.environ["GITHUB_PATH"]).open("a", encoding="utf-8") as output:
@@ -148,10 +214,11 @@ def windows_tools():
 
 
 def apt_command(profile):
+    packages = environment_configuration()["linux"]
     cache = Path(os.environ["CHERYL_CI_DEPENDENCY_CACHE_DIR"]) / "apt"
     return ["sudo", "apt-get", "-o", f"Dir::Cache::archives={cache}",
             "-o", "APT::Keep-Downloaded-Packages=true", "--yes", "install",
-            *APT_COMMON, *APT_EXTRA[profile]]
+            *packages["apt_common"], *packages["apt_extra"][profile]]
 
 
 def apt_plan(profile):
@@ -161,10 +228,9 @@ def apt_plan(profile):
     command.insert(2, "--print-uris")
     plan = run(command, capture=True, environment=environment)
     uris = sorted(line for line in plan.splitlines() if line.startswith("'"))
-    downloads = digest("\n".join(uris).encode())
     emit("GITHUB_OUTPUT", {
         "needed": str(bool(uris)).lower(),
-        "key": f"apt-debs-v1-{os.environ['RUNNER_OS']}-{os.environ['RUNNER_ARCH']}-{downloads}",
+        "key": apt_cache_key(profile, uris),
     })
 
 
@@ -187,12 +253,16 @@ def cache_state(name, snapshot):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("metadata", "submodules", "windows-tools", "apt-plan", "apt-install", "cache-state"))
-    parser.add_argument("--profile", choices=("headless", "modules"), default="headless")
+    parser.add_argument("operation", choices=("metadata", "environment-prefix", "submodules", "windows-tools", "apt-plan", "apt-install", "cache-state"))
+    parser.add_argument("--profile", choices=("headless", "modules", "docs"), default="headless")
     parser.add_argument("--cache", choices=("vcpkg", "pip"), default="vcpkg")
     parser.add_argument("--snapshot", action="store_true")
     args = parser.parse_args()
-    if args.operation == "metadata":
+    if args.profile == "docs" and args.operation != "environment-prefix":
+        parser.error("The docs profile only describes environment cache prefixes")
+    if args.operation == "environment-prefix":
+        emit("GITHUB_OUTPUT", environment_metadata(args.profile))
+    elif args.operation == "metadata":
         metadata(args.profile)
     elif args.operation == "submodules":
         submodules()

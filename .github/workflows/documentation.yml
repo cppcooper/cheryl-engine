@@ -44,15 +44,25 @@ jobs:
       - name: Identify documentation tool cache
         id: tool-cache
         run: python -c 'import sys; sys.path.insert(0, "docs/generation"); from bootstrap import environment_identity; print("identity=" + environment_identity())' >> "$GITHUB_OUTPUT"
+      - name: Describe shared Actions environment
+        id: environment
+        run: python .github/ci/dependencies.py environment-prefix --profile docs
       - name: Restore documentation tools
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: tools
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
-          key: docs-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/generation/requirements.txt', 'docs/generation/native-tools.json', 'docs/generation/bootstrap.py') }}
+          key: ${{ steps.environment.outputs.environment-prefix }}-tools-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/generation/requirements.txt', 'docs/generation/native-tools.json', 'docs/generation/bootstrap.py') }}
       - name: Generate and check documentation
         run: |
           mkdir -p docs/generation/generated
           python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean 2>&1 | tee docs/generation/generated/generation.log
+      - name: Save shared documentation tools
+        if: steps.environment.outputs.environment-cache-writer == 'true' && steps.tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
+          key: ${{ steps.tools.outputs.cache-primary-key }}
       - name: Retain checked HTML
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

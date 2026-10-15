@@ -55,6 +55,7 @@ jobs:
           python .github/ci/test_ci.py
           python .github/ci/test_cache_cleanup.py
           python .github/ci/test_compiler_cache.py
+          python .github/ci/test_dependencies.py
       - name: Build and test Linux
         if: runner.os == 'Linux'
         env:
@@ -78,11 +79,11 @@ jobs:
           python .github/ci/run.py --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Check dependency cache updates
-        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' }}
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' && steps.dependencies.outputs.dependency-cache-writer == 'true' }}
         id: dependency-cache-state
         run: python .github/ci/dependencies.py cache-state
       - name: Save dependency packages and downloads
-        if: ${{ !cancelled() && steps.dependency-cache-state.outputs.changed == 'true' }}
+        if: ${{ !cancelled() && steps.dependencies.outputs.dependency-cache-writer == 'true' && steps.dependency-cache-state.outputs.changed == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_DIR }}
@@ -165,11 +166,11 @@ jobs:
           python .github/ci/verify_sdk.py --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Check dependency cache updates
-        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' }}
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' && steps.dependencies.outputs.dependency-cache-writer == 'true' }}
         id: dependency-cache-state
         run: python .github/ci/dependencies.py cache-state
       - name: Save dependency packages and downloads
-        if: ${{ !cancelled() && steps.dependency-cache-state.outputs.changed == 'true' }}
+        if: ${{ !cancelled() && steps.dependencies.outputs.dependency-cache-writer == 'true' && steps.dependency-cache-state.outputs.changed == 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CHERYL_CI_DEPENDENCY_CACHE_DIR }}

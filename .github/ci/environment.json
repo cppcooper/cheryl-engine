@@ -1,0 +1,35 @@
+{
+  "cache_version": 2,
+  "windows": {
+    "ccache_version": "4.14",
+    "ccache_package_version": "4.14.0"
+  },
+  "linux": {
+    "apt_common": [
+      "ccache",
+      "ninja-build",
+      "pkg-config",
+      "g++-14",
+      "libfreetype-dev",
+      "libharfbuzz-dev",
+      "libicu-dev",
+      "libhwloc-dev",
+      "libdw-dev",
+      "libelf-dev",
+      "fonts-urw-base35"
+    ],
+    "apt_extra": {
+      "headless": ["clang-18", "clang-tools-18"],
+      "modules": [
+        "libgl-dev",
+        "libx11-dev",
+        "libxrandr-dev",
+        "libxinerama-dev",
+        "libxcursor-dev",
+        "libxi-dev",
+        "libxext-dev",
+        "python3-jinja2"
+      ]
+    }
+  }
+}

@@ -21,6 +21,7 @@ NOW = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
 GIB = 1024 ** 3
 COMPILER = "ccache-v1-ubuntu-24.04-X64-linux-gcc-hwloc-Release"
 LAYERED = COMPILER.replace("ccache-v1-", "ccache-v2-")
+BUILD_DEPS = "build-deps-v2-Windows-X64-main-modules-binaries-" + "a" * 64
 
 
 def cache(identifier, key=None, *, ref="refs/heads/develop", version="v1",
@@ -69,6 +70,7 @@ class PlanTests(unittest.TestCase):
              "dependencies-v1-Windows-X64-modules-abcd"),
             ("pip-v1-Windows-X64-cpython-312-abcd-12345-2",
              "pip-v1-Windows-X64-cpython-312-abcd"),
+            (f"{BUILD_DEPS}-12345-2", BUILD_DEPS),
         ):
             with self.subTest(key=key):
                 self.assertEqual(cleanup.lineage(key), expected)
@@ -79,6 +81,8 @@ class PlanTests(unittest.TestCase):
             "docs-tools-v1-Linux-X64-12345-2",
             "unrelated-12345-2",
             f"{COMPILER}-12345-retry",
+            "build-deps-v2-Linux-X64-main-sources-12345-2",
+            "actions-env-cache-v2-Linux-X64-modules-identity-tools-12345-2",
         ):
             with self.subTest(key=key):
                 self.assertIsNone(cleanup.lineage(key))
@@ -108,6 +112,44 @@ class PlanTests(unittest.TestCase):
                 cache(2, key="apt-debs-v1-Linux-X64-456-1")]
         self.assertEqual(removed(plan(rows)), {})
 
+    def test_build_sources(self):
+        prefix = "build-deps-v2-Linux-X64-main-sources-"
+        rows = [cache(1, key=prefix + "a" * 64, ref="refs/heads/main"),
+                cache(2, key=prefix + "b" * 64, ref="refs/heads/main")]
+        self.assertEqual(removed(plan(rows)), {})
+
+    def test_build_compaction(self):
+        rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main", age=18000),
+                cache(2, key=f"{BUILD_DEPS}-2-1", ref="refs/heads/main", age=7200)]
+        self.assertEqual(removed(plan(rows)), {1: "superseded snapshot"})
+
+    def test_build_isolation(self):
+        rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main"),
+                cache(2, key=f"{BUILD_DEPS}-2-1", ref="refs/heads/develop"),
+                cache(3, key=f"{BUILD_DEPS}-3-1", ref="refs/heads/main", version="other-path"),
+                cache(4, key=BUILD_DEPS.replace("-modules-", "-headless-") + "-4-1", ref="refs/heads/main"),
+                cache(5, key=BUILD_DEPS.replace("a" * 64, "b" * 64) + "-5-1", ref="refs/heads/main"),
+                cache(6, key=f"{LAYERED}-main-6-1", ref="refs/heads/main")]
+        self.assertEqual(removed(plan(rows)), {})
+
+    def test_build_priorities(self):
+        rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main", size=5 * GIB, accessed=18000),
+                cache(2, key=BUILD_DEPS.replace("-main-", "-develop-") + "-2-1", size=4 * GIB)]
+        self.assertEqual(removed(plan(rows, default_branch="main")), {2: "develop baseline"})
+        rows[1]["ref"] = "refs/pull/3/merge"
+        for open_prs, expected in (({3}, "open pull request baseline"), (set(), "least recently used")):
+            with self.subTest(open_prs=open_prs):
+                self.assertEqual(removed(plan(rows, default_branch="main", open_prs=open_prs)), {2: expected})
+
+    def test_environment_versions(self):
+        for revision in (2, 3):
+            with self.subTest(revision=revision):
+                rows = [cache(1, key=f"actions-env-cache-v{revision}-Linux-X64-modules-identity-tools",
+                              ref="refs/heads/main", size=5 * GIB, accessed=18000),
+                        cache(2, key="ordinary", ref="refs/heads/feature", size=4 * GIB)]
+                result = plan(rows, default_branch="main")
+                self.assertEqual(removed(result), {2: "least recently used"})
+
     def test_closed(self):
         rows = [cache(1, ref="refs/pull/3/merge"),
                 cache(2, ref="refs/pull/30/merge"),
@@ -123,6 +165,15 @@ class PlanTests(unittest.TestCase):
                 cache(2, ref="refs/pull/4/merge", size=10 * GIB)]
         result = plan(rows, closed_prs={3, 4}, closed_pr=3)
         self.assertEqual(removed(result), {1: "closed pull request"})
+
+    def test_closed_families(self):
+        keys = [f"{COMPILER}-1-1", f"{LAYERED}-pr-2-1", "dependencies-v1-Windows-X64-modules-hash-3-1",
+                "pip-v1-Windows-X64-cpython-313-hash-4-1", f"{BUILD_DEPS}-5-1",
+                "build-deps-v2-Linux-X64-main-sources-hash", "actions-env-cache-v2-Linux-X64-docs-identity-tools"]
+        rows = [cache(index, key=key, ref="refs/pull/3/merge") for index, key in enumerate(keys, 1)]
+        rows.append(cache(8, ref="refs/pull/30/merge"))
+        result = plan(rows, closed_prs={3}, closed_pr=3)
+        self.assertEqual(removed(result), {index: "closed pull request" for index in range(1, 8)})
 
     def test_unconfirmed(self):
         result = plan([cache(1, ref="refs/pull/3/merge")], closed_pr=3)
