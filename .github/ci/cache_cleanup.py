@@ -144,9 +144,11 @@ class GitHubApi:
             with self.opener.open(request, timeout=30) as response:
                 data = response.read()
         except HTTPError as error:
-            if error.code == 404 and missing_ok:
+            status = error.code
+            error.close()
+            if status == 404 and missing_ok:
                 return None
-            raise RuntimeError(f"GitHub API {method} {path} returned HTTP {error.code}") from None
+            raise RuntimeError(f"GitHub API {method} {path} returned HTTP {status}") from None
         except URLError:
             raise RuntimeError(f"GitHub API {method} {path} could not be reached") from None
         value = json.loads(data) if data else {}
