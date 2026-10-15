@@ -225,7 +225,7 @@ that backend has been destroyed. See the
 ## 6. Select a font and prepare the score label
 
 Font selection chooses immutable font bytes and faces. It does not draw text or
-upload a glyph atlas. Select a preferred installed family, lay out the message,
+upload a glyph atlas. Select a preferred font name, lay out the message,
 prepare its pixels and geometry, then upload that complete value:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
@@ -235,11 +235,19 @@ prepare its pixels and geometry, then upload that complete value:
 :dedent: 8
 ```
 
-{cpp:class}`CE::Text::FontCollection` tries the preferred `DejaVu Sans` family
-and appends the embedded fallback. `automatic_system_fonts=false` disables the
-additional automatic family choices; the explicitly preferred installed family
-is still considered. A missing family is skipped, so the score remains usable
-without that system installation.
+{cpp:class}`CE::Text::FontCollection` resolves the preferred `DejaVu Sans` family
+from the selected application asset root first, then the system's font directories,
+and appends the embedded fallback. The family name comes from the font's metadata;
+it need not match its filename. A filename such as `DejaVuSans.ttf` can also select
+an application font nested anywhere below `selection.asset_directories`.
+
+The engine discovers installed fonts automatically. `automatic_system_fonts=false`
+disables additional automatic family choices; explicitly preferred names still
+resolve against both application and system fonts. Missing names are skipped, so
+the score remains usable without that font installation. If an asset font and an
+installed font share the requested name, the asset version wins. See the
+[font-selection example](../assets/text-layout.md#font-selection) for several
+ordered preferences and direct file selection.
 
 {cpp:func}`CE::Text::layout_text` shapes the UTF-8 message using the selected
 font data. {cpp:func}`CE::Text::Rendering::prepare` creates owned CPU atlas pages and

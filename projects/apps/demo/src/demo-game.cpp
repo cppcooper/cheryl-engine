@@ -162,6 +162,7 @@ public:
         font_shader_ = std::move(materials.text);
         image_shader_ = std::move(materials.images);
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
+        font_selection_.asset_directories = {asset_root_};
         fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
         text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
         target_text_ = std::make_shared<const CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(

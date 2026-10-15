@@ -50,8 +50,9 @@ adapters for the toolkit-free F2 text probe. Reload CMake after changing cached
 selections; the [build guide](../../../docs/development/building.md) owns option
 defaults and dependency settings.
 
-The builtin HUD selects optional system/application fonts and always retains an
-embedded fallback; it can start without an installed system font. RmlUi keeps its
+The builtin HUD selects fonts by name from the asset root, then system directories,
+and always retains an embedded fallback; it can start without an installed system
+font. An asset font overrides a system font with the same name. RmlUi keeps its
 separate file-based service, using a selected file or the checked-in DejaVu Sans
 fallback. TGUI uses its own embedded default font. Shaders and the small RmlUi proof document/images are checked in under the
 asset root. The tile/sprite showcase attempts to load three optional package images
@@ -120,9 +121,9 @@ The demo's [option helper](src/demo-options.cpp) registers these Application opt
 | `--max-updates=N` | Stops after N updates; zero leaves the run interactive. |
 | `--unicode-text` | Shows accented Latin, Cyrillic, mixed/pure RTL, missing-glyph and wrapping examples in the builtin HUD. |
 | `--text-runs` | Prepares positioned geometry for builtin HUD/camera text and sample labels, then submits one draw per contiguous atlas-page run. Toolkit text is unchanged. |
-| `--builtin-font` | Disables automatic installed-family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
-| `--font=/path/to/font.ttf` | Appends an application file to the ordered preferred font sources; repeat as needed. Invalid files fail startup. |
-| `--font-family=NAME` | Appends an installed family to the same preferred order. Quote names containing spaces; unavailable families are skipped. |
+| `--builtin-font` | Disables automatic family selection. Without explicit font preferences, the builtin HUD uses only its embedded fallback. |
+| `--font=/path/to/font.ttf` | Appends an explicit file to the ordered preferred font sources; repeat as needed. Missing files are skipped; existing invalid or unreadable files fail startup. |
+| `--font-family=NAME` | Appends a name to the same preferred order, resolving asset fonts before installed families. Asset filenames including their extension also work. Quote names containing spaces; missing names are skipped. |
 | `--text-direction=auto`, `ltr` or `rtl` | Sets builtin paragraph direction. Latin/numbers keep their natural run direction; explicit RTL aligns HUD lines to the width's right edge. |
 
 See [simulation timing](../../../docs/runtime/simulation-timing.md) and
@@ -374,17 +375,19 @@ in automatic mode, so its order need not change between automatic and explicit R
   ./build/testing-native-linux/demo --unicode-text assets
   ./build/testing-native-linux/demo --unicode-text --concurrent assets
   ./build/testing-native-linux/demo --unicode-text --builtin-font --font=assets/fonts/DejaVuSans.ttf assets
-  env XDG_DATA_HOME="$PWD/assets" ./build/testing-native-linux/demo \
-    --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font '--font-family=DejaVu Sans' assets
+  ./build/testing-native-linux/demo --unicode-text --builtin-font --font-family=DejaVuSans.ttf assets
 )
 ```
 
-The `XDG_DATA_HOME` launch supplies a controlled family-discovery root containing
-the repository font. Installed DejaVu Sans candidates can precede it; either is a
-valid explicit family selection. Automatic discovery can use only the embedded
-fallback when preferred families are absent. Successful fallback alone does not
-prove discovery; controlled CPU cases establish its metadata and ordering. Numeric
-font-weight limits still need the [dedicated fixtures](../../../docs/planning/short-term/unicode-text.md#progress).
+The family-name and filename launches select the repository font from the asset
+root, including nested font directories. The asset copy takes precedence over
+installed DejaVu Sans. No system-directory or environment setup is required.
+Automatic discovery can use only the embedded fallback when preferred families
+are absent. Successful fallback alone does not prove discovery; inspect
+`FontCollection::faces()` to distinguish a discovered file from the embedded face.
+Numeric font-weight limits still need the
+[dedicated fixtures](../../../docs/planning/short-term/unicode-text.md#progress).
 
 - Inspect English, French accents and `e`+combining acute, German umlauts/`ß`, and
   Russian glyphs. Accents stay with their base and glyph masks are upright, with

@@ -49,7 +49,8 @@ namespace FirstGame {
 
         // [score]
         CE::Text::FontSelection selection;
-        selection.preferred.emplace_back(CE::Text::SystemFontFamily{"DejaVu Sans"});
+        selection.preferred = {"DejaVu Sans"};
+        selection.asset_directories = {asset_root_};
         selection.automatic_system_fonts = false;
         auto fonts = CE::Text::FontCollection::load(selection);
         auto layout = CE::Text::layout_text(fonts, "Score: 0", {.pixel_height = 24});

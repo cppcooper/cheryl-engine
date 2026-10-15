@@ -25,31 +25,66 @@ text retain their separate roles.
 ## Font selection
 
 `CE::Text::FontCollection::load(selection)` creates an immutable CPU snapshot of font
-bytes. `FontSelection::preferred` interleaves application `CE::Text::FontFile` paths/collection
-face indices and `CE::Text::SystemFontFamily` names in the application's desired order. Face
-indices select ordinary collection faces, with a variable font's default coordinates;
-named variation instances are not selected through that index. File
-entries are strict: missing, unreadable, corrupt, nonscalable or non-Unicode faces
-fail loading. An unavailable installed family is skipped. Nothing is published on
-failure, and earlier font collections remain usable. Allocation failures propagate.
+bytes. Put font names in `FontSelection::preferred`, in the order the game should
+try them. Each name searches application fonts first, then installed system fonts;
+the engine discovers system directories without application setup. For example:
+
+```cpp
+CE::Text::FontSelection font_selection;
+font_selection.preferred = {"Arial", "Noto Sans", "DejaVuSans.ttf"};
+font_selection.automatic_system_fonts = false;
+auto fonts = CE::Text::FontCollection::load(font_selection);
+```
+
+Here `Arial` and `Noto Sans` are family names read from font metadata, independent
+of their filenames. `DejaVuSans.ttf` is a filename alias for an application font;
+it can be nested anywhere under the application asset roots. Names compare ASCII
+letters without case. System fonts resolve by family name; filename aliases apply
+only to application fonts. A missing name is skipped, so other preferences still
+load. Empty names and names containing NUL are invalid. The embedded fallback
+remains available even if none of these names resolve.
+
+`asset_directories` defaults to `{"assets"}`, relative to the process's working
+directory. Font discovery recursively scans these roots for `.ttf`, `.otf`, `.ttc`
+and `.otc` files, without requiring a `fonts/` subdirectory or graphics manifest.
+If the game already has a selected asset root, set it once:
+
+```cpp
+font_selection.asset_directories = {asset_root};
+```
+
+Set that before calling `load()`. An empty list disables application-font discovery.
+When both an application font and a system font match a name, the application
+version wins. Within the chosen inventory, selection first prefers faces that are
+neither bold-flagged nor heavier than Medium (weight 500), then upright faces, then
+the declared OpenType weight closest to Regular (400). When numeric weight metadata
+is absent, the bold flag supplies a 700/400 estimate. Sorted path/face order breaks
+ties, including repeated application filenames. Discovery skips missing, unreadable
+and unsupported candidates; allocation failures propagate.
+
+For explicit control, the same `preferred` list also accepts
+`CE::Text::FontFile{path, face_index}` and `CE::Text::SystemFontFamily{name}`.
+`FontFile` loads that path directly; a relative path uses the working directory,
+not the asset roots. Its zero-based face index selects an ordinary collection face
+with a variable font's default coordinates, rather than a named variation instance.
+Missing explicit files are skipped; existing unreadable, corrupt, nonscalable or
+non-Unicode faces fail the whole load. `SystemFontFamily` restricts lookup to the
+installed inventory, bypassing application overrides; unavailable families are
+skipped. Nothing is published on failure, and earlier font collections remain usable.
 
 System discovery uses the existing
-[root traversal](file-and-font-discovery.md#system-font-candidates), but family
-selection inspects font metadata rather than guessing from filenames. Family names
-compare ASCII letters without case. Selection first prefers faces that are neither
-bold-flagged nor heavier than Medium (weight 500), then upright faces, then the
-declared OpenType weight closest to Regular (400). When numeric weight metadata
-is absent, the bold flag supplies a 700/400 weight estimate. Sorted path/face order
-breaks ties. Discovery is best effort. Set `system_directories`
-to an explicit root list for application-controlled inventory, or an empty list for
-no installed-font search; unset uses the system roots. Keep environment/files stable
-during loading. A snapshot no longer needs those files afterward.
+[root traversal](file-and-font-discovery.md#system-font-candidates). Leave
+`system_directories` unset for automatic system roots; an explicit list replaces
+them, and an empty list disables installed-font search. Keep environment/files
+stable during loading. A snapshot no longer needs those files afterward.
 
 With `automatic_system_fonts`, append available Arial, Segoe UI, Helvetica, Noto Sans,
-DejaVu Sans and Liberation Sans families in that order, skipping a family if its
-best available face is bold-flagged or heavier than 500. Explicit preferred file
-and family sources remain unrestricted by this automatic-weight limit; explicit
-families use the same ranking but can select a heavy face when no lighter one exists.
+DejaVu Sans and Liberation Sans families in that order, preferring application
+fonts over system fonts and skipping a family if its selected face is bold-flagged
+or heavier than 500. A heavy asset override therefore skips that automatic family
+even when a lighter system copy exists. Disabling it leaves explicitly preferred
+names, files and families active. Preferred sources remain unrestricted by this automatic-weight
+limit; name/family lookup can select a heavy face when no lighter one exists.
 These preferences are not guaranteed to exist across operating systems or regions.
 Repeated path/face entries are deduplicated. The terminal fallback is always an
 [embedded, licensed DejaVu Sans](../../assets/fonts/README.md) face independent of the

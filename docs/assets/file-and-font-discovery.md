@@ -2,8 +2,9 @@
 
 File indexing, font discovery and asset loading have separate policies. The
 [asset loader](asset-loading.md) constructs a fresh `CE::Files::FileIndex` for each
-preparation. Applications choose fonts explicitly
-before loading them through their resource provider.
+preparation. Unicode font selection and text preparation run on the CPU; text
+upload uses the resource provider separately. Legacy fonts retain their
+provider-owned loading path.
 
 Automatic graphics preparation registers JSON, WAV and shader paths in a fresh
 private `CE::Assets::Loading::FileRegistry`; only exact `graphics-manifests.json` indexes select documents.
@@ -43,6 +44,26 @@ Filesystem and allocation failures propagate. A failed search can retain a parti
 index and visited-directory markers, including the root recorded before traversal;
 reconstruct the index to retry that root. There is no atomic discovery snapshot or
 automatic recovery from changed files.
+
+## Font names and application assets
+
+[`CE::Text::FontSelection::preferred`](text-layout.md#font-selection) accepts an
+ordered list of names such as `{"Arial", "Noto Sans", "DejaVuSans.ttf"}`.
+Family names come from font metadata. Filename aliases, including their extension,
+also select application fonts, regardless of where they are nested under an asset
+root. Both forms compare ASCII letters without case. Application discovery scans
+`asset_directories` recursively, defaulting to `{"assets"}` relative to the working
+directory. Games using a different asset root set that list once; preferred names
+contain no directories.
+
+Names resolve against application fonts before system fonts, so a matching asset
+font overrides an installed copy. The engine discovers system roots automatically;
+system files match family names rather than filename aliases. Missing names and
+unusable discovery candidates are skipped. `FontFile` remains available for direct
+path/face selection and `SystemFontFamily` for an explicitly system-only choice.
+The [text guide](text-layout.md#font-selection) defines ordering, style ranking,
+failure behavior and the embedded fallback. The lower-level functions below return
+candidate paths; their filename heuristic is separate from this name resolution.
 
 ## System-font candidates
 
