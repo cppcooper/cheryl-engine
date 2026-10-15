@@ -96,7 +96,7 @@ renderer is selected; they are not rendered diagrams.
 The first generation performs the complete extraction and site build. Existing
 output created before incremental support also needs one complete generation to
 establish its cache state; the normal command handles this automatically.
-Later runs reuse work from the last successful generation:
+Later runs reuse completed stages:
 
 - Editing a guide reuses Doxygen XML, unchanged API pages and Sphinx doctrees.
   Sphinx rebuilds the affected pages. CSS/template changes rewrite HTML using
@@ -107,9 +107,17 @@ Later runs reuse work from the last successful generation:
   invalidate reuse and require a full rebuild.
 
 Each run retains the warning, link, API-inventory and source-revision checks.
-A failed generation is not recorded as valid cache state; fix its cause and run
-the command again. Tool-installation caches are separate from generated-site
-caches and remain reusable across clean generation.
+A Sphinx failure preserves successful Doxygen extraction but requires fresh
+rendering on retry. A later link or source-revision check failure preserves both
+completed stages; fixing the cause and rerunning still performs all checks.
+Cached rendering does not mean the output passed validation. Tool-installation
+caches are separate from generated-site caches and survive clean generation.
+
+The log explains why XML or Sphinx output needs regeneration and reports the
+time spent extracting, rendering and checking. `Generating fresh Sphinx output`
+means the saved environment is being replaced; Sphinx then reports every guide
+and generated API page as added. A changed Git revision requires fresh rendering
+because source links are embedded in the cached document trees.
 
 Authored guides and included examples use Sphinx's normal modification-time
 tracking. If an external tool changes their contents while preserving or

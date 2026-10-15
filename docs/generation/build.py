@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -13,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ElementTree
 
 # Set the cache location before importing repository-local modules.
@@ -152,6 +154,15 @@ def fingerprint(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
+@contextmanager
+def timed_stage(name: str):
+    started = time.monotonic()
+    try:
+        yield
+    finally:
+        print(f"{name} took {time.monotonic() - started:.1f} seconds.", flush=True)
+
+
 def extraction_fingerprint(output: Path, doxygen: str, commit: str) -> str:
     return fingerprint({
         "format": CACHE_FORMAT,
@@ -166,12 +177,12 @@ def extraction_fingerprint(output: Path, doxygen: str, commit: str) -> str:
     })
 
 
-def rendering_fingerprint(output: Path, metadata: dict, xml_files: dict[str, str]) -> str:
+def rendering_inputs(output: Path, metadata: dict, xml_files: dict[str, str]) -> dict:
     scripts = {
         path.relative_to(GENERATION_ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted([*GENERATION_ROOT.glob("*.py"), *(GENERATION_ROOT / "extensions").glob("*.py")])
     }
-    return fingerprint({
+    return {
         "format": CACHE_FORMAT,
         "repository": str(REPO_ROOT),
         "output": str(output),
@@ -184,7 +195,11 @@ def rendering_fingerprint(output: Path, metadata: dict, xml_files: dict[str, str
         # Breathe records XML dependencies and cannot stat a removed compound.
         "xml_files": sorted(xml_files),
         "readthedocs_version": os.environ.get("READTHEDOCS_VERSION_NAME"),
-    })
+    }
+
+
+def rendering_fingerprint(output: Path, metadata: dict, xml_files: dict[str, str]) -> str:
+    return fingerprint(rendering_inputs(output, metadata, xml_files))
 
 
 def presentation_fingerprint(metadata: dict) -> str:
@@ -400,31 +415,58 @@ def main() -> int:
             and (output / "xml/index.xml").is_file()
             and not (output / ".xml-previous").exists()
         )
-        # Sphinx can save doctrees before failing on warnings. Never reuse an
-        # interrupted/failed run as a successful baseline on the next invocation.
-        state_path.unlink(missing_ok=True)
         if reuse_xml:
             print("Reusing cached Doxygen XML.", flush=True)
         else:
-            print("Extracting public headers with Doxygen.", flush=True)
-            refresh_xml(output, doxygen, commit, incremental=not arguments.clean)
+            reasons = []
+            if arguments.clean:
+                reasons.append("--clean requested")
+            if not state.get("extraction"):
+                reasons.append("no completed Doxygen stage")
+            elif state["extraction"] != extract_key:
+                reasons.append("header or extractor inputs changed")
+            if not xml_files or not (output / "xml/index.xml").is_file():
+                reasons.append("cached XML is missing")
+            elif state.get("xml") != xml_files:
+                reasons.append("cached XML content changed")
+            if (output / ".xml-previous").exists():
+                reasons.append("interrupted XML extraction")
+            print("Extracting public headers with Doxygen: " + "; ".join(reasons) + ".", flush=True)
+            with timed_stage("Doxygen extraction"):
+                refresh_xml(output, doxygen, commit, incremental=not arguments.clean)
             xml_files = file_hashes(output / "xml")
         next_state = {"format": CACHE_FORMAT, "extraction": extract_key, "xml": xml_files}
+        if arguments.extract_only and reuse_xml:
+            return 0
+        # XML remains reusable when a later Sphinx or validation stage fails.
+        # Omit rendering until Sphinx succeeds: warning failures can save doctrees.
+        atomic_json(state_path, next_state)
         if arguments.extract_only:
-            atomic_json(state_path, next_state)
             return 0
 
         metadata = provenance(commit, doxygen_version, output)
-        render_key = rendering_fingerprint(output, metadata, xml_files)
+        render_inputs = rendering_inputs(output, metadata, xml_files)
+        render_key = fingerprint(render_inputs)
         presentation_key = presentation_fingerprint(metadata)
-        fresh = (
-            arguments.clean
-            or state.get("rendering") != render_key
-            or not (output / "doctrees/environment.pickle").is_file()
-            or not (output / "html/index.html").is_file()
-        )
+        reasons = []
+        if arguments.clean:
+            reasons.append("--clean requested")
+        if not state.get("rendering"):
+            reasons.append("no completed Sphinx stage")
+        elif state["rendering"] != render_key:
+            previous = state.get("rendering_inputs")
+            changed = []
+            if isinstance(previous, dict):
+                changed = [name for name in render_inputs if previous.get(name) != render_inputs[name]]
+            labels = ", ".join(changed or ["revision/config/tools/XML inventory"])
+            reasons.append(f"rendering inputs changed ({labels})")
+        if not (output / "doctrees/environment.pickle").is_file():
+            reasons.append("cached Sphinx environment is missing")
+        if not (output / "html/index.html").is_file():
+            reasons.append("cached HTML entry point is missing")
+        fresh = bool(reasons)
         if fresh:
-            print("Generating fresh Sphinx output.", flush=True)
+            print("Generating fresh Sphinx output: " + "; ".join(reasons) + ".", flush=True)
             for directory in (GENERATED_ROOT / "api", GENERATED_ROOT / ".api-previous",
                               output / "html", output / "doctrees"):
                 if directory.exists():
@@ -440,40 +482,43 @@ def main() -> int:
         # CSS/template changes and the dirty-source banner affect every HTML
         # page, but do not require reparsing unchanged source documents.
         write_all = ["-a"] if not fresh and state.get("presentation") != presentation_key else []
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "sphinx",
-                "-c",
-                str(GENERATION_ROOT),
-                "-b",
-                "html",
-                "-W",
-                "--keep-going",
-                "-n",
-                *write_all,
-                "-w",
-                str(output / "sphinx-warnings.log"),
-                "-d",
-                str(output / "doctrees"),
-                str(REPO_ROOT / "docs"),
-                str(output / "html"),
-            ],
-            cwd=REPO_ROOT,
-            env=environment,
-            check=True,
-        )
+        with timed_stage("Sphinx rendering"):
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "sphinx",
+                    "-c",
+                    str(GENERATION_ROOT),
+                    "-b",
+                    "html",
+                    "-W",
+                    "--keep-going",
+                    "-n",
+                    *write_all,
+                    "-w",
+                    str(output / "sphinx-warnings.log"),
+                    "-d",
+                    str(output / "doctrees"),
+                    str(REPO_ROOT / "docs"),
+                    str(output / "html"),
+                ],
+                cwd=REPO_ROOT,
+                env=environment,
+                check=True,
+            )
         (output / "html/revision.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        subprocess.run(
-            [sys.executable, str(Path(__file__).with_name("check.py")),
-             "--html", str(output / "html"), "--xml", str(output / "xml")],
-            cwd=REPO_ROOT, check=True,
-        )
-        next_state.update(rendering=render_key, presentation=presentation_key)
+        next_state.update(rendering=render_key, rendering_inputs=render_inputs, presentation=presentation_key)
         atomic_json(state_path, next_state)
+        # Validation always runs, including retries against completed Sphinx output.
+        with timed_stage("Documentation checks"):
+            subprocess.run(
+                [sys.executable, str(Path(__file__).with_name("check.py")),
+                 "--html", str(output / "html"), "--xml", str(output / "xml")],
+                cwd=REPO_ROOT, check=True,
+            )
     return 0
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import nullcontext, redirect_stderr, redirect_stdout
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -74,7 +75,10 @@ class BuildTests(unittest.TestCase):
         }
         self.sphinx_runs = []
         self.check_runs = []
+        self.check_states = []
         self.fail_sphinx = False
+        self.fail_check = False
+        self.last_output = ""
         self.enterContext(patch.dict(os.environ, {
             "CHERYL_DOCS_TOOLS_ACTIVE": "1",
             "CHERYL_DOCS_DOXYGEN": str(self.doxygen),
@@ -123,14 +127,22 @@ class BuildTests(unittest.TestCase):
                 raise subprocess.CalledProcessError(1, command)
         elif len(command) > 1 and Path(command[1]) == self.tools / "check.py":
             self.check_runs.append(command)
+            self.check_states.append(json.loads(self.state.read_text(encoding="utf-8")))
+            if self.fail_check:
+                self.fail_check = False
+                raise subprocess.CalledProcessError(1, command)
         else:
             raise AssertionError(f"Unexpected external tool: {command!r}")
         return subprocess.CompletedProcess(command, 0)
 
     def run_build(self, *arguments):
-        with patch.object(sys, "argv", [str(self.tools / "build.py"), *arguments]), \
-                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            return builder.main()
+        output = io.StringIO()
+        try:
+            with patch.object(sys, "argv", [str(self.tools / "build.py"), *arguments]), \
+                    redirect_stdout(output), redirect_stderr(io.StringIO()):
+                return builder.main()
+        finally:
+            self.last_output = output.getvalue()
 
     def retain_markers(self):
         self.html_marker.write_text("Existing HTML\n", encoding="utf-8")
@@ -150,6 +162,7 @@ class BuildTests(unittest.TestCase):
         self.assertNotIn("-a", self.sphinx_runs[-1]["command"])
         self.assertEqual(len(self.check_runs), 2)
         self.assertTrue(self.state.is_file())
+        self.assertIn("Updating Sphinx output incrementally.", self.last_output)
 
     def test_header_change(self):
         self.run_build()
@@ -200,17 +213,102 @@ class BuildTests(unittest.TestCase):
         self.fail_sphinx = True
         with self.assertRaises(subprocess.CalledProcessError):
             self.run_build()
-        self.assertFalse(self.state.exists())
+        state = json.loads(self.state.read_text(encoding="utf-8"))
+        self.assertIn("extraction", state)
+        self.assertNotIn("rendering", state)
+        self.assertNotIn("presentation", state)
         self.assertEqual((self.output / "doctrees/environment.pickle").read_bytes(), b"environment-2")
 
         self.run_build()
 
-        self.assertEqual(self.extractor.call_count, 2)
+        self.assertEqual(self.extractor.call_count, 1)
         self.assertIsNone(self.sphinx_runs[-1]["environment"])
         self.assertFalse(self.sphinx_runs[-1]["html_retained"])
         self.assertFalse(self.sphinx_runs[-1]["doctrees_retained"])
         self.assertEqual(len(self.check_runs), 2)
         self.assertTrue(self.state.is_file())
+        self.assertIn("no completed Sphinx stage", self.last_output)
+
+    def test_failed_checks_reuse(self):
+        self.fail_check = True
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.run_build()
+        state = json.loads(self.state.read_text(encoding="utf-8"))
+        self.assertIn("rendering", state)
+        self.assertIn("presentation", state)
+        self.assertIn("rendering", self.check_states[-1])
+        self.retain_markers()
+
+        self.run_build()
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertEqual(len(self.check_runs), 2)
+        self.assertEqual(self.sphinx_runs[-1]["environment"], b"environment-1")
+        self.assertTrue(self.sphinx_runs[-1]["html_retained"])
+        self.assertTrue(self.sphinx_runs[-1]["doctrees_retained"])
+        self.assertIn("Updating Sphinx output incrementally.", self.last_output)
+
+    def test_extract_only(self):
+        self.run_build("--extract-only")
+        state = json.loads(self.state.read_text(encoding="utf-8"))
+        self.assertIn("extraction", state)
+        self.assertNotIn("rendering", state)
+        self.assertEqual(self.sphinx_runs, [])
+        self.assertEqual(self.check_runs, [])
+
+        self.run_build()
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertEqual(len(self.check_runs), 1)
+        self.assertIn("Reusing cached Doxygen XML.", self.last_output)
+
+    def test_warm_extract_only(self):
+        self.run_build()
+        original = self.state.read_bytes()
+
+        self.run_build("--extract-only")
+
+        self.assertEqual(self.state.read_bytes(), original)
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertEqual(len(self.sphinx_runs), 1)
+        self.assertEqual(len(self.check_runs), 1)
+
+    def test_initial_reasons(self):
+        self.run_build()
+
+        for reason in ("no completed Doxygen stage", "no completed Sphinx stage",
+                       "cached Sphinx environment is missing", "cached HTML entry point is missing",
+                       "Doxygen extraction took", "Sphinx rendering took", "Documentation checks took"):
+            self.assertIn(reason, self.last_output)
+
+    def test_revision_reason(self):
+        self.run_build()
+        self.metadata["source_revision"] = "2" * 40
+
+        with patch.object(builder, "revision", return_value=self.metadata["source_revision"]):
+            self.run_build()
+
+        self.assertIn("rendering inputs changed (revision)", self.last_output)
+
+    def test_missing_environment(self):
+        self.run_build()
+        (self.output / "doctrees/environment.pickle").unlink()
+
+        self.run_build()
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertIsNone(self.sphinx_runs[-1]["environment"])
+        self.assertIn("cached Sphinx environment is missing", self.last_output)
+
+    def test_missing_html(self):
+        self.run_build()
+        (self.output / "html/index.html").unlink()
+
+        self.run_build()
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertIsNone(self.sphinx_runs[-1]["environment"])
+        self.assertIn("cached HTML entry point is missing", self.last_output)
 
     def test_clean(self):
         self.run_build()
@@ -223,6 +321,7 @@ class BuildTests(unittest.TestCase):
         self.assertFalse(self.sphinx_runs[-1]["html_retained"])
         self.assertFalse(self.sphinx_runs[-1]["doctrees_retained"])
         self.assertEqual(self.sphinx_runs[-1]["incremental"], "0")
+        self.assertIn("--clean requested", self.last_output)
 
     def test_xml_preserves_unchanged(self):
         self.documents["obsolete.xml"] = "<obsolete/>\n"
