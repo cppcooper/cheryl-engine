@@ -25,6 +25,7 @@ file(GLOB_RECURSE cheryl_opengl_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_library(${TARGET_LIB_MODULE_OPENGL} STATIC ${cheryl_opengl_sources})
 add_library(Cheryl::OpenGL ALIAS ${TARGET_LIB_MODULE_OPENGL})
+cheryl_register_public_component(${TARGET_LIB_MODULE_OPENGL} FEATURE CHERYL_HAS_OPENGL)
 set_target_properties(${TARGET_LIB_MODULE_OPENGL} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_OPENGL}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_OPENGL}"

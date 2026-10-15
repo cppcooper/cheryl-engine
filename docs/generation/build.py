@@ -34,6 +34,7 @@ PUBLIC_INCLUDE_ROOTS = tuple(
         "projects/engine/support/worker-topology/include",
         "projects/engine/support/debug-terminal/include",
         "projects/modules/platform/native-glfw/include",
+        "projects/modules/platform/debug-terminal-linux/include",
         "projects/modules/graphics/opengl/include",
         "projects/modules/graphics/opengl/support/startup/include",
         "projects/modules/ui/tgui/include",

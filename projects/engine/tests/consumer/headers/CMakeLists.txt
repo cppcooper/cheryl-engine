@@ -1,5 +1,9 @@
 # Each translation unit includes its header first, with no umbrella/prefix header.
 set(consumer_headers
+    cheryl/engine.h
+    cheryl/cheryl.h
+    cheryl/modules.h
+    cheryl/support.h
     cheryl/core.h
     cheryl/core/controls.h
     cheryl/core/display.h
@@ -33,3 +37,34 @@ set(consumer_headers
     cheryl/assets/types/2d/unicode-text.h
     cheryl/assets/resources/resource-provider.h)
 cheryl_add_header_probes(${TARGET_TEST_CONSUMER_ENGINE_HEADERS} ${LINKAGE_PRIVATE_TEST_CONSUMER_ENGINE} NEUTRAL HEADERS ${consumer_headers})
+target_sources(${TARGET_TEST_CONSUMER_ENGINE_HEADERS} PRIVATE aggregate.cpp)
+
+if(TARGET Cheryl::Cheryl)
+    add_library(${TARGET_TEST_CONSUMER_CHERYL_HEADERS} OBJECT aggregate.cpp)
+    target_link_libraries(${TARGET_TEST_CONSUMER_CHERYL_HEADERS} PRIVATE Cheryl::Cheryl)
+    set(aggregate_owners
+        "Cheryl::NativeGLFW|NATIVE_GLFW"
+        "Cheryl::DebugTerminal::Linux|DEBUG_TERMINAL_LINUX"
+        "Cheryl::OpenGL|OPENGL"
+        "Cheryl::UI::TGUI|UI_TGUI"
+        "Cheryl::UI::RmlUi|UI_RMLUI"
+        "Cheryl::Audio::Miniaudio|AUDIO_MINIAUDIO"
+        "Cheryl::Startup|SUPPORT_STARTUP"
+        "Cheryl::DebugTerminal::Startup|SUPPORT_DEBUG_TERMINAL"
+        "Cheryl::WorkerTopology::Hwloc|SUPPORT_WORKER_TOPOLOGY_HWLOC"
+        "Cheryl::WorkerTopology::Json|SUPPORT_WORKER_TOPOLOGY_JSON"
+        "Cheryl::OpenGL::Startup|SUPPORT_OPENGL_STARTUP")
+    foreach(owner IN LISTS aggregate_owners)
+        string(REPLACE "|" ";" contract "${owner}")
+        list(GET contract 0 owner_target)
+        list(GET contract 1 feature)
+        if(TARGET ${owner_target})
+            target_compile_definitions(${TARGET_TEST_CONSUMER_CHERYL_HEADERS} PRIVATE "CHERYL_CONSUMER_${feature}=1")
+        endif()
+    endforeach()
+    if(TARGET Cheryl::DebugTerminal::Linux)
+        cheryl_add_header_probes(${TARGET_TEST_CONSUMER_CHERYL_HEADERS}-debug-terminal Cheryl::DebugTerminal::Linux
+            HEADERS cheryl/modules/debug-terminal-linux.h)
+        add_dependencies(${TARGET_TEST_CONSUMER_CHERYL_HEADERS} ${TARGET_TEST_CONSUMER_CHERYL_HEADERS}-debug-terminal)
+    endif()
+endif()

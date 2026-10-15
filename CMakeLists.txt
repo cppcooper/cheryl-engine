@@ -16,6 +16,7 @@ cheryl_configure_root_options()
 include(cmake/CherylTargets.cmake)
 include(cmake/CherylOutputs.cmake)
 include(cmake/CherylLinkage.cmake)
+include(cmake/CherylPublicHeaders.cmake)
 
 set(CHERYL_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
 set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")

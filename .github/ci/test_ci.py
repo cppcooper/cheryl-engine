@@ -81,7 +81,7 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(any(command[0] == "ctest" for command in self.commands))
         self.assertIn("-DCHERYL_BUILD_TESTS=OFF", self.commands[0])
         self.assertEqual(self.commands[1][self.commands[1].index("--target") + 1:self.commands[1].index("--parallel")],
-                         ["consumer-cengine"])
+                         ["consumer-cengine", "consumer-headers-cheryl"])
 
     def test_windows(self):
         with patch.object(ci.sys, "platform", "win32"):

@@ -1,6 +1,7 @@
 # Reload declarations into the caller's scope, including standalone entry points.
 
 # Engine
+set(TARGET_LIB_CHERYL cheryl_assembly)
 set(TARGET_LIB_ENGINE cengine)
 
 # Engine support
@@ -78,6 +79,7 @@ set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI consumer-module-ui-rmlui)
 set(TARGET_TEST_CONSUMER_MODULE_AUDIO_MINIAUDIO consumer-module-audio-miniaudio)
 
 # Header probes
+set(TARGET_TEST_CONSUMER_CHERYL_HEADERS consumer-headers-cheryl)
 set(TARGET_TEST_CONSUMER_ENGINE_HEADERS consumer-headers-cengine)
 set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW_HEADERS consumer-module-headers-native-glfw)
 set(TARGET_TEST_CONSUMER_MODULE_OPENGL_HEADERS consumer-module-headers--opengl)

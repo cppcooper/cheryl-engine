@@ -49,6 +49,11 @@ function(cheryl_sdk_target target exported_name)
     get_target_property(links ${target} INTERFACE_LINK_LIBRARIES)
     if(links)
         set(installed_links "${links}")
+        if(target STREQUAL "${TARGET_LIB_CHERYL}")
+            # The SDK wrapper below defers nested expressions to the consumer;
+            # remove source-only assembly members before forming that wrapper.
+            list(FILTER installed_links EXCLUDE REGEX "^\\$<BUILD_INTERFACE:")
+        endif()
         if(VCPKG_INSTALLED_DIR)
             string(REPLACE "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
                 "$<INSTALL_PREFIX>/dependencies" installed_links "${installed_links}")
@@ -81,7 +86,11 @@ function(cheryl_sdk_target target exported_name)
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT CherylSDK
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT CherylSDK
         OBJECTS DESTINATION ${CMAKE_INSTALL_LIBDIR}/objects COMPONENT CherylSDK)
-    set_property(GLOBAL APPEND PROPERTY CHERYL_SDK_TARGETS ${target})
+    if(NOT target STREQUAL "${TARGET_LIB_CHERYL}")
+        # Distributed libraries are listed individually; the source facade also
+        # links diagnostics that are deliberately outside the SDK build.
+        set_property(GLOBAL APPEND PROPERTY CHERYL_SDK_TARGETS ${target})
+    endif()
 endfunction()
 
 function(cheryl_sdk_headers directory)
@@ -91,6 +100,7 @@ function(cheryl_sdk_headers directory)
 endfunction()
 
 cheryl_sdk_target(${TARGET_LIB_ENGINE} Engine)
+cheryl_sdk_target(${TARGET_LIB_CHERYL} Cheryl)
 cheryl_sdk_target(${TARGET_LIB_ENGINE_S_LOGGING_CONFIG} LoggingConfig)
 get_target_property(logging_definitions ${TARGET_LIB_ENGINE_S_LOGGING_CONFIG} INTERFACE_COMPILE_DEFINITIONS)
 if(CHERYL_LOG_PROFILE STREQUAL "auto")

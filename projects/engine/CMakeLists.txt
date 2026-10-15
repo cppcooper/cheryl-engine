@@ -8,6 +8,7 @@ add_subdirectory(support/signal-handlers)
 
 add_library(${TARGET_LIB_ENGINE} STATIC ${CHERYL_ENGINE_SOURCES})
 add_library(Cheryl::Engine ALIAS ${TARGET_LIB_ENGINE})
+cheryl_register_public_component(${TARGET_LIB_ENGINE})
 set_target_properties(${TARGET_LIB_ENGINE} PROPERTIES
     VERSION "${VERSION_PROJECT_ENGINE}"
     OUTPUT_NAME "${OUTPUT_LIB_ENGINE}"

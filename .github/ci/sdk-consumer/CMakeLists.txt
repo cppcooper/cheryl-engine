@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.28)
 project(cheryl_sdk_consumer LANGUAGES CXX)
 
 find_package(Cheryl CONFIG REQUIRED)
+if(NOT TARGET Cheryl::Cheryl)
+    message(FATAL_ERROR "The installed SDK must provide the Cheryl::Cheryl aggregate target")
+endif()
 include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylConsumers.cmake")
 enable_testing()
 
@@ -42,17 +45,23 @@ if(TARGET Cheryl::Audio::Miniaudio)
         "${CHERYL_REPOSITORY_ROOT}/projects/modules/audio/miniaudio/tests/support")
 endif()
 
-cheryl_add_header_probes(sdk-startup Cheryl::Startup HEADERS cheryl/core/engine/startup.h)
+cheryl_add_header_probes(sdk-startup Cheryl::Startup NEUTRAL
+    HEADERS cheryl/core/engine/startup.h cheryl/support/startup.h)
 if(TARGET Cheryl::OpenGL::Startup)
-    cheryl_add_header_probes(sdk-opengl-startup Cheryl::OpenGL::Startup HEADERS cheryl/backends/opengl/startup.h)
+    cheryl_add_header_probes(sdk-opengl-startup Cheryl::OpenGL::Startup
+        HEADERS cheryl/backends/opengl/startup.h cheryl/support/opengl-startup.h)
 endif()
 add_executable(sdk-worker "${CHERYL_REPOSITORY_ROOT}/projects/engine/support/worker-topology/tests/consumer.cpp")
 target_link_libraries(sdk-worker PRIVATE Cheryl::Engine)
 if(TARGET Cheryl::WorkerTopology::Hwloc)
+    cheryl_add_header_probes(sdk-worker-hwloc Cheryl::WorkerTopology::Hwloc NEUTRAL
+        HEADERS cheryl/support/worker-topology-hwloc.h)
     target_link_libraries(sdk-worker PRIVATE Cheryl::WorkerTopology::Hwloc)
     target_compile_definitions(sdk-worker PRIVATE CHERYL_CONSUMER_WORKER_HWLOC=1)
 endif()
 if(TARGET Cheryl::WorkerTopology::Json)
+    cheryl_add_header_probes(sdk-worker-json Cheryl::WorkerTopology::Json NEUTRAL
+        HEADERS cheryl/support/worker-topology-json.h)
     target_link_libraries(sdk-worker PRIVATE Cheryl::WorkerTopology::Json)
     target_compile_definitions(sdk-worker PRIVATE CHERYL_CONSUMER_WORKER_JSON=1)
 endif()

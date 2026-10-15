@@ -8,6 +8,7 @@ endif()
 
 add_library(${TARGET_LIB_ENGINE_S_STARTUP} STATIC src/startup.cpp)
 add_library(Cheryl::Startup ALIAS ${TARGET_LIB_ENGINE_S_STARTUP})
+cheryl_register_public_component(${TARGET_LIB_ENGINE_S_STARTUP} FEATURE CHERYL_HAS_SUPPORT_STARTUP)
 set_target_properties(${TARGET_LIB_ENGINE_S_STARTUP} PROPERTIES
     VERSION "${VERSION_PROJECT_ENGINE}"
     OUTPUT_NAME "${OUTPUT_LIB_ENGINE_S_STARTUP}"

@@ -26,6 +26,7 @@ file(GLOB_RECURSE cheryl_tgui_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_library(${TARGET_LIB_MODULE_UI_TGUI} STATIC ${cheryl_tgui_sources})
 add_library(Cheryl::UI::TGUI ALIAS ${TARGET_LIB_MODULE_UI_TGUI})
+cheryl_register_public_component(${TARGET_LIB_MODULE_UI_TGUI} FEATURE CHERYL_HAS_UI_TGUI)
 set_target_properties(${TARGET_LIB_MODULE_UI_TGUI} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_UI_TGUI}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_UI_TGUI}"

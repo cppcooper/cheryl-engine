@@ -60,7 +60,7 @@ def main(arguments=None):
                       "-DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON",
                       f"-DVCPKG_MANIFEST_FEATURES={';'.join(features)}",
                       f"-DCMAKE_PROJECT_INCLUDE={source / '.github/ci/windows-hwloc.cmake'}"]
-    targets = ["consumer-cengine"]
+    targets = ["consumer-cengine", "consumer-headers-cheryl"]
     if args.sdk:
         targets.append("cheryl-sdk")
     consumers = ["cheryl-consumer"]
