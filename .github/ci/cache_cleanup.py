@@ -14,9 +14,9 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 GIB = 1024 ** 3
-SNAPSHOT = re.compile(r"^((?:ccache-v1|dependencies-v1|pip-v1)-.+)-[0-9]+-[0-9]+$")
+SNAPSHOT = re.compile(r"^((?:ccache-v[12]|dependencies-v1|pip-v1)-.+)-[0-9]+-[0-9]+$")
 PULL_REF = re.compile(r"^refs/pull/([1-9][0-9]*)/merge$")
-KNOWN_PREFIXES = ("ccache-v1-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
+KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
                   "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-")
 MAINTENANCE_PATH = ".github/workflows/cache-maintenance.yml"
 
@@ -36,11 +36,14 @@ def timestamp(value):
 
 
 def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
-                budget_bytes=8 * GIB, grace_seconds=900, closed_pr=None, unresolved_refs=frozenset()):
+                budget_bytes=8 * GIB, grace_seconds=900, closed_pr=None, unresolved_refs=frozenset(),
+                open_prs=frozenset()):
     """Return a deletion plan without mutating caches or accessing GitHub.
 
     Active/unresolved refs and recently created or accessed entries are protected.
     Exact-PR mode never compacts or trims entries outside that confirmed closed PR.
+    Newest compiler snapshots prefer main, develop, then confirmed open PRs when
+    the budget requires eviction; these priorities do not reserve storage.
     """
     if not isinstance(default_branch, str) or not default_branch or now.tzinfo is None:
         raise ValueError("A default branch and timezone-aware current time are required")
@@ -88,28 +91,49 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
     if closed_pr is not None:
         return result
 
+    layered_profiles = {
+        (cache["ref"], "ccache-v1-" + logical[len("ccache-v2-"):].rsplit("-", 1)[0])
+        for cache, _, _, logical in entries
+        if logical is not None and logical.startswith("ccache-v2-")
+        and logical.rsplit("-", 1)[1] in {"main", "develop", "pr", "branch"}
+    }
     newest = {}
     baseline = {}
+    baseline_policy = {}
     for record in entries:
         cache, created, _, logical = record
         if logical is not None:
             bucket = (cache["ref"], cache["version"], logical)
             if bucket not in newest or (created, cache["id"]) > (newest[bucket][1], newest[bucket][0]["id"]):
                 newest[bucket] = record
-        if cache["ref"] == "refs/heads/" + default_branch and cache["key"].startswith(KNOWN_PREFIXES):
-            bucket = (cache["version"], logical or cache["key"])
+        priority, reason = 0, "least recently used"
+        replaced = cache["key"].startswith("ccache-v1-") and (cache["ref"], logical) in layered_profiles
+        if not replaced:
+            if cache["ref"] == "refs/heads/" + default_branch and cache["key"].startswith(KNOWN_PREFIXES):
+                priority, reason = 2, "default-branch baseline"
+            if logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-")):
+                match = PULL_REF.fullmatch(cache["ref"])
+                if cache["ref"] == "refs/heads/main":
+                    priority, reason = 3, "main baseline"
+                elif cache["ref"] == "refs/heads/develop":
+                    priority, reason = 2, "develop baseline"
+                elif match and int(match.group(1)) in open_prs:
+                    priority, reason = 1, "open pull request baseline"
+        if priority:
+            bucket = (cache["ref"], cache["version"], logical or cache["key"])
             if bucket not in baseline or (created, cache["id"]) > (baseline[bucket][1], baseline[bucket][0]["id"]):
                 baseline[bucket] = record
+                baseline_policy[bucket] = (priority, reason)
     for cache, _, _, logical in entries:
         if logical is not None and newest[(cache["ref"], cache["version"], logical)][0]["id"] != cache["id"]:
             remove(cache, "superseded snapshot")
 
-    baseline_ids = {record[0]["id"] for record in baseline.values()}
+    priorities = {record[0]["id"]: baseline_policy[bucket] for bucket, record in baseline.items()}
     for cache, _, _, _ in sorted(entries, key=lambda record: (
-            record[0]["id"] in baseline_ids, record[2], record[1], record[0]["id"])):
+            priorities.get(record[0]["id"], (0, ""))[0], record[2], record[1], record[0]["id"])):
         if result["after_bytes"] <= budget_bytes:
             break
-        remove(cache, "default-branch baseline" if cache["id"] in baseline_ids else "least recently used")
+        remove(cache, priorities.get(cache["id"], (0, "least recently used"))[1])
     return result
 
 
@@ -237,12 +261,17 @@ def main():
     if arguments.closed_pr is not None and arguments.closed_pr not in closed:
         print("The requested pull request is not confirmed closed; no caches selected.")
         return 0
+    open_prs = set() if arguments.closed_pr is not None else {
+        int(match.group(1)) for cache in caches
+        if (match := PULL_REF.fullmatch(cache["ref"]))
+        and int(match.group(1)) not in closed and cache["ref"] not in unresolved
+    }
     # Check live workflow admission after gathering cache/PR metadata. A new run
     # can still race deletion; cache maintenance offers no atomic restore lease.
     running = active_refs(api, caches)
     plan = plan_caches(caches, default_branch=repository["default_branch"], closed_prs=closed,
                        active_refs=running, unresolved_refs=unresolved, now=datetime.now(timezone.utc),
-                       budget_bytes=budget_bytes, closed_pr=arguments.closed_pr)
+                       budget_bytes=budget_bytes, closed_pr=arguments.closed_pr, open_prs=open_prs)
     print("Applying cache maintenance." if arguments.apply else "Dry run; pass --apply to delete these caches.")
     for cache in plan["deletions"]:
         print(json.dumps({key: cache[key] for key in ("id", "key", "ref", "size_in_bytes", "reason")}))

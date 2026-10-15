@@ -20,6 +20,7 @@ spec.loader.exec_module(cleanup)
 NOW = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
 GIB = 1024 ** 3
 COMPILER = "ccache-v1-ubuntu-24.04-X64-linux-gcc-hwloc-Release"
+LAYERED = COMPILER.replace("ccache-v1-", "ccache-v2-")
 
 
 def cache(identifier, key=None, *, ref="refs/heads/develop", version="v1",
@@ -42,6 +43,7 @@ def plan(caches, **options):
     return cleanup.plan_caches(caches, **{
         "default_branch": "develop",
         "closed_prs": set(),
+        "open_prs": set(),
         "active_refs": set(),
         "now": NOW,
         **options,
@@ -62,6 +64,7 @@ class PlanTests(unittest.TestCase):
     def test_lineages(self):
         for key, expected in (
             (f"{COMPILER}-12345-2", COMPILER),
+            (f"{LAYERED}-main-12345-2", f"{LAYERED}-main"),
             ("dependencies-v1-Windows-X64-modules-abcd-12345-2",
              "dependencies-v1-Windows-X64-modules-abcd"),
             ("pip-v1-Windows-X64-cpython-312-abcd-12345-2",
@@ -148,8 +151,84 @@ class PlanTests(unittest.TestCase):
 
     def test_large_baseline(self):
         result = plan([cache(1, size=9 * GIB)])
-        self.assertEqual(removed(result), {1: "default-branch baseline"})
+        self.assertEqual(removed(result), {1: "develop baseline"})
         self.assertEqual(result["after_bytes"], 0)
+
+    def test_both_branches(self):
+        rows = [cache(1, ref="refs/heads/main", size=3 * GIB, accessed=18000),
+                cache(2, size=3 * GIB, accessed=14400),
+                cache(3, key="ordinary", ref="refs/heads/feature", size=3 * GIB)]
+        result = plan(rows)
+        self.assertEqual(removed(result), {3: "least recently used"})
+        self.assertEqual(result["after_bytes"], 6 * GIB)
+
+    def test_open_priority(self):
+        rows = [cache(1, ref="refs/pull/3/merge", size=5 * GIB, accessed=18000),
+                cache(2, key="ordinary", ref="refs/heads/feature", size=4 * GIB)]
+        for open_prs, expected in (({3}, {2}), (set(), {1})):
+            with self.subTest(open_prs=open_prs):
+                self.assertEqual(set(removed(plan(rows, open_prs=open_prs))), expected)
+
+    def test_open_compaction(self):
+        rows = [cache(1, ref="refs/pull/3/merge", age=18000),
+                cache(2, ref="refs/pull/3/merge", age=7200)]
+        result = plan(rows, open_prs={3})
+        self.assertEqual(removed(result), {1: "superseded snapshot"})
+
+    def test_open_noncompiler(self):
+        rows = [cache(1, key="dependencies-v1-Windows-X64-modules-hash-1-1",
+                      ref="refs/pull/3/merge", size=5 * GIB, accessed=18000),
+                cache(2, key="ordinary", ref="refs/heads/feature", size=4 * GIB)]
+        result = plan(rows, open_prs={3})
+        self.assertEqual(removed(result), {1: "least recently used"})
+
+    def test_tiers(self):
+        rows = [cache(1, ref="refs/heads/main", size=3 * GIB, accessed=18000),
+                cache(2, size=3 * GIB, accessed=14400),
+                cache(3, ref="refs/pull/3/merge", size=3 * GIB, accessed=10800),
+                cache(4, key="ordinary", ref="refs/heads/feature", size=GIB)]
+        for budget, expected in ((9, [4]), (8, [4, 3]), (5, [4, 3, 2]), (2, [4, 3, 2, 1])):
+            with self.subTest(budget=budget):
+                result = plan(rows, open_prs={3}, budget_bytes=budget * GIB)
+                self.assertEqual([row["id"] for row in result["deletions"]], expected)
+                self.assertLessEqual(result["after_bytes"], budget * GIB)
+        result = plan(rows, open_prs={3}, budget_bytes=2 * GIB)
+        self.assertEqual(removed(result), {4: "least recently used", 3: "open pull request baseline",
+                                           2: "develop baseline", 1: "main baseline"})
+
+    def test_tool_baseline(self):
+        for branch in ("develop", "main"):
+            with self.subTest(branch=branch):
+                rows = [cache(1, key="docs-tools-v1-Linux-X64-identity", ref=f"refs/heads/{branch}",
+                              size=5 * GIB, accessed=18000),
+                        cache(2, ref="refs/pull/3/merge", size=4 * GIB)]
+                result = plan(rows, default_branch=branch, open_prs={3})
+                self.assertEqual(removed(result), {2: "open pull request baseline"})
+
+    def test_layered_compaction(self):
+        rows = [cache(1, key=f"{LAYERED}-main-1-1", ref="refs/heads/main", age=18000),
+                cache(2, key=f"{LAYERED}-main-2-1", ref="refs/heads/main", age=7200),
+                cache(3, key=f"{LAYERED}-develop-3-1")]
+        self.assertEqual(removed(plan(rows)), {1: "superseded snapshot"})
+
+    def test_migration(self):
+        rows = [cache(1, ref="refs/heads/main", size=5 * GIB),
+                cache(2, key=f"{LAYERED}-main-2-1", ref="refs/heads/main",
+                      size=4 * GIB, accessed=18000)]
+        self.assertEqual(removed(plan(rows)), {1: "least recently used"})
+        self.assertEqual(removed(plan(rows, budget_bytes=10 * GIB)), {})
+
+    def test_migration_scope(self):
+        rows = [cache(1, ref="refs/heads/main", size=5 * GIB),
+                cache(2, key=f"{LAYERED}-develop-2-1", size=4 * GIB, accessed=18000)]
+        self.assertEqual(removed(plan(rows)), {2: "develop baseline"})
+
+    def test_migration_profile(self):
+        other = "ccache-v2-ubuntu-24.04-X64-linux-clang-debug-Debug"
+        rows = [cache(1, ref="refs/heads/main", size=5 * GIB),
+                cache(2, key=f"{other}-main-2-1", ref="refs/heads/main",
+                      size=4 * GIB, accessed=18000)]
+        self.assertEqual(removed(plan(rows)), {2: "main baseline"})
 
     def test_active(self):
         rows = [cache(1, size=5 * GIB), cache(2, size=4 * GIB)]
@@ -328,6 +407,24 @@ class StateTests(unittest.TestCase):
         self.assertEqual(api.request.call_args_list, [
             call("GET", ""), call("GET", "/pulls/3", missing_ok=True),
         ])
+
+    def test_open_main(self):
+        api = Mock(spec=cleanup.GitHubApi)
+        api.request.side_effect = [{"default_branch": "develop"}, {"state": "open"},
+                                   {"state": "closed"}, None]
+        rows = [cache(number, ref=f"refs/pull/{number}/merge") for number in (3, 4, 5)]
+        api.pages.side_effect = lambda path, field, **query: rows if path == "/actions/caches" else []
+        decision = {"before_bytes": 300, "after_bytes": 300, "protected_bytes": 100,
+                    "deletions": [], "protected_ids": [5]}
+        with patch.object(cleanup, "GitHubApi", return_value=api), \
+             patch.object(cleanup, "plan_caches", return_value=decision) as select, \
+             patch.object(cleanup.sys, "argv", ["cache_cleanup.py"]), \
+             patch.dict(os.environ, {}, clear=True), redirect_stdout(io.StringIO()):
+            self.assertEqual(cleanup.main(), 0)
+        self.assertEqual(select.call_args.kwargs["open_prs"], {3})
+        self.assertEqual(select.call_args.kwargs["closed_prs"], {4})
+        self.assertEqual(select.call_args.kwargs["unresolved_refs"], {"refs/pull/5/merge"})
+        self.assertTrue(all(invocation.args[0] == "GET" for invocation in api.request.call_args_list))
 
     def test_invalid_pr(self):
         for number in ("0", "-1", "invalid"):
