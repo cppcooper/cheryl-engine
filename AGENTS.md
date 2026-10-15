@@ -4,6 +4,8 @@
 
 ### Work modes and progression
 
+This section applies when in a model mode where multiple sub-agents cant be used frequently. When in such a mode this section provides valuable information worth considering, but documentation (to take an example) should not be deferred.
+
 Each task has one primary work mode:
 
 - Review and planning
