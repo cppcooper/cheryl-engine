@@ -56,6 +56,8 @@ for directory, included in ((GENERATION_ROOT, "generated"), (GENERATED_ROOT, "ap
             for path in sorted(directory.iterdir())
             if path.name != included
         )
+# Cold and warm output directories must produce the same Sphinx cache settings.
+exclude_patterns = sorted(set(exclude_patterns))
 myst_heading_anchors = 6
 myst_ref_domains = ["std", "cpp"]
 nitpicky = True
