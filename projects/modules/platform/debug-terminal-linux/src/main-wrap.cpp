@@ -161,7 +161,7 @@ namespace CE::Platform::Linux::DebugTerminal::Detail {
                 stderr_owned_ = true;
                 if (std::setvbuf(stdout, nullptr, _IOLBF, 0) != 0)
                     throw std::runtime_error("Cannot configure live stdout capture");
-                if (!send_control(control_.get(), TerminalDetail::started))
+                if (!send_control(control_.get(), started))
                     native_failure("Start terminal output viewer");
                 reaper_ = std::jthread([this](const std::stop_token stop) {
                     while (!stop.stop_requested()) {
