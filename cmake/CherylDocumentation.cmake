@@ -28,6 +28,12 @@ function(cheryl_add_documentation_targets repository_root)
         COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" exec ${tool_arguments}
             -- python "${repository_root}/docs/generation/build.py"
         WORKING_DIRECTORY "${repository_root}"
-        COMMENT "Generating Cheryl documentation"
+        COMMENT "Updating Cheryl documentation"
+        USES_TERMINAL VERBATIM)
+    add_custom_target(docs-clean
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" exec ${tool_arguments}
+            -- python "${repository_root}/docs/generation/build.py" --clean
+        WORKING_DIRECTORY "${repository_root}"
+        COMMENT "Regenerating Cheryl documentation from scratch"
         USES_TERMINAL VERBATIM)
 endfunction()

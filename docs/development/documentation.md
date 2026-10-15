@@ -9,8 +9,10 @@ The generated artifact is an HTML site rooted at
 `docs/generation/generated/html/index.html`, containing both the manual and API
 reference. For an explicit CMake artifact target, use
 [`docs` in the docs-only project](#cmake-entry-points); for direct generation, use
-the Python command below. Enabling `CHERYL_BUILD_DOCS` makes the same target
-available in an engine build; documentation is never part of the default build.
+the Python command below. Both update documentation incrementally by default;
+`docs-clean` or `build.py --clean` requests full regeneration. Enabling
+`CHERYL_BUILD_DOCS` makes the same targets available in an engine build;
+documentation is never part of the default build.
 
 ## Generate locally
 
@@ -33,7 +35,8 @@ Open `docs/generation/generated/html/index.html`. The output directory also
 contains Doxygen XML, Sphinx doctrees and `sphinx-warnings.log`.
 `--output /path/to/output` selects another
 output root outside the authored documentation, or another directory beneath
-`docs/generation/generated/`; its `api/` and `pycache/` directories are reserved.
+`docs/generation/generated/`; its `api/`, `pycache/`, `.api-previous/` and
+`.xml-previous/` directories are reserved.
 The generated tree is ignored by Git. Edit the declaring
 headers or authored guides, then regenerate. Generation is serialized within a
 checkout because all output profiles share the generated API source directory.
@@ -71,6 +74,44 @@ declaration notes, and includes concept definitions. Each declaration page links
 to its header at the recorded source revision. Consult that header for the full C++
 declaration. Existing Mermaid fences are displayed as plain text until a diagram
 renderer is selected; they are not rendered diagrams.
+
+### Incremental rebuilds and full regeneration
+
+The first generation performs the complete extraction and site build. Existing
+output created before incremental support also needs one complete generation to
+establish its cache state; the normal command handles this automatically.
+Later runs reuse work from the last successful generation:
+
+- Editing a guide reuses Doxygen XML, unchanged API pages and Sphinx doctrees.
+  Sphinx rebuilds the affected pages. CSS/template changes rewrite HTML using
+  the cached doctrees and update the site assets.
+- Editing public headers reruns Doxygen and rebuilds affected reference pages;
+  a changed XML file inventory starts a fresh Sphinx build.
+- Changes to generation tools, configuration or the recorded source revision can
+  invalidate reuse and require a full rebuild.
+
+Each run retains the warning, link, API-inventory and source-revision checks.
+A failed generation is not recorded as valid cache state; fix its cause and run
+the command again. Tool-installation caches are separate from generated-site
+caches and remain reusable across clean generation.
+
+Authored guides and included examples use Sphinx's normal modification-time
+tracking. If an external tool changes their contents while preserving or
+backdating timestamps, request a clean generation.
+
+To force full extraction and site generation:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python docs/generation/build.py --clean
+)
+```
+
+`--extract-only` still limits the command to Doxygen XML; combine it with `--clean`
+when you need fresh extraction without generating HTML. CI and Read the Docs use
+`--clean` explicitly so publication does not depend on a previous generated site.
 
 ## Tool selection and reuse
 
@@ -111,14 +152,14 @@ coverage for CPython 3.11–3.14 on these platforms. Linux fallback has been exe
 Windows and macOS native setup still require execution acceptance.
 
 `status` reports tool readiness without installing anything. `setup` prepares tools
-without generating documentation. Use `exec --force-pinned` for reproducible
-generation, including CI and Read the Docs:
+without generating documentation. `exec --force-pinned` selects the locked tools;
+combine it with `--clean` for the full generation used by CI and Read the Docs:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py
+  python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean
 )
 ```
 
@@ -142,9 +183,11 @@ It enables no compiler languages and does not discover engine dependencies:
 )
 ```
 
-This writes `docs/generation/generated/html/index.html`. The optional `docs-tools`
-target prepares tools; the `docs` target also selects them, so running `docs-tools`
-first is unnecessary. Neither target belongs to the default build.
+This incrementally updates `docs/generation/generated/html/index.html`. Select
+`docs-clean` instead of `docs` in the build command to force full regeneration.
+The optional `docs-tools` target prepares tools; both generation targets also
+select them, so running `docs-tools` first is unnecessary. None of these targets
+belongs to the default build.
 
 To add documentation to an existing root engine build, reconfigure that same build
 directory and explicitly select the target:
@@ -161,8 +204,8 @@ directory and explicitly select the target:
 Use your existing build directory in place of `build/debug`; its other cached
 settings are retained. The root project still has its usual compiler and dependency
 requirements; use the [building guide](building.md) for an initial engine
-configuration. Building `docs` runs documentation generation without compiling the
-engine. Both CMake entry points expose
+configuration. Building `docs` or `docs-clean` runs documentation generation
+without compiling the engine. Both CMake entry points expose
 `CHERYL_DOCS_PYTHON`, `CHERYL_DOCS_CACHE_DIR` and `CHERYL_DOCS_FORCE_PINNED`:
 
 ```sh
@@ -211,6 +254,7 @@ GitHub Actions generates and checks HTML for pull requests, pushes to `develop`
 and `main`, `v*` tags, and manual runs. It retains checked HTML and build diagnostics
 as downloadable artifacts for 30 days. Read the Docs independently clones the
 selected Git ref, runs the same pinned generator, and hosts the resulting HTML.
+Both publication paths request full generation with `--clean`.
 Actions artifacts are not the website's source and do not need an upload token for
 Read the Docs. Engine compilation belongs to the existing code CI; the documentation
 job does not compile examples.
@@ -235,7 +279,7 @@ build:
   jobs:
     build:
       html:
-        - python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --output "$READTHEDOCS_OUTPUT"
+        - python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean --output "$READTHEDOCS_OUTPUT"
 ```
 
 Keep `sphinx`, `mkdocs` and a separate Python installation step out of this custom
@@ -300,7 +344,7 @@ pass before a change reaches `main`.
 
 ### Publication verification and recovery
 
-Every full build writes `html/revision.json`. Its
+Every successful HTML generation writes `html/revision.json`. Its
 `source_revision` is the full checked Git commit, `source_ref` identifies the build
 ref, and `dirty` records whether the source checkout differs from that commit.
 The marker also records selected tool versions and lock/manifest hashes, without

@@ -23,7 +23,7 @@ if sys.pycache_prefix is None:
     sys.pycache_prefix = str(GENERATED_ROOT / "pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
-from bootstrap import file_lock, validate_doxygen
+from bootstrap import atomic_json, file_lock, read_json, validate_doxygen
 
 
 PUBLIC_INCLUDE_ROOTS = tuple(
@@ -43,6 +43,7 @@ PUBLIC_INCLUDE_ROOTS = tuple(
     )
 )
 HEADER_SUFFIXES = {".h", ".hpp", ".inl", ".ipp", ".tpp"}
+CACHE_FORMAT = 1
 
 
 def header_inputs() -> list[Path]:
@@ -124,7 +125,7 @@ def provenance(commit: str, doxygen_version: str, output: Path) -> dict:
     }
 
 
-def extract(output: Path, doxygen: str, commit: str) -> None:
+def doxygen_configuration(output: Path, commit: str) -> str:
     headers = header_inputs()
     template = Path(__file__).with_name("Doxyfile.in").read_text(encoding="utf-8")
     replacements = {
@@ -136,6 +137,94 @@ def extract(output: Path, doxygen: str, commit: str) -> None:
     }
     for key, value in replacements.items():
         template = template.replace(f"@{key}@", value)
+    return template
+
+
+def file_hashes(directory: Path, pattern: str = "*") -> dict[str, str]:
+    return {
+        path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(directory.rglob(pattern))
+        if path.is_file()
+    }
+
+
+def fingerprint(value: dict) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def extraction_fingerprint(output: Path, doxygen: str, commit: str) -> str:
+    return fingerprint({
+        "format": CACHE_FORMAT,
+        "configuration": doxygen_configuration(output, commit),
+        "headers": {
+            path.relative_to(REPO_ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in header_inputs()
+        },
+        "extractor": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "doxygen": str(Path(doxygen).resolve()),
+        "doxygen_sha256": hashlib.sha256(Path(doxygen).read_bytes()).hexdigest(),
+    })
+
+
+def rendering_fingerprint(output: Path, metadata: dict, xml_files: dict[str, str]) -> str:
+    scripts = {
+        path.relative_to(GENERATION_ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted([*GENERATION_ROOT.glob("*.py"), *(GENERATION_ROOT / "extensions").glob("*.py")])
+    }
+    return fingerprint({
+        "format": CACHE_FORMAT,
+        "repository": str(REPO_ROOT),
+        "output": str(output),
+        "revision": metadata["source_revision"],
+        "tools": metadata["tools"],
+        "python": str(Path(sys.executable).resolve()),
+        "requirements": metadata["requirements_sha256"],
+        "native_manifest": metadata["native_manifest_sha256"],
+        "scripts": scripts,
+        # Breathe records XML dependencies and cannot stat a removed compound.
+        "xml_files": sorted(xml_files),
+        "readthedocs_version": os.environ.get("READTHEDOCS_VERSION_NAME"),
+    })
+
+
+def presentation_fingerprint(metadata: dict) -> str:
+    return fingerprint({
+        "templates": file_hashes(GENERATION_ROOT / "templates"),
+        "static": file_hashes(GENERATION_ROOT / "static"),
+        "dirty": metadata["dirty"],
+    })
+
+
+def refresh_xml(output: Path, doxygen: str, commit: str, *, incremental: bool) -> None:
+    xml = output / "xml"
+    previous = output / ".xml-previous"
+    # Recover an interrupted extraction before staging its replacement.
+    if previous.exists():
+        if xml.exists():
+            shutil.rmtree(xml)
+        previous.replace(xml)
+    if xml.exists():
+        xml.replace(previous)
+    try:
+        extract(output, doxygen, commit)
+        if incremental and previous.exists():
+            for path in xml.rglob("*"):
+                original = previous / path.relative_to(xml)
+                if path.is_file() and original.is_file() and path.read_bytes() == original.read_bytes():
+                    status = original.stat()
+                    os.utime(path, ns=(status.st_atime_ns, status.st_mtime_ns))
+    except BaseException:
+        if xml.exists():
+            shutil.rmtree(xml)
+        if previous.exists():
+            previous.replace(xml)
+        raise
+    if previous.exists():
+        shutil.rmtree(previous)
+
+
+def extract(output: Path, doxygen: str, commit: str) -> None:
+    template = doxygen_configuration(output, commit)
     output.mkdir(parents=True, exist_ok=True)
     configuration = output / "Doxyfile"
     configuration.write_text(template, encoding="utf-8")
@@ -149,10 +238,10 @@ def extract(output: Path, doxygen: str, commit: str) -> None:
     # from the public index and relationship navigation before Exhale reads it.
     index_path = output / "xml/index.xml"
     index = ElementTree.parse(index_path)
-    doxygen_configuration = ElementTree.parse(output / "xml/Doxyfile.xml")
+    configuration_xml = ElementTree.parse(output / "xml/Doxyfile.xml")
     private_namespaces = {
         value.text[:-3]
-        for value in doxygen_configuration.findall("option[@id='EXCLUDE_SYMBOLS']/value")
+        for value in configuration_xml.findall("option[@id='EXCLUDE_SYMBOLS']/value")
         if value.text and value.text.endswith("::*")
     }
     declarations = {}
@@ -232,6 +321,9 @@ def main() -> int:
     parser.add_argument(
         "--extract-only", action="store_true", help="Generate Doxygen XML only."
     )
+    parser.add_argument(
+        "--clean", action="store_true", help="Regenerate XML, API pages and HTML without reusing build caches."
+    )
     parser.add_argument("--doxygen", help="Use this Doxygen executable explicitly.")
     arguments = parser.parse_args()
     if arguments.doxygen is not None and os.environ.get("CHERYL_DOCS_FORCE_PINNED") == "1":
@@ -255,6 +347,8 @@ def main() -> int:
             or (REPO_ROOT / "docs").is_relative_to(output)
             or any(root.is_relative_to(output) for root in PUBLIC_INCLUDE_ROOTS)
             or output.is_relative_to(GENERATED_ROOT / "api")
+            or output.is_relative_to(GENERATED_ROOT / ".api-previous")
+            or output.is_relative_to(GENERATED_ROOT / ".xml-previous")
             or output.is_relative_to(GENERATED_ROOT / "pycache")):
         parser.error("The output root must not overwrite authored sources, generated API pages or Python caches.")
     doxygen = arguments.doxygen or os.environ.get("CHERYL_DOCS_DOXYGEN") or shutil.which(
@@ -272,23 +366,64 @@ def main() -> int:
         if not doxygen:
             parser.error(f"Doxygen executable not found: {arguments.doxygen}")
     doxygen_version = validate_doxygen(Path(doxygen))
-    commit = revision()
     # Every output/profile uses this same lock because Exhale writes source pages.
     with file_lock(GENERATED_ROOT / ".generation.lock"):
-        extract(output, doxygen, commit)
+        commit = revision()
+        output.mkdir(parents=True, exist_ok=True)
+        state_path = output / "build-state.json"
+        state = read_json(state_path)
+        if not isinstance(state, dict) or state.get("format") != CACHE_FORMAT:
+            state = {}
+        extract_key = extraction_fingerprint(output, doxygen, commit)
+        xml_files = file_hashes(output / "xml")
+        reuse_xml = (
+            not arguments.clean
+            and state.get("extraction") == extract_key
+            and bool(xml_files)
+            and state.get("xml") == xml_files
+            and (output / "xml/index.xml").is_file()
+            and not (output / ".xml-previous").exists()
+        )
+        # Sphinx can save doctrees before failing on warnings. Never reuse an
+        # interrupted/failed run as a successful baseline on the next invocation.
+        state_path.unlink(missing_ok=True)
+        if reuse_xml:
+            print("Reusing cached Doxygen XML.", flush=True)
+        else:
+            print("Extracting public headers with Doxygen.", flush=True)
+            refresh_xml(output, doxygen, commit, incremental=not arguments.clean)
+            xml_files = file_hashes(output / "xml")
+        next_state = {"format": CACHE_FORMAT, "extraction": extract_key, "xml": xml_files}
         if arguments.extract_only:
+            atomic_json(state_path, next_state)
             return 0
-        generated = GENERATED_ROOT / "api"
-        if generated.exists():
-            shutil.rmtree(generated)
-        for directory in (output / "html", output / "doctrees"):
-            if directory.exists():
-                shutil.rmtree(directory)
+
+        metadata = provenance(commit, doxygen_version, output)
+        render_key = rendering_fingerprint(output, metadata, xml_files)
+        presentation_key = presentation_fingerprint(metadata)
+        fresh = (
+            arguments.clean
+            or state.get("rendering") != render_key
+            or not (output / "doctrees/environment.pickle").is_file()
+            or not (output / "html/index.html").is_file()
+        )
+        if fresh:
+            print("Generating fresh Sphinx output.", flush=True)
+            for directory in (GENERATED_ROOT / "api", GENERATED_ROOT / ".api-previous",
+                              output / "html", output / "doctrees"):
+                if directory.exists():
+                    shutil.rmtree(directory)
+        else:
+            print("Updating Sphinx output incrementally.", flush=True)
+
         environment = os.environ.copy()
         environment["CHERYL_DOCS_XML_DIR"] = str(output / "xml")
         environment["CHERYL_DOCS_REVISION"] = commit
-        metadata = provenance(commit, doxygen_version, output)
+        environment["CHERYL_DOCS_INCREMENTAL"] = "0" if arguments.clean else "1"
         environment["CHERYL_DOCS_DIRTY"] = "1" if metadata["dirty"] else "0"
+        # CSS/template changes and the dirty-source banner affect every HTML
+        # page, but do not require reparsing unchanged source documents.
+        write_all = ["-a"] if not fresh and state.get("presentation") != presentation_key else []
         subprocess.run(
             [
                 sys.executable,
@@ -301,6 +436,7 @@ def main() -> int:
                 "-W",
                 "--keep-going",
                 "-n",
+                *write_all,
                 "-w",
                 str(output / "sphinx-warnings.log"),
                 "-d",
@@ -320,6 +456,8 @@ def main() -> int:
              "--html", str(output / "html"), "--xml", str(output / "xml")],
             cwd=REPO_ROOT, check=True,
         )
+        next_state.update(rendering=render_key, presentation=presentation_key)
+        atomic_json(state_path, next_state)
     return 0
 
 
