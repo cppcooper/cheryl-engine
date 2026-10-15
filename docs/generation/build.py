@@ -324,12 +324,28 @@ def main() -> int:
     parser.add_argument(
         "--clean", action="store_true", help="Regenerate XML, API pages and HTML without reusing build caches."
     )
+    parser.add_argument(
+        "--force-pinned", action="store_true", help="Select the locked documentation tools instead of compatible installed tools."
+    )
+    parser.add_argument("--cache-dir", type=Path, help="Shared documentation tool cache directory.")
     parser.add_argument("--doxygen", help="Use this Doxygen executable explicitly.")
     arguments = parser.parse_args()
-    if arguments.doxygen is not None and os.environ.get("CHERYL_DOCS_FORCE_PINNED") == "1":
+    force_pinned = arguments.force_pinned or os.environ.get("CHERYL_DOCS_FORCE_PINNED") == "1"
+    if arguments.doxygen is not None and force_pinned:
         parser.error("An explicit Doxygen override cannot be combined with forced pinned tools.")
-    if os.environ.get("CHERYL_DOCS_TOOLS_ACTIVE") != "1":
+    select_tools = os.environ.get("CHERYL_DOCS_TOOLS_ACTIVE") != "1"
+    if arguments.force_pinned and os.environ.get("CHERYL_DOCS_FORCE_PINNED") != "1":
+        select_tools = True
+    if arguments.cache_dir is not None:
+        selected_cache = os.environ.get("CHERYL_DOCS_CACHE_DIR")
+        if selected_cache is None or arguments.cache_dir.expanduser().resolve() != Path(selected_cache).expanduser().resolve():
+            select_tools = True
+    if select_tools:
         overrides = ["--doxygen", arguments.doxygen] if arguments.doxygen is not None else []
+        if force_pinned:
+            overrides.append("--force-pinned")
+        if arguments.cache_dir is not None:
+            overrides.extend(["--cache-dir", str(arguments.cache_dir)])
         return subprocess.call(
             [
                 sys.executable,

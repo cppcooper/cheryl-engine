@@ -91,7 +91,7 @@ the public aliases to inherit headers and dependencies.
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
 | `demo` | — | Example native application. |
 | `first-game` | — | Opt-in maintained game from the [walkthrough](docs/getting-started/first-game.md), with its own assets. |
-| `docs`, `docs-tools` | — | Optional documentation generation and shared tool setup; also available through the docs-only CMake project. |
+| `docs`, `docs-clean`, `docs-tools` | — | Optional incremental generation, full regeneration and shared documentation tool setup; also available through the docs-only CMake project. |
 | `cheryl-sdk` | — | Builds selected installable libraries when `CHERYL_BUILD_SDK=ON`. |
 
 See the [module index](projects/modules/README.md) for each owner's API and the
@@ -145,6 +145,12 @@ alongside the dependencies; optional package images still follow the
 for the steps required to add an owner.
 
 ## Documentation and development
+
+From the checkout root, run `./generate-docs.sh` to update the local manual and API
+reference. Add `--clean` for full regeneration, `--extract-only` for Doxygen XML,
+or `--help` for output and tool-selection options. The
+[generation guide](docs/development/documentation.md) also covers Python and CMake
+entry points and hosted publication.
 
 | Topic                                  | Documentation |
 |----------------------------------------| --- |

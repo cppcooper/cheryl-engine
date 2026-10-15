@@ -8,9 +8,10 @@ or compile the engine.
 The generated artifact is an HTML site rooted at
 `docs/generation/generated/html/index.html`, containing both the manual and API
 reference. For an explicit CMake artifact target, use
-[`docs` in the docs-only project](#cmake-entry-points); for direct generation, use
-the Python command below. Both update documentation incrementally by default;
-`docs-clean` or `build.py --clean` requests full regeneration. Enabling
+[`docs` in the docs-only project](#cmake-entry-points); the repository-root
+[`generate-docs.sh`](../../generate-docs.sh) script provides the direct command.
+Both update documentation incrementally by default; `docs-clean` or
+`./generate-docs.sh --clean` requests full regeneration. Enabling
 `CHERYL_BUILD_DOCS` makes the same targets available in an engine build;
 documentation is never part of the default build.
 
@@ -19,15 +20,16 @@ documentation is never part of the default build.
 Use a Git checkout and Python 3.11 or newer with the standard `venv` module. You
 do not need to install Sphinx, Doxygen or pip manually. The first fallback setup
 needs network access to PyPI and the official Doxygen release assets, and a writable
-user cache. Use `python3` in the commands below if that is your interpreter's name.
-Run the shell blocks from any directory inside the checkout; the subshell locates
-the repository root and preserves your starting directory.
+user cache. The shell entry point requires Bash and selects `python3`, falling
+back to `python`; set `CHERYL_DOCS_PYTHON` to choose another interpreter. Run this
+block from any directory inside the checkout; the subshell preserves your starting
+directory:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/build.py
+  ./generate-docs.sh
 )
 ```
 
@@ -40,6 +42,20 @@ output root outside the authored documentation, or another directory beneath
 The generated tree is ignored by Git. Edit the declaring
 headers or authored guides, then regenerate. Generation is serialized within a
 checkout because all output profiles share the generated API source directory.
+
+The script locates the repository independently of the current directory. You
+can also invoke `/path/to/cheryl-engine/generate-docs.sh` from elsewhere. It
+preserves that working directory, so relative `--output` and `--cache-dir` paths
+resolve from where you invoke it. Use `--help` for the available generation and
+tool-selection options. `--extract-only` generates only Doxygen XML; `--output`
+and `--doxygen` select an output root and explicit Doxygen executable.
+
+The Python entry point remains supported, including on Windows without Bash:
+invoke `python docs/generation/build.py` from the checkout root, or use its
+absolute path from another directory. It accepts the same generation flags and
+selects tools through bootstrap. Tool-only `status` and `setup` operations remain
+available through `docs/generation/bootstrap.py`; the shell script handles
+documentation generation.
 
 The generation scripts, Sphinx configuration, extensions, styles, templates and
 dependency manifests live under `docs/generation/`. Sphinx reads the authored
@@ -105,7 +121,7 @@ To force full extraction and site generation:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/build.py --clean
+  ./generate-docs.sh --clean
 )
 ```
 
@@ -151,23 +167,25 @@ also requires matching binary wheels. The pinned Python lock has wheel metadata
 coverage for CPython 3.11–3.14 on these platforms. Linux fallback has been exercised;
 Windows and macOS native setup still require execution acceptance.
 
-`status` reports tool readiness without installing anything. `setup` prepares tools
-without generating documentation. `exec --force-pinned` selects the locked tools;
-combine it with `--clean` for the full generation used by CI and Read the Docs:
+Bootstrap's `status` reports tool readiness without installing anything; `setup`
+prepares tools without generating documentation. The shell script's
+`--force-pinned` selects the locked tools. Combine it with `--clean` for the full
+generation used by CI and Read the Docs:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --clean
+  ./generate-docs.sh --force-pinned --clean
 )
 ```
 
-Set `CHERYL_DOCS_CACHE_DIR` or pass bootstrap `--cache-dir /path/to/cache` to choose
-another shared cache. To select another interpreter, invoke bootstrap with that
-interpreter. `build.py --doxygen /path/to/doxygen` supplies an explicit executable,
-which must meet the minimum and takes precedence over automatic native tool
-selection. Keep local overrides out of publication configuration.
+Set `CHERYL_DOCS_CACHE_DIR` or pass `./generate-docs.sh --cache-dir /path/to/cache`
+to choose another shared cache. `CHERYL_DOCS_PYTHON=/path/to/python` selects the
+script's interpreter; the Python and CMake entry points also support explicit
+interpreter selection. `./generate-docs.sh --doxygen /path/to/doxygen` supplies an
+executable that must meet the minimum and takes precedence over automatic native
+tool selection. Keep local overrides out of publication configuration.
 
 ## CMake entry points
 

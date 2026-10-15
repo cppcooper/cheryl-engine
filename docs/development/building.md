@@ -15,7 +15,7 @@ source directories. SDK installation collects them into one redistributable
 
 | Artifact | Trigger | Result |
 | --- | --- | --- |
-| HTML manual and C++ reference | Build `docs` in the docs-only project below, or enable `CHERYL_BUILD_DOCS` in an engine build. | `docs/generation/generated/html/index.html` and linked pages. |
+| HTML manual and C++ reference | Run `./generate-docs.sh`, or build `docs` in the docs-only project below; `--clean` / `docs-clean` forces full regeneration. Enable `CHERYL_BUILD_DOCS` to add these targets to an engine build. | `docs/generation/generated/html/index.html` and linked pages. |
 | Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | `libcheryl-engine.a` on Linux or `cheryl-engine.lib` on Windows in the build root, plus required dependency artifacts. |
 | Selected SDK libraries | Enable `CHERYL_BUILD_SDK`, then build `cheryl-sdk`. | Engine, selected modules/support and their owned dependencies in the build tree. |
 | Redistributable SDK directory | Build `cheryl-sdk`, then install the `CherylSDK` component. | One prefix containing `include/`, libraries, CMake package files and licenses. |
@@ -32,8 +32,11 @@ archive. See
 
 ### Build documentation
 
-This uses no C/C++ compiler or engine dependencies. Run from any directory inside
-the checkout; the subshell preserves your starting directory:
+Run `./generate-docs.sh` from the checkout root for direct generation, or add
+`--clean` for full regeneration. The documentation-only CMake project provides
+the same operations through `docs` and `docs-clean`. Neither path needs a C/C++
+compiler or engine dependencies. Run this block from any directory inside the
+checkout; the subshell preserves your starting directory:
 
 ```sh
 (
@@ -47,8 +50,9 @@ the checkout; the subshell preserves your starting directory:
 Open `docs/generation/generated/html/index.html`. Python 3.11 or newer is required;
 the generator selects compatible installed tools or prepares pinned tools in the
 user cache. Initial tool setup may need network access. See
-[documentation generation](documentation.md) for direct Python invocation, tool
-selection and output options. The `docs` target prepares its tools automatically.
+[documentation generation](documentation.md) for shell/Python entry points, tool
+selection and output options. The `docs` and `docs-clean` targets prepare their
+tools automatically.
 
 ## Configuration options
 
@@ -70,7 +74,7 @@ declared only when RmlUi is selected.
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
-| `CHERYL_BUILD_DOCS` | `OFF` | Adds the optional `docs-tools` and `docs` targets; tools are selected when these targets run. |
+| `CHERYL_BUILD_DOCS` | `OFF` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
 | `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |
 | `CHERYL_BUILD_ACCEPTANCE_TESTS` | `OFF` | Includes acceptance runners in the default build; requires tests. |
