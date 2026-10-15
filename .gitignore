@@ -1,2 +1,17 @@
+
 build/
 .idea/
+build/
+builds/
+extern/
+
+.git/
+.idea/
+.obsidian/
+.trash/
+notes/
+
+*.log
+
+/cheryl/
+bb-key
