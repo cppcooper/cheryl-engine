@@ -37,8 +37,12 @@ namespace CE::Text {
 
         FontBytes read_font(const std::filesystem::path& path) {
             std::ifstream input(path, std::ios::binary | std::ios::ate);
-            if (!input)
+            if (!input) {
+                std::error_code error;
+                if (!std::filesystem::exists(path, error) && !error)
+                    return {};
                 throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to open font '" + path.string() + "'");
+            }
             const auto length = static_cast<std::streamoff>(input.tellg());
             if (length <= 0 || static_cast<std::uintmax_t>(length) > static_cast<std::uintmax_t>(std::numeric_limits<FT_Long>::max()) ||
                 static_cast<std::uintmax_t>(length) > std::numeric_limits<std::size_t>::max() ||
@@ -96,9 +100,11 @@ namespace CE::Text {
                 FreeTypeFace first(nullptr, FT_Done_Face);
                 try {
                     bytes = read_font(file);
+                    if (!bytes)
+                        continue;
                     first = open_face(library, {bytes, 0});
                 } catch (const ::CE::Exceptions::runtime_exception&) {
-                    continue; // Installed-font discovery is best effort; explicit files below are strict.
+                    continue; // Installed-font discovery is best effort.
                 }
                 const auto count = first->num_faces;
                 if (count <= 0 || static_cast<unsigned long>(count) > std::numeric_limits<std::uint32_t>::max())
@@ -193,6 +199,8 @@ namespace CE::Text {
             if (const auto* file = std::get_if<FontFile>(&source)) {
                 const auto path = file->path.lexically_normal();
                 const Detail::FontFaceData data{read_font(path), file->face_index};
+                if (!data.bytes)
+                    continue;
                 const auto face = Detail::open_face(library.get(), data);
                 append_face(*result, data, face_info(face.get(), path, file->face_index));
             } else {

@@ -16,7 +16,7 @@ namespace CE::Text {
         struct FontAccess;
     }
 
-    /** An explicit font file and zero-based collection face index. */
+    /** An explicit font file and zero-based collection face index; missing files are skipped during loading. */
     struct FontFile {
         std::filesystem::path path;
         std::uint32_t face_index{};
@@ -45,7 +45,7 @@ namespace CE::Text {
 
     /** Immutable font bytes and ordered scalable Unicode faces. CPU-only loading
      * snapshots application files and optional installed families, then appends an
-     * embedded DejaVu Sans fallback. Missing installed families are skipped; an
+     * embedded DejaVu Sans fallback. Missing files and installed families are skipped; an
      * unreadable/unsupported explicit file fails the whole load. No provider is used.
      */
     class FontCollection {
@@ -55,8 +55,8 @@ namespace CE::Text {
 
     public:
         /** Load an immutable font-byte snapshot without a provider or graphics context.
-         * Invalid selections, explicit file failures and unsupported faces reject
-         * the load; missing installed families are skipped. Allocation failures propagate.
+         * Invalid selections, unreadable files and unsupported faces reject the load;
+         * missing files and installed families are skipped. Allocation failures propagate.
          * @param selection Ordered application fonts and optional system-discovery policy,
          * borrowed only for this call.
          * @return Owned ordered faces ending in the embedded fallback, shared by copies.
