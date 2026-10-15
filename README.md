@@ -6,6 +6,9 @@ retained 2D rendering, input actions/events/text, Unicode layout and CPU asset
 preparation separate from graphics upload. Game state and mechanics belong to the
 application.
 
+[Read the documentation](https://cheryl-engine.readthedocs.io/) for the API reference,
+setup guides and first-game walkthrough.
+
 The default assembly includes Native GLFW, OpenGL, TGUI and the windowed demo.
 RmlUi and miniaudio are independently selectable and default to `OFF`.
 Linux GNU/Clang also selects an optional output-terminal module; its implementation
@@ -13,6 +16,7 @@ is linked automatically only in actual Debug configurations.
 
 ## Contents
 
+- [Online documentation](https://cheryl-engine.readthedocs.io/)
 - [Setup](#setup)
 - [Targets](#targets)
 - [Tests](#tests)
