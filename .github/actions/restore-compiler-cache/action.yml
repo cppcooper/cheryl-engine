@@ -1,0 +1,45 @@
+name: Restore layered compiler caches
+description: Restore main, develop and current compiler layers and configure ccache.
+inputs:
+  prefix:
+    description: Compiler cache format, runner, matrix profile and configuration prefix.
+    required: true
+outputs:
+  current-path:
+    description: Writable layer to save after compilation.
+    value: ${{ steps.metadata.outputs.current-path }}
+  current-key:
+    description: New immutable key for the writable layer.
+    value: ${{ steps.metadata.outputs.current-key }}
+runs:
+  using: composite
+  steps:
+    - name: Describe compiler cache layers
+      id: metadata
+      shell: bash
+      env:
+        CACHE_PREFIX: ${{ inputs.prefix }}
+      run: python .github/ci/compiler_cache.py metadata --prefix "$CACHE_PREFIX"
+    - name: Restore main compiler baseline
+      if: steps.metadata.outputs.restore-main == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.main-path }}
+        key: ${{ steps.metadata.outputs.main-prefix }}${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ${{ steps.metadata.outputs.main-prefix }}
+    - name: Restore develop compiler additions
+      if: steps.metadata.outputs.restore-develop == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.develop-path }}
+        key: ${{ steps.metadata.outputs.develop-prefix }}${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ${{ steps.metadata.outputs.develop-prefix }}
+    - name: Restore current compiler additions
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.current-path }}
+        key: ${{ steps.metadata.outputs.current-key }}
+        restore-keys: ${{ steps.metadata.outputs.current-prefix }}
+    - name: Configure compiler cache layers
+      shell: bash
+      run: python .github/ci/compiler_cache.py configure

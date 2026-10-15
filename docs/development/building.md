@@ -368,19 +368,54 @@ intentionally skipped on PR, `develop` and manual runs.
 ### Actions cache retention
 
 Compiler and dependency caches speed up subsequent CI runs. They are separate
-from the SDK and diagnostic artifacts above. `CCACHE_MAXSIZE=1G` limits each
-job's compiler cache, rather than the repository's total Actions cache storage.
-Compiler, Windows dependency and pip caches use new run-specific keys so their
-contents can grow between builds: GitHub caches are immutable after saving.
+from the SDK and diagnostic artifacts above. Each compiler matrix configuration
+has separate ccache layers:
+
+| Build | Readable layers | Writable layer saved after building |
+| --- | --- | --- |
+| `main` | Main baseline A | A |
+| `develop` | A + develop additions B | B |
+| PR targeting `develop` | A + B + PR additions C | C |
+| PR targeting `main` | A + C | C |
+
+[restore-compiler-cache](../../.github/actions/restore-compiler-cache/action.yml)
+restores the available layers into separate directories.
+[compiler_cache.py](../../.github/ci/compiler_cache.py) configures ccache to check
+the current layer first, followed by its parents, and write compilation results
+only into the current layer. Parent hits stay in the parent layers. Statistics
+live outside the archived data. Before saving, the helper removes compiled
+results already available under the same cache key in a parent. It preserves
+distinct lookup metadata, then trims the writable layer to 1 GiB.
+An unchanged layer is not uploaded again. A layer that becomes empty replaces its
+previous snapshot with a small empty-layer marker, allowing cleanup to remove
+the older duplicated data.
+
+This hierarchy requires `main` to be GitHub's default branch. A PR can read its
+own cache, its base branch's cache and the default branch's cache; a PR targeting
+`main` cannot read `develop`'s cache. Manual feature-branch builds use their own
+writable layer and the main baseline. These are
+[GitHub cache scope restrictions](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache).
+Missing parents cause normal cache misses until their builds populate them.
+The `ccache-v2` keys distinguish this file-backend layout from the previous
+ordinary local-cache archives; the first build of each configuration seeds the
+new format. Windows dependency and pip caches continue using full snapshots.
+All updated snapshots use new run-specific keys because saved GitHub caches are
+immutable.
 
 [cache-maintenance.yml](../../.github/workflows/cache-maintenance.yml) runs after
 the build or documentation workflow finishes and daily at 04:23 UTC. It removes
 caches belonging to closed pull requests, keeps the newest compiler/dependency/pip
 snapshot per branch, configuration and cache version, and trims older caches
 toward an 8 GiB repository budget. Active workflow refs and caches created or
-accessed within the last 15 minutes are protected. The newest known default-branch
-snapshots are evicted last if the budget requires it. The budget is a target:
-concurrent uploads and protected caches can temporarily keep usage above it.
+accessed within the last 15 minutes are protected. After removing redundant
+snapshots, budget eviction removes ordinary old caches first, then the latest
+open-PR compiler layers, then develop layers, and finally main layers. Known
+default-branch tooling caches have the same priority as develop layers. Each
+tier uses oldest access first. Old-format compiler snapshots lose their branch
+priority once the same branch and configuration has a new-format replacement.
+These priorities preserve useful branch caches where space allows; the budget
+can still require evicting a current layer. The budget is a target: concurrent
+uploads and protected caches can temporarily keep usage above it.
 Cleanup deletes cached build inputs, without deleting SDK artifacts or changing
 build results; an evicted cache is regenerated when next needed.
 
