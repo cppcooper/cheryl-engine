@@ -139,7 +139,8 @@ def bundle(source, build, output, native_prefix=None):
             metadata["runtime_directory"] = "dependencies/bin"
         else:
             metadata["system_dependencies"] = ["FreeType", "HarfBuzz", "ICU", "hwloc (when selected)",
-                                               "libdw and its dependencies", "X11/OpenGL (when selected)"]
+                                               "libdw and its dependencies", "X11/OpenGL (when selected)",
+                                               "libudev/libusb/Iconv (when required by packaged HIDAPI)"]
         check_contents(stage)
         text = json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         (stage / "SDK-MANIFEST.json").write_text(text, encoding="utf-8")

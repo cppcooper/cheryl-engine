@@ -29,6 +29,7 @@ cmake_minimum_required(VERSION 3.28)
 project(my_game LANGUAGES CXX)
 set(CHERYL_BUILD_TESTS OFF)
 set(CHERYL_BUILD_DEMO OFF)
+set(CHERYL_BUILD_SDK OFF)
 set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 add_executable(my_game main.cpp)
@@ -39,7 +40,9 @@ Replace `path/to/cheryl-engine` with the checkout path relative to your applicat
 `CMakeLists.txt`, or an absolute path. CMake builds the selected libraries and
 propagates their public include paths and dependency settings. Reload the CMake
 project in the IDE after changing selections so completion uses those settings.
-An SDK install is optional for this workflow. The [SDK build](building.md#development-sdk-builds)
+Keep `CHERYL_BUILD_SDK=OFF` for source application builds; aggregate headers and IDE
+completion do not require SDK export or installation. Enable it only when also
+producing a separate SDK. The [SDK build](building.md#development-sdk-builds)
 collects headers and compiled libraries into a separate prefix for consumers that
 want a prebuilt distribution.
 
@@ -131,6 +134,11 @@ configuration rather than mixing incompatible Debug/Release C++ binaries.
 
 The package config discovers native libraries, checks the producer's ICU major
 version and requires the hwloc 2.5+ (2.x) API when that provider is included.
+For an HID-enabled SDK with an owned hidapi dependency, the selected backend,
+headers and licenses are packaged. Linux consumers also need pkg-config and the
+backend's libudev/libusb development libraries, plus Iconv when selected; the
+package config discovers only the dependencies that backend requires. Packaging
+does not resolve the [Linux controller limitations](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
 Windows config prepends the bundled dependency prefix and exposes
 `Cheryl_RUNTIME_DIRECTORIES` for runtime-path setup; it does not deploy DLLs beside
 an application automatically. OpenGL still needs the host's graphics runtime.

@@ -24,8 +24,10 @@ source directories. SDK installation collects them into one redistributable
 The [SDK commands](#development-sdk-builds) below cover building, installing and
 archiving separately. Source consumers do not need to produce an SDK first; linking
 `Cheryl::Cheryl` supplies the configured assembly's public include directories and
-dependencies for `<cheryl/cheryl.h>`. This interface target links the existing
-libraries; there is no additional combined library archive. See
+dependencies for `<cheryl/cheryl.h>`. Leave `CHERYL_BUILD_SDK=OFF` when building an
+application from source unless you also want to produce an SDK. This interface
+target links the existing libraries; there is no additional combined library
+archive. See
 [consuming Cheryl](consuming-engine.md) for source and prebuilt integration.
 
 ### Build documentation
@@ -85,6 +87,8 @@ declared only when RmlUi is selected.
 
 A supplied GLFW target keeps its host's settings. Null-platform OpenGL still needs
 OpenGL development/link libraries and does not supply the windowed demo.
+Cheryl disables documentation generation for its owned GLFW dependency, so ordinary
+engine configuration does not probe Doxygen for GLFW's manual.
 Standalone modules default their local `CHERYL_BUILD_TESTS` to `OFF`; the
 [module guide](modules.md#standalone-modules) covers their composition.
 
@@ -186,7 +190,7 @@ Package names vary by operating system.
 | OpenGL | OpenGL module | Headers/link libraries; native execution also needs a usable driver/display. |
 | Python and Jinja2 | GLAD generation | Jinja2 must be available in CMake's selected interpreter. |
 | FreeType | TGUI / RmlUi | Each toolkit uses its own font service. |
-| libudev / libusb | Linux hidapi | Requirements depend on selected HID backends. |
+| libudev / libusb / Iconv | Linux hidapi | Requirements depend on selected HID backends; SDK consumers need the selected backend's native libraries too. |
 | Konsole or xterm | Linux output terminal at runtime | A desktop is needed for display; neither is an Engine build dependency. |
 | libdw, libbfd, or libdwarf/libelf | Backward, optional | Improve trace source/symbol resolution. |
 
@@ -237,7 +241,8 @@ CPU vendor is not a CMake selection.
 ## Development SDK builds
 
 SDK export is opt-in and requires Cheryl-owned builds of the pinned source
-dependencies; imported dependency targets are rejected by this packaging path.
+dependencies; imported dependency targets are rejected by this packaging path,
+except an imported hidapi package that remains external to the SDK.
 Ordinary source composition can still reuse supplied targets. Use a clean checkout
 with submodules at their recorded revisions for reproducible archives. The packager
 records the source commit and verifies recursive submodule HEADs against its gitlinks.
@@ -261,8 +266,13 @@ Startup support without building the demo or tests:
 ```
 
 `cheryl-sdk` builds the selected libraries and their dependencies. It does not
-copy headers, install a directory or create an archive. To collect the libraries
-and redistributable headers into a local SDK prefix after that build:
+copy headers, install a directory or create an archive. With native input and HID
+enabled, SDK export includes the owned hidapi backend selected by Gainput, its
+headers and licenses. Linux consumers still need its selected libudev/libusb and
+Iconv dependencies; the package config discovers them. This packaging support does
+not change the [Linux controller limitations](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
+To collect the libraries and redistributable headers into a local SDK prefix after
+that build:
 
 ```sh
 (
