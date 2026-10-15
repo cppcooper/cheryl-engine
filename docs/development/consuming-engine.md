@@ -5,11 +5,52 @@ maintained application covering startup, controls, asset loading, and sprite/tex
 submission. This page describes the source and SDK consumption contracts.
 
 Applications can compose source targets from a checkout or link a prebuilt
-[development SDK](#prebuilt-development-sdks). `projects/engine/` owns the neutral
-`Cheryl::Engine` target, backed by the build
-target `cengine` and archive output name `cheryl-engine`. Applications link selected
-integration targets explicitly; [the module guide](modules.md) describes ownership,
-standalone composition and tests.
+[development SDK](#prebuilt-development-sdks). Link `Cheryl::Cheryl` to use the
+complete configured assembly through one public include:
+
+```cpp
+#include <cheryl/cheryl.h>
+```
+
+That target combines Engine, configured modules and available support libraries.
+Its include directories and feature definitions make the matching headers visible
+to the compiler and the IDE. The same include works with source and SDK targets.
+Individual targets remain available when the application needs a smaller dependency
+set; `Cheryl::Engine` is the neutral library backed by build target `cengine` and
+archive output name `cheryl-engine`.
+
+## Source checkout
+
+A relative path to the Cheryl checkout through `add_subdirectory` is supported.
+For example, with the root's default Native GLFW/OpenGL/TGUI selections:
+
+```cmake
+cmake_minimum_required(VERSION 3.28)
+project(my_game LANGUAGES CXX)
+set(CHERYL_BUILD_TESTS OFF)
+set(CHERYL_BUILD_DEMO OFF)
+set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
+add_subdirectory(path/to/cheryl-engine cheryl)
+add_executable(my_game main.cpp)
+target_link_libraries(my_game PRIVATE Cheryl::Cheryl)
+```
+
+Replace `path/to/cheryl-engine` with the checkout path relative to your application's
+`CMakeLists.txt`, or an absolute path. CMake builds the selected libraries and
+propagates their public include paths and dependency settings. Reload the CMake
+project in the IDE after changing selections so completion uses those settings.
+An SDK install is optional for this workflow. The [SDK build](building.md#development-sdk-builds)
+collects headers and compiled libraries into a separate prefix for consumers that
+want a prebuilt distribution.
+
+The source facade also links the configured Linux Debug terminal and its entry
+attachment when that module is enabled. The example disables it; use the granular
+targets below when you want to choose support and diagnostic behavior individually.
+
+### Granular composition
+
+Link selected targets individually to control the application's dependency set.
+This example selects neutral Engine alone:
 
 ```cmake
 set(CHERYL_BUILD_TESTS OFF)
@@ -32,6 +73,7 @@ For command-line startup, link `Cheryl::OpenGL::Startup`; it supplies the common
 startup target and the native/graphics targets transitively.
 Consumers obtain C++23, includes, logging policy and SDK requirements through
 targets rather than compiling Engine sources or repeating dependency lists.
+The [module guide](modules.md) describes ownership, standalone composition and tests.
 
 ## Prebuilt development SDKs
 
@@ -44,8 +86,8 @@ cmake_minimum_required(VERSION 3.28)
 project(my_game LANGUAGES CXX)
 find_package(Cheryl 4 CONFIG REQUIRED)
 add_executable(my_game main.cpp)
-target_link_libraries(my_game PRIVATE Cheryl::Engine)
-# Add Cheryl::OpenGL::Startup or the selected module/support targets as needed.
+target_link_libraries(my_game PRIVATE Cheryl::Cheryl)
+# Or link Cheryl::Engine and individual module/support targets for a smaller set.
 ```
 
 For a Linux Release SDK, configure the application's directory as follows:
@@ -66,6 +108,10 @@ CMake import/version files and licenses. `.h`/`.hpp` and required `.inl`/`.ipp`/
 files remain included. C/C++ implementation translation units, tests, artwork,
 applications and the demo are excluded. There is no separate demo package.
 Header-based dependencies such as miniaudio still require their public header.
+Its `Cheryl::Cheryl` target selects the components distributed in that SDK;
+`<cheryl/cheryl.h>` exposes their public interfaces. Installed headers share the
+`include/cheryl/` namespace, including the module and support umbrellas described
+[below](#dependencies-and-headers).
 The [build guide](building.md#development-sdk-builds) describes production;
 `SDK-MANIFEST.json` records selected features, source/submodule revisions, OS,
 architecture, compiler/version, configuration, logging profile and native versions.
@@ -184,10 +230,7 @@ With Native GLFW, OpenGL and native input enabled, this opens a window and stops
 when Escape is pressed. It submits no draws yet:
 
 ```cpp
-#include <cheryl/backends/opengl/startup.h>
-#include <cheryl/core/controls/input-interface.h>
-#include <cheryl/core/game-framework/abstract-game.h>
-#include <cheryl/core/game-framework/game-runtime.h>
+#include <cheryl/cheryl.h>
 #include <gainput/gainput.h>
 
 class Game final : public CE::Game::AbstractGame {
@@ -220,7 +263,8 @@ int main(int argc, char** argv) {
 }
 ```
 
-Link this example to `Cheryl::OpenGL::Startup`. Pass `--concurrent` to select the
+Link this example to `Cheryl::Cheryl` with OpenGL selected, or to
+`Cheryl::OpenGL::Startup` for granular composition. Pass `--concurrent` to select the
 simulation worker, or use the common timing/polling options above. Applications
 that construct `CE::Runtime::GameRuntime` directly can still pass `RunMode::Concurrent` as its
 third argument.
@@ -244,6 +288,29 @@ application-owned and needs its producers settled before closure. World storage,
 entities, collision and mechanics belong to the game or its selected modules.
 
 ## Dependencies and headers
+
+All public Cheryl includes share the `cheryl/` prefix in both source and SDK
+consumption. The files remain with their owning projects in the checkout; target
+usage requirements present those public roots together to the compiler and IDE.
+SDK installation collects the roots into one physical `include/cheryl/` tree.
+
+| Include | Public scope |
+| --- | --- |
+| `<cheryl/cheryl.h>` | Engine plus the modules and support selected by linked targets. |
+| `<cheryl/engine.h>` | All neutral Engine public headers. |
+| `<cheryl/modules.h>` | Modules selected by linked targets. |
+| `<cheryl/support.h>` | Support libraries selected by linked targets. |
+| `<cheryl/modules/opengl.h>` and other `cheryl/modules/` umbrellas | One module's public headers. |
+| `cheryl/support/` umbrellas | One support library's public headers. |
+
+The umbrellas list only public Cheryl headers. Some public headers transitively
+use `internals/` helpers, so the SDK retains those files as implementation support;
+applications do not include them directly. Including an umbrella does not enable
+or link a module: CMake target selection supplies its
+dependencies and the feature definitions used by the group umbrellas. Link
+`Cheryl::Cheryl` for all configured components, or link granular public targets
+and use the same umbrellas for that narrower selection. Additional includes such
+as `<gainput/gainput.h>` remain appropriate when directly using dependency APIs.
 
 | Requirement | Target scope and reason |
 | --- | --- |
@@ -333,6 +400,8 @@ independent graph, consumer and runner checks and their coverage limits.
 
 For Linux GNU/Clang consumers, explicitly link `Cheryl::DebugTerminal::Linux` (or
 the root's selected `Cheryl::DebugTerminal`) to choose the process entry attachment.
+The source `Cheryl::Cheryl` facade also includes it when configured; SDK facades
+omit this source-only module and its Debug terminal support.
 Plain Engine and command-line Startup do not select it. `AUTO` includes actual
 Debug only; `ON` permits a non-Debug consumer to display it with `--debug-terminal`.
 See the [module guide](../../projects/modules/platform/debug-terminal-linux/README.md)

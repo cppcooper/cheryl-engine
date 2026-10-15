@@ -78,7 +78,8 @@ platform/graphics selection. OpenGL requires Native GLFW; the demo also requires
 native input. Disable demo and every module option for Engine alone.
 On Linux GNU/Clang this includes `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF`.
 The root automatically links the selected terminal interface to its demo/shared
-test entry point; external applications select it explicitly. Its configuration
+test entry point and the source `Cheryl::Cheryl` facade. External applications can
+also select it individually through `Cheryl::DebugTerminal::Linux`. Its configuration
 policy and standalone probes are in the
 [owner guide](../../projects/modules/platform/debug-terminal-linux/README.md).
 
@@ -88,11 +89,30 @@ Applications link public targets, for example:
 target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::NativeGLFW Cheryl::OpenGL)
 ```
 
-Linking Engine alone supplies neutral contracts, not concrete native/graphics
-implementations. Targets propagate public include roots, C++23, logging policy and
-dependency requirements; raw archive consumers must supply their complete link
-closure. Engine umbrellas remain neutral. Include concrete classes explicitly
-through their owner's headers, such as `cheryl/backends/native-glfw.h`.
+Alternatively, link `Cheryl::Cheryl` to select the complete configured assembly,
+including its available support libraries:
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::Cheryl)
+```
+
+This facade is an interface target over the existing libraries. Its source assembly
+includes configured diagnostic support; the installed SDK omits the source-only
+Linux Debug terminal and its support attachment.
+
+Both source and installed SDK consumers can then include `<cheryl/cheryl.h>` for
+the public API of their linked assembly. `<cheryl/engine.h>` stays neutral;
+`<cheryl/modules.h>` and `<cheryl/support.h>` expose the linked module and support
+groups. Per-owner umbrellas live under `cheryl/modules/` and `cheryl/support/`, so
+these APIs appear under the same `cheryl/` include prefix in IDE completion.
+The [consumer guide](consuming-engine.md#dependencies-and-headers) describes the
+include layout and source-versus-SDK workflows.
+
+Linking Engine alone supplies neutral contracts. Targets propagate public include
+roots, C++23, logging policy, module feature definitions and dependency requirements;
+raw archive consumers must supply their complete link closure. Headers alone do
+not select a backend or add its libraries. Concrete classes remain available through
+granular owner headers, such as `cheryl/backends/native-glfw.h`.
 
 `CHERYL_NATIVE_INPUT=OFF` omits Gainput and the default-input factory overload.
 `CHERYL_NATIVE_NULL_PLATFORM=ON` configures an owned GLFW without X11/Wayland;
@@ -133,13 +153,21 @@ owner's `tests/consumer/` entry point. Prebuilt selected owners are also availab
 through the [installed SDK](consuming-engine.md#prebuilt-development-sdks), which
 uses the same public aliases and its producer's compiled configuration.
 
+Adding a source module beside a supplied SDK leaves the SDK's `Cheryl::Cheryl`
+selection unchanged. Link that source module's target explicitly alongside the
+SDK facade; its public feature definition enables its umbrella in the same include.
+
 ## Add a module
 
 Resolve the boundary criteria above before adding a target. Then:
 
 1. Create an owner under `projects/modules/<role>/<name>/` with `include/`, `src/`
    and `tests/`. Keep public contracts under `include/cheryl/`; implementation
-   helpers and SDK details stay private where the API permits it.
+   helpers and SDK details stay private where the API permits it. Add one
+   owner-local `include/cheryl/modules/<name>.h` umbrella that includes its public
+   contracts and excludes `internals/`. Support libraries use the corresponding
+   `include/cheryl/support/` location. Include the owner umbrella from its selected
+   group in `cheryl/modules.h` or `cheryl/support.h`.
 2. Copy [Module.cmake.in](../../cmake/templates/Module.cmake.in) into the owner's
    `CMakeLists.txt`. Replace `MODULE_NAME`, the uppercase `MODULE_ID` and public
    `MODULE_ALIAS`. `cheryl_prepare_module()` reuses or bootstraps Engine; pass
@@ -147,7 +175,12 @@ Resolve the boundary criteria above before adding a target. Then:
 3. Declare shared metadata using the same ID in the files below. Add SDK discovery
    inside the selected owner, reusing compatible supplied targets before owned
    sources. Publish required header dependencies with `PUBLIC`; keep private
-   implementation dependencies `PRIVATE`. Do not rewrite supplied targets/cache.
+   implementation dependencies `PRIVATE`. Call
+   `cheryl_register_public_component(target FEATURE CHERYL_HAS_<ID>)` from
+   [CherylPublicHeaders.cmake](../../cmake/CherylPublicHeaders.cmake) to register
+   the owner's public feature definition and add its target to `Cheryl::Cheryl`.
+   Use that same feature definition to guard its group umbrella include. Do not
+   rewrite supplied targets/cache.
 4. Declare a root selection with `cheryl_option(name description default_value)`
    in [CherylOptions.cmake](../../cmake/CherylOptions.cmake), and conditionally add
    the owner in the root [CMakeLists.txt](../../CMakeLists.txt). No other module

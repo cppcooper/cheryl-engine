@@ -36,6 +36,11 @@ portable facilities are still provided by `Cheryl::Engine`.
 
 ## Entry points
 
+Include `<cheryl/cheryl.h>` and link `Cheryl::Cheryl` for the complete selected
+assembly. Individual module umbrellas live under `cheryl/modules/`, and support
+umbrellas under `cheryl/support/`. The [consumer guide](../development/consuming-engine.md#dependencies-and-headers)
+explains source-checkout and SDK target selection.
+
 | Task | Entry point | Declaring header |
 | --- | --- | --- |
 | Configure application startup | {cpp:class}`CE::Application::Startup` | [startup.h](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h) |

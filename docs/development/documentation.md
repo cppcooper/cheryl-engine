@@ -5,6 +5,13 @@ selected public headers to XML; Breathe and Exhale turn that XML into Sphinx pag
 and MyST includes the Markdown guides. Documentation generation does not configure
 or compile the engine.
 
+The generated artifact is an HTML site rooted at
+`docs/generation/generated/html/index.html`, containing both the manual and API
+reference. For an explicit CMake artifact target, use
+[`docs` in the docs-only project](#cmake-entry-points); for direct generation, use
+the Python command below. Enabling `CHERYL_BUILD_DOCS` makes the same target
+available in an engine build; documentation is never part of the default build.
+
 ## Generate locally
 
 Use a Git checkout and Python 3.11 or newer with the standard `venv` module. You
@@ -139,9 +146,23 @@ This writes `docs/generation/generated/html/index.html`. The optional `docs-tool
 target prepares tools; the `docs` target also selects them, so running `docs-tools`
 first is unnecessary. Neither target belongs to the default build.
 
-For an engine build, configure `CHERYL_BUILD_DOCS=ON` and explicitly build `docs`.
-The root project still has its usual compiler and dependency requirements; use the
-[building guide](building.md) for that configuration. Both CMake entry points expose
+To add documentation to an existing root engine build, reconfigure that same build
+directory and explicitly select the target:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/debug -G Ninja -DCHERYL_BUILD_DOCS=ON
+  cmake --build build/debug --target docs
+)
+```
+
+Use your existing build directory in place of `build/debug`; its other cached
+settings are retained. The root project still has its usual compiler and dependency
+requirements; use the [building guide](building.md) for an initial engine
+configuration. Building `docs` runs documentation generation without compiling the
+engine. Both CMake entry points expose
 `CHERYL_DOCS_PYTHON`, `CHERYL_DOCS_CACHE_DIR` and `CHERYL_DOCS_FORCE_PINNED`:
 
 ```sh

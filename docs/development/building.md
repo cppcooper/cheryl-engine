@@ -6,6 +6,48 @@ Use CMake 3.28 or newer, Ninja and a C++23 compiler/standard library with
 link Cheryl targets instead of copying include and link settings. Prebuilt consumers
 use the [SDK import targets](consuming-engine.md#prebuilt-development-sdks).
 
+## Choose the artifact
+
+Configuration selects available targets; an explicit build, install or packaging
+command produces the artifact you need. A library build leaves headers in their
+source directories. SDK installation collects them into one redistributable
+`include/` tree alongside the compiled libraries and CMake import targets.
+
+| Artifact | Trigger | Result |
+| --- | --- | --- |
+| HTML manual and C++ reference | Build `docs` in the docs-only project below, or enable `CHERYL_BUILD_DOCS` in an engine build. | `docs/generation/generated/html/index.html` and linked pages. |
+| Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | `libcheryl-engine.a` on Linux or `cheryl-engine.lib` on Windows in the build root, plus required dependency artifacts. |
+| Selected SDK libraries | Enable `CHERYL_BUILD_SDK`, then build `cheryl-sdk`. | Engine, selected modules/support and their owned dependencies in the build tree. |
+| Redistributable SDK directory | Build `cheryl-sdk`, then install the `CherylSDK` component. | One prefix containing `include/`, libraries, CMake package files and licenses. |
+| SDK archive with manifest/checksum | Run `.github/ci/package.py` after building `cheryl-sdk`. | Linux `.tar.gz` or Windows `.zip`, `SDK-MANIFEST.json` and `SHA256SUMS`. |
+
+The [SDK commands](#development-sdk-builds) below cover building, installing and
+archiving separately. Source consumers do not need to produce an SDK first; linking
+`Cheryl::Cheryl` supplies the configured assembly's public include directories and
+dependencies for `<cheryl/cheryl.h>`. This interface target links the existing
+libraries; there is no additional combined library archive. See
+[consuming Cheryl](consuming-engine.md) for source and prebuilt integration.
+
+### Build documentation
+
+This uses no C/C++ compiler or engine dependencies. Run from any directory inside
+the checkout; the subshell preserves your starting directory:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S docs/generation -B docs/generation/generated/cmake -G Ninja
+  cmake --build docs/generation/generated/cmake --target docs
+)
+```
+
+Open `docs/generation/generated/html/index.html`. Python 3.11 or newer is required;
+the generator selects compatible installed tools or prepares pinned tools in the
+user cache. Initial tool setup may need network access. See
+[documentation generation](documentation.md) for direct Python invocation, tool
+selection and output options. The `docs` target prepares its tools automatically.
+
 ## Configuration options
 
 Pass settings as `-DNAME=value`. These defaults apply to a fresh root configuration;
@@ -201,7 +243,7 @@ with submodules at their recorded revisions for reproducible archives. The packa
 records the source commit and verifies recursive submodule HEADs against its gitlinks.
 
 Use a single-configuration Ninja build and select the modules/helpers to distribute.
-On Linux, this produces the default Native GLFW/OpenGL/TGUI libraries and common
+On Linux, this builds the default Native GLFW/OpenGL/TGUI libraries and common
 Startup support without building the demo or tests:
 
 ```sh
@@ -215,16 +257,42 @@ Startup support without building the demo or tests:
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_WAYLAND=OFF
   cmake --build build/sdk --target cheryl-sdk --parallel
+)
+```
+
+`cheryl-sdk` builds the selected libraries and their dependencies. It does not
+copy headers, install a directory or create an archive. To collect the libraries
+and redistributable headers into a local SDK prefix after that build:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --install build/sdk --component CherylSDK --prefix "$PWD/build/sdk-prefix"
+)
+```
+
+The prefix contains `include/`, `lib/`, `lib/cmake/Cheryl/` and `share/licenses/`
+with the configuration above. Windows may also install runtime libraries under
+`bin/`. The install command does not compile missing libraries; run the build step
+first. Consumers use `find_package(Cheryl CONFIG REQUIRED)` with this prefix in
+`CMAKE_PREFIX_PATH`; see [SDK consumption](consuming-engine.md#prebuilt-development-sdks).
+
+For a complete distributable archive, use Python 3.12 or newer:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
   python3 .github/ci/package.py --build-dir build/sdk --output build/packages
 )
 ```
 
-The packaging tools use Python 3.12 or newer. `package.py` installs only the
-`CherylSDK` component, creates a Linux `.tar.gz` or Windows `.zip`, and writes
-`SHA256SUMS` plus `SDK-MANIFEST.json`. A direct
-`cmake --install build/sdk --component CherylSDK --prefix /absolute/sdk/prefix`
-installs the library/header/CMake component; Windows archive production additionally
-copies its native dependency prefix. Use `package.py` for the complete bundle.
+`package.py` performs its own temporary install of only the `CherylSDK` component,
+creates a Linux `.tar.gz` or Windows `.zip` under `build/packages/`, and writes
+`SHA256SUMS` plus `SDK-MANIFEST.json` there. You can skip the direct install command
+when you only need an archive. Windows archive production additionally copies its
+native dependency prefix; use `package.py` for the complete Windows bundle.
 Archive names include the Cheryl version from
 [CherylVersions.cmake](../../cmake/CherylVersions.cmake), platform/distribution,
 architecture, compiler/version, configuration and commit ID.
