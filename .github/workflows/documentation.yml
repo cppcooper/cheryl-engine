@@ -21,7 +21,6 @@ jobs:
       group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     env:
-      CHERYL_DOCS_CACHE_DIR: ${{ runner.temp }}/cheryl-engine/docs-tools
       PYTHONDONTWRITEBYTECODE: '1'
     defaults:
       run:
@@ -35,6 +34,9 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
+      - name: Select documentation cache directory
+        run: |
+          printf 'CHERYL_DOCS_CACHE_DIR=%s/cheryl-engine/docs-tools\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Check documentation tooling
         run: |
           python .github/scripts/test_sync_docs_stable.py

@@ -215,6 +215,14 @@ Actions artifacts are not the website's source and do not need an upload token f
 Read the Docs. Engine compilation belongs to the existing code CI; the documentation
 job does not compile examples.
 
+Direct pushes to other branches do not schedule these validation jobs. Pull
+requests targeting `develop` or `main` still run them. Keep workflow definitions
+valid on every pushed branch: GitHub creates a failed run for each new commit
+containing an invalid workflow, even on a branch excluded by its filters. Changing
+branch filters or job conditions does not suppress those configuration errors;
+correct the invalid YAML or expression. See
+[GitHub's workflow-log guidance](https://docs.github.com/en/actions/how-tos/monitor-workflows/use-workflow-run-logs).
+
 The Read the Docs configuration uses Ubuntu 24.04 and Python 3.13, with one custom
 `build.jobs.build.html` command:
 
