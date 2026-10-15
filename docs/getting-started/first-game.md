@@ -224,9 +224,11 @@ that backend has been destroyed. See the
 
 ## 6. Select a font and prepare the score label
 
-Font selection chooses immutable font bytes and faces. It does not draw text or
-upload a glyph atlas. Select a preferred font name, lay out the message,
-prepare its pixels and geometry, then upload that complete value:
+A `std::string` containing `"Score: 0"` supplies UTF-8 bytes. To display it, Cheryl
+turns those bytes into font shapes, then pixels and triangles that the renderer
+can draw. Pass that string directly to `layout_text(fonts, message, options)`;
+the string literal in this example works the same way. The example prepares and
+uploads the label during `init()`:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp
 :language: cpp
@@ -234,6 +236,20 @@ prepare its pixels and geometry, then upload that complete value:
 :end-before: // [/score]
 :dedent: 8
 ```
+
+Here is the path from that string to the window:
+
+| Stage | What it produces and why |
+| --- | --- |
+| `FontCollection::load(selection)` | Font data describing how letters and symbols look, with fallback fonts for missing characters. |
+| {cpp:func}`CE::Text::layout_text` | **Glyph choices and positions** at the requested font size. A glyph is a font's drawing for a letter, symbol, or group of characters. Choosing those drawings and adjusting their spacing is called **shaping**; for example, letters can join or share a glyph. Layout also handles text direction and line breaks. It produces no pixels. |
+| {cpp:func}`CE::Text::Rendering::prepare` | CPU images of the needed glyphs, packed into image sheets called **atlas pages**, plus triangles that select each glyph's image. This turns the font's outlines into drawable pixels. |
+| {cpp:func}`CE::Text::Rendering::upload` | A {cpp:class}`CE::Text::Rendering::Generation`: the layout paired with graphics resources created through the active resource provider. For this OpenGL application, the images and triangles become GPU textures and buffers. |
+| `resolve_text()` and `pass.add()` in [step 8](#8-submit-the-sprite-and-text-as-a-complete-frame) | Per-frame drawing instructions combining the uploaded label with its material and position in the window. The renderer executes the submitted frame to display it. |
+
+These stages separate reusable text content from its placement in each frame.
+Layout and preparation can run on a CPU worker. Upload must run on the thread
+that owns the graphics context, as `init()` does here.
 
 {cpp:class}`CE::Text::FontCollection` resolves the preferred `DejaVu Sans` family
 from the selected application asset root first, then the system's font directories,
@@ -249,16 +265,14 @@ installed font share the requested name, the asset version wins. See the
 [font-selection example](../assets/text-layout.md#font-selection) for several
 ordered preferences and direct file selection.
 
-{cpp:func}`CE::Text::layout_text` shapes the UTF-8 message using the selected
-font data. {cpp:func}`CE::Text::Rendering::prepare` creates owned CPU atlas pages and
-glyph geometry. {cpp:func}`CE::Text::Rendering::upload` uses the resource provider to
-create a {cpp:class}`CE::Text::Rendering::Generation` generation. Initial upload is safe
-here because `init()` runs on the graphics owner.
-
-The retained text owns the layout and matching resources it needs after the local
-font and preparation variables leave scope. Keep this static label as one
-generation. When gameplay starts changing the score, prepare a replacement and
-adopt it only when upload succeeds. The
+Keep `score_` and reuse it every frame. Moving the label only changes the draw
+style in step 8; it does not require repeating layout, preparation, or upload.
+When the message, selected fonts, or layout font size changes, repeat those three
+stages and replace `score_` only after upload succeeds. Changing the original
+string alone does not update an existing label: the layout retains its own
+results rather than borrowing the string. The uploaded label retains the font
+data and matching resources after local variables leave scope, while the engine's
+backend must remain alive to draw them. The
 [Unicode text guide](../assets/text-layout.md) covers fallback, wrapping, and
 replacement ownership.
 

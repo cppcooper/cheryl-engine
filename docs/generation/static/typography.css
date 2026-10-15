@@ -1,0 +1,53 @@
+/* Enlarge the RTD theme's type by 20%, including its fixed-size text. */
+html {
+    font-size: 120%;
+}
+
+/* Preserve the theme's 16px body and 12px code proportions at the new scale. */
+p {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.rst-content .linenodiv pre,
+.rst-content div[class^="highlight"] pre,
+.rst-content pre.literal-block {
+    font-size: 0.75rem;
+}
+
+.wy-menu-vertical a {
+    line-height: 1.25;
+}
+
+.wy-switch span {
+    font-size: 0.75rem;
+}
+
+/* These theme icons also use fixed pixel sizes rather than inherited sizes. */
+.breadcrumb-item::before {
+    font-size: 0.8125rem;
+}
+
+.rst-content .code-block-caption .headerlink,
+.rst-content .eqno .headerlink,
+.rst-content .toctree-wrapper > p.caption .headerlink,
+.rst-content dl dt .headerlink,
+.rst-content h1 .headerlink,
+.rst-content h2 .headerlink,
+.rst-content h3 .headerlink,
+.rst-content h4 .headerlink,
+.rst-content h5 .headerlink,
+.rst-content h6 .headerlink,
+.rst-content p.caption .headerlink,
+.rst-content p .headerlink,
+.rst-content table > caption .headerlink {
+    font-size: 0.875rem;
+}
+
+.rst-content table > caption .headerlink::after {
+    font-size: 0.75rem;
+}
+
+.wy-nav-top i {
+    font-size: 1.875rem;
+}
