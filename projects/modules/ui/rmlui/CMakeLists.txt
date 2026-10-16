@@ -7,10 +7,9 @@ endif()
 if(TARGET Cheryl::UI::RmlUi)
     return()
 endif()
-cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_configure_module_options()
 cheryl_prepare_module()
-cheryl_option(CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED
-    "Supplied RmlUi Core was verified to include the placeholder hit-testing correction" OFF)
+cheryl_configure_rmlui_options()
 
 if(NOT TARGET RmlUi::Core)
     if(NOT CHERYL_RMLUI_SOURCE AND NOT RmlUi_DIR AND EXISTS "${CHERYL_REPOSITORY_ROOT}/extern/rmlui/CMakeLists.txt")
@@ -27,14 +26,13 @@ if(NOT RMLUI_FONT_ENGINE STREQUAL "freetype")
     message(FATAL_ERROR "Cheryl UI requires RMLUI_FONT_ENGINE=freetype; a supplied Core target must declare this configuration")
 endif()
 # Owned source marks its Core target after applying the correction. Supplied
-# libraries require that provider declaration or explicit consumer verification.
+# libraries require that provider declaration.
 get_target_property(placeholder_fixed RmlUi::Core CHERYL_RMLUI_PLACEHOLDER_FIX)
-if(NOT placeholder_fixed AND NOT CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED)
+if(NOT placeholder_fixed)
     message(FATAL_ERROR
         "RmlUi 6.3 Core must include the placeholder hit-testing correction. "
-        "Use CHERYL_RMLUI_SOURCE for a Cheryl-patched source build, supply a Core target with "
-        "CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE, or set CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=ON "
-        "only after verifying the supplied library includes the correction.")
+        "Use CHERYL_RMLUI_SOURCE for a Cheryl-patched source build or supply a Core target with "
+        "CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE after verifying the library includes the correction.")
 endif()
 
 cheryl_shared_dependency(RmlUi::Core)

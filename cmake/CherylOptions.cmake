@@ -11,6 +11,11 @@ function(cheryl_option name description default_value)
         return()
     endif()
     set_property(GLOBAL APPEND PROPERTY CHERYL_DECLARED_OPTIONS "${name}")
+    get_property(summary_scheduled GLOBAL PROPERTY CHERYL_OPTIONS_SUMMARY_SCHEDULED)
+    if(NOT summary_scheduled)
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL cheryl_print_options)
+        set_property(GLOBAL PROPERTY CHERYL_OPTIONS_SUMMARY_SCHEDULED TRUE)
+    endif()
     # Preserve the entry point's value through scoped Engine bootstrapping.
     set_property(GLOBAL PROPERTY "CHERYL_OPTION_${name}_VALUE" "${${name}}")
     set_property(GLOBAL PROPERTY "CHERYL_OPTION_${name}_REQUIRES" "${configured_REQUIRES}")
@@ -72,9 +77,6 @@ function(cheryl_print_options)
     message(STATUS "----------------------------------")
 endfunction()
 
-# Include options declared by modules and standalone entry points in one summary.
-cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL cheryl_print_options)
-
 function(cheryl_check_option_requirements)
     get_property(declared_options GLOBAL PROPERTY CHERYL_DECLARED_OPTIONS)
     foreach(name IN LISTS declared_options)
@@ -102,6 +104,64 @@ function(cheryl_check_option_requirements)
                     "Enable them or set ${name}=OFF.")
         endif()
     endforeach()
+endfunction()
+
+# Entry points declare only the groups they consume; all defaults live here.
+function(cheryl_configure_module_options)
+    cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+endfunction()
+
+function(cheryl_configure_native_options)
+    cheryl_option(CHERYL_NATIVE_INPUT "Include the Gainput-backed native input adapter" ON)
+    cheryl_option(CHERYL_NATIVE_NULL_PLATFORM "Use GLFW's null platform without X11 or Wayland" OFF)
+endfunction()
+
+function(cheryl_configure_opengl_options)
+    set(CHERYL_NATIVE_GLFW_SOURCE "" CACHE PATH "Native GLFW module source directory when its target is not supplied")
+endfunction()
+
+function(cheryl_configure_tgui_options)
+    set(CHERYL_TGUI_SOURCE "" CACHE PATH "TGUI 1.13.0 source directory; empty selects the pinned source or a supplied package")
+endfunction()
+
+function(cheryl_configure_rmlui_options)
+    set(CHERYL_RMLUI_SOURCE "" CACHE PATH "RmlUi 6.3 source directory; empty selects the pinned source or a supplied package")
+endfunction()
+
+function(cheryl_configure_rmlui_test_options)
+    set(CHERYL_RMLUI_TEST_FONT "" CACHE FILEPATH "RmlUi check font fixture; empty discovers an available TTF/OTF file")
+endfunction()
+
+function(cheryl_configure_miniaudio_options)
+    set(CHERYL_MINIAUDIO_SOURCE "" CACHE PATH "Miniaudio 0.11.25 source directory, overriding the pinned submodule")
+endfunction()
+
+function(cheryl_configure_debug_terminal_options)
+    set(CHERYL_DEBUG_TERMINAL_EMULATOR "auto" CACHE STRING "Linux native terminal emulator: auto, konsole, or xterm")
+    set_property(CACHE CHERYL_DEBUG_TERMINAL_EMULATOR PROPERTY STRINGS auto konsole xterm)
+    if(NOT CHERYL_DEBUG_TERMINAL_EMULATOR MATCHES "^(auto|konsole|xterm)$")
+        message(FATAL_ERROR "Unknown CHERYL_DEBUG_TERMINAL_EMULATOR: ${CHERYL_DEBUG_TERMINAL_EMULATOR}")
+    endif()
+endfunction()
+
+function(cheryl_configure_logging_options)
+    set(CHERYL_LOG_PROFILE "auto" CACHE STRING "Logging defaults: auto, developer, support, or release")
+    set_property(CACHE CHERYL_LOG_PROFILE PROPERTY STRINGS auto developer support release)
+    set(CHERYL_LOG_COMPILED_MASK "" CACHE STRING "Optional severity-bit override (0x3f trace, 0x1f debug, 0x0f info, 0x07 warn, 0 off)")
+endfunction()
+
+function(cheryl_configure_hwloc_options)
+    set(CHERYL_HWLOC_TARGET "" CACHE STRING "Supplied hwloc 2.5+ (2.x) SDK target")
+endfunction()
+
+function(cheryl_configure_documentation_options interpreter)
+    set(CHERYL_DOCS_PYTHON "${interpreter}" CACHE FILEPATH "Python interpreter for documentation tool selection")
+    set(CHERYL_DOCS_CACHE_DIR "" CACHE PATH "Shared documentation tool cache; empty uses the user cache")
+    cheryl_option(CHERYL_DOCS_FORCE_PINNED "Use locked documentation tools instead of compatible installed tools" OFF)
+endfunction()
+
+function(cheryl_configure_first_game_options)
+    set(CHERYL_FIRST_GAME_ENGINE_SOURCE "" CACHE PATH "Cheryl checkout for source consumption; empty uses an installed SDK")
 endfunction()
 
 function(cheryl_configure_library_options)

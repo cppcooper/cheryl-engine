@@ -57,9 +57,11 @@ tools automatically.
 ## Configuration options
 
 Pass settings as `-DNAME=value`. These defaults apply to a fresh root configuration;
-existing build directories and IDE profiles retain their cache. Native options
-are declared only when Native GLFW is selected; the RmlUi verification option is
-declared only when RmlUi is selected.
+existing build directories and IDE profiles retain their cache. All Cheryl-owned
+option definitions and defaults live in
+[`cmake/CherylOptions.cmake`](../../cmake/CherylOptions.cmake). Component and
+standalone entry points select which options to declare; optional backend and
+dependency-source settings may appear only when their component is selected.
 
 | Option | Default | Effect |
 | --- | --- | --- |
@@ -69,7 +71,6 @@ declared only when RmlUi is selected.
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
 | `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects RmlUi independently; can coexist with TGUI. |
-| `CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED` | `OFF` | Attests that a supplied RmlUi library includes the placeholder hit-testing correction. Set only after verification; Cheryl-owned source builds declare their correction automatically. |
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
@@ -241,7 +242,7 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 | Python cannot import `jinja2` | Install it in the selected interpreter or set `Python_EXECUTABLE`. |
 | GLFW cannot find Wayland tools/libraries | Install the requirements or set `GLFW_BUILD_WAYLAND=OFF`. |
 | CMake 4 rejects an old dependency policy | Set `CMAKE_POLICY_VERSION_MINIMUM=3.5`. |
-| Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or provide verified target/configuration metadata according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
+| Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or declare the correction on the verified dependency's Core target according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
 | Standard C++ headers cannot find `CE::Math.h` or `stdlib.h` | Inspect stale compiler discovery before editing includes; see [recovery](consuming-engine.md#standard-headers-in-an-existing-build). |
 
 Successful configuration/build does not establish native platform coverage. The

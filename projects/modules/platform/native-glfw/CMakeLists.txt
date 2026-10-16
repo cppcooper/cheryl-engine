@@ -7,11 +7,10 @@ endif()
 if(TARGET Cheryl::NativeGLFW)
     return()
 endif()
-cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_configure_module_options()
 cheryl_prepare_module()
 
-cheryl_option(CHERYL_NATIVE_INPUT "Include the Gainput-backed native input adapter" ON)
-cheryl_option(CHERYL_NATIVE_NULL_PLATFORM "Use GLFW's null platform without X11 or Wayland" OFF)
+cheryl_configure_native_options()
 
 if(NOT TARGET glfw)
     block(SCOPE_FOR VARIABLES)

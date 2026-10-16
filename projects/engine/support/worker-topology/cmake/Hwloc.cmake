@@ -1,5 +1,5 @@
 # This file is included only for an explicitly selected provider. Never fetch an SDK.
-set(CHERYL_HWLOC_TARGET "" CACHE STRING "Supplied hwloc 2.5+ (2.x) SDK target")
+cheryl_configure_hwloc_options()
 set(cheryl_hwloc_target "${CHERYL_HWLOC_TARGET}")
 if(cheryl_hwloc_target AND NOT TARGET "${cheryl_hwloc_target}")
     message(FATAL_ERROR "CHERYL_HWLOC_TARGET must name an existing target: ${cheryl_hwloc_target}")

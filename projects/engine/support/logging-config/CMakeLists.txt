@@ -1,7 +1,5 @@
 # Public headers contain logging templates; every consumer must use the same policy.
-set(CHERYL_LOG_PROFILE "auto" CACHE STRING "Logging defaults: auto, developer, support, or release")
-set_property(CACHE CHERYL_LOG_PROFILE PROPERTY STRINGS auto developer support release)
-set(CHERYL_LOG_COMPILED_MASK "" CACHE STRING "Optional severity-bit override (0x3f trace, 0x1f debug, 0x0f info, 0x07 warn, 0 off)")
+cheryl_configure_logging_options()
 add_library(${TARGET_LIB_ENGINE_S_LOGGING_CONFIG} INTERFACE)
 if(CHERYL_LOG_PROFILE STREQUAL "auto")
     target_compile_definitions(${TARGET_LIB_ENGINE_S_LOGGING_CONFIG} INTERFACE

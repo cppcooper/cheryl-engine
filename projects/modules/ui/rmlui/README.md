@@ -58,12 +58,27 @@ An already guarded source is reused; an unrecognized entry/source layout rejects
 configuration. The helper then marks the concrete Core target with
 `CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE`.
 
-Existing targets and installed packages bypass that helper. They must supply the
-same target property or the consumer must set
-`CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED=ON` after verifying the actual library
-contains the correction. Neither declaration patches a supplied binary or proves
-its runtime behavior. Missing declarations reject configuration with the source,
-property and verification alternatives. Supplied dependency targets remain unchanged.
+Existing targets and installed packages bypass that helper. Their concrete Core
+target must declare the same property after the provider or consumer verifies
+that the actual library contains the correction. The declaration does not patch
+a supplied binary or prove its runtime behavior. Missing declarations reject
+configuration; use Cheryl-owned source or a corrected dependency with the property.
+
+For a verified, corrected external package, place this after finding the package
+and before adding Cheryl. Resolve an alias before setting the property:
+
+```cmake
+find_package(RmlUi 6.3 EXACT CONFIG REQUIRED)
+get_target_property(rmlui_core_target RmlUi::Core ALIASED_TARGET)
+if(NOT rmlui_core_target)
+    set(rmlui_core_target RmlUi::Core)
+endif()
+# Declare an existing correction; this does not modify the supplied library.
+set_property(TARGET "${rmlui_core_target}" PROPERTY CHERYL_RMLUI_PLACEHOLDER_FIX TRUE)
+```
+
+The Cheryl SDK preserves this property on its exported Core dependency, so SDK
+consumers need no manual declaration.
 
 The [placeholder investigation](../../../../docs/external-work/rmlui-placeholder-issue.md)
 preserves the source diagnosis, unmodified-upstream reproduction requirements and

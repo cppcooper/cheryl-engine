@@ -293,6 +293,7 @@ configure_package_config_file("${CMAKE_CURRENT_LIST_DIR}/templates/CherylConfig.
 write_basic_package_version_file("${CHERYL_BUILD_ROOT}/CherylConfigVersion.cmake"
     VERSION ${VERSION_PROJECT_CHERYL} COMPATIBILITY SameMajorVersion)
 install(FILES "${CHERYL_BUILD_ROOT}/CherylConfig.cmake" "${CHERYL_BUILD_ROOT}/CherylConfigVersion.cmake"
+    "${CMAKE_CURRENT_LIST_DIR}/CherylOptions.cmake"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Cheryl COMPONENT CherylSDK)
 set(sdk_msvc_runtime "")
 if(MSVC)
