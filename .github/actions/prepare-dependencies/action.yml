@@ -7,6 +7,12 @@ inputs:
   cache-job:
     description: Unique matrix job name for Windows dependency contributions.
     default: worker
+  windows-vcpkg:
+    description: Build dependencies once, or consume a prepared installation.
+    default: build
+  prepared-artifact:
+    description: Installed vcpkg artifact from this run's Windows preparation job.
+    default: ''
 outputs:
   dependency-cache-writer:
     description: Whether this run may publish its main or develop build dependency cache.
@@ -14,6 +20,17 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Validate dependency preparation mode
+      shell: bash
+      env:
+        VCPKG_MODE: ${{ inputs.windows-vcpkg }}
+        PREPARED_ARTIFACT: ${{ inputs.prepared-artifact }}
+      run: |
+        case "$VCPKG_MODE" in
+          build) ;;
+          consume) test -n "$PREPARED_ARTIFACT" ;;
+          *) echo 'Unknown Windows vcpkg preparation mode' >&2; exit 1 ;;
+        esac
     - name: Describe dependency caches
       id: metadata
       shell: bash
@@ -88,19 +105,19 @@ runs:
         path: ${{ steps.metadata.outputs.pip-path }}
         key: ${{ steps.pip.outputs.cache-primary-key }}
     - name: Describe shared Windows dependency pool
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
       id: vcpkg
       shell: bash
       run: python .github/ci/vcpkg_cache.py describe
     - name: Restore shared Windows dependency pool
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.vcpkg.outputs.cache-path }}
         key: ${{ steps.vcpkg.outputs.cache-key }}
         restore-keys: ${{ steps.vcpkg.outputs.cache-prefix }}
     - name: Install Windows dependencies
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'build'
       id: vcpkg-install
       shell: pwsh
       env:
@@ -113,12 +130,12 @@ runs:
         python .github/ci/dependencies.py windows-install --profile $env:DEPENDENCY_PROFILE
         if ($LASTEXITCODE) { exit $LASTEXITCODE }
     - name: Pack prepared Windows dependencies
-      if: ${{ !cancelled() && runner.os == 'Windows' && steps.vcpkg-install.outcome == 'success' }}
+      if: ${{ !cancelled() && runner.os == 'Windows' && inputs.windows-vcpkg == 'build' && steps.vcpkg-install.outcome == 'success' }}
       id: vcpkg-pack
       shell: bash
       run: python .github/ci/vcpkg_cache.py pack --installed "$CHERYL_CI_VCPKG_INSTALLED_DIR"
     - name: Retain prepared Windows dependencies
-      if: ${{ !cancelled() && runner.os == 'Windows' && steps.vcpkg-pack.outputs.has-content == 'true' }}
+      if: ${{ !cancelled() && runner.os == 'Windows' && inputs.windows-vcpkg == 'build' && steps.vcpkg-pack.outputs.has-content == 'true' }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: vcpkg-cache-${{ runner.arch }}-${{ inputs.cache-job }}-${{ github.run_attempt }}
@@ -127,6 +144,18 @@ runs:
         compression-level: 0
         overwrite: true
         retention-days: 1
+    - name: Download shared Windows installation
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'consume'
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: ${{ inputs.prepared-artifact }}
+        path: ${{ steps.metadata.outputs.vcpkg-installed-dir }}
+    - name: Verify shared Windows installation
+      if: runner.os == 'Windows' && inputs.windows-vcpkg == 'consume'
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: python .github/ci/dependencies.py windows-verify --profile "$DEPENDENCY_PROFILE"
     - name: Update Linux package indexes
       if: runner.os == 'Linux'
       shell: bash

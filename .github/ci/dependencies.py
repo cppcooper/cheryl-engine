@@ -12,6 +12,14 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
+WINDOWS_TRIPLET = "x64-windows"
+PREPARED_STATE = ".cheryl-prepared-vcpkg.json"
+
+
+def windows_features(profile):
+    if profile not in {"headless", "modules"}:
+        raise ValueError("Windows dependencies require the headless or modules profile")
+    return ["hwloc", "native"] if profile == "modules" else ["hwloc"]
 
 
 def dependency_scope(*, environment=None):
@@ -209,16 +217,98 @@ def windows_tools():
 
 
 def windows_install(profile):
-    if profile not in {"headless", "modules"}:
-        raise ValueError("Windows dependency installation requires the headless or modules profile")
+    features = windows_features(profile)
     vcpkg = Path(os.environ["CHERYL_CI_VCPKG_ROOT"]).resolve() / "vcpkg.exe"
-    command = [str(vcpkg), "install", "--triplet=x64-windows", "--host-triplet=x64-windows",
+    command = [str(vcpkg), "install", f"--triplet={WINDOWS_TRIPLET}", f"--host-triplet={WINDOWS_TRIPLET}",
                f"--x-manifest-root={(ROOT / '.github/ci').as_posix()}",
                f"--x-install-root={(ROOT / 'build/ci/vcpkg_installed').as_posix()}",
-               "--x-no-default-features", "--x-feature=hwloc"]
-    if profile == "modules":
-        command.append("--x-feature=native")
+               "--x-no-default-features", *[f"--x-feature={feature}" for feature in features]]
     run(command, cwd=ROOT)
+
+
+def prepared_identity(features):
+    manifest_bytes = (ROOT / ".github/ci/vcpkg.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
+    baseline = manifest.get("builtin-baseline")
+    if not isinstance(baseline, str) or len(baseline) != 40 or any(
+            character not in "0123456789abcdef" for character in baseline):
+        raise ValueError("Prepared Windows dependencies require a pinned vcpkg baseline")
+    revision = os.environ.get("GITHUB_SHA", "")
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    if len(revision) not in {40, 64} or any(character not in "0123456789abcdef" for character in revision):
+        raise ValueError("Prepared Windows dependencies require a source revision")
+    if not run_id.isascii() or not run_id.isdecimal() or int(run_id) <= 0 or str(int(run_id)) != run_id:
+        raise ValueError("Prepared Windows dependencies require a positive source run ID")
+    return {"schema": 1, "manifest_sha256": digest(manifest_bytes), "baseline": baseline,
+            "target_triplet": WINDOWS_TRIPLET, "host_triplet": WINDOWS_TRIPLET,
+            "features": features, "source_revision": revision, "source_run_id": run_id}
+
+
+def installed_status(status):
+    installed = set()
+    fields = {}
+    for line in [*status.decode("utf-8").splitlines(), ""]:
+        if not line.strip():
+            if fields:
+                package = fields.get("Package")
+                parts = fields.get("Status", "").split()
+                if not package or not fields.get("Architecture") or len(parts) != 3 or parts[0] not in {
+                        "install", "hold", "deinstall", "purge"} or parts[1] != "ok" or parts[2] not in {
+                        "installed", "not-installed", "half-installed"}:
+                    raise ValueError(f"Malformed vcpkg installed package status: {package or '<unknown>'}")
+            if fields.get("Architecture") == WINDOWS_TRIPLET:
+                if parts[2] == "half-installed":
+                    raise ValueError(f"Prepared Windows dependencies contain an incomplete installed package: {package or '<unknown>'}")
+                if parts[2] == "installed" and (not fields.get("Feature") or fields.get("Feature") == "core"):
+                    installed.add(package)
+            fields = {}
+        elif not line[0].isspace():
+            name, separator, value = line.partition(":")
+            if not separator or name in fields:
+                raise ValueError("Malformed vcpkg installed package status")
+            fields[name] = value.strip()
+    return installed
+
+
+def check_prepared_tree(installed):
+    # vcpkg resolves platform and host dependencies; this checks the prepared installation for transfer.
+    status = (installed / "vcpkg/status").read_bytes()
+    packages = installed_status(status)
+    if not packages:
+        raise ValueError(f"Prepared Windows dependencies contain no installed core packages for {WINDOWS_TRIPLET}")
+    for directory in ("include", "lib", "bin", "share", "debug/lib", "debug/bin"):
+        path = installed / WINDOWS_TRIPLET / directory
+        if not path.is_dir() or not any(file.is_file() for file in path.rglob("*")):
+            raise ValueError(f"Prepared Windows dependencies are missing files in {WINDOWS_TRIPLET}/{directory}")
+    return digest(status)
+
+
+def windows_stamp(profile):
+    features = windows_features(profile)
+    identity = prepared_identity(features)
+    installed = ROOT / "build/ci/vcpkg_installed"
+    identity["status_sha256"] = check_prepared_tree(installed)
+    (installed / PREPARED_STATE).write_text(json.dumps(identity, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"Prepared Windows dependencies: {WINDOWS_TRIPLET}; features: {', '.join(features)}", flush=True)
+
+
+def windows_verify(profile):
+    required_features = windows_features(profile)
+    installed = ROOT / "build/ci/vcpkg_installed"
+    state = json.loads((installed / PREPARED_STATE).read_text(encoding="utf-8"))
+    fields = {"schema", "manifest_sha256", "baseline", "target_triplet", "host_triplet", "features", "status_sha256",
+              "source_revision", "source_run_id"}
+    if not isinstance(state, dict) or set(state) != fields or type(state["schema"]) is not int or state["schema"] != 1:
+        raise ValueError("Unsupported prepared Windows dependency metadata")
+    features = state["features"]
+    if features not in (windows_features("headless"), windows_features("modules")) or not set(required_features).issubset(features):
+        raise ValueError("Prepared Windows dependencies do not provide the requested features")
+    identity = prepared_identity(features)
+    if any(state[name] != value for name, value in identity.items()):
+        raise ValueError("Prepared Windows dependencies do not match this manifest or triplet, source revision, or workflow run")
+    if state["status_sha256"] != check_prepared_tree(installed):
+        raise ValueError("Prepared Windows dependency status changed during transfer")
+    print(f"Verified prepared Windows dependencies for {profile}; no installation required.", flush=True)
 
 
 def apt_command(profile):
@@ -261,7 +351,7 @@ def cache_state(name, snapshot):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("metadata", "environment-prefix", "submodules", "windows-tools", "windows-install", "apt-plan", "apt-install", "cache-state"))
+    parser.add_argument("operation", choices=("metadata", "environment-prefix", "submodules", "windows-tools", "windows-install", "windows-stamp", "windows-verify", "apt-plan", "apt-install", "cache-state"))
     parser.add_argument("--profile", choices=("headless", "modules", "docs"), default="headless")
     parser.add_argument("--cache", choices=("vcpkg", "pip"), default="vcpkg")
     parser.add_argument("--snapshot", action="store_true")
@@ -278,6 +368,10 @@ def main():
         windows_tools()
     elif args.operation == "windows-install":
         windows_install(args.profile)
+    elif args.operation == "windows-stamp":
+        windows_stamp(args.profile)
+    elif args.operation == "windows-verify":
+        windows_verify(args.profile)
     elif args.operation == "apt-plan":
         apt_plan(args.profile)
     elif args.operation == "apt-install":
