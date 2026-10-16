@@ -21,6 +21,11 @@ ENTRY_KEY = "ab/" + "c" * 38
 OTHER_KEY = "ab/" + "d" * 38
 THIRD_KEY = "de/" + "a" * 38
 MANIFEST_KEY = "ef/" + "1" * 38
+# Native paths emitted by ccache 4.9.1 during the isolated integration probe.
+LEGACY_ENTRY_KEY = "b2/896vhhiqfc3do1apbsusjkkq4kaku90"
+LEGACY_MANIFEST_KEY = "78/11h1krhvauruo5qojg5tqov17loqsk2"
+# The same 20-byte result digest encoded by ccache 4.14's file backend.
+MODERN_EQUIVALENT_KEY = "b2/8937e31969ec1b7015657cf7274a6894553c90"
 RESULT_HEADER = b"\xcc\xac\x01\x00"
 MANIFEST_HEADER = b"\xcc\xac\x01\x01"
 ENVIRONMENT = {
@@ -198,11 +203,13 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(parent.read_bytes(), b"old refs")
 
     def test_result_identity(self):
-        current = write(self.current, ENTRY_KEY, RESULT_HEADER + b"current serialization metadata")
-        parent = write(self.parent, ENTRY_KEY, RESULT_HEADER + b"parent metadata")
-        self.assertEqual(compiler.deduplicate(self.current, [self.parent]), 1)
-        self.assertFalse(current.exists())
-        self.assertEqual(parent.read_bytes(), RESULT_HEADER + b"parent metadata")
+        for key in (ENTRY_KEY, LEGACY_ENTRY_KEY):
+            with self.subTest(key=key):
+                current = write(self.current, key, RESULT_HEADER + b"current serialization metadata")
+                parent = write(self.parent, key, RESULT_HEADER + b"parent metadata")
+                self.assertEqual(compiler.deduplicate(self.current, [self.parent]), 1)
+                self.assertFalse(current.exists())
+                self.assertEqual(parent.read_bytes(), RESULT_HEADER + b"parent metadata")
 
     def test_unknown_format(self):
         for index, (name, current_bytes, parent_bytes) in enumerate((
@@ -353,6 +360,56 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.publish()["changed"], "true")
         self.assertEqual((self.current / ENTRY_KEY).stat().st_mtime_ns, original_mtime)
 
+    def test_native_formats(self):
+        self.configure()
+        contents = {
+            ENTRY_KEY: RESULT_HEADER + b"modern result",
+            LEGACY_ENTRY_KEY: RESULT_HEADER + b"legacy result",
+            LEGACY_MANIFEST_KEY: MANIFEST_HEADER + b"legacy refs",
+        }
+        for name, value in contents.items():
+            write(self.delta, name, value, mtime=1_600_000_000.125)
+        self.assertEqual(self.pack()["has-content"], "true")
+        with tarfile.open(self.output, "r:") as packed:
+            self.assertEqual(set(packed.getnames()), set(contents))
+        target = self.deltas / "worker" / "delta.tar"
+        target.parent.mkdir(parents=True)
+        self.output.rename(target)
+        self.assertEqual(self.publish()["archives"], "1")
+        self.assertEqual({name: path.read_bytes() for name, path in compiler._entries(self.current).items()}, contents)
+
+    def test_native_names(self):
+        invalid = (
+            "ab/" + "cd" + "w" * 29,
+            "ab/" + "gg" + "0" * 29,
+            "ab/" + "cd" + "0" * 28,
+            "ab/" + "cd" + "0" * 30,
+            "AB/" + "0" * 38,
+            "ab/CACHEDIR.TAG",
+            LEGACY_ENTRY_KEY + ".tmp",
+        )
+        for index, name in enumerate(invalid):
+            with self.subTest(name=name):
+                directory = self.root / str(index)
+                write(directory, ENTRY_KEY, RESULT_HEADER + b"valid modern result")
+                write(directory, LEGACY_ENTRY_KEY, RESULT_HEADER + b"valid legacy result")
+                write(directory, name, b"unexpected file")
+                before = snapshot(directory)
+                with self.assertRaises(ValueError) as rejected:
+                    compiler._native_entries(directory)
+                self.assertIn(repr(name), str(rejected.exception))
+                self.assertEqual(snapshot(directory), before)
+
+    def test_distinct_encodings(self):
+        self.configure()
+        write(self.current, LEGACY_ENTRY_KEY, RESULT_HEADER + b"same digest", mtime=10)
+        before = snapshot(self.current)
+        write(self.delta, MODERN_EQUIVALENT_KEY, RESULT_HEADER + b"same digest", mtime=20)
+        self.assertEqual(self.pack()["removed"], "0")
+        with tarfile.open(self.output, "r:") as packed:
+            self.assertEqual(packed.getnames(), [MODERN_EQUIVALENT_KEY])
+        self.assertEqual(snapshot(self.current), before)
+
     def test_pack_shadow(self):
         self.configure()
         write(self.current, MANIFEST_KEY, MANIFEST_HEADER + b"current refs", mtime=10)
@@ -485,7 +542,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual((self.current / ENTRY_KEY).read_bytes(), RESULT_HEADER + b"new result")
 
     def test_trim(self):
-        write(self.current, ENTRY_KEY, b"12345", mtime=10)
+        write(self.current, LEGACY_ENTRY_KEY, b"12345", mtime=10)
         write(self.current, OTHER_KEY, b"123456", mtime=20)
         write(self.current, THIRD_KEY, b"1234567", mtime=30)
         self.assertEqual(compiler.trim(self.current, limit=13), 1)
@@ -528,21 +585,21 @@ class WorkflowTests(unittest.TestCase):
     def test_legacy_union(self):
         write(self.develop, THIRD_KEY, RESULT_HEADER + b"develop result", mtime=5)
         parent = snapshot(self.develop)
-        write(self.current, ENTRY_KEY, RESULT_HEADER + b"first profile", mtime=10)
-        write(self.current, MANIFEST_KEY, MANIFEST_HEADER + b"first refs", mtime=10)
+        write(self.current, LEGACY_ENTRY_KEY, RESULT_HEADER + b"first profile", mtime=10)
+        write(self.current, LEGACY_MANIFEST_KEY, MANIFEST_HEADER + b"first refs", mtime=10)
         first = compiler.import_legacy(environment=self.environment, event=self.event, root=self.root)
         self.assertEqual(first["imported"], "2")
         self.assertEqual(compiler._entries(self.current), {})
         write(self.current, OTHER_KEY, RESULT_HEADER + b"second profile", mtime=20)
-        write(self.current, MANIFEST_KEY, MANIFEST_HEADER + b"second refs", mtime=20)
+        write(self.current, LEGACY_MANIFEST_KEY, MANIFEST_HEADER + b"second refs", mtime=20)
         second = compiler.import_legacy(environment=self.environment, event=self.event, root=self.root)
         self.assertEqual(second["imported"], "2")
         self.assertEqual(compiler._entries(self.current), {})
         result = self.publish()
         self.assertEqual(result["changed"], "true")
         self.assertEqual(result["archives"], "0")
-        self.assertEqual(set(compiler._entries(self.current)), {ENTRY_KEY, OTHER_KEY, MANIFEST_KEY})
-        self.assertEqual((self.current / MANIFEST_KEY).read_bytes(), MANIFEST_HEADER + b"second refs")
+        self.assertEqual(set(compiler._entries(self.current)), {LEGACY_ENTRY_KEY, OTHER_KEY, LEGACY_MANIFEST_KEY})
+        self.assertEqual((self.current / LEGACY_MANIFEST_KEY).read_bytes(), MANIFEST_HEADER + b"second refs")
         self.assertEqual(snapshot(self.develop), parent)
 
     def test_legacy_empty(self):

@@ -23,8 +23,10 @@ LEGACY_PREFIXES = {
                                       "windows-modules-RelWithDebInfo", "windows-modules-shared-RelWithDebInfo")),
 }
 PULL_REF = re.compile(r"refs/pull/([1-9][0-9]*)/merge")
-# Native file-backend keys and CacheEntry v1 result headers in ccache 4.9/4.14.
-NATIVE_KEY = re.compile(r"[0-9a-f]{2}/[0-9a-f]{38}")
+# ccache 4.9 uses four hex digits followed by 29 base32hex digits; 4.14
+# uses 40 hex digits. Both file backends split after the first two digits.
+NATIVE_KEY = re.compile(r"[0-9a-f]{2}/(?:[0-9a-f]{2}[0-9a-v]{29}|[0-9a-f]{38})")
+# CacheEntry v1 result headers are shared by both native key formats.
 RESULT_HEADER = b"\xcc\xac\x01\x00"
 EMPTY_MARKER = ".cheryl-empty-layer"
 METADATA_FILES = {EMPTY_MARKER, "CACHEDIR.TAG"}
@@ -197,8 +199,9 @@ def configure(*, environment=None, event=None, root=ROOT):
 
 def _native_entries(directory):
     entries = _entries(directory)
-    if any(not NATIVE_KEY.fullmatch(name) for name in entries):
-        raise ValueError("Compiler archives must contain only native file-backend cache entries")
+    for name in sorted(entries):
+        if not NATIVE_KEY.fullmatch(name):
+            raise ValueError(f"Compiler archives contain an invalid native file-backend entry: {name!r}")
     return entries
 
 
@@ -271,7 +274,7 @@ def _archive_members(archive):
     for member in archive:
         if (not member.isfile() or not NATIVE_KEY.fullmatch(member.name) or member.name in seen
                 or member.size < 0 or not math.isfinite(member.mtime) or member.mtime < 0):
-            raise ValueError("Compiler delta archive contains an invalid native entry")
+            raise ValueError(f"Compiler delta archive contains an invalid native entry: {member.name!r}")
         total += member.size
         if total > LAYER_LIMIT or len(members) >= ARCHIVE_ENTRY_LIMIT:
             raise ValueError("Compiler delta archive exceeds the layer limits")
