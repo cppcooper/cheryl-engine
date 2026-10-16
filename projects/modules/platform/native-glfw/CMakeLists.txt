@@ -84,6 +84,8 @@ if(CHERYL_NATIVE_INPUT)
         if(CHERYL_BUILD_SHARED_LIBS AND WIN32)
             target_compile_definitions(${cheryl_gainput_concrete} PRIVATE GAINPUT_LIB_DYNAMIC
                 INTERFACE GAINPUT_LIB_DYNAMIC_USE)
+            target_sources(${cheryl_gainput_concrete} PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/compat/gainput-dll-exports.cpp")
         endif()
         cheryl_shared_dependency(${cheryl_gainput_target} OWNED)
     endif()
