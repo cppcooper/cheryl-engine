@@ -23,7 +23,7 @@ Its artifact uses the Engine component version; CMake selects the matching filen
 ## Source checkout
 
 A relative path to the Cheryl checkout through `add_subdirectory` is supported.
-For example, with the root's default Native GLFW/OpenGL/TGUI selections:
+For example, with the root's default module and worker-support selections:
 
 ```cmake
 cmake_minimum_required(VERSION 3.28)
@@ -51,6 +51,35 @@ The source facade also links the configured Linux Debug terminal and its entry
 attachment when that module is enabled. The example disables it; use the granular
 targets below when you want to choose support and diagnostic behavior individually.
 
+### Windows source-build runtime
+
+Shared libraries must be available when the game starts. With
+`add_subdirectory(... cheryl)` and a single-configuration Ninja build in
+`build/release`, Cheryl writes its DLLs to `build/release/cheryl`; the game's
+executable can be in the parent directory. Multi-configuration generators add a
+configuration subdirectory, such as `cheryl/Release`.
+
+After creating and linking `my_game`, copy CMake-known runtime DLLs beside it:
+
+```cmake
+get_target_property(cheryl_engine_type Cheryl::Engine TYPE)
+if(WIN32 AND cheryl_engine_type STREQUAL "SHARED_LIBRARY")
+    add_custom_command(TARGET my_game POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy -t "$<TARGET_FILE_DIR:my_game>"
+            "$<TARGET_RUNTIME_DLLS:my_game>"
+        COMMAND_EXPAND_LISTS
+        VERBATIM)
+endif()
+```
+
+This stages Cheryl and dependency DLLs whose runtime locations are known to CMake.
+Native FreeType, HarfBuzz or ICU packages can still require their SDK's DLL
+directories on the process `PATH`: CMake's
+[`TARGET_RUNTIME_DLLS`](https://cmake.org/cmake/help/v3.28/manual/cmake-generator-expressions.7.html#genex:TARGET_RUNTIME_DLLS)
+cannot list DLLs for imported targets without runtime-location metadata.
+Alternatively, configure the IDE/launcher `PATH` with both Cheryl's configuration
+output directory and the native SDK's DLL directories instead of copying.
+
 ### Granular composition
 
 Link selected targets individually to control the application's dependency set.
@@ -65,6 +94,10 @@ set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
 set(CHERYL_BUILD_UI_RMLUI OFF)
 set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
+set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
+set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
+set(CHERYL_BUILD_DOCS OFF)
+set(CHERYL_BUILD_SDK OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 add_executable(application main.cpp)
 target_link_libraries(application PRIVATE Cheryl::Engine)

@@ -18,7 +18,7 @@ Dedicated regression and supplied-Core acceptance gaps remain in the
 
 Set `CHERYL_BUILD_UI_RMLUI=ON` and reload CMake to expose `module_ui_rmlui`,
 `tests-ui-rmlui` and `all-ui-rmlui` when tests are selected. The root option defaults
-to `OFF`; TGUI and RmlUi can be selected separately or together. The module library's
+to `ON`; TGUI and RmlUi can be selected separately or together. The module library's
 output name is `cheryl-module-ui-rmlui`.
 
 ```cmake
@@ -222,7 +222,7 @@ root:
   set -e
   cd "$(git rev-parse --show-toplevel)"
   cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug -DCHERYL_BUILD_UI_RMLUI=ON -G Ninja \
-    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON
+    -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_DEMO=ON
 )
 ```
 

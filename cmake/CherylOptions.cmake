@@ -166,22 +166,22 @@ endfunction()
 
 function(cheryl_configure_library_options)
     cheryl_option(CHERYL_BUILD_SHARED_LIBS
-            "Build Cheryl Engine, modules and support as shared libraries" OFF)
+            "Build Cheryl Engine, modules and support as shared libraries" ON)
 endfunction()
 
 function(cheryl_configure_root_options)
     cheryl_configure_library_options()
     cheryl_option(CHERYL_BUILD_DOCS
-            "Add documentation tooling and generation targets" OFF)
+            "Add documentation tooling and generation targets" ON)
     cheryl_option(CHERYL_BUILD_SDK
-            "Enable installation of the selected libraries, headers and dependencies" OFF)
+            "Enable installation of the selected libraries, headers and dependencies" ON)
     cheryl_option(WARN
             "Enable compiler warnings [-Wall]" OFF)
 
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC
-            "Build optional hwloc worker topology and thread placement support" OFF)
+            "Build optional hwloc worker topology and thread placement support" ON)
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_JSON
-            "Build optional worker configuration JSON loading support" OFF)
+            "Build optional worker configuration JSON loading support" ON)
 
     cheryl_option(CHERYL_BUILD_NATIVE_GLFW
             "Build the native GLFW window/input integration" ON)
@@ -197,19 +197,19 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_UI_TGUI
             "Build the optional TGUI UI integration" ON)
     cheryl_option(CHERYL_BUILD_UI_RMLUI
-            "Build the optional RmlUi UI integration" OFF)
+            "Build the optional RmlUi UI integration" ON)
     cheryl_option(CHERYL_BUILD_AUDIO_MINIAUDIO
-            "Build the optional miniaudio playback integration" OFF)
+            "Build the optional miniaudio playback integration" ON)
 
     cheryl_option(CHERYL_BUILD_DEMO
-            "Build the windowed demonstration application" ON
+            "Build the windowed demonstration application" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
     cheryl_option(CHERYL_BUILD_FIRST_GAME
             "Build the maintained getting-started game" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
 
     cheryl_option(CHERYL_BUILD_TESTS
-            "Build Cheryl's tests and acceptance tools" ON)
+            "Build Cheryl's tests and acceptance tools" OFF)
     cheryl_option(CHERYL_BUILD_ALL_TESTS
             "Include owner and cross-project aggregate test runners in the default build" OFF
             REQUIRES CHERYL_BUILD_TESTS)

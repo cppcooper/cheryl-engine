@@ -14,8 +14,8 @@ Select `CHERYL_BUILD_AUDIO_MINIAUDIO=ON` at the repository root and link:
 target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::Audio::Miniaudio)
 ```
 
-This module defaults to `OFF`, preserving existing Engine-only and graphical
-assemblies until their applications select audio. It has a standalone entry point:
+This module defaults to `ON` at the repository root. Disable it for assemblies
+that do not need audio. It has a standalone entry point:
 set `CHERYL_REPOSITORY_ROOT` to an absolute checkout path before adding the owner.
 It reuses `Cheryl::Engine` or bootstraps Engine through the common module helper.
 

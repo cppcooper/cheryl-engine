@@ -9,10 +9,10 @@ application.
 [Read the documentation](https://cheryl-engine.readthedocs.io/) for the API reference,
 setup guides and first-game walkthrough.
 
-The default assembly includes Native GLFW, OpenGL, TGUI and the windowed demo.
-RmlUi and miniaudio are independently selectable and default to `OFF`.
-Linux GNU/Clang also selects an optional output-terminal module; its implementation
-is linked automatically only in actual Debug configurations.
+The default assembly includes Native GLFW, OpenGL, TGUI, RmlUi and miniaudio,
+plus hwloc and JSON worker support. The demo and tests are opt-in.
+Single-configuration Linux GNU/Clang Debug builds also select the optional
+output-terminal module by default. Other configurations default it to `OFF`.
 
 ## Contents
 
@@ -27,7 +27,10 @@ is linked automatically only in actual Debug configurations.
 ## Setup
 
 You need Git, CMake 3.28 or newer, Ninja, and a C++23 compiler and standard library
-with `std::format` support. Install the selected modules'
+with `std::format` support. The default root configuration also requires Python
+3.11 or newer for documentation targets and hwloc 2.5+ (2.x) for worker support.
+Set `CHERYL_BUILD_DOCS=OFF` or `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF` to omit
+the corresponding requirement. Install the selected modules'
 [system dependencies](docs/development/building.md#system-dependencies).
 
 ```sh
@@ -42,7 +45,8 @@ Configure and build the demo from anywhere inside the checkout:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+  cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release \
+    -DCHERYL_BUILD_DEMO=ON
   cmake --build build/release --target demo --parallel
   ./build/release/demo
 )

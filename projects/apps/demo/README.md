@@ -19,7 +19,8 @@ initialized, configure the demo:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja
+  cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release -G Ninja \
+    -DCHERYL_BUILD_DEMO=ON
 )
 ```
 
@@ -44,9 +45,9 @@ Run in sequential or concurrent mode:
 )
 ```
 
-The demo requires Native GLFW, OpenGL and native input. TGUI is selected by
-default; enable `CHERYL_BUILD_UI_RMLUI=ON` for the left-hand view. Disable both
-adapters for the toolkit-free F2 text probe. Reload CMake after changing cached
+The demo requires Native GLFW, OpenGL and native input. TGUI and RmlUi are
+selected by default, showing both views. Disable both adapters for the toolkit-free
+F2 text probe. Reload CMake after changing cached
 selections; the [build guide](../../../docs/development/building.md) owns option
 defaults and dependency settings.
 

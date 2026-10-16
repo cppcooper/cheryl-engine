@@ -177,7 +177,7 @@ one owner is affected. A matching compiled build can be reused without rebuildin
   cd "$(git rev-parse --show-toplevel)"
   cmake -S . -B build/testing-native-ui -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DBUILD_SHARED_LIBS=OFF \
+    -DCHERYL_BUILD_SHARED_LIBS=OFF \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
     -DCHERYL_LOG_PROFILE=developer \

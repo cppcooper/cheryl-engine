@@ -50,7 +50,8 @@ def main(arguments=None):
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_JSON={flag(testing)}", "-DGAINPUT_ENABLE_HID=OFF",
                  "-DGLFW_BUILD_WAYLAND=OFF", "-Dgtest_force_shared_crt=ON",
                  f"-DCHERYL_BUILD_SHARED_LIBS={flag(args.linkage == 'shared')}",
-                 f"-DCHERYL_BUILD_SDK={flag(args.sdk)}", "-DCMAKE_INSTALL_LIBDIR=lib"]
+                 f"-DCHERYL_BUILD_SDK={flag(args.sdk)}", "-DCHERYL_BUILD_DOCS=OFF",
+                 "-DCMAKE_INSTALL_LIBDIR=lib"]
     if modules and sys.platform == "win32":
         configure.append(f"-DPython_EXECUTABLE:FILEPATH={Path(sys.executable).resolve().as_posix()}")
     if sys.platform == "win32" and environment.get("CMAKE_CXX_COMPILER_LAUNCHER") == "ccache":

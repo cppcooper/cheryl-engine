@@ -22,7 +22,7 @@ private dependency. Selection options for a fresh module configuration are:
 | --- | --- | --- |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input and its Linux X11 requirement. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW target without X11/Wayland. Disable native input as well to omit Gainput/X11. |
-| `CHERYL_BUILD_TESTS` | `OFF` standalone; `ON` at root | Selects this owner's implementation checks. |
+| `CHERYL_BUILD_TESTS` | `OFF` | Selects this owner's implementation checks. |
 
 From the repository root, a standalone build can bootstrap an explicit Engine
 checkout without selecting other integration owners:

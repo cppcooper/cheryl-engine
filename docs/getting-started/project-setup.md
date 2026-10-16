@@ -157,6 +157,9 @@ for other platform choices. No separate engine build or SDK installation is
 required. To run the maintained example before writing your own entry point,
 follow [First game: setup](first-game.md#setup).
 
+On Windows, complete the [shared-library runtime setup](../development/consuming-engine.md#windows-source-build-runtime)
+before launching the source-built game.
+
 ### Choose smaller target sets when needed
 
 Link `Cheryl::Cheryl` for all selected libraries, or choose individual public
@@ -285,10 +288,10 @@ target settings that belong to those libraries. For a packaged SDK, check its
 toolchain, configuration, linkage and enabled component versions. Matching filenames
 alone do not establish compatibility.
 
-Cheryl defaults to static libraries, whose code is linked into the executable.
-Set `CHERYL_BUILD_SHARED_LIBS=ON` when configuring a source build or producing an
-SDK to select shared Engine, modules and support instead. The same public targets
-and includes work with either selection; keep their build directories and SDK
+Cheryl defaults to shared Engine, modules and support libraries. Set
+`CHERYL_BUILD_SHARED_LIBS=OFF` when configuring a source build or producing an
+SDK to select static libraries, whose code is linked into the executable. The same
+public targets and includes work with either selection; keep their build directories and SDK
 prefixes separate. A shared game also needs its Cheryl and dependency libraries
 available at runtime. Follow the [SDK runtime-path contract](../development/consuming-engine.md#prebuilt-development-sdks)
 and [linkage reference](../development/building.md#library-linkage) for deployment

@@ -70,19 +70,19 @@ dependency-source settings may appear only when their component is selected.
 | `CHERYL_DEBUG_TERMINAL_EMULATOR` | `auto` | Linux module launcher selection: `auto`, `konsole` or `xterm`. |
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
-| `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects RmlUi independently; can coexist with TGUI. |
-| `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
-| `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
+| `CHERYL_BUILD_UI_RMLUI` | `ON` | Selects RmlUi independently; can coexist with TGUI. |
+| `CHERYL_BUILD_AUDIO_MINIAUDIO` | `ON` | Selects miniaudio decoding, output and streaming. |
+| `CHERYL_BUILD_DEMO` | `OFF` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
-| `CHERYL_BUILD_DOCS` | `OFF` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
-| `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
+| `CHERYL_BUILD_DOCS` | `ON` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
+| `CHERYL_BUILD_TESTS` | `OFF` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |
 | `CHERYL_BUILD_ACCEPTANCE_TESTS` | `OFF` | Includes acceptance runners in the default build; requires tests. |
 | `CHERYL_BUILD_CONSUMER_TESTS` | `OFF` | Adds selected owners' consumers and first-include probes independently of GoogleTest. |
-| `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `OFF` | Selects optional runtime topology discovery and thread binding through hwloc. |
-| `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `OFF` | Selects the versioned worker settings loader independently of hwloc. |
-| `CHERYL_BUILD_SDK` | `OFF` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
-| `CHERYL_BUILD_SHARED_LIBS` | `OFF` | Builds Cheryl Engine, compiled modules and support as shared libraries, with matching owned source dependencies. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `ON` | Selects optional runtime topology discovery and thread binding through hwloc. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `ON` | Selects the versioned worker settings loader independently of hwloc. |
+| `CHERYL_BUILD_SDK` | `ON` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
+| `CHERYL_BUILD_SHARED_LIBS` | `ON` | Builds Cheryl Engine, compiled modules and support as shared libraries, with matching owned source dependencies. |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input in Native GLFW. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW without X11/Wayland. Disable native input to omit Gainput/X11. |
 | `CHERYL_LOG_PROFILE` | `auto` | Selects `developer`, `support` or `release`; `auto` follows the build configuration. |
@@ -105,7 +105,8 @@ substitute `RelWithDebInfo`/`build/support` or `Release`/`build/release` as need
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+  cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+    -DCHERYL_BUILD_DEMO=ON
   cmake --build build/debug --target demo --parallel
 )
 ```
@@ -124,10 +125,10 @@ Target and artifact declarations are centralized in
 
 ### Library linkage
 
-Cheryl libraries default to static. Set `-DCHERYL_BUILD_SHARED_LIBS=ON` during
-configuration for shared Engine, modules and support; the same public CMake targets
-work with either selection. `BUILD_SHARED_LIBS` alone does not select Cheryl's
-linkage. Keep static/shared builds and SDK prefixes separate. Supplied dependency
+Cheryl Engine, modules and support default to shared libraries. Set
+`-DCHERYL_BUILD_SHARED_LIBS=OFF` during configuration for static libraries;
+the same public CMake targets work with either selection. `BUILD_SHARED_LIBS` alone
+does not select Cheryl's linkage. Keep static/shared builds and SDK prefixes separate. Supplied dependency
 targets retain their settings and must satisfy the selected shared-library requirements.
 The Linux terminal's `main` wrapper remains static; its startup support follows
 the selected Cheryl linkage.
@@ -159,7 +160,8 @@ its text dependencies:
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
-    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF
+    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF \
+    -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF
   cmake --build build/engine-only --target cengine --parallel
 )
 ```
@@ -217,7 +219,8 @@ Package names vary by operating system.
 | Requirement | Selection | Notes |
 | --- | --- | --- |
 | Threads | Engine | Discovered through `Threads::Threads`. |
-| hwloc 2.5+ (2.x) | WorkerTopology::Hwloc only | Runtime CPU/core/cache discovery and calling-thread binding; omitted configurations do not discover/download/link it. |
+| Python 3.11+ | Documentation targets (enabled by default) | Required during configuration; Doxygen/Sphinx are selected when documentation targets run. |
+| hwloc 2.5+ (2.x) | WorkerTopology::Hwloc (selected by default) | Runtime CPU/core/cache discovery and calling-thread binding; omitted configurations do not discover/download/link it. |
 | FreeType, HarfBuzz, ICU uc/i18n | Engine | Font inspection/rasterization, shaping, bidi and boundaries; required with UI disabled too. |
 | X11 and extensions | GLFW X11 / native Linux input | GLFW checks XRandR, Xinerama, XKB, Xcursor, XInput and X Shape headers. Gainput input also needs X11. |
 | Wayland, xkbcommon, `wayland-scanner` | Bundled GLFW Wayland | Linux GLFW enables X11 and Wayland by default. Disable Wayland for an X11-only build. |
@@ -257,9 +260,9 @@ the same targets without graphics or native development dependencies.
 
 `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=ON` adds `cengine_worker_topology_hwloc`
 (`Cheryl::WorkerTopology::Hwloc`); JSON selection adds `cengine_worker_topology_json`
-(`Cheryl::WorkerTopology::Json`). Both options default off. A plain Engine consumer
-needs neither support library. Selecting both also registers the explicitly
-buildable `example_worker_topology` shared-pool composition example.
+(`Cheryl::WorkerTopology::Json`). Both options default to `ON`; a plain Engine
+consumer can disable both because it needs neither support library. Selecting both
+also registers the explicitly buildable `example_worker_topology` shared-pool composition example.
 The [worker guide](../runtime/worker-execution.md) owns provider lifetime, placement
 policies, capacity and configuration semantics.
 
@@ -274,7 +277,7 @@ CPU vendor is not a CMake selection.
 
 ## Development SDK builds
 
-SDK export is opt-in and requires Cheryl-owned builds of the pinned source
+SDK export is enabled by default and requires Cheryl-owned builds of the pinned source
 dependencies; imported dependency targets are rejected by this packaging path,
 except an imported hidapi package that remains external to the SDK.
 Ordinary source composition can still reuse supplied targets. Use a clean checkout
@@ -282,8 +285,8 @@ with submodules at their recorded revisions for reproducible archives. The packa
 records the source commit and verifies recursive submodule HEADs against its gitlinks.
 
 Use a single-configuration Ninja build and select the modules/helpers to distribute.
-On Linux, this builds the default Native GLFW/OpenGL/TGUI libraries and common
-Startup support without building the demo or tests:
+On Linux, this builds the default modules and worker support, plus common Startup
+support, without building the demo or tests:
 
 ```sh
 (
