@@ -281,6 +281,15 @@ class PoolTests(unittest.TestCase):
         paths = (f"archives/ff/{ABI_A}.zip", f"archives/ab/{'1' * 40}.zip",
                  "downloads/../credentials", "downloads/.git-credentials", "downloads/.ssh/id_rsa",
                  "downloads/CON.txt", "downloads/a\\b", "downloads/file.", "other/file")
+        for name in paths:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                cache._payload_path(name)
+
+    def test_inventory_paths(self):
+        # Native filesystems can normalize separators and trailing dots before
+        # inventory sees them. Keep raw-spelling checks above and in TAR inputs.
+        paths = (f"archives/ff/{ABI_A}.zip", f"archives/ab/{'1' * 40}.zip",
+                 "downloads/.git-credentials", "downloads/.ssh/id_rsa", "other/file")
         for index, name in enumerate(paths):
             with self.subTest(name=name):
                 directory = self.root / str(index)
@@ -291,7 +300,8 @@ class PoolTests(unittest.TestCase):
     def test_contribution_paths(self):
         self.seed({KEY_A: b"ZIP"})
         before = snapshot(self.pool)
-        for name in ("../outside", "/absolute", "downloads/.netrc", f"archives/ff/{ABI_B}.zip"):
+        for name in ("../outside", "/absolute", "downloads/.netrc", f"archives/ff/{ABI_B}.zip",
+                     "downloads/../credentials", "downloads/a\\b", "downloads/file.", "downloads/CON.txt"):
             with self.subTest(name=name):
                 contribution(self.contributions, "unsafe", {name: b"bad"})
                 with self.assertRaises(ValueError):
