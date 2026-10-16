@@ -1,0 +1,18 @@
+@media screen {
+    /* Keep the theme's 800px content width when space permits, then grow with
+       the viewport. The parent already reserves space for the sidebar. */
+    .wy-nav-content {
+        width: max(800px, 75vw);
+        max-width: 100%;
+    }
+
+    /* The theme reserves at least 80% for values, leaving too little room for
+       field labels in nested API descriptions on narrow viewports. */
+    html.writer-html5 .rst-content dl.field-list {
+        grid-template-columns: max-content minmax(0, 1fr);
+    }
+
+    .rst-content dl.field-list > dd {
+        overflow-wrap: anywhere;
+    }
+}

@@ -1,5 +1,13 @@
 {% extends "!layout.html" %}
 {% block content %}
+<div class="cheryl-appearance" hidden>
+  <label for="cheryl-theme">{{ _('Theme') }}</label>
+  <select id="cheryl-theme">
+    <option value="system">{{ _('System') }}</option>
+    <option value="light">{{ _('Light') }}</option>
+    <option value="dark">{{ _('Dark') }}</option>
+  </select>
+</div>
 {{ super() }}
 <p class="cheryl-revision">
   <small>Source revision:

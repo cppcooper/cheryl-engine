@@ -1,0 +1,409 @@
+/* Keep the appearance control available above the page on desktop and mobile. */
+.cheryl-appearance {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.cheryl-appearance[hidden] {
+    display: none;
+}
+
+.cheryl-appearance label {
+    margin: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
+.cheryl-appearance select {
+    width: auto;
+    min-height: 2.25rem;
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #788594;
+    border-radius: 0.2rem;
+    background: #fff;
+    color: #253346;
+    font: inherit;
+}
+
+.cheryl-appearance select:focus-visible {
+    outline: 2px solid #216aa0;
+    outline-offset: 3px;
+}
+
+@media screen {
+    html[data-theme="light"] {
+        color-scheme: light;
+    }
+
+    html[data-theme="dark"] {
+        color-scheme: dark;
+        --cheryl-background: #151b23;
+        --cheryl-surface: #1c2531;
+        --cheryl-surface-raised: #253246;
+        --cheryl-code-background: #101720;
+        --cheryl-text: #e1e8f0;
+        --cheryl-muted: #adbacb;
+        --cheryl-border: #526174;
+        --cheryl-link: #8ecaff;
+        --cheryl-link-hover: #c3e3ff;
+        --cheryl-visited: #d0b2ff;
+        --cheryl-inline-code: #ffca9b;
+        --cheryl-focus: #ffda82;
+        --cheryl-mark: #594a22;
+        scrollbar-color: var(--cheryl-border) var(--cheryl-background);
+    }
+
+    html[data-theme="dark"] body,
+    html[data-theme="dark"] .wy-nav-content-wrap {
+        background: var(--cheryl-background);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .wy-nav-content {
+        background: var(--cheryl-background);
+    }
+
+    html[data-theme="dark"] a {
+        color: var(--cheryl-link);
+    }
+
+    html[data-theme="dark"] a:visited {
+        color: var(--cheryl-visited);
+    }
+
+    html[data-theme="dark"] a:hover {
+        color: var(--cheryl-link-hover);
+    }
+
+    html[data-theme="dark"] :is(a, button, input, select, textarea):focus-visible {
+        outline: 2px solid var(--cheryl-focus);
+        outline-offset: 3px;
+    }
+
+    html[data-theme="dark"] hr {
+        border-color: var(--cheryl-border);
+    }
+
+    html[data-theme="dark"] footer,
+    html[data-theme="dark"] .cheryl-revision,
+    html[data-theme="dark"] #search-results .context,
+    html[data-theme="dark"] .rst-content :is(.footnote, .footnote-list, .citation, .citation-list) {
+        color: var(--cheryl-muted);
+    }
+
+    html[data-theme="dark"] .wy-nav-side,
+    html[data-theme="dark"] .wy-side-nav-search,
+    html[data-theme="dark"] .wy-nav-top {
+        background: var(--cheryl-code-background);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .wy-side-nav-search > a,
+    html[data-theme="dark"] .wy-nav-top a,
+    html[data-theme="dark"] .wy-menu-vertical a,
+    html[data-theme="dark"] .wy-menu-vertical a:visited {
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .wy-menu-vertical :is(header, p.caption) {
+        color: var(--cheryl-link);
+    }
+
+    /* RTD assigns separate light surfaces at each expanded navigation level. */
+    html[data-theme="dark"] .wy-menu-vertical li.current,
+    html[data-theme="dark"] .wy-menu-vertical li.current > a,
+    html[data-theme="dark"] .wy-menu-vertical li.current li > a,
+    html[data-theme="dark"] .wy-menu-vertical li.on > a {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-surface) !important;
+        color: var(--cheryl-text) !important;
+    }
+
+    html[data-theme="dark"] .wy-menu-vertical a:hover,
+    html[data-theme="dark"] .wy-menu-vertical li.current a:hover,
+    html[data-theme="dark"] .wy-menu-vertical li.on a:hover {
+        background: var(--cheryl-surface-raised) !important;
+        color: var(--cheryl-link-hover) !important;
+    }
+
+    html[data-theme="dark"] .wy-menu-vertical li button.toctree-expand {
+        color: var(--cheryl-muted) !important;
+    }
+
+    html[data-theme="dark"] .wy-menu-vertical li button.toctree-expand:hover {
+        color: var(--cheryl-text) !important;
+    }
+
+    html[data-theme="dark"] .wy-menu-vertical :is(code, tt) {
+        border: none;
+        background: inherit;
+        color: inherit;
+    }
+
+    html[data-theme="dark"] .rst-versions,
+    html[data-theme="dark"] .rst-versions .rst-current-version {
+        background: var(--cheryl-code-background);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-versions .rst-other-versions {
+        color: var(--cheryl-muted);
+    }
+
+    html[data-theme="dark"] :is(input[type="text"], input[type="search"], textarea, select),
+    html[data-theme="dark"] .cheryl-appearance select {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-surface);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] input::placeholder,
+    html[data-theme="dark"] textarea::placeholder {
+        color: var(--cheryl-muted);
+        opacity: 1;
+    }
+
+    html[data-theme="dark"] .wy-side-nav-search input[type="text"] {
+        border-color: var(--cheryl-border);
+    }
+
+    html[data-theme="dark"] .btn-neutral,
+    html[data-theme="dark"] .btn-neutral:visited {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-surface) !important;
+        color: var(--cheryl-text) !important;
+    }
+
+    html[data-theme="dark"] .btn-neutral:hover {
+        background: var(--cheryl-surface-raised) !important;
+        color: var(--cheryl-link-hover) !important;
+    }
+
+    html[data-theme="dark"] .rst-content :is(table.docutils, table.field-list, .wy-table),
+    html[data-theme="dark"] .rst-content :is(table.docutils, table.field-list, .wy-table) :is(th, td) {
+        border-color: var(--cheryl-border);
+    }
+
+    html[data-theme="dark"] .rst-content :is(table.docutils, table.field-list, .wy-table) :is(caption, thead) {
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-content table.docutils:not(.field-list) tr:nth-child(2n-1) td,
+    html[data-theme="dark"] .wy-table-backed,
+    html[data-theme="dark"] .wy-table-odd td,
+    html[data-theme="dark"] .wy-table-striped tr:nth-child(2n-1) td {
+        background: var(--cheryl-surface);
+    }
+
+    html[data-theme="dark"] .rst-content :is(code, tt),
+    html[data-theme="dark"] code {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-surface);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-content :is(code.literal, tt.literal) {
+        color: var(--cheryl-inline-code);
+    }
+
+    html[data-theme="dark"] .rst-content a :is(code, tt) {
+        color: var(--cheryl-link);
+    }
+
+    html[data-theme="dark"] .rst-content :is(.guilabel, .menuselection, kbd, .kbd) {
+        border-color: var(--cheryl-border) !important;
+        background: var(--cheryl-surface) !important;
+        color: var(--cheryl-text) !important;
+        box-shadow: none !important;
+    }
+
+    /* The upstream signature selectors have unusually high specificity. */
+    html[data-theme="dark"] .rst-content dl.cpp > dt {
+        border-color: var(--cheryl-link) !important;
+        background: var(--cheryl-surface-raised) !important;
+        color: var(--cheryl-text) !important;
+    }
+
+    html[data-theme="dark"] .rst-content dl.cpp dl.cpp > dt {
+        border-color: var(--cheryl-border) !important;
+        background: var(--cheryl-surface) !important;
+    }
+
+    html[data-theme="dark"] .rst-content dl.cpp :is(.sig-name, .descname, .descclassname, .optional) {
+        color: var(--cheryl-text) !important;
+    }
+
+    html[data-theme="dark"] .rst-content dl.cpp dt :is(.headerlink, a),
+    html[data-theme="dark"] .rst-content .toc-backref {
+        color: var(--cheryl-link) !important;
+    }
+
+    html[data-theme="dark"] .rst-content dl.cpp > dt::before {
+        color: var(--cheryl-link) !important;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.viewcode-back, .viewcode-link) {
+        color: #94d9ad;
+    }
+
+    html[data-theme="dark"] .rst-content .sidebar {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-surface);
+    }
+
+    html[data-theme="dark"] .rst-content .sidebar .sidebar-title {
+        background: var(--cheryl-surface-raised);
+    }
+
+    html[data-theme="dark"] .rst-content :is(.admonition, .admonition-todo, .attention, .caution, .danger, .error, .hint, .important, .note, .seealso, .tip, .warning),
+    html[data-theme="dark"] .wy-alert {
+        background: #1d3142;
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-content .admonition-title,
+    html[data-theme="dark"] .wy-alert-title {
+        background: #31516d;
+        color: #f2f6fb;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.note, .seealso, .wy-alert-info) {
+        background: #1d3142;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.note, .seealso, .wy-alert-info) .admonition-title {
+        background: #31516d;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.admonition-todo, .attention, .caution, .warning, .wy-alert-warning) {
+        background: #3b2e1e;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.admonition-todo, .attention, .caution, .warning, .wy-alert-warning) .admonition-title {
+        background: #69502d;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.danger, .error, .wy-alert-danger) {
+        background: #40272c;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.danger, .error, .wy-alert-danger) .admonition-title {
+        background: #733d46;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.hint, .important, .tip, .wy-alert-success) {
+        background: #1d372e;
+    }
+
+    html[data-theme="dark"] .rst-content :is(.hint, .important, .tip, .wy-alert-success) .admonition-title {
+        background: #315c4b;
+    }
+
+    html[data-theme="dark"] .rst-content .wy-alert-neutral {
+        background: var(--cheryl-surface);
+    }
+
+    html[data-theme="dark"] .rst-content .wy-alert-neutral .admonition-title {
+        background: var(--cheryl-surface-raised);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-content .admonition :is(th, td) {
+        border-color: var(--cheryl-border) !important;
+    }
+
+    html[data-theme="dark"] #file-hierarchy ul ul > li::before,
+    html[data-theme="dark"] #file-hierarchy ul ul > li::after {
+        border-color: var(--cheryl-border);
+    }
+
+    html[data-theme="dark"] :is(mark, .highlighted),
+    html[data-theme="dark"] .rst-content .highlighted {
+        background: var(--cheryl-mark);
+        color: var(--cheryl-text);
+        box-shadow: 0 0 0 2px var(--cheryl-mark);
+    }
+
+    html[data-theme="dark"] .rst-content :is(dt:target, .footnote:target),
+    html[data-theme="dark"] .viewcode-block:target {
+        background-color: var(--cheryl-mark) !important;
+    }
+
+    html[data-theme="dark"] .rst-content .linenodiv pre,
+    html[data-theme="dark"] .rst-content div[class^="highlight"],
+    html[data-theme="dark"] .rst-content div[class^="highlight"] pre,
+    html[data-theme="dark"] .rst-content pre.literal-block,
+    html[data-theme="dark"] .highlight {
+        border-color: var(--cheryl-border);
+        background: var(--cheryl-code-background);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .rst-content .code-block-caption {
+        color: var(--cheryl-muted);
+    }
+
+    html[data-theme="dark"] .highlight .hll,
+    html[data-theme="dark"] :is(td.linenos, span.linenos) .special,
+    html[data-theme="dark"] span.linenos.special {
+        background: var(--cheryl-mark);
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] :is(td.linenos pre, span.linenos) {
+        color: var(--cheryl-muted);
+    }
+
+    html[data-theme="dark"] .highlight :is(.c, .ch, .cm, .cpf, .c1, .cs, .go, .w) {
+        color: #a8b8cb;
+    }
+
+    html[data-theme="dark"] .highlight :is(.cp, .k, .kc, .kd, .kn, .kp, .kr, .kt, .nt, .ow) {
+        color: #c3a6ff;
+    }
+
+    html[data-theme="dark"] .highlight :is(.m, .mb, .mf, .mh, .mi, .mo, .il, .no) {
+        color: #ffca91;
+    }
+
+    html[data-theme="dark"] .highlight :is(.s, .sa, .sb, .sc, .dl, .sd, .s1, .s2, .sh, .sx, .ss) {
+        color: #a9dca1;
+    }
+
+    html[data-theme="dark"] .highlight :is(.se, .si, .sr, .na, .nd, .nl) {
+        color: #f3d889;
+    }
+
+    html[data-theme="dark"] .highlight :is(.nb, .bp, .nc, .nf, .fm, .nn, .gh, .gp, .gu, .gt) {
+        color: #8ecaff;
+    }
+
+    html[data-theme="dark"] .highlight :is(.ni, .nv, .vc, .vg, .vi, .vm, .o) {
+        color: var(--cheryl-text);
+    }
+
+    html[data-theme="dark"] .highlight :is(.gd, .gr, .ne) {
+        color: #ffaaaa;
+    }
+
+    html[data-theme="dark"] .highlight .gi {
+        color: #a9dca1;
+    }
+
+    html[data-theme="dark"] .highlight .err {
+        border-color: #ffaaaa;
+        color: #ffaaaa;
+    }
+}
+
+@media print {
+    .cheryl-appearance {
+        display: none;
+    }
+}
