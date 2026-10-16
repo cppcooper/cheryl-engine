@@ -123,11 +123,7 @@ def metadata(profile):
     scope = dependency_scope()
     role = scope["dependency-role"]
     source_prefix = f"build-deps-v2-{runner}-{role}-sources-"
-    dependency_prefix = f"build-deps-v2-{runner}-{role}-{profile}-binaries-"
-    image = {name: os.environ.get(name, "") for name in ("ImageOS", "ImageVersion")}
-    dependency_tag = digest(manifest + b"\0" + json.dumps(image, sort_keys=True).encode())
-    run_id = f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}"
-    dependency_key = f"{dependency_prefix}{dependency_tag}-{run_id}"
+    installed = ROOT / "build/ci/vcpkg_installed"
     pip = ROOT / "build/cache/pip"
     emit("GITHUB_OUTPUT", {
         **environment_keys(profile, baseline, requirements, python_tag=sys.implementation.cache_tag),
@@ -137,26 +133,25 @@ def metadata(profile):
         "submodule-main-prefix": f"build-deps-v2-{runner}-main-sources-",
         "submodule-path": modules_path.resolve().as_posix(),
         "vcpkg-root": vcpkg.as_posix(),
+        "vcpkg-installed-dir": installed.as_posix(),
         "ccache-tools": ccache.as_posix(),
         "dependency-path": cache.as_posix(),
-        "dependency-key": dependency_key,
-        "dependency-exact-prefix": f"{dependency_prefix}{dependency_tag}-",
-        "dependency-profile-prefix": dependency_prefix,
-        "dependency-runner-prefix": f"build-deps-v2-{runner}-main-{profile}-binaries-",
         "pip-path": pip.as_posix(),
     })
     environment = {
         "CHERYL_CI_DEPENDENCY_CACHE_DIR": cache.as_posix(),
-        "CHERYL_CI_DEPENDENCY_CACHE_KEY": dependency_key,
         "CHERYL_CI_VCPKG_ROOT": vcpkg.as_posix(),
+        "CHERYL_CI_VCPKG_INSTALLED_DIR": installed.as_posix(),
         "CHERYL_CI_CCACHE_TOOLS": ccache.as_posix(),
     }
     if os.environ["RUNNER_OS"] == "Windows":
-        archives = cache / "vcpkg/archives"
-        downloads = cache / "vcpkg/downloads"
+        pool = ROOT / "build/cache/vcpkg"
+        archives = pool / "archives"
+        downloads = pool / "downloads"
         for directory in (archives, downloads, pip):
             directory.mkdir(parents=True, exist_ok=True)
         environment.update({
+            "CHERYL_CI_VCPKG_CACHE_DIR": pool.as_posix(),
             "VCPKG_BINARY_SOURCES": f"clear;files,{archives.as_posix()},readwrite",
             "VCPKG_DOWNLOADS": downloads.as_posix(),
             "PIP_CACHE_DIR": pip.as_posix(),
@@ -213,6 +208,19 @@ def windows_tools():
         output.write(f"{tools}\n")
 
 
+def windows_install(profile):
+    if profile not in {"headless", "modules"}:
+        raise ValueError("Windows dependency installation requires the headless or modules profile")
+    vcpkg = Path(os.environ["CHERYL_CI_VCPKG_ROOT"]).resolve() / "vcpkg.exe"
+    command = [str(vcpkg), "install", "--triplet=x64-windows", "--host-triplet=x64-windows",
+               f"--x-manifest-root={(ROOT / '.github/ci').as_posix()}",
+               f"--x-install-root={(ROOT / 'build/ci/vcpkg_installed').as_posix()}",
+               "--x-no-default-features", "--x-feature=hwloc"]
+    if profile == "modules":
+        command.append("--x-feature=native")
+    run(command, cwd=ROOT)
+
+
 def apt_command(profile):
     packages = environment_configuration()["linux"]
     cache = Path(os.environ["CHERYL_CI_DEPENDENCY_CACHE_DIR"]) / "apt"
@@ -253,7 +261,7 @@ def cache_state(name, snapshot):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("metadata", "environment-prefix", "submodules", "windows-tools", "apt-plan", "apt-install", "cache-state"))
+    parser.add_argument("operation", choices=("metadata", "environment-prefix", "submodules", "windows-tools", "windows-install", "apt-plan", "apt-install", "cache-state"))
     parser.add_argument("--profile", choices=("headless", "modules", "docs"), default="headless")
     parser.add_argument("--cache", choices=("vcpkg", "pip"), default="vcpkg")
     parser.add_argument("--snapshot", action="store_true")
@@ -268,6 +276,8 @@ def main():
         submodules()
     elif args.operation == "windows-tools":
         windows_tools()
+    elif args.operation == "windows-install":
+        windows_install(args.profile)
     elif args.operation == "apt-plan":
         apt_plan(args.profile)
     elif args.operation == "apt-install":

@@ -132,7 +132,26 @@ class RunnerTests(unittest.TestCase):
                         "--vcpkg-root", str(self.root / "vcpkg"))
         self.assertIn("-DVCPKG_MANIFEST_FEATURES=hwloc", self.commands[0])
         self.assertIn("-DVCPKG_TARGET_TRIPLET=x64-windows", self.commands[0])
+        self.assertNotIn("-DVCPKG_MANIFEST_INSTALL=OFF", self.commands[0])
         self.assertTrue(self.commands[-1][0].endswith("cheryl-consumer.exe"))
+
+    def test_windows_preinstalled(self):
+        installed = self.build / "vcpkg_installed"
+        with patch.object(ci.sys, "platform", "win32"):
+            self.invoke("--profile", "modules", "--phase", "build", "--hwloc", "ON",
+                        "--vcpkg-root", str(self.root / "vcpkg"), "--vcpkg-installed-dir", str(installed))
+        self.assertIn(f"-DVCPKG_INSTALLED_DIR={installed.as_posix()}", self.commands[0])
+        self.assertIn("-DVCPKG_MANIFEST_INSTALL=OFF", self.commands[0])
+        self.assertIn("-DVCPKG_MANIFEST_FEATURES=hwloc;native", self.commands[0])
+        self.assertEqual(len(self.commands), 2)
+
+    def test_preinstalled_requires_root(self):
+        with redirect_stdout(io.StringIO()), patch("sys.stderr", new_callable=io.StringIO) as errors, \
+             self.assertRaises(SystemExit) as raised:
+            self.invoke("--profile", "headless", "--vcpkg-installed-dir", str(self.build / "vcpkg_installed"))
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("--vcpkg-installed-dir requires --vcpkg-root", errors.getvalue())
+        self.assertEqual(self.commands, [])
 
     def test_build_failure(self):
         calls = []

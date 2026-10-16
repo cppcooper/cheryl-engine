@@ -4,6 +4,9 @@ inputs:
   profile:
     description: CI composition, headless or modules.
     required: true
+  cache-job:
+    description: Unique matrix job name for Windows dependency contributions.
+    default: worker
 outputs:
   dependency-cache-writer:
     description: Whether this run may publish its main or develop build dependency cache.
@@ -46,20 +49,6 @@ runs:
           ${{ steps.metadata.outputs.vcpkg-root }}
           ${{ steps.metadata.outputs.ccache-tools }}
         key: ${{ steps.metadata.outputs.tools-key }}
-    - name: Restore Windows dependency packages and downloads
-      if: runner.os == 'Windows'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ steps.metadata.outputs.dependency-path }}
-        key: ${{ steps.metadata.outputs.dependency-key }}
-        restore-keys: |
-          ${{ steps.metadata.outputs.dependency-exact-prefix }}
-          ${{ steps.metadata.outputs.dependency-profile-prefix }}
-          ${{ steps.metadata.outputs.dependency-runner-prefix }}
-    - name: Snapshot Windows dependency cache
-      if: runner.os == 'Windows'
-      shell: bash
-      run: python .github/ci/dependencies.py cache-state --snapshot
     - name: Prepare pinned Windows tools
       if: runner.os == 'Windows'
       shell: bash
@@ -98,6 +87,46 @@ runs:
       with:
         path: ${{ steps.metadata.outputs.pip-path }}
         key: ${{ steps.pip.outputs.cache-primary-key }}
+    - name: Describe shared Windows dependency pool
+      if: runner.os == 'Windows'
+      id: vcpkg
+      shell: bash
+      run: python .github/ci/vcpkg_cache.py describe
+    - name: Restore shared Windows dependency pool
+      if: runner.os == 'Windows'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.vcpkg.outputs.cache-path }}
+        key: ${{ steps.vcpkg.outputs.cache-key }}
+        restore-keys: ${{ steps.vcpkg.outputs.cache-prefix }}
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows'
+      id: vcpkg-install
+      shell: pwsh
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+        $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (!$vs) { throw 'MSVC x64 tools are unavailable' }
+        & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+        python .github/ci/dependencies.py windows-install --profile $env:DEPENDENCY_PROFILE
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Pack prepared Windows dependencies
+      if: ${{ !cancelled() && runner.os == 'Windows' && steps.vcpkg-install.outcome == 'success' }}
+      id: vcpkg-pack
+      shell: bash
+      run: python .github/ci/vcpkg_cache.py pack --installed "$CHERYL_CI_VCPKG_INSTALLED_DIR"
+    - name: Retain prepared Windows dependencies
+      if: ${{ !cancelled() && runner.os == 'Windows' && steps.vcpkg-pack.outputs.has-content == 'true' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: vcpkg-cache-${{ runner.arch }}-${{ inputs.cache-job }}-${{ github.run_attempt }}
+        path: ${{ steps.vcpkg.outputs.contribution-path }}
+        if-no-files-found: error
+        compression-level: 0
+        overwrite: true
+        retention-days: 1
     - name: Update Linux package indexes
       if: runner.os == 'Linux'
       shell: bash

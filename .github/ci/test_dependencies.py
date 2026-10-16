@@ -230,7 +230,8 @@ class CommandTests(unittest.TestCase):
         self.environment = {**ENVIRONMENT, "RUNNER_TEMP": str(self.root / "runner-temp"),
                             "CHERYL_CI_DEPENDENCY_CACHE_DIR": str(self.root / "build/cache/dependencies")}
 
-    def metadata(self, *, gitlinks=b"160000 commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\textern/example\0", changes=None):
+    def metadata(self, *, gitlinks=b"160000 commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\textern/example\0", changes=None,
+                 profile="headless"):
         emissions = {}
 
         def emit(variable, values):
@@ -241,7 +242,8 @@ class CommandTests(unittest.TestCase):
              patch.object(dependencies.subprocess, "check_output", return_value=gitlinks), \
              patch.object(dependencies, "run", return_value=".git/modules\n"), \
              patch.object(dependencies, "emit", side_effect=emit):
-            dependencies.metadata("headless")
+            dependencies.metadata(profile)
+        self.emissions = emissions
         return emissions["GITHUB_OUTPUT"]
 
     def test_submodules_independent(self):
@@ -251,14 +253,12 @@ class CommandTests(unittest.TestCase):
         self.assertNotEqual(original["submodule-key"], changed["submodule-key"])
         for name in Y_FIELDS:
             self.assertEqual(original[name], changed[name], name)
-        self.assertEqual(original["dependency-key"], changed["dependency-key"])
 
     def test_branch_separation(self):
         main = self.metadata()
         develop = self.metadata(changes={"GITHUB_REF": "refs/heads/develop"})
         self.assertTrue(main["submodule-key"].startswith("build-deps-v2-Linux-X64-main-sources-"))
         self.assertTrue(develop["submodule-key"].startswith("build-deps-v2-Linux-X64-develop-sources-"))
-        self.assertNotEqual(main["dependency-key"], develop["dependency-key"])
         self.assertEqual(main["submodule-main-prefix"], develop["submodule-main-prefix"])
         for name in Y_FIELDS:
             self.assertEqual(main[name], develop[name], name)
@@ -272,32 +272,58 @@ class CommandTests(unittest.TestCase):
                 pull = self.metadata(changes={"GITHUB_EVENT_NAME": "pull_request", "GITHUB_REF": "refs/pull/3/merge",
                                               "GITHUB_BASE_REF": base})
                 self.assertEqual(branch["submodule-key"], pull["submodule-key"])
-                self.assertEqual(branch["dependency-exact-prefix"], pull["dependency-exact-prefix"])
                 self.assertEqual(pull["dependency-cache-writer"], "false")
                 self.assertEqual(pull["environment-cache-writer"], "false")
 
-    def test_manifest_inputs(self):
+    def test_manifest_dependencies(self):
         original = self.metadata()
         manifest = {"builtin-baseline": BASELINE, "dependencies": ["freetype", "harfbuzz"]}
         (self.root / ".github/ci/vcpkg.json").write_text(json.dumps(manifest), encoding="utf-8")
         changed = self.metadata()
-        self.assertNotEqual(original["dependency-key"], changed["dependency-key"])
         self.assertEqual(original["submodule-key"], changed["submodule-key"])
         for name in Y_FIELDS:
             self.assertEqual(original[name], changed[name], name)
+
+    def test_windows_pool(self):
+        original = None
+        for profile in ("headless", "modules"):
+            for ref in ("refs/heads/main", "refs/heads/develop", "refs/pull/3/merge"):
+                with self.subTest(profile=profile, ref=ref):
+                    metadata = self.metadata(profile=profile, changes={"RUNNER_OS": "Windows", "GITHUB_REF": ref})
+                    environment = self.emissions["GITHUB_ENV"]
+                    pool = self.root / "build/cache/vcpkg"
+                    installed = self.root / "build/ci/vcpkg_installed"
+                    values = {name: environment[name] for name in (
+                        "CHERYL_CI_VCPKG_CACHE_DIR", "VCPKG_BINARY_SOURCES", "VCPKG_DOWNLOADS")}
+                    self.assertEqual(values["CHERYL_CI_VCPKG_CACHE_DIR"], pool.as_posix())
+                    self.assertEqual(values["VCPKG_BINARY_SOURCES"], f"clear;files,{pool.as_posix()}/archives,readwrite")
+                    self.assertEqual(values["VCPKG_DOWNLOADS"], (pool / "downloads").as_posix())
+                    self.assertTrue((pool / "archives").is_dir())
+                    self.assertTrue((pool / "downloads").is_dir())
+                    self.assertEqual(metadata["vcpkg-installed-dir"], installed.as_posix())
+                    self.assertEqual(environment["CHERYL_CI_VCPKG_INSTALLED_DIR"], installed.as_posix())
+                    self.assertNotIn("CHERYL_CI_DEPENDENCY_CACHE_KEY", environment)
+                    self.assertTrue({"dependency-key", "dependency-exact-prefix", "dependency-profile-prefix",
+                                     "dependency-runner-prefix"}.isdisjoint(metadata))
+                    if original is None:
+                        original = values
+                    else:
+                        self.assertEqual(original, values)
 
     def test_requirements_inputs(self):
         original = self.metadata()
         (self.root / ".github/ci/requirements-modules.txt").write_bytes(b"Jinja2==3.1.7\n")
         changed = self.metadata()
         self.assertNotEqual(original["pip-key"], changed["pip-key"])
-        for name in ("environment-prefix", "tools-key", "submodule-key", "dependency-key"):
+        for name in ("environment-prefix", "tools-key", "submodule-key"):
             self.assertEqual(original[name], changed[name], name)
 
-    def test_binary_environment(self):
+    def test_environment_image(self):
         original = self.metadata()
         changed = self.metadata(changes={"ImageVersion": "20261013.1.0"})
-        self.assertNotEqual(original["dependency-key"], changed["dependency-key"])
+        self.assertEqual(original["submodule-key"], changed["submodule-key"])
+        for name in Y_FIELDS:
+            self.assertNotEqual(original[name], changed[name], name)
 
     def test_metadata_runs(self):
         original = self.metadata()
@@ -327,6 +353,32 @@ class CommandTests(unittest.TestCase):
              patch.object(dependencies, "emit") as emit:
             dependencies.apt_plan("modules")
         self.assertEqual(emit.call_args.args[1]["needed"], "false")
+
+    def test_windows_install(self):
+        vcpkg = self.root / "vcpkg with spaces"
+        for profile in ("headless", "modules"):
+            with self.subTest(profile=profile), patch.object(dependencies, "ROOT", self.root), \
+                 patch.dict(dependencies.os.environ, {"CHERYL_CI_VCPKG_ROOT": str(vcpkg)}, clear=True), \
+                 patch.object(dependencies, "run") as command:
+                dependencies.windows_install(profile)
+            expected = [str(vcpkg / "vcpkg.exe"), "install", "--triplet=x64-windows", "--host-triplet=x64-windows",
+                        f"--x-manifest-root={self.root.as_posix()}/.github/ci",
+                        f"--x-install-root={self.root.as_posix()}/build/ci/vcpkg_installed",
+                        "--x-no-default-features", "--x-feature=hwloc"]
+            if profile == "modules":
+                expected.append("--x-feature=native")
+            command.assert_called_once_with(expected, cwd=self.root)
+
+    def test_windows_profile(self):
+        with patch.object(dependencies, "run") as command, self.assertRaises(ValueError):
+            dependencies.windows_install("docs")
+        command.assert_not_called()
+
+    def test_windows_operation(self):
+        with patch("sys.argv", ["dependencies.py", "windows-install", "--profile", "modules"]), \
+             patch.object(dependencies, "windows_install") as install:
+            dependencies.main()
+        install.assert_called_once_with("modules")
 
 
 if __name__ == "__main__":

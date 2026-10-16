@@ -24,10 +24,13 @@ def main(arguments=None):
     parser.add_argument("--hwloc", choices=("ON", "OFF"), default="OFF")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--vcpkg-root", type=Path)
+    parser.add_argument("--vcpkg-installed-dir", type=Path)
     parser.add_argument("--sdk", action="store_true")
     args = parser.parse_args(arguments)
     if args.jobs < 1:
         parser.error("--jobs must be positive")
+    if args.vcpkg_installed_dir and not args.vcpkg_root:
+        parser.error("--vcpkg-installed-dir requires --vcpkg-root")
     source = args.source.resolve()
     build = args.build_dir.resolve()
     modules = args.profile == "modules"
@@ -66,6 +69,9 @@ def main(arguments=None):
                       "-DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON",
                       f"-DVCPKG_MANIFEST_FEATURES={';'.join(features)}",
                       f"-DCMAKE_PROJECT_INCLUDE={source / '.github/ci/windows-hwloc.cmake'}"]
+        if args.vcpkg_installed_dir:
+            configure += [f"-DVCPKG_INSTALLED_DIR={args.vcpkg_installed_dir.resolve().as_posix()}",
+                          "-DVCPKG_MANIFEST_INSTALL=OFF"]
     targets = ["consumer-cengine", "consumer-headers-cheryl"]
     if args.sdk:
         targets.append("cheryl-sdk")

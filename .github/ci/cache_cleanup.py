@@ -15,11 +15,11 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 GIB = 1024 ** 3
 SNAPSHOT = re.compile(
-    r"^((?:ccache-v[123]|dependencies-v1|pip-v1)-.+|build-deps-v2-.+-binaries-[0-9a-f]+)-[0-9]+-[0-9]+$"
+    r"^((?:ccache-v[123]|dependencies-v1|pip-v1)-.+|build-deps-v2-.+-binaries-[0-9a-f]+|vcpkg-v1-Windows-X64-msvc)-[0-9]+-[0-9]+$"
 )
 PULL_REF = re.compile(r"^refs/pull/([1-9][0-9]*)/merge$")
 KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "ccache-v3-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
-                  "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-", "build-deps-v2-")
+                  "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-", "build-deps-v2-", "vcpkg-v1-")
 ENVIRONMENT_KEY = re.compile(r"actions-env-cache-v[1-9][0-9]*-.+")
 SOURCE_KEY = re.compile(r"(build-deps-v2-.+-(?:main|develop)-sources-)[0-9a-f]{64}")
 COMPILER_POOL = re.compile(

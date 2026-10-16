@@ -23,6 +23,7 @@ COMPILER = "ccache-v1-ubuntu-24.04-X64-linux-gcc-hwloc-Release"
 LAYERED = COMPILER.replace("ccache-v1-", "ccache-v2-")
 POOLED = "ccache-v3-Linux-X64-linux-gcc14"
 BUILD_DEPS = "build-deps-v2-Windows-X64-main-modules-binaries-" + "a" * 64
+VCPKG = "vcpkg-v1-Windows-X64-msvc"
 
 
 def cache(identifier, key=None, *, ref="refs/heads/develop", version="v1",
@@ -74,6 +75,7 @@ class PlanTests(unittest.TestCase):
             ("pip-v1-Windows-X64-cpython-312-abcd-12345-2",
              "pip-v1-Windows-X64-cpython-312-abcd"),
             (f"{BUILD_DEPS}-12345-2", BUILD_DEPS),
+            (f"{VCPKG}-12345-2", VCPKG),
         ):
             with self.subTest(key=key):
                 self.assertEqual(cleanup.lineage(key), expected)
@@ -153,6 +155,19 @@ class PlanTests(unittest.TestCase):
         rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main", age=18000),
                 cache(2, key=f"{BUILD_DEPS}-2-1", ref="refs/heads/main", age=7200)]
         self.assertEqual(removed(plan(rows)), {1: "superseded snapshot"})
+
+    def test_vcpkg_pool(self):
+        rows = [cache(1, key=f"{VCPKG}-1-1", ref="refs/heads/main", size=GIB, age=18000),
+                cache(2, key=f"{VCPKG}-2-1", ref="refs/heads/main", size=GIB, age=7200),
+                cache(3, key="ordinary", ref="refs/heads/feature", size=GIB)]
+        result = plan(rows, default_branch="main", budget_bytes=GIB)
+        self.assertEqual(removed(result), {1: "superseded snapshot", 3: "least recently used"})
+
+    def test_vcpkg_versions(self):
+        rows = [cache(1, key=f"{VCPKG}-1-1", ref="refs/heads/main"),
+                cache(2, key=f"{VCPKG}-2-1", ref="refs/heads/main", version="other-path"),
+                cache(3, key=f"{VCPKG}-3-1", ref="refs/heads/develop")]
+        self.assertEqual(removed(plan(rows, default_branch="main")), {})
 
     def test_build_isolation(self):
         rows = [cache(1, key=f"{BUILD_DEPS}-1-1", ref="refs/heads/main"),
