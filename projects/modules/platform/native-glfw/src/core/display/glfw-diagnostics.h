@@ -6,14 +6,14 @@
 
 namespace CE::Platform::GLFW::Detail {
     class NativeCallbackScope final {
-        CE_NATIVE_GLFW_API static thread_local unsigned int depth_;
+        static thread_local unsigned int depth_;
 
     public:
-        NativeCallbackScope() noexcept { ++depth_; }
-        ~NativeCallbackScope() { --depth_; }
+        CE_NATIVE_GLFW_API NativeCallbackScope() noexcept;
+        CE_NATIVE_GLFW_API ~NativeCallbackScope();
         NativeCallbackScope(const NativeCallbackScope&) = delete;
         NativeCallbackScope& operator=(const NativeCallbackScope&) = delete;
-        [[nodiscard]] static bool active() noexcept { return depth_ != 0; }
+        [[nodiscard]] CE_NATIVE_GLFW_API static bool active() noexcept;
     };
     struct GlfwDiagnostics {
         ::CE::Diagnostics::DomainId domain = 0;
