@@ -10,8 +10,10 @@ module; root application/test composition chooses it.
 `module_debug_terminal_linux` is an interface target, publicly named
 `Cheryl::DebugTerminal::Linux`. The root also supplies `Cheryl::DebugTerminal` for
 the selected implementation. Root selection is `CHERYL_BUILD_DEBUG_TERMINAL_LINUX`,
-defaulting to `ON` for Linux with GNU/Clang and `OFF` elsewhere. Other platforms
-have no implementation. A consuming application selects the module by linking
+defaulting to `ON` for a single-configuration Linux build with GNU/Clang and
+`CMAKE_BUILD_TYPE=Debug`, and `OFF` otherwise. Standalone module consumers set this
+option explicitly. Other platforms have no implementation. A consuming application
+selects the module by linking
 its public target; the root demo and shared test-main composition do so automatically.
 Build the consuming executable rather than naming the interface as a build target;
 included consumers bring in the implementation and viewer dependencies.
@@ -32,16 +34,20 @@ its installed-package deployment and another platform implementation remain unim
 
 ## Build and runtime policy
 
-| `CHERYL_DEBUG_TERMINAL` | Linked configurations | Display policy |
+| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Linked configurations | Display policy |
 | --- | --- | --- |
-| `AUTO` (default) | Actual Debug only | Automatic in Debug; `--no-debug-terminal` disables it. |
 | `ON` | Every configuration | Automatic in Debug; other configurations require `--debug-terminal`. |
 | `OFF` | None | No attachment or argument consumption. |
 
-These rules are independent of logging profile and severity. Omitted configurations
-do not link the native implementation or viewer dependency. Linking plain Engine
-does not select this module. `CHERYL_DEBUG_TERMINAL_AVAILABLE` describes whether the
-interface selects its implementation in the current configuration.
+The default applies when the option first enters the CMake cache. Changing
+`CMAKE_BUILD_TYPE` later retains that cached value; set the option explicitly to
+change inclusion. Multi-configuration generators default to `OFF`; explicit `ON`
+includes the terminal in every configuration from that build directory.
+
+These rules are independent of logging profile and severity. When the option is
+`OFF`, consumers link neither the native implementation nor the viewer dependency.
+Linking plain Engine does not select this module. `CHERYL_DEBUG_TERMINAL_AVAILABLE`
+describes whether the interface includes its implementation.
 
 When attached, `--debug-terminal` and `--no-debug-terminal` are consumed before the
 application parser; the last occurrence wins. Arguments after `--` pass through.
@@ -89,7 +95,8 @@ A supplied GoogleTest target without the routing capability causes terminal star
 to fall back to inherited output. Discovery creates no viewer. Each included test
 process owns its own viewer; parallel processes do not share a window or producer
 identity. Interactive Debug test launches therefore create separate viewers unless
-disabled. Release `AUTO` runs keep their existing reporting/output paths.
+disabled. Builds with the terminal option `OFF` keep their existing reporting/output
+paths.
 
 ## Checks and acceptance limits
 
@@ -102,8 +109,8 @@ retention, manual closure, discovery, captures, death tests and XML.
 
 ### Configuration matrix
 
-The Linux configuration matrix is accepted for Debug `AUTO`, Release `AUTO`,
-Release `ON` and Debug `OFF`. Included configurations cover C/C++/native/worker/logger
+The Linux configuration matrix uses Debug `ON`, Release `OFF`, Release `ON` and
+Debug `OFF`. Included configurations cover C/C++/native/worker/logger
 output, final draining, startup rollback, launcher reaping, manual closure, abnormal
 process loss, help/discovery, framework reporting/diagnostics, captures, both death-test
 styles and XML. Omitted configurations establish
@@ -119,7 +126,7 @@ source/toolchain/configuration independently:
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  for selection in Debug:AUTO Release:AUTO Release:ON Debug:OFF; do
+  for selection in Debug:ON Release:OFF Release:ON Debug:OFF; do
     terminal_configuration="${selection%%:*}"
     terminal_inclusion="${selection#*:}"
     terminal_build="build/testing-terminal-${terminal_configuration}-${terminal_inclusion}"
@@ -128,7 +135,7 @@ source/toolchain/configuration independently:
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
       -DCHERYL_REPOSITORY_ROOT="$PWD" -DCHERYL_LOG_PROFILE=developer \
       -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
-      -DCHERYL_DEBUG_TERMINAL="$terminal_inclusion" \
+      -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX="$terminal_inclusion" \
       -DCHERYL_DEBUG_TERMINAL_EMULATOR=auto
     cmake --build "$terminal_build" --parallel --target \
       tests-acceptance-engine-terminal tests-acceptance-engine-terminal-reports

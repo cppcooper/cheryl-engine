@@ -12,7 +12,6 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_CXX_COMPILER_ID MATCHES "
 endif()
 cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
 cheryl_prepare_module()
-cheryl_debug_terminal_configuration(cheryl_terminal_configuration)
 
 set(CHERYL_DEBUG_TERMINAL_EMULATOR "auto" CACHE STRING "Linux native terminal emulator: auto, konsole, or xterm")
 set_property(CACHE CHERYL_DEBUG_TERMINAL_EMULATOR PROPERTY STRINGS auto konsole xterm)
@@ -28,9 +27,9 @@ target_include_directories(${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX} INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
 target_compile_definitions(${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX} INTERFACE
-    "CHERYL_DEBUG_TERMINAL_AVAILABLE=$<BOOL:${cheryl_terminal_configuration}>")
+    "CHERYL_DEBUG_TERMINAL_AVAILABLE=$<BOOL:${CHERYL_BUILD_DEBUG_TERMINAL_LINUX}>")
 
-if(NOT CHERYL_DEBUG_TERMINAL STREQUAL "OFF")
+if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
     if(NOT TARGET Cheryl::DebugTerminal::Startup)
         add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/engine/support/debug-terminal"
             "${CMAKE_CURRENT_BINARY_DIR}/startup" EXCLUDE_FROM_ALL)
@@ -57,11 +56,10 @@ if(NOT CHERYL_DEBUG_TERMINAL STREQUAL "OFF")
     target_link_options(module_debug_terminal_linux_impl INTERFACE "LINKER:--wrap=main")
     add_dependencies(module_debug_terminal_linux_impl cheryl-debug-terminal-viewer)
 
-    # Only the selected configurations link the implementation and install its entry hook.
     target_link_libraries(${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX} INTERFACE
-        "$<${cheryl_terminal_configuration}:module_debug_terminal_linux_impl>")
+        module_debug_terminal_linux_impl)
     include("${CMAKE_CURRENT_SOURCE_DIR}/tests/support/cmake/GoogleTestOutput.cmake")
-    cheryl_route_test_reports("${cheryl_terminal_configuration}")
+    cheryl_route_test_reports("1")
 endif()
 
 if(CHERYL_BUILD_TESTS)

@@ -3,7 +3,7 @@
 The demo composes `Cheryl::Engine`, `Cheryl::NativeGLFW`, `Cheryl::OpenGL` and
 `Cheryl::OpenGL::Startup` for shared command-line bootstrap. Root composition
 also selects the optional [Linux Debug terminal](../../modules/platform/debug-terminal-linux/README.md)
-where available; actual Debug defaults to a separate output viewer.
+in supported single-configuration Debug builds by default, with a separate output viewer.
 Selecting `Cheryl::UI::TGUI` adds a panel on the right; selecting
 `Cheryl::UI::RmlUi` adds an independent native-document view on the left. Each has
 live counters, a camera-reset button, an editable field, a scrolling list,
@@ -139,11 +139,13 @@ that stripped TRACE before starting the runtime.
 
 ## Native output terminal
 
-On Linux GNU/Clang, root `AUTO` composition attaches the output terminal in actual
-Debug builds. `--no-debug-terminal` disables display when included. Release and
-other configurations omit it unless `CHERYL_DEBUG_TERMINAL=ON`; those included
-non-Debug builds display only with `--debug-terminal`. Without an implementation
-these options are not consumed by terminal support. Help/headless launches create
+On Linux GNU/Clang, a fresh root Debug configuration using Ninja defaults
+`CHERYL_BUILD_DEBUG_TERMINAL_LINUX` to `ON`. Other configurations default to `OFF`;
+set it explicitly to include the terminal in Release or a multi-configuration build.
+Existing build directories retain their cached selection. `--no-debug-terminal`
+disables display when included. Included non-Debug builds display only with
+`--debug-terminal`. Without an implementation these options are not consumed by
+terminal support. Help/headless launches create
 no viewer. Closing the viewer keeps the demo running; normal exit closes it and
 abnormal process loss retains available output. See the
 [module contract](../../modules/platform/debug-terminal-linux/README.md) and

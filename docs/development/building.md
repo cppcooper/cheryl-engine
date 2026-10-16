@@ -64,8 +64,7 @@ declared only when RmlUi is selected.
 | Option | Default | Effect |
 | --- | --- | --- |
 | `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Selects GLFW display/windows and optional input. |
-| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Linux GNU/Clang: `ON`; elsewhere: `OFF` | Selects the optional Linux output-terminal module for root applications/test runners. |
-| `CHERYL_DEBUG_TERMINAL` | `AUTO` | Links the selected terminal only in Debug; `ON` includes other configurations, where display requires `--debug-terminal`; `OFF` omits it. |
+| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Single-configuration Linux GNU/Clang with `CMAKE_BUILD_TYPE=Debug`: `ON`; otherwise: `OFF` | Includes the optional Linux output terminal in consuming applications/test runners. Explicit `ON` includes it in every configuration built from that directory. |
 | `CHERYL_DEBUG_TERMINAL_EMULATOR` | `auto` | Linux module launcher selection: `auto`, `konsole` or `xterm`. |
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
@@ -195,9 +194,17 @@ Engine/OpenGL targets do not acquire CLI11 usage requirements. See
 [application startup](consuming-engine.md#command-line-startup).
 
 The terminal module adds a separate optional startup target and linker entry hook;
-plain Engine links neither. Debug display requires a desktop and supported emulator;
-missing prerequisites fall back to inherited output. Headless Debug and test
-discovery create no viewer. See the
+plain Engine links neither. Its default is calculated when the option first enters
+the CMake cache; changing `CMAKE_BUILD_TYPE` later retains the cached selection.
+Set `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON` or `OFF` explicitly when changing it.
+Multi-configuration generators default to `OFF`; explicit `ON` includes the terminal
+in every configuration. Standalone terminal-module consumers also set this option
+explicitly.
+
+Included Debug builds display automatically; other configurations require
+`--debug-terminal`. `--no-debug-terminal` disables display. Display requires a
+desktop and supported emulator; missing prerequisites fall back to inherited output.
+Headless Debug and test discovery create no viewer. See the
 [Linux terminal guide](../../projects/modules/platform/debug-terminal-linux/README.md)
 for output/report separation and lifetime policy. `ON` is a build inclusion option,
 not a request to display a Release window automatically.
