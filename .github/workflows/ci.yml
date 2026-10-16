@@ -56,6 +56,9 @@ jobs:
           python .github/ci/test_cache_cleanup.py
           python .github/ci/test_compiler_cache.py
           python .github/ci/test_dependencies.py
+          python .github/ci/test_github_api.py
+          python .github/ci/test_versions.py
+          python .github/ci/test_release.py
       - name: Build Linux
         if: runner.os == 'Linux'
         env:
@@ -367,3 +370,31 @@ jobs:
             packages/**/SDK-MANIFEST.json
           if-no-files-found: error
           retention-days: 90
+
+  release:
+    name: Publish accepted release
+    if: github.event_name == 'push' && github.repository == 'cppcooper/cheryl-engine' && github.ref == 'refs/heads/main'
+    needs: [sdk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Download accepted SDK packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cheryl-development-sdks-${{ github.sha }}
+          path: build/release-packages
+      - name: Tag and publish the checked release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python .github/ci/release.py --packages build/release-packages --revision "$GITHUB_SHA"
