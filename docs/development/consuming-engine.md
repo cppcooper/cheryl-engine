@@ -17,13 +17,13 @@ That target combines Engine, configured modules and available support libraries.
 Its include directories and feature definitions make the matching headers visible
 to the compiler and the IDE. The same include works with source and SDK targets.
 Individual targets remain available when the application needs a smaller dependency
-set; `Cheryl::Engine` is the neutral library backed by build target `cengine` and
-archive output name `cheryl-engine`.
+set; `Cheryl::Engine` is the neutral library backed by build target `cengine`.
+Its artifact uses the Engine component version; CMake selects the matching filename.
 
 ## Source checkout
 
 A relative path to the Cheryl checkout through `add_subdirectory` is supported.
-For example, with the root's default Native GLFW/OpenGL/TGUI selections:
+For example, with the root's default module and worker-support selections:
 
 ```cmake
 cmake_minimum_required(VERSION 3.28)
@@ -51,6 +51,35 @@ The source facade also links the configured Linux Debug terminal and its entry
 attachment when that module is enabled. The example disables it; use the granular
 targets below when you want to choose support and diagnostic behavior individually.
 
+### Windows source-build runtime
+
+Shared libraries must be available when the game starts. With
+`add_subdirectory(... cheryl)` and a single-configuration Ninja build in
+`build/release`, Cheryl writes its DLLs to `build/release/cheryl`; the game's
+executable can be in the parent directory. Multi-configuration generators add a
+configuration subdirectory, such as `cheryl/Release`.
+
+After creating and linking `my_game`, copy CMake-known runtime DLLs beside it:
+
+```cmake
+get_target_property(cheryl_engine_type Cheryl::Engine TYPE)
+if(WIN32 AND cheryl_engine_type STREQUAL "SHARED_LIBRARY")
+    add_custom_command(TARGET my_game POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy -t "$<TARGET_FILE_DIR:my_game>"
+            "$<TARGET_RUNTIME_DLLS:my_game>"
+        COMMAND_EXPAND_LISTS
+        VERBATIM)
+endif()
+```
+
+This stages Cheryl and dependency DLLs whose runtime locations are known to CMake.
+Native FreeType, HarfBuzz or ICU packages can still require their SDK's DLL
+directories on the process `PATH`: CMake's
+[`TARGET_RUNTIME_DLLS`](https://cmake.org/cmake/help/v3.28/manual/cmake-generator-expressions.7.html#genex:TARGET_RUNTIME_DLLS)
+cannot list DLLs for imported targets without runtime-location metadata.
+Alternatively, configure the IDE/launcher `PATH` with both Cheryl's configuration
+output directory and the native SDK's DLL directories instead of copying.
+
 ### Granular composition
 
 Link selected targets individually to control the application's dependency set.
@@ -65,6 +94,10 @@ set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
 set(CHERYL_BUILD_UI_RMLUI OFF)
 set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
+set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
+set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
+set(CHERYL_BUILD_DOCS OFF)
+set(CHERYL_BUILD_SDK OFF)
 add_subdirectory(path/to/cheryl-engine cheryl)
 add_executable(application main.cpp)
 target_link_libraries(application PRIVATE Cheryl::Engine)
@@ -107,7 +140,7 @@ For a Linux Release SDK, configure the application's directory as follows:
 ```
 
 The SDK contains compiled Engine, Startup and selected module/topology libraries,
-their dependency libraries or headers, the crash-bootstrap object, public headers,
+their dependency libraries or headers, the Engine crash bootstrap, public headers,
 CMake import/version files and licenses. `.h`/`.hpp` and required `.inl`/`.ipp`/`.tpp`
 files remain included. C/C++ implementation translation units, tests, artwork,
 applications and the demo are excluded. There is no separate demo package.
@@ -118,7 +151,8 @@ Its `Cheryl::Cheryl` target selects the components distributed in that SDK;
 [below](#dependencies-and-headers).
 The [build guide](building.md#development-sdk-builds) describes production;
 `SDK-MANIFEST.json` records selected features, source/submodule revisions, OS,
-architecture, compiler/version, configuration, logging profile and native versions.
+architecture, compiler/version, configuration, logging profile, native versions,
+enabled component versions and static/shared linkage.
 
 Use a package compatible with the target OS/distribution, architecture, compiler,
 standard-library ABI and configuration. Windows CI SDKs use MSVC x64 RelWithDebInfo
@@ -128,10 +162,24 @@ Imported logging definitions are fixed to the producer's compiled profile/mask;
 the application must not select contradictory definitions. Match MSVC runtime and
 configuration rather than mixing incompatible Debug/Release C++ binaries.
 
+Use Engine and modules from the same matched SDK/binary set. Shared builds give
+built-in Engine/Native GLFW singletons, cache/provider state and logging state one
+owning library. Application-defined `CE::State::Singleton<T>` and generic allocator
+template statics can still have separate instances in different DLLs. Share such
+application state through an explicit owner.
+
+Retained object/resource handles keep their captured release contexts; release
+through their deleters. For manual destruction, call
+`CE::Memory::Objects::Constructor<T>::destroy(...)` in the allocating library, or
+retain and use the original construction context. A direct static call from another
+DLL can consult a different tracker. Keep the owning libraries loaded while their
+objects and deleters remain in use. Plugin hot unloading and arbitrary module-version
+mixing are outside this SDK contract.
+
 | Native dependencies | Consumer requirements |
 | --- | --- |
 | Linux | Install compatible FreeType, HarfBuzz and ICU development/runtime packages; hwloc when selected, the producer's Backward resolver libraries, and X11/OpenGL when selected. Pinned C++ and selected integration dependencies are already supplied. |
-| Windows | The `dependencies/` prefix supplies pinned vcpkg headers, import libraries, CMake files, release DLLs and licenses. Keep it with the SDK; add its `bin/` directory to the application's DLL search path. The MSVC runtime remains a host requirement. |
+| Windows | The `dependencies/` prefix supplies pinned vcpkg headers, import libraries, CMake files, release DLLs and licenses. Keep it with the SDK; shared Cheryl DLLs also live in the SDK's `bin/`. Both DLL directories must be on the application's search path. The MSVC runtime remains a host requirement. |
 
 The package config discovers native libraries, checks the producer's ICU major
 version and requires the hwloc 2.5+ (2.x) API when that provider is included.
@@ -140,9 +188,13 @@ headers and licenses are packaged. Linux consumers also need pkg-config and the
 backend's libudev/libusb development libraries, plus Iconv when selected; the
 package config discovers only the dependencies that backend requires. Packaging
 does not resolve the [Linux controller limitations](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
-Windows config prepends the bundled dependency prefix and exposes
-`Cheryl_RUNTIME_DIRECTORIES` for runtime-path setup; it does not deploy DLLs beside
-an application automatically. OpenGL still needs the host's graphics runtime.
+The package exposes `Cheryl_RUNTIME_DIRECTORIES`: shared SDKs use `lib/` on Linux
+and `bin/` on Windows; Windows bundles also include `dependencies/bin/`.
+Use those paths for application runtime setup or deploy the required libraries
+beside your executable. Linux shared libraries find their packaged neighbors
+through an origin-relative runtime path. Windows config also prepends the bundled
+dependency prefix for CMake discovery; it does not deploy DLLs automatically.
+OpenGL still needs the host's graphics runtime.
 SDK relocation does not establish compatibility with another ABI or distribution.
 
 Installed-target consumers and first-include probes cover the selected SDK
@@ -354,17 +406,20 @@ owns native uniform names and graphics types.
 
 ## Crash and exception traces
 
-`Cheryl::Engine` delivers the automatic crash bootstrap.
-Final consumers receive its object directly, so a static linker cannot omit an
-unreferenced archive initializer. Installation follows the bootstrap object's
+`Cheryl::Engine` delivers the automatic crash bootstrap. Static builds forward
+its object directly to final consumers, so the linker cannot omit an unreferenced
+archive initializer. Shared Engine embeds one copy; modules and applications
+reuse that copy through Engine. Installation follows the bootstrap object's
 `NDEBUG` scope in the engine build: Debug-style builds install
 `backward::SignalHandling`; `NDEBUG` builds do not.
 Exception and explicit stack capture remain available through the existing bounded
-capture/fallback implementation in all builds. The legacy global trace resolver and
-`Cheryl::SignalHandlers` target remain available; the demo needs only the selected
-engine/module targets. `NDEBUG` controls signal bootstrap installation, not explicit
-trace capture. The legacy `ST_ON_SIGNALS` definition exposes the `sh` declaration
-through `core/logging.h`; it does not change installation scope. See the
+capture/fallback implementation in all builds. Static SDKs also export
+`Cheryl::SignalHandlers`; shared SDKs keep the bootstrap inside `Cheryl::Engine`.
+The demo needs only the selected engine/module targets. `NDEBUG` controls signal
+bootstrap installation, not explicit trace capture. The legacy `ST_ON_SIGNALS`
+definition exposes the `sh` declaration through `core/logging.h`; Debug shared
+Engine exports its owned instance, and static Debug consumers receive it through
+the bootstrap object. The definition does not change installation scope. See the
 [signal procedure](architecture-validation.md#manual-acceptance-drivers).
 
 ## Independent consumers and header probes

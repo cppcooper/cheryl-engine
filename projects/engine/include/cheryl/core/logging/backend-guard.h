@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <spdlog/common.h>
 #include <spdlog/sinks/sink.h>
 #include <spdlog/async_logger.h>
@@ -43,25 +45,25 @@ namespace CE::Logging::Detail {
         BackendCounters* previous_;
 
     public:
-        explicit BackendScope(BackendCounters& counters) noexcept;
-        ~BackendScope();
+        CE_API explicit BackendScope(BackendCounters& counters) noexcept;
+        CE_API ~BackendScope();
         BackendScope(const BackendScope&) = delete;
         BackendScope& operator=(const BackendScope&) = delete;
     };
 
     // Suppress ordinary writes; reject operations that could wait on this backend.
     // Both run before singleton initialization or lifecycle/delegate locks.
-    [[nodiscard]] bool suppress_backend_emission() noexcept;
-    void reject_backend_reentry(const char* operation);
-    [[nodiscard]] bool in_backend() noexcept;
+    [[nodiscard]] CE_API bool suppress_backend_emission() noexcept;
+    CE_API void reject_backend_reentry(const char* operation);
+    [[nodiscard]] CE_API bool in_backend() noexcept;
 
     struct QueueReports {
         std::atomic_size_t reported_discards{0};
     };
 
-    void report_queue_loss(const std::shared_ptr<QueueReports>& reports, std::size_t discards) noexcept;
-    void report_backend_summary(const char* name, const std::shared_ptr<BackendCounters>& counters) noexcept;
-    [[nodiscard]] std::shared_ptr<spdlog::details::thread_pool> make_owned_pool(const std::shared_ptr<QueueReports>& reports);
+    CE_API void report_queue_loss(const std::shared_ptr<QueueReports>& reports, std::size_t discards) noexcept;
+    CE_API void report_backend_summary(const char* name, const std::shared_ptr<BackendCounters>& counters) noexcept;
+    [[nodiscard]] CE_API std::shared_ptr<spdlog::details::thread_pool> make_owned_pool(const std::shared_ptr<QueueReports>& reports);
 
     class DestinationState final {
         const std::shared_ptr<BackendCounters> counters_;
@@ -71,14 +73,14 @@ namespace CE::Logging::Detail {
         std::array<std::exception_ptr, 2> close_failures_{};
 
     public:
-        DestinationState(std::shared_ptr<BackendCounters> counters, bool file);
-        [[nodiscard]] bool degraded() const noexcept;
-        void suppress() noexcept;
-        void fail_operation(bool flush, std::exception_ptr failure) noexcept;
-        void fail_open_callback() noexcept;
-        void fail_close_callback(std::size_t slot, std::exception_ptr failure) noexcept;
+        CE_API DestinationState(std::shared_ptr<BackendCounters> counters, bool file);
+        [[nodiscard]] CE_API bool degraded() const noexcept;
+        CE_API void suppress() noexcept;
+        CE_API void fail_operation(bool flush, std::exception_ptr failure) noexcept;
+        CE_API void fail_open_callback() noexcept;
+        CE_API void fail_close_callback(std::size_t slot, std::exception_ptr failure) noexcept;
         // Called only after delegate locks have unwound, or after destruction.
-        void report_close_failures() noexcept;
+        CE_API void report_close_failures() noexcept;
         [[nodiscard]] BackendCounters& counters() const noexcept { return *counters_; }
     };
 
@@ -91,51 +93,50 @@ namespace CE::Logging::Detail {
      * retained-file ownership. Backend operations use this guard; direct delegate
      * log/flush and native sink-graph replacement bypass the supported contract.
      */
-    class GuardedSink final : public spdlog::sinks::sink {
+    class CE_TYPE_API GuardedSink final : public spdlog::sinks::sink {
         const spdlog::sink_ptr delegate_;
         const std::shared_ptr<DestinationState> state_;
 
     public:
-        GuardedSink(spdlog::sink_ptr delegate, std::shared_ptr<DestinationState> state);
-        [[nodiscard]] bool admits(spdlog::level level) const noexcept;
-        void log(const spdlog::details::log_msg& message) override;
-        void flush() override;
-        void set_pattern(const std::string& pattern) override;
-        void set_formatter(std::unique_ptr<spdlog::formatter> formatter) override;
+        CE_API GuardedSink(spdlog::sink_ptr delegate, std::shared_ptr<DestinationState> state);
+        [[nodiscard]] CE_API bool admits(spdlog::level level) const noexcept;
+        CE_API void log(const spdlog::details::log_msg& message) override;
+        CE_API void flush() override;
+        CE_API void set_pattern(const std::string& pattern) override;
+        CE_API void set_formatter(std::unique_ptr<spdlog::formatter> formatter) override;
     };
 
     /** Published native owners submit through this frontend. The private async
      * backend retains the same guarded destinations and borrows the pool. The
      * sink vector is fixed; changing it is rejected rather than bypassing guards.
      */
-    class OwnedLogger final : public spdlog::logger {
+    class CE_TYPE_API OwnedLogger final : public spdlog::logger {
         const std::vector<spdlog::sink_ptr> owned_sinks_;
         const std::shared_ptr<BackendCounters> counters_;
         const std::weak_ptr<spdlog::details::thread_pool> pool_;
         const spdlog::async_overflow_policy overflow_;
         const std::shared_ptr<spdlog::async_logger> backend_;
 
-        [[nodiscard]] bool valid_graph() const noexcept;
+        [[nodiscard]] CE_API bool valid_graph() const noexcept;
 
     public:
-        OwnedLogger(
+        CE_API OwnedLogger(
             std::string name,
             const std::vector<spdlog::sink_ptr>& sinks,
             std::weak_ptr<spdlog::details::thread_pool> pool,
             spdlog::async_overflow_policy overflow,
             std::shared_ptr<BackendCounters> counters
         );
-        ~OwnedLogger() override;
+        CE_API ~OwnedLogger() override;
         // Clones retain the fixed graph and the same guarded submission boundary.
-        std::shared_ptr<spdlog::logger> clone(std::string name) override;
+        CE_API std::shared_ptr<spdlog::logger> clone(std::string name) override;
 
     protected:
-        void sink_it_(const spdlog::details::log_msg& message) override;
-        void flush_() override;
+        CE_API void sink_it_(const spdlog::details::log_msg& message) override;
+        CE_API void flush_() override;
     };
 
-    [[nodiscard]] spdlog::file_event_handlers guard_file_handlers(
-        const spdlog::file_event_handlers& handlers, const std::shared_ptr<DestinationState>& state
-    );
-    [[nodiscard]] bool sink_admits(const spdlog::sink_ptr& sink, spdlog::level level) noexcept;
+    [[nodiscard]] CE_API spdlog::file_event_handlers
+    guard_file_handlers(const spdlog::file_event_handlers& handlers, const std::shared_ptr<DestinationState>& state);
+    [[nodiscard]] CE_API bool sink_admits(const spdlog::sink_ptr& sink, spdlog::level level) noexcept;
 }

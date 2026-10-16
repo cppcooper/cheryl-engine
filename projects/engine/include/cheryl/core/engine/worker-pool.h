@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/diagnostics.h>
 #include <core/engine/worker-topology.h>
 #include <chrono>
@@ -72,7 +74,7 @@ namespace CE::Workers {
 
     // Common structural validation for direct C++ options and configuration loaders.
     // Does not discover topology, create threads, or apply native policy.
-    void validate_group_options(const GroupOptions& options);
+    CE_API void validate_group_options(const GroupOptions& options);
 
     struct GroupPolicy {
         GroupOptions requested;
@@ -114,9 +116,9 @@ namespace CE::Workers {
         std::weak_ptr<Detail::PoolState> pool_;
         std::shared_ptr<Detail::GroupState> group_;
 
-        Group(std::shared_ptr<Detail::PoolState> pool, std::shared_ptr<Detail::GroupState> group);
-        void enqueue(Detail::Job job) const;
-        static void record_failure(const std::weak_ptr<Detail::GroupState>& group) noexcept;
+        CE_API Group(std::shared_ptr<Detail::PoolState> pool, std::shared_ptr<Detail::GroupState> group);
+        CE_API void enqueue(Detail::Job job) const;
+        CE_API static void record_failure(const std::weak_ptr<Detail::GroupState>& group) noexcept;
 
     public:
         // Owns the callable/captures until execution or policy failure. Closure/pool
@@ -147,14 +149,14 @@ namespace CE::Workers {
             return result;
         }
 
-        void close() const;
-        void drain() const;
+        CE_API void close() const;
+        CE_API void drain() const;
         // Owned snapshots; status is observation only, policy is immutable after creation.
-        [[nodiscard]] GroupStatus status() const;
-        [[nodiscard]] GroupPolicy policy() const;
+        [[nodiscard]] CE_API GroupStatus status() const;
+        [[nodiscard]] CE_API GroupPolicy policy() const;
         // Explicit observer: caller holds no scheduler/context/application lock.
         // Callback failures remain future-owned; policy degradation is coalesced.
-        void report_diagnostics() const noexcept;
+        CE_API void report_diagnostics() const noexcept;
     };
 
     /** Independently owned reusable CPU workers. One thread is the modest default;
@@ -169,28 +171,28 @@ namespace CE::Workers {
         std::vector<std::thread> workers_;
         std::mutex shutdown_mutex_;
 
-        Pool(std::size_t worker_count, Detail::NativeAdapter adapter);
-        Pool(PoolOptions options, Detail::NativeAdapter adapter);
+        CE_API Pool(std::size_t worker_count, Detail::NativeAdapter adapter);
+        CE_API Pool(PoolOptions options, Detail::NativeAdapter adapter);
 
     public:
         // Positive physical thread count; partial thread-start failure joins created threads.
-        explicit Pool(std::size_t worker_count = 1);
-        explicit Pool(PoolOptions options);
-        ~Pool();
+        CE_API explicit Pool(std::size_t worker_count = 1);
+        CE_API explicit Pool(PoolOptions options);
+        CE_API ~Pool();
         Pool(const Pool&) = delete;
         Pool& operator=(const Pool&) = delete;
 
         // Thread-safe publication; invalid options or unavailable required policy throw.
         // Preferred policy can fall back as reported by the returned group's policy().
-        [[nodiscard]] Group make_group(GroupOptions options = GroupOptions{});
+        [[nodiscard]] CE_API Group make_group(GroupOptions options = GroupOptions{});
         [[nodiscard]] std::size_t worker_count() const { return workers_.size(); }
         // Owned startup snapshot, not a live query of changing OS eligibility.
-        [[nodiscard]] Capabilities capabilities() const;
-        [[nodiscard]] Topology topology() const;
-        [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept;
+        [[nodiscard]] CE_API Capabilities capabilities() const;
+        [[nodiscard]] CE_API Topology topology() const;
+        [[nodiscard]] CE_API CE::Diagnostics::DomainId diagnostic_id() const noexcept;
         // Explicit observer; constructors/shutdown do not log under an outer owner lock.
-        void report_diagnostics() const noexcept;
-        void close();
-        void shutdown();
+        CE_API void report_diagnostics() const noexcept;
+        CE_API void close();
+        CE_API void shutdown();
     };
 }

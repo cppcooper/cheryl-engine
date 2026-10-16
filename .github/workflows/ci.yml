@@ -28,10 +28,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {name: linux-gcc-hwloc, os: ubuntu-24.04, type: Release, hwloc: 'ON', cc: gcc-14, cxx: g++-14}
-          - {name: linux-gcc-neutral, os: ubuntu-24.04, type: Release, hwloc: 'OFF', cc: gcc-14, cxx: g++-14}
-          - {name: linux-clang-debug, os: ubuntu-24.04, type: Debug, hwloc: 'ON', cc: clang-18, cxx: clang++-18}
-          - {name: windows-msvc-hwloc, os: windows-2025, type: RelWithDebInfo, hwloc: 'ON', cc: cl, cxx: cl}
+          - {name: linux-gcc-hwloc, os: ubuntu-24.04, cache_family: linux-gcc14, type: Release, hwloc: 'ON', cc: gcc-14, cxx: g++-14}
+          - {name: linux-gcc-neutral, os: ubuntu-24.04, cache_family: linux-gcc14, type: Release, hwloc: 'OFF', cc: gcc-14, cxx: g++-14}
+          - {name: linux-clang-debug, os: ubuntu-24.04, cache_family: linux-clang18, type: Debug, hwloc: 'ON', cc: clang-18, cxx: clang++-18}
+          - {name: windows-msvc-hwloc, os: windows-2025, cache_family: windows-msvc, type: RelWithDebInfo, hwloc: 'ON', cc: cl, cxx: cl}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,7 +45,7 @@ jobs:
         id: ccache
         uses: ./.github/actions/restore-compiler-cache
         with:
-          prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.name }}-${{ matrix.type }}
+          prefix: ccache-v3-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}
       - name: Reset compiler cache statistics
         id: ccache-ready
         run: ccache --zero-stats
@@ -56,7 +56,7 @@ jobs:
           python .github/ci/test_cache_cleanup.py
           python .github/ci/test_compiler_cache.py
           python .github/ci/test_dependencies.py
-      - name: Build and test Linux
+      - name: Build Linux
         if: runner.os == 'Linux'
         env:
           CC: ${{ matrix.cc }}
@@ -64,8 +64,8 @@ jobs:
           BUILD_TYPE: ${{ matrix.type }}
           HWLOC: ${{ matrix.hwloc }}
           CHERYL_STB_ALLOCATION_CFF: /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf
-        run: python .github/ci/run.py --build-dir build/ci --profile headless --build-type "$BUILD_TYPE" --hwloc "$HWLOC"
-      - name: Build and test Windows
+        run: python .github/ci/run.py --phase build --build-dir build/ci --profile headless --build-type "$BUILD_TYPE" --hwloc "$HWLOC"
+      - name: Build Windows
         if: runner.os == 'Windows'
         shell: pwsh
         env:
@@ -76,7 +76,23 @@ jobs:
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (!$vs) { throw 'MSVC x64 tools are unavailable' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          python .github/ci/run.py --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
+          python .github/ci/run.py --phase build --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Test Linux
+        if: runner.os == 'Linux'
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          HWLOC: ${{ matrix.hwloc }}
+          CHERYL_STB_ALLOCATION_CFF: /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf
+        run: python .github/ci/run.py --phase test --build-dir build/ci --profile headless --build-type "$BUILD_TYPE" --hwloc "$HWLOC"
+      - name: Test Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          HWLOC: ${{ matrix.hwloc }}
+        run: |
+          python .github/ci/run.py --phase test --build-dir build/ci --profile headless --build-type $env:BUILD_TYPE --hwloc $env:HWLOC
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Check dependency cache updates
         if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' && steps.dependencies.outputs.dependency-cache-writer == 'true' }}
@@ -91,17 +107,23 @@ jobs:
       - name: Report compiler cache statistics
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         run: ccache --show-stats --verbose
-      - name: Prepare compiler cache additions
+      - name: Pack compiler cache additions
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         id: compiler-cache-state
         shell: bash
-        run: python .github/ci/compiler_cache.py prepare-save
-      - name: Save compiler cache
-        if: ${{ !cancelled() && steps.compiler-cache-state.outputs.changed == 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        env:
+          CCACHE_DELTA_ARCHIVE: ${{ steps.ccache.outputs.delta-archive }}
+        run: python .github/ci/compiler_cache.py pack --output "$CCACHE_DELTA_ARCHIVE"
+      - name: Retain compiler cache additions
+        if: ${{ !cancelled() && steps.compiler-cache-state.outputs.has-content == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          path: ${{ steps.ccache.outputs.current-path }}
-          key: ${{ steps.ccache.outputs.current-key }}
+          name: compiler-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}-${{ matrix.name }}
+          path: ${{ steps.ccache.outputs.delta-archive }}
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 1
       - name: Retain results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -122,8 +144,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {name: linux-modules, os: ubuntu-24.04, type: Release}
-          - {name: windows-modules, os: windows-2025, type: RelWithDebInfo}
+          - {name: linux-modules, os: ubuntu-24.04, cache_family: linux-gcc14, type: Release, linkage: static}
+          - {name: windows-modules, os: windows-2025, cache_family: windows-msvc, type: RelWithDebInfo, linkage: static}
+          - {name: linux-modules-shared, os: ubuntu-24.04, cache_family: linux-gcc14, type: Release, linkage: shared}
+          - {name: windows-modules-shared, os: windows-2025, cache_family: windows-msvc, type: RelWithDebInfo, linkage: shared}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -137,33 +161,58 @@ jobs:
         id: ccache
         uses: ./.github/actions/restore-compiler-cache
         with:
-          prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.name }}-${{ matrix.type }}
+          prefix: ccache-v3-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}
       - name: Reset compiler cache statistics
         id: ccache-ready
         run: ccache --zero-stats
-      - name: Build and test Linux modules
+      - name: Build Linux modules and SDK consumers
         if: runner.os == 'Linux'
         env:
           CC: gcc-14
           CXX: g++-14
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
           CHERYL_STB_ALLOCATION_CFF: /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf
         run: |
-          python .github/ci/run.py --build-dir build/ci --profile modules --hwloc ON --sdk
+          python .github/ci/run.py --phase build --build-dir build/ci --profile modules --build-type "$BUILD_TYPE" --linkage "$LINKAGE" --hwloc ON --sdk
           python .github/ci/package.py --build-dir build/ci --output build/packages
-          python .github/ci/verify_sdk.py --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
-      - name: Build and test Windows modules
+          python .github/ci/verify_sdk.py --phase build --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
+      - name: Build Windows modules and SDK consumers
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
         run: |
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (!$vs) { throw 'MSVC x64 tools are unavailable' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          python .github/ci/run.py --build-dir build/ci --profile modules --build-type RelWithDebInfo --hwloc ON --sdk --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
+          python .github/ci/run.py --phase build --build-dir build/ci --profile modules --build-type $env:BUILD_TYPE --linkage $env:LINKAGE --hwloc ON --sdk --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python .github/ci/package.py --build-dir build/ci --output build/packages
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python .github/ci/verify_sdk.py --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
+          python .github/ci/verify_sdk.py --phase build --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Test Linux modules and SDK consumers
+        if: runner.os == 'Linux'
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
+          CHERYL_STB_ALLOCATION_CFF: /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf
+        run: |
+          python .github/ci/run.py --phase test --build-dir build/ci --profile modules --build-type "$BUILD_TYPE" --linkage "$LINKAGE" --hwloc ON --sdk
+          python .github/ci/verify_sdk.py --phase test --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
+      - name: Test Windows modules and SDK consumers
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
+        run: |
+          python .github/ci/run.py --phase test --build-dir build/ci --profile modules --build-type $env:BUILD_TYPE --linkage $env:LINKAGE --hwloc ON --sdk
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python .github/ci/verify_sdk.py --phase test --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Check dependency cache updates
         if: ${{ !cancelled() && runner.os == 'Windows' && steps.dependencies.outcome == 'success' && steps.dependencies.outputs.dependency-cache-writer == 'true' }}
@@ -178,17 +227,23 @@ jobs:
       - name: Report compiler cache statistics
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         run: ccache --show-stats --verbose
-      - name: Prepare compiler cache additions
+      - name: Pack compiler cache additions
         if: ${{ !cancelled() && steps.ccache-ready.outcome == 'success' }}
         id: compiler-cache-state
         shell: bash
-        run: python .github/ci/compiler_cache.py prepare-save
-      - name: Save compiler cache
-        if: ${{ !cancelled() && steps.compiler-cache-state.outputs.changed == 'true' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        env:
+          CCACHE_DELTA_ARCHIVE: ${{ steps.ccache.outputs.delta-archive }}
+        run: python .github/ci/compiler_cache.py pack --output "$CCACHE_DELTA_ARCHIVE"
+      - name: Retain compiler cache additions
+        if: ${{ !cancelled() && steps.compiler-cache-state.outputs.has-content == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          path: ${{ steps.ccache.outputs.current-path }}
-          key: ${{ steps.ccache.outputs.current-key }}
+          name: compiler-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}-${{ matrix.name }}
+          path: ${{ steps.ccache.outputs.delta-archive }}
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+          retention-days: 1
       - name: Retain checked SDK candidate
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -211,6 +266,80 @@ jobs:
             build/sdk-consumer/CMakeFiles/CMakeConfigureLog.yaml
           if-no-files-found: warn
           retention-days: 14
+
+  compiler-cache:
+    name: Publish compiler cache (${{ matrix.cache_family }})
+    if: ${{ !cancelled() }}
+    needs: [headless, modules]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            cache_family: linux-gcc14
+            legacy_1: linux-gcc-hwloc-Release
+            legacy_2: linux-gcc-neutral-Release
+            legacy_3: linux-modules-Release
+            legacy_4: linux-modules-shared-Release
+          - os: ubuntu-24.04
+            cache_family: linux-clang18
+            legacy_1: linux-clang-debug-Debug
+            legacy_2: ''
+            legacy_3: ''
+            legacy_4: ''
+          - os: windows-2025
+            cache_family: windows-msvc
+            legacy_1: windows-msvc-hwloc-RelWithDebInfo
+            legacy_2: windows-modules-RelWithDebInfo
+            legacy_3: windows-modules-shared-RelWithDebInfo
+            legacy_4: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Restore compiler cache layers
+        id: ccache
+        uses: ./.github/actions/restore-compiler-cache
+        with:
+          prefix: ccache-v3-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}
+          attach: 'false'
+      - name: Import previous compiler cache (1)
+        if: steps.ccache.outputs.current-hit != 'true' && matrix.legacy_1 != ''
+        uses: ./.github/actions/migrate-compiler-cache
+        with:
+          legacy-prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.legacy_1 }}
+      - name: Import previous compiler cache (2)
+        if: steps.ccache.outputs.current-hit != 'true' && matrix.legacy_2 != ''
+        uses: ./.github/actions/migrate-compiler-cache
+        with:
+          legacy-prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.legacy_2 }}
+      - name: Import previous compiler cache (3)
+        if: steps.ccache.outputs.current-hit != 'true' && matrix.legacy_3 != ''
+        uses: ./.github/actions/migrate-compiler-cache
+        with:
+          legacy-prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.legacy_3 }}
+      - name: Import previous compiler cache (4)
+        if: steps.ccache.outputs.current-hit != 'true' && matrix.legacy_4 != ''
+        uses: ./.github/actions/migrate-compiler-cache
+        with:
+          legacy-prefix: ccache-v2-${{ matrix.os }}-${{ runner.arch }}-${{ matrix.legacy_4 }}
+      - name: Collect compiler cache additions
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: compiler-cache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.cache_family }}-*
+          path: build/cache/compiler-deltas
+      - name: Merge compiler cache additions
+        id: compiler-cache-state
+        shell: bash
+        run: python .github/ci/compiler_cache.py publish --deltas build/cache/compiler-deltas
+      - name: Save compiler cache family
+        if: steps.compiler-cache-state.outputs.changed == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.ccache.outputs.current-path }}
+          key: ${{ steps.ccache.outputs.current-key }}
 
   sdk:
     name: Collect accepted development SDKs

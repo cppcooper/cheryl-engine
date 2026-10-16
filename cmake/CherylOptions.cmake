@@ -11,6 +11,11 @@ function(cheryl_option name description default_value)
         return()
     endif()
     set_property(GLOBAL APPEND PROPERTY CHERYL_DECLARED_OPTIONS "${name}")
+    get_property(summary_scheduled GLOBAL PROPERTY CHERYL_OPTIONS_SUMMARY_SCHEDULED)
+    if(NOT summary_scheduled)
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL cheryl_print_options)
+        set_property(GLOBAL PROPERTY CHERYL_OPTIONS_SUMMARY_SCHEDULED TRUE)
+    endif()
     # Preserve the entry point's value through scoped Engine bootstrapping.
     set_property(GLOBAL PROPERTY "CHERYL_OPTION_${name}_VALUE" "${${name}}")
     set_property(GLOBAL PROPERTY "CHERYL_OPTION_${name}_REQUIRES" "${configured_REQUIRES}")
@@ -72,9 +77,6 @@ function(cheryl_print_options)
     message(STATUS "----------------------------------")
 endfunction()
 
-# Include options declared by modules and standalone entry points in one summary.
-cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL cheryl_print_options)
-
 function(cheryl_check_option_requirements)
     get_property(declared_options GLOBAL PROPERTY CHERYL_DECLARED_OPTIONS)
     foreach(name IN LISTS declared_options)
@@ -104,47 +106,110 @@ function(cheryl_check_option_requirements)
     endforeach()
 endfunction()
 
+# Entry points declare only the groups they consume; all defaults live here.
+function(cheryl_configure_module_options)
+    cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+endfunction()
+
+function(cheryl_configure_native_options)
+    cheryl_option(CHERYL_NATIVE_INPUT "Include the Gainput-backed native input adapter" ON)
+    cheryl_option(CHERYL_NATIVE_NULL_PLATFORM "Use GLFW's null platform without X11 or Wayland" OFF)
+endfunction()
+
+function(cheryl_configure_opengl_options)
+    set(CHERYL_NATIVE_GLFW_SOURCE "" CACHE PATH "Native GLFW module source directory when its target is not supplied")
+endfunction()
+
+function(cheryl_configure_tgui_options)
+    set(CHERYL_TGUI_SOURCE "" CACHE PATH "TGUI 1.13.0 source directory; empty selects the pinned source or a supplied package")
+endfunction()
+
+function(cheryl_configure_rmlui_options)
+    set(CHERYL_RMLUI_SOURCE "" CACHE PATH "RmlUi 6.3 source directory; empty selects the pinned source or a supplied package")
+endfunction()
+
+function(cheryl_configure_rmlui_test_options)
+    set(CHERYL_RMLUI_TEST_FONT "" CACHE FILEPATH "RmlUi check font fixture; empty discovers an available TTF/OTF file")
+endfunction()
+
+function(cheryl_configure_miniaudio_options)
+    set(CHERYL_MINIAUDIO_SOURCE "" CACHE PATH "Miniaudio 0.11.25 source directory, overriding the pinned submodule")
+endfunction()
+
+function(cheryl_configure_debug_terminal_options)
+    set(CHERYL_DEBUG_TERMINAL_EMULATOR "auto" CACHE STRING "Linux native terminal emulator: auto, konsole, or xterm")
+    set_property(CACHE CHERYL_DEBUG_TERMINAL_EMULATOR PROPERTY STRINGS auto konsole xterm)
+    if(NOT CHERYL_DEBUG_TERMINAL_EMULATOR MATCHES "^(auto|konsole|xterm)$")
+        message(FATAL_ERROR "Unknown CHERYL_DEBUG_TERMINAL_EMULATOR: ${CHERYL_DEBUG_TERMINAL_EMULATOR}")
+    endif()
+endfunction()
+
+function(cheryl_configure_logging_options)
+    set(CHERYL_LOG_PROFILE "auto" CACHE STRING "Logging defaults: auto, developer, support, or release")
+    set_property(CACHE CHERYL_LOG_PROFILE PROPERTY STRINGS auto developer support release)
+    set(CHERYL_LOG_COMPILED_MASK "" CACHE STRING "Optional severity-bit override (0x3f trace, 0x1f debug, 0x0f info, 0x07 warn, 0 off)")
+endfunction()
+
+function(cheryl_configure_hwloc_options)
+    set(CHERYL_HWLOC_TARGET "" CACHE STRING "Supplied hwloc 2.5+ (2.x) SDK target")
+endfunction()
+
+function(cheryl_configure_documentation_options interpreter)
+    set(CHERYL_DOCS_PYTHON "${interpreter}" CACHE FILEPATH "Python interpreter for documentation tool selection")
+    set(CHERYL_DOCS_CACHE_DIR "" CACHE PATH "Shared documentation tool cache; empty uses the user cache")
+    cheryl_option(CHERYL_DOCS_FORCE_PINNED "Use locked documentation tools instead of compatible installed tools" OFF)
+endfunction()
+
+function(cheryl_configure_first_game_options)
+    set(CHERYL_FIRST_GAME_ENGINE_SOURCE "" CACHE PATH "Cheryl checkout for source consumption; empty uses an installed SDK")
+endfunction()
+
+function(cheryl_configure_library_options)
+    cheryl_option(CHERYL_BUILD_SHARED_LIBS
+            "Build Cheryl Engine, modules and support as shared libraries" ON)
+endfunction()
+
 function(cheryl_configure_root_options)
+    cheryl_configure_library_options()
     cheryl_option(CHERYL_BUILD_DOCS
-            "Add documentation tooling and generation targets" OFF)
+            "Add documentation tooling and generation targets" ON)
     cheryl_option(CHERYL_BUILD_SDK
-            "Enable installation of the selected libraries, headers and dependencies" OFF)
+            "Enable installation of the selected libraries, headers and dependencies" ON)
     cheryl_option(WARN
             "Enable compiler warnings [-Wall]" OFF)
 
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC
-            "Build optional hwloc worker topology and thread placement support" OFF)
+            "Build optional hwloc worker topology and thread placement support" ON)
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_JSON
-            "Build optional worker configuration JSON loading support" OFF)
+            "Build optional worker configuration JSON loading support" ON)
 
     cheryl_option(CHERYL_BUILD_NATIVE_GLFW
             "Build the native GLFW window/input integration" ON)
     set(cheryl_terminal_linux_default OFF)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND
+            NOT CMAKE_CONFIGURATION_TYPES AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(cheryl_terminal_linux_default ON)
     endif()
     cheryl_option(CHERYL_BUILD_DEBUG_TERMINAL_LINUX
-            "Select the Linux Debug terminal module for applications and test runners" ${cheryl_terminal_linux_default})
-    cheryl_option(CHERYL_SANDBOX_BUILD
-            "Deprecated native GLFW null-platform selection without Gainput" OFF)
+            "Include the Linux output terminal in applications and test runners (defaults ON in supported Debug builds)" ${cheryl_terminal_linux_default})
     cheryl_option(CHERYL_BUILD_OPENGL
             "Build the OpenGL backend" ON)
     cheryl_option(CHERYL_BUILD_UI_TGUI
             "Build the optional TGUI UI integration" ON)
     cheryl_option(CHERYL_BUILD_UI_RMLUI
-            "Build the optional RmlUi UI integration" OFF)
+            "Build the optional RmlUi UI integration" ON)
     cheryl_option(CHERYL_BUILD_AUDIO_MINIAUDIO
-            "Build the optional miniaudio playback integration" OFF)
+            "Build the optional miniaudio playback integration" ON)
 
     cheryl_option(CHERYL_BUILD_DEMO
-            "Build the windowed demonstration application" ON
+            "Build the windowed demonstration application" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
     cheryl_option(CHERYL_BUILD_FIRST_GAME
             "Build the maintained getting-started game" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
 
     cheryl_option(CHERYL_BUILD_TESTS
-            "Build Cheryl's tests and acceptance tools" ON)
+            "Build Cheryl's tests and acceptance tools" OFF)
     cheryl_option(CHERYL_BUILD_ALL_TESTS
             "Include owner and cross-project aggregate test runners in the default build" OFF
             REQUIRES CHERYL_BUILD_TESTS)
@@ -157,19 +222,5 @@ function(cheryl_configure_root_options)
     if(CHERYL_BUILD_OPENGL AND NOT CHERYL_BUILD_NATIVE_GLFW)
         cheryl_print_options()
         message(FATAL_ERROR "Cheryl OpenGL requires Native GLFW; enable CHERYL_BUILD_NATIVE_GLFW or disable CHERYL_BUILD_OPENGL")
-    endif()
-endfunction()
-
-function(cheryl_debug_terminal_configuration result)
-    set(CHERYL_DEBUG_TERMINAL "AUTO" CACHE STRING "Native output terminal inclusion: AUTO (Debug only), ON, or OFF")
-    set_property(CACHE CHERYL_DEBUG_TERMINAL PROPERTY STRINGS AUTO ON OFF)
-    if(CHERYL_DEBUG_TERMINAL STREQUAL "AUTO")
-        set(${result} "$<CONFIG:Debug>" PARENT_SCOPE)
-    elseif(CHERYL_DEBUG_TERMINAL STREQUAL "ON")
-        set(${result} "1" PARENT_SCOPE)
-    elseif(CHERYL_DEBUG_TERMINAL STREQUAL "OFF")
-        set(${result} "0" PARENT_SCOPE)
-    else()
-        message(FATAL_ERROR "Unknown CHERYL_DEBUG_TERMINAL: ${CHERYL_DEBUG_TERMINAL}")
     endif()
 endfunction()

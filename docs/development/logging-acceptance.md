@@ -31,8 +31,10 @@ For the developer row:
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+    -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF \
     -DCHERYL_BUILD_DEMO=OFF \
-    -DCHERYL_SANDBOX_BUILD=OFF -DCHERYL_LOG_PROFILE=developer
+    -DCHERYL_LOG_PROFILE=developer
   cmake --build build/log-developer --parallel \
     --target tests-logging acceptance-logging
   python3 projects/engine/tests/logging-acceptance/logging.py build/log-developer

@@ -1,23 +1,35 @@
-"""Configure ordered native ccache layers and save only current-layer additions."""
+"""Share native ccache layers across compatible jobs and publish their union."""
 
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path, PurePath
 import re
+import shutil
 import stat
-import subprocess
+import tarfile
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PREFIX = re.compile(r"ccache-v2-[A-Za-z0-9][A-Za-z0-9_.-]*")
+PREFIX = re.compile(r"ccache-v3-(?:Linux-[A-Za-z0-9_]+-linux-(?:gcc14|clang18)|Windows-[A-Za-z0-9_]+-windows-msvc)")
+LEGACY_PREFIXES = {
+    "linux-gcc14": ("ubuntu-24.04", ("linux-gcc-hwloc-Release", "linux-gcc-neutral-Release",
+                                    "linux-modules-Release", "linux-modules-shared-Release")),
+    "linux-clang18": ("ubuntu-24.04", ("linux-clang-debug-Debug",)),
+    "windows-msvc": ("windows-2025", ("windows-msvc-hwloc-RelWithDebInfo",
+                                      "windows-modules-RelWithDebInfo", "windows-modules-shared-RelWithDebInfo")),
+}
 PULL_REF = re.compile(r"refs/pull/([1-9][0-9]*)/merge")
 # Native file-backend keys and CacheEntry v1 result headers in ccache 4.9/4.14.
 NATIVE_KEY = re.compile(r"[0-9a-f]{2}/[0-9a-f]{38}")
 RESULT_HEADER = b"\xcc\xac\x01\x00"
 EMPTY_MARKER = ".cheryl-empty-layer"
 METADATA_FILES = {EMPTY_MARKER, "CACHEDIR.TAG"}
+LAYER_LIMIT = 1024 ** 3
+ARCHIVE_ENTRY_LIMIT = 200_000
 
 
 def _valid_ref(ref):
@@ -62,7 +74,7 @@ def _context(environment, event):
 def metadata(prefix, *, environment=None, event=None, root=ROOT):
     environment, event = _context(environment, event)
     if not isinstance(prefix, str) or not PREFIX.fullmatch(prefix):
-        raise ValueError("Compiler cache prefix must start with ccache-v2- and contain only letters, numbers, dots, underscores and hyphens")
+        raise ValueError("Compiler cache prefix must identify a supported ccache-v3 runner, architecture and compiler family")
     for name in ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"):
         value = environment.get(name)
         if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]*", value):
@@ -72,6 +84,8 @@ def metadata(prefix, *, environment=None, event=None, root=ROOT):
     role = selected["role"]
     output = {"role": role, "main-path": str(directory / "main"),
               "develop-path": str(directory / "develop"), "current-path": str(directory / role),
+              "delta-path": str(directory / "delta"),
+              "delta-archive": str(directory.parent / "compiler-artifacts" / "delta.tar"),
               "main-prefix": f"{prefix}-main-", "develop-prefix": f"{prefix}-develop-",
               "current-prefix": f"{prefix}-{role}-"}
     output["current-key"] = output["current-prefix"] + environment["GITHUB_RUN_ID"] + "-" + environment["GITHUB_RUN_ATTEMPT"]
@@ -167,41 +181,177 @@ def _layers(environment, event, root):
 def configure(*, environment=None, event=None, root=ROOT):
     environment, event = _context(environment, event)
     info, current, parents = _layers(environment, event, root)
-    for directory in [current, *parents]:
+    delta = Path(info["delta-path"])
+    for directory in [delta, current, *parents]:
         _files(directory)
         directory.mkdir(parents=True, exist_ok=True)
+    if _entries(delta):
+        raise ValueError("A compiler worker must start with a fresh writable delta")
     stats = Path(root).absolute() / "build" / "ccache"
     _files(stats)
     stats.mkdir(parents=True, exist_ok=True)
-    state = {"key": info["current-key"], "path": str(current), "before": fingerprint(current),
-             "entries": len(_entries(current))}
-    (Path(root) / "build" / "cache" / "compiler-state.json").write_text(json.dumps(state), encoding="utf-8")
     return {"CCACHE_DIR": str(stats), "CCACHE_REMOTE_ONLY": "1",
-            "CCACHE_REMOTE_STORAGE": storage_configuration(current, parents),
+            "CCACHE_REMOTE_STORAGE": storage_configuration(delta, [current, *parents]),
             "CCACHE_NOFILECLONE": "1", "CCACHE_NOHARDLINK": "1"}
 
 
-def prepare_save(*, environment=None, event=None, root=ROOT):
+def _native_entries(directory):
+    entries = _entries(directory)
+    if any(not NATIVE_KEY.fullmatch(name) for name in entries):
+        raise ValueError("Compiler archives must contain only native file-backend cache entries")
+    return entries
+
+
+def trim(directory, *, limit=LAYER_LIMIT):
+    entries = _native_entries(directory)
+    sizes = {name: path.stat().st_size for name, path in entries.items()}
+    total = sum(sizes.values())
+    removed = 0
+    for name, path in sorted(entries.items(), key=lambda item: (item[1].stat().st_mtime_ns, item[0])):
+        if total <= limit:
+            break
+        path.unlink()
+        total -= sizes[name]
+        removed += 1
+    return removed
+
+
+def merge(destination, source):
+    """Union results by native key; keep one complete, newest manifest per key."""
+    destination_files = _native_entries(destination)
+    source_files = _native_entries(source)
+    for name, path in sorted(source_files.items()):
+        target = destination_files.get(name)
+        if target is not None:
+            existing, incoming = target.stat(), path.stat()
+            if _is_result(target) and _is_result(path):
+                # The same result key can have different serialization timestamps.
+                if incoming.st_mtime_ns > existing.st_mtime_ns:
+                    os.utime(target, ns=(existing.st_atime_ns, incoming.st_mtime_ns))
+                continue
+            if incoming.st_mtime_ns < existing.st_mtime_ns:
+                continue
+        target = Path(destination) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+
+
+def pack(output, *, environment=None, event=None, root=ROOT):
     environment, event = _context(environment, event)
     info, current, parents = _layers(environment, event, root)
-    state = json.loads((Path(root) / "build" / "cache" / "compiler-state.json").read_text(encoding="utf-8"))
-    if not isinstance(state, dict) or state.get("key") != info["current-key"] or state.get("path") != str(current):
-        raise ValueError("Compiler cache snapshot does not match this run and layer")
-    if not isinstance(state.get("before"), str) or not re.fullmatch(r"[a-f0-9]{64}", state["before"]) or type(state.get("entries")) is not int or state["entries"] < 0:
-        raise ValueError("Compiler cache snapshot does not match this run and layer")
+    delta = Path(info["delta-path"])
+    _native_entries(delta)
+    removed = deduplicate(delta, [current, *parents])
+    trimmed = trim(delta)
+    entries = _native_entries(delta)
+    output = Path(output).absolute()
+    if output != Path(info["delta-archive"]):
+        raise ValueError("Compiler delta archive must use the planned output path")
+    _files(output.parent)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.unlink(missing_ok=True)
+    if entries:
+        # Cache entries are already compressed; tar preserves their LRU timestamps.
+        with tarfile.open(output, "w", format=tarfile.PAX_FORMAT) as archive:
+            for name, path in sorted(entries.items()):
+                member = tarfile.TarInfo(name)
+                status = path.stat()
+                member.size = status.st_size
+                member.mtime = status.st_mtime
+                member.mode = 0o644
+                with path.open("rb") as source:
+                    archive.addfile(member, source)
+    return {"has-content": str(bool(entries)).lower(), "removed": str(removed), "trimmed": str(trimmed)}
+
+
+def _archive_members(archive):
+    members = []
+    seen = set()
+    total = 0
+    for member in archive:
+        if (not member.isfile() or not NATIVE_KEY.fullmatch(member.name) or member.name in seen
+                or member.size < 0 or not math.isfinite(member.mtime) or member.mtime < 0):
+            raise ValueError("Compiler delta archive contains an invalid native entry")
+        total += member.size
+        if total > LAYER_LIMIT or len(members) >= ARCHIVE_ENTRY_LIMIT:
+            raise ValueError("Compiler delta archive exceeds the layer limits")
+        seen.add(member.name)
+        members.append(member)
+    return members
+
+
+def _merge_archives(current, directory):
+    archives = sorted(_files(directory).values())
+    # Validate every contribution before changing the restored snapshot.
+    for path in archives:
+        if path.name != "delta.tar":
+            raise ValueError("Expected a compiler delta.tar artifact")
+        with tarfile.open(path, "r:") as archive:
+            _archive_members(archive)
+    for path in archives:
+        with tarfile.open(path, "r:") as archive:
+            members = _archive_members(archive)
+            with tempfile.TemporaryDirectory(prefix="compiler-delta-", dir=current.parent) as temporary:
+                incoming = Path(temporary)
+                for member in members:
+                    target = incoming / member.name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.extractfile(member) as source, target.open("wb") as output:
+                        shutil.copyfileobj(source, output)
+                    os.utime(target, (member.mtime, member.mtime))
+                merge(current, incoming)
+    return len(archives)
+
+
+def migration_plan(prefix, *, environment=None, event=None, root=ROOT):
+    environment, event = _context(environment, event)
+    info, current, _ = _layers(environment, event, root)
+    selected = environment["CHERYL_CCACHE_PREFIX"]
+    family = next(family for family in LEGACY_PREFIXES if selected.endswith("-" + family))
+    runner, profiles = LEGACY_PREFIXES[family]
+    architecture = selected.split("-")[3]
+    allowed = {f"ccache-v2-{runner}-{architecture}-{profile}" for profile in profiles}
+    if prefix not in allowed:
+        raise ValueError("Legacy compiler cache must belong to the selected runner and compiler family")
+    legacy_prefix = f"{prefix}-{info['role']}-"
+    return {"path": str(current), "prefix": legacy_prefix,
+            "key": legacy_prefix + environment["GITHUB_RUN_ID"] + "-" + environment["GITHUB_RUN_ATTEMPT"]}
+
+
+def import_legacy(*, environment=None, event=None, root=ROOT):
+    environment, event = _context(environment, event)
+    _, current, _ = _layers(environment, event, root)
+    staging = current.parent / "migration"
+    merge(staging, current)
+    entries = _native_entries(current)
+    for path in entries.values():
+        path.unlink()
+    for name in METADATA_FILES:
+        (current / name).unlink(missing_ok=True)
+    return {"imported": str(len(entries))}
+
+
+def publish(deltas, *, environment=None, event=None, root=ROOT):
+    environment, event = _context(environment, event)
+    _, current, parents = _layers(environment, event, root)
+    _native_entries(current)
+    current.mkdir(parents=True, exist_ok=True)
+    before = fingerprint(current)
+    initial_snapshot = bool(_native_entries(current)) or (current / EMPTY_MARKER).exists()
+    merge(current, current.parent / "migration")
+    archives = _merge_archives(current, deltas)
     removed = deduplicate(current, parents)
-    subprocess.run(["ccache", "--trim-dir", str(current), "--trim-max-size", "1GiB",
-                    "--trim-method", "mtime"], check=True)
-    after = fingerprint(current)
-    entries = _entries(current)
+    trimmed = trim(current)
+    entries = _native_entries(current)
     marker = current / EMPTY_MARKER
     if entries:
         marker.unlink(missing_ok=True)
-    elif state["entries"]:
-        # Supersede a restored nonempty archive even when all entries moved to a parent.
+    else:
+        # Remember an initialized empty layer so legacy imports are not repeated.
         marker.write_text("Current compiler cache layer is empty.\n", encoding="utf-8")
-    changed = after != state["before"]
-    return {"changed": str(changed).lower(), "removed": str(removed)}
+    return {"changed": str(fingerprint(current) != before or not initial_snapshot).lower(),
+            "has-content": str(bool(entries) or marker.exists()).lower(),
+            "removed": str(removed), "trimmed": str(trimmed), "archives": str(archives)}
 
 
 def _emit(values, destination):
@@ -216,20 +366,33 @@ def _emit(values, destination):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    describe = commands.add_parser("metadata")
+    describe = commands.add_parser("plan")
     describe.add_argument("--prefix", required=True)
-    commands.add_parser("configure")
-    commands.add_parser("prepare-save")
+    commands.add_parser("attach")
+    package = commands.add_parser("pack")
+    package.add_argument("--output", required=True)
+    publication = commands.add_parser("publish")
+    publication.add_argument("--deltas", required=True)
+    migration = commands.add_parser("migration-plan")
+    migration.add_argument("--prefix", required=True)
+    commands.add_parser("import")
     args = parser.parse_args()
-    if args.command == "metadata":
+    if args.command == "plan":
         _emit(metadata(args.prefix), "GITHUB_OUTPUT")
         _emit({"CHERYL_CCACHE_PREFIX": args.prefix}, "GITHUB_ENV")
-    elif args.command == "configure":
+    elif args.command == "attach":
         _emit(configure(), "GITHUB_ENV")
     else:
-        result = prepare_save()
+        if args.command == "pack":
+            result = pack(args.output)
+        elif args.command == "publish":
+            result = publish(args.deltas)
+        elif args.command == "migration-plan":
+            result = migration_plan(args.prefix)
+        else:
+            result = import_legacy()
         _emit(result, "GITHUB_OUTPUT")
-        print(f"Compiler cache additions: changed={result['changed']}, identical parent entries removed={result['removed']}")
+        print("Compiler cache " + args.command + ": " + json.dumps(result, sort_keys=True))
 
 
 if __name__ == "__main__":

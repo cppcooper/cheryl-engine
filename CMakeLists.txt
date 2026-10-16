@@ -13,6 +13,7 @@ endif()
 # Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
 include(cmake/CherylOptions.cmake)
 cheryl_configure_root_options()
+include(cmake/CherylLibraries.cmake)
 include(cmake/CherylTargets.cmake)
 include(cmake/CherylOutputs.cmake)
 include(cmake/CherylLinkage.cmake)

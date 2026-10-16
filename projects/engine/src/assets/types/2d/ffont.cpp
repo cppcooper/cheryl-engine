@@ -75,3 +75,22 @@ namespace CE::Text::Legacy {
         return {widths, std::move(geometry), std::move(texture)};
     }
 }
+
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+namespace CE::State {
+    template <> auto Singleton<CE::Text::Legacy::BitmapFont>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif

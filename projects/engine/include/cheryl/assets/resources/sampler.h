@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <compare>
 #include <cstdint>
 
@@ -22,11 +24,11 @@ namespace CE::Rendering::Sampling {
     };
 
     // CPU-only validation of the requested filtering and wrap modes.
-    void validate(const Options& options);
+    CE_API void validate(const Options& options);
 
     // Immutable sampling in one backend domain. Bindings retain the sampler
     // independently of image pixels; final release follows backend retirement.
-    class Sampler {
+    class CE_API Sampler {
         const Options options_;
         const float effective_anisotropy_;
 

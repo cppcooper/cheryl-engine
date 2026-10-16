@@ -7,10 +7,10 @@ endif()
 if(TARGET Cheryl::Audio::Miniaudio)
     return()
 endif()
-cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_configure_module_options()
 cheryl_prepare_module()
 
-set(CHERYL_MINIAUDIO_SOURCE "" CACHE PATH "Miniaudio 0.11.25 source directory, overriding the pinned submodule")
+cheryl_configure_miniaudio_options()
 if(TARGET miniaudio::miniaudio)
     set(cheryl_miniaudio_target miniaudio::miniaudio)
 elseif(TARGET miniaudio)
@@ -29,6 +29,9 @@ else()
     set_target_properties(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK} PROPERTIES
         OUTPUT_NAME "${OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK}"
         ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+    if(CHERYL_BUILD_SHARED_LIBS)
+        set_target_properties(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK} PROPERTIES C_VISIBILITY_PRESET hidden)
+    endif()
     target_include_directories(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK} SYSTEM PUBLIC "${cheryl_miniaudio_source}")
     target_link_libraries(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK} PRIVATE
         ${LINKAGE_PRIVATE_LIB_MODULE_AUDIO_MINIAUDIO_S_SDK} ${CMAKE_DL_LIBS})
@@ -39,13 +42,14 @@ else()
 endif()
 
 file(GLOB_RECURSE cheryl_audio_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-add_library(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} STATIC ${cheryl_audio_sources})
+add_library(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} ${CHERYL_LIBRARY_TYPE} ${cheryl_audio_sources})
 add_library(Cheryl::Audio::Miniaudio ALIAS ${TARGET_LIB_MODULE_AUDIO_MINIAUDIO})
 cheryl_register_public_component(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} FEATURE CHERYL_HAS_AUDIO_MINIAUDIO)
 set_target_properties(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_AUDIO_MINIAUDIO}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+cheryl_configure_library(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} AUDIO_MINIAUDIO)
 target_include_directories(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")

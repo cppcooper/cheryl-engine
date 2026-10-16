@@ -7,8 +7,9 @@ endif()
 if(TARGET Cheryl::UI::TGUI)
     return()
 endif()
-cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_configure_module_options()
 cheryl_prepare_module()
+cheryl_configure_tgui_options()
 
 if(NOT TARGET TGUI::TGUI)
     if(NOT CHERYL_TGUI_SOURCE AND NOT TGUI_DIR AND EXISTS "${CHERYL_REPOSITORY_ROOT}/extern/tgui/CMakeLists.txt")
@@ -22,15 +23,18 @@ if(NOT TARGET TGUI::TGUI)
     endif()
 endif()
 
+cheryl_shared_dependency(TGUI::TGUI)
+
 file(GLOB_RECURSE cheryl_tgui_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-add_library(${TARGET_LIB_MODULE_UI_TGUI} STATIC ${cheryl_tgui_sources})
+add_library(${TARGET_LIB_MODULE_UI_TGUI} ${CHERYL_LIBRARY_TYPE} ${cheryl_tgui_sources})
 add_library(Cheryl::UI::TGUI ALIAS ${TARGET_LIB_MODULE_UI_TGUI})
 cheryl_register_public_component(${TARGET_LIB_MODULE_UI_TGUI} FEATURE CHERYL_HAS_UI_TGUI)
 set_target_properties(${TARGET_LIB_MODULE_UI_TGUI} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_UI_TGUI}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_UI_TGUI}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+cheryl_configure_library(${TARGET_LIB_MODULE_UI_TGUI} UI_TGUI)
 target_include_directories(${TARGET_LIB_MODULE_UI_TGUI} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")

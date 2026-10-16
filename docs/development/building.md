@@ -16,7 +16,7 @@ source directories. SDK installation collects them into one redistributable
 | Artifact | Trigger | Result |
 | --- | --- | --- |
 | HTML manual and C++ reference | Run `./generate-docs.sh`, or build `docs` in the docs-only project below; `--clean` / `docs-clean` forces full regeneration. Enable `CHERYL_BUILD_DOCS` to add these targets to an engine build. | `docs/generation/generated/html/index.html` and linked pages. |
-| Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | `libcheryl-engine.a` on Linux or `cheryl-engine.lib` on Windows in the build root, plus required dependency artifacts. |
+| Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | Versioned Engine library in the build root, plus required dependency artifacts; see [library linkage](#library-linkage). |
 | Selected SDK libraries | Enable `CHERYL_BUILD_SDK`, then build `cheryl-sdk`. | Engine, selected modules/support and their owned dependencies in the build tree. |
 | Redistributable SDK directory | Build `cheryl-sdk`, then install the `CherylSDK` component. | One prefix containing `include/`, libraries, CMake package files and licenses. |
 | SDK archive with manifest/checksum | Run `.github/ci/package.py` after building `cheryl-sdk`. | Linux `.tar.gz` or Windows `.zip`, `SDK-MANIFEST.json` and `SHA256SUMS`. |
@@ -57,34 +57,34 @@ tools automatically.
 ## Configuration options
 
 Pass settings as `-DNAME=value`. These defaults apply to a fresh root configuration;
-existing build directories and IDE profiles retain their cache. Native options
-are declared only when Native GLFW is selected; the RmlUi verification option is
-declared only when RmlUi is selected.
+existing build directories and IDE profiles retain their cache. All Cheryl-owned
+option definitions and defaults live in
+[`cmake/CherylOptions.cmake`](../../cmake/CherylOptions.cmake). Component and
+standalone entry points select which options to declare; optional backend and
+dependency-source settings may appear only when their component is selected.
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `CHERYL_BUILD_NATIVE_GLFW` | `ON` | Selects GLFW display/windows and optional input. |
-| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Linux GNU/Clang: `ON`; elsewhere: `OFF` | Selects the optional Linux output-terminal module for root applications/test runners. |
-| `CHERYL_DEBUG_TERMINAL` | `AUTO` | Links the selected terminal only in Debug; `ON` includes other configurations, where display requires `--debug-terminal`; `OFF` omits it. |
+| `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Single-configuration Linux GNU/Clang with `CMAKE_BUILD_TYPE=Debug`: `ON`; otherwise: `OFF` | Includes the optional Linux output terminal in consuming applications/test runners. Explicit `ON` includes it in every configuration built from that directory. |
 | `CHERYL_DEBUG_TERMINAL_EMULATOR` | `auto` | Linux module launcher selection: `auto`, `konsole` or `xterm`. |
 | `CHERYL_BUILD_OPENGL` | `ON` | Selects the complete OpenGL backend; requires Native GLFW. |
 | `CHERYL_BUILD_UI_TGUI` | `ON` | Selects TGUI independently of platform/graphics. |
-| `CHERYL_BUILD_UI_RMLUI` | `OFF` | Selects RmlUi independently; can coexist with TGUI. |
-| `CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED` | `OFF` | Attests that a supplied RmlUi library includes the placeholder hit-testing correction. Set only after verification; Cheryl-owned source builds declare their correction automatically. |
-| `CHERYL_BUILD_AUDIO_MINIAUDIO` | `OFF` | Selects miniaudio decoding, output and streaming. |
-| `CHERYL_BUILD_DEMO` | `ON` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
+| `CHERYL_BUILD_UI_RMLUI` | `ON` | Selects RmlUi independently; can coexist with TGUI. |
+| `CHERYL_BUILD_AUDIO_MINIAUDIO` | `ON` | Selects miniaudio decoding, output and streaming. |
+| `CHERYL_BUILD_DEMO` | `OFF` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
-| `CHERYL_BUILD_DOCS` | `OFF` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
-| `CHERYL_BUILD_TESTS` | `ON` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
+| `CHERYL_BUILD_DOCS` | `ON` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
+| `CHERYL_BUILD_TESTS` | `OFF` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |
 | `CHERYL_BUILD_ACCEPTANCE_TESTS` | `OFF` | Includes acceptance runners in the default build; requires tests. |
 | `CHERYL_BUILD_CONSUMER_TESTS` | `OFF` | Adds selected owners' consumers and first-include probes independently of GoogleTest. |
-| `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `OFF` | Selects optional runtime topology discovery and thread binding through hwloc. |
-| `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `OFF` | Selects the versioned worker settings loader independently of hwloc. |
-| `CHERYL_BUILD_SDK` | `OFF` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `ON` | Selects optional runtime topology discovery and thread binding through hwloc. |
+| `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `ON` | Selects the versioned worker settings loader independently of hwloc. |
+| `CHERYL_BUILD_SDK` | `ON` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
+| `CHERYL_BUILD_SHARED_LIBS` | `ON` | Builds Cheryl Engine, compiled modules and support as shared libraries, with matching owned source dependencies. |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input in Native GLFW. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW without X11/Wayland. Disable native input to omit Gainput/X11. |
-| `CHERYL_SANDBOX_BUILD` | `OFF` | Deprecated shorthand defaulting native input off and the null platform on. Prefer explicit options. |
 | `CHERYL_LOG_PROFILE` | `auto` | Selects `developer`, `support` or `release`; `auto` follows the build configuration. |
 | `CHERYL_LOG_COMPILED_MASK` | Empty | Overrides compiled severity bits (`0`–`63`); see [logging policy](../runtime/logging.md#compile-policy). |
 | `WARN` | `OFF` | Adds `-Wall`. |
@@ -105,7 +105,8 @@ substitute `RelWithDebInfo`/`build/support` or `Release`/`build/release` as need
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+  cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+    -DCHERYL_BUILD_DEMO=ON
   cmake --build build/debug --target demo --parallel
 )
 ```
@@ -122,6 +123,28 @@ Target and artifact declarations are centralized in
 [CherylTargets.cmake](../../cmake/CherylTargets.cmake) and
 [CherylOutputs.cmake](../../cmake/CherylOutputs.cmake).
 
+### Library linkage
+
+Cheryl Engine, modules and support default to shared libraries. Set
+`-DCHERYL_BUILD_SHARED_LIBS=OFF` during configuration for static libraries;
+the same public CMake targets work with either selection. `BUILD_SHARED_LIBS` alone
+does not select Cheryl's linkage. Keep static/shared builds and SDK prefixes separate. Supplied dependency
+targets retain their settings and must satisfy the selected shared-library requirements.
+The Linux terminal's `main` wrapper remains static; its startup support follows
+the selected Cheryl linkage.
+
+Artifact names use the component versions in
+[CherylVersions.cmake](../../cmake/CherylVersions.cmake). For Engine 4.0.0:
+
+| Platform | Static | Shared |
+| --- | --- | --- |
+| Linux | `libcheryl-engine-4.0.0.a` | `libcheryl-engine.so.4.0.0`, with SONAME/linker symlinks. |
+| Windows/MSVC | `cheryl-engine-4.0.0.lib` | `cheryl-engine-4.0.0.dll` and its `.lib` import library. |
+
+Link CMake targets to obtain the correct artifact and import/export definitions.
+Shared applications also need the matching libraries at runtime; see
+[SDK runtime paths](consuming-engine.md#prebuilt-development-sdks).
+
 ### Engine-only configuration
 
 This omits GLFW, Gainput, OpenGL, GLAD, UI toolkits and miniaudio. Engine still needs
@@ -137,7 +160,8 @@ its text dependencies:
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
-    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF
+    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_BUILD_TESTS=OFF \
+    -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF
   cmake --build build/engine-only --target cengine --parallel
 )
 ```
@@ -172,9 +196,17 @@ Engine/OpenGL targets do not acquire CLI11 usage requirements. See
 [application startup](consuming-engine.md#command-line-startup).
 
 The terminal module adds a separate optional startup target and linker entry hook;
-plain Engine links neither. Debug display requires a desktop and supported emulator;
-missing prerequisites fall back to inherited output. Headless Debug and test
-discovery create no viewer. See the
+plain Engine links neither. Its default is calculated when the option first enters
+the CMake cache; changing `CMAKE_BUILD_TYPE` later retains the cached selection.
+Set `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON` or `OFF` explicitly when changing it.
+Multi-configuration generators default to `OFF`; explicit `ON` includes the terminal
+in every configuration. Standalone terminal-module consumers also set this option
+explicitly.
+
+Included Debug builds display automatically; other configurations require
+`--debug-terminal`. `--no-debug-terminal` disables display. Display requires a
+desktop and supported emulator; missing prerequisites fall back to inherited output.
+Headless Debug and test discovery create no viewer. See the
 [Linux terminal guide](../../projects/modules/platform/debug-terminal-linux/README.md)
 for output/report separation and lifetime policy. `ON` is a build inclusion option,
 not a request to display a Release window automatically.
@@ -187,7 +219,8 @@ Package names vary by operating system.
 | Requirement | Selection | Notes |
 | --- | --- | --- |
 | Threads | Engine | Discovered through `Threads::Threads`. |
-| hwloc 2.5+ (2.x) | WorkerTopology::Hwloc only | Runtime CPU/core/cache discovery and calling-thread binding; omitted configurations do not discover/download/link it. |
+| Python 3.11+ | Documentation targets (enabled by default) | Required during configuration; Doxygen/Sphinx are selected when documentation targets run. |
+| hwloc 2.5+ (2.x) | WorkerTopology::Hwloc (selected by default) | Runtime CPU/core/cache discovery and calling-thread binding; omitted configurations do not discover/download/link it. |
 | FreeType, HarfBuzz, ICU uc/i18n | Engine | Font inspection/rasterization, shaping, bidi and boundaries; required with UI disabled too. |
 | X11 and extensions | GLFW X11 / native Linux input | GLFW checks XRandR, Xinerama, XKB, Xcursor, XInput and X Shape headers. Gainput input also needs X11. |
 | Wayland, xkbcommon, `wayland-scanner` | Bundled GLFW Wayland | Linux GLFW enables X11 and Wayland by default. Disable Wayland for an X11-only build. |
@@ -212,7 +245,7 @@ Integration SDKs belong to their modules; GoogleTest is test-only. See
 | Python cannot import `jinja2` | Install it in the selected interpreter or set `Python_EXECUTABLE`. |
 | GLFW cannot find Wayland tools/libraries | Install the requirements or set `GLFW_BUILD_WAYLAND=OFF`. |
 | CMake 4 rejects an old dependency policy | Set `CMAKE_POLICY_VERSION_MINIMUM=3.5`. |
-| Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or provide verified target/configuration metadata according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
+| Supplied RmlUi Core lacks the placeholder-correction declaration | Use Cheryl-owned source or declare the correction on the verified dependency's Core target according to the [dependency contract](../../projects/modules/ui/rmlui/README.md#placeholder-dependency-contract). |
 | Standard C++ headers cannot find `CE::Math.h` or `stdlib.h` | Inspect stale compiler discovery before editing includes; see [recovery](consuming-engine.md#standard-headers-in-an-existing-build). |
 
 Successful configuration/build does not establish native platform coverage. The
@@ -227,9 +260,9 @@ the same targets without graphics or native development dependencies.
 
 `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=ON` adds `cengine_worker_topology_hwloc`
 (`Cheryl::WorkerTopology::Hwloc`); JSON selection adds `cengine_worker_topology_json`
-(`Cheryl::WorkerTopology::Json`). Both options default off. A plain Engine consumer
-needs neither support library. Selecting both also registers the explicitly
-buildable `example_worker_topology` shared-pool composition example.
+(`Cheryl::WorkerTopology::Json`). Both options default to `ON`; a plain Engine
+consumer can disable both because it needs neither support library. Selecting both
+also registers the explicitly buildable `example_worker_topology` shared-pool composition example.
 The [worker guide](../runtime/worker-execution.md) owns provider lifetime, placement
 policies, capacity and configuration semantics.
 
@@ -244,7 +277,7 @@ CPU vendor is not a CMake selection.
 
 ## Development SDK builds
 
-SDK export is opt-in and requires Cheryl-owned builds of the pinned source
+SDK export is enabled by default and requires Cheryl-owned builds of the pinned source
 dependencies; imported dependency targets are rejected by this packaging path,
 except an imported hidapi package that remains external to the SDK.
 Ordinary source composition can still reuse supplied targets. Use a clean checkout
@@ -252,8 +285,8 @@ with submodules at their recorded revisions for reproducible archives. The packa
 records the source commit and verifies recursive submodule HEADs against its gitlinks.
 
 Use a single-configuration Ninja build and select the modules/helpers to distribute.
-On Linux, this builds the default Native GLFW/OpenGL/TGUI libraries and common
-Startup support without building the demo or tests:
+On Linux, this builds the default modules and worker support, plus common Startup
+support, without building the demo or tests:
 
 ```sh
 (
@@ -310,6 +343,9 @@ native dependency prefix; use `package.py` for the complete Windows bundle.
 Archive names include the Cheryl version from
 [CherylVersions.cmake](../../cmake/CherylVersions.cmake), platform/distribution,
 architecture, compiler/version, configuration and commit ID.
+They also include `static` or `shared`; `SDK-MANIFEST.json` records that linkage,
+enabled component versions and the exact Engine artifact paths. Linux archives
+preserve relative SONAME symlinks within the SDK; broken or escaping links are rejected.
 
 Windows CI builds through the pinned vcpkg manifest in [.github/ci](../../.github/ci/vcpkg.json)
 with the `x64-windows` triplet. Packaging copies release headers, import libraries,
@@ -336,6 +372,8 @@ vcpkg baseline. Builds use Ninja and available CPU parallelism.
 | `windows-msvc-hwloc` | Windows 2025 x64, MSVC RelWithDebInfo | Headless Engine and hwloc/JSON with vcpkg native libraries. |
 | `linux-modules` | Ubuntu 24.04 x64, GCC 14 Release | Native GLFW/input, OpenGL, TGUI, RmlUi, miniaudio, hwloc/JSON and SDK. |
 | `windows-modules` | Windows 2025 x64, MSVC RelWithDebInfo | The same selected modules/helpers and SDK, with bundled native dependencies. |
+| `linux-modules-shared` | Ubuntu 24.04 x64, GCC 14 Release | The modules/SDK composition with shared Cheryl libraries and owned dependencies. |
+| `windows-modules-shared` | Windows 2025 x64, MSVC RelWithDebInfo | The shared modules/SDK composition, including DLL runtime discovery. |
 
 [run.py](../../.github/ci/run.py) configures explicit owners/options/build targets,
 runs each focused owner prefix once and executes independent consumers. Modules
@@ -360,8 +398,7 @@ for 14 days. These are workflow artifacts; the workflow creates no GitHub releas
 uploads no release assets and publishes no demo package. Release publication is a
 separate future decision.
 
-The selected hosted Ubuntu GCC/Clang and Windows MSVC producer jobs and relocated
-SDK consumers are accepted. The first main-push artifact collection remains
+The first main-push artifact collection remains
 [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection); collection is
 intentionally skipped on PR, `develop` and manual runs.
 

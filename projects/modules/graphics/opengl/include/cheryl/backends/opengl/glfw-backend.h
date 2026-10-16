@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/engine/engine-context.h>
 #include <enums.h>
 
@@ -27,8 +29,8 @@ namespace CE::Application::GLFWOpenGL {
      * Runtime initialization makes the
      * context current and attaches input before game initialization.
      */
-    [[nodiscard]] std::unique_ptr<CE::Runtime::Context> make_context(CE::Input::System& input, const Options& config = Options{});
+    [[nodiscard]] CE_OPENGL_API std::unique_ptr<CE::Runtime::Context> make_context(CE::Input::System& input, const Options& config = Options{});
 #if CHERYL_NATIVE_INPUT
-    [[nodiscard]] std::unique_ptr<CE::Runtime::Context> make_context(const Options& config = Options{});
+    [[nodiscard]] CE_OPENGL_API std::unique_ptr<CE::Runtime::Context> make_context(const Options& config = Options{});
 #endif
 }

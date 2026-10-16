@@ -12,3 +12,10 @@ namespace CE::Events {
         return bus_.register_listener(event, std::move(callback), std::move(delivery), std::move(errors));
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Events::EventSystem>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

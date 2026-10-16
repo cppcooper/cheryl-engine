@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/animation.h>
 #include <assets/definitions/sprite.h>
 #include <assets/definitions/tileset.h>
@@ -30,6 +32,6 @@ namespace CE::Assets::Manifests {
 
         // Owned deduplicated entry paths, sprites then tilesets in first-reference
         // order. The manifest-level default is included only when an entry uses it.
-        [[nodiscard]] std::vector<std::filesystem::path> textures() const;
+        [[nodiscard]] CE_API std::vector<std::filesystem::path> textures() const;
     };
 }

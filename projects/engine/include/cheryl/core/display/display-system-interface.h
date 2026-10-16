@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "monitor.h"
 #include "window-interface.h"
 
@@ -12,7 +14,7 @@ namespace CE::Platform {
      * Monitor references are borrowed inventory snapshots with backend-defined refresh
      * and invalidation points. Copy values before handing them to another thread.
      */
-    class DisplaySystem {
+    class CE_API DisplaySystem {
     public:
         virtual ~DisplaySystem() = default;
         /** Borrow the backend inventory; references expire on its refresh or destruction. */

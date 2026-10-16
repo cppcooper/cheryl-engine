@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "platform-dispatcher.h"
 #include "simulation-dispatcher.h"
 #include "worker-pool.h"
@@ -10,9 +12,9 @@ namespace CE::Events {
      * dispatch services and remains immediate by default. Accepted task cancellation
      * is reported by EventBus's owned delivery ticket, not a discarded future.
      */
-    [[nodiscard]] EventBus::Delivery platform_delivery(CE::Runtime::PlatformDispatcher::Submission endpoint);
-    [[nodiscard]] EventBus::Delivery simulation_delivery(CE::Runtime::SimulationDispatcher::Submission endpoint);
+    [[nodiscard]] CE_API EventBus::Delivery platform_delivery(CE::Runtime::PlatformDispatcher::Submission endpoint);
+    [[nodiscard]] CE_API EventBus::Delivery simulation_delivery(CE::Runtime::SimulationDispatcher::Submission endpoint);
     // One serial stream on shared CE::Workers::Group capacity. Copies of the returned
     // callable share ordering; separate calls create independently concurrent streams.
-    [[nodiscard]] EventBus::Delivery worker_delivery(CE::Workers::Group group);
+    [[nodiscard]] CE_API EventBus::Delivery worker_delivery(CE::Workers::Group group);
 }

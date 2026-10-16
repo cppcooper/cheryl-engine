@@ -7,5 +7,5 @@
 #include "internals/pointers.h"
 #include "internals/posh.h"
 #include <backward.hpp>
-extern backward::SignalHandling sh;
-extern backward::TraceResolver tr;
+extern CE_API backward::SignalHandling sh;
+extern CE_API backward::TraceResolver tr;

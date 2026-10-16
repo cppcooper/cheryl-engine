@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <assets/types/2d/font.h>
 #include <text/utf8.h>
 #include <array>
@@ -31,24 +33,25 @@ namespace CE::Text::Legacy {
     /** Baked ASCII glyph quads, advances, and alpha atlas. Layout reads immutable
      * metrics, so published text commands can share a font without changing it.
      */
-    struct AsciiFont final : Font {
+    struct CE_TYPE_API AsciiFont final : Font {
     private:
         std::array<float, ascii_character_count> advances_{};
         float line_height_{};
 
     public:
-        explicit AsciiFont(AsciiFontData data);
+        CE_API explicit AsciiFont(AsciiFontData data);
         ~AsciiFont() override = default;
         // Baked pixel offsets; newline moves down one line, CR is ignored, tab advances
         // four spaces, other unsupported UTF-8 scalars or malformed subparts select '?'.
         // This ASCII atlas has no shaping or non-ASCII glyphs. alternate_bank throws.
-        [[nodiscard]] std::vector<GlyphPlacement> layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const override;
+        [[nodiscard]] CE_API std::vector<GlyphPlacement>
+        layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const override;
         /** Bake printable ASCII from a caller-supplied font file at a positive
          * font_size in pixels. Upload obeys provider affinity; failure returns no data
          * and publishes no cache entry. System discovery is optional; bundled fonts
          * use this same path. The first face is selected for a collection.
          */
-        [[nodiscard]] static AsciiFontData
+        [[nodiscard]] CE_API static AsciiFontData
         load_font(const std::filesystem::path& font_path, int font_size, CE::Rendering::Resources::Provider& provider);
 
         [[nodiscard]] const CE::Rendering::Geometry::Buffer2D& glyph_geometry() const { return *geometry; }

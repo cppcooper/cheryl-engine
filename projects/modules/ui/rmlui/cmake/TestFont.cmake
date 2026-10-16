@@ -1,4 +1,7 @@
+include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylOptions.cmake")
+
 function(cheryl_rmlui_test_font output)
+    cheryl_configure_rmlui_test_options()
     if(NOT CHERYL_RMLUI_TEST_FONT)
         get_target_property(core_source RmlUi::Core SOURCE_DIR)
         foreach(candidate

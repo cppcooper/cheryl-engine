@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/display/framebuffer-size.h>
 
 namespace CE::Rendering {
@@ -33,9 +35,9 @@ namespace CE::Rendering {
         bool operator==(const PixelClipRect2D&) const = default;
     };
 
-    void validate_clip_region(const ClipRegion2D& region);
-    [[nodiscard]] ClipRect2D intersect_clip_rects(const ClipRect2D& first, const ClipRect2D& second);
+    CE_API void validate_clip_region(const ClipRegion2D& region);
+    [[nodiscard]] CE_API ClipRect2D intersect_clip_rects(const ClipRect2D& first, const ClipRect2D& second);
     // Clamp to the logical viewport, then round nonempty edges outwards: floor
     // left/top, ceil right/bottom. Empty clips and zero-sized framebuffers draw nothing.
-    [[nodiscard]] PixelClipRect2D resolve_clip_region(const ClipRegion2D& region, ::CE::Platform::FramebufferSize framebuffer);
+    [[nodiscard]] CE_API PixelClipRect2D resolve_clip_region(const ClipRegion2D& region, ::CE::Platform::FramebufferSize framebuffer);
 }

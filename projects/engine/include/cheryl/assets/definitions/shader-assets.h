@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/pipeline.h>
 #include <assets/resources/sampler.h>
 
@@ -54,10 +56,11 @@ namespace CE::Assets::Shaders {
         std::vector<MaterialRecipe> materials;
     };
 
-    [[nodiscard]] bool is_qualified_id(std::string_view id);
-    [[nodiscard]] CE::Rendering::Parameters::Value parameter_value(const Literal& literal);
-    [[nodiscard]] CE::Rendering::Parameters::Set defaults(const MaterialRecipe& recipe);
-    [[nodiscard]] CE::Rendering::Pipelines::Definition pipeline_definition(const MaterialRecipe& recipe, const ProgramRecipe& program);
-    void validate_program(const ProgramRecipe& recipe);
-    void validate_material(const MaterialRecipe& recipe, const ProgramRecipe& program);
+    [[nodiscard]] CE_API bool is_qualified_id(std::string_view id);
+    [[nodiscard]] CE_API CE::Rendering::Parameters::Value parameter_value(const Literal& literal);
+    [[nodiscard]] CE_API CE::Rendering::Parameters::Set defaults(const MaterialRecipe& recipe);
+    [[nodiscard]] CE_API CE::Rendering::Pipelines::Definition
+    pipeline_definition(const MaterialRecipe& recipe, const ProgramRecipe& program);
+    CE_API void validate_program(const ProgramRecipe& recipe);
+    CE_API void validate_material(const MaterialRecipe& recipe, const ProgramRecipe& program);
 }

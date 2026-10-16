@@ -42,8 +42,8 @@ Neutral topology descriptions, pool/group options and scheduling live in
 `CE::Workers::Hwloc::make_topology_provider()`; `Cheryl::WorkerTopology::Json`
 supplies configuration loading independently of hwloc. Both live under `projects/engine/support/worker-topology/`.
 Applications link the selected support targets; Engine does not link back to them.
-Public contracts expose neither hwloc nor JSON library types. The static hwloc
-support library propagates its required final link dependency.
+Public contracts expose neither hwloc nor JSON library types. For static builds,
+the hwloc support target propagates its required final link dependency.
 
 Supply a `CE::Workers::TopologyProvider` through `CE::Workers::PoolOptions::topology_provider`.
 The pool retains it through worker joins. There is no global registrar, entry-point

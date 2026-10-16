@@ -15,19 +15,53 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 GIB = 1024 ** 3
 SNAPSHOT = re.compile(
-    r"^((?:ccache-v[12]|dependencies-v1|pip-v1)-.+|build-deps-v2-.+-binaries-[0-9a-f]+)-[0-9]+-[0-9]+$"
+    r"^((?:ccache-v[123]|dependencies-v1|pip-v1)-.+|build-deps-v2-.+-binaries-[0-9a-f]+)-[0-9]+-[0-9]+$"
 )
 PULL_REF = re.compile(r"^refs/pull/([1-9][0-9]*)/merge$")
-KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
+KNOWN_PREFIXES = ("ccache-v1-", "ccache-v2-", "ccache-v3-", "dependencies-v1-", "pip-v1-", "docs-tools-v1-",
                   "windows-tools-v1-", "submodule-git-v1-", "apt-debs-v1-", "build-deps-v2-")
 ENVIRONMENT_KEY = re.compile(r"actions-env-cache-v[1-9][0-9]*-.+")
 SOURCE_KEY = re.compile(r"(build-deps-v2-.+-(?:main|develop)-sources-)[0-9a-f]{64}")
+COMPILER_POOL = re.compile(
+    r"(ccache-v3-(?:Linux|Windows)-[A-Za-z0-9_.]+-(?:linux-gcc14|linux-clang18|windows-msvc))-(?:main|develop|pr|branch)"
+)
+LEGACY_COMPILER = re.compile(
+    r"ccache-v([12])-(ubuntu-24\.04|windows-2025)-([A-Za-z0-9_.]+)-(.+)-(Release|Debug|RelWithDebInfo)"
+    r"(?:-(main|develop|pr|branch))?"
+)
+# Only the pinned matrix profiles have a known replacement pool.
+LEGACY_FAMILIES = {
+    ("ubuntu-24.04", "linux-gcc-hwloc", "Release"): ("Linux", "linux-gcc14"),
+    ("ubuntu-24.04", "linux-gcc-neutral", "Release"): ("Linux", "linux-gcc14"),
+    ("ubuntu-24.04", "linux-modules", "Release"): ("Linux", "linux-gcc14"),
+    ("ubuntu-24.04", "linux-modules-shared", "Release"): ("Linux", "linux-gcc14"),
+    ("ubuntu-24.04", "linux-clang-debug", "Debug"): ("Linux", "linux-clang18"),
+    ("windows-2025", "windows-msvc-hwloc", "RelWithDebInfo"): ("Windows", "windows-msvc"),
+    ("windows-2025", "windows-modules", "RelWithDebInfo"): ("Windows", "windows-msvc"),
+    ("windows-2025", "windows-modules-shared", "RelWithDebInfo"): ("Windows", "windows-msvc"),
+}
 MAINTENANCE_PATH = ".github/workflows/cache-maintenance.yml"
 
 
 def lineage(key):
     match = SNAPSHOT.fullmatch(key)
     return match.group(1) if match else None
+
+
+def compiler_pool(logical):
+    if logical is None:
+        return None
+    pooled = COMPILER_POOL.fullmatch(logical)
+    if pooled:
+        return pooled.group(1)
+    legacy = LEGACY_COMPILER.fullmatch(logical)
+    if not legacy:
+        return None
+    revision, runner, architecture, profile, configuration, role = legacy.groups()
+    if (revision == "2") != bool(role):
+        return None
+    family = LEGACY_FAMILIES.get((runner, profile, configuration))
+    return f"ccache-v3-{family[0]}-{architecture}-{family[1]}" if family else None
 
 
 def timestamp(value):
@@ -101,6 +135,11 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
         if logical is not None and logical.startswith("ccache-v2-")
         and logical.rsplit("-", 1)[1] in {"main", "develop", "pr", "branch"}
     }
+    pooled_profiles = {
+        (cache["ref"], pool)
+        for cache, _, _, logical in entries
+        if cache["key"].startswith("ccache-v3-") and (pool := compiler_pool(logical)) is not None
+    }
     newest = {}
     baseline = {}
     baseline_policy = {}
@@ -112,12 +151,17 @@ def plan_caches(caches, *, default_branch, closed_prs, active_refs, now,
             if bucket not in newest or (created, cache["id"]) > (newest[bucket][1], newest[bucket][0]["id"]):
                 newest[bucket] = record
         priority, reason = 0, "least recently used"
-        replaced = cache["key"].startswith("ccache-v1-") and (cache["ref"], logical) in layered_profiles
+        pooled_replacement = (cache["key"].startswith(("ccache-v1-", "ccache-v2-"))
+                              and (cache["ref"], compiler_pool(logical)) in pooled_profiles)
+        if pooled_replacement:
+            remove(cache, "replaced compiler snapshot")
+        replaced = pooled_replacement or (cache["key"].startswith("ccache-v1-")
+                                          and (cache["ref"], logical) in layered_profiles)
         if not replaced:
             known = cache["key"].startswith(KNOWN_PREFIXES) or ENVIRONMENT_KEY.fullmatch(cache["key"])
             if cache["ref"] == "refs/heads/" + default_branch and known:
                 priority, reason = 2, "default-branch baseline"
-            if source or (logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-", "build-deps-v2-"))):
+            if source or (logical is not None and cache["key"].startswith(("ccache-v1-", "ccache-v2-", "ccache-v3-", "build-deps-v2-"))):
                 match = PULL_REF.fullmatch(cache["ref"])
                 if cache["ref"] == "refs/heads/main":
                     priority, reason = 3, "main baseline"

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/engine/engine-context.h>
 #include <core/game-framework/game-runtime.h>
 
@@ -52,7 +54,7 @@ namespace CE::Application {
          * @param game Simulation hooks retained by reference.
          * @return A runtime using the selected mode, polling and timing policy.
          */
-        [[nodiscard]] CE::Runtime::GameRuntime make_runtime(CE::Game::AbstractGame& game) const&;
+        [[nodiscard]] CE_STARTUP_API CE::Runtime::GameRuntime make_runtime(CE::Game::AbstractGame& game) const&;
         CE::Runtime::GameRuntime make_runtime(CE::Game::AbstractGame& game) const&& = delete;
     };
 
@@ -74,7 +76,11 @@ namespace CE::Application {
          * @param description Application description used by command-line help.
          * @param configuration Initial defaults before command-line overrides.
          */
-        explicit Startup(StartupBackend backend, std::string description = "Cheryl application", StartupOptions configuration = {});
+        CE_STARTUP_API explicit Startup(
+            StartupBackend backend,
+            std::string description = "Cheryl application",
+            StartupOptions configuration = {}
+        );
 
         // Parser callbacks bind this object's configuration; its address is stable.
         Startup(const Startup&) = delete;
@@ -87,7 +93,7 @@ namespace CE::Application {
          * initialize(). Empty definitions or registration after initialization fail.
          * @param definitions Callback receiving the application's option group.
          */
-        void add_application_options(const OptionDefinitions& definitions);
+        CE_STARTUP_API void add_application_options(const OptionDefinitions& definitions);
         /** Parse, validate and construct a context once on the platform owner.
          * Command-line help/errors and invalid configuration return without a context.
          * Reuse and malformed argument arrays are rejected; other backend failures propagate.
@@ -95,10 +101,10 @@ namespace CE::Application {
          * @param argv Nonnull array of argc nonnull argument strings.
          * @return An owned context and runtime policy, or an exit code without a context.
          */
-        [[nodiscard]] StartupResult initialize(int argc, const char* const* argv);
+        [[nodiscard]] CE_STARTUP_API StartupResult initialize(int argc, const char* const* argv);
 
     private:
-        void add_engine_options();
-        void validate_configuration() const;
+        CE_STARTUP_API void add_engine_options();
+        CE_STARTUP_API void validate_configuration() const;
     };
 }

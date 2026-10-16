@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "rendering.h"
 
 #include <core/controls/input-interface.h>
@@ -37,43 +39,43 @@ namespace CE::UI::RmlUi {
         std::unique_ptr<State> state_;
 
     public:
-        Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
-        ~Session();
+        CE_UI_RMLUI_API Session(CE::Input::System& input, CE::Input::Routing::TargetId target, SessionOptions options = {});
+        CE_UI_RMLUI_API ~Session();
         Session(const Session&) = delete;
         Session& operator=(const Session&) = delete;
         Session(Session&&) = delete;
         Session& operator=(Session&&) = delete;
 
-        [[nodiscard]] Rml::Context& context();
-        [[nodiscard]] Capabilities capabilities() const;
+        [[nodiscard]] CE_UI_RMLUI_API Rml::Context& context();
+        [[nodiscard]] CE_UI_RMLUI_API Capabilities capabilities() const;
         // File loading lets FreeType own its buffer. Memory loading copies bytes
         // through Core shutdown; neither path borrows the application's storage.
-        bool load_font(const std::filesystem::path& file, const Rml::String& family, bool fallback = false);
-        bool load_font(std::span<const unsigned char> bytes, const Rml::String& family, bool fallback = false);
-        void set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer);
+        CE_UI_RMLUI_API bool load_font(const std::filesystem::path& file, const Rml::String& family, bool fallback = false);
+        CE_UI_RMLUI_API bool load_font(std::span<const unsigned char> bytes, const Rml::String& family, bool fallback = false);
+        CE_UI_RMLUI_API void set_view(CE::Platform::Dimensions<int> logical, CE::Platform::FramebufferSize framebuffer);
         // Advances simulation time and updates native layout/animation. record()
         // also updates layout after authoring or input, without advancing time.
-        void update_time(double delta_seconds);
-        void request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing = CE::Input::Routing::KeyboardPolicy::Exclusive);
-        void release_keyboard_focus();
-        [[nodiscard]] bool owns_keyboard_focus() const;
-        void handle_input(std::span<const CE::Input::Events::Record> records, bool pointer_selected);
+        CE_UI_RMLUI_API void update_time(double delta_seconds);
+        CE_UI_RMLUI_API void request_keyboard_focus(CE::Input::Routing::KeyboardPolicy routing = CE::Input::Routing::KeyboardPolicy::Exclusive);
+        CE_UI_RMLUI_API void release_keyboard_focus();
+        [[nodiscard]] CE_UI_RMLUI_API bool owns_keyboard_focus() const;
+        CE_UI_RMLUI_API void handle_input(std::span<const CE::Input::Events::Record> records, bool pointer_selected);
         // Run application controls before each record and return its pointer
         // selection. Keyboard/text retain the entry epoch throughout the batch;
         // preempted focus is released only after all records have been handled.
-        void handle_input(
+        CE_UI_RMLUI_API void handle_input(
             std::span<const CE::Input::Events::Record> records,
             bool pointer_selected,
             const std::function<bool(const CE::Input::Events::Record&)>& before_record
         );
-        [[nodiscard]] RecordedScene record();
+        [[nodiscard]] CE_UI_RMLUI_API RecordedScene record();
 
         // After simulation has joined, release external element/listener/resource
         // references, then transfer final destruction to the platform owner.
         // Uploaded scenes and CPU recordings may remain retained independently.
-        void close_after_quiescence();
+        CE_UI_RMLUI_API void close_after_quiescence();
 
     private:
-        [[nodiscard]] State& owner() const;
+        [[nodiscard]] CE_UI_RMLUI_API State& owner() const;
     };
 }

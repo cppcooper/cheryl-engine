@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/controls/input-record.h>
 #include <TGUI/Event.hpp>
 
@@ -16,5 +18,5 @@ namespace CE::UI::TGUI {
      * return no event. TGUI has no key-release event; modifier state still belongs
      * to the complete original record stream. Press and Repeat both become KeyPressed.
      */
-    [[nodiscard]] std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record);
+    [[nodiscard]] CE_UI_TGUI_API std::optional<tgui::Event> translate_event(const CE::Input::Events::Record& record);
 }

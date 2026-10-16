@@ -36,9 +36,14 @@ namespace CE::Text {
         }
 
         FontBytes read_font(const std::filesystem::path& path) {
+            std::error_code error;
+            if (!std::filesystem::is_regular_file(path, error)) {
+                if (!std::filesystem::exists(path, error) && !error)
+                    return {};
+                throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font source is not a regular file '" + path.string() + "'");
+            }
             std::ifstream input(path, std::ios::binary | std::ios::ate);
             if (!input) {
-                std::error_code error;
                 if (!std::filesystem::exists(path, error) && !error)
                     return {};
                 throw ::CE::Exceptions::runtime_exception(CE_HERE, "Unable to open font '" + path.string() + "'");

@@ -4,7 +4,7 @@ import argparse
 import gzip
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import platform
 import shutil
 import subprocess
@@ -72,16 +72,43 @@ def copy_native_dependencies(prefix, stage):
                         target.write_text(contents, encoding="utf-8")
 
 
-def check_contents(stage):
+def check_symlinks(stage, *, allow_symlinks=True):
+    root = stage.resolve()
     for path in stage.rglob("*"):
         if path.is_symlink():
-            raise ValueError(f"SDK files must be self-contained: {path}")
+            target = path.readlink()
+            if not allow_symlinks or target.is_absolute():
+                raise ValueError(f"SDK symlinks must be relative and supported by the archive: {path}")
+            try:
+                resolved = path.resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise ValueError(f"SDK symlink is broken or cyclic: {path}") from error
+            if not resolved.is_relative_to(root):
+                raise ValueError(f"SDK symlink escapes the SDK prefix: {path}")
+
+
+def check_contents(stage, metadata=None):
+    check_symlinks(stage)
+    metadata = json.loads((stage / "SDK-MANIFEST.json").read_text(encoding="utf-8")) if metadata is None else metadata
+    if (not isinstance(metadata, dict) or metadata.get("linkage") not in {"static", "shared"}
+            or not isinstance(metadata.get("component_versions"), dict) or not metadata["component_versions"].get("engine")):
+        raise ValueError("SDK metadata must declare linkage and the Engine component version")
+    for path in stage.rglob("*"):
         if path.suffix.lower() in (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".exe"):
             raise ValueError(f"SDK must not include application or implementation files: {path}")
     if not (stage / "include/cheryl/core.h").is_file():
         raise ValueError("The SDK is missing public Engine headers")
-    if not any((stage / "lib").glob("*cheryl-engine.*")):
-        raise ValueError("The SDK is missing the compiled Engine library")
+    artifacts = ["engine_library"]
+    if metadata["linkage"] == "shared" and metadata.get("system") == "Windows":
+        artifacts.append("engine_import_library")
+    for field in artifacts:
+        name = metadata.get(field)
+        path = PurePosixPath(name) if isinstance(name, str) else None
+        if not path or path.is_absolute() or ".." in path.parts or ":" in name or "\\" in name or not path.parts:
+            raise ValueError("SDK metadata needs a relative compiled Engine library path")
+        artifact = stage / path
+        if not artifact.is_file() or not artifact.resolve().is_relative_to(stage.resolve()):
+            raise ValueError(f"The SDK is missing the compiled Engine library: {name}")
     if not (stage / "lib/cmake/Cheryl/CherylConfig.cmake").is_file():
         raise ValueError("The SDK is missing CMake integration")
     if not (stage / "share/licenses/cheryl/LICENSE").is_file():
@@ -89,6 +116,7 @@ def check_contents(stage):
 
 
 def archive_sdk(stage, destination):
+    check_symlinks(stage, allow_symlinks=destination.suffix != ".zip")
     if destination.suffix == ".zip":
         with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(stage.rglob("*")):
@@ -100,7 +128,7 @@ def archive_sdk(stage, destination):
                     archive.writestr(info, path.read_bytes())
     else:
         with destination.open("wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", filename="", mtime=0) as compressed:
-            with tarfile.open(fileobj=compressed, mode="w") as archive:
+            with tarfile.open(fileobj=compressed, mode="w", dereference=False) as archive:
                 for path in [stage, *sorted(stage.rglob("*"))]:
                     info = archive.gettarinfo(str(path), arcname=path.relative_to(stage.parent).as_posix())
                     info.uid = info.gid = info.mtime = 0
@@ -126,7 +154,7 @@ def bundle(source, build, output, native_prefix=None):
         if "ID" in release:
             platform_name += "-" + release["ID"] + release.get("VERSION_ID", "")
     name = (f"cheryl-{metadata['version']}-sdk-{platform_name}-{architecture}-"
-            f"{metadata['compiler'].lower()}{metadata['compiler_version']}-{metadata['configuration'].lower()}-"
+            f"{metadata['compiler'].lower()}{metadata['compiler_version']}-{metadata['configuration'].lower()}-{metadata['linkage']}-"
             f"{metadata['revision'][:12]}")
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output) as temporary:
@@ -141,7 +169,13 @@ def bundle(source, build, output, native_prefix=None):
             metadata["system_dependencies"] = ["FreeType", "HarfBuzz", "ICU", "hwloc (when selected)",
                                                "libdw and its dependencies", "X11/OpenGL (when selected)",
                                                "libudev/libusb/Iconv (when required by packaged HIDAPI)"]
-        check_contents(stage)
+        check_contents(stage, metadata)
+        runtime_directories = []
+        if metadata["system"] == "Windows":
+            runtime_directories = ["bin", "dependencies/bin"]
+        elif metadata["linkage"] == "shared":
+            runtime_directories = [PurePosixPath(metadata["engine_library"]).parent.as_posix()]
+        metadata["runtime_directories"] = [name for name in runtime_directories if (stage / name).is_dir()]
         text = json.dumps(metadata, indent=2, sort_keys=True) + "\n"
         (stage / "SDK-MANIFEST.json").write_text(text, encoding="utf-8")
         destination = output / (name + (".zip" if metadata["system"] == "Windows" else ".tar.gz"))

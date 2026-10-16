@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/resources/decoded-image.h>
 #include <assets/types/primitives/vertex.h>
 #include <core/rendering/clip-region.h>
@@ -16,23 +18,23 @@
 namespace CE::UI::TGUI {
     // CPU-only toolkit objects on the simulation/UI owner. Recordings copy
     // smoothing independently of immutable pixel snapshots for platform upload.
-    class Texture final : public tgui::BackendTexture {
+    class CE_TYPE_API Texture final : public tgui::BackendTexture {
         const unsigned int maximum_size_;
         std::shared_ptr<const CE::Assets::Images::Decoded> snapshot_;
 
     public:
-        explicit Texture(unsigned int maximum_size);
-        bool loadTextureOnly(tgui::Vector2u size, const std::uint8_t* pixels, bool smooth) override;
-        void setSmooth(bool smooth) override;
+        CE_UI_TGUI_API explicit Texture(unsigned int maximum_size);
+        CE_UI_TGUI_API bool loadTextureOnly(tgui::Vector2u size, const std::uint8_t* pixels, bool smooth) override;
+        CE_UI_TGUI_API void setSmooth(bool smooth) override;
         [[nodiscard]] std::shared_ptr<const CE::Assets::Images::Decoded> snapshot() const { return snapshot_; }
     };
 
-    class Renderer final : public tgui::BackendRenderer {
+    class CE_TYPE_API Renderer final : public tgui::BackendRenderer {
         const unsigned int maximum_size_;
 
     public:
-        explicit Renderer(unsigned int maximum_size);
-        [[nodiscard]] std::shared_ptr<tgui::BackendTexture> createTexture() override;
+        CE_UI_TGUI_API explicit Renderer(unsigned int maximum_size);
+        [[nodiscard]] CE_UI_TGUI_API std::shared_ptr<tgui::BackendTexture> createTexture() override;
         [[nodiscard]] unsigned int getMaximumTextureSize() override { return maximum_size_; }
     };
 
@@ -56,7 +58,7 @@ namespace CE::UI::TGUI {
         [[nodiscard]] std::span<const RecordedDraw> draws() const { return draws_; }
     };
 
-    class RenderTarget final : public tgui::BackendRenderTarget {
+    class CE_TYPE_API RenderTarget final : public tgui::BackendRenderTarget {
         tgui::Vector2f pixel_scale_{1, 1};
         CE::Rendering::ClipRect2D clip_rectangle_;
         std::vector<RecordedDraw> draws_;
@@ -66,19 +68,19 @@ namespace CE::UI::TGUI {
     public:
         // targetSize and viewport are logical window coordinates. pixel_scale
         // supplies copied framebuffer/logical ratios for toolkit pixel rounding.
-        void setView(tgui::FloatRect view, tgui::FloatRect viewport, tgui::Vector2f targetSize) override;
-        void set_pixel_scale(tgui::Vector2f scale);
-        void begin_recording();
-        [[nodiscard]] RecordedScene finish_recording();
-        void discard_recording() noexcept;
+        CE_UI_TGUI_API void setView(tgui::FloatRect view, tgui::FloatRect viewport, tgui::Vector2f targetSize) override;
+        CE_UI_TGUI_API void set_pixel_scale(tgui::Vector2f scale);
+        CE_UI_TGUI_API void begin_recording();
+        [[nodiscard]] CE_UI_TGUI_API RecordedScene finish_recording();
+        CE_UI_TGUI_API void discard_recording() noexcept;
         // Starts a recording, invokes toolkit drawing, and discards it on error.
         // finish_recording() transfers a successful result to its CPU owner.
-        void drawGui(const std::shared_ptr<tgui::RootContainer>& root) override;
-        void addClippingLayer(const tgui::RenderStates& states, tgui::FloatRect rect) override;
-        void removeClippingLayer() override;
+        CE_UI_TGUI_API void drawGui(const std::shared_ptr<tgui::RootContainer>& root) override;
+        CE_UI_TGUI_API void addClippingLayer(const tgui::RenderStates& states, tgui::FloatRect rect) override;
+        CE_UI_TGUI_API void removeClippingLayer() override;
         // Null indices select a triangle list in vertex order, used for glyphs.
         // Otherwise expand the indexed triangles into the same owned format.
-        void drawVertexArray(
+        CE_UI_TGUI_API void drawVertexArray(
             const tgui::RenderStates& states,
             const tgui::Vertex* vertices,
             std::size_t vertexCount,
@@ -87,12 +89,12 @@ namespace CE::UI::TGUI {
             const std::shared_ptr<tgui::BackendTexture>& texture
         ) override;
         // The application owns platform clearing; toolkit mainLoop is not used.
-        void setClearColor(const tgui::Color& color) override;
-        void clearScreen() override;
+        CE_UI_TGUI_API void setClearColor(const tgui::Color& color) override;
+        CE_UI_TGUI_API void clearScreen() override;
 
     private:
-        void updateClipping(tgui::FloatRect clipRect, tgui::FloatRect clipViewport) override;
-        void require_recording() const;
-        [[nodiscard]] bool drawable() const;
+        CE_UI_TGUI_API void updateClipping(tgui::FloatRect clipRect, tgui::FloatRect clipViewport) override;
+        CE_UI_TGUI_API void require_recording() const;
+        [[nodiscard]] CE_UI_TGUI_API bool drawable() const;
     };
 }

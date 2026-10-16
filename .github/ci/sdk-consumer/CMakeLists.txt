@@ -66,3 +66,22 @@ if(TARGET Cheryl::WorkerTopology::Json)
     target_compile_definitions(sdk-worker PRIVATE CHERYL_CONSUMER_WORKER_JSON=1)
 endif()
 add_test(NAME sdk-worker COMMAND sdk-worker)
+
+# Exercise Engine-owned state and exceptions across a separately compiled library.
+get_target_property(sdk_engine_kind Cheryl::Engine TYPE)
+set(sdk_bridge_kind STATIC)
+if(sdk_engine_kind STREQUAL "SHARED_LIBRARY")
+    set(sdk_bridge_kind SHARED)
+endif()
+add_library(sdk-state-bridge ${sdk_bridge_kind} state-bridge.cpp)
+target_link_libraries(sdk-state-bridge PRIVATE Cheryl::Engine)
+target_compile_definitions(sdk-state-bridge PRIVATE SDK_STATE_BUILDING)
+if(sdk_bridge_kind STREQUAL "STATIC")
+    target_compile_definitions(sdk-state-bridge PUBLIC SDK_STATE_STATIC)
+endif()
+set_target_properties(sdk-state-bridge PROPERTIES
+    CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+add_executable(sdk-state state.cpp)
+target_link_libraries(sdk-state PRIVATE sdk-state-bridge Cheryl::Engine)
+add_test(NAME sdk-state COMMAND sdk-state)

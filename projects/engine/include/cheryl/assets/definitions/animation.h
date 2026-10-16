@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/grid.h>
 #include <chrono>
 #include <cstddef>
@@ -39,7 +41,7 @@ namespace CE::Assets::Tilesets {
         // Exact duration boundaries enter the next frame; loops wrap and other clips
         // hold their last cell. Negative time, empty/nonpositive or overflowing
         // timelines throw invalid_args. Cell/grid bounds remain the caller's contract.
-        [[nodiscard]] CE::Assets::Grids::CellIndex cell_at(std::chrono::milliseconds elapsed) const;
+        [[nodiscard]] CE_API CE::Assets::Grids::CellIndex cell_at(std::chrono::milliseconds elapsed) const;
     };
 }
 

@@ -21,6 +21,7 @@ NOW = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
 GIB = 1024 ** 3
 COMPILER = "ccache-v1-ubuntu-24.04-X64-linux-gcc-hwloc-Release"
 LAYERED = COMPILER.replace("ccache-v1-", "ccache-v2-")
+POOLED = "ccache-v3-Linux-X64-linux-gcc14"
 BUILD_DEPS = "build-deps-v2-Windows-X64-main-modules-binaries-" + "a" * 64
 
 
@@ -66,6 +67,8 @@ class PlanTests(unittest.TestCase):
         for key, expected in (
             (f"{COMPILER}-12345-2", COMPILER),
             (f"{LAYERED}-main-12345-2", f"{LAYERED}-main"),
+            (f"{POOLED}-main-12345-2", f"{POOLED}-main"),
+            (f"{POOLED}-pr-12345-2", f"{POOLED}-pr"),
             ("dependencies-v1-Windows-X64-modules-abcd-12345-2",
              "dependencies-v1-Windows-X64-modules-abcd"),
             ("pip-v1-Windows-X64-cpython-312-abcd-12345-2",
@@ -197,11 +200,12 @@ class PlanTests(unittest.TestCase):
     def test_closed_families(self):
         keys = [f"{COMPILER}-1-1", f"{LAYERED}-pr-2-1", "dependencies-v1-Windows-X64-modules-hash-3-1",
                 "pip-v1-Windows-X64-cpython-313-hash-4-1", f"{BUILD_DEPS}-5-1",
-                "build-deps-v2-Linux-X64-main-sources-hash", "actions-env-cache-v2-Linux-X64-docs-identity-tools"]
+                "build-deps-v2-Linux-X64-main-sources-hash", "actions-env-cache-v2-Linux-X64-docs-identity-tools",
+                f"{POOLED}-pr-8-1"]
         rows = [cache(index, key=key, ref="refs/pull/3/merge") for index, key in enumerate(keys, 1)]
-        rows.append(cache(8, ref="refs/pull/30/merge"))
+        rows.append(cache(len(keys) + 1, ref="refs/pull/30/merge"))
         result = plan(rows, closed_prs={3}, closed_pr=3)
-        self.assertEqual(removed(result), {index: "closed pull request" for index in range(1, 8)})
+        self.assertEqual(removed(result), {index: "closed pull request" for index in range(1, len(keys) + 1)})
 
     def test_unconfirmed(self):
         result = plan([cache(1, ref="refs/pull/3/merge")], closed_pr=3)
@@ -289,6 +293,73 @@ class PlanTests(unittest.TestCase):
                 cache(2, key=f"{LAYERED}-main-2-1", ref="refs/heads/main", age=7200),
                 cache(3, key=f"{LAYERED}-develop-3-1")]
         self.assertEqual(removed(plan(rows)), {1: "superseded snapshot"})
+
+    def test_pool_compaction(self):
+        rows = [cache(1, key=f"{POOLED}-main-1-1", ref="refs/heads/main", age=18000),
+                cache(2, key=f"{POOLED}-main-2-1", ref="refs/heads/main", age=7200),
+                cache(3, key=POOLED.replace("gcc14", "clang18") + "-main-3-1", ref="refs/heads/main"),
+                cache(4, key=f"{POOLED}-develop-4-1"),
+                cache(5, key=f"{POOLED}-main-5-1", ref="refs/heads/main", version="other-path"),
+                cache(6, key=POOLED.replace("X64", "ARM64") + "-main-6-1", ref="refs/heads/main")]
+        self.assertEqual(removed(plan(rows)), {1: "superseded snapshot"})
+
+    def test_pool_tiers(self):
+        rows = [cache(1, key=f"{POOLED}-main-1-1", ref="refs/heads/main", size=3 * GIB, accessed=18000),
+                cache(2, key=f"{POOLED}-develop-2-1", size=3 * GIB, accessed=14400),
+                cache(3, key=f"{POOLED}-pr-3-1", ref="refs/pull/3/merge", size=3 * GIB, accessed=10800),
+                cache(4, key="ordinary", ref="refs/heads/feature", size=GIB)]
+        result = plan(rows, open_prs={3}, budget_bytes=2 * GIB)
+        self.assertEqual(removed(result), {4: "least recently used", 3: "open pull request baseline",
+                                           2: "develop baseline", 1: "main baseline"})
+        self.assertEqual([row["id"] for row in result["deletions"]], [4, 3, 2, 1])
+
+    def test_pool_migration(self):
+        for runner, profile, configuration, operating_system, family in (
+            ("ubuntu-24.04", "linux-gcc-hwloc", "Release", "Linux", "linux-gcc14"),
+            ("ubuntu-24.04", "linux-gcc-neutral", "Release", "Linux", "linux-gcc14"),
+            ("ubuntu-24.04", "linux-modules", "Release", "Linux", "linux-gcc14"),
+            ("ubuntu-24.04", "linux-modules-shared", "Release", "Linux", "linux-gcc14"),
+            ("ubuntu-24.04", "linux-clang-debug", "Debug", "Linux", "linux-clang18"),
+            ("windows-2025", "windows-msvc-hwloc", "RelWithDebInfo", "Windows", "windows-msvc"),
+            ("windows-2025", "windows-modules", "RelWithDebInfo", "Windows", "windows-msvc"),
+            ("windows-2025", "windows-modules-shared", "RelWithDebInfo", "Windows", "windows-msvc"),
+        ):
+            with self.subTest(profile=profile):
+                legacy = f"{runner}-X64-{profile}-{configuration}"
+                pooled = f"ccache-v3-{operating_system}-X64-{family}"
+                rows = [cache(1, key=f"ccache-v1-{legacy}-1-1", ref="refs/heads/main"),
+                        cache(2, key=f"ccache-v2-{legacy}-main-2-1", ref="refs/heads/main"),
+                        cache(3, key=f"{pooled}-main-3-1", ref="refs/heads/main")]
+                self.assertEqual(removed(plan(rows)), {1: "replaced compiler snapshot", 2: "replaced compiler snapshot"})
+
+    def test_pool_migration_scope(self):
+        legacy = cache(1, key=f"{LAYERED}-main-1-1", ref="refs/heads/main")
+        for update in ({"ref": "refs/heads/develop"},
+                       {"key": POOLED.replace("gcc14", "clang18") + "-main-2-1"},
+                       {"key": POOLED.replace("X64", "ARM64") + "-main-2-1"},
+                       {"key": "ccache-v3-Windows-X64-windows-msvc-main-2-1"}):
+            with self.subTest(update=update):
+                pooled = {**cache(2, key=f"{POOLED}-main-2-1", ref="refs/heads/main"), **update}
+                self.assertEqual(removed(plan([legacy, pooled])), {})
+
+    def test_pool_migration_unknown(self):
+        keys = [LAYERED.replace("linux-gcc-hwloc", "custom-gcc") + "-main-1-1",
+                LAYERED.replace("ubuntu-24.04", "ubuntu-26.04") + "-main-2-1",
+                LAYERED.replace("Release", "Debug") + "-main-3-1",
+                f"{POOLED}-main-4-1"]
+        rows = [cache(index, key=key, ref="refs/heads/main") for index, key in enumerate(keys, 1)]
+        self.assertEqual(removed(plan(rows)), {})
+
+    def test_pool_migration_protection(self):
+        for update, options in (({}, {"active_refs": {"refs/heads/main"}}),
+                                ({}, {"unresolved_refs": {"refs/heads/main"}}),
+                                ({"age": 60}, {}), ({"accessed": 60}, {})):
+            with self.subTest(update=update, options=options):
+                rows = [cache(1, key=f"{LAYERED}-main-1-1", ref="refs/heads/main", **update),
+                        cache(2, key=f"{POOLED}-main-2-1", ref="refs/heads/main")]
+                result = plan(rows, **options)
+                self.assertEqual(removed(result), {})
+                self.assertIn(1, result["protected_ids"])
 
     def test_migration(self):
         rows = [cache(1, ref="refs/heads/main", size=5 * GIB),

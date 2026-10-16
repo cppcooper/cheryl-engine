@@ -1,7 +1,8 @@
-// Engine bootstrap: final consumers receive this object through Cheryl::Engine.
+// Engine bootstrap: shared Engine owns it; static consumers receive the object.
 // Match the original NDEBUG scope; exception trace capture is independent.
+#include <cheryl/export.h>
 #include <backward.hpp>
 #ifndef NDEBUG
-backward::SignalHandling sh;
+CE_API backward::SignalHandling sh;
 #endif
-backward::TraceResolver tr;
+CE_API backward::TraceResolver tr;

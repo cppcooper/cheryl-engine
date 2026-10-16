@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/engine/worker-pool.h>
 
 #include <functional>
@@ -15,6 +17,6 @@ namespace CE::Workers {
 
     // Names start with a lowercase ASCII letter and contain lowercase letters,
     // digits and underscores. Configuration is inert until the caller creates work.
-    [[nodiscard]] bool is_group_name(std::string_view name) noexcept;
-    void validate_configuration(const Configuration& configuration);
+    [[nodiscard]] CE_API bool is_group_name(std::string_view name) noexcept;
+    CE_API void validate_configuration(const Configuration& configuration);
 }

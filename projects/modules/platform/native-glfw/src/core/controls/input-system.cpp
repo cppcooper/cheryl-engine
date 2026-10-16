@@ -31,6 +31,13 @@
 #include <utility>
 #include <vector>
 
+namespace CE::State {
+    template <> auto Singleton<CE::Platform::GLFW::InputSystem>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}
+
 namespace {
     std::atomic_flag gainput_ownership = ATOMIC_FLAG_INIT;
 #if defined(CONTROLLER_ID)

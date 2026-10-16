@@ -85,3 +85,5 @@ namespace CE::Rendering::Resources {
         return result;
     }
 }
+
+CE::Rendering::Resources::Pipeline::~Pipeline() = default;

@@ -1,17 +1,22 @@
 include("${CMAKE_CURRENT_LIST_DIR}/CherylVersions.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylOptions.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/CherylLibraries.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylOutputs.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylLinkage.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylPublicHeaders.cmake")
 include_guard(GLOBAL)
 
 # A module reuses supplied targets or bootstraps one explicitly selected checkout.
-# Local variable scopes suppress recursive module/demo/test selection without
+# Local variable scopes suppress unrelated build selections without
 # rewriting the host's cached options or compiling private engine source copies.
 function(cheryl_prepare_module)
     cmake_parse_arguments(module "REQUIRES_NATIVE" "" "" ${ARGN})
     if(NOT TARGET Cheryl::Engine)
         block(SCOPE_FOR VARIABLES)
+            set(CHERYL_BUILD_DOCS OFF)
+            set(CHERYL_BUILD_SDK OFF)
+            set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
+            set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
             set(CHERYL_BUILD_NATIVE_GLFW OFF)
             set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
             set(CHERYL_BUILD_OPENGL OFF)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstddef>
 #include <optional>
 #include <string_view>
@@ -22,9 +24,9 @@ namespace CE::Text {
     // U+FFFD for one maximal subpart; byte_count always advances within the view.
     // Truncated prefixes are errors at this view's end; this is not a streaming API.
     // The caller keeps input stable for the call and advances by returned byte_count.
-    [[nodiscard]] std::optional<Utf8Scalar> decode_utf8_scalar(std::string_view text, std::size_t offset) noexcept;
+    [[nodiscard]] CE_API std::optional<Utf8Scalar> decode_utf8_scalar(std::string_view text, std::size_t offset) noexcept;
 
     // Decode the complete view into owned records, including embedded NUL and BOM.
     // No normalization, segmentation or source retention. Allocation failure propagates.
-    [[nodiscard]] std::vector<Utf8Scalar> decode_utf8(std::string_view text);
+    [[nodiscard]] CE_API std::vector<Utf8Scalar> decode_utf8(std::string_view text);
 }

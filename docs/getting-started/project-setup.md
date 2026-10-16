@@ -157,6 +157,9 @@ for other platform choices. No separate engine build or SDK installation is
 required. To run the maintained example before writing your own entry point,
 follow [First game: setup](first-game.md#setup).
 
+On Windows, complete the [shared-library runtime setup](../development/consuming-engine.md#windows-source-build-runtime)
+before launching the source-built game.
+
 ### Choose smaller target sets when needed
 
 Link `Cheryl::Cheryl` for all selected libraries, or choose individual public
@@ -282,12 +285,14 @@ separate build directories and installed SDK prefixes for different configuratio
 and module selections. Compile each game `.cpp` file against the headers and
 target settings that belong to those libraries. For a packaged SDK, check its
 `SDK-MANIFEST.json` for the producer's source/submodule revisions, features,
-toolchain and configuration. Matching filenames alone do not establish compatibility.
+toolchain, configuration, linkage and enabled component versions. Matching filenames
+alone do not establish compatibility.
 
-`Cheryl::Engine`, `Cheryl::Startup` and the current compiled module implementations
-build as static libraries, whose code is linked into the executable. Setting
-`BUILD_SHARED_LIBS=ON` does not convert these targets to shared libraries loaded
-at runtime. Some third-party/native dependencies have their own linkage choices.
-A shared-library distribution and its binary compatibility policy require a
-separate design decision; use the current source-build or matched-SDK approach
-for this walkthrough.
+Cheryl defaults to shared Engine, modules and support libraries. Set
+`CHERYL_BUILD_SHARED_LIBS=OFF` when configuring a source build or producing an
+SDK to select static libraries, whose code is linked into the executable. The same
+public targets and includes work with either selection; keep their build directories and SDK
+prefixes separate. A shared game also needs its Cheryl and dependency libraries
+available at runtime. Follow the [SDK runtime-path contract](../development/consuming-engine.md#prebuilt-development-sdks)
+and [linkage reference](../development/building.md#library-linkage) for deployment
+and versioned artifact names.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "action-snapshot.h"
 #include "input-record.h"
 
@@ -54,8 +56,8 @@ namespace CE::Input {
         // nondecreasing by observation time, and no later than until. since must be
         // at/after the baseline and until at/after since; invalid input throws.
         // For manual consumers, the interval defaults to the sample timestamps.
-        Tick(std::shared_ptr<const Actions::Snapshot> previous, std::vector<std::shared_ptr<const Actions::Snapshot>> polls);
-        Tick(
+        CE_API Tick(std::shared_ptr<const Actions::Snapshot> previous, std::vector<std::shared_ptr<const Actions::Snapshot>> polls);
+        CE_API Tick(
             std::shared_ptr<const Actions::Snapshot> previous,
             std::vector<std::shared_ptr<const Actions::Snapshot>> polls,
             ObservationClock::time_point since,
@@ -64,11 +66,11 @@ namespace CE::Input {
 
         // Owned state copies. axis() rejects a kind change within this poll batch;
         // changing kind between consumptions is supported. Durations remain seconds.
-        [[nodiscard]] Actions::ButtonTickState button(Actions::Id action) const;
-        [[nodiscard]] Actions::AxisTickState axis(Actions::Id action) const;
+        [[nodiscard]] CE_API Actions::ButtonTickState button(Actions::Id action) const;
+        [[nodiscard]] CE_API Actions::AxisTickState axis(Actions::Id action) const;
         [[nodiscard]] std::span<const std::shared_ptr<const Actions::Snapshot>> polls() const { return polls_; }
         // Retained final sample, or the baseline if this batch is empty.
-        [[nodiscard]] std::shared_ptr<const Actions::Snapshot> latest_poll() const;
+        [[nodiscard]] CE_API std::shared_ptr<const Actions::Snapshot> latest_poll() const;
         [[nodiscard]] ObservationDuration elapsed() const { return until_ - since_; }
         // Shared, non-destructive view for every consumer in this simulation update.
         [[nodiscard]] std::span<const Events::Record> records() const { return records_; }

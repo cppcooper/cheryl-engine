@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/resources/pipeline.h>
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
@@ -19,15 +21,19 @@ namespace CE::Assets::Materials {
      * Invoke synchronously on the active provider/loading owner, outside cache locks.
      * Builder captures must survive the call; its external side effects are not rolled back.
      */
-    struct Manager final : CE::Assets::Cache::Store<const CE::Rendering::Resources::Material>,
-                           CE::State::Singleton<Manager> {
+    struct CE_TYPE_API Manager final : CE::Assets::Cache::Store<const CE::Rendering::Resources::Material>,
+                                       CE::State::Singleton<Manager> {
         using Builder = std::function<std::shared_ptr<const CE::Rendering::Resources::Material>(CE::Rendering::Resources::Provider&)>;
 
         Manager() = default;
         ~Manager() override = default;
         // Exact path key; an existing entry skips the builder.
-        void load(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
+        CE_API void load(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
         // Replace or insert one generation; empty builders/null candidates throw.
-        void reload(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
+        CE_API void reload(const std::filesystem::path& key, CE::Rendering::Resources::Provider& provider, const Builder& builder);
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Assets::Materials::Manager>::storage() -> Storage&;
 }

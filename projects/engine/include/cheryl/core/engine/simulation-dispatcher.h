@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/diagnostics.h>
 #include <atomic>
 
@@ -86,7 +88,7 @@ namespace CE::Runtime {
         };
 
         SimulationDispatcher() = default;
-        ~SimulationDispatcher();
+        CE_API ~SimulationDispatcher();
         SimulationDispatcher(const SimulationDispatcher&) = delete;
         SimulationDispatcher& operator=(const SimulationDispatcher&) = delete;
 
@@ -95,17 +97,17 @@ namespace CE::Runtime {
             return submission().submit(std::forward<Work>(work));
         }
         // Synchronized queued-work snapshot; false does not establish completion/closure.
-        [[nodiscard]] bool has_pending() const;
+        [[nodiscard]] CE_API bool has_pending() const;
         // Queue snapshot only. Callback exceptions remain owned by their futures.
-        [[nodiscard]] CE::Diagnostics::DispatchStats diagnostics() const;
+        [[nodiscard]] CE_API CE::Diagnostics::DispatchStats diagnostics() const;
 
     private:
-        static void enqueue(const std::shared_ptr<State>& state, Task request);
-        static void require_owner(const State& state);
-        void open(std::function<void()> wake);
-        void bind_owner();
-        void drain();
-        void close();
-        void invalidate();
+        CE_API static void enqueue(const std::shared_ptr<State>& state, Task request);
+        CE_API static void require_owner(const State& state);
+        CE_API void open(std::function<void()> wake);
+        CE_API void bind_owner();
+        CE_API void drain();
+        CE_API void close();
+        CE_API void invalidate();
     };
 }

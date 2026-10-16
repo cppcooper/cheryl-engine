@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -32,7 +34,7 @@ namespace CE::Workers {
         std::string limitations;
     };
 
-    class TopologyProvider {
+    class CE_API TopologyProvider {
     public:
         virtual ~TopologyProvider() = default;
         // Owned discovery snapshot. Methods must support concurrent pool workers.

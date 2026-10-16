@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #ifndef GLSLPROGRAM_H
 #define GLSLPROGRAM_H
 
@@ -32,7 +34,7 @@ namespace CE::Rendering::OpenGL {
         std::string texture = "mytexture";
     };
 
-    struct Program final : CE::Rendering::Resources::Program {
+    struct CE_TYPE_API Program final : CE::Rendering::Resources::Program {
     private:
         Handle program_;
         MaterialBindings material_bindings_;
@@ -41,16 +43,16 @@ namespace CE::Rendering::OpenGL {
         const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
 
     public:
-        explicit Program(Handle program);
-        void use() override;
-        void bind_pass(const CE::Rendering::Parameters::PassSemantics& pass) override;
-        void bind_draw(const CE::Rendering::Parameters::DrawSemantics& draw) override;
-        void set_material_bindings(MaterialBindings bindings);
+        CE_OPENGL_API explicit Program(Handle program);
+        CE_OPENGL_API void use() override;
+        CE_OPENGL_API void bind_pass(const CE::Rendering::Parameters::PassSemantics& pass) override;
+        CE_OPENGL_API void bind_draw(const CE::Rendering::Parameters::DrawSemantics& draw) override;
+        CE_OPENGL_API void set_material_bindings(MaterialBindings bindings);
         void require_current() const { (void)program_.id(); }
-        void require_linked() const;
+        CE_OPENGL_API void require_linked() const;
         [[nodiscard]] const ResourceLifetime* resource_domain() const noexcept { return program_.resource_domain(); }
-        [[nodiscard]] std::vector<Variable> active_uniforms() const;
-        [[nodiscard]] std::vector<Variable> active_attributes() const;
+        [[nodiscard]] CE_OPENGL_API std::vector<Variable> active_uniforms() const;
+        [[nodiscard]] CE_OPENGL_API std::vector<Variable> active_attributes() const;
 
         template <glm::length_t dim> void set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v);
         template <glm::length_t dim> void set_uniform_matrix(const char* name, const glm::mat<dim, dim, glm::f32, glm::defaultp>& m);
@@ -64,11 +66,11 @@ namespace CE::Rendering::OpenGL {
 
         // Explicit reflection diagnostics: DEBUG summary, TRACE variable records.
         // Queries retain their normal error contract; no stdout/event transport.
-        void print_active_uniforms() const;
-        void print_active_attribs() const;
+        CE_OPENGL_API void print_active_uniforms() const;
+        CE_OPENGL_API void print_active_attribs() const;
 
-        int get_uniform_location(const char* name);
-        int get_attribute_location(const char* name);
+        CE_OPENGL_API int get_uniform_location(const char* name);
+        CE_OPENGL_API int get_attribute_location(const char* name);
     };
 
     template <glm::length_t dim> void Program::set_uniform_vec(const char* name, const glm::vec<dim, glm::f32, glm::defaultp>& v) {

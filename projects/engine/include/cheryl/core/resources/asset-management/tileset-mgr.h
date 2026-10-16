@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <templates/asset-mgr.h>
 #include <templates/singleton.h>
 #include <assets/types/2d/tileset.h>
@@ -16,10 +18,14 @@ namespace CE::Assets::Tilesets {
      * existing IDs stay unchanged and a batch failure can leave earlier entries.
      * Inherited get_asset() returns a strong handle or null under the cache lock.
      */
-    struct Manager final : Store,
-                           CE::State::Singleton<Manager> {
+    struct CE_TYPE_API Manager final : Store,
+                                       CE::State::Singleton<Manager> {
         Manager() = default;
         ~Manager() override = default;
-        void load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider);
+        CE_API void load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider);
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Assets::Tilesets::Manager>::storage() -> Storage&;
 }

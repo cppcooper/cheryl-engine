@@ -1,0 +1,26 @@
+name: Import a previous compiler cache
+description: Stage one compatible per-job compiler snapshot for a cold family cache.
+inputs:
+  legacy-prefix:
+    description: Previous per-job cache prefix without its branch-layer suffix.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Describe previous compiler cache
+      id: migration
+      shell: bash
+      env:
+        LEGACY_CACHE_PREFIX: ${{ inputs.legacy-prefix }}
+      run: python .github/ci/compiler_cache.py migration-plan --prefix "$LEGACY_CACHE_PREFIX"
+    - name: Restore previous compiler cache
+      id: legacy
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.migration.outputs.path }}
+        key: ${{ steps.migration.outputs.key }}
+        restore-keys: ${{ steps.migration.outputs.prefix }}
+    - name: Stage previous compiler cache
+      if: steps.legacy.outputs.cache-matched-key != ''
+      shell: bash
+      run: python .github/ci/compiler_cache.py import

@@ -1,6 +1,7 @@
 #include <cheryl/core/engine/worker-pool.h>
 #include <cheryl/core/subsystems/event-bus.h>
 #include <cheryl/core/logging.h>
+#include <cheryl/core/rendering/camera.h>
 
 #include <any>
 #include <string_view>
@@ -12,6 +13,9 @@
 bool exercise_resources();
 
 int main() {
+    CE::Rendering::Camera2D camera;
+    camera.set_framebuffer_size({640, 480});
+    const bool camera_size = camera.framebuffer_size() == CE::Platform::FramebufferSize{640, 480};
     CE::Events::EventBus events;
     int observed = 0;
     const auto registration = events.register_listener("consumer", [&](const std::any& value) { observed = std::any_cast<int>(value); });
@@ -36,5 +40,5 @@ int main() {
                            std::string_view{CE::Logging::Categories::assets} == "assets" &&
                            std::string_view{CE::Logging::Categories::memory} == "memory" &&
                            std::string_view{CE::Logging::Categories::cheryl} == "cheryl";
-    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && log_names ? 0 : 1;
+    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && log_names && camera_size ? 0 : 1;
 }

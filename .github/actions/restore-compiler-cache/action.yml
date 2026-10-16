@@ -1,16 +1,25 @@
 name: Restore layered compiler caches
-description: Restore main, develop and current compiler layers and configure ccache.
+description: Restore immutable compiler layers and optionally attach a fresh writable delta.
 inputs:
   prefix:
-    description: Compiler cache format, runner, matrix profile and configuration prefix.
+    description: Compiler cache format, runner, architecture and compiler family prefix.
     required: true
+  attach:
+    description: Configure ccache for a worker; publishers only restore the layers.
+    default: 'true'
 outputs:
   current-path:
-    description: Writable layer to save after compilation.
+    description: Current immutable layer, or the publisher's merged layer to save.
     value: ${{ steps.metadata.outputs.current-path }}
   current-key:
-    description: New immutable key for the writable layer.
+    description: New immutable key for this run's family snapshot.
     value: ${{ steps.metadata.outputs.current-key }}
+  delta-archive:
+    description: Worker archive path for this run's compiler additions.
+    value: ${{ steps.metadata.outputs.delta-archive }}
+  current-hit:
+    description: Whether the current family layer was restored.
+    value: ${{ steps.current.outputs.cache-matched-key != '' }}
 runs:
   using: composite
   steps:
@@ -19,7 +28,7 @@ runs:
       shell: bash
       env:
         CACHE_PREFIX: ${{ inputs.prefix }}
-      run: python .github/ci/compiler_cache.py metadata --prefix "$CACHE_PREFIX"
+      run: python .github/ci/compiler_cache.py plan --prefix "$CACHE_PREFIX"
     - name: Restore main compiler baseline
       if: steps.metadata.outputs.restore-main == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -35,11 +44,13 @@ runs:
         key: ${{ steps.metadata.outputs.develop-prefix }}${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: ${{ steps.metadata.outputs.develop-prefix }}
     - name: Restore current compiler additions
+      id: current
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.metadata.outputs.current-path }}
         key: ${{ steps.metadata.outputs.current-key }}
         restore-keys: ${{ steps.metadata.outputs.current-prefix }}
     - name: Configure compiler cache layers
+      if: inputs.attach == 'true'
       shell: bash
-      run: python .github/ci/compiler_cache.py configure
+      run: python .github/ci/compiler_cache.py attach

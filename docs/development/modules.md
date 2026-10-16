@@ -72,10 +72,11 @@ because they have few callers.
 
 ## Select an assembly
 
-The root defaults to Native GLFW, OpenGL, TGUI and the demo. RmlUi and miniaudio
-are optional and default to `OFF`. UI and audio selection is independent of
-platform/graphics selection. OpenGL requires Native GLFW; the demo also requires
-native input. Disable demo and every module option for Engine alone.
+The root defaults to Native GLFW, OpenGL, TGUI, RmlUi and miniaudio; the demo is
+opt-in. UI and audio selection is independent of platform/graphics selection.
+OpenGL requires Native GLFW; the demo also requires native input. For Engine alone,
+disable every module and both worker-support options as shown in the
+[engine-only configuration](building.md#engine-only-configuration).
 On Linux GNU/Clang this includes `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF`.
 The root automatically links the selected terminal interface to its demo/shared
 test entry point and the source `Cheryl::Cheryl` facade. External applications can
@@ -116,9 +117,8 @@ granular owner headers, such as `cheryl/backends/native-glfw.h`.
 
 `CHERYL_NATIVE_INPUT=OFF` omits Gainput and the default-input factory overload.
 `CHERYL_NATIVE_NULL_PLATFORM=ON` configures an owned GLFW without X11/Wayland;
-a supplied GLFW target keeps its host settings. Prefer these explicit options to
-the deprecated sandbox shorthand. The [build guide](building.md) owns their
-configuration and dependency details.
+a supplied GLFW target keeps its host settings. The [build guide](building.md)
+owns their configuration and dependency details.
 
 Selection preserves owner lifetimes: input detaches while its window is live,
 resources retire before context destruction, and runtime shutdown settles workers
