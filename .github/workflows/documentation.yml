@@ -1,0 +1,104 @@
+name: Documentation
+
+on:
+  push:
+    branches: [develop, main]
+    tags: ['v*']
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: Documentation checks
+    if: github.event_name != 'push' || github.repository == 'cppcooper/cheryl-engine'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    env:
+      CHERYL_DOCS_CACHE_DIR: ${{ runner.temp }}/cheryl-engine/docs-tools
+      PYTHONDONTWRITEBYTECODE: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select Python
+        id: python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Check documentation tooling
+        run: |
+          python .github/scripts/test_sync_docs_stable.py
+          python -m unittest discover -s docs/generation/tests -p 'test_*.py'
+      - name: Identify documentation tool cache
+        id: tool-cache
+        run: python -c 'import sys; sys.path.insert(0, "docs/generation"); from bootstrap import environment_identity; print("identity=" + environment_identity())' >> "$GITHUB_OUTPUT"
+      - name: Restore documentation tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.CHERYL_DOCS_CACHE_DIR }}
+          key: docs-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.tool-cache.outputs.identity }}-${{ hashFiles('docs/generation/requirements.txt', 'docs/generation/native-tools.json', 'docs/generation/bootstrap.py') }}
+      - name: Generate and check documentation
+        run: |
+          mkdir -p docs/generation/generated
+          python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py 2>&1 | tee docs/generation/generated/generation.log
+      - name: Retain checked HTML
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documentation-html-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: docs/generation/generated/html/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain documentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: documentation-diagnostics-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            docs/generation/generated/*.log
+            docs/generation/generated/Doxyfile
+            docs/generation/generated/xml/
+            docs/generation/generated/html/revision.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  stable:
+    name: Publish stable documentation ref
+    needs: [docs]
+    if: >-
+      github.event_name == 'push' &&
+      github.repository == 'cppcooper/cheryl-engine' &&
+      github.ref == 'refs/heads/main' &&
+      needs.docs.result == 'success' &&
+      vars.CHERYL_DOCS_PUBLISH_STABLE == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: docs-stable-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Select Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Mirror checked main to stable
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CHERYL_DOCS_PUBLISH_STABLE: ${{ vars.CHERYL_DOCS_PUBLISH_STABLE }}
+          CHERYL_DOCS_CHECKS_RESULT: ${{ needs.docs.result }}
+        run: python .github/scripts/sync-docs-stable.py

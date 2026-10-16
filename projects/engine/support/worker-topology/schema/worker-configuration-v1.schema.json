@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cheryl worker configuration 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "$schema": {"type": "string", "minLength": 1},
+    "version": {"const": "1.0"},
+    "workers": {"$ref": "#/$defs/concurrency"},
+    "groups": {
+      "type": "object",
+      "propertyNames": {
+        "allOf": [
+          {"pattern": "^[a-z]"},
+          {"not": {"pattern": "[^a-z0-9_]"}}
+        ]
+      },
+      "additionalProperties": {"$ref": "#/$defs/group"}
+    }
+  },
+  "$defs": {
+    "concurrency": {
+      "oneOf": [
+        {"const": "auto"},
+        {"type": "integer", "minimum": 1, "maximum": 18446744073709551615}
+      ]
+    },
+    "cpu_id": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+    "cpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpus": {"type": "array", "items": {"$ref": "#/$defs/cpu_id"}, "uniqueItems": true},
+        "strength": {"enum": ["preferred", "required"]},
+        "cache_domain": {
+          "$ref": "#/$defs/cpu_id",
+          "description": "A cache-domain ID from this pool's runtime topology snapshot."
+        },
+        "prefer_same_worker": {"type": "boolean"}
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "concurrency": {"$ref": "#/$defs/concurrency"},
+        "weight": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "priority": {"type": "integer", "minimum": 0, "maximum": 7},
+        "locality": {"enum": ["automatic", "reuse", "spread"]},
+        "cpu": {"$ref": "#/$defs/cpu"}
+      }
+    }
+  }
+}

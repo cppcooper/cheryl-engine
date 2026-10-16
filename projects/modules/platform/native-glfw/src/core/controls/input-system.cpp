@@ -1,0 +1,520 @@
+#include <core/controls/input-system.h>
+
+#include "gainput-lifetime.h"
+
+#include <core/controls/glfw-bindings.h>
+#include <core/display/window.h>
+#include <internals/exceptions.h>
+#include <internals/failure-reporting.h>
+#include <internals/compile-time-logging.hpp>
+
+#include <gainput/GainputInputDeltaState.h>
+
+// Gainput's inline helpers call methods on the complete delta-state type.
+#include <gainput/GainputHelpers.h>
+#ifndef GLFW_INCLUDE_NONE
+#define GLFW_INCLUDE_NONE
+#endif
+#include <GLFW/glfw3.h>
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
+
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+namespace {
+    std::atomic_flag gainput_ownership = ATOMIC_FLAG_INIT;
+#if defined(CONTROLLER_ID)
+    constexpr gainput::DeviceId gainput_hid_report_device = CONTROLLER_ID;
+    constexpr bool gainput_hid_report_device_known = true;
+#else
+    constexpr gainput::DeviceId gainput_hid_report_device = gainput::InvalidDeviceId;
+    constexpr bool gainput_hid_report_device_known = false;
+#endif
+
+    // GLFW's window user pointer belongs to CE::Platform::GLFW::Window. Keep adapter association
+    // separately so callbacks also work for explicitly constructed adapters.
+    std::unordered_map<GLFWwindow*, CE::Platform::GLFW::InputSystem*> attached_inputs;
+
+    CE::Input::Modifiers input_modifiers(const int modifiers) {
+        auto result = CE::Input::Modifiers::None;
+        if (modifiers & GLFW_MOD_SHIFT)
+            result = result | CE::Input::Modifiers::Shift;
+        if (modifiers & GLFW_MOD_CONTROL)
+            result = result | CE::Input::Modifiers::Control;
+        if (modifiers & GLFW_MOD_ALT)
+            result = result | CE::Input::Modifiers::Alt;
+        if (modifiers & GLFW_MOD_SUPER)
+            result = result | CE::Input::Modifiers::Super;
+        if (modifiers & GLFW_MOD_CAPS_LOCK)
+            result = result | CE::Input::Modifiers::CapsLock;
+        if (modifiers & GLFW_MOD_NUM_LOCK)
+            result = result | CE::Input::Modifiers::NumLock;
+        return result;
+    }
+}
+
+namespace CE::Platform::GLFW {
+    namespace Detail {
+        class InputDevice : public gainput::InputDevice {
+            struct Change {
+                gainput::DeviceButtonId button;
+                gainput::ButtonType type;
+                bool pressed;
+                float value;
+            };
+
+            bool mouse_;
+            std::vector<Change> pending_;
+            std::vector<gainput::DeviceButtonId> release_next_frame_;
+            std::vector<gainput::DeviceButtonId> pending_pulses_;
+
+        public:
+            InputDevice(
+                gainput::InputManager& manager,
+                const gainput::DeviceId id,
+                const unsigned index,
+                const DeviceVariant,
+                const bool mouse
+            )
+            : gainput::InputDevice(manager, id, index == AutoIndex ? manager.GetDeviceCountByType(mouse ? DT_MOUSE : DT_KEYBOARD) : index),
+              mouse_(mouse) {
+                // Keep current and previous Gainput state for delta generation;
+                // GLFW callbacks enqueue changes instead of mutating either here.
+                const unsigned count =
+                    mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_);
+                state_ = manager.GetAllocator().New<gainput::InputState>(manager.GetAllocator(), count);
+                previousState_ = manager.GetAllocator().New<gainput::InputState>(manager.GetAllocator(), count);
+            }
+
+            ~InputDevice() override {
+                manager_.GetAllocator().Delete(state_);
+                manager_.GetAllocator().Delete(previousState_);
+            }
+
+            [[nodiscard]] DeviceType GetType() const override { return mouse_ ? DT_MOUSE : DT_KEYBOARD; }
+            // Avoid Gainput's native-event casts; GLFW delivers the events to this device instead.
+            [[nodiscard]] DeviceVariant GetVariant() const override { return DV_NULL; }
+            [[nodiscard]] const char* GetTypeName() const override { return mouse_ ? "mouse" : "keyboard"; }
+
+            [[nodiscard]] bool IsValidButtonId(const gainput::DeviceButtonId button) const override {
+                return button < (mouse_ ? static_cast<unsigned>(gainput::MouseButtonCount_) : static_cast<unsigned>(gainput::KeyCount_));
+            }
+
+            [[nodiscard]] gainput::ButtonType GetButtonType(const gainput::DeviceButtonId button) const override {
+                return mouse_ && button >= gainput::MouseAxisX ? gainput::BT_FLOAT : gainput::BT_BOOL;
+            }
+
+            [[nodiscard]] size_t GetAnyButtonDown(gainput::DeviceButtonSpec* buttons, size_t max_count) const override {
+                const unsigned end = mouse_ ? static_cast<unsigned>(gainput::MouseAxisX) : static_cast<unsigned>(gainput::KeyCount_);
+                return CheckAllButtonsDown(buttons, max_count, 0, end);
+            }
+
+            void queue_button(const gainput::DeviceButtonId button, const bool pressed) {
+                if (IsValidButtonId(button) && GetButtonType(button) == gainput::BT_BOOL)
+                    pending_.push_back({button, gainput::BT_BOOL, pressed, 0.0f});
+            }
+
+            void queue_axis(const gainput::DeviceButtonId axis, const float value) {
+                if (IsValidButtonId(axis) && GetButtonType(axis) == gainput::BT_FLOAT)
+                    pending_.push_back({axis, gainput::BT_FLOAT, false, value});
+            }
+
+            void queue_pulse(const gainput::DeviceButtonId button) {
+                if (!IsValidButtonId(button) || GetButtonType(button) != gainput::BT_BOOL)
+                    return;
+                // Wheel motion is a button transition lasting one Update, so queue
+                // its matching release separately for the following frame.
+                queue_button(button, true);
+                pending_pulses_.push_back(button);
+            }
+
+            void reset() {
+                // Detachment discards queued transitions and clears both snapshots;
+                // reattaching must not replay a held key or pending wheel pulse.
+                pending_.clear();
+                release_next_frame_.clear();
+                pending_pulses_.clear();
+                const unsigned count = state_->GetButtonCount();
+                for (unsigned button = 0; button < count; ++button) {
+                    if (GetButtonType(button) == gainput::BT_BOOL) {
+                        state_->Set(button, false);
+                        previousState_->Set(button, false);
+                    } else {
+                        state_->Set(button, 0.0f);
+                        previousState_->Set(button, 0.0f);
+                    }
+                }
+            }
+
+        protected:
+            void InternalUpdate(gainput::InputDeltaState* delta) override {
+                // Release last frame's wheel pulses, then apply GLFW events queued since the previous poll.
+                // New pulses stay pressed for this update and are released on the following update.
+                auto releases = std::move(release_next_frame_);
+                release_next_frame_ = std::move(pending_pulses_);
+                pending_pulses_.clear();
+                for (const auto button : releases)
+                    gainput::HandleButton(*this, *state_, delta, button, false);
+                for (const auto& change : pending_) {
+                    if (change.type == gainput::BT_BOOL)
+                        gainput::HandleButton(*this, *state_, delta, change.button, change.pressed);
+                    else
+                        gainput::HandleAxis(*this, *state_, delta, change.button, change.value);
+                }
+                pending_.clear();
+            }
+
+            [[nodiscard]] DeviceState InternalGetState() const override { return DS_OK; }
+        };
+
+        class GlfwKeyboardDevice final : public InputDevice {
+        public:
+            GlfwKeyboardDevice(gainput::InputManager& manager, gainput::DeviceId id, unsigned index, DeviceVariant variant)
+            : InputDevice(manager, id, index, variant, false) {}
+        };
+
+        class GlfwMouseDevice final : public InputDevice {
+        public:
+            GlfwMouseDevice(gainput::InputManager& manager, gainput::DeviceId id, unsigned index, DeviceVariant variant)
+            : InputDevice(manager, id, index, variant, true) {}
+        };
+
+    } // namespace Detail
+
+    InputSystem::InputSystem()
+    : bindings_(manager_) {}
+
+    void InputSystem::set_gamepad_diagnostics(const bool enabled) noexcept {
+        gamepad_diagnostics_ = enabled;
+        next_gamepad_diagnostics_ = {};
+        bindings_.set_gamepad_diagnostics(enabled);
+    }
+
+    InputSystem::~InputSystem() {
+        // Explicit runtime teardown reports failures. Destruction must still
+        // finish detachment without allowing a publication failure to escape.
+        try {
+            deinitialize();
+        } catch (...) {
+            Diagnostics::report_failure("input destruction", std::current_exception());
+        }
+        // Gainput's explicit Exit owns the delta buffer, HID support and devices.
+        // Window detachment retains them for a later attachment to this adapter.
+        if (manager_initialized_)
+            manager_.Exit();
+    }
+
+    void InputSystem::initialize(CE::Platform::Window& window) {
+        // This adapter needs the GLFW-backed window; a different backend supplies its own input adapter.
+        auto* glfw_window = dynamic_cast<Window*>(&window);
+        if (!glfw_window)
+            throw Exceptions::invalid_args(CE_HERE, "GLFW input requires a GLFW window");
+        if (window_ && window_ != glfw_window)
+            throw Exceptions::failed_operation(CE_HERE, "Input is already attached to another window");
+        if (window_)
+            return;
+
+        auto* handle = glfw_window->native_handle();
+        if (const auto found = attached_inputs.find(handle); found != attached_inputs.end() && found->second != this)
+            throw Exceptions::failed_operation(CE_HERE, "The window already has an input adapter");
+#if defined(_WIN32)
+        void* gainput_window = glfwGetWin32Window(handle);
+#else
+        // GLFW owns keyboard/mouse delivery. Gainput's non-Windows HID
+        // initialization does not consume a native window handle.
+        void* gainput_window = nullptr;
+#endif
+        if (!manager_initialized_) {
+            // Release the claim if Init fails. Once initialized, retain it through
+            // Exit and member destruction so no adapter can tear down another's HID.
+            auto lifetime = std::make_unique<Detail::GainputLifetime>(gainput_ownership, gainput_window);
+            CE_LOG_DEBUG(CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=begin", domain_);
+            manager_.Init(gainput_window);
+            CE_LOG_DEBUG(CE::Logging::Categories::platform, "subsystem=input domain={} operation=gainput_init phase=returned", domain_);
+            gainput_lifetime_ = std::move(lifetime);
+            manager_initialized_ = true;
+        } else
+            gainput_lifetime_->require_window(gainput_window);
+
+        // Create Gainput devices once; reinitialization attaches them to the current GLFW window.
+        if (!keyboard_) {
+            keyboard_ = manager_.CreateAndGetDevice<Detail::GlfwKeyboardDevice>();
+            keyboard_id_ = keyboard_->GetDeviceId();
+        }
+        if (!mouse_) {
+            mouse_ = manager_.CreateAndGetDevice<Detail::GlfwMouseDevice>();
+            mouse_id_ = mouse_->GetDeviceId();
+        }
+        if (gamepad_id_ == gainput::InvalidDeviceId)
+            gamepad_id_ = manager_.CreateDevice<gainput::InputDevicePad>();
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::platform,
+            "subsystem=input domain={} operation=gamepad_setup device={} hid_report_device={} hid_report_device_known={} diagnostics={}",
+            domain_, gamepad_id_, gainput_hid_report_device, gainput_hid_report_device_known, gamepad_diagnostics_
+        );
+        // Map GLFW controls in their shared callback order. Gainput's per-device
+        // queue order must not erase a keyboard-modified mouse tap in this poll.
+        bindings_.use_external_state(keyboard_id_);
+        bindings_.use_external_state(mouse_id_);
+
+        attached_inputs.emplace(handle, this);
+        window_ = glfw_window;
+        pad_axes_.assign(gainput::PadButtonMax_, 0.0f);
+        pad_buttons_.assign(gainput::PadButtonMax_, false);
+        next_gamepad_diagnostics_ = {};
+        glfwGetCursorPos(handle, &cursor_x_, &cursor_y_);
+        const auto size = window.logical_size();
+        manager_.SetDisplaySize(std::max(size.width, 1), std::max(size.height, 1));
+        // GLFW callbacks only queue transitions. Gainput processes them together in update().
+        glfwSetInputMode(handle, GLFW_LOCK_KEY_MODS, GLFW_TRUE);
+        glfwSetCharCallback(handle, on_character);
+        glfwSetCursorPosCallback(handle, on_cursor);
+        glfwSetKeyCallback(handle, on_key);
+        glfwSetMouseButtonCallback(handle, on_mouse_button);
+        glfwSetScrollCallback(handle, on_scroll);
+        last_update_ = CE::Input::ObservationClock::now();
+        observed_window_focus_ = glfwGetWindowAttrib(handle, GLFW_FOCUSED) == GLFW_TRUE;
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::platform,
+            "subsystem=input domain={} window={} operation=attach keyboard={} mouse={} gamepad={} focused={}", domain_,
+            window_->diagnostic_id(), keyboard_id_, mouse_id_, gamepad_id_, observed_window_focus_
+        );
+    }
+
+    void InputSystem::update() {
+        if (!window_)
+            throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before updating");
+        window_->check_native_failure();
+        if (callback_failure_) {
+            Diagnostics::report_outcome("input", domain_, "native_callback", "failed");
+            std::rethrow_exception(std::exchange(callback_failure_, {}));
+        }
+        const auto focused = glfwGetWindowAttrib(window_->native_handle(), GLFW_FOCUSED) == GLFW_TRUE;
+        if (focused != observed_window_focus_) {
+            observed_window_focus_ = focused;
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::platform, "subsystem=input domain={} operation=window_focus focused={}", domain_, focused
+            );
+        }
+        const auto size = window_->logical_size();
+        const auto width = std::max(size.width, 1);
+        const auto height = std::max(size.height, 1);
+        manager_.SetDisplaySize(width, height);
+        // An absolute pointer axis needs only the final cursor position. Sampling it here
+        // also updates normalized coordinates when the window resized without a move event.
+        double x = 0.0;
+        double y = 0.0;
+        glfwGetCursorPos(window_->native_handle(), &x, &y);
+        mouse_->queue_axis(gainput::MouseAxisX, static_cast<float>(x / width));
+        mouse_->queue_axis(gainput::MouseAxisY, static_cast<float>(y / height));
+        bindings_.on_axis({mouse_id_, gainput::MouseAxisX}, static_cast<float>(x / width));
+        bindings_.on_axis({mouse_id_, gainput::MouseAxisY}, static_cast<float>(y / height));
+        const auto updated_at = CE::Input::ObservationClock::now();
+        const auto delta_time = std::chrono::duration<float>(updated_at - last_update_).count();
+        last_update_ = updated_at;
+        manager_.Update(delta_time);
+        // Gainput only notifies changes. Reconcile the pad's full state so a held button
+        // survives reattachment and a disconnected pad cannot leave an action stuck.
+        const auto* pad = manager_.GetDevice(gamepad_id_);
+        const bool available = pad && pad->IsAvailable();
+        if (available != observed_gamepad_available_) {
+            observed_gamepad_available_ = available;
+            CE_LOG_DEBUG(
+                CE::Logging::Categories::platform, "subsystem=input domain={} operation=device_availability device={} available={}",
+                domain_, gamepad_id_, available
+            );
+        }
+        for (gainput::DeviceButtonId button = 0; button < gainput::PadButtonMax_; ++button) {
+            const bool valid = available && pad->IsValidButtonId(button);
+            if (button < gainput::PadButtonStart) {
+                const float value = valid ? pad->GetFloat(button) : 0.0f;
+                if (value != pad_axes_[button]) {
+                    if (gamepad_diagnostics_)
+                        CE_LOG_TRACE(
+                            CE::Logging::Categories::platform,
+                            "subsystem=input domain={} operation=gamepad_sample kind=axis device={} control={} old={} new={}", domain_,
+                            gamepad_id_, button, pad_axes_[button], value
+                        );
+                    capture_buffer().record(gamepad_id_, CE::Input::DeviceKind::Gamepad, CE::Input::Events::Axis{button, value});
+                }
+                pad_axes_[button] = value;
+                bindings_.on_axis({gamepad_id_, button}, value);
+            } else {
+                const bool held = valid && pad->GetBool(button);
+                if (held != pad_buttons_[button]) {
+                    if (gamepad_diagnostics_)
+                        CE_LOG_TRACE(
+                            CE::Logging::Categories::platform,
+                            "subsystem=input domain={} operation=gamepad_sample kind=button device={} control={} old={} new={}", domain_,
+                            gamepad_id_, button, static_cast<bool>(pad_buttons_[button]), held
+                        );
+                    capture_buffer().record(
+                        gamepad_id_, CE::Input::DeviceKind::Gamepad,
+                        CE::Input::Events::Button{
+                            button, held ? CE::Input::Events::ButtonPhase::Press : CE::Input::Events::ButtonPhase::Release
+                        }
+                    );
+                }
+                pad_buttons_[button] = held;
+                bindings_.on_button({gamepad_id_, button}, held);
+            }
+        }
+        if (gamepad_diagnostics_ &&
+            (next_gamepad_diagnostics_ == CE::Input::ObservationClock::time_point{} || updated_at >= next_gamepad_diagnostics_)) {
+            next_gamepad_diagnostics_ = updated_at + std::chrono::seconds(1);
+            CE_LOG_TRACE(
+                CE::Logging::Categories::platform,
+                "subsystem=input domain={} operation=gamepad_poll device={} state={} available={} a_valid={} a_sampled={}", domain_,
+                gamepad_id_, pad ? static_cast<int>(pad->GetState()) : -1, available, pad && pad->IsValidButtonId(gainput::PadButtonA),
+                static_cast<bool>(pad_buttons_[gainput::PadButtonA])
+            );
+        }
+        // Listeners have now updated pending physical state. Commit the complete semantic sample.
+        (void)publish_input();
+    }
+
+    void InputSystem::begin_poll() {
+        if (!window_)
+            throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before beginning a poll");
+        begin_input_poll();
+        // Legacy wheel buttons are one-poll State pulses; actual scroll records
+        // and relative offsets retain all delivered movement independently.
+        bindings_.on_button({mouse_id_, gainput::MouseButtonWheelUp}, false);
+        bindings_.on_button({mouse_id_, gainput::MouseButtonWheelDown}, false);
+    }
+
+    void InputSystem::poll() {
+        if (!window_)
+            throw Exceptions::failed_operation(CE_HERE, "Input must be initialized before polling");
+        // Pump GLFW on the platform thread before Gainput converts queued changes to listener calls.
+        begin_poll();
+        glfwPollEvents();
+        update();
+    }
+
+    void InputSystem::deinitialize() {
+        if (callback_failure_)
+            Diagnostics::report_failure("unconsumed input callback", std::exchange(callback_failure_, {}));
+        if (!window_) {
+            discard_captured_input();
+            callback_failure_ = {};
+            return;
+        }
+        auto* handle = window_->native_handle();
+        // Detach callbacks while the native window is still alive, then clear per-window input state.
+        glfwSetKeyCallback(handle, nullptr);
+        glfwSetMouseButtonCallback(handle, nullptr);
+        glfwSetScrollCallback(handle, nullptr);
+        glfwSetCharCallback(handle, nullptr);
+        glfwSetCursorPosCallback(handle, nullptr);
+        attached_inputs.erase(handle);
+        CE_LOG_DEBUG(
+            CE::Logging::Categories::platform, "subsystem=input domain={} window={} operation=detach", domain_, window_->diagnostic_id()
+        );
+        window_ = nullptr;
+        keyboard_->reset();
+        mouse_->reset();
+        // Release routing/capture first: the final State publication may allocate
+        // and fail, but callbacks, focus, and pending records must already be detached.
+        discard_captured_input();
+        pad_axes_.clear();
+        pad_buttons_.clear();
+        callback_failure_ = {};
+        bindings_.clear();
+    }
+
+    InputSystem* InputSystem::attached(GLFWwindow* handle) noexcept {
+        const auto found = attached_inputs.find(handle);
+        return found == attached_inputs.end() ? nullptr : found->second;
+    }
+
+    void InputSystem::on_key(GLFWwindow* handle, const int key, const int scancode, const int action, const int modifiers) noexcept {
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                const auto phase = action == GLFW_REPEAT  ? CE::Input::Events::ButtonPhase::Repeat
+                                   : action == GLFW_PRESS ? CE::Input::Events::ButtonPhase::Press
+                                                          : CE::Input::Events::ButtonPhase::Release;
+                const auto button = gainput_key(key);
+                // Preserve delivered callbacks before State ignores repeats or condenses transitions.
+                input->capture_buffer().record(
+                    input->keyboard_id_, CE::Input::DeviceKind::Keyboard,
+                    CE::Input::Events::Button{button, phase, input_modifiers(modifiers), key, scancode, keyboard_key(key)}
+                );
+                if (action != GLFW_REPEAT && button != gainput::InvalidDeviceButtonId) {
+                    input->bindings_.on_button({input->keyboard_id_, button}, action == GLFW_PRESS);
+                    input->keyboard_->queue_button(button, action == GLFW_PRESS);
+                }
+            });
+    }
+
+    void InputSystem::on_mouse_button(GLFWwindow* handle, const int button, const int action, const int modifiers) noexcept {
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                const auto control = gainput_mouse_button(button);
+                double x = 0.0;
+                double y = 0.0;
+                glfwGetCursorPos(handle, &x, &y);
+                input->capture_buffer().record(
+                    input->mouse_id_, CE::Input::DeviceKind::Mouse,
+                    CE::Input::Events::Button{
+                        control, action == GLFW_PRESS ? CE::Input::Events::ButtonPhase::Press : CE::Input::Events::ButtonPhase::Release,
+                        input_modifiers(modifiers), button, -1, CE::Input::KeyboardKey::Unknown, mouse_button(button),
+                        CE::Input::Events::Pointer{x, y}
+                    }
+                );
+                input->mouse_->queue_button(control, action == GLFW_PRESS);
+                input->bindings_.on_button({input->mouse_id_, control}, action == GLFW_PRESS);
+            });
+    }
+
+    void InputSystem::on_scroll(GLFWwindow* handle, const double x, const double y) noexcept {
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                double pointer_x = 0.0;
+                double pointer_y = 0.0;
+                glfwGetCursorPos(handle, &pointer_x, &pointer_y);
+                input->capture_buffer().record(
+                    input->mouse_id_, CE::Input::DeviceKind::Mouse,
+                    CE::Input::Events::Scroll{x, y, CE::Input::Events::Pointer{pointer_x, pointer_y}}
+                );
+                input->bindings_.on_delta({input->mouse_id_, CE::Input::MouseControl::ScrollX}, static_cast<float>(x));
+                input->bindings_.on_delta({input->mouse_id_, CE::Input::MouseControl::ScrollY}, static_cast<float>(y));
+                if (y != 0.0) {
+                    const auto button =
+                        static_cast<CE::Input::ControlId>(y > 0.0 ? gainput::MouseButtonWheelUp : gainput::MouseButtonWheelDown);
+                    input->bindings_.on_button({input->mouse_id_, button}, true);
+                    input->mouse_->queue_pulse(button);
+                }
+            });
+    }
+
+    void InputSystem::on_character(GLFWwindow* handle, const unsigned int codepoint) noexcept {
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                input->capture_buffer().record(
+                    input->keyboard_id_, CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{static_cast<char32_t>(codepoint)}
+                );
+            });
+    }
+
+    void InputSystem::on_cursor(GLFWwindow* handle, const double x, const double y) noexcept {
+        if (auto* input = attached(handle))
+            input->receive([&] {
+                input->capture_buffer().record(input->mouse_id_, CE::Input::DeviceKind::Mouse, CE::Input::Events::Pointer{x, y});
+                input->bindings_.on_delta({input->mouse_id_, CE::Input::MouseControl::DeltaX}, static_cast<float>(x - input->cursor_x_));
+                input->bindings_.on_delta({input->mouse_id_, CE::Input::MouseControl::DeltaY}, static_cast<float>(y - input->cursor_y_));
+                input->cursor_x_ = x;
+                input->cursor_y_ = y;
+            });
+    }
+}

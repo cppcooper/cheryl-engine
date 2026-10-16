@@ -1,0 +1,126 @@
+name: Prepare cached dependencies
+description: Restore dependency caches and prepare the requested CI composition.
+inputs:
+  profile:
+    description: CI composition, headless or modules.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Describe dependency caches
+      id: metadata
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: python .github/ci/dependencies.py metadata --profile "$DEPENDENCY_PROFILE"
+    - name: Restore submodule Git objects
+      id: submodules
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.submodule-path }}
+        key: ${{ steps.metadata.outputs.submodule-key }}
+    - name: Check out pinned submodules
+      shell: bash
+      env:
+        CHERYL_SUBMODULE_TOKEN: ${{ github.token }}
+      run: python .github/ci/dependencies.py submodules
+    - name: Save submodule Git objects
+      if: steps.submodules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.submodule-path }}
+        key: ${{ steps.submodules.outputs.cache-primary-key }}
+    - name: Restore Windows tools
+      if: runner.os == 'Windows'
+      id: tools
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.metadata.outputs.vcpkg-root }}
+          ${{ steps.metadata.outputs.ccache-tools }}
+        key: ${{ steps.metadata.outputs.tools-key }}
+    - name: Restore Windows dependency packages and downloads
+      if: runner.os == 'Windows'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.dependency-path }}
+        key: ${{ steps.metadata.outputs.dependency-key }}
+        restore-keys: |
+          ${{ steps.metadata.outputs.dependency-exact-prefix }}
+          ${{ steps.metadata.outputs.dependency-profile-prefix }}
+          ${{ steps.metadata.outputs.dependency-runner-prefix }}
+    - name: Snapshot Windows dependency cache
+      if: runner.os == 'Windows'
+      shell: bash
+      run: python .github/ci/dependencies.py cache-state --snapshot
+    - name: Prepare pinned Windows tools
+      if: runner.os == 'Windows'
+      shell: bash
+      run: python .github/ci/dependencies.py windows-tools
+    - name: Save Windows tools
+      if: runner.os == 'Windows' && steps.tools.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.metadata.outputs.vcpkg-root }}
+          ${{ steps.metadata.outputs.ccache-tools }}
+        key: ${{ steps.tools.outputs.cache-primary-key }}
+    - name: Restore Python downloads and wheels
+      if: runner.os == 'Windows' && inputs.profile == 'modules'
+      id: pip
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.pip-path }}
+        key: ${{ steps.metadata.outputs.pip-key }}
+        restore-keys: |
+          ${{ steps.metadata.outputs.pip-exact-prefix }}
+          ${{ steps.metadata.outputs.pip-prefix }}
+    - name: Snapshot Python cache
+      if: runner.os == 'Windows' && inputs.profile == 'modules'
+      shell: bash
+      run: python .github/ci/dependencies.py cache-state --cache pip --snapshot
+    - name: Install Python generator dependencies
+      if: runner.os == 'Windows' && inputs.profile == 'modules'
+      shell: bash
+      run: python -m pip install --requirement .github/ci/requirements-modules.txt
+    - name: Check Python cache updates
+      if: runner.os == 'Windows' && inputs.profile == 'modules'
+      id: pip-state
+      shell: bash
+      run: python .github/ci/dependencies.py cache-state --cache pip
+    - name: Save Python downloads and wheels
+      if: runner.os == 'Windows' && inputs.profile == 'modules' && steps.pip-state.outputs.changed == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.pip-path }}
+        key: ${{ steps.pip.outputs.cache-primary-key }}
+    - name: Update Linux package indexes
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt-get update
+    - name: Describe Linux package downloads
+      if: runner.os == 'Linux'
+      id: apt-plan
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: python .github/ci/dependencies.py apt-plan --profile "$DEPENDENCY_PROFILE"
+    - name: Restore Linux package binaries
+      if: runner.os == 'Linux' && steps.apt-plan.outputs.needed == 'true'
+      id: apt
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.dependency-path }}/apt/*.deb
+        key: ${{ steps.apt-plan.outputs.key }}
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      shell: bash
+      env:
+        DEPENDENCY_PROFILE: ${{ inputs.profile }}
+      run: python .github/ci/dependencies.py apt-install --profile "$DEPENDENCY_PROFILE"
+    - name: Save Linux package binaries
+      if: runner.os == 'Linux' && steps.apt-plan.outputs.needed == 'true' && steps.apt.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.metadata.outputs.dependency-path }}/apt/*.deb
+        key: ${{ steps.apt.outputs.cache-primary-key }}

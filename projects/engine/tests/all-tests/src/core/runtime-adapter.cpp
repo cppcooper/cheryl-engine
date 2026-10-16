@@ -1,0 +1,2741 @@
+#include <gtest/gtest.h>
+
+#include <assets/resources/resource-provider.h>
+#include <assets/types/2d/graphic.h>
+#include <assets/types/2d/stbfont.h>
+#include <ext/matrix_clip_space.hpp>
+#include <core/controls/input-interface.h>
+#include <core/display/display-system-interface.h>
+#include <core/display/window-interface.h>
+#include <core/engine/engine-context.h>
+#include <core/engine/engine-context-internal.h>
+#include <core/engine/worker-pool-internal.h>
+#include <core/engine/event-delivery.h>
+#include <core/game-framework/abstract-game.h>
+#include <core/game-framework/game-runtime.h>
+#include <core/game-framework/game-runtime-internal.h>
+#include <assets/submission/draw2d.h>
+#include <core/rendering/presentation-surface.h>
+#include <core/rendering/renderer.h>
+#include <core/resources/asset-management/asset-loader.h>
+#include <core/resources/asset-management/material-mgr.h>
+#include <core/resources/asset-management/shader-mgr.h>
+#include <core/resources/asset-management/sprite-mgr.h>
+#include <core/resources/asset-management/texture-mgr.h>
+#include <core/resources/asset-management/tileset-mgr.h>
+#include <internals/exceptions.h>
+
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <future>
+#include <memory>
+#include <new>
+#include <optional>
+#include <stdexcept>
+#include <string_view>
+#include <thread>
+#include <utility>
+#include <variant>
+#include <vector>
+
+#if defined(GL_VERSION_3_3) || defined(GLFW_VERSION_MAJOR)
+#error The alternative runtime adapter must not include OpenGL or GLFW headers.
+#endif
+
+namespace {
+    struct TemporaryAssets {
+        std::filesystem::path root;
+        inline static std::atomic<unsigned int> next{0};
+
+        TemporaryAssets()
+        : root(
+              std::filesystem::temp_directory_path() /
+              ("cheryl-preparation-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                  std::to_string(next.fetch_add(1))) / "graphics"
+          ) {
+            std::filesystem::create_directories(root);
+        }
+
+        ~TemporaryAssets() {
+            std::error_code error;
+            std::filesystem::remove_all(root.parent_path(), error);
+        }
+
+        void write_png(const std::string& name = "pixel.png") const {
+            constexpr std::array<unsigned char, 70> bytes{137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0,
+                1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 240, 31, 0, 5, 0, 1, 255, 137,
+                153, 61, 29, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130};
+            const auto file = root / name;
+            std::filesystem::create_directories(file.parent_path());
+            std::ofstream output(file, std::ios::binary);
+            output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        }
+
+        void write_manifest(const std::string& name_space = "probe") const {
+            std::string document =
+                R"JSON({"$schema":"../schemas/graphics/sprite-tileset-manifest-2.0.schema.json","asset_class":"sprite-tileset","version":"2.0","namespace":"probe","defaults":{"sprite":{"pivot":{"x":0.5,"y":1.0}},"tileset":{"pivot":{"x":0.5,"y":0.5}}},"texture":"pixel.png","sprites":{"pixel":{"grid":{"origin":{"x":0,"y":0},"frame":{"width":1,"height":1},"spacing":{"x":0,"y":0},"rows":1,"columns":1,"cell_order":"row-major"}}}})JSON";
+            document.replace(document.find("probe"), 5, name_space);
+            std::ofstream(root / "probe.json") << document;
+            std::ofstream(root / "graphics-manifests.json") << R"JSON({"version":"2.0","manifests":["probe.json"]})JSON";
+        }
+    };
+
+    constexpr CE::Input::ControlId test_button = 65;
+
+    /** Holds mutable window state for a runtime test without a native window. */
+    class MemoryWindow final : public CE::Platform::Window {
+        CE::Platform::FramebufferSize size_{320, 240};
+        CE::Platform::WindowMode mode_ = CE::Platform::WindowMode::NORMAL;
+        bool closed_ = false;
+        mutable bool cursor_hidden_ = false;
+        mutable std::exception_ptr native_failure_;
+
+    public:
+        [[nodiscard]] CE::Platform::Dimensions<int> logical_size() const override { return {size_.width, size_.height}; }
+        [[nodiscard]] CE::Platform::FramebufferSize framebuffer_size() const override { return size_; }
+        [[nodiscard]] CE::Platform::WindowMode mode() const override { return mode_; }
+        [[nodiscard]] bool should_close() const override { return closed_; }
+        void check_native_failure() const override {
+            if (native_failure_)
+                std::rethrow_exception(std::exchange(native_failure_, {}));
+        }
+        void defer_failure(std::exception_ptr failure) { native_failure_ = std::move(failure); }
+        void resize(int width, int height) override { size_ = {width, height}; }
+        void set_mode(CE::Platform::WindowMode mode) override { mode_ = mode; }
+        void hide_cursor(bool hide) const override { cursor_hidden_ = hide; }
+        void request_close() { closed_ = true; }
+        [[nodiscard]] bool cursor_hidden() const { return cursor_hidden_; }
+    };
+
+    /** Creates and activates MemoryWindow through the display interface. */
+    class MemoryDisplay final : public CE::Platform::DisplaySystem {
+    public:
+        std::function<void()> on_destroy;
+
+    private:
+        std::vector<CE::Platform::Monitor> monitors_{{1, 320, 240}};
+        std::unique_ptr<MemoryWindow> window_;
+        CE::Platform::Window* active_ = nullptr;
+
+    public:
+        ~MemoryDisplay() override {
+            if (on_destroy)
+                on_destroy();
+        }
+
+        [[nodiscard]] const std::vector<CE::Platform::Monitor>& monitors() const override { return monitors_; }
+        [[nodiscard]] int monitor_count() const override { return static_cast<int>(monitors_.size()); }
+        [[nodiscard]] const CE::Platform::Monitor& primary_monitor() const override { return monitors_.front(); }
+        [[nodiscard]] CE::Platform::Window* active_window() const override { return active_; }
+        [[nodiscard]] std::pair<float, float> content_scale(const CE::Platform::Monitor&) const override { return {1, 1}; }
+
+        CE::Platform::Window* create_window(const CE::Platform::Monitor&, CE::Platform::WindowMode mode, int width, int height) override {
+            window_ = std::make_unique<MemoryWindow>();
+            window_->resize(width, height);
+            window_->set_mode(mode);
+            return window_.get();
+        }
+
+        void activate_window(CE::Platform::Window& window) override { active_ = &window; }
+
+        [[nodiscard]] MemoryWindow& window() { return *window_; }
+    };
+
+    /** Emits one button transition per poll and records its attached window. */
+    class MemoryInput final : public CE::Input::System {
+        CE::Platform::Window* window_ = nullptr;
+        CE::Input::Actions::Bindings bindings_;
+
+    public:
+        std::function<void()> on_poll;
+        std::function<void()> on_destroy;
+        std::function<void()> on_initialize;
+        std::function<void()> on_deinitialize;
+        bool default_press = true;
+        bool focus_supported = true;
+        int initializations = 0;
+        int shutdowns = 0;
+
+        ~MemoryInput() override {
+            if (on_destroy)
+                on_destroy();
+        }
+
+        void initialize(CE::Platform::Window& window) override {
+            window_ = &window;
+            ++initializations;
+            if (on_initialize)
+                on_initialize();
+        }
+
+        void poll() override {
+            begin_input_poll();
+            if (on_poll)
+                on_poll();
+            if (default_press)
+                bindings_.on_button({keyboard_id(), test_button}, true);
+            (void)publish_input();
+        }
+
+        void deinitialize() override {
+            window_ = nullptr;
+            discard_captured_input();
+            bindings_.clear();
+            ++shutdowns;
+            if (on_deinitialize)
+                on_deinitialize();
+        }
+
+        void key(CE::Input::Events::ButtonPhase phase) {
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::Events::Button{test_button, phase});
+            if (phase != CE::Input::Events::ButtonPhase::Repeat)
+                bindings_.on_button({keyboard_id(), test_button}, phase == CE::Input::Events::ButtonPhase::Press);
+        }
+
+        void text(char32_t codepoint) {
+            capture_buffer().record(keyboard_id(), CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{codepoint});
+        }
+
+        [[nodiscard]] bool supports(CE::Input::Capture::Channel) const override { return true; }
+        [[nodiscard]] bool supports_focus() const override { return focus_supported; }
+        [[nodiscard]] CE::Input::Actions::Bindings& bindings() override { return bindings_; }
+        [[nodiscard]] CE::Input::DeviceId keyboard_id() const override { return 1; }
+        [[nodiscard]] CE::Input::DeviceId mouse_id() const override { return 2; }
+        [[nodiscard]] CE::Input::DeviceId gamepad_id() const override { return 3; }
+        [[nodiscard]] CE::Platform::Window* attached_window() const { return window_; }
+    };
+
+    /** Records which thread receives the semantic press and owns frame preparation. */
+    class OneTickGame final : public CE::Game::AbstractGame {
+        static constexpr CE::Input::Actions::Id action{17};
+        CE::Input::System& input_;
+        bool capture_;
+        CE::Input::Capture::Lease events_;
+        CE::Input::Capture::Lease text_;
+        CE::Input::Routing::Lease focus_;
+
+    public:
+        std::function<void()> on_tick;
+        std::function<void()> on_init;
+        std::function<void()> on_deinit;
+        std::function<void()> on_quiesce;
+        std::function<void(CE::Rendering::FrameWriter&)> on_prepare;
+        int initializations = 0;
+        int shutdowns = 0;
+        int updates = 0;
+        mutable int draws = 0;
+        std::atomic<bool> pressed{false};
+        std::thread::id update_thread;
+        CE::Platform::FramebufferSize size{};
+        std::vector<CE::Input::Events::Record> received_records;
+        std::vector<double> simulation_deltas;
+        std::vector<double> observed_intervals;
+        std::vector<double> dropped_intervals;
+        std::vector<CE::Runtime::Simulation::UpdateKind> update_kinds;
+
+        explicit OneTickGame(CE::Input::System& input, const bool capture = false)
+        : input_(input), capture_(capture) {}
+
+        void init() override {
+            ++initializations;
+            (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, action);
+            if (capture_) {
+                events_ = input_.capture(CE::Input::Capture::Channel::Events);
+                text_ = input_.capture(CE::Input::Capture::Channel::Text);
+                focus_ = input_.routing().focus(29, CE::Input::Routing::KeyboardPolicy::PassThrough);
+            }
+            if (on_init)
+                on_init();
+        }
+
+        void quiesce() override {
+            if (on_quiesce)
+                on_quiesce();
+        }
+
+        void deinit() override {
+            ++shutdowns;
+            focus_.reset();
+            text_.reset();
+            events_.reset();
+            input_.bindings().clear();
+            if (on_deinit)
+                on_deinit();
+        }
+
+        void update(const CE::Game::TickContext& tick) override {
+            ++updates;
+            simulation_deltas.push_back(tick.delta_seconds);
+            observed_intervals.push_back(tick.observed_seconds());
+            dropped_intervals.push_back(tick.dropped_seconds);
+            update_kinds.push_back(tick.update_kind);
+            update_thread = std::this_thread::get_id();
+            size = tick.framebuffer_size;
+            received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
+            if (tick.input.button(action).pressed())
+                pressed.store(true);
+            if (pressed.load() && on_tick)
+                on_tick();
+        }
+
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+            ++draws;
+            if (on_prepare) {
+                on_prepare(frame);
+                return;
+            }
+            glm::mat4 view{1.0f};
+            view[3][0] = pressed.load() ? 1.0f : 0.0f;
+            (void)frame.begin_pass(glm::mat4{1.0f}, view);
+        }
+    };
+
+    class MemoryImage final : public CE::Rendering::Resources::Image {
+        CE::Rendering::Geometry::PixelSize size_;
+        std::vector<unsigned char> pixels_;
+
+    public:
+        mutable std::vector<std::uint32_t> bound_units;
+
+        explicit MemoryImage(CE::Rendering::Geometry::PixelSize size, std::vector<unsigned char> pixels = {})
+        : size_(size), pixels_(std::move(pixels)) {}
+
+        [[nodiscard]] CE::Rendering::Geometry::PixelSize pixel_size() const override { return size_; }
+        void bind(std::uint32_t unit) const override { bound_units.push_back(unit); }
+        [[nodiscard]] const std::vector<unsigned char>& pixels() const { return pixels_; }
+    };
+
+    /** Records independent geometry binding and draw ranges instead of GPU commands. */
+    class MemoryGeometry final : public CE::Rendering::Geometry::Buffer2D {
+        mutable std::size_t binds_ = 0;
+
+    public:
+        mutable std::size_t first_vertex = 0;
+        mutable std::size_t drawn_vertices = 0;
+        CE::Rendering::Geometry::Topology uploaded_topology = CE::Rendering::Geometry::Topology::Triangles;
+        std::size_t uploaded_vertices = 0;
+        CE::Rendering::Geometry::Layout2D layout = CE::Rendering::Geometry::Layout2D::Position3UV2;
+        std::vector<CE::Rendering::Geometry::Vertex2DColor> colors;
+
+        [[nodiscard]] CE::Rendering::Geometry::Layout2D vertex_layout() const noexcept override { return layout; }
+        [[nodiscard]] CE::Rendering::Geometry::Topology topology() const noexcept override { return uploaded_topology; }
+        [[nodiscard]] std::size_t vertex_count() const noexcept override { return uploaded_vertices; }
+        void bind() const override { ++binds_; }
+
+        void draw(std::size_t first, std::size_t count) const override {
+            first_vertex = first;
+            drawn_vertices = count;
+        }
+
+        [[nodiscard]] std::size_t bind_count() const { return binds_; }
+    };
+
+    class MemoryPipeline final : public CE::Rendering::Resources::Pipeline {
+    public:
+        explicit MemoryPipeline(
+            float intensity,
+            CE::Rendering::Geometry::Topology topology = CE::Rendering::Geometry::Topology::Triangles,
+            bool image = false
+        )
+        : CE::Rendering::Resources::Pipeline(make_definition(intensity, topology, image)) {}
+
+    private:
+        static CE::Rendering::Pipelines::Definition
+        make_definition(float intensity, CE::Rendering::Geometry::Topology topology, bool image) {
+            CE::Rendering::Pipelines::Definition result;
+            result.program_sources = {"memory.vert", "memory.frag"};
+            result.topology = topology;
+            result.parameters = {
+                {"intensity", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Custom, intensity}
+            };
+            if (image)
+                result.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+            return result;
+        }
+    };
+
+    /** Records shader uses and camera matrices passed during drawing. */
+    class MemoryShader final : public CE::Rendering::Resources::Program {
+    public:
+        CE::Rendering::Parameters::DrawSemantics last_draw;
+        int raw_uniform_writes = 0;
+        int uses = 0;
+        glm::mat4 projection{0.0f};
+        glm::mat4 view{0.0f};
+
+        void bind_pass(const CE::Rendering::Parameters::PassSemantics& pass) override {
+            use();
+            projection = pass.projection;
+            view = pass.view;
+        }
+
+        void bind_draw(const CE::Rendering::Parameters::DrawSemantics& draw) override { last_draw = draw; }
+        void use() override { ++uses; }
+        void set_uniform_value(const char*, float) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, unsigned int) override { ++raw_uniform_writes; }
+        void set_uniform_value(const char*, bool) override { ++raw_uniform_writes; }
+        void set_uniform_matrix(const char*, const glm::mat4&) override { ++raw_uniform_writes; }
+    };
+
+    /** Supplies in-memory assets and records the geometry uploaded by asset managers. */
+    class MemoryProvider final : public CE::Rendering::Resources::Provider {
+    public:
+        std::uint32_t uploaded_vertices = 0;
+        std::thread::id resource_thread;
+        int atlas_uploads = 0;
+        int linked_programs = 0;
+        int created_images = 0;
+        std::function<std::shared_ptr<CE::Rendering::Resources::Image>()> on_load_image;
+        std::function<std::shared_ptr<
+            CE::Rendering::Geometry::Buffer2D>(std::span<const CE::Rendering::Geometry::Vertex2D>, CE::Rendering::Geometry::Topology)>
+            on_upload_geometry;
+        CE::Rendering::Geometry::Topology uploaded_topology = CE::Rendering::Geometry::Topology::Triangles;
+        std::vector<CE::Rendering::Geometry::Vertex2D> uploaded_geometry;
+        std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
+        std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image> load_image(const std::filesystem::path&) override {
+            if (on_load_image)
+                return on_load_image();
+            return std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{32, 32});
+        }
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image>
+        create_font_atlas(std::span<const unsigned char> alpha, CE::Rendering::Geometry::PixelSize size) override {
+            resource_thread = std::this_thread::get_id();
+            ++atlas_uploads;
+            return std::make_shared<MemoryImage>(size, std::vector<unsigned char>(alpha.begin(), alpha.end()));
+        }
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded& image) override {
+            ++created_images;
+            resource_thread = std::this_thread::get_id();
+            return std::make_shared<MemoryImage>(image.size, image.rgba);
+        }
+
+        using CE::Rendering::Resources::Provider::upload_geometry;
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+        upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D> vertices, CE::Rendering::Geometry::Topology topology) override {
+            if (on_upload_geometry)
+                return on_upload_geometry(vertices, topology);
+            uploaded_vertices = vertices.size();
+            uploaded_topology = topology;
+            uploaded_geometry.assign(vertices.begin(), vertices.end());
+            geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = vertices.size();
+            geometry->uploaded_topology = topology;
+            return geometry;
+        }
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override {
+            ++linked_programs;
+            return shader;
+        }
+
+        [[nodiscard]] std::shared_ptr<CE::Rendering::Geometry::Buffer2D> upload_geometry(
+            std::span<const CE::Rendering::Geometry::Vertex2DColor> vertices,
+            CE::Rendering::Geometry::Topology topology
+        ) override {
+            resource_thread = std::this_thread::get_id();
+            geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = vertices.size();
+            geometry->uploaded_topology = topology;
+            geometry->layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+            geometry->colors.assign(vertices.begin(), vertices.end());
+            return geometry;
+        }
+    };
+
+    class UiPipeline final : public CE::Rendering::Resources::Pipeline {
+    public:
+        explicit UiPipeline(CE::Rendering::Geometry::Layout2D layout, bool image)
+        : CE::Rendering::Resources::Pipeline(make_definition(layout, image)) {}
+
+    private:
+        static CE::Rendering::Pipelines::Definition make_definition(CE::Rendering::Geometry::Layout2D layout, bool image) {
+            CE::Rendering::Pipelines::Definition definition;
+            definition.program_sources = {"record-ui.vert", "record-ui.frag"};
+            definition.vertex_layout = layout;
+            definition.parameters = {
+                {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection},
+                {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+                {"alpha", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Alpha}
+            };
+            if (image)
+                definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+            return definition;
+        }
+    };
+
+    // Test-only consumer: records ordinary engine data, without widget/toolkit APIs.
+    class UiProbeGame final : public CE::Game::AbstractGame {
+        static constexpr CE::Input::Routing::TargetId field = 73;
+        static constexpr CE::Input::Actions::Id keyboard_action{74};
+        static constexpr CE::Input::Actions::Id controller_action{75};
+        CE::Runtime::Context& engine_;
+        MemoryInput& input_;
+        CE::Input::Capture::Lease events_;
+        CE::Input::Capture::Lease text_;
+        CE::Input::Routing::Lease focus_;
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> panels_;
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D> image_geometry_;
+        std::shared_ptr<const CE::Rendering::Resources::Material> panel_material_;
+        std::shared_ptr<const CE::Rendering::Resources::Material> image_material_;
+        std::shared_ptr<const CE::Rendering::Resources::Material> font_material_;
+        std::unique_ptr<CE::Text::Legacy::AsciiFont> font_;
+        std::future<std::shared_ptr<CE::Rendering::Resources::Image>> replacement_;
+        bool replacement_requested_ = false;
+
+    public:
+        std::atomic<bool> replace_image{false};
+        std::string edited_text;
+        bool controller_held = false;
+        bool keyboard_blocked = true;
+        bool replaced = false;
+        int shutdowns = 0;
+        std::vector<CE::Input::Events::Record> received_records;
+        std::thread::id update_thread;
+        mutable std::thread::id prepare_thread;
+
+        UiProbeGame(CE::Runtime::Context& engine, MemoryInput& input)
+        : engine_(engine), input_(input) {}
+
+        void init() override {
+            (void)input_.bindings().bind_button({input_.keyboard_id(), test_button}, keyboard_action);
+            (void)input_.bindings().bind_button({input_.gamepad_id(), test_button}, controller_action);
+            events_ = input_.capture(CE::Input::Capture::Channel::Events);
+            text_ = input_.capture(CE::Input::Capture::Channel::Text);
+            focus_ = input_.routing().focus(field);
+            auto& resources = engine_.resources();
+            panel_material_ = std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{
+                std::make_shared<UiPipeline>(CE::Rendering::Geometry::Layout2D::Position3UV2Color4, false), {}
+            });
+            std::vector<CE::Rendering::Geometry::Vertex2DColor> panels;
+            const auto panel = [&](float left, float top, float right, float bottom, glm::vec4 color) {
+                for (const auto& point : quad(left, top, right, bottom))
+                    panels.push_back({point.x, point.y, point.z, point.u, point.v, color.r, color.g, color.b, color.a});
+            };
+            panel(8, 8, 180, 130, {1, 0, 0, 0.5f});
+            panel(80, 40, 260, 180, {0, 0, 1, 0.5f});
+            panel(20, 15, 100, 160, {0, 1, 0, 0.8f}); // Content extends beyond its scrolling clip.
+            panel(20, 185, 210, 215, {0, 0.25f, 0.25f, 0.75f}); // Focused editing target.
+            panels_ = resources.upload_geometry(panels, CE::Rendering::Geometry::Topology::Triangles);
+            panels.front().r = 0; // Transient CPU data is independent after upload.
+            image_geometry_ = resources.upload_geometry(quad(215, 20, 255, 60), CE::Rendering::Geometry::Topology::Triangles);
+            CE::Assets::Images::Decoded pixels{{1, 1}, {255, 0, 0, 255}};
+            const auto image = resources.create_image(pixels);
+            pixels.rgba.assign(4, 0);
+            image_material_ = image_material(image);
+
+            // Deterministic synthetic ASCII bake data exercises the real immutable
+            // CE::Text::Legacy::AsciiFont layout/submission contract without a host font fixture.
+            CE::Text::Legacy::AsciiFontData font;
+            std::vector<CE::Rendering::Geometry::Vertex2D> glyphs;
+            for (std::size_t i = 0; i < CE::Text::Legacy::ascii_character_count; ++i) {
+                auto vertices = quad(0, 0, 5, 8);
+                for (auto& vertex : vertices)
+                    vertex.u = (static_cast<float>(i) + vertex.u) / CE::Text::Legacy::ascii_character_count;
+                glyphs.insert(glyphs.end(), vertices.begin(), vertices.end());
+            }
+            font.geometry = resources.upload_geometry(glyphs, CE::Rendering::Geometry::Topology::Triangles);
+            std::vector<unsigned char> alpha(CE::Text::Legacy::ascii_character_count, 255);
+            font.texture = resources.create_font_atlas(alpha, {static_cast<std::uint32_t>(CE::Text::Legacy::ascii_character_count), 1});
+            alpha.clear();
+            font.advances.fill(6);
+            font.line_height = 10;
+            font_material_ = image_material(font.texture);
+            font_ = std::make_unique<CE::Text::Legacy::AsciiFont>(std::move(font));
+        }
+
+        void update(const CE::Game::TickContext& tick) override {
+            update_thread = std::this_thread::get_id();
+            controller_held = controller_held || tick.input.button(controller_action).held();
+            keyboard_blocked = keyboard_blocked && !tick.input.button(keyboard_action).held();
+            received_records.insert(received_records.end(), tick.input.records().begin(), tick.input.records().end());
+            for (const auto& record : tick.input.records_for(field, focus_.epoch())) {
+                const auto* text = std::get_if<CE::Input::Events::Text>(&record.data);
+                if (text && text->codepoint >= ' ' && text->codepoint <= '~')
+                    edited_text.push_back(static_cast<char>(text->codepoint));
+            }
+            if (replace_image.load(std::memory_order_acquire) && !replacement_requested_) {
+                replacement_requested_ = true;
+                replacement_ = engine_.platform_dispatcher().submit([pixels = CE::Assets::Images::Decoded{{1, 1}, {0, 0, 255, 255}}](
+                                                                        CE::Runtime::Context& platform
+                                                                    ) { return platform.resources().create_image(pixels); });
+            }
+            if (replacement_.valid() && replacement_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                image_material_ = image_material(replacement_.get());
+                replaced = true;
+            }
+        }
+
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+            prepare_thread = std::this_thread::get_id();
+            auto pass = frame.begin_pass(glm::ortho(0.0f, 320.0f, 240.0f, 0.0f), glm::mat4{1});
+            CE::Rendering::DrawStyle2D style;
+            style.material = panel_material_;
+            for (std::size_t panel = 0; panel < 4; ++panel) {
+                style.clip.reset();
+                if (panel == 2)
+                    style.clip =
+                        CE::Rendering::ClipRegion2D{CE::Rendering::intersect_clip_rects({8, 8, 260, 180}, {20, 20, 120, 80}), 320, 240};
+                pass.add(
+                    CE::Rendering::resolve_draw_packet(
+                        panels_, panel * 6, 6, style, pass.semantics(), pass.parameters(), pass.constraints()
+                    )
+                );
+            }
+            style.clip.reset();
+            style.material = image_material_;
+            pass.add(
+                CE::Rendering::resolve_draw_packet(image_geometry_, 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints())
+            );
+            style.material = font_material_;
+            style.model_matrix[3][0] = 20;
+            style.model_matrix[3][1] = 195;
+            CE::Rendering::Submission::Context2D context;
+            context.pass = pass.semantics();
+            pass.add(CE::Rendering::Submission::resolve_text(*font_, "UI:" + edited_text, style, context));
+        }
+
+        void deinit() override {
+            ++shutdowns;
+            focus_.reset();
+            text_.reset();
+            events_.reset();
+            input_.bindings().clear();
+            font_.reset();
+            font_material_.reset();
+            image_material_.reset();
+            panel_material_.reset();
+            image_geometry_.reset();
+            panels_.reset();
+        }
+
+    private:
+        static std::array<CE::Rendering::Geometry::Vertex2D, 6> quad(float left, float top, float right, float bottom) {
+            return {{{left, top, 0, 0, 0}, {right, top, 0, 1, 0}, {right, bottom, 0, 1, 1},
+                {left, top, 0, 0, 0}, {right, bottom, 0, 1, 1}, {left, bottom, 0, 0, 1}}};
+        }
+
+        static std::shared_ptr<const CE::Rendering::Resources::Material>
+        image_material(std::shared_ptr<CE::Rendering::Resources::Image> image) {
+            return std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{
+                std::make_shared<UiPipeline>(CE::Rendering::Geometry::Layout2D::Position3UV2, true),
+                {{"image", CE::Rendering::Parameters::ImageBinding{std::move(image), 0}}}
+            });
+        }
+    };
+
+    /** Records frame handoff while the test supplies its own display and input. */
+    class MemoryRenderer final : public CE::Rendering::Renderer {
+    public:
+        std::function<void()> on_render;
+        std::function<void(const CE::Rendering::Frame&)> on_frame;
+        std::function<void()> on_maintenance;
+        int maintenance_calls = 0;
+        std::thread::id maintenance_thread;
+        std::function<void()> on_initialize;
+        std::function<void()> on_deinitialize;
+        CE::Platform::FramebufferSize viewport{};
+        bool depth_enabled = false;
+        glm::vec4 clear_colour{0.0f};
+        glm::mat4 camera_projection{1.0f};
+        glm::mat4 camera_view{1.0f};
+        std::thread::id render_thread;
+        std::size_t last_pass_count = 0;
+        bool last_marked_pressed = false;
+        int initializations = 0;
+        int shutdowns = 0;
+        int clears = 0;
+        int renders = 0;
+
+        void initialize() override {
+            ++initializations;
+            if (on_initialize)
+                on_initialize();
+        }
+
+        void deinitialize() override {
+            ++shutdowns;
+            if (on_deinitialize)
+                on_deinitialize();
+        }
+        void maintain_resources() override {
+            ++maintenance_calls;
+            maintenance_thread = std::this_thread::get_id();
+            if (on_maintenance)
+                on_maintenance();
+        }
+        void clear() override { ++clears; }
+
+        void render(const CE::Rendering::Frame& frame) override {
+            ++renders;
+            last_pass_count = frame.passes().size();
+            last_marked_pressed = !frame.passes().empty() && frame.passes().front().view[3][0] == 1.0f;
+            render_thread = std::this_thread::get_id();
+            if (on_frame)
+                on_frame(frame);
+            if (on_render)
+                on_render();
+        }
+
+        void set_viewport(CE::Platform::FramebufferSize size) override { viewport = size; }
+        void set_depth_test(bool enabled) override { depth_enabled = enabled; }
+        void set_clear_colour(float r, float g, float b, float a) override { clear_colour = {r, g, b, a}; }
+
+        void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) override {
+            camera_projection = projection;
+            camera_view = view;
+        }
+    };
+
+    class MemorySurface final : public CE::Rendering::PresentationSurface {
+    public:
+        int presents = 0;
+
+        void present() override { ++presents; }
+    };
+
+    // Construct the same owned adapter graph as the GLFW factory, with no native graphics API.
+    std::unique_ptr<CE::Runtime::Context> make_test_context(
+        MemoryInput& input,
+        MemoryRenderer*& renderer,
+        MemorySurface*& surface,
+        CE::Runtime::ExecutionOptions execution = CE::Runtime::ExecutionOptions{}
+    ) {
+        auto display = std::make_unique<MemoryDisplay>();
+        auto* window = display->create_window(display->primary_monitor(), CE::Platform::WindowMode::NORMAL, 320, 240);
+        display->activate_window(*window);
+        auto presentation = std::make_unique<MemorySurface>();
+        surface = presentation.get();
+        auto rendering = std::make_unique<MemoryRenderer>();
+        renderer = rendering.get();
+        return std::make_unique<CE::Runtime::Context>(
+            std::move(display), std::move(presentation), std::move(rendering), std::make_unique<MemoryProvider>(), input,
+            std::move(execution)
+        );
+    }
+
+    void expect_cancelled_request(std::future<void>& completion) {
+        ASSERT_TRUE(completion.valid());
+        ASSERT_EQ(completion.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        try {
+            completion.get();
+            FAIL() << "An accepted request cancelled before execution must report broken_promise";
+        } catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+    }
+} // namespace
+
+TEST(runtime_adapter, sequential_frame) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    input.on_poll = [&] { engine->window().resize(640, 360); };
+
+    runtime.run();
+
+    // The press is observed after the first poll; a frame is prepared and presented
+    // using the completed simulation state before all adapters are detached.
+    EXPECT_TRUE(game.pressed.load());
+    EXPECT_EQ(game.updates, 1);
+    EXPECT_EQ(game.draws, 1);
+    EXPECT_EQ(game.size, (CE::Platform::FramebufferSize{640, 360}));
+    EXPECT_EQ(renderer->viewport, game.size);
+    EXPECT_EQ(renderer->last_pass_count, 1u);
+    EXPECT_EQ(renderer->renders, 1);
+    EXPECT_EQ(surface->presents, 1);
+    EXPECT_EQ(renderer->initializations, 1);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_EQ(game.update_thread, std::this_thread::get_id());
+    const auto stats = runtime.diagnostics();
+    EXPECT_NE(stats.domain, 0u);
+    EXPECT_EQ(stats.updates, 1u);
+    EXPECT_EQ(stats.polls, 1u);
+    EXPECT_EQ(stats.published, 1u);
+    EXPECT_EQ(stats.rendered, 1u);
+    EXPECT_EQ(stats.resizes, 1u);
+}
+
+TEST(ui_probe, retained_scene) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        input.default_press = false;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        UiProbeGame game(*engine, input);
+        const CE::Input::PollingOptions polling{CE::Input::PollingPolicy::Finite, 3, std::chrono::milliseconds{1}};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, polling);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        bool emitted = false;
+        bool replaced = false;
+        std::vector<CE::Rendering::DrawPacket2D> retained;
+        std::weak_ptr<const CE::Rendering::Resources::Image> old_image;
+        input.on_poll = [&] {
+            if (std::chrono::steady_clock::now() > deadline) {
+                ADD_FAILURE() << "UI probe did not publish its replacement within the bounded session";
+                runtime.stop();
+                return;
+            }
+            if (std::exchange(emitted, true))
+                return;
+            engine->window().resize(640, 480);
+            input.bindings().on_button({input.gamepad_id(), test_button}, true);
+            input.key(CE::Input::Events::ButtonPhase::Press);
+            input.text(U'H');
+            input.text(U'i');
+            input.key(CE::Input::Events::ButtonPhase::Release);
+        };
+        renderer->on_frame = [&](const CE::Rendering::Frame& frame) {
+            if (std::chrono::steady_clock::now() > deadline) {
+                ADD_FAILURE() << "UI probe did not publish its replacement within the bounded session";
+                runtime.stop();
+                return;
+            }
+            ASSERT_EQ(frame.passes().size(), 1u);
+            const auto& pass = frame.passes().front();
+            ASSERT_EQ(pass.draws.size(), 10u); // Four panels, image, and five ASCII glyphs.
+            for (std::size_t i = 0; i < pass.draws.size(); ++i) {
+                EXPECT_EQ(pass.draws[i].authored_order, i);
+                CE::Rendering::validate_draw_packet(pass.draws[i], pass.constraints);
+            }
+            const auto panels = std::dynamic_pointer_cast<const MemoryGeometry>(pass.draws[0].geometry);
+            ASSERT_TRUE(panels);
+            EXPECT_EQ(panels->layout, CE::Rendering::Geometry::Layout2D::Position3UV2Color4);
+            ASSERT_EQ(panels->colors.size(), 24u);
+            EXPECT_FLOAT_EQ(panels->colors[0].r, 1); // Caller changed its CPU buffer after upload.
+            EXPECT_FLOAT_EQ(panels->colors[0].a, 0.5f);
+            EXPECT_FLOAT_EQ(panels->colors[6].b, 1);
+            EXPECT_FLOAT_EQ(panels->colors[6].a, 0.5f);
+            EXPECT_EQ(panels->bind_count(), 0u);
+            ASSERT_TRUE(pass.draws[2].clip);
+            EXPECT_EQ(
+                CE::Rendering::resolve_clip_region(*pass.draws[2].clip, renderer->viewport),
+                (CE::Rendering::PixelClipRect2D{40, 40, 240, 160})
+            );
+            EXPECT_FALSE(pass.draws[3].clip);
+            EXPECT_EQ(
+                pass.draws[0].material->definition().pipeline->definition().state.blend, CE::Rendering::Pipelines::Blend::StraightAlpha
+            );
+            const auto& image = std::get<CE::Rendering::Parameters::ImageBinding>(pass.draws[4].parameters.at("image")).image;
+            const auto recorded = std::dynamic_pointer_cast<const MemoryImage>(image);
+            ASSERT_TRUE(recorded);
+            const auto& atlas = std::get<CE::Rendering::Parameters::ImageBinding>(pass.draws[5].parameters.at("image")).image;
+            const auto recorded_atlas = std::dynamic_pointer_cast<const MemoryImage>(atlas);
+            ASSERT_TRUE(recorded_atlas);
+            ASSERT_EQ(recorded_atlas->pixels().size(), CE::Text::Legacy::ascii_character_count);
+            EXPECT_EQ(pass.draws[5].first_vertex, ('U' - CE::Text::Legacy::ascii_first_character) * 6u);
+            EXPECT_EQ(pass.draws[9].first_vertex, ('i' - CE::Text::Legacy::ascii_first_character) * 6u);
+            EXPECT_FLOAT_EQ(std::get<glm::mat4>(pass.draws[6].parameters.at("model"))[3][0], 26);
+            if (retained.empty()) {
+                EXPECT_EQ(recorded->pixels(), (std::vector<unsigned char>{255, 0, 0, 255}));
+                retained = pass.draws;
+                old_image = image;
+                game.replace_image.store(true, std::memory_order_release);
+            } else if (recorded->pixels() == std::vector<unsigned char>{0, 0, 255, 255}) {
+                EXPECT_NE(image, old_image.lock());
+                const auto& original = std::get<CE::Rendering::Parameters::ImageBinding>(retained[4].parameters.at("image")).image;
+                EXPECT_EQ(std::dynamic_pointer_cast<const MemoryImage>(original)->pixels(),
+                    (std::vector<unsigned char>{255, 0, 0, 255}));
+                replaced = true;
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        EXPECT_TRUE(replaced);
+        EXPECT_TRUE(game.replaced);
+        EXPECT_EQ(game.edited_text, "Hi");
+        EXPECT_TRUE(game.controller_held);
+        EXPECT_TRUE(game.keyboard_blocked);
+        ASSERT_EQ(game.received_records.size(), 4u);
+        EXPECT_EQ(std::get<CE::Input::Events::Button>(game.received_records.front().data).phase, CE::Input::Events::ButtonPhase::Press);
+        EXPECT_EQ(std::get<CE::Input::Events::Text>(game.received_records[1].data).codepoint, U'H');
+        EXPECT_EQ(std::get<CE::Input::Events::Text>(game.received_records[2].data).codepoint, U'i');
+        for (const auto& record : game.received_records) {
+            EXPECT_EQ(record.target, 73u);
+            EXPECT_NE(record.focus_epoch, 0u);
+            EXPECT_FALSE(record.to_gameplay);
+        }
+        EXPECT_EQ(game.prepare_thread, game.update_thread);
+        EXPECT_EQ(renderer->render_thread, std::this_thread::get_id());
+        if (mode == CE::Runtime::RunMode::Concurrent)
+            EXPECT_NE(game.update_thread, renderer->render_thread);
+        EXPECT_EQ(static_cast<MemoryProvider&>(engine->resources()).resource_thread, renderer->render_thread);
+        EXPECT_EQ(static_cast<MemoryProvider&>(engine->resources()).created_images, 2);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_FALSE(old_image.expired());
+        retained.clear(); // Runtime/game owners have already released their original generation.
+        EXPECT_TRUE(old_image.expired());
+    }
+}
+
+TEST(runtime_adapter, optional_focus) {
+    MemoryInput input;
+    input.focus_supported = false;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    game.on_tick = [&] { runtime.stop(); };
+    EXPECT_NO_THROW(runtime.run());
+    EXPECT_EQ(game.updates, 1);
+    EXPECT_EQ(runtime.diagnostics().focus_changes, 0u);
+}
+
+TEST(runtime_adapter, game_init_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        game.on_init = [] { throw std::runtime_error("game initialization failed"); };
+        game.on_deinit = [] { throw std::runtime_error("cleanup also failed"); };
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        ::testing::internal::CaptureStderr();
+        try {
+            runtime.run();
+            ADD_FAILURE() << "Initialization must fail";
+        } catch (const std::runtime_error& failure) {
+            EXPECT_STREQ(failure.what(), "game initialization failed");
+        } catch (...) {
+            ADD_FAILURE() << "Unexpected initialization exception type";
+        }
+        const auto diagnostics = ::testing::internal::GetCapturedStderr();
+        EXPECT_NE(diagnostics.find("game deinit: cleanup also failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("operation=game_init outcome=failed"), std::string::npos);
+        EXPECT_NE(diagnostics.find("domain=" + std::to_string(runtime.diagnostics().domain)), std::string::npos);
+        EXPECT_EQ(runtime.diagnostics().updates, 0u);
+        EXPECT_EQ(game.initializations, 1);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(runtime_adapter, renderer_init_failure) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    renderer->on_initialize = [] { throw std::runtime_error("renderer initialization failed"); };
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    EXPECT_THROW(runtime.run(), std::runtime_error);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(game.initializations, 0);
+    EXPECT_EQ(game.shutdowns, 0);
+}
+
+TEST(runtime_adapter, adapter_init_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        for (const bool fail_input : {false, true}) {
+            SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+            SCOPED_TRACE(fail_input ? "partial input" : "partial renderer");
+            MemoryInput input;
+            MemoryRenderer* renderer = nullptr;
+            MemorySurface* surface = nullptr;
+            auto engine = make_test_context(input, renderer, surface);
+            auto group = engine->make_worker_group();
+            auto owner = std::make_shared<int>(42);
+            std::weak_ptr<int> capture = owner;
+            auto result = group.submit([owner = std::move(owner)] { return *owner; });
+            OneTickGame game(input);
+            CE::Runtime::GameRuntime runtime(*engine, game, mode);
+            const char* original = fail_input ? "Original input startup failure" : "Original renderer startup failure";
+            if (fail_input) {
+                input.on_initialize = [&] {
+                    EXPECT_NE(input.attached_window(), nullptr);
+                    throw std::runtime_error(original);
+                };
+            } else {
+                renderer->on_initialize = [&] { throw std::runtime_error(original); };
+            }
+            input.on_deinitialize = [] { throw std::runtime_error("Later input cleanup failure"); };
+            renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failure"); };
+            try {
+                runtime.run();
+                ADD_FAILURE() << "The selected adapter must reject startup";
+            } catch (const std::runtime_error& error) {
+                EXPECT_STREQ(error.what(), original);
+            }
+            EXPECT_FALSE(group.status().accepting);
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(result.get(), 42);
+            EXPECT_TRUE(capture.expired());
+            EXPECT_EQ(input.initializations, fail_input ? 1 : 0);
+            EXPECT_EQ(input.shutdowns, fail_input ? 1 : 0);
+            EXPECT_EQ(input.attached_window(), nullptr);
+            EXPECT_EQ(renderer->shutdowns, 1);
+            EXPECT_EQ(renderer->maintenance_calls == 0, !fail_input);
+            EXPECT_EQ(game.initializations, 0);
+            EXPECT_EQ(game.shutdowns, 0);
+            EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+        }
+    }
+}
+
+TEST(runtime_adapter, missing_active_window) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        auto rendering = std::make_unique<MemoryRenderer>();
+        auto* renderer = rendering.get();
+        auto engine = std::make_unique<CE::Runtime::Context>(
+            std::make_unique<MemoryDisplay>(), std::make_unique<MemorySurface>(), std::move(rendering), std::make_unique<MemoryProvider>(),
+            input
+        );
+        auto group = engine->make_worker_group();
+        auto owner = std::make_shared<int>(42);
+        std::weak_ptr<int> capture = owner;
+        auto result = group.submit([owner = std::move(owner)] { return *owner; });
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        try {
+            runtime.run();
+            ADD_FAILURE() << "An absent window must reject startup";
+        } catch (const CE::Exceptions::failed_operation& error) {
+            EXPECT_NE(std::string_view(error.what()).find("no active window"), std::string_view::npos);
+        }
+        EXPECT_FALSE(group.status().accepting);
+        ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_TRUE(capture.expired());
+        EXPECT_EQ(renderer->initializations, 0);
+        EXPECT_EQ(renderer->shutdowns, 0);
+        EXPECT_EQ(game.initializations, 0);
+        EXPECT_EQ(game.shutdowns, 0);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(runtime_adapter, stop_before_start) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        auto owner = std::make_shared<int>(42);
+        std::weak_ptr<int> capture = owner;
+        auto result = group.submit([platform, owner = std::move(owner)] {
+            EXPECT_THROW((void)platform.submit([](CE::Runtime::Context&) {}), CE::Exceptions::failed_operation);
+            return *owner;
+        });
+        runtime.stop();
+        EXPECT_NO_THROW(runtime.run());
+        EXPECT_FALSE(group.status().accepting);
+        ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_TRUE(capture.expired());
+        EXPECT_EQ(renderer->initializations, 0);
+        EXPECT_EQ(renderer->shutdowns, 0);
+        EXPECT_EQ(game.initializations, 0);
+        EXPECT_EQ(game.shutdowns, 0);
+        EXPECT_THROW((void)platform.submit([](CE::Runtime::Context&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(runtime_adapter, stopped_graph_restart) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime first(*engine, game);
+    game.on_tick = [&] { first.stop(); };
+    first.run();
+    CE::Runtime::GameRuntime second(*engine, game);
+    EXPECT_THROW(second.run(), CE::Exceptions::failed_operation);
+    EXPECT_THROW(first.run(), CE::Exceptions::failed_operation);
+    EXPECT_EQ(renderer->initializations, 1);
+    EXPECT_EQ(renderer->shutdowns, 1);
+}
+
+TEST(runtime_adapter, input_window_lifetime) {
+    bool display_alive = true;
+    bool input_destroyed = false;
+    auto display = std::make_unique<MemoryDisplay>();
+    display->on_destroy = [&] { display_alive = false; };
+    auto* window = display->create_window(display->primary_monitor(), CE::Platform::WindowMode::NORMAL, 320, 240);
+    display->activate_window(*window);
+    auto input = std::make_unique<MemoryInput>();
+    input->on_destroy = [&] {
+        input_destroyed = true;
+        EXPECT_TRUE(display_alive);
+    };
+    auto engine = std::make_unique<CE::Runtime::Context>(
+        std::move(display), std::make_unique<MemorySurface>(), std::make_unique<MemoryRenderer>(), std::make_unique<MemoryProvider>(),
+        std::move(input)
+    );
+    engine.reset();
+    EXPECT_TRUE(input_destroyed);
+    EXPECT_FALSE(display_alive);
+}
+
+TEST(platform_requests, owned_pixel_transfer) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::future<std::shared_ptr<CE::Rendering::Resources::Image>> pending;
+        std::shared_ptr<CE::Rendering::Resources::Image> image;
+        game.on_tick = [&] {
+            if (!pending.valid()) {
+                auto pixels = std::make_unique<std::vector<unsigned char>>(4, 255);
+                pending = engine->platform_dispatcher().submit([pixels = std::move(pixels)](CE::Runtime::Context& platform) {
+                    return platform.resources().create_font_atlas(*pixels, {2, 2});
+                });
+            } else if (pending.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
+                image = pending.get();
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        ASSERT_TRUE(image);
+        EXPECT_EQ(image->pixel_size().width, 2u);
+        const auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        EXPECT_EQ(provider.atlas_uploads, 1);
+        EXPECT_EQ(provider.resource_thread, std::this_thread::get_id());
+        if (mode == CE::Runtime::RunMode::Concurrent)
+            EXPECT_NE(game.update_thread, provider.resource_thread);
+        EXPECT_THROW(
+            static_cast<void>(engine->platform_dispatcher().submit([](CE::Runtime::Context&) { return 1; })),
+            CE::Exceptions::failed_operation
+        );
+    }
+}
+
+TEST(platform_requests, callback_failure_isolation) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    std::future<int> failure;
+    std::future<int> success;
+    game.on_init = [&] {
+        failure = engine->platform_dispatcher().submit([](CE::Runtime::Context&) -> int { throw std::runtime_error("request failed"); });
+        success = engine->platform_dispatcher().submit([](CE::Runtime::Context&) { return 17; });
+    };
+    game.on_tick = [&] {
+        EXPECT_THROW(failure.get(), std::runtime_error);
+        EXPECT_EQ(success.get(), 17);
+        runtime.stop();
+    };
+    runtime.run();
+    EXPECT_EQ(game.shutdowns, 1);
+    const auto stats = engine->platform_dispatcher().diagnostics();
+    EXPECT_EQ(stats.accepted, 2u);
+    EXPECT_EQ(stats.completed, 2u);
+    EXPECT_EQ(stats.failures, 1u);
+    EXPECT_EQ(stats.cancelled, 0u);
+    EXPECT_EQ(stats.pending, 0u);
+}
+
+TEST(platform_requests, shutdown_cancellation) {
+    struct CapturedData {
+        bool& destroyed;
+        std::thread::id& thread;
+
+        ~CapturedData() {
+            destroyed = true;
+            thread = std::this_thread::get_id();
+        }
+    };
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    EXPECT_THROW(static_cast<void>(engine->platform_dispatcher().submit([](CE::Runtime::Context&) {})), CE::Exceptions::failed_operation);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    std::future<int> pending;
+    bool destroyed = false;
+    std::thread::id destruction_thread;
+    game.on_init = [&] {
+        auto data = std::make_unique<CapturedData>(destroyed, destruction_thread);
+        pending = engine->platform_dispatcher().submit([data = std::move(data)](CE::Runtime::Context&) { return 1; });
+        runtime.stop();
+    };
+    game.on_deinit = [&] { EXPECT_TRUE(destroyed); };
+    runtime.run();
+    EXPECT_EQ(destruction_thread, std::this_thread::get_id());
+    EXPECT_EQ(engine->platform_dispatcher().diagnostics().cancelled, 1u);
+    EXPECT_EQ(engine->platform_dispatcher().diagnostics().completed, 0u);
+    try {
+        (void)pending.get();
+        FAIL() << "The unexecuted request must be cancelled";
+    } catch (const std::future_error& error) {
+        EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+    }
+}
+
+TEST(runtime_adapter, concurrent_frame) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game, CE::Runtime::RunMode::Concurrent);
+    renderer->on_render = [&] {
+        if (renderer->last_marked_pressed)
+            runtime.stop();
+    };
+
+    runtime.run();
+
+    EXPECT_TRUE(game.pressed.load());
+    EXPECT_NE(game.update_thread, std::this_thread::get_id());
+    EXPECT_EQ(renderer->render_thread, std::this_thread::get_id());
+    EXPECT_EQ(renderer->last_pass_count, 1u);
+    EXPECT_GE(renderer->renders, 1);
+    EXPECT_EQ(surface->presents, renderer->renders);
+    EXPECT_TRUE(renderer->last_marked_pressed);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    const auto stats = runtime.diagnostics();
+    EXPECT_NE(stats.domain, 0u);
+    EXPECT_EQ(stats.updates, game.updates);
+    EXPECT_EQ(stats.rendered, surface->presents);
+    EXPECT_GE(stats.published, 1u);
+    EXPECT_LE(stats.peak_polls, 1u);
+}
+
+TEST(runtime_adapter, routed_event_order) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        input.default_press = false;
+        bool emitted = false;
+        input.on_poll = [&] {
+            if (std::exchange(emitted, true))
+                return;
+            input.key(CE::Input::Events::ButtonPhase::Press);
+            input.text(U'\u00e9');
+            input.key(CE::Input::Events::ButtonPhase::Repeat);
+            input.text(U'\u00e9');
+            input.key(CE::Input::Events::ButtonPhase::Release);
+        };
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        const CE::Input::PollingOptions polling{CE::Input::PollingPolicy::Finite, 3, std::chrono::milliseconds(1)};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, polling);
+        renderer->on_render = [&] {
+            if (renderer->last_marked_pressed)
+                runtime.stop();
+        };
+        runtime.run();
+
+        // These results are inspected only after the runtime has joined its worker.
+        ASSERT_EQ(game.received_records.size(), 5u);
+        EXPECT_EQ(std::get<CE::Input::Events::Button>(game.received_records[0].data).phase, CE::Input::Events::ButtonPhase::Press);
+        EXPECT_EQ(std::get<CE::Input::Events::Text>(game.received_records[1].data).codepoint, U'\u00e9');
+        EXPECT_EQ(std::get<CE::Input::Events::Button>(game.received_records[2].data).phase, CE::Input::Events::ButtonPhase::Repeat);
+        EXPECT_EQ(std::get<CE::Input::Events::Text>(game.received_records[3].data).codepoint, U'\u00e9');
+        EXPECT_EQ(std::get<CE::Input::Events::Button>(game.received_records[4].data).phase, CE::Input::Events::ButtonPhase::Release);
+        for (const auto& record : game.received_records) {
+            EXPECT_EQ(record.target, 29u);
+            EXPECT_NE(record.focus_epoch, 0u);
+            EXPECT_TRUE(record.to_gameplay);
+        }
+        EXPECT_TRUE(game.pressed.load());
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
+}
+
+TEST(runtime_adapter, poll_failure_cleanup) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input, true);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        input.on_poll = [] { throw std::runtime_error("recorded poll failed"); };
+        EXPECT_THROW(runtime.run(), std::runtime_error);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
+}
+
+TEST(runtime_adapter, close_before_update) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    input.on_poll = [&] { static_cast<MemoryWindow&>(engine->window()).request_close(); };
+
+    runtime.run();
+
+    EXPECT_EQ(game.updates, 0);
+    EXPECT_EQ(renderer->renders, 0);
+    EXPECT_EQ(surface->presents, 0);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(runtime_adapter, render_failure_cleanup) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    renderer->on_render = [] { throw std::runtime_error("recorded render failed"); };
+
+    EXPECT_THROW(runtime.run(), std::runtime_error);
+    EXPECT_EQ(renderer->shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_EQ(surface->presents, 0);
+}
+
+TEST(runtime_adapter, shared_sprite_grid) {
+    MemoryProvider provider;
+    const std::filesystem::path texture = "memory-adapter/sprite.png";
+    CE::Assets::Images::Manager::get().load({texture}, provider);
+    CE::Assets::Sprites::Definition definition;
+    definition.name_space = "memory-adapter";
+    definition.name = "sprite";
+    definition.texture = texture;
+    definition.grid.frame = {16, 32};
+    definition.grid.rows = 1;
+    definition.grid.columns = 2;
+    CE::Assets::Sprites::Manager::get().load({definition}, provider);
+    const std::filesystem::path program = "memory-adapter/shader";
+    CE::Assets::Shaders::ProgramCache::get().load(program, {"vertex", "fragment"}, provider);
+
+    auto sprite = CE::Assets::Sprites::Manager::get().get_asset(definition.id());
+    auto shader = CE::Assets::Shaders::ProgramCache::get().get_asset(program);
+    ASSERT_TRUE(sprite);
+    ASSERT_TRUE(shader);
+
+    CE::Rendering::Frame frame;
+    CE::Rendering::FrameWriter writer(frame);
+    auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+    CE::Rendering::DrawStyle2D style;
+    style.material = std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{
+        std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::TriangleStrip, true),
+        {{"image", CE::Rendering::Parameters::ImageBinding{sprite->texture, 3}}}
+    });
+    const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+    pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 0, style, context));
+    pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 1, style, context));
+
+    EXPECT_EQ(provider.uploaded_vertices, 8u);
+    EXPECT_EQ(provider.uploaded_topology, CE::Rendering::Geometry::Topology::TriangleStrip);
+    ASSERT_EQ(frame.passes().size(), 1u);
+    ASSERT_EQ(frame.passes()[0].draws.size(), 2u);
+    const auto& first = frame.passes()[0].draws[0];
+    const auto& second = frame.passes()[0].draws[1];
+    EXPECT_EQ(first.geometry, second.geometry);
+    EXPECT_EQ(first.material, second.material);
+    EXPECT_EQ(first.first_vertex, 0u);
+    EXPECT_EQ(second.first_vertex, 4u);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(first.parameters.at("image")).unit, 3u);
+    EXPECT_EQ(provider.geometry->bind_count(), 0u);
+    EXPECT_EQ(std::dynamic_pointer_cast<MemoryImage>(sprite->texture)->bound_units.size(), 0u);
+    frame.recycle();
+}
+
+TEST(graphic, whole_image) {
+    MemoryProvider provider;
+
+    // Loading one image gives the graphic a pixel-sized six-vertex quad and
+    // covers the complete texture, including its top-right UV corner.
+    auto graphic = CE::Assets::Graphics::Asset::load(std::filesystem::path{"ui/panel.png"}, provider);
+    ASSERT_EQ(provider.uploaded_vertices, 6u);
+    EXPECT_EQ(provider.uploaded_topology, CE::Rendering::Geometry::Topology::Triangles);
+    ASSERT_EQ(provider.uploaded_geometry.size(), std::size_t{6});
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[0].x, 0.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[0].y, -32.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[2].u, 1.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[2].v, 1.0f);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry[5].x, 0.0f);
+
+    CE::Rendering::DrawStyle2D style;
+    style.material = std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{
+        std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true),
+        {{"image", CE::Rendering::Parameters::ImageBinding{graphic.texture, 0}}}
+    });
+    const auto packet = CE::Rendering::Submission::resolve_graphic(graphic, style, {});
+    EXPECT_EQ(packet.first_vertex, 0u);
+    EXPECT_EQ(packet.vertex_count, 6u);
+    EXPECT_EQ(packet.geometry, graphic.geometry);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(packet.parameters.at("image")).image, graphic.texture);
+    const auto image = std::dynamic_pointer_cast<MemoryImage>(graphic.texture);
+    ASSERT_TRUE(image);
+    EXPECT_TRUE(image->bound_units.empty());
+    EXPECT_EQ(provider.geometry->bind_count(), 0u);
+    EXPECT_EQ(provider.shader->uses, 0);
+}
+
+TEST(material_cache, program_reload_lifetime) {
+    MemoryProvider provider;
+    auto& shaders = CE::Assets::Shaders::ProgramCache::get();
+    const std::filesystem::path key{"material-probe"};
+    shaders.load(key, {"vertex", "fragment"}, provider);
+    auto original = shaders.get_asset(key);
+    EXPECT_EQ(provider.linked_programs, 1);
+    EXPECT_EQ(provider.shader->uses, 0);
+    EXPECT_EQ(provider.shader->raw_uniform_writes, 0);
+    shaders.load(key, {"vertex", "fragment"}, provider);
+    EXPECT_EQ(provider.linked_programs, 1);
+    provider.shader = std::make_shared<MemoryShader>();
+    shaders.reload(key, {"vertex", "fragment"}, provider);
+    EXPECT_EQ(provider.linked_programs, 2);
+    EXPECT_NE(original, shaders.get_asset(key));
+    EXPECT_TRUE(original);
+    EXPECT_EQ(provider.shader->uses, 0);
+    auto replacement = shaders.get_asset(key);
+    provider.shader.reset();
+    EXPECT_THROW(shaders.reload(key, {"vertex", "fragment"}, provider), CE::Exceptions::failed_operation);
+    EXPECT_EQ(shaders.get_asset(key), replacement);
+}
+
+TEST(asset_cache, concurrent_publication) {
+    struct Cache : CE::Assets::Cache::Store<MemoryImage, int> {
+        void publish(int key) { publish_asset(key, std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{1, 1})); }
+    } cache;
+    std::atomic<bool> finished{false};
+    auto reader = std::async(std::launch::async, [&] {
+        bool complete = true;
+        do {
+            for (int key = 0; key < 100; ++key) {
+                const auto image = cache.get_asset(key);
+                if (image)
+                    complete = complete && image->pixel_size().width == 1;
+                (void)cache.contains(key);
+                (void)cache.size();
+            }
+        } while (!finished.load(std::memory_order_acquire));
+        return complete;
+    });
+    for (int key = 0; key < 100; ++key)
+        cache.publish(key);
+    finished.store(true, std::memory_order_release);
+    EXPECT_TRUE(reader.get());
+    auto retained = cache.get_asset(7);
+    cache.clear_assets();
+    EXPECT_EQ(cache.size(), 0u);
+    ASSERT_TRUE(retained);
+    EXPECT_EQ(retained->pixel_size().width, 1u);
+}
+
+TEST(asset_cache, clear_deleter_reentry) {
+    struct Cache : CE::Assets::Cache::Store<MemoryImage, int> {
+        void publish(std::shared_ptr<MemoryImage> image) { publish_asset(1, std::move(image)); }
+    } cache;
+    std::size_t size_at_deletion = 99;
+    cache.publish(std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
+        size_at_deletion = cache.size();
+        delete image;
+    }));
+    cache.clear_assets();
+    EXPECT_EQ(size_at_deletion, 0u);
+}
+
+TEST(asset_cache, provider_load_guards) {
+    bool refill_rejected = false;
+    auto provider = std::make_unique<MemoryProvider>();
+    auto* owner = provider.get();
+    provider->on_load_image = [&] {
+        return std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* image) {
+            try {
+                CE::Assets::Images::Manager::get().load({"late-refill.png"}, *owner);
+            } catch (const CE::Exceptions::failed_operation&) {
+                refill_rejected = true;
+            }
+            delete image;
+        });
+    };
+    auto& textures = CE::Assets::Images::Manager::get();
+    textures.load({"owner-thread.png"}, *provider);
+    auto another_thread = std::async(std::launch::async, [&] {
+        try {
+            textures.load({"wrong-thread.png"}, *provider);
+        } catch (const CE::Exceptions::failed_operation&) {
+            return true;
+        }
+        return false;
+    });
+    EXPECT_TRUE(another_thread.get());
+    EXPECT_EQ(textures.size(), 1u);
+    provider.reset();
+    EXPECT_TRUE(refill_rejected);
+    EXPECT_EQ(textures.size(), 0u);
+}
+
+TEST(asset_preparation, prepared_pixel_ownership) {
+    TemporaryAssets files;
+    files.write_png();
+    files.write_manifest();
+    CE::Assets::Loading::Loader loader(files.root);
+    auto worker = std::async(std::launch::async, [&] { return loader.prepare(); });
+    auto prepared = worker.get();
+    ASSERT_EQ(prepared.images.size(), 1u);
+    EXPECT_EQ(prepared.images[0].pixels.rgba, (std::vector<unsigned char>{255, 0, 0, 255}));
+    EXPECT_TRUE(loader.manifests()->empty());
+    std::filesystem::remove(files.root / "pixel.png");
+    MemoryProvider provider;
+    loader.upload(std::move(prepared), provider);
+    EXPECT_EQ(provider.created_images, 1);
+    EXPECT_EQ(provider.linked_programs, 0);
+    auto sprite = CE::Assets::Sprites::Manager::get().get_asset("probe:pixel");
+    ASSERT_TRUE(sprite);
+    EXPECT_EQ(sprite->texture->pixel_size().width, 1u);
+    EXPECT_EQ(loader.manifests()->size(), 1u);
+}
+
+TEST(asset_preparation, independent_metadata_scans) {
+    TemporaryAssets first;
+    TemporaryAssets second;
+    first.write_png();
+    first.write_manifest("first");
+    second.write_png();
+    second.write_manifest("second");
+    CE::Assets::Loading::Loader loader(first.root);
+    CE::Assets::Loading::Loader other(second.root);
+    EXPECT_EQ(loader.prepare().images.size(), 1u);
+    first.write_png("new.png");
+    EXPECT_EQ(loader.prepare().images.size(), 2u);
+    EXPECT_EQ(other.prepare().images.size(), 1u);
+    MemoryProvider provider;
+    loader.load_assets(provider);
+    const auto retained = loader.manifests();
+    ASSERT_EQ(retained->size(), 1u);
+    first.write_manifest("revised");
+    loader.load_assets(provider);
+    const auto current = loader.manifests();
+    EXPECT_NE(current, retained);
+    EXPECT_EQ(retained->front().name_space, "first");
+    EXPECT_EQ(current->front().name_space, "revised");
+    std::ofstream(first.root / "pixel.png", std::ios::binary) << "corrupt image";
+    EXPECT_THROW(loader.load_assets(provider), CE::Exceptions::runtime_exception);
+    EXPECT_EQ(loader.manifests(), current);
+}
+
+TEST(resource_upload, legacy_vertex_copy) {
+    MemoryProvider provider;
+    auto quad = std::make_shared<CE::Rendering::Geometry::Quad>();
+    quad->vertices[0].x = 7.0f;
+    std::weak_ptr<CE::Rendering::Geometry::Quad> owner = quad;
+    (void)provider.upload_geometry(
+        std::shared_ptr<CE::Rendering::Geometry::Vertex2D>{quad, quad->vertices.data()}, quad->vertices.size(),
+        CE::Rendering::Geometry::Topology::Triangles
+    );
+    quad.reset();
+    EXPECT_TRUE(owner.expired());
+    ASSERT_EQ(provider.uploaded_geometry.size(), 6u);
+    EXPECT_FLOAT_EQ(provider.uploaded_geometry.front().x, 7.0f);
+}
+
+TEST(resource_upload, geometry_failure_cleanup) {
+    MemoryProvider provider;
+    auto quad = std::make_shared<CE::Rendering::Geometry::Quad>();
+    std::weak_ptr<CE::Rendering::Geometry::Quad> cpu_owner = quad;
+    std::shared_ptr<CE::Rendering::Geometry::Vertex2D> vertices{quad, quad->vertices.data()};
+    quad.reset();
+    provider.on_upload_geometry = [&](auto borrowed, auto) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> {
+        EXPECT_FALSE(cpu_owner.expired());
+        EXPECT_EQ(borrowed.size(), 6u);
+        throw CE::Exceptions::bad_alloc(CE_HERE);
+    };
+    EXPECT_THROW(
+        (void)provider.upload_geometry(std::move(vertices), 6, CE::Rendering::Geometry::Topology::Triangles), CE::Exceptions::bad_alloc
+    );
+    EXPECT_TRUE(cpu_owner.expired());
+
+    auto image = std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{1, 1});
+    std::weak_ptr<MemoryImage> image_owner = image;
+    provider.on_upload_geometry = [](auto borrowed, auto) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> {
+        EXPECT_EQ(borrowed.size(), 6u);
+        throw CE::Exceptions::bad_alloc(CE_HERE);
+    };
+    EXPECT_THROW((void)CE::Assets::Graphics::Asset::from_image(std::move(image), provider, {0.0f, 0.0f}), CE::Exceptions::bad_alloc);
+    EXPECT_TRUE(image_owner.expired());
+}
+
+TEST(asset_preparation, partial_upload_lifetime) {
+    for (const bool tilesets : {false, true}) {
+        SCOPED_TRACE(tilesets);
+        MemoryProvider provider;
+        CE::Assets::Loading::Loader loader("unused-prepared-root");
+        const auto image_key = std::filesystem::path{"audit-category.png"};
+        const auto make_prepared = [&](const std::vector<std::string>& names) {
+            CE::Assets::Loading::Prepared prepared;
+            prepared.images.push_back({image_key, {{1, 1}, {255, 255, 255, 255}}});
+            CE::Assets::Manifests::Graphics manifest;
+            manifest.name_space = "audit-category";
+            for (const auto& name : names) {
+                if (tilesets) {
+                    CE::Assets::Tilesets::Definition definition{};
+                    definition.name_space = manifest.name_space;
+                    definition.name = name;
+                    definition.texture = image_key;
+                    definition.grid = {.frame = {1, 1}, .rows = 1, .columns = 1};
+                    manifest.tilesets.push_back(std::move(definition));
+                } else {
+                    CE::Assets::Sprites::Definition definition{};
+                    definition.name_space = manifest.name_space;
+                    definition.name = name;
+                    definition.texture = image_key;
+                    definition.grid = {.frame = {1, 1}, .rows = 1, .columns = 1};
+                    manifest.sprites.push_back(std::move(definition));
+                }
+            }
+            prepared.manifests.push_back(std::move(manifest));
+            return prepared;
+        };
+        const auto geometry_for = [&](const std::string& name) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> {
+            const auto key = "audit-category:" + name;
+            if (tilesets) {
+                const auto asset = CE::Assets::Tilesets::Manager::get().get_asset(key);
+                return asset ? asset->geometry : nullptr;
+            }
+            const auto asset = CE::Assets::Sprites::Manager::get().get_asset(key);
+            return asset ? asset->geometry : nullptr;
+        };
+        int uploads = 0;
+        int reject_at = 3;
+        std::vector<std::weak_ptr<CE::Rendering::Geometry::Buffer2D>> native_owners;
+        provider.on_upload_geometry = [&](auto vertices, auto topology) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> {
+            if (++uploads == reject_at)
+                throw CE::Exceptions::bad_alloc(CE_HERE);
+            auto geometry = std::make_shared<MemoryGeometry>();
+            geometry->uploaded_vertices = static_cast<std::uint32_t>(vertices.size());
+            geometry->uploaded_topology = topology;
+            native_owners.push_back(geometry);
+            return geometry;
+        };
+        loader.upload(make_prepared({"kept"}), provider);
+        const auto previous = loader.manifests();
+        auto retained = geometry_for("kept");
+        ASSERT_TRUE(retained);
+        EXPECT_THROW(loader.upload(make_prepared({"complete", "failed"}), provider), CE::Exceptions::bad_alloc);
+        const auto observed = loader.diagnostics();
+        EXPECT_NE(observed.batch, 0u);
+        EXPECT_EQ(observed.provider, provider.diagnostic_id());
+        EXPECT_EQ(observed.images_completed, 1u);
+        EXPECT_EQ(observed.manifests_completed, 0u);
+        EXPECT_EQ(observed.publications, 1u);
+        EXPECT_TRUE(observed.publication_count_available);
+        EXPECT_FALSE(observed.completed);
+        EXPECT_EQ(loader.manifests(), previous);
+        EXPECT_EQ(geometry_for("kept"), retained);
+        EXPECT_TRUE(geometry_for("complete"));
+        EXPECT_FALSE(geometry_for("failed"));
+        ASSERT_EQ(native_owners.size(), 2u);
+        EXPECT_FALSE(native_owners[0].expired());
+        EXPECT_FALSE(native_owners[1].expired());
+        reject_at = 0;
+        loader.upload(make_prepared({"complete", "failed"}), provider);
+        EXPECT_NE(loader.manifests(), previous);
+        EXPECT_EQ(previous->front().name_space, "audit-category");
+        EXPECT_TRUE(geometry_for("failed"));
+        ASSERT_EQ(native_owners.size(), 3u);
+        if (tilesets)
+            CE::Assets::Tilesets::Manager::get().clear_assets();
+        else
+            CE::Assets::Sprites::Manager::get().clear_assets();
+        EXPECT_FALSE(native_owners[0].expired());
+        EXPECT_TRUE(native_owners[1].expired());
+        EXPECT_TRUE(native_owners[2].expired());
+        retained.reset();
+        EXPECT_TRUE(native_owners[0].expired());
+    }
+}
+
+TEST(platform_requests, expired_endpoint) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    auto endpoint = engine->platform_dispatcher().submission();
+    OneTickGame game(input);
+    auto runtime = std::make_unique<CE::Runtime::GameRuntime>(*engine, game);
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
+    runtime.reset();
+    game.on_tick = {};
+    engine.reset();
+    EXPECT_THROW(static_cast<void>(endpoint.submit([](CE::Runtime::Context&) {})), CE::Exceptions::failed_operation);
+}
+
+TEST(platform_requests, reentrant_post) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    std::future<void> outer;
+    std::future<void> inner;
+    std::vector<int> order;
+    game.on_init = [&] {
+        auto endpoint = engine->platform_dispatcher().submission();
+        outer = endpoint.submit([&, endpoint](CE::Runtime::Context&) {
+            order.push_back(1);
+            inner = endpoint.submit([&](CE::Runtime::Context&) { order.push_back(3); });
+            // Queueing on the owner must still defer the new callback.
+            EXPECT_EQ(order, std::vector<int>{1});
+            EXPECT_EQ(inner.wait_for(std::chrono::seconds{0}), std::future_status::timeout);
+            order.push_back(2);
+        });
+    };
+    game.on_tick = [&] { runtime.stop(); };
+    runtime.run();
+    outer.get();
+    inner.get();
+    EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
+}
+
+TEST(simulation_requests, mailbox_before_update) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto endpoint = runtime.simulation_dispatcher().submission();
+        std::future<int> completed;
+        std::thread::id delivery_thread;
+        int value = 0;
+        EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+        game.on_init = [&] {
+            auto owned = std::make_unique<int>(42);
+            completed = endpoint.submit([&, owned = std::move(owned)] {
+                delivery_thread = std::this_thread::get_id();
+                value = *owned;
+                return value;
+            });
+        };
+        game.on_tick = [&] {
+            EXPECT_EQ(value, 42);
+            EXPECT_EQ(delivery_thread, std::this_thread::get_id());
+            EXPECT_EQ(completed.get(), 42);
+            runtime.stop();
+        };
+        runtime.run();
+        EXPECT_EQ(delivery_thread, game.update_thread);
+        const auto stats = runtime.simulation_dispatcher().diagnostics();
+        EXPECT_EQ(stats.accepted, 1u);
+        EXPECT_EQ(stats.completed, 1u);
+        EXPECT_EQ(stats.cancelled, 0u);
+        EXPECT_EQ(stats.running, 0u);
+        if (mode == CE::Runtime::RunMode::Concurrent)
+            EXPECT_NE(delivery_thread, std::this_thread::get_id());
+        EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(simulation_requests, reentrant_post) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto endpoint = runtime.simulation_dispatcher().submission();
+        std::future<void> outer;
+        std::future<void> inner;
+        std::vector<int> order;
+        int updates = 0;
+        game.on_init = [&] {
+            outer = endpoint.submit([&] {
+                order.push_back(1);
+                inner = endpoint.submit([&] { order.push_back(3); });
+            });
+        };
+        game.on_tick = [&] {
+            if (++updates == 1) {
+                EXPECT_EQ(order, std::vector<int>{1});
+                EXPECT_EQ(inner.wait_for(std::chrono::seconds{0}), std::future_status::timeout);
+                order.push_back(2);
+            } else {
+                EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        outer.get();
+        inner.get();
+        EXPECT_EQ(updates, 2);
+    }
+}
+
+TEST(simulation_requests, shutdown_cancellation) {
+    struct CapturedData {
+        bool& destroyed;
+        std::thread::id& destruction_thread;
+        ~CapturedData() {
+            destroyed = true;
+            destruction_thread = std::this_thread::get_id();
+        }
+    };
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::future<void> cancelled;
+        bool destroyed = false;
+        std::thread::id destruction_thread;
+        game.on_tick = [&] {
+            auto data = std::make_unique<CapturedData>(destroyed, destruction_thread);
+            cancelled = runtime.simulation_dispatcher().submit([data = std::move(data)] {});
+            runtime.stop();
+        };
+        game.on_deinit = [&] { EXPECT_TRUE(destroyed); };
+        runtime.run();
+        EXPECT_EQ(destruction_thread, game.update_thread);
+        try {
+            cancelled.get();
+            FAIL() << "Stopped simulation work must be cancelled";
+        } catch (const std::future_error& error) {
+            EXPECT_EQ(error.code(), std::make_error_code(std::future_errc::broken_promise));
+        }
+    }
+}
+
+TEST(simulation_requests, init_failure_cancellation) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        std::future<void> cancelled;
+        game.on_init = [&] {
+            cancelled = runtime.simulation_dispatcher().submit([] {});
+            throw std::runtime_error("initialization failed");
+        };
+        game.on_deinit = [&] { EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready); };
+        EXPECT_THROW(runtime.run(), std::runtime_error);
+        EXPECT_THROW(cancelled.get(), std::future_error);
+        EXPECT_EQ(game.shutdowns, 1);
+    }
+}
+
+TEST(simulation_requests, expired_endpoint) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    auto runtime = std::make_unique<CE::Runtime::GameRuntime>(*engine, game);
+    auto endpoint = runtime->simulation_dispatcher().submission();
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
+    runtime.reset();
+    EXPECT_THROW(static_cast<void>(endpoint.submit([] {})), CE::Exceptions::failed_operation);
+}
+
+TEST(event_delivery, runtime_owner_threads) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        CE::Events::EventBus bus;
+        std::thread::id platform_thread;
+        std::thread::id simulation_thread;
+        std::thread::id resize_platform_thread;
+        std::thread::id resize_simulation_thread;
+        std::optional<CE::Platform::WindowResized> platform_resize;
+        std::optional<CE::Platform::WindowResized> simulation_resize;
+        CE::Platform::WindowResized expected_resize{nullptr, {}};
+        const auto report = [](std::exception_ptr) { ADD_FAILURE() << "Unexpected event delivery failure"; };
+        bus.register_listener(
+            "tick", [&](std::any) { platform_thread = std::this_thread::get_id(); },
+            CE::Events::platform_delivery(engine->platform_dispatcher().submission()), report
+        );
+        bus.register_listener(
+            "tick", [&](std::any) { simulation_thread = std::this_thread::get_id(); },
+            CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()), report
+        );
+        bus.register_listener(
+            CE::Platform::window_resized_event,
+            [&](const CE::Platform::WindowResized& event) {
+                resize_platform_thread = std::this_thread::get_id();
+                platform_resize = event;
+            },
+            CE::Events::platform_delivery(engine->platform_dispatcher().submission()), report
+        );
+        bus.register_listener(
+            CE::Platform::window_resized_event,
+            [&](const CE::Platform::WindowResized& event) {
+                resize_simulation_thread = std::this_thread::get_id();
+                // The window pointer is an identity only here; simulation never dereferences it.
+                simulation_resize = event;
+            },
+            CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()), report
+        );
+        game.on_init = [&] {
+            bus.dispatch("tick", 0);
+            expected_resize = {&engine->window(), engine->window().framebuffer_size()};
+            auto source = expected_resize;
+            bus.dispatch(CE::Platform::window_resized_event, source);
+            source = {nullptr, {0, 0}};
+        };
+        game.on_tick = [&] { runtime.stop(); };
+        runtime.run();
+        EXPECT_EQ(platform_thread, std::this_thread::get_id());
+        EXPECT_EQ(simulation_thread, game.update_thread);
+        EXPECT_EQ(resize_platform_thread, std::this_thread::get_id());
+        EXPECT_EQ(resize_simulation_thread, game.update_thread);
+        ASSERT_TRUE(platform_resize);
+        ASSERT_TRUE(simulation_resize);
+        EXPECT_EQ(platform_resize->window, expected_resize.window);
+        EXPECT_EQ(simulation_resize->window, expected_resize.window);
+        EXPECT_EQ(platform_resize->size, expected_resize.size);
+        EXPECT_EQ(simulation_resize->size, expected_resize.size);
+        bus.close();
+    }
+}
+
+TEST(execution_shutdown, pending_upload_completion) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        std::future<int> result;
+        std::promise<void> posted;
+        bool quiesced = false;
+        std::thread::id upload_thread;
+        game.on_init = [&] {
+            result = group.submit([&] {
+                auto uploading = platform.submit([&](CE::Runtime::Context&) {
+                    upload_thread = std::this_thread::get_id();
+                    return 42;
+                });
+                posted.set_value();
+                // A CPU worker may await platform completion; shutdown must pump.
+                return uploading.get();
+            });
+            posted.get_future().wait();
+            runtime.stop();
+        };
+        game.on_quiesce = [&] { quiesced = true; };
+        game.on_deinit = [&] {
+            EXPECT_TRUE(quiesced);
+            EXPECT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        };
+        runtime.run();
+        EXPECT_EQ(result.get(), 42);
+        EXPECT_EQ(upload_thread, std::this_thread::get_id());
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_THROW(static_cast<void>(engine->make_worker_group()), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, asset_init_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        OneTickGame game(input, true);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        std::promise<void> posted;
+        auto posted_future = posted.get_future();
+        std::future<int> result;
+        std::future<void> cancelled;
+        std::weak_ptr<CE::Rendering::Geometry::Vertex2D> cpu_owner;
+        int uploads = 0;
+        int quiesces = 0;
+        const auto platform_thread = std::this_thread::get_id();
+        provider.on_upload_geometry = [](auto, auto) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> { throw std::bad_alloc{}; };
+        game.on_init = [&] {
+            cancelled = simulation.submit([] {});
+            result = group.submit([&] {
+                auto upload = platform.submit([&](CE::Runtime::Context& context) {
+                    EXPECT_EQ(std::this_thread::get_id(), platform_thread);
+                    const CE::Assets::Images::Decoded pixels{CE::Rendering::Geometry::PixelSize{1, 1}, {255, 255, 255, 255}};
+                    auto image = context.resources().create_image(pixels);
+                    EXPECT_EQ(image->pixel_size().width, 1u);
+                    ++uploads;
+                    return 42;
+                });
+                posted.set_value();
+                return upload.get();
+            });
+            if (posted_future.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Worker did not post its upload");
+            auto vertices = std::shared_ptr<CE::Rendering::Geometry::Vertex2D>(
+                new CE::Rendering::Geometry::Vertex2D[6]{}, std::default_delete<CE::Rendering::Geometry::Vertex2D[]>{}
+            );
+            cpu_owner = vertices;
+            (void)provider.upload_geometry(std::move(vertices), 6, CE::Rendering::Geometry::Topology::Triangles);
+        };
+        game.on_quiesce = [&] {
+            ++quiesces;
+            throw std::runtime_error("Later producer cleanup failed");
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(result.get(), 42);
+            EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_THROW(cancelled.get(), std::future_error);
+            EXPECT_TRUE(cpu_owner.expired());
+        };
+        EXPECT_THROW(runtime.run(), std::bad_alloc);
+        EXPECT_EQ(uploads, 1);
+        EXPECT_EQ(quiesces, 1);
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_EQ(input.routing().current()->target, 0u);
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_THROW((void)group.submit([] {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)platform.submit([](CE::Runtime::Context&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, worker_upload_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto group = engine->make_worker_group();
+        auto platform = engine->platform_dispatcher().submission();
+        std::promise<void> posted;
+        auto posted_future = posted.get_future();
+        std::future<void> result;
+        std::weak_ptr<CE::Rendering::Geometry::Vertex2D> cpu_owner;
+        provider.on_upload_geometry = [](auto, auto) -> std::shared_ptr<CE::Rendering::Geometry::Buffer2D> { throw std::bad_alloc{}; };
+        game.on_init = [&] {
+            auto vertices = std::shared_ptr<CE::Rendering::Geometry::Vertex2D>(
+                new CE::Rendering::Geometry::Vertex2D[6]{}, std::default_delete<CE::Rendering::Geometry::Vertex2D[]>{}
+            );
+            cpu_owner = vertices;
+            result = group.submit([platform, vertices = std::move(vertices), &posted]() mutable {
+                auto upload = platform.submit([vertices = std::move(vertices)](CE::Runtime::Context& context) mutable {
+                    return context.resources().upload_geometry(std::move(vertices), 6, CE::Rendering::Geometry::Topology::Triangles);
+                });
+                posted.set_value();
+                (void)upload.get();
+            });
+            if (posted_future.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Worker did not post its upload");
+            runtime.stop();
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_TRUE(cpu_owner.expired());
+            result.get(); // The application's observation propagates the worker's original error.
+        };
+        renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failed"); };
+        EXPECT_THROW(runtime.run(), std::bad_alloc);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        EXPECT_TRUE(cpu_owner.expired());
+        EXPECT_FALSE(group.status().accepting);
+    }
+}
+
+TEST(execution_shutdown, preparation_policy_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        CE::Workers::Detail::NativeAdapter native{
+            true, [] { return std::vector<unsigned int>{2, 7}; },
+            [](const std::vector<unsigned int>& mask) {
+                if (mask == std::vector<unsigned int>{2})
+                    throw CE::Exceptions::failed_operation(CE_HERE, "Controlled runtime affinity failure");
+            },
+            [](std::function<void()> work) { return std::thread(std::move(work)); }
+        };
+        std::shared_ptr<CE::Workers::Pool> root{CE::Workers::Detail::PoolAccess::create(1, std::move(native))};
+        auto unrelated = root->make_group();
+        CE::Runtime::ExecutionOptions execution;
+        execution.shared_pool = root;
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface, execution);
+        auto& provider = static_cast<MemoryProvider&>(engine->resources());
+        CE::Workers::GroupOptions policy;
+        policy.cpu.cpus = {2};
+        policy.cpu.strength = CE::Workers::PolicyStrength::Required;
+        auto group = engine->make_worker_group(policy);
+        auto platform = engine->platform_dispatcher().submission();
+        auto pixels = std::make_shared<CE::Assets::Images::Decoded>(
+            CE::Assets::Images::Decoded{CE::Rendering::Geometry::PixelSize{1, 1}, {255, 255, 255, 255}}
+        );
+        std::weak_ptr<CE::Assets::Images::Decoded> capture = pixels;
+        std::atomic<int> callbacks = 0;
+        std::future<std::shared_ptr<CE::Rendering::Resources::Image>> result;
+        OneTickGame game(input);
+        auto runtime = std::make_unique<CE::Runtime::GameRuntime>(*engine, game, mode);
+        game.on_init = [&] {
+            result = group.submit([platform, pixels = std::move(pixels), &callbacks] {
+                ++callbacks;
+                auto upload =
+                    platform.submit([pixels](CE::Runtime::Context& context) { return context.resources().create_image(*pixels); });
+                return upload.get();
+            });
+            runtime->stop();
+        };
+        game.on_deinit = [&] {
+            ASSERT_EQ(result.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_THROW((void)result.get(), CE::Exceptions::failed_operation);
+            EXPECT_TRUE(capture.expired());
+        };
+        EXPECT_NO_THROW(runtime->run());
+        EXPECT_EQ(callbacks.load(), 0);
+        EXPECT_EQ(provider.created_images, 0);
+        EXPECT_EQ(group.status().policy_failures, 1u);
+        EXPECT_FALSE(group.status().accepting);
+        EXPECT_TRUE(unrelated.status().accepting);
+        EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+        runtime.reset();
+        game.on_init = {};
+        game.on_deinit = {};
+        engine.reset();
+        EXPECT_TRUE(unrelated.status().accepting);
+    }
+}
+
+TEST(execution_shutdown, owned_root_startup_rollback) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        CE::Runtime::ExecutionOptions execution;
+        execution.worker_count = 2;
+        auto engine = make_test_context(input, renderer, surface, execution);
+        std::promise<void> entered;
+        auto started = entered.get_future().share();
+        std::atomic<int> exited{0};
+        int attempts = 0;
+        std::weak_ptr<int> native_capture;
+        CE::Runtime::Detail::ContextAccess::set_owned_worker_factory(*engine, [&](const std::size_t count) {
+            auto owner = std::make_shared<int>(42);
+            native_capture = owner;
+            CE::Workers::Detail::NativeAdapter native;
+            native.start_thread = [owner = std::move(owner), &attempts, &entered, started, &exited](std::function<void()> work) {
+                if (++attempts == 2) {
+                    if (started.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                        throw std::runtime_error("First owned worker did not enter");
+                    throw std::runtime_error("Controlled owned-root startup failure");
+                }
+                return std::thread([work = std::move(work), &entered, &exited] {
+                    entered.set_value();
+                    work();
+                    ++exited;
+                });
+            };
+            return CE::Workers::Detail::PoolAccess::create(count, std::move(native));
+        });
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        auto platform = engine->platform_dispatcher().submission();
+        auto simulation = runtime.simulation_dispatcher().submission();
+        std::future<void> cancelled_platform;
+        std::future<void> cancelled_simulation;
+        std::weak_ptr<int> platform_capture;
+        std::weak_ptr<int> simulation_capture;
+        int callbacks = 0;
+        game.on_init = [&] {
+            auto first = std::make_shared<int>(1);
+            auto second = std::make_shared<int>(2);
+            platform_capture = first;
+            simulation_capture = second;
+            cancelled_platform = platform.submit([owner = std::move(first), &callbacks](CE::Runtime::Context&) { ++callbacks; });
+            cancelled_simulation = simulation.submit([owner = std::move(second), &callbacks] { ++callbacks; });
+            static_cast<void>(engine->make_worker_group());
+        };
+        game.on_deinit = [&] {
+            EXPECT_EQ(cancelled_platform.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_EQ(cancelled_simulation.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+            EXPECT_TRUE(platform_capture.expired());
+            EXPECT_TRUE(simulation_capture.expired());
+            EXPECT_TRUE(native_capture.expired());
+            EXPECT_EQ(exited.load(), 1);
+        };
+        renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failed"); };
+        try {
+            runtime.run();
+            FAIL() << "Owned pool startup must fail";
+        } catch (const std::runtime_error& error) {
+            EXPECT_EQ(std::string_view(error.what()), "Controlled owned-root startup failure");
+        }
+        EXPECT_EQ(attempts, 2);
+        EXPECT_EQ(callbacks, 0);
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+        expect_cancelled_request(cancelled_platform);
+        expect_cancelled_request(cancelled_simulation);
+        EXPECT_THROW((void)engine->make_worker_group(), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)platform.submit([](CE::Runtime::Context&) {}), CE::Exceptions::failed_operation);
+        EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+    }
+}
+
+TEST(execution_shutdown, simulation_thread_failure) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game, CE::Runtime::RunMode::Concurrent);
+    auto group = engine->make_worker_group();
+    auto platform = engine->platform_dispatcher().submission();
+    auto simulation = runtime.simulation_dispatcher().submission();
+    std::promise<void> worker_entered;
+    auto entered = worker_entered.get_future();
+    std::promise<void> release_upload;
+    auto upload_gate = release_upload.get_future().share();
+    std::future<int> uploaded;
+    std::future<void> cancelled;
+    std::weak_ptr<int> simulation_capture;
+    std::weak_ptr<CE::Assets::Images::Decoded> cpu_capture;
+    int simulation_callbacks = 0;
+    int starts = 0;
+    std::thread::id upload_thread;
+    CE::Runtime::Detail::GameRuntimeAccess::set_simulation_thread_factory(runtime, [&](std::function<void()>) -> std::thread {
+        ++starts;
+        release_upload.set_value();
+        throw std::runtime_error("Controlled simulation thread-start failure");
+    });
+    game.on_init = [&] {
+        auto owner = std::make_shared<int>(42);
+        simulation_capture = owner;
+        cancelled = simulation.submit([owner = std::move(owner), &simulation_callbacks] { ++simulation_callbacks; });
+        auto pixels = std::make_shared<CE::Assets::Images::Decoded>(
+            CE::Assets::Images::Decoded{CE::Rendering::Geometry::PixelSize{1, 1}, {255, 255, 255, 255}}
+        );
+        cpu_capture = pixels;
+        uploaded = group.submit([pixels = std::move(pixels), platform, upload_gate, &worker_entered, &upload_thread] {
+            worker_entered.set_value();
+            if (upload_gate.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+                throw std::runtime_error("Simulation startup did not release upload");
+            auto completion = platform.submit([pixels, &upload_thread](CE::Runtime::Context& context) {
+                upload_thread = std::this_thread::get_id();
+                static_cast<void>(context.resources().create_image(*pixels));
+                return 42;
+            });
+            return completion.get();
+        });
+        if (entered.wait_for(std::chrono::seconds{5}) != std::future_status::ready)
+            throw std::runtime_error("Preparation worker did not enter");
+    };
+    game.on_quiesce = [] { throw std::runtime_error("Later quiesce failure"); };
+    game.on_deinit = [&] {
+        EXPECT_EQ(uploaded.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_EQ(cancelled.wait_for(std::chrono::seconds{0}), std::future_status::ready);
+        EXPECT_TRUE(cpu_capture.expired());
+        EXPECT_TRUE(simulation_capture.expired());
+    };
+    renderer->on_deinitialize = [] { throw std::runtime_error("Later renderer cleanup failure"); };
+    try {
+        runtime.run();
+        FAIL() << "Simulation thread startup must fail";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string_view(error.what()), "Controlled simulation thread-start failure");
+    }
+    EXPECT_EQ(starts, 1);
+    EXPECT_EQ(uploaded.get(), 42);
+    expect_cancelled_request(cancelled);
+    EXPECT_EQ(simulation_callbacks, 0);
+    EXPECT_EQ(upload_thread, std::this_thread::get_id());
+    EXPECT_EQ(game.updates, 0);
+    EXPECT_EQ(game.shutdowns, 1);
+    EXPECT_EQ(input.attached_window(), nullptr);
+    EXPECT_FALSE(group.status().accepting);
+    EXPECT_THROW((void)platform.submit([](CE::Runtime::Context&) {}), CE::Exceptions::failed_operation);
+    EXPECT_THROW((void)simulation.submit([] {}), CE::Exceptions::failed_operation);
+}
+
+TEST(execution_shutdown, injected_root_isolation) {
+    auto root = std::make_shared<CE::Workers::Pool>(2);
+    auto unrelated = root->make_group();
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    CE::Runtime::ExecutionOptions execution;
+    execution.shared_pool = root;
+    auto engine = make_test_context(input, renderer, surface, execution);
+    auto game_group = engine->make_worker_group();
+    OneTickGame game(input);
+    auto runtime = std::make_unique<CE::Runtime::GameRuntime>(*engine, game);
+    game.on_tick = [&] { runtime->stop(); };
+    runtime->run();
+    EXPECT_FALSE(game_group.status().accepting);
+    EXPECT_TRUE(unrelated.status().accepting);
+    EXPECT_EQ(unrelated.submit([] { return 17; }).get(), 17);
+    runtime.reset();
+    game.on_tick = {};
+    engine.reset();
+    EXPECT_TRUE(unrelated.status().accepting);
+}
+
+TEST(execution_shutdown, quiesce_error_precedence) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::GameRuntime runtime(*engine, game);
+    game.on_init = [] { throw std::runtime_error("original initialization failure"); };
+    game.on_quiesce = [] { throw std::runtime_error("later quiesce failure"); };
+    try {
+        runtime.run();
+        FAIL() << "Initialization must fail";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(std::string_view(error.what()), "original initialization failure");
+    }
+    EXPECT_EQ(game.shutdowns, 1);
+}
+
+TEST(simulation_timing, configured_fixed_delta) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::Simulation::TimingOptions timing;
+        timing.mode = CE::Runtime::Simulation::Mode::Fixed;
+        timing.fixed_step = std::chrono::milliseconds{20};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        game.on_tick = [&] {
+            if (game.updates == 2)
+                runtime.stop();
+        };
+        runtime.run();
+        ASSERT_EQ(game.simulation_deltas.size(), 2u);
+        for (std::size_t i = 0; i < game.simulation_deltas.size(); ++i) {
+            EXPECT_DOUBLE_EQ(game.simulation_deltas[i], 0.020);
+            EXPECT_EQ(game.update_kinds[i], CE::Runtime::Simulation::UpdateKind::Fixed);
+            EXPECT_GE(game.observed_intervals[i], 0.0);
+        }
+    }
+}
+
+TEST(simulation_timing, slow_update_recovery) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::Simulation::TimingOptions timing;
+        timing.mode = CE::Runtime::Simulation::Mode::Fixed;
+        timing.fixed_step = std::chrono::milliseconds{20};
+        timing.recovery = CE::Runtime::Simulation::LagRecovery::VariableCatchUp;
+        timing.fixed_updates_before_recovery = 1;
+        timing.recovery_cap = std::chrono::milliseconds{25};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        game.on_tick = [&] {
+            if (game.updates == 1)
+                std::this_thread::sleep_for(std::chrono::milliseconds{80});
+            if (game.update_kinds.back() == CE::Runtime::Simulation::UpdateKind::VariableCatchUp)
+                runtime.stop();
+        };
+        runtime.run();
+        ASSERT_GE(game.update_kinds.size(), 2u);
+        EXPECT_EQ(game.update_kinds.back(), CE::Runtime::Simulation::UpdateKind::VariableCatchUp);
+        EXPECT_DOUBLE_EQ(game.simulation_deltas.back(), 0.025);
+        EXPECT_GT(game.dropped_intervals.back(), 0.0);
+        EXPECT_EQ(game.update_kinds[game.update_kinds.size() - 2], CE::Runtime::Simulation::UpdateKind::Fixed);
+        EXPECT_DOUBLE_EQ(game.dropped_intervals[game.dropped_intervals.size() - 2], 0.0);
+        EXPECT_LT(game.draws, game.updates);
+        EXPECT_EQ(renderer->shutdowns, 1);
+    }
+}
+
+TEST(simulation_timing, invalid_timing) {
+    MemoryInput input;
+    MemoryRenderer* renderer = nullptr;
+    MemorySurface* surface = nullptr;
+    auto engine = make_test_context(input, renderer, surface);
+    OneTickGame game(input);
+    CE::Runtime::Simulation::TimingOptions timing;
+    timing.fixed_step = std::chrono::milliseconds{0};
+    EXPECT_THROW(
+        (void)CE::Runtime::GameRuntime(*engine, game, CE::Runtime::RunMode::Sequential, CE::Input::PollingOptions{}, timing),
+        CE::Exceptions::invalid_args
+    );
+    EXPECT_EQ(renderer->initializations, 0);
+    EXPECT_EQ(game.initializations, 0);
+    EXPECT_EQ(input.attached_window(), nullptr);
+}
+
+TEST(resource_maintenance, retirement_under_backpressure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        int polls = 0;
+        input.on_poll = [&] { ++polls; };
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::Simulation::TimingOptions timing;
+        timing.variable_interval = std::chrono::hours{1};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        renderer->on_maintenance = [&] {
+            if (renderer->maintenance_calls == 2) {
+                // Lockstep capacity is full, and no simulation deadline/frame is
+                // available to wake the platform. The bounded maintenance wait must.
+                EXPECT_EQ(polls, 1);
+                EXPECT_EQ(renderer->renders, 0);
+                runtime.stop();
+            }
+        };
+        runtime.run();
+        EXPECT_GE(renderer->maintenance_calls, 2);
+        EXPECT_EQ(renderer->maintenance_thread, std::this_thread::get_id());
+        EXPECT_EQ(game.updates, 0);
+        EXPECT_EQ(game.draws, 0);
+        EXPECT_EQ(surface->presents, 0);
+    }
+}
+
+TEST(resource_maintenance, maintenance_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        OneTickGame game(input);
+        CE::Runtime::Simulation::TimingOptions timing;
+        timing.variable_interval = std::chrono::hours{1};
+        CE::Runtime::GameRuntime runtime(*engine, game, mode, CE::Input::PollingOptions{}, timing);
+        renderer->on_maintenance = [] { throw std::runtime_error("retirement maintenance failed"); };
+        game.on_deinit = [] { throw std::runtime_error("later game cleanup failed"); };
+        try {
+            runtime.run();
+            FAIL() << "Maintenance must fail";
+        } catch (const std::runtime_error& error) {
+            EXPECT_STREQ(error.what(), "retirement maintenance failed");
+        }
+        EXPECT_EQ(game.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(input.attached_window(), nullptr);
+    }
+}
+
+TEST(asset_cache, strong_residency) {
+    auto& textures = CE::Assets::Images::Manager::get();
+    auto first = std::make_unique<MemoryProvider>();
+    MemoryProvider second;
+    std::weak_ptr<CE::Rendering::Resources::Image> observed;
+    bool destroyed = false;
+    first->on_load_image = [&] {
+        auto image = std::shared_ptr<MemoryImage>(new MemoryImage({8, 16}), [&](MemoryImage* value) {
+            destroyed = true;
+            delete value;
+        });
+        observed = image;
+        return image;
+    };
+    textures.load({"resident.png"}, *first);
+    EXPECT_FALSE(observed.expired()); // The cache alone retains an unused asset.
+    EXPECT_FALSE(destroyed);
+    EXPECT_THROW(textures.load({"other-domain.png"}, second), CE::Exceptions::failed_operation);
+    auto retained = textures.get_asset("resident.png");
+    textures.clear_assets();
+    EXPECT_EQ(textures.size(), 0u);
+    EXPECT_FALSE(destroyed);
+    ASSERT_TRUE(retained);
+    EXPECT_EQ(retained->pixel_size().height, 16u);
+
+    first.reset(); // Releases the old global domain, not this independent logical owner.
+    EXPECT_FALSE(destroyed);
+    textures.load({"new-domain.png"}, second);
+    EXPECT_TRUE(CE::Assets::Cache::Context::is_bound_to(second));
+    EXPECT_EQ(retained->pixel_size().width, 8u);
+    retained.reset();
+    EXPECT_TRUE(destroyed);
+    EXPECT_TRUE(observed.expired());
+}
+
+TEST(material_cache, recipe_reload_generations) {
+    auto& materials = CE::Assets::Materials::Manager::get();
+    auto provider = std::make_unique<MemoryProvider>();
+    MemoryProvider next_provider;
+    int builds = 0;
+    float intensity = 1.0f;
+    const CE::Assets::Materials::Manager::Builder build = [&](CE::Rendering::Resources::Provider& owner) {
+        EXPECT_EQ(&owner, provider.get());
+        ++builds;
+        auto pipeline = std::make_shared<MemoryPipeline>(intensity);
+        return std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{pipeline, {}});
+    };
+    materials.load("effect", *provider, build);
+    const auto old = materials.get_asset("effect");
+    ASSERT_TRUE(old);
+    intensity = 2.0f;
+    materials.load("effect", *provider, build);
+    EXPECT_EQ(builds, 1);
+    materials.reload("effect", *provider, build);
+    const auto current = materials.get_asset("effect");
+    ASSERT_TRUE(current);
+    EXPECT_NE(old.get(), current.get());
+    EXPECT_FLOAT_EQ(std::get<float>(old->resolve({}, {}, {}, {}).at("intensity")), 1.0f);
+    EXPECT_FLOAT_EQ(std::get<float>(current->resolve({}, {}, {}, {}).at("intensity")), 2.0f);
+
+    EXPECT_THROW(
+        materials.reload(
+            "effect", *provider,
+            [](CE::Rendering::Resources::Provider&) -> std::shared_ptr<const CE::Rendering::Resources::Material> {
+                throw std::runtime_error("candidate linking failed");
+            }
+        ),
+        std::runtime_error
+    );
+    EXPECT_THROW(
+        materials.reload(
+            "effect", *provider,
+            [](CE::Rendering::Resources::Provider&) { return std::shared_ptr<const CE::Rendering::Resources::Material>{}; }
+        ),
+        CE::Exceptions::failed_operation
+    );
+    EXPECT_EQ(materials.get_asset("effect"), current);
+    EXPECT_THROW(materials.load("effect", next_provider, build), CE::Exceptions::failed_operation);
+    provider.reset();
+    EXPECT_EQ(materials.size(), 0u);
+    EXPECT_FLOAT_EQ(std::get<float>(old->resolve({}, {}, {}, {}).at("intensity")), 1.0f);
+    materials.load("new-effect", next_provider, [](CE::Rendering::Resources::Provider&) {
+        return std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(3.0f), {}}
+        );
+    });
+    EXPECT_TRUE(CE::Assets::Cache::Context::is_bound_to(next_provider));
+}
+
+TEST(material_cache, foreign_recipe_reload) {
+    auto& materials = CE::Assets::Materials::Manager::get();
+    MemoryProvider provider;
+    int builds = 0;
+    const CE::Assets::Materials::Manager::Builder build = [&](CE::Rendering::Resources::Provider&) {
+        ++builds;
+        return std::make_shared<CE::Rendering::Resources::Material>(
+            CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(1.0f), {}}
+        );
+    };
+    materials.load("effect", provider, build);
+    const auto current = materials.get_asset("effect");
+    auto rejected = std::async(std::launch::async, [&] {
+        EXPECT_THROW(materials.reload("effect", provider, build), CE::Exceptions::failed_operation);
+    });
+    rejected.get();
+    EXPECT_EQ(builds, 1);
+    EXPECT_EQ(materials.get_asset("effect"), current);
+}
+
+TEST(frame_lifetime, packet_cleanup_order) {
+    enum class Failure { None, Preparation, Rendering };
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        for (const auto failure : {Failure::None, Failure::Preparation, Failure::Rendering}) {
+            SCOPED_TRACE(mode == CE::Runtime::RunMode::Sequential ? "sequential" : "concurrent");
+            SCOPED_TRACE(
+                failure == Failure::Preparation ? "preparation failure"
+                : failure == Failure::Rendering ? "render failure"
+                                                : "successful reload"
+            );
+            MemoryInput input;
+            MemoryRenderer* renderer = nullptr;
+            MemorySurface* surface = nullptr;
+            auto engine = make_test_context(input, renderer, surface);
+            OneTickGame game(input);
+            CE::Runtime::GameRuntime runtime(*engine, game, mode);
+            auto& materials = CE::Assets::Materials::Manager::get();
+            const auto platform = std::this_thread::get_id();
+            std::thread::id image_release_thread;
+            std::shared_ptr<CE::Rendering::Geometry::Buffer2D> simulation_geometry;
+            std::shared_ptr<const CE::Rendering::Resources::Material> simulation_material;
+            std::weak_ptr<const CE::Rendering::Geometry::Buffer2D> retained_geometry;
+            std::weak_ptr<const CE::Rendering::Resources::Material> retained_material;
+            std::weak_ptr<const CE::Rendering::Resources::Pipeline> retained_pipeline;
+            std::weak_ptr<const CE::Rendering::Resources::Image> retained_image;
+            std::promise<void> rendered;
+            auto first_frame = rendered.get_future().share();
+
+            game.on_init = [&] {
+                auto geometry = std::make_shared<MemoryGeometry>();
+                geometry->uploaded_vertices = 6;
+                simulation_geometry = geometry;
+                retained_geometry = geometry;
+                auto image = std::shared_ptr<MemoryImage>(new MemoryImage({1, 1}), [&](MemoryImage* resource) {
+                    image_release_thread = std::this_thread::get_id();
+                    delete resource;
+                });
+                retained_image = image;
+                materials.load("frame-retention", engine->resources(), [image](CE::Rendering::Resources::Provider&) {
+                    return std::make_shared<CE::Rendering::Resources::Material>(CE::Rendering::Materials::Definition{
+                        std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true),
+                        {{"image", CE::Rendering::Parameters::ImageBinding{image, 1}}}
+                    });
+                });
+                simulation_material = materials.get_asset("frame-retention");
+                retained_material = simulation_material;
+                retained_pipeline = simulation_material->definition().pipeline;
+            };
+            game.on_tick = [&] {
+                // Hold a later concurrent tick so it cannot supersede the first
+                // complete packet frame before the recording renderer inspects it.
+                if (game.updates > 1)
+                    first_frame.wait();
+            };
+            game.on_prepare = [&](CE::Rendering::FrameWriter& writer) {
+                auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f});
+                CE::Rendering::DrawStyle2D style;
+                style.material = std::move(simulation_material);
+                pass.add(
+                    CE::Rendering::resolve_draw_packet(
+                        std::move(simulation_geometry), 0, 6, style, pass.semantics(), pass.parameters(), pass.constraints()
+                    )
+                );
+                // A concurrent slot remains Writing here; cleanup still owns
+                // its partially prepared packet and must recycle it on platform.
+                if (failure == Failure::Preparation)
+                    throw std::runtime_error("frame preparation failed");
+            };
+            renderer->on_frame = [&](const CE::Rendering::Frame& frame) {
+                runtime.stop();
+                rendered.set_value(); // Always release a held tick before assertions/failure.
+                ASSERT_EQ(frame.passes().size(), 1u);
+                ASSERT_EQ(frame.passes()[0].draws.size(), 1u);
+                const auto& packet = frame.passes()[0].draws[0];
+                EXPECT_EQ(packet.material, retained_material.lock());
+                EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("intensity")), 1.0f);
+                materials.reload("frame-retention", engine->resources(), [](CE::Rendering::Resources::Provider&) {
+                    return std::make_shared<CE::Rendering::Resources::Material>(
+                        CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(2.0f), {}}
+                    );
+                });
+                EXPECT_NE(packet.material, materials.get_asset("frame-retention"));
+                EXPECT_FLOAT_EQ(std::get<float>(packet.parameters.at("intensity")), 1.0f);
+                materials.clear_assets();
+                EXPECT_FALSE(retained_material.expired());
+                EXPECT_FALSE(retained_pipeline.expired());
+                EXPECT_FALSE(retained_geometry.expired());
+                EXPECT_FALSE(retained_image.expired());
+                if (failure == Failure::Rendering)
+                    throw std::runtime_error("frame render failed");
+            };
+            game.on_quiesce = [&] { materials.clear_assets(); };
+            game.on_deinit = [&] {
+                EXPECT_TRUE(retained_material.expired());
+                EXPECT_TRUE(retained_pipeline.expired());
+                EXPECT_TRUE(retained_geometry.expired());
+                EXPECT_TRUE(retained_image.expired());
+                EXPECT_EQ(image_release_thread, platform);
+                if (failure != Failure::None)
+                    throw std::runtime_error("later game cleanup failed");
+            };
+            if (failure == Failure::None)
+                EXPECT_NO_THROW(runtime.run());
+            else {
+                try {
+                    runtime.run();
+                    FAIL() << "The selected frame stage must fail";
+                } catch (const std::runtime_error& error) {
+                    EXPECT_EQ(
+                        std::string_view(error.what()), failure == Failure::Preparation ? "frame preparation failed" : "frame render failed"
+                    );
+                }
+            }
+            EXPECT_EQ(game.shutdowns, 1);
+            EXPECT_EQ(renderer->shutdowns, 1);
+            EXPECT_EQ(image_release_thread, platform);
+        }
+    }
+}
+
+TEST(runtime_adapter, deferred_native_failure) {
+    for (const auto mode : {CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        MemoryInput input;
+        MemoryRenderer* renderer = nullptr;
+        MemorySurface* surface = nullptr;
+        auto engine = make_test_context(input, renderer, surface);
+        auto& window = dynamic_cast<MemoryWindow&>(engine->window());
+        OneTickGame game(input);
+        CE::Runtime::GameRuntime runtime(*engine, game, mode);
+        input.on_poll = [&] {
+            window.defer_failure(std::make_exception_ptr(std::runtime_error("deferred native failure")));
+            // Stopping during pumping must not hide a callback failure behind
+            // the loop's stop/close short circuit.
+            runtime.stop();
+        };
+        try {
+            runtime.run();
+            ADD_FAILURE() << "The pending native failure must propagate";
+        } catch (const std::runtime_error& failure) {
+            EXPECT_STREQ(failure.what(), "deferred native failure");
+        }
+        EXPECT_NO_THROW(window.check_native_failure());
+        EXPECT_EQ(input.shutdowns, 1);
+        EXPECT_EQ(renderer->shutdowns, 1);
+        EXPECT_EQ(game.shutdowns, 1);
+    }
+}

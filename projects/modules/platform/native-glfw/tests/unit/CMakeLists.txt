@@ -1,0 +1,10 @@
+file(GLOB_RECURSE native_test_sources CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+if(NOT CHERYL_NATIVE_INPUT)
+    list(FILTER native_test_sources EXCLUDE REGEX "/input\\.cpp$")
+endif()
+cheryl_add_test_suite(${TARGET_TEST_MODULE_NATIVE_GLFW}
+    OUTPUT_NAME "${OUTPUT_TEST_MODULE_NATIVE_GLFW}"
+    SOURCES ${native_test_sources}
+    LIBRARIES ${LINKAGE_PUBLIC_TEST_MODULE_NATIVE_GLFW}
+    PRIVATE_INCLUDES "${CHERYL_NATIVE_PRIVATE_SOURCE_DIR}")

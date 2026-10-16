@@ -1,0 +1,516 @@
+#pragma once
+#define MTRACE() UTRACE(::CE::Logging::Categories::memory)
+#define MDEBUG() UDEBUG(::CE::Logging::Categories::memory)
+#define MINFO() UINFO(::CE::Logging::Categories::memory)
+#define MWARN() UWARN(::CE::Logging::Categories::memory)
+#define MERROR() UERROR(::CE::Logging::Categories::memory)
+#define MFATAL() UFATAL(::CE::Logging::Categories::memory)
+#include <cemath.h>
+#include <internals/compile-time-logging.hpp>
+#include <core/logging/logger.h>
+#include <functional>
+#include <algorithm>
+#include <memory>
+#include <chrono>
+#include <set>
+#include <vector>
+#include <tuple>
+#include <shared_mutex>
+#include <unordered_map>
+#include <mutex>
+#include <cstdint>
+#include <type_traits>
+
+class Test_iManage;
+
+namespace CE::Memory {
+
+    /* Header: block.h
+ *
+ * includes
+ * CE::Memory::Block<T>
+ * CE::Memory::OptionalBlock<T>
+ * operator==
+ *
+ * // inline functions
+ * swap(CE::Memory::Block<T>&,CE::Memory::Block<T>&)
+ * is_contiguous(CE::Memory::Block<T>,CE::Memory::Block<T>)
+ *
+ * // sorting CE::Memory::Block<T>
+ * namespace CE::Memory::Ordering
+ *  CE::Memory::Ordering::ByteHeadOrder
+ *  CE::Memory::Ordering::ByteRegistryOrder
+ *  CE::Memory::Ordering::BytePoolOrder
+ *
+ * // management classes
+ * CE::Memory::BlockManagement<T>
+ * CE::Memory::BlockManagerInterface<T>
+ * CE::Memory::AbstractBlockManager<T>
+ *
+ * std::hash<CE::Memory::Block<T>>
+ * std::formatter<CE::Memory::Block<T>>
+ */
+
+    /**
+ * A contiguous range within one backing allocation. owner keeps that allocation
+ * alive; head may point into it after a split. length counts T objects (bytes for void).
+ * Splitting produces ranges with the same owner without transferring storage.
+ * Range mutation requires caller synchronization and valid representable backing
+ * bounds. Compound registry/pool transitions use CE::Memory::BlockTransactions instead.
+ */
+    template <typename T> struct Block {
+        using spointer = std::shared_ptr<T>;
+        using OBlock = std::optional<Block>;
+        spointer owner = {nullptr};
+        spointer head = {nullptr};
+        std::align_val_t alignment{};
+        std::size_t length = 1;
+        OBlock split_exactly(std::size_t idx);
+        OBlock split_at(std::size_t idx);
+        bool contains(void* p) const;
+
+        // Independent element control blocks, not aliases of owner. The supplied
+        // deleter must retain/release backing storage and manage constructed lifetimes;
+        // this helper neither constructs elements nor keeps the CE::Memory::Block's owner itself.
+        std::vector<spointer> vector(std::function<void(T*)> d) {
+            std::vector<spointer> ret;
+            ret.reserve(length);
+            for (std::size_t i = 0; i < length; ++i) {
+                ret.push_back(spointer(head.get() + i, d));
+            }
+            return ret;
+        }
+    };
+
+    template <typename T> using OptionalBlock = typename Block<T>::OBlock;
+
+    template <typename T> typename Block<T>::OBlock Block<T>::split_exactly(std::size_t idx) {
+        using namespace CE;
+        // Keep the left range in place and give the right range an alias to the
+        // same owner; splitting bookkeeping must not free or copy the allocation.
+        if (idx == 0 || idx >= length || !head.get()) {
+            return std::nullopt;
+        }
+        T* p;
+        if constexpr (std::is_void_v<T>) {
+            p = ::CE::Memory::Pointers::add_offset<T>(head.get(), idx);
+        } else {
+            p = head.get() + idx;
+        }
+        auto av = ::CE::Memory::Pointers::calculate_alignment(p);
+        // Byte alignment is a valid remainder. This operation can run under memory
+        // transaction locks, so diagnostics belong to an unlocked caller snapshot.
+        Block R{owner, std::shared_ptr<T>(owner, p), av, length - idx};
+        length = idx;
+        return std::make_optional(R);
+    }
+
+    template <typename T> typename Block<T>::OBlock Block<T>::split_at(std::size_t idx) {
+        using namespace CE;
+        if constexpr (!std::is_void_v<T>) {
+            return split_exactly(idx);
+        } else {
+            // Byte blocks seek an aligned start for the right-hand remainder. If the
+            // requested alignment leaves no room, retry with progressively smaller bounds.
+            // The left range absorbs padding between the requested offset and the split.
+            constexpr auto av64 = std::align_val_t{64};
+            constexpr auto av128 = std::align_val_t{128};
+            const auto av1 = alignment >= av128 ? alignment : av128;
+            const auto av2 = (alignment > av64 && alignment < av128) ? alignment : av64;
+            const auto av3 = alignment <= av64 ? alignment : av64;
+
+            const auto cidx = idx;
+            idx = ::CE::Memory::Pointers::align_offset(head.get(), cidx, av1);
+            if (idx >= length) {
+                idx = ::CE::Memory::Pointers::align_offset(head.get(), cidx, av2);
+                if (idx >= length) {
+                    idx = ::CE::Memory::Pointers::align_offset(head.get(), cidx, av3);
+                    if (idx >= length) {
+                        return std::nullopt;
+                    }
+                }
+            }
+            return split_exactly(idx);
+        }
+    }
+
+    template <typename T> bool Block<T>::contains(void* p) const {
+        using namespace CE;
+        constexpr auto element_size = [] {
+            if constexpr (std::is_void_v<T>)
+                return std::size_t{1};
+            else
+                return sizeof(T);
+        }();
+        return ::CE::Memory::Pointers::is_in_range(
+            reinterpret_cast<std::uintptr_t>(head.get()), ::CE::Memory::Pointers::offset_address(head.get(), length * element_size),
+            reinterpret_cast<std::uintptr_t>(p)
+        );
+    }
+
+    template <typename T, typename U> bool operator==(const Block<U>& lhs, const Block<T>& rhs) {
+        return static_cast<void*>(lhs.owner.get()) == static_cast<void*>(rhs.owner.get()) &&
+               static_cast<void*>(lhs.head.get()) == static_cast<void*>(rhs.head.get()) && lhs.alignment == rhs.alignment &&
+               lhs.length == rhs.length;
+    }
+
+}
+
+namespace CE::Memory {
+    using namespace CE;
+
+    template <typename T> void swap(Block<T>& A, Block<T>& B) noexcept {
+        const Block<T> C = A;
+        A = B;
+        B = C;
+    }
+
+    template <typename T> bool is_contiguous(Block<T> A, Block<T> B) {
+        if (A == B) {
+            return false;
+        }
+        if (A.owner != B.owner) {
+            return false;
+        }
+        if (A.head.get() > B.head.get()) {
+            swap(A, B);
+        }
+        if constexpr (std::is_same_v<T, void>) {
+            return ::CE::Memory::Pointers::add_offset<void>(A.head.get(), A.length) == B.head.get();
+        } else {
+            return ::CE::Memory::Pointers::add_offset<T>(A.head.get(), sizeof(T) * A.length) == B.head.get();
+        }
+    }
+}
+
+namespace CE::Memory::Ordering {
+    // head pointers in ascending order
+    template <typename T> struct HeadOrder {
+        bool operator()(const ::CE::Memory::Block<T>& lhs, const ::CE::Memory::Block<T>& rhs) const noexcept {
+            if (lhs.head.get() != rhs.head.get()) {
+                return lhs.head.get() < rhs.head.get();
+            }
+            if (lhs.length != rhs.length) {
+                return lhs.length < rhs.length;
+            }
+            return lhs.alignment < rhs.alignment;
+        }
+    };
+
+    // sub-block < master-block
+    template <typename T> struct RegistryOrder {
+        bool operator()(const ::CE::Memory::Block<T>& a, const ::CE::Memory::Block<T>& b) const noexcept {
+            if (a.owner.get() != b.owner.get()) {
+                return a.owner.get() < b.owner.get();
+            }
+            return a.head.get() > b.head.get();
+        }
+    };
+
+    // most likely to fill request > least likely to fill request
+    template <typename T> struct PoolOrder {
+        bool operator()(const ::CE::Memory::Block<T>& lhs, const ::CE::Memory::Block<T>& rhs) const noexcept {
+            if (lhs.alignment != rhs.alignment) {
+                return lhs.alignment > rhs.alignment;
+            }
+            if (lhs.length != rhs.length) {
+                return lhs.length > rhs.length;
+            }
+            if (lhs.head.get() != rhs.head.get()) {
+                return lhs.head.get() > rhs.head.get();
+            }
+            return lhs.owner.get() > rhs.owner.get();
+        }
+    };
+
+    /* don't remove the "useless" checks
+     * set<CE::Memory::Block<T>, cmp>::contains() depends on them to properly check equality
+     */
+}
+
+namespace CE::Memory {
+
+    /**
+ * Bookkeeping shared by managers of the same T: registry owns full allocations,
+ * sections partitions split allocations, and pool records reusable ranges.
+ * stale timestamps complete free owners; release queues them for culling.
+ * A retained State keeps this bookkeeping alive after a manager facade dies.
+ */
+    template <typename T> struct BlockManagement {
+        using clock = std::chrono::steady_clock;
+        using tpoint = std::chrono::time_point<clock>;
+
+        /** All pool, partition, and culling records retained for one T specialization. */
+        struct State {
+            const ::CE::Diagnostics::DomainId domain = ::CE::Diagnostics::next_domain_id();
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::PoolOrder<T>>> pool;
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::HeadOrder<T>>> sections;
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> registry;
+            std::tuple<std::shared_mutex, std::unordered_map<::CE::Memory::Block<T>, tpoint>> stale;
+            std::tuple<std::shared_mutex, std::set<::CE::Memory::Block<T>, ::CE::Memory::Ordering::RegistryOrder<T>>> release;
+        };
+
+        static std::shared_ptr<State> shared_state() {
+            static auto state = std::make_shared<State>();
+            return state;
+        }
+
+        // Keep the established access points while making the storage's lifetime
+        // independent of the singleton facades that use it.
+        inline static auto& pool = shared_state()->pool;
+        inline static auto& sections = shared_state()->sections;
+        inline static auto& registry = shared_state()->registry;
+        inline static auto& stale = shared_state()->stale;
+        inline static auto& release = shared_state()->release;
+
+    protected:
+        std::shared_ptr<State> state_ = shared_state();
+    };
+
+    /** Virtual lookup, merge, and culling interface for block managers. */
+    template <typename T> struct BlockManagerInterface {
+        friend class ::Test_iManage;
+
+    protected:
+        virtual void record_new(::CE::Memory::Block<T>) = 0;
+        virtual void mark_stale(::CE::Memory::Block<T>) = 0;
+        virtual ::CE::Memory::OptionalBlock<T> merge_into_pool(::CE::Memory::Block<T>) = 0;
+        virtual ::CE::Memory::OptionalBlock<T> find_section(T*) = 0;
+        virtual ::CE::Memory::OptionalBlock<T> find_owner(T*) = 0;
+        virtual ::CE::Memory::OptionalBlock<T> fill_request(std::size_t, std::align_val_t minimum_alignment = std::align_val_t{0}) = 0;
+
+    public:
+        virtual ~BlockManagerInterface() = default;
+        virtual void cull(std::chrono::minutes age) = 0;
+        virtual void release_culled() = 0;
+    };
+
+    template <typename T> struct BlockTransactions;
+
+    /**
+ * Implements block lookup, merging, and culling over CE::Memory::BlockManagement<T>'s
+ * shared sets. Derived managers decide how blocks are acquired and returned.
+ */
+    template <typename T>
+    struct AbstractBlockManager : BlockManagement<T>,
+                                  BlockManagerInterface<T> {
+        AbstractBlockManager() = default;
+        ~AbstractBlockManager() override = default;
+        using clock = typename ::CE::Memory::BlockManagement<T>::clock;
+        using tpoint = typename ::CE::Memory::BlockManagement<T>::tpoint;
+
+        void cull(std::chrono::minutes age) override { ::CE::Memory::BlockTransactions<T>::cull(this->state_, age); }
+
+        void release_culled() override { ::CE::Memory::BlockTransactions<T>::release_culled(this->state_); }
+
+    protected:
+        template <typename Tuple> static std::shared_mutex& get_mutex(Tuple& tuple) { return std::get<0>(tuple); }
+
+        template <typename... Tuples> static void read_lock(Tuples&... tuples) {
+            // Lambda to lock each shared mutex in shared mode
+            auto lock_shared_mutex = [](auto& tuple) { std::get<0>(tuple).lock_shared(); };
+
+            // Apply the lambda to each tuple
+            (lock_shared_mutex(tuples), ...);
+        }
+
+        template <typename... Tuples> static void read_unlock(Tuples&... tuples) {
+            // Lambda to lock each shared mutex in shared mode
+            auto lock_shared_mutex = [](auto& tuple) { std::get<0>(tuple).unlock_shared(); };
+
+            // Apply the lambda to each tuple
+            (lock_shared_mutex(tuples), ...);
+        }
+
+        template <typename... Tuples> static void emplace(::CE::Memory::Block<T> b, Tuples&... tuples) {
+            // Update each bookkeeping set under its own mutex. The sets are not
+            // changed as one atomic transaction across these separate locks.
+            auto lock_set = [](::CE::Memory::Block<T> b, auto&& pair) {
+                std::unique_lock<std::shared_mutex> lock(std::get<0>(pair));
+                std::get<1>(pair).emplace(b);
+            };
+
+            // Apply the same insertion to each selected bookkeeping set.
+            (lock_set(b, std::forward<Tuples>(tuples)), ...);
+        }
+
+        template <typename... Tuples> static void erase(::CE::Memory::Block<T> b, Tuples&... tuples) {
+            // Erase each selected record under that set's own mutex.
+            auto lock_set = [](::CE::Memory::Block<T> b, auto&& pair) {
+                std::unique_lock<std::remove_reference_t<decltype(std::get<0>(pair))>> lock(std::get<0>(pair));
+                std::get<1>(pair).erase(b);
+            };
+
+            // Remove the record from every selected bookkeeping set.
+            (lock_set(b, std::forward<Tuples>(tuples)), ...);
+        }
+
+        template <typename... Tuples> static bool contains(::CE::Memory::Block<T> b, Tuples&... tuples) {
+            // Require an exact block match: some set comparators equate records
+            // with the same address even when their lengths differ.
+            auto share_set = [](::CE::Memory::Block<T> b, auto&& pair) {
+                std::shared_lock<std::shared_mutex> lock(std::get<0>(pair));
+                const auto& set = std::get<1>(pair);
+                const auto found = set.find(b);
+                return found != set.end() && *found == b;
+            };
+
+            // Every selected set must still contain that complete block.
+            return (share_set(b, std::forward<Tuples>(tuples)) && ...);
+        }
+
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> search_right(::CE::Memory::Block<T> block, Tuple& tuple) {
+            // lower_bound can land on this block or another range at its start;
+            // advance until the next higher address within the same owner.
+            std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+            auto& set = std::get<1>(tuple);
+            auto iter = set.lower_bound(block);
+            while (iter != set.end() && block.owner == iter->owner && iter->head.get() <= block.head.get()) {
+                iter = std::next(iter);
+            }
+            if (iter != set.end() && block.owner == iter->owner && iter->head.get() > block.head.get()) {
+                return {*iter};
+            }
+            return {std::nullopt};
+        }
+
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> search_left(::CE::Memory::Block<T> block, Tuple& tuple) {
+            // Walk backward past the lower bound to find an earlier address,
+            // stopping when the ordered records belong to a different owner.
+            std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+            auto& set = std::get<1>(tuple);
+            auto iter = set.lower_bound(block);
+            while (iter != set.begin()) {
+                --iter;
+                if (iter->head.get() < block.head.get()) {
+                    if (block.owner == iter->owner)
+                        return {*iter};
+                    break;
+                }
+            }
+            return {std::nullopt};
+        }
+
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> contiguous_right(::CE::Memory::Block<T> block, Tuple& tuple) {
+            auto ob = search_right(block, tuple);
+            if (ob.has_value() && ::CE::Memory::is_contiguous(block, *ob)) {
+                return {*ob};
+            }
+            return {std::nullopt};
+        }
+
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> contiguous_left(::CE::Memory::Block<T> block, Tuple& tuple) {
+            auto ob = search_left(block, tuple);
+            if (ob.has_value() && ::CE::Memory::is_contiguous(block, *ob)) {
+                return {*ob};
+            }
+            return {std::nullopt};
+        }
+
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> adjacent_right(::CE::Memory::Block<T> block, Tuple& tuple) {
+            std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+            auto& set = std::get<1>(tuple);
+            auto iter = set.lower_bound(block);
+            if (iter != set.end()) {
+                if (*iter == block) {
+                    iter = std::next(iter);
+                }
+            }
+            if (iter != set.end()) {
+                return {*iter};
+            }
+            return {std::nullopt};
+        }
+
+        // Returns the predecessor in the set's ordering, which may differ from address order.
+        template <typename Tuple>::CE::Memory::OptionalBlock<T> adjacent_left(::CE::Memory::Block<T> block, Tuple& tuple) {
+            std::shared_lock<std::shared_mutex> lock(std::get<0>(tuple));
+            auto& set = std::get<1>(tuple);
+            const auto next = set.lower_bound(block);
+            if (next == set.begin()) {
+                return {std::nullopt};
+            }
+            const auto previous = std::prev(next);
+            return {*previous};
+        }
+
+        // CE::Memory::BlockManagerInterface interface
+        /////////////////////
+        void record_new(::CE::Memory::Block<T> block) override { ::CE::Memory::BlockTransactions<T>::record_new(this->state_, block); }
+
+        void mark_stale(::CE::Memory::Block<T> block) override { ::CE::Memory::BlockTransactions<T>::mark_stale(this->state_, block); }
+
+        ::CE::Memory::OptionalBlock<T> merge_into_pool(::CE::Memory::Block<T> block) override {
+            return ::CE::Memory::BlockTransactions<T>::return_block(this->state_, block);
+        }
+
+        ::CE::Memory::OptionalBlock<T> find_section(T* ptr) override {
+            return ::CE::Memory::BlockTransactions<T>::find_section(this->state_, ptr);
+        }
+
+        ::CE::Memory::OptionalBlock<T> find_owner(T* ptr) override {
+            return ::CE::Memory::BlockTransactions<T>::find_owner(this->state_, ptr);
+        }
+
+        ::CE::Memory::OptionalBlock<T> fill_request(std::size_t N, std::align_val_t minimum_alignment = std::align_val_t{0}) override {
+            constexpr auto alignment = [] {
+                if constexpr (std::is_void_v<T>)
+                    return std::align_val_t{64};
+                else
+                    return std::align_val_t{alignof(T)};
+            }();
+            // This interface claims one existing range. Compound checkout/splitting
+            // uses checkout() instead so a partial partition is never published.
+            return ::CE::Memory::BlockTransactions<T>::fill_request(this->state_, N, std::max(alignment, minimum_alignment));
+        }
+    };
+
+}
+
+namespace std {
+    template <typename T> struct hash<::CE::Memory::Block<T>> {
+        std::size_t operator()(const ::CE::Memory::Block<T>& k) const noexcept {
+            constexpr std::hash<std::shared_ptr<T>> hash_ptr;
+            constexpr std::hash<std::align_val_t> hash_align;
+            constexpr std::hash<size_t> hash_szt;
+            std::size_t combined_hash = hash_ptr(k.owner);
+            combined_hash ^= hash_ptr(k.head) + 0x9e3779b9 + (combined_hash << 6) + (combined_hash >> 2);
+            combined_hash ^= hash_align(k.alignment) + 0x9e3779b9 + (combined_hash << 6) + (combined_hash >> 2);
+            combined_hash ^= hash_szt(k.length) + 0x9e3779b9 + (combined_hash << 6) + (combined_hash >> 2);
+            return combined_hash;
+        }
+    };
+
+    template <typename T> struct formatter<::CE::Memory::Block<T>> {
+        constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+
+        auto format(const ::CE::Memory::Block<T>& a, std::format_context& ctx) const {
+            return std::format_to(
+                ctx.out(), "{} [alignment: {}, length: {}]", static_cast<void*>(a.head.get()), static_cast<std::size_t>(a.alignment),
+                a.length
+            );
+        }
+    };
+
+}
+
+namespace CE::Memory {
+    template <typename S, typename T>
+        requires(!requires(S& stream, const Block<T>& value) { stream.operator<<(value); })
+    S& operator<<(S& os, const Block<T>& block) {
+        //uint32_t owner = std::get<uint32_t>(CE::Memory::Pointers::pointer_to_hash(block.owner.get(),4));
+        auto owner = static_cast<void*>(block.owner.get());
+        os << std::format(
+            "{} [alignment: {}, length: {}({}), owner: {}]", static_cast<void*>(block.head.get()),
+            static_cast<std::size_t>(block.alignment), (void*)block.length, block.length, owner
+        );
+        return os;
+    }
+
+    template <typename S> S& operator<<(S& os, const std::align_val_t alignment) {
+        os << std::format("{}", static_cast<std::size_t>(alignment));
+        return os;
+    }
+}
+
+#include "block-transactions.h"

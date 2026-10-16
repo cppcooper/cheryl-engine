@@ -1,0 +1,39 @@
+#pragma once
+
+#include <core/controls/tick-input.h>
+#include <core/display/framebuffer-size.h>
+#include <core/display/viewport.h>
+
+#include "simulation-scheduler.h"
+
+#include <stop_token>
+
+namespace CE::Game {
+    /** One simulation update. The runtime owns the input view for the duration of update().
+     * delta_seconds belongs to the simulation policy; input.elapsed() and raw
+     * hold/down durations remain observation time. A recovery batch reports its
+     * dropped time once, on the final update. Input never subdivides updates.
+     * framebuffer_size and logical_size are sampled together on the platform thread
+     * and copied into this tick. Manually authored ticks default logical_size to zero.
+     */
+    struct TickContext {
+        double delta_seconds;
+        const ::CE::Input::Tick& input;
+        ::CE::Platform::FramebufferSize framebuffer_size;
+        ::CE::Runtime::Simulation::UpdateKind update_kind = ::CE::Runtime::Simulation::UpdateKind::Variable;
+        double dropped_seconds = 0.0;
+        ::CE::Platform::Dimensions<int> logical_size{0, 0};
+        std::stop_source runtime_stop{std::nostopstate};
+
+        /** Request normal runtime shutdown from this simulation update.
+         * Runtime ticks carry a shared stop request; manually authored ticks
+         * without one reject the operation. This does not end update(): return
+         * explicitly when the game should stop processing the current tick.
+         */
+        void request_stop() const;
+        [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
+        // Derived control policy: observed down-time proportion times simulation delta.
+        // With no observation interval, use held State. This does not recover tap history.
+        [[nodiscard]] double button_simulation_seconds(::CE::Input::Actions::Id action) const;
+    };
+}

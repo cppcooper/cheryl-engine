@@ -1,0 +1,277 @@
+#include <core/engine/engine-context.h>
+#include <core/game-framework/abstract-game.h>
+#include <core/game-framework/game-runtime.h>
+#include <core/controls/input-interface.h>
+#include <core/display/display-system-interface.h>
+#include <core/rendering/presentation-surface.h>
+#include <core/rendering/renderer.h>
+#include <assets/resources/resource-provider.h>
+#include <internals/exceptions.h>
+#include <gtest/gtest.h>
+
+#include <array>
+#include <chrono>
+#include <memory>
+#include <stdexcept>
+#include <thread>
+#include <vector>
+
+#if defined(GL_VERSION_3_3) || defined(GLFW_VERSION_MAJOR)
+#error Engine runtime contracts must compile without native or graphics SDK headers.
+#endif
+
+namespace {
+    struct Observations {
+        CE::Platform::Window* attached = nullptr;
+        CE::Platform::FramebufferSize viewport{};
+        int updates = 0;
+        int frames = 0;
+        int renders = 0;
+        int presentations = 0;
+        int initializations = 0;
+        int shutdowns = 0;
+        int game_initializations = 0;
+        int quiesces = 0;
+        int game_shutdowns = 0;
+        bool pressed = false;
+        std::stop_source saved_stop{std::nostopstate};
+    };
+
+    class ContractWindow final : public CE::Platform::Window {
+        const std::thread::id owner_ = std::this_thread::get_id();
+        const std::chrono::steady_clock::time_point deadline_ = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+
+    public:
+        CE::Platform::Dimensions<int> logical_size() const override {
+            EXPECT_EQ(std::this_thread::get_id(), owner_);
+            return {16, 12};
+        }
+        CE::Platform::FramebufferSize framebuffer_size() const override {
+            EXPECT_EQ(std::this_thread::get_id(), owner_);
+            return {32, 24};
+        }
+        CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
+        bool should_close() const override { return std::chrono::steady_clock::now() >= deadline_; }
+        void resize(int, int) override {}
+        void set_mode(CE::Platform::WindowMode) override {}
+        void hide_cursor(bool) const override {}
+    };
+
+    class ContractDisplay final : public CE::Platform::DisplaySystem {
+        std::vector<CE::Platform::Monitor> monitors_{{1, 32, 24}};
+        ContractWindow window_;
+
+    public:
+        const std::vector<CE::Platform::Monitor>& monitors() const override { return monitors_; }
+        int monitor_count() const override { return 1; }
+        const CE::Platform::Monitor& primary_monitor() const override { return monitors_.front(); }
+        CE::Platform::Window* active_window() const override { return const_cast<ContractWindow*>(&window_); }
+        std::pair<float, float> content_scale(const CE::Platform::Monitor&) const override { return {1, 1}; }
+        CE::Platform::Window* create_window(const CE::Platform::Monitor&, CE::Platform::WindowMode, int, int) override { return &window_; }
+        void activate_window(CE::Platform::Window&) override {}
+    };
+
+    class ContractInput final : public CE::Input::System {
+        Observations& observations_;
+        CE::Input::Actions::Bindings bindings_;
+
+    public:
+        explicit ContractInput(Observations& observations)
+        : observations_(observations) {}
+        void initialize(CE::Platform::Window& window) override { observations_.attached = &window; }
+        void deinitialize() override { observations_.attached = nullptr; }
+        void poll() override {
+            bindings_.on_button({keyboard_id(), 65}, true);
+            (void)bindings_.publish_actions();
+        }
+        CE::Input::Actions::Bindings& bindings() override { return bindings_; }
+        CE::Input::DeviceId keyboard_id() const override { return 1; }
+        CE::Input::DeviceId mouse_id() const override { return 2; }
+        CE::Input::DeviceId gamepad_id() const override { return 3; }
+    };
+
+    class ContractSurface final : public CE::Rendering::PresentationSurface {
+        Observations& observations_;
+
+    public:
+        explicit ContractSurface(Observations& observations)
+        : observations_(observations) {}
+        void present() override { ++observations_.presentations; }
+    };
+
+    class ContractRenderer final : public CE::Rendering::Renderer {
+        Observations& observations_;
+
+    public:
+        explicit ContractRenderer(Observations& observations)
+        : observations_(observations) {}
+        void initialize() override { ++observations_.initializations; }
+        void deinitialize() override { ++observations_.shutdowns; }
+        void maintain_resources() override {}
+        void render(const CE::Rendering::Frame& frame) override {
+            EXPECT_EQ(frame.passes().size(), 1u);
+            ++observations_.renders;
+        }
+        void clear() override {}
+        void set_viewport(CE::Platform::FramebufferSize size) override { observations_.viewport = size; }
+        void set_depth_test(bool) override {}
+        void set_clear_colour(float, float, float, float) override {}
+        void set_camera_matrices(const glm::mat4&, const glm::mat4&) override {}
+    };
+
+    class ContractResources final : public CE::Rendering::Resources::Provider {
+    public:
+        std::shared_ptr<CE::Rendering::Resources::Image> create_image(const CE::Assets::Images::Decoded&) override {
+            throw std::logic_error("This contract scenario does not upload images");
+        }
+        std::shared_ptr<CE::Rendering::Resources::Image>
+        create_font_atlas(std::span<const unsigned char>, CE::Rendering::Geometry::PixelSize) override {
+            throw std::logic_error("This contract scenario does not upload fonts");
+        }
+        std::shared_ptr<CE::Rendering::Geometry::Buffer2D>
+        upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D>, CE::Rendering::Geometry::Topology) override {
+            throw std::logic_error("This contract scenario does not upload geometry");
+        }
+        std::shared_ptr<CE::Rendering::Resources::Program> link_program(const std::vector<std::filesystem::path>&) override {
+            throw std::logic_error("This contract scenario does not link shaders");
+        }
+    };
+
+    class ContractGame final : public CE::Game::AbstractGame {
+        CE::Runtime::Context& engine_;
+        Observations& observations_;
+
+    public:
+        ContractGame(CE::Runtime::Context& engine, Observations& observations)
+        : engine_(engine), observations_(observations) {}
+        void init() override {
+            ++observations_.game_initializations;
+            (void)engine_.input().bindings().bind_button({1, 65}, CE::Input::Actions::Id{1});
+        }
+        void quiesce() override {
+            EXPECT_TRUE(observations_.saved_stop.stop_requested());
+            EXPECT_NE(observations_.attached, nullptr);
+            EXPECT_EQ(observations_.shutdowns, 0);
+            ++observations_.quiesces;
+        }
+        void deinit() override {
+            EXPECT_EQ(observations_.quiesces, 1);
+            EXPECT_NE(observations_.attached, nullptr);
+            EXPECT_EQ(observations_.shutdowns, 0);
+            ++observations_.game_shutdowns;
+        }
+        void update(const CE::Game::TickContext& tick) override {
+            observations_.pressed = tick.input.button(CE::Input::Actions::Id{1}).pressed();
+            EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{32, 24}));
+            EXPECT_EQ(tick.logical_size.width, 16);
+            EXPECT_EQ(tick.logical_size.height, 12);
+            ++observations_.updates;
+            observations_.saved_stop = tick.runtime_stop;
+            tick.request_stop();
+            tick.request_stop(); // Repeated requests preserve ordinary cleanup.
+        }
+        void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
+            (void)frame.begin_pass(glm::mat4{1}, glm::mat4{1});
+            ++observations_.frames;
+        }
+    };
+}
+
+TEST(runtime_contract, frame) {
+    Observations observations;
+    CE::Runtime::Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    ContractGame game(engine, observations);
+    CE::Runtime::GameRuntime runtime(engine, game);
+    runtime.run();
+    EXPECT_TRUE(observations.pressed);
+    EXPECT_EQ(observations.updates, 1);
+    EXPECT_EQ(observations.frames, 1);
+    EXPECT_EQ(observations.renders, 1);
+    EXPECT_EQ(observations.presentations, 1);
+    EXPECT_EQ(observations.initializations, 1);
+    EXPECT_EQ(observations.shutdowns, 1);
+    EXPECT_EQ(observations.game_initializations, 1);
+    EXPECT_EQ(observations.quiesces, 1);
+    EXPECT_EQ(observations.game_shutdowns, 1);
+    EXPECT_EQ(observations.viewport, (CE::Platform::FramebufferSize{32, 24}));
+    EXPECT_EQ(observations.attached, nullptr);
+    const auto diagnostics = runtime.diagnostics();
+    EXPECT_EQ(diagnostics.updates, 1u);
+    EXPECT_EQ(diagnostics.published, 1u);
+    EXPECT_EQ(diagnostics.rendered, 1u);
+    EXPECT_THROW(runtime.run(), CE::Exceptions::failed_operation);
+}
+
+TEST(runtime_contract, concurrent_window_snapshot) {
+    Observations observations;
+    CE::Runtime::Context engine(
+        std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+        std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+        std::make_unique<ContractInput>(observations)
+    );
+    ContractGame game(engine, observations);
+    CE::Runtime::GameRuntime runtime(engine, game, CE::Runtime::RunMode::Concurrent);
+    runtime.run();
+    EXPECT_EQ(observations.updates, 1);
+    EXPECT_EQ(observations.game_initializations, 1);
+    EXPECT_EQ(observations.quiesces, 1);
+    EXPECT_EQ(observations.game_shutdowns, 1);
+    EXPECT_EQ(observations.shutdowns, 1);
+    EXPECT_EQ(observations.attached, nullptr);
+}
+
+TEST(runtime_contract, stopped) {
+    for (const auto mode : std::array{CE::Runtime::RunMode::Sequential, CE::Runtime::RunMode::Concurrent}) {
+        Observations observations;
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        ContractGame game(engine, observations);
+        CE::Runtime::GameRuntime runtime(engine, game, mode);
+        runtime.stop();
+        runtime.stop();
+        runtime.run();
+        EXPECT_EQ(observations.updates, 0);
+        EXPECT_EQ(observations.initializations, 0);
+        EXPECT_EQ(observations.game_initializations, 0);
+        EXPECT_EQ(observations.quiesces, 0);
+        EXPECT_EQ(observations.game_shutdowns, 0);
+        EXPECT_EQ(observations.shutdowns, 0);
+        EXPECT_EQ(observations.attached, nullptr);
+    }
+}
+
+TEST(runtime_contract, saved_stop) {
+    Observations observations;
+    {
+        CE::Runtime::Context engine(
+            std::make_unique<ContractDisplay>(), std::make_unique<ContractSurface>(observations),
+            std::make_unique<ContractRenderer>(observations), std::make_unique<ContractResources>(),
+            std::make_unique<ContractInput>(observations)
+        );
+        ContractGame game(engine, observations);
+        CE::Runtime::GameRuntime runtime(engine, game);
+        runtime.run();
+    }
+    EXPECT_TRUE(observations.saved_stop.stop_requested());
+    EXPECT_FALSE(observations.saved_stop.request_stop());
+    EXPECT_EQ(observations.game_shutdowns, 1);
+    EXPECT_EQ(observations.shutdowns, 1);
+}
+
+TEST(runtime_contract, missing_display) {
+    Observations observations;
+    EXPECT_THROW(
+        CE::Runtime::Context(
+            nullptr, std::make_unique<ContractSurface>(observations), std::make_unique<ContractRenderer>(observations),
+            std::make_unique<ContractResources>(), std::make_unique<ContractInput>(observations)
+        ),
+        CE::Exceptions::invalid_args
+    );
+}

@@ -1,0 +1,95 @@
+#include <core/resources/fileio/fonts-system.h>
+
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <string>
+#include <string_view>
+
+namespace CE::Text {
+    namespace {
+        namespace fs = std::filesystem;
+
+        std::string lowercase(std::string value) {
+            std::ranges::transform(value, value.begin(), [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return value;
+        }
+
+        void append_environment_path(
+            std::vector<::std::filesystem::path>& directories,
+            const char* variable,
+            const ::std::filesystem::path& suffix = {}
+        ) {
+            if (const char* value = std::getenv(variable); value && *value) {
+                directories.push_back(::std::filesystem::path(value) / suffix);
+            }
+        }
+
+        bool is_supported_font(const ::std::filesystem::path& path) {
+            const auto extension = lowercase(path.extension().string());
+            return extension == ".ttf" || extension == ".otf" || extension == ".ttc" || extension == ".otc";
+        }
+    }
+
+    std::vector<::std::filesystem::path> system_font_directories() {
+        std::vector<::std::filesystem::path> directories{
+            "/usr/share/fonts", "/usr/local/share/fonts", "/Library/Fonts", "/System/Library/Fonts"
+        };
+        append_environment_path(directories, "HOME", ".fonts");
+        append_environment_path(directories, "HOME", ".local/share/fonts");
+        append_environment_path(directories, "HOME", "Library/Fonts");
+        append_environment_path(directories, "XDG_DATA_HOME", "fonts");
+        append_environment_path(directories, "WINDIR", "Fonts");
+        append_environment_path(directories, "LOCALAPPDATA", "Microsoft/Windows/Fonts");
+        return directories;
+    }
+
+    std::vector<::std::filesystem::path> find_system_fonts() {
+        return find_system_fonts(system_font_directories());
+    }
+
+    std::vector<::std::filesystem::path> find_system_fonts(const std::vector<::std::filesystem::path>& directories) {
+        // Ignore inaccessible roots while walking installed fonts, then sort/deduplicate
+        // across overlapping system and user font directories.
+        std::vector<::std::filesystem::path> fonts;
+        for (const auto& directory : directories) {
+            std::error_code error;
+            if (!::std::filesystem::is_directory(directory, error) || error)
+                continue;
+
+            ::std::filesystem::recursive_directory_iterator entries(
+                directory, ::std::filesystem::directory_options::skip_permission_denied, error
+            );
+            const ::std::filesystem::recursive_directory_iterator end;
+            while (!error && entries != end) {
+                const auto& entry = *entries;
+                if (entry.is_regular_file(error) && !error && is_supported_font(entry.path())) {
+                    fonts.push_back(entry.path().lexically_normal());
+                }
+                entries.increment(error);
+                if (error)
+                    error.clear();
+            }
+        }
+        std::ranges::sort(fonts);
+        fonts.erase(std::unique(fonts.begin(), fonts.end()), fonts.end());
+        return fonts;
+    }
+
+    std::optional<::std::filesystem::path> select_default_system_font(const std::vector<::std::filesystem::path>& fonts) {
+        if (fonts.empty())
+            return std::nullopt;
+        constexpr std::string_view preferred_names[]{"arial.ttf", "helvetica.ttc", "dejavusans.ttf", "liberationsans-regular.ttf",
+            "nimbussans-regular.otf", "notosans-regular.ttf", "freesans.ttf", "segoeui.ttf", "roboto-regular.ttf", "calibri.ttf",
+            "consola.ttf", "proggyvector regular.ttf"};
+        // Prefer stable face names in order; use the sorted minimum as a host-dependent fallback.
+        for (const auto preferred : preferred_names) {
+            const auto match = std::ranges::find_if(fonts, [preferred](const ::std::filesystem::path& font) {
+                return lowercase(font.filename().string()) == preferred;
+            });
+            if (match != fonts.end())
+                return *match;
+        }
+        return *std::ranges::min_element(fonts);
+    }
+}

@@ -1,37 +1,95 @@
-cmake_minimum_required(VERSION 3.20)
-set(CMAKE_CXX_STANDARD 20)
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+cmake_minimum_required(VERSION 3.28)
+set(CMAKE_CXX_STANDARD 23)
+include(cmake/CherylVersions.cmake)
+project(cheryl
+        VERSION ${VERSION_PROJECT_CHERYL}
+        LANGUAGES C CXX
+)
+
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
+# Cheryl build metadata: options, target identities, artifact names, and linkage declarations.
+include(cmake/CherylOptions.cmake)
+cheryl_configure_root_options()
+include(cmake/CherylTargets.cmake)
+include(cmake/CherylOutputs.cmake)
+include(cmake/CherylLinkage.cmake)
+
+set(CHERYL_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
+
+if(WARN)
+    set(GCC_COVERAGE_COMPILE_FLAGS "-Wall")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}" )
+endif(WARN)
+if (NOT MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message("Debug build detected: enabling UB Sanitizer.")
     add_compile_options("-fsanitize=address,undefined")
     add_link_options("-fsanitize=address,undefined")
 endif()
 
-# project variables
-project(cheryl-engine)
+include(cmake/CherylDependencies.cmake)
+include(cmake/CherylModules.cmake)
 
-# target names
-set(LIBRARY_TARGET cengine)
-set(TEST_TARGET all-tests)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wno-deprecated-declarations)
+endif()
+if(CHERYL_BUILD_TESTS)
+    include(GoogleTest)
+    enable_testing()
+endif()
 
-# dependencies
-file(GLOB_RECURSE SOURCE LIST_DIRECTORIES false src/*)
-message("source files: ${SOURCE}")
+add_subdirectory(projects/engine)
 
-#add_subdirectory(extern/glew EXCLUDE_FROM_ALL)
-add_subdirectory(extern/glfw EXCLUDE_FROM_ALL)
-add_subdirectory(extern/glm EXCLUDE_FROM_ALL)
-add_subdirectory(extern/spdlog EXCLUDE_FROM_ALL)
-add_subdirectory(extern/backward-cpp EXCLUDE_FROM_ALL)
-add_subdirectory(extern/googletest EXCLUDE_FROM_ALL)
+if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
+    add_subdirectory(projects/modules/platform/debug-terminal-linux)
+    if(NOT TARGET Cheryl::DebugTerminal)
+        add_library(Cheryl::DebugTerminal ALIAS ${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX})
+    endif()
+endif()
 
-# include directories
-include_directories(include)
-include_directories(extern/glm/glm)
-include_directories(extern/googletest/googletest/include)
-#include_directories(extern/glfw/include/GLFW)
-#include_directories(extern/spdlog/include)
+if(CHERYL_BUILD_NATIVE_GLFW)
+    add_subdirectory(projects/modules/platform/native-glfw)
+endif()
+if(CHERYL_BUILD_OPENGL)
+    add_subdirectory(projects/modules/graphics/opengl)
+endif()
+if(CHERYL_BUILD_UI_TGUI)
+    add_subdirectory(projects/modules/ui/tgui)
+endif()
+if(CHERYL_BUILD_UI_RMLUI)
+    add_subdirectory(projects/modules/ui/rmlui)
+endif()
+if(CHERYL_BUILD_AUDIO_MINIAUDIO)
+    add_subdirectory(projects/modules/audio/miniaudio)
+endif()
 
-# test targets
+if(CHERYL_BUILD_TESTS)
+    add_subdirectory(projects/tests)
+endif()
 
+if(CHERYL_BUILD_CONSUMER_TESTS)
+    add_subdirectory(projects/engine/tests/consumer)
+endif()
+if(CHERYL_BUILD_TESTS)
+    add_subdirectory(projects/dependency-checks/backward-cpp)
+endif()
+if(CHERYL_BUILD_DEMO AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
+    add_subdirectory(projects/apps/demo)
+endif()
+if(CHERYL_BUILD_FIRST_GAME AND CHERYL_BUILD_NATIVE_GLFW AND CHERYL_BUILD_OPENGL AND CHERYL_NATIVE_INPUT)
+    add_subdirectory(projects/apps/first-game)
+endif()
 
-# library targets
-add_library(${LIBRARY_TARGET} SHARED ${SOURCE})
+if(CHERYL_BUILD_SDK)
+    include(cmake/CherylSdk.cmake)
+endif()
+
+cheryl_check_option_requirements()
+
+if(CHERYL_BUILD_DOCS)
+    include(cmake/CherylDocumentation.cmake)
+    cheryl_add_documentation_targets("${CHERYL_REPOSITORY_ROOT}")
+endif()
