@@ -1,8 +1,11 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include "osink.h"
 #include "compile-policy.h"
 #include "config.h"
 #include "backend-guard.h"
+#include "log-names.h"
 #include <templates/singleton.h>
 #include <internals/failure-reporting.h>
 
@@ -27,9 +30,9 @@
 #include <vector>
 
 namespace CE::Logging::Detail {
-    inline std::mutex default_logger_mutex;
+    extern CE_API std::mutex default_logger_mutex;
 
-    [[nodiscard]] uint16_t next_log_id() noexcept;
+    [[nodiscard]] CE_API uint16_t next_log_id() noexcept;
 
     enum class LogState { Opening, Open, Closing, Closed };
 
@@ -75,7 +78,7 @@ namespace CE::Logging::Detail {
 
 namespace CE::Diagnostics {
     // Bounded trace; empty if resolution or copying fails. Never masks the caller's failure.
-    extern std::string stack_trace(void* addr0 = nullptr) noexcept;
+    CE_API extern std::string stack_trace(void* addr0 = nullptr) noexcept;
 }
 
 namespace CE::Logging {
@@ -268,6 +271,16 @@ namespace CE::Logging::Detail {
         ThreadPoolInit()
         : tp(CE::Logging::Detail::make_owned_pool(queue_reports)) {}
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Logging::Detail::ThreadPoolInit>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::engine>>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::platform>>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::rendering>>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::assets>>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::memory>>::storage() -> Storage&;
+    template <> CE_API auto Singleton<CE::Logging::Log<CE::Logging::Categories::cheryl>>::storage() -> Storage&;
 }
 
 // template definitions - methods

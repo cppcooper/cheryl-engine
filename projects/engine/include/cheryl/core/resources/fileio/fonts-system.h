@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <filesystem>
 #include <optional>
 #include <vector>
@@ -8,10 +10,10 @@ namespace CE::Text {
      * HOME/XDG_DATA_HOME/WINDIR/LOCALAPPDATA values. No existence check or deduplication
      * occurs here. Keep environment mutation serialized with this call.
      */
-    [[nodiscard]] std::vector<std::filesystem::path> system_font_directories();
+    [[nodiscard]] CE_API std::vector<std::filesystem::path> system_font_directories();
 
     /** Discover fonts using system_font_directories() with the explicit-root overload's policy. */
-    [[nodiscard]] std::vector<std::filesystem::path> find_system_fonts();
+    [[nodiscard]] CE_API std::vector<std::filesystem::path> find_system_fonts();
 
     /** Best-effort recursive discovery of regular .ttf/.otf/.ttc/.otc paths,
      * matched case-insensitively. Missing/non-directory/inaccessible roots and
@@ -21,7 +23,7 @@ namespace CE::Text {
      * aliases are not canonicalized and font contents are not validated.
      * Filesystem errors use error_code; allocation/path-conversion failures propagate.
      */
-    [[nodiscard]] std::vector<std::filesystem::path> find_system_fonts(const std::vector<std::filesystem::path>& directories);
+    [[nodiscard]] CE_API std::vector<std::filesystem::path> find_system_fonts(const std::vector<std::filesystem::path>& directories);
 
     /** Choose a candidate by the filename preference order documented in
      * docs/assets/file-and-font-discovery.md. Filename matching ignores case;
@@ -29,5 +31,5 @@ namespace CE::Text {
      * return the minimum path; an empty list returns nullopt. No I/O, font-family
      * inspection or load-failure fallback is performed. The path is an owned copy.
      */
-    [[nodiscard]] std::optional<std::filesystem::path> select_default_system_font(const std::vector<std::filesystem::path>& fonts);
+    [[nodiscard]] CE_API std::optional<std::filesystem::path> select_default_system_font(const std::vector<std::filesystem::path>& fonts);
 }

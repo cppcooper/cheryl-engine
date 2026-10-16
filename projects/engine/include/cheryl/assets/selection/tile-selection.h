@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/tileset.h>
 
 #include <cstdint>
@@ -49,7 +51,7 @@ namespace CE::Assets::Tilesets::Selection {
     // Missing/empty candidate lists return MissingRule; unresolved required samples
     // return IncompleteNeighborhood. Invalid options/rule metadata or an empty sampler
     // throw invalid_args; sampler exceptions propagate. No grid or animation lookup here.
-    [[nodiscard]] Result select(const WangRule& rule, const Sampler& sampler, const Options& options);
-    [[nodiscard]] Result select(const BitmaskRule& rule, const Sampler& sampler, const Options& options);
-    [[nodiscard]] Result select(const Rule& rule, const Sampler& sampler, const Options& options);
+    [[nodiscard]] CE_API Result select(const WangRule& rule, const Sampler& sampler, const Options& options);
+    [[nodiscard]] CE_API Result select(const BitmaskRule& rule, const Sampler& sampler, const Options& options);
+    [[nodiscard]] CE_API Result select(const Rule& rule, const Sampler& sampler, const Options& options);
 }

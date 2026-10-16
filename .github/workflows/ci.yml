@@ -122,8 +122,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {name: linux-modules, os: ubuntu-24.04, type: Release}
-          - {name: windows-modules, os: windows-2025, type: RelWithDebInfo}
+          - {name: linux-modules, os: ubuntu-24.04, type: Release, linkage: static}
+          - {name: windows-modules, os: windows-2025, type: RelWithDebInfo, linkage: static}
+          - {name: linux-modules-shared, os: ubuntu-24.04, type: Release, linkage: shared}
+          - {name: windows-modules-shared, os: windows-2025, type: RelWithDebInfo, linkage: shared}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -146,20 +148,25 @@ jobs:
         env:
           CC: gcc-14
           CXX: g++-14
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
           CHERYL_STB_ALLOCATION_CFF: /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf
         run: |
-          python .github/ci/run.py --build-dir build/ci --profile modules --hwloc ON --sdk
+          python .github/ci/run.py --build-dir build/ci --profile modules --build-type "$BUILD_TYPE" --linkage "$LINKAGE" --hwloc ON --sdk
           python .github/ci/package.py --build-dir build/ci --output build/packages
           python .github/ci/verify_sdk.py --packages build/packages --build-dir build/sdk-consumer --producer-build build/ci
       - name: Build and test Windows modules
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          BUILD_TYPE: ${{ matrix.type }}
+          LINKAGE: ${{ matrix.linkage }}
         run: |
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
           $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (!$vs) { throw 'MSVC x64 tools are unavailable' }
           & "$vs/Common7/Tools/Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          python .github/ci/run.py --build-dir build/ci --profile modules --build-type RelWithDebInfo --hwloc ON --sdk --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
+          python .github/ci/run.py --build-dir build/ci --profile modules --build-type $env:BUILD_TYPE --linkage $env:LINKAGE --hwloc ON --sdk --vcpkg-root $env:CHERYL_CI_VCPKG_ROOT
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python .github/ci/package.py --build-dir build/ci --output build/packages
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

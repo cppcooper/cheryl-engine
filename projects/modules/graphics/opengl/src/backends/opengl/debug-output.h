@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <backends/opengl/gl.h>
 #include <core/diagnostics.h>
 #include <chrono>
@@ -36,19 +38,19 @@ namespace CE::Rendering::OpenGL::Detail {
                 DebugOutput* previous_;
 
             public:
-                explicit Scope(DebugOutput* output) noexcept;
-                ~Scope();
+                CE_OPENGL_API explicit Scope(DebugOutput* output) noexcept;
+                CE_OPENGL_API ~Scope();
                 Scope(const Scope&) = delete;
                 Scope& operator=(const Scope&) = delete;
             };
 
-            void start(::CE::Diagnostics::DomainId domain) noexcept;
-            void stop() noexcept;
-            void report(bool force = false) noexcept;
+            CE_OPENGL_API void start(::CE::Diagnostics::DomainId domain) noexcept;
+            CE_OPENGL_API void stop() noexcept;
+            CE_OPENGL_API void report(bool force = false) noexcept;
             [[nodiscard]] ::CE::Rendering::OpenGL::Detail::DebugStats diagnostics() const noexcept { return stats_; }
 
         private:
-            static void GLAD_API_PTR
+            CE_OPENGL_API static void GLAD_API_PTR
             callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei, const GLchar*, const void*) noexcept;
         };
 }

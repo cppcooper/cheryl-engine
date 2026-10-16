@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/resources/pipeline.h>
 #include <core/rendering/clip-region.h>
 
@@ -39,9 +41,9 @@ namespace CE::Rendering {
 
     // CPU-only validation of clip, handles, geometry range/state and complete
     // parameters. Native domain/context compatibility is checked during playback.
-    void validate_draw_packet(const DrawPacket2D& packet, const ::CE::Rendering::Pipelines::PassConstraints2D& constraints);
+    CE_API void validate_draw_packet(const DrawPacket2D& packet, const ::CE::Rendering::Pipelines::PassConstraints2D& constraints);
     // Stable inputs only; throws without modifying them or publishing a frame packet.
-    [[nodiscard]] DrawPacket2D resolve_draw_packet(
+    [[nodiscard]] CE_API DrawPacket2D resolve_draw_packet(
         std::shared_ptr<const ::CE::Rendering::Geometry::Buffer2D> geometry,
         std::size_t first_vertex,
         std::size_t vertex_count,

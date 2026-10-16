@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include "viewport.h"
 
 #include <cstdint>
@@ -9,7 +11,7 @@ namespace CE::Platform {
      * Native lookup remains subject to the originating display's inventory lifetime.
      */
     struct Monitor : Dimensions<int> {
-        Monitor(std::uint64_t id, int width, int height);
+        CE_API Monitor(std::uint64_t id, int width, int height);
         Monitor(const Monitor&) = default;
         // Inventory identity, not an OS handle or persistent hardware identifier.
         [[nodiscard]] std::uint64_t id() const { return id_; }

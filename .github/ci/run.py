@@ -19,6 +19,7 @@ def main(arguments=None):
     parser.add_argument("--build-dir", type=Path, required=True)
     parser.add_argument("--profile", choices=("headless", "modules", "consumer"), required=True)
     parser.add_argument("--build-type", choices=("Release", "Debug", "RelWithDebInfo"), default="Release")
+    parser.add_argument("--linkage", choices=("static", "shared"), default="static")
     parser.add_argument("--hwloc", choices=("ON", "OFF"), default="OFF")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--vcpkg-root", type=Path)
@@ -31,6 +32,8 @@ def main(arguments=None):
     modules = args.profile == "modules"
     testing = args.profile != "consumer"
     environment = os.environ.copy()
+    if sys.platform == "win32" and args.linkage == "shared":
+        environment["PATH"] = str(build) + os.pathsep + environment.get("PATH", "")
     if testing:
         environment.setdefault("CHERYL_STB_ALLOCATION_TTF", str(source / "assets/fonts/DejaVuSans.ttf"))
     flag = lambda value: "ON" if value else "OFF"
@@ -45,8 +48,9 @@ def main(arguments=None):
                  f"-DCHERYL_BUILD_AUDIO_MINIAUDIO={flag(modules)}",
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC={args.hwloc}",
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_JSON={flag(testing)}", "-DGAINPUT_ENABLE_HID=OFF",
-                 "-DGLFW_BUILD_WAYLAND=OFF", "-Dgtest_force_shared_crt=ON", "-DBUILD_SHARED_LIBS=OFF",
-                 "-DTGUI_SHARED_LIBS=OFF", f"-DCHERYL_BUILD_SDK={flag(args.sdk)}", "-DCMAKE_INSTALL_LIBDIR=lib"]
+                 "-DGLFW_BUILD_WAYLAND=OFF", "-Dgtest_force_shared_crt=ON",
+                 f"-DCHERYL_BUILD_SHARED_LIBS={flag(args.linkage == 'shared')}",
+                 f"-DCHERYL_BUILD_SDK={flag(args.sdk)}", "-DCMAKE_INSTALL_LIBDIR=lib"]
     if modules and sys.platform == "win32":
         configure.append(f"-DPython_EXECUTABLE:FILEPATH={Path(sys.executable).resolve().as_posix()}")
     if sys.platform == "win32" and environment.get("CMAKE_CXX_COMPILER_LAUNCHER") == "ccache":

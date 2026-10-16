@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/animation.h>
 #include <assets/definitions/grid.h>
 #include <math/anchor.h>
@@ -29,7 +31,7 @@ namespace CE::Assets::Tilesets {
     using WangSignature = std::array<std::uint32_t, 8>;
 
     struct WangSignatureHash {
-        [[nodiscard]] std::size_t operator()(const WangSignature& signature) const noexcept;
+        [[nodiscard]] CE_API std::size_t operator()(const WangSignature& signature) const noexcept;
     };
 
     struct WangTile {
@@ -74,6 +76,6 @@ namespace CE::Assets::Tilesets {
         std::unordered_map<std::string, Rule> autotiles;
         std::optional<std::string> shader = {};
 
-        [[nodiscard]] std::string id() const;
+        [[nodiscard]] CE_API std::string id() const;
     };
 }

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/diagnostics.h>
 #include <core/resources/allocators.h>
 #include <core/resources/objects/object-reservation.hpp>
@@ -40,10 +42,10 @@ namespace CE::Assets::Cache {
      */
     class Context {
         friend struct CE::Rendering::Resources::Provider;
-        inline static std::mutex provider_mutex_;
-        inline static const CE::Rendering::Resources::Provider* bound_provider_ = nullptr;
-        inline static std::thread::id owner_;
-        inline static bool releasing_ = false;
+        static CE_API std::mutex provider_mutex_;
+        static CE_API const CE::Rendering::Resources::Provider* bound_provider_;
+        static CE_API std::thread::id owner_;
+        static CE_API bool releasing_;
 
     public:
         static void verify_provider(const CE::Rendering::Resources::Provider& provider) {

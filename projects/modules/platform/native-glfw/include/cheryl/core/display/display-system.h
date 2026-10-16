@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/display/display-system-interface.h>
 #include "window.h"
 
@@ -21,9 +23,9 @@ namespace CE::Platform::GLFW {
      * stable while using this inventory. Borrowed windows and monitor references
      * expire at display destruction, after dependent input/context owners retire.
      */
-    class DisplaySystem final : public ::CE::Platform::DisplaySystem {
+    class CE_TYPE_API DisplaySystem final : public ::CE::Platform::DisplaySystem {
     public:
-        DisplaySystem();
+        CE_NATIVE_GLFW_API DisplaySystem();
 
         [[nodiscard]] const std::vector<::CE::Platform::Monitor>& monitors() const override { return monitors_; }
         [[nodiscard]] int monitor_count() const override { return static_cast<int>(monitors_.size()); }
@@ -33,41 +35,41 @@ namespace CE::Platform::GLFW {
         /** Query current GLFW monitor scale by an owned snapshot's ID; foreign IDs
          * throw invalid_args. This does not refresh dimensions or report window scale.
          */
-        [[nodiscard]] std::pair<float, float> content_scale(const ::CE::Platform::Monitor& monitor) const override;
+        [[nodiscard]] CE_NATIVE_GLFW_API std::pair<float, float> content_scale(const ::CE::Platform::Monitor& monitor) const override;
 
         /** Borrow a new display-owned window. Positive logical dimensions and a known
          * mode are required; foreign monitor IDs, allocation/native creation failures
          * propagate. An omitted/empty title selects a generated title. The overload
          * without dimensions uses the captured monitor dimensions.
          */
-        ::CE::Platform::GLFW::Window*
+        CE_NATIVE_GLFW_API ::CE::Platform::GLFW::Window*
         create_window(const ::CE::Platform::Monitor& monitor, ::CE::Platform::WindowMode mode, int width, int height) override;
-        ::CE::Platform::GLFW::Window* create_window(
+        CE_NATIVE_GLFW_API ::CE::Platform::GLFW::Window* create_window(
             const ::CE::Platform::Monitor& monitor,
             ::CE::Platform::WindowMode mode,
             int width,
             int height,
             const std::string& title
         );
-        ::CE::Platform::GLFW::Window*
+        CE_NATIVE_GLFW_API ::CE::Platform::GLFW::Window*
         create_window(const ::CE::Platform::Monitor& monitor, ::CE::Platform::WindowMode mode, ::CE::Platform::GLFW::Resolution resolution);
-        ::CE::Platform::GLFW::Window* create_window(const ::CE::Platform::Monitor& monitor, ::CE::Platform::WindowMode mode);
+        CE_NATIVE_GLFW_API ::CE::Platform::GLFW::Window* create_window(const ::CE::Platform::Monitor& monitor, ::CE::Platform::WindowMode mode);
         /** Select the initial owned window, accepting repeat selection of that window.
          * Foreign windows or replacing the active window fail explicitly. This does
          * not make a graphics context current or switch renderer/resource domains.
          */
-        void activate_window(::CE::Platform::Window& window) override;
+        CE_NATIVE_GLFW_API void activate_window(::CE::Platform::Window& window) override;
 
     private:
         struct GlfwLibrary {
-            GlfwLibrary();
-            ~GlfwLibrary();
+            CE_NATIVE_GLFW_API GlfwLibrary();
+            CE_NATIVE_GLFW_API ~GlfwLibrary();
             GlfwLibrary(const GlfwLibrary&) = delete;
             GlfwLibrary& operator=(const GlfwLibrary&) = delete;
         } glfw_;
 
-        [[nodiscard]] static ::CE::Platform::Monitor create_primary_monitor();
-        [[nodiscard]] GLFWmonitor* native_monitor(const ::CE::Platform::Monitor& monitor) const;
+        [[nodiscard]] CE_NATIVE_GLFW_API static ::CE::Platform::Monitor create_primary_monitor();
+        [[nodiscard]] CE_NATIVE_GLFW_API GLFWmonitor* native_monitor(const ::CE::Platform::Monitor& monitor) const;
 
         std::vector<::CE::Platform::Monitor> monitors_;
         std::vector<GLFWmonitor*> native_monitors_;

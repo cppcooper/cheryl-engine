@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/resources/geometry2d.h>
 #include <assets/resources/parameters.h>
 
@@ -60,5 +62,5 @@ namespace CE::Rendering::Materials {
 namespace CE::Rendering::Pipelines {
     // CPU-only structural validation; throws on empty paths, unsupported layout/
     // topology/state, disabled-depth writes or an invalid parameter contract.
-    void validate(const Definition& definition);
+    CE_API void validate(const Definition& definition);
 }

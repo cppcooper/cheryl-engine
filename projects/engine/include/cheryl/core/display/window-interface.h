@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "framebuffer-size.h"
 #include "viewport.h"
 #include <core/subsystems/event-channel.h>
@@ -12,7 +14,7 @@ namespace CE::Platform {
      * Queries do not synchronize with another thread. Copy observed values into the
      * runtime handoff instead of reading a live window from simulation/render workers.
      */
-    class Window {
+    class CE_API Window {
     public:
         virtual ~Window() = default;
         [[nodiscard]] virtual ::CE::Platform::Dimensions<int> logical_size() const = 0;

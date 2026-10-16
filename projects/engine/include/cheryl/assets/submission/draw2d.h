@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/types/2d/font.h>
 #include <assets/types/2d/graphic.h>
 #include <assets/types/2d/sprite.h>
@@ -38,7 +40,7 @@ namespace CE::Rendering::Submission {
      * nonempty and absent from style.parameters.
      * @return Owned packet ready to add to a render pass; native use requires its live resource domain.
      */
-    [[nodiscard]] DrawPacket2D resolve_sprite(
+    [[nodiscard]] CE_API DrawPacket2D resolve_sprite(
         const CE::Assets::Sprites::Asset& sprite,
         CE::Assets::Grids::CellIndex cell,
         const DrawStyle2D& style,
@@ -47,20 +49,21 @@ namespace CE::Rendering::Submission {
     // CPU-only resolution from stable inputs: copies values and retains resources,
     // without binding or advancing playback. Failures publish no frame packets.
     // Cell overloads check grid bounds; all returned packets validate material/ranges.
-    [[nodiscard]] DrawPacket2D resolve_tile(
+    [[nodiscard]] CE_API DrawPacket2D resolve_tile(
         const CE::Assets::Tilesets::Asset& tileset,
         CE::Assets::Grids::CellIndex cell,
         const DrawStyle2D& style,
         const Context2D& context
     );
-    [[nodiscard]] DrawPacket2D resolve_tile(const CE::Assets::Tilesets::Tile& tile, const DrawStyle2D& style, const Context2D& context);
-    [[nodiscard]] DrawPacket2D
+    [[nodiscard]] CE_API DrawPacket2D
+    resolve_tile(const CE::Assets::Tilesets::Tile& tile, const DrawStyle2D& style, const Context2D& context);
+    [[nodiscard]] CE_API DrawPacket2D
     resolve_tile(const CE::Assets::Tilesets::Animation& animation, const DrawStyle2D& style, const Context2D& context);
-    [[nodiscard]] DrawPacket2D
+    [[nodiscard]] CE_API DrawPacket2D
     resolve_graphic(const CE::Assets::Graphics::Asset& graphic, const DrawStyle2D& style, const Context2D& context);
     // Layout does not retain text. Glyph offsets are scaled then transformed by the
     // caller's model; packets retain the font resources. Empty layout returns no draws.
-    [[nodiscard]] std::vector<DrawPacket2D> resolve_text(
+    [[nodiscard]] CE_API std::vector<DrawPacket2D> resolve_text(
         const CE::Text::Legacy::Font& font,
         std::string_view text,
         const DrawStyle2D& style,
@@ -79,7 +82,7 @@ namespace CE::Rendering::Submission {
      * @return Owned packets in authored glyph order, empty when there are no glyph draws;
      * native use requires the original live resource domain.
      */
-    [[nodiscard]] std::vector<DrawPacket2D>
+    [[nodiscard]] CE_API std::vector<DrawPacket2D>
     resolve_text(const CE::Text::Rendering::Generation& text, const DrawStyle2D& style, const Context2D& context);
     // Explicitly requires positioned_runs preparation and a shader applying the
     // common scale/model transform to positioned vertices, without per-glyph or
@@ -87,6 +90,6 @@ namespace CE::Rendering::Submission {
     // the caller's model applies to the whole text. Other shaders use resolve_text.
     // Regrouped floating-point transforms can change boundary pixels. Use
     // resolve_text when the original per-glyph raster evaluation is required.
-    [[nodiscard]] std::vector<DrawPacket2D>
+    [[nodiscard]] CE_API std::vector<DrawPacket2D>
     resolve_text_runs(const CE::Text::Rendering::Generation& text, const DrawStyle2D& style, const Context2D& context);
 }

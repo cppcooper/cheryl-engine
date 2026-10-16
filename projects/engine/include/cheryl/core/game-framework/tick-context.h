@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/controls/tick-input.h>
 #include <core/display/framebuffer-size.h>
 #include <core/display/viewport.h>
@@ -30,10 +32,10 @@ namespace CE::Game {
          * without one reject the operation. This does not end update(): return
          * explicitly when the game should stop processing the current tick.
          */
-        void request_stop() const;
+        CE_API void request_stop() const;
         [[nodiscard]] double observed_seconds() const { return input.elapsed().count(); }
         // Derived control policy: observed down-time proportion times simulation delta.
         // With no observation interval, use held State. This does not recover tap history.
-        [[nodiscard]] double button_simulation_seconds(::CE::Input::Actions::Id action) const;
+        [[nodiscard]] CE_API double button_simulation_seconds(::CE::Input::Actions::Id action) const;
     };
 }

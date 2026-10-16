@@ -20,16 +20,18 @@ if(NOT TARGET ${TARGET_LIB_MODULE_OPENGL_S_GL46})
     endif()
     add_subdirectory(support/gl46)
 endif()
+cheryl_shared_dependency(${TARGET_LIB_MODULE_OPENGL_S_GL46})
 
 file(GLOB_RECURSE cheryl_opengl_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-add_library(${TARGET_LIB_MODULE_OPENGL} STATIC ${cheryl_opengl_sources})
+add_library(${TARGET_LIB_MODULE_OPENGL} ${CHERYL_LIBRARY_TYPE} ${cheryl_opengl_sources})
 add_library(Cheryl::OpenGL ALIAS ${TARGET_LIB_MODULE_OPENGL})
 cheryl_register_public_component(${TARGET_LIB_MODULE_OPENGL} FEATURE CHERYL_HAS_OPENGL)
 set_target_properties(${TARGET_LIB_MODULE_OPENGL} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_OPENGL}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_OPENGL}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+cheryl_configure_library(${TARGET_LIB_MODULE_OPENGL} OPENGL)
 target_include_directories(${TARGET_LIB_MODULE_OPENGL} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")

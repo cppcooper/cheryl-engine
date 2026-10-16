@@ -16,7 +16,7 @@ source directories. SDK installation collects them into one redistributable
 | Artifact | Trigger | Result |
 | --- | --- | --- |
 | HTML manual and C++ reference | Run `./generate-docs.sh`, or build `docs` in the docs-only project below; `--clean` / `docs-clean` forces full regeneration. Enable `CHERYL_BUILD_DOCS` to add these targets to an engine build. | `docs/generation/generated/html/index.html` and linked pages. |
-| Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | `libcheryl-engine.a` on Linux or `cheryl-engine.lib` on Windows in the build root, plus required dependency artifacts. |
+| Engine library | Build `cengine`; see [engine-only configuration](#engine-only-configuration). | Versioned Engine library in the build root, plus required dependency artifacts; see [library linkage](#library-linkage). |
 | Selected SDK libraries | Enable `CHERYL_BUILD_SDK`, then build `cheryl-sdk`. | Engine, selected modules/support and their owned dependencies in the build tree. |
 | Redistributable SDK directory | Build `cheryl-sdk`, then install the `CherylSDK` component. | One prefix containing `include/`, libraries, CMake package files and licenses. |
 | SDK archive with manifest/checksum | Run `.github/ci/package.py` after building `cheryl-sdk`. | Linux `.tar.gz` or Windows `.zip`, `SDK-MANIFEST.json` and `SHA256SUMS`. |
@@ -82,6 +82,7 @@ declared only when RmlUi is selected.
 | `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC` | `OFF` | Selects optional runtime topology discovery and thread binding through hwloc. |
 | `CHERYL_BUILD_WORKER_TOPOLOGY_JSON` | `OFF` | Selects the versioned worker settings loader independently of hwloc. |
 | `CHERYL_BUILD_SDK` | `OFF` | Adds the `cheryl-sdk` build target and `CherylSDK` install/export component for selected libraries, headers and dependencies. |
+| `CHERYL_BUILD_SHARED_LIBS` | `OFF` | Builds Cheryl Engine, compiled modules and support as shared libraries, with matching owned source dependencies. |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input in Native GLFW. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW without X11/Wayland. Disable native input to omit Gainput/X11. |
 | `CHERYL_SANDBOX_BUILD` | `OFF` | Deprecated shorthand defaulting native input off and the null platform on. Prefer explicit options. |
@@ -121,6 +122,28 @@ and `-C Release` for CTest, with executables normally in `Release/`.
 Target and artifact declarations are centralized in
 [CherylTargets.cmake](../../cmake/CherylTargets.cmake) and
 [CherylOutputs.cmake](../../cmake/CherylOutputs.cmake).
+
+### Library linkage
+
+Cheryl libraries default to static. Set `-DCHERYL_BUILD_SHARED_LIBS=ON` during
+configuration for shared Engine, modules and support; the same public CMake targets
+work with either selection. `BUILD_SHARED_LIBS` alone does not select Cheryl's
+linkage. Keep static/shared builds and SDK prefixes separate. Supplied dependency
+targets retain their settings and must satisfy the selected shared-library requirements.
+The Linux terminal's `main` wrapper remains static; its startup support follows
+the selected Cheryl linkage.
+
+Artifact names use the component versions in
+[CherylVersions.cmake](../../cmake/CherylVersions.cmake). For Engine 4.0.0:
+
+| Platform | Static | Shared |
+| --- | --- | --- |
+| Linux | `libcheryl-engine-4.0.0.a` | `libcheryl-engine.so.4.0.0`, with SONAME/linker symlinks. |
+| Windows/MSVC | `cheryl-engine-4.0.0.lib` | `cheryl-engine-4.0.0.dll` and its `.lib` import library. |
+
+Link CMake targets to obtain the correct artifact and import/export definitions.
+Shared applications also need the matching libraries at runtime; see
+[SDK runtime paths](consuming-engine.md#prebuilt-development-sdks).
 
 ### Engine-only configuration
 
@@ -310,6 +333,9 @@ native dependency prefix; use `package.py` for the complete Windows bundle.
 Archive names include the Cheryl version from
 [CherylVersions.cmake](../../cmake/CherylVersions.cmake), platform/distribution,
 architecture, compiler/version, configuration and commit ID.
+They also include `static` or `shared`; `SDK-MANIFEST.json` records that linkage,
+enabled component versions and the exact Engine artifact paths. Linux archives
+preserve relative SONAME symlinks within the SDK; broken or escaping links are rejected.
 
 Windows CI builds through the pinned vcpkg manifest in [.github/ci](../../.github/ci/vcpkg.json)
 with the `x64-windows` triplet. Packaging copies release headers, import libraries,
@@ -336,6 +362,8 @@ vcpkg baseline. Builds use Ninja and available CPU parallelism.
 | `windows-msvc-hwloc` | Windows 2025 x64, MSVC RelWithDebInfo | Headless Engine and hwloc/JSON with vcpkg native libraries. |
 | `linux-modules` | Ubuntu 24.04 x64, GCC 14 Release | Native GLFW/input, OpenGL, TGUI, RmlUi, miniaudio, hwloc/JSON and SDK. |
 | `windows-modules` | Windows 2025 x64, MSVC RelWithDebInfo | The same selected modules/helpers and SDK, with bundled native dependencies. |
+| `linux-modules-shared` | Ubuntu 24.04 x64, GCC 14 Release | The modules/SDK composition with shared Cheryl libraries and owned dependencies. |
+| `windows-modules-shared` | Windows 2025 x64, MSVC RelWithDebInfo | The shared modules/SDK composition, including DLL runtime discovery. |
 
 [run.py](../../.github/ci/run.py) configures explicit owners/options/build targets,
 runs each focused owner prefix once and executes independent consumers. Modules
@@ -360,8 +388,7 @@ for 14 days. These are workflow artifacts; the workflow creates no GitHub releas
 uploads no release assets and publishes no demo package. Release publication is a
 separate future decision.
 
-The selected hosted Ubuntu GCC/Clang and Windows MSVC producer jobs and relocated
-SDK consumers are accepted. The first main-push artifact collection remains
+The first main-push artifact collection remains
 [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection); collection is
 intentionally skipped on PR, `develop` and manual runs.
 

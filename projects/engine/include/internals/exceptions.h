@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include "macros/debug.h"
 #include <exception>
 #include <stdexcept>
@@ -16,7 +18,7 @@ namespace CE::Exceptions {
      * The fallback changes the exception layout; consumers must rebuild together.
      * Allocation in caller argument expressions remains the caller's responsibility.
      */
-    class exception_base : public std::exception {
+    class CE_TYPE_API exception_base : public std::exception {
         std::string msg;
         std::array<char, 512> fallback_{};
 
@@ -47,6 +49,7 @@ namespace CE::Exceptions {
             }
         }
         exception_base(exception_base&& other) noexcept = default;
+        CE_API ~exception_base() override;
         [[nodiscard]] const char* what() const noexcept override { return msg.empty() ? fallback_.data() : msg.c_str(); }
         // Emergency output prefers cause/location over the allocating trace prefix.
         [[nodiscard]] const char* diagnostic_summary() const noexcept { return fallback_[0] ? fallback_.data() : what(); }
@@ -74,37 +77,37 @@ namespace CE::Exceptions {
         }
     };
 
-    class invalid_args : public exception_base {
+    class CE_TYPE_API invalid_args : public exception_base {
     public:
-        invalid_args(const char* location_, uint32_t line_) noexcept;
-        invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept;
+        CE_API invalid_args(const char* location_, uint32_t line_) noexcept;
+        CE_API invalid_args(const char* location_, uint32_t line_, const char* info_) noexcept;
         invalid_args(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : invalid_args(location_, line_, info_.c_str()) {}
     };
 
-    class runtime_exception : public exception_base {
+    class CE_TYPE_API runtime_exception : public exception_base {
     public:
-        runtime_exception(const char* location_, uint32_t line_, const char* info_) noexcept;
+        CE_API runtime_exception(const char* location_, uint32_t line_, const char* info_) noexcept;
         runtime_exception(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : runtime_exception(location_, line_, info_.c_str()) {}
-        runtime_exception(const char* sub_type, const char* location_, uint32_t line_, const char* info_) noexcept;
+        CE_API runtime_exception(const char* sub_type, const char* location_, uint32_t line_, const char* info_) noexcept;
     };
 
-    class bad_alloc : public runtime_exception {
+    class CE_TYPE_API bad_alloc : public runtime_exception {
     public:
-        bad_alloc(const char* location_, uint32_t line_) noexcept;
+        CE_API bad_alloc(const char* location_, uint32_t line_) noexcept;
     };
 
-    class bad_request : public runtime_exception {
+    class CE_TYPE_API bad_request : public runtime_exception {
     public:
-        bad_request(const char* location_, uint32_t line_, const char* info_) noexcept;
+        CE_API bad_request(const char* location_, uint32_t line_, const char* info_) noexcept;
         bad_request(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : bad_request(location_, line_, info_.c_str()) {}
     };
 
-    class failed_operation : public runtime_exception {
+    class CE_TYPE_API failed_operation : public runtime_exception {
     public:
-        failed_operation(const char* location_, uint32_t line_, const char* info_) noexcept;
+        CE_API failed_operation(const char* location_, uint32_t line_, const char* info_) noexcept;
         failed_operation(const char* location_, uint32_t line_, const std::string& info_) noexcept
         : failed_operation(location_, line_, info_.c_str()) {}
     };

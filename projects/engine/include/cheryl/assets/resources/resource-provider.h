@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "decoded-image.h"
 #include "geometry2d.h"
 #include "image.h"
@@ -32,7 +34,7 @@ namespace CE::Rendering::Resources {
      * requires their original live backend domain. Final release follows backend
      * retirement; it is not a promise of immediate native deletion.
      */
-    struct Provider {
+    struct CE_API Provider {
     private:
         const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
 

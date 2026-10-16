@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "poll-snapshot.h"
 #include "tick-input.h"
 
@@ -24,7 +26,7 @@ namespace CE::Input {
             return input;
         }
 
-        [[nodiscard]] Tick consume_polls(ObservationClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls);
+        [[nodiscard]] CE_API Tick consume_polls(ObservationClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls);
 
     private:
         std::shared_ptr<const Actions::Snapshot> previous_;

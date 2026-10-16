@@ -49,3 +49,5 @@ namespace CE::Input {
         published_poll_.store({}, std::memory_order_release);
     }
 }
+
+CE::Input::System::~System() = default;

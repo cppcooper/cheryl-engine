@@ -101,3 +101,10 @@ namespace CE::Assets::Shaders {
             }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Shaders::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

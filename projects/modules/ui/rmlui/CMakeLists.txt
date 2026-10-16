@@ -37,15 +37,18 @@ if(NOT placeholder_fixed AND NOT CHERYL_RMLUI_PLACEHOLDER_FIX_VERIFIED)
         "only after verifying the supplied library includes the correction.")
 endif()
 
+cheryl_shared_dependency(RmlUi::Core)
+
 file(GLOB_RECURSE cheryl_rmlui_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-add_library(${TARGET_LIB_MODULE_UI_RMLUI} STATIC ${cheryl_rmlui_sources})
+add_library(${TARGET_LIB_MODULE_UI_RMLUI} ${CHERYL_LIBRARY_TYPE} ${cheryl_rmlui_sources})
 add_library(Cheryl::UI::RmlUi ALIAS ${TARGET_LIB_MODULE_UI_RMLUI})
 cheryl_register_public_component(${TARGET_LIB_MODULE_UI_RMLUI} FEATURE CHERYL_HAS_UI_RMLUI)
 set_target_properties(${TARGET_LIB_MODULE_UI_RMLUI} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_UI_RMLUI}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_UI_RMLUI}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
+cheryl_configure_library(${TARGET_LIB_MODULE_UI_RMLUI} UI_RMLUI)
 target_include_directories(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -60,7 +62,7 @@ namespace CE::Text {
      */
     class FontCollection {
         std::shared_ptr<const Detail::FontCollectionData> data_;
-        explicit FontCollection(std::shared_ptr<const Detail::FontCollectionData> data);
+        CE_API explicit FontCollection(std::shared_ptr<const Detail::FontCollectionData> data);
         friend struct Detail::FontAccess;
 
     public:
@@ -71,18 +73,18 @@ namespace CE::Text {
          * borrowed only for this call.
          * @return Owned ordered faces ending in the embedded fallback, shared by copies.
          */
-        [[nodiscard]] static FontCollection load(const ::CE::Text::FontSelection& selection = {});
+        [[nodiscard]] CE_API static FontCollection load(const ::CE::Text::FontSelection& selection = {});
         /** @return Borrowed ordered face metadata, empty after moving from the collection.
          * Keep the retained collection data alive while using the view; this call
          * performs no discovery or loading.
          */
-        [[nodiscard]] std::span<const ::CE::Text::FontFaceInfo> faces() const noexcept;
+        [[nodiscard]] CE_API std::span<const ::CE::Text::FontFaceInfo> faces() const noexcept;
         /** Test character-map coverage across the retained faces without a provider.
          * This does not select a font for a whole grapheme or shape text. A moved-from
          * collection or failure opening a retained face can reject a valid-scalar query.
          * @param scalar Unicode scalar value; surrogates/out-of-range values return false.
          * @return Whether at least one face maps the scalar to a glyph.
          */
-        [[nodiscard]] bool covers(char32_t scalar) const;
+        [[nodiscard]] CE_API bool covers(char32_t scalar) const;
     };
 }

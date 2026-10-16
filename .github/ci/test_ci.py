@@ -32,10 +32,12 @@ class RunnerTests(unittest.TestCase):
         self.source.mkdir()
         self.build = self.root / "build"
         self.commands = []
+        self.environments = []
 
     def execute(self, command, source, environment):
         command = list(map(str, command))
         self.commands.append(command)
+        self.environments.append(dict(environment))
         self.assertEqual(source, self.source)
         if command[0] == "ctest":
             self.assertEqual(environment["CHERYL_STB_ALLOCATION_TTF"], str(self.source / "assets/fonts/DejaVuSans.ttf"))
@@ -62,6 +64,7 @@ class RunnerTests(unittest.TestCase):
             self.assertIsNone(pattern.search(name), name)
         self.assertIn("Completed 1 checks; 1 skipped.", output)
         self.assertIn("Not accepted (skipped): fixture", output)
+        self.assertIn("-DCHERYL_BUILD_SHARED_LIBS=OFF", self.commands[0])
         self.assertFalse(any(command[0].endswith("demo") for command in self.commands))
 
     def test_modules(self):
@@ -82,6 +85,17 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("-DCHERYL_BUILD_TESTS=OFF", self.commands[0])
         self.assertEqual(self.commands[1][self.commands[1].index("--target") + 1:self.commands[1].index("--parallel")],
                          ["consumer-cengine", "consumer-headers-cheryl"])
+
+    def test_shared(self):
+        self.invoke("--profile", "modules", "--linkage", "shared")
+        self.assertIn("-DCHERYL_BUILD_SHARED_LIBS=ON", self.commands[0])
+        self.assertFalse(any(option.startswith(("-DBUILD_SHARED_LIBS=", "-DTGUI_SHARED_LIBS="))
+                             for option in self.commands[0]))
+
+    def test_windows_shared(self):
+        with patch.object(ci.sys, "platform", "win32"):
+            self.invoke("--profile", "consumer", "--linkage", "shared")
+        self.assertIn(str(self.build), self.environments[-1]["PATH"].split(ci.os.pathsep))
 
     def test_windows(self):
         with patch.object(ci.sys, "platform", "win32"):
@@ -110,11 +124,14 @@ class PackageTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         self.stage = self.root / "sdk"
-        for name in ("include/cheryl/core.h", "lib/libcheryl-engine.a", "lib/cmake/Cheryl/CherylConfig.cmake",
+        self.metadata = {"version": "4.0.0", "component_versions": {"engine": "4.0.0"}, "linkage": "static",
+                         "engine_library": "lib/libcheryl-engine-4.0.0.a", "engine_import_library": "", "system": "Linux"}
+        for name in ("include/cheryl/core.h", self.metadata["engine_library"], "lib/cmake/Cheryl/CherylConfig.cmake",
                      "share/licenses/cheryl/LICENSE", "share/licenses/stb/LICENSE"):
             path = self.stage / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(name.encode())
+        (self.stage / "SDK-MANIFEST.json").write_text(json.dumps(self.metadata), encoding="utf-8")
 
     def test_archive(self):
         package.check_contents(self.stage)
@@ -141,9 +158,74 @@ class PackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "application or implementation"):
                 package.check_contents(self.stage)
             path.unlink()
-        (self.stage / "lib/libcheryl-engine.a").unlink()
+        (self.stage / self.metadata["engine_library"]).unlink()
+        (self.stage / "lib/libcheryl-engine-other.a").write_bytes(b"unrelated library")
         with self.assertRaisesRegex(ValueError, "compiled Engine"):
             package.check_contents(self.stage)
+
+    def test_shared_artifacts(self):
+        for system, library, import_library in (
+            ("Linux", "lib/libcheryl-engine.so.4.0.0", ""),
+            ("Windows", "bin/cheryl-engine-4.0.0.dll", "lib/cheryl-engine-4.0.0.lib"),
+        ):
+            with self.subTest(system=system):
+                metadata = {**self.metadata, "system": system, "linkage": "shared",
+                            "engine_library": library, "engine_import_library": import_library}
+                for name in (library, import_library):
+                    if name:
+                        path = self.stage / name
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(b"compiled artifact")
+                package.check_contents(self.stage, metadata)
+                (self.stage / (import_library or library)).unlink()
+                with self.assertRaisesRegex(ValueError, "compiled Engine"):
+                    package.check_contents(self.stage, metadata)
+
+    def test_artifact_paths(self):
+        for name in ("../outside.a", "/outside.a", "C:/outside.lib", r"lib\engine.lib"):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "relative compiled Engine"):
+                package.check_contents(self.stage, {**self.metadata, "engine_library": name})
+
+    def make_link(self, path, target):
+        try:
+            path.symlink_to(target)
+        except (NotImplementedError, OSError) as error:
+            self.skipTest(f"Symbolic-link fixture unavailable: {error}")
+
+    def test_shared_links(self):
+        library = self.stage / "lib/libcheryl-engine.so.4.0.0"
+        library.write_bytes(b"shared Engine")
+        soname = library.with_name("libcheryl-engine.so.4")
+        linker = library.with_name("libcheryl-engine.so")
+        self.make_link(soname, library.name)
+        self.make_link(linker, soname.name)
+        metadata = {**self.metadata, "linkage": "shared", "engine_library": "lib/" + library.name}
+        (self.stage / "SDK-MANIFEST.json").write_text(json.dumps(metadata), encoding="utf-8")
+        package.check_contents(self.stage, metadata)
+        destination = self.root / "shared.tar.gz"
+        package.archive_sdk(self.stage, destination)
+        with tarfile.open(destination) as archive:
+            member = archive.getmember("sdk/lib/" + linker.name)
+            self.assertTrue(member.issym())
+            self.assertEqual(member.linkname, soname.name)
+            archive.extractall(self.root / "relocated", filter="data")
+        relocated = self.root / "relocated/sdk/lib" / linker.name
+        self.assertTrue(relocated.is_symlink())
+        self.assertEqual(relocated.read_bytes(), b"shared Engine")
+        with self.assertRaisesRegex(ValueError, "supported by the archive"):
+            package.archive_sdk(self.stage, self.root / "shared.zip")
+
+    def test_unsafe_links(self):
+        outside = self.root / "outside"
+        outside.write_bytes(b"outside SDK")
+        link = self.stage / "lib/unsafe"
+        for target, message in ((self.stage / self.metadata["engine_library"], "relative"),
+                                (Path("../../outside"), "escapes"), (Path("missing"), "broken")):
+            with self.subTest(target=target):
+                self.make_link(link, target)
+                with self.assertRaisesRegex(ValueError, message):
+                    package.check_contents(self.stage)
+                link.unlink()
 
     def test_native_files(self):
         prefix = self.root / "native"
@@ -167,7 +249,7 @@ class PackageTests(unittest.TestCase):
         build.mkdir()
         identity = {"revision": "a" * 40, "submodules": {"extern/library": "b" * 40}}
         (source / "SOURCE-MANIFEST.json").write_text(json.dumps(identity), encoding="utf-8")
-        (build / "cheryl-sdk.json").write_text(json.dumps({"version": "4.0.0", "system": "Linux",
+        (build / "cheryl-sdk.json").write_text(json.dumps({**self.metadata,
             "architecture": "x86_64", "compiler": "GNU", "compiler_version": "14.2.0", "configuration": "Release"}),
             encoding="utf-8")
 
@@ -180,9 +262,11 @@ class PackageTests(unittest.TestCase):
              patch.object(package.platform, "freedesktop_os_release", return_value={"ID": "ubuntu", "VERSION_ID": "24.04"}), \
              redirect_stdout(io.StringIO()):
             archive = package.bundle(source, build, output)
-        self.assertIn("4.0.0-sdk-linux-ubuntu24.04-x64-gnu14.2.0-release-aaaaaaaaaaaa", archive.name)
+        self.assertIn("4.0.0-sdk-linux-ubuntu24.04-x64-gnu14.2.0-release-static-aaaaaaaaaaaa", archive.name)
         manifest = json.loads((output / "SDK-MANIFEST.json").read_text(encoding="utf-8"))
         self.assertEqual(identity["submodules"], manifest["submodules"])
+        self.assertEqual(manifest["component_versions"], {"engine": "4.0.0"})
+        self.assertEqual(manifest["linkage"], "static")
         with tarfile.open(archive) as contents:
             names = contents.getnames()
             self.assertFalse(any(name.endswith((".cpp", ".c", ".exe")) for name in names))

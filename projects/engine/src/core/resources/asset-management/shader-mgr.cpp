@@ -43,3 +43,10 @@ namespace CE::Assets::Shaders {
         );
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Shaders::ProgramCache>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

@@ -58,3 +58,10 @@ namespace CE::Assets::Loading {
         return *position;
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Loading::FileRegistry>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/rendering/render-frame.h>
 #include "tick-context.h"
 
@@ -19,7 +21,7 @@ namespace CE::Game {
      * worker. The game must not change input bindings or upload GPU resources from the worker.
      * Hook failures stop the session; runtime cleanup preserves the first failure.
      */
-    struct AbstractGame {
+    struct CE_API AbstractGame {
         virtual ~AbstractGame() = default;
         /** Initialize game state after rendering and input adapters are ready.
          * Register bindings and upload resources on the platform/graphics owner.

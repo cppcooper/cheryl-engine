@@ -227,3 +227,5 @@ namespace CE::Text::Legacy {
         );
     }
 }
+
+CE::Text::Legacy::Font::~Font() = default;

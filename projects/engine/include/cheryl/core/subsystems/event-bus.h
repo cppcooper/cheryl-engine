@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/diagnostics.h>
 #include "event-channel.h"
 
@@ -99,8 +101,8 @@ namespace CE::Events {
             std::exception_ptr failure;
             std::atomic<bool> entered{false};
 
-            explicit DeliveryTicket(std::shared_ptr<Listener> value);
-            ~DeliveryTicket();
+            CE_API explicit DeliveryTicket(std::shared_ptr<Listener> value);
+            CE_API ~DeliveryTicket();
         };
         struct State {
             std::mutex mutex;
@@ -135,14 +137,14 @@ namespace CE::Events {
         };
 
         EventBus() = default;
-        ~EventBus();
+        CE_API ~EventBus();
         EventBus(const EventBus&) = delete;
         EventBus& operator=(const EventBus&) = delete;
 
         // A registration is intentionally persistent even when its ID is ignored.
         // Empty callback or queued delivery without errors throws invalid_args;
         // closed bus throws failed_operation. Strings/callables are owned after registration.
-        Registration register_listener(
+        CE_API Registration register_listener(
             const std::string& event,
             Callback callback,
             Delivery delivery = Delivery{},
@@ -150,7 +152,7 @@ namespace CE::Events {
         );
         // Borrow payload for this call; listeners receive copies. Immediate exceptions
         // propagate, queued failures go to their error sink. A closed bus rejects dispatch.
-        void dispatch(const std::string& event, const std::any& payload);
+        CE_API void dispatch(const std::string& event, const std::any& payload);
         // Exact name/type channel; callback copies/registration and delivery obey
         // the same lifetime as named listeners. Empty callbacks reject as usual.
         template <::CE::Events::EventPayload Payload>
@@ -180,30 +182,25 @@ namespace CE::Events {
             dispatch_channel(event.name(), typeid(Payload), owned);
         }
         // Invalidation prevents new invocation entry; already-running work finishes.
-        bool unregister_listener(const Registration& registration);
+        CE_API bool unregister_listener(const Registration& registration);
         // Only wait after invalidation. Waiting on one's own invocation rejects.
-        void wait_for_listener(const Registration& registration) const;
-        bool unregister_and_wait(const Registration& registration);
+        CE_API void wait_for_listener(const Registration& registration) const;
+        CE_API bool unregister_and_wait(const Registration& registration);
         // Every concurrent close returns after all invocation gates are closed.
         // Already-running callbacks retain ownership and are not waited for.
-        void close();
-        [[nodiscard]] ::CE::Events::EventStats diagnostics() const;
+        CE_API void close();
+        [[nodiscard]] CE_API ::CE::Events::EventStats diagnostics() const;
         // Explicit unlocked observer; registry edits/native callbacks/destructors
         // do not emit ordinary logs. Payloads and names are not sampled.
-        void report_diagnostics() const noexcept;
+        CE_API void report_diagnostics() const noexcept;
 
     private:
-        Registration register_channel(
-            const std::string& event,
-            std::type_index payload,
-            Callback callback,
-            Delivery delivery,
-            ErrorHandler errors
-        );
-        void dispatch_channel(std::string_view event, std::type_index type, const std::any& payload);
-        static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
-        static void invalidate(const std::shared_ptr<Listener>& listener);
-        static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);
-        static void report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept;
+        CE_API Registration
+        register_channel(const std::string& event, std::type_index payload, Callback callback, Delivery delivery, ErrorHandler errors);
+        CE_API void dispatch_channel(std::string_view event, std::type_index type, const std::any& payload);
+        CE_API static void invoke(const std::shared_ptr<Listener>& listener, const std::any& payload);
+        CE_API static void invalidate(const std::shared_ptr<Listener>& listener);
+        CE_API static void deliver(const std::shared_ptr<Listener>& listener, const std::any& payload);
+        CE_API static void report_error(const std::shared_ptr<Listener>& listener, std::exception_ptr failure) noexcept;
     };
 }

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #ifndef FFONT_H
 #define FFONT_H
 
@@ -16,6 +18,7 @@ namespace CE::Rendering::Resources {
 }
 
 namespace CE::Text::Legacy {
+    struct CE_TYPE_API BitmapFont;
     constexpr uint16_t bitmap_character_count = 256;
     using BitmapFontData = std::tuple<
         std::array<float, bitmap_character_count>,
@@ -37,14 +40,31 @@ namespace CE::Text::Legacy {
         explicit BitmapFont(const BitmapFontData& data)
         : Font({std::get<1>(data), std::get<2>(data)}), widths(std::get<0>(data)) {}
         ~BitmapFont() override = default;
-        [[nodiscard]] std::vector<GlyphPlacement> layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const override;
+        [[nodiscard]] CE_API std::vector<GlyphPlacement>
+        layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const override;
         /** Read 256 native shorts from a binary input file before any provider upload.
          * Incomplete reads fail; legacy trailing bytes are ignored. Metadata/endian
          * semantics remain unverified; see docs/resources/legacy-ffont.md for
          * the deprecation decision and preserved legacy behavior.
          */
-        static BitmapFontData load_ffont(const std::filesystem::path& path, CE::Rendering::Resources::Provider& provider);
+        CE_API static BitmapFontData load_ffont(const std::filesystem::path& path, CE::Rendering::Resources::Provider& provider);
     };
 }
+
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4996)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Text::Legacy::BitmapFont>::storage() -> Storage&;
+}
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#elif defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #endif

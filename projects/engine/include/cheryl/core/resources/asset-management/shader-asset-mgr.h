@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/shader-assets.h>
 #include <assets/resources/pipeline.h>
 #include <templates/asset-mgr.h>
@@ -24,9 +26,9 @@ namespace CE::Assets::Shaders {
     /** Qualified identities share the existing provider domain. Metadata and the
      * resource it describes are published as one immutable generation.
      */
-    struct Manager final : CE::Assets::Cache::Store<const Asset, std::string>,
-                           CE::State::Singleton<Manager> {
-        [[nodiscard]] std::shared_ptr<const Program> find_program(const std::string& id) const;
+    struct CE_TYPE_API Manager final : CE::Assets::Cache::Store<const Asset, std::string>,
+                                       CE::State::Singleton<Manager> {
+        [[nodiscard]] CE_API std::shared_ptr<const Program> find_program(const std::string& id) const;
         /** Look up an already loaded material without compiling or uploading resources.
          * The retained handle survives cache replacement/clearing; native use
          * still obeys its provider lifetime. Lookup uses the cache lock and rejects
@@ -34,10 +36,15 @@ namespace CE::Assets::Shaders {
          * @param id Exact qualified namespace:name identity.
          * @return Retained immutable material, or null for a missing identity.
          */
-        [[nodiscard]] std::shared_ptr<const CE::Rendering::Resources::Material> find_material(const std::string& id) const;
+        [[nodiscard]] CE_API std::shared_ptr<const CE::Rendering::Resources::Material> find_material(const std::string& id) const;
         // Checks the complete batch before publication; unsupported capabilities
         // and existing identities of the wrong kind reject explicitly.
-        void validate(const std::vector<Manifest>& manifests, CE::Rendering::Resources::Provider& provider, bool replace = false) const;
-        void load(const std::vector<Manifest>& manifests, CE::Rendering::Resources::Provider& provider, bool replace = false);
+        CE_API void
+        validate(const std::vector<Manifest>& manifests, CE::Rendering::Resources::Provider& provider, bool replace = false) const;
+        CE_API void load(const std::vector<Manifest>& manifests, CE::Rendering::Resources::Provider& provider, bool replace = false);
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Assets::Shaders::Manager>::storage() -> Storage&;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "image.h"
 
 #include <filesystem>
@@ -13,5 +15,5 @@ namespace CE::Assets::Images {
     };
     // CPU-only file decode; throws on unreadable/unsupported data or storage overflow.
     // Returns owned pixels without publishing a resource/cache entry.
-    [[nodiscard]] Decoded decode(const std::filesystem::path& file);
+    [[nodiscard]] CE_API Decoded decode(const std::filesystem::path& file);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/types/2d/base/asset2d.h>
 #include <core/resources/memory/shared.h>
 #include <assets/types/primitives/frame.h>
@@ -44,7 +46,7 @@ namespace CE::Assets::Tilesets {
         Clip definition_;
 
     public:
-        explicit Animation(
+        CE_API explicit Animation(
             Clip definition,
             const CE::Memory::Shared<CE::Rendering::Geometry::Buffer2D>& geometry,
             const CE::Memory::Shared<CE::Rendering::Resources::Image>& texture,
@@ -52,7 +54,7 @@ namespace CE::Assets::Tilesets {
         );
 
         [[nodiscard]] const Clip& definition() const { return definition_; }
-        [[nodiscard]] std::chrono::milliseconds frame_duration() const;
+        [[nodiscard]] CE_API std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_.loop; }
     };
 
@@ -67,29 +69,30 @@ namespace CE::Assets::Tilesets {
         std::unordered_map<CE::Assets::Grids::CellIndex, std::string> animation_targets_;
 
     public:
-        explicit Asset(Data data);
+        CE_API explicit Asset(Data data);
 
         // Retained resource values; tile() rejects out-of-grid cells. animation() throws
         // out_of_range for an unknown name; animation_for() returns no value for no target.
-        [[nodiscard]] Tile tile(std::size_t cell) const;
-        [[nodiscard]] Animation animation(const std::string& name) const;
-        [[nodiscard]] std::optional<Animation> animation_for(std::size_t target) const;
+        [[nodiscard]] CE_API Tile tile(std::size_t cell) const;
+        [[nodiscard]] CE_API Animation animation(const std::string& name) const;
+        [[nodiscard]] CE_API std::optional<Animation> animation_for(std::size_t target) const;
         // Resolve only the original target's clip; frame cells never recurse. Negative
         // time or invalid timelines throw invalid_args; original/final grid violations
         // throw bad_request. Static targets still require nonnegative time.
-        [[nodiscard]] CE::Assets::Grids::CellIndex cell_at(CE::Assets::Grids::CellIndex target, std::chrono::milliseconds elapsed) const;
+        [[nodiscard]] CE_API CE::Assets::Grids::CellIndex
+        cell_at(CE::Assets::Grids::CellIndex target, std::chrono::milliseconds elapsed) const;
         // Unknown names throw out_of_range. Preserve selector failure values, otherwise
         // apply cell_at() once. No callback is retained; submit the returned cell value.
-        [[nodiscard]] CE::Assets::Tilesets::Selection::Result select_tile(
+        [[nodiscard]] CE_API CE::Assets::Tilesets::Selection::Result select_tile(
             const std::string& name,
             const CE::Assets::Tilesets::Selection::Sampler& sampler,
             const CE::Assets::Tilesets::Selection::Options& options,
             std::chrono::milliseconds elapsed
         ) const;
         // References borrow this CE::Assets::Tilesets::Asset's lifetime; unknown metadata names throw out_of_range.
-        [[nodiscard]] const CE::Assets::Grids::View& view(const std::string& name) const;
-        [[nodiscard]] CE::Assets::Grids::CellIndex orientation(const std::string& name) const;
-        [[nodiscard]] const Rule& autotile(const std::string& name) const;
+        [[nodiscard]] CE_API const CE::Assets::Grids::View& view(const std::string& name) const;
+        [[nodiscard]] CE_API CE::Assets::Grids::CellIndex orientation(const std::string& name) const;
+        [[nodiscard]] CE_API const Rule& autotile(const std::string& name) const;
         [[nodiscard]] const Definition& definition() const { return definition_; }
     };
 }

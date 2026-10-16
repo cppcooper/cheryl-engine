@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <assets/definitions/manifest.h>
 #include <assets/definitions/shader-assets.h>
 #include <assets/resources/decoded-image.h>
@@ -64,7 +66,7 @@ namespace CE::Assets::Loading {
         mutable std::mutex observations_mutex_;
         UploadStats last_upload_;
 
-        [[nodiscard]] Prepared prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
+        [[nodiscard]] CE_API Prepared prepare_selected(const std::vector<std::filesystem::path>& indexes, bool all_images) const;
 
     public:
         /** Configure an owned loader without discovering files or uploading resources.
@@ -78,7 +80,7 @@ namespace CE::Assets::Loading {
          * failure leaves caches and this loader's retained metadata unchanged.
          * @return Owned definitions, shader sources, pixels and file discovery for upload().
          */
-        [[nodiscard]] Prepared prepare() const;
+        [[nodiscard]] CE_API Prepared prepare() const;
         /** Prepare selected graphics indexes against full-root discovery.
          * Decode only referenced images; a shader-only selection decodes none.
          * Empty selections and discovery, decoding or validation failures reject
@@ -86,7 +88,7 @@ namespace CE::Assets::Loading {
          * @param indexes Nonempty index selection; relative paths resolve against the asset root.
          * @return Owned data for upload(), prepared without a provider or backend calls.
          */
-        [[nodiscard]] Prepared prepare_graphics(const std::vector<std::filesystem::path>& indexes) const;
+        [[nodiscard]] CE_API Prepared prepare_graphics(const std::vector<std::filesystem::path>& indexes) const;
         /** Consumes one prepared value without reopening its image files. Existing
          * keys remain; each successful new entry can become visible immediately.
          * Failure can leave any completed cache entries, including all entries if
@@ -101,24 +103,24 @@ namespace CE::Assets::Loading {
          * @param provider Active resource backend, used on its loading owner/current context.
          * @param replace_shaders Whether existing shader programs/materials may be replaced.
          */
-        void upload(Prepared prepared, CE::Rendering::Resources::Provider& provider, bool replace_shaders = false);
+        CE_API void upload(Prepared prepared, CE::Rendering::Resources::Provider& provider, bool replace_shaders = false);
         /** Prepare the complete root and synchronously upload it without shader replacement.
          * Preparation failures leave caches unchanged; upload failures retain the
          * partial-publication behavior of upload().
          * @param provider Active backend, used on its loading owner/current context.
          */
-        void load_assets(CE::Rendering::Resources::Provider& provider);
+        CE_API void load_assets(CE::Rendering::Resources::Provider& provider);
         /** Discover and register unmanaged paths for manual asset loading.
          * No JSON parsing, image decoding or provider is required. Filesystem and
          * allocation failures propagate; PNG images remain outside the untyped registry.
          */
-        void register_files() const;
+        CE_API void register_files() const;
         /** Observe the last upload attempt, including partial publication.
          * The snapshot is synchronized, but provides no upload/rollback ordering
          * guarantee beyond the loading-owner contract.
          * @return Copied counters and completion status for the last attempt.
          */
-        [[nodiscard]] UploadStats diagnostics() const;
+        [[nodiscard]] CE_API UploadStats diagnostics() const;
         /** @return Owned snapshot of the last successfully submitted asset definitions.
          * Readers retain it across later uploads and loader destruction. This is
          * metadata, not an atomic snapshot of the global caches.
@@ -138,10 +140,14 @@ namespace CE::Assets::Loading {
          * @param root_path Root to initialize, or match against the existing singleton.
          * @return Borrowed process-lifetime loader with that root.
          */
-        static Loader& get(const std::filesystem::path& root_path);
+        CE_API static Loader& get(const std::filesystem::path& root_path);
         /** Retrieve the configured legacy singleton without initializing it.
          * @return Borrowed process-lifetime loader; fails if initialization is unpublished.
          */
-        static Loader& get();
+        CE_API static Loader& get();
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Assets::Loading::Loader>::storage() -> Storage&;
 }

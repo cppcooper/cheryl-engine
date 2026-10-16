@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/controls/input-interface.h>
 #include <core/diagnostics.h>
 
@@ -36,7 +38,7 @@ namespace CE::Platform::GLFW {
     // Detachment retains devices; Update receives elapsed seconds between attached polls.
     // Ordered GLFW records are captured before Gainput mapping. The character
     // callback provides OS text independently of physical keyboard State.
-    class InputSystem final : public CE::Input::System,
+    class CE_TYPE_API InputSystem final : public CE::Input::System,
                               public CE::State::Singleton<InputSystem> {
         std::unique_ptr<Detail::GainputLifetime> gainput_lifetime_;
         gainput::InputManager manager_;
@@ -72,25 +74,25 @@ namespace CE::Platform::GLFW {
             }
         }
 
-        static InputSystem* attached(GLFWwindow* window) noexcept;
-        static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers) noexcept;
-        static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers) noexcept;
-        static void on_scroll(GLFWwindow* window, double x, double y) noexcept;
-        static void on_character(GLFWwindow* window, unsigned int codepoint) noexcept;
-        static void on_cursor(GLFWwindow* window, double x, double y) noexcept;
+        CE_NATIVE_GLFW_API static InputSystem* attached(GLFWwindow* window) noexcept;
+        CE_NATIVE_GLFW_API static void on_key(GLFWwindow* window, int key, int scancode, int action, int modifiers) noexcept;
+        CE_NATIVE_GLFW_API static void on_mouse_button(GLFWwindow* window, int button, int action, int modifiers) noexcept;
+        CE_NATIVE_GLFW_API static void on_scroll(GLFWwindow* window, double x, double y) noexcept;
+        CE_NATIVE_GLFW_API static void on_character(GLFWwindow* window, unsigned int codepoint) noexcept;
+        CE_NATIVE_GLFW_API static void on_cursor(GLFWwindow* window, double x, double y) noexcept;
 
     public:
-        InputSystem();
-        ~InputSystem() override;
+        CE_NATIVE_GLFW_API InputSystem();
+        CE_NATIVE_GLFW_API ~InputSystem() override;
 
-        void initialize(CE::Platform::Window& window) override;
-        void poll() override;
+        CE_NATIVE_GLFW_API void initialize(CE::Platform::Window& window) override;
+        CE_NATIVE_GLFW_API void poll() override;
         // Host event-pump integration: begin_poll(), pump GLFW, then update().
-        void begin_poll();
-        void update();
-        void deinitialize() override;
+        CE_NATIVE_GLFW_API void begin_poll();
+        CE_NATIVE_GLFW_API void update();
+        CE_NATIVE_GLFW_API void deinitialize() override;
         // Opt-in gamepad values/IDs at TRACE; call on platform before startup or between polls.
-        void set_gamepad_diagnostics(bool enabled) noexcept;
+        CE_NATIVE_GLFW_API void set_gamepad_diagnostics(bool enabled) noexcept;
 
         [[nodiscard]] CE::Input::Actions::Bindings& bindings() override { return bindings_; }
         // Access devices/configuration after initialize(); Init/Exit belong to this adapter.
@@ -104,5 +106,9 @@ namespace CE::Platform::GLFW {
                    mode == CE::Input::Capture::Channel::Text;
         }
     };
+}
+
+namespace CE::State {
+    template <> CE_NATIVE_GLFW_API auto Singleton<CE::Platform::GLFW::InputSystem>::storage() -> Storage&;
 }
 #endif

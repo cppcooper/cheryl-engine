@@ -72,3 +72,10 @@ namespace CE::Assets::Sprites {
         }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Sprites::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

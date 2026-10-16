@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/animation.h>
 #include <assets/definitions/grid.h>
 #include <math/anchor.h>
@@ -23,6 +25,6 @@ namespace CE::Assets::Sprites {
         std::vector<Clip> animations;
         std::optional<std::string> shader = {};
 
-        [[nodiscard]] std::string id() const;
+        [[nodiscard]] CE_API std::string id() const;
     };
 }

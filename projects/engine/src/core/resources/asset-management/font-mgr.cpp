@@ -41,3 +41,10 @@ namespace CE::Text::Legacy {
         }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Text::Legacy::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

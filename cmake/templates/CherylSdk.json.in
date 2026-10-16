@@ -1,5 +1,9 @@
 {
   "version": "@VERSION_PROJECT_CHERYL@",
+  "component_versions": {@sdk_component_versions@},
+  "linkage": "@sdk_linkage@",
+  "engine_library": "@sdk_engine_library@",
+  "engine_import_library": "@sdk_engine_import_library@",
   "system": "@CMAKE_SYSTEM_NAME@",
   "system_version": "@CMAKE_SYSTEM_VERSION@",
   "architecture": "@CMAKE_SYSTEM_PROCESSOR@",

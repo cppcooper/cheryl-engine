@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "clip.h"
 
 #include <filesystem>
@@ -14,7 +16,7 @@ namespace CE::Audio {
         bool looping = false;
         bool paused = false;
 
-        void validate() const;
+        CE_API void validate() const;
     };
 
     struct VoiceSnapshot {
@@ -25,7 +27,7 @@ namespace CE::Audio {
     };
 
     // Normalized linear gain, inclusive [0, 1]; rejects non-finite values.
-    void validate_volume(float volume);
+    CE_API void validate_volume(float volume);
 
     /** One independently controlled playback. Controls and snapshots are synchronized.
      * Pause preserves progress; resume affects only Paused voices. Stop is terminal
@@ -35,7 +37,7 @@ namespace CE::Audio {
      * A handle may survive its system: snapshot then reports Closed, and controls throw.
      * Releasing a handle does not stop an active voice; the system retains playback.
      */
-    class Voice {
+    class CE_API Voice {
     public:
         virtual ~Voice() = default;
         [[nodiscard]] virtual ::CE::Audio::VoiceSnapshot snapshot() const = 0;
@@ -57,7 +59,7 @@ namespace CE::Audio {
      * The application settles producers before destroying this object. Surviving
      * Voice handles remain safe. Subsequent system operations throw, except closed/close.
      */
-    class System {
+    class CE_API System {
     public:
         virtual ~System() = default;
         [[nodiscard]] virtual std::shared_ptr<::CE::Audio::Voice>

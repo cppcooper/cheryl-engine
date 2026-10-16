@@ -1,5 +1,6 @@
 include("${CMAKE_CURRENT_LIST_DIR}/CherylVersions.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylOptions.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/CherylLibraries.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylOutputs.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylLinkage.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/CherylPublicHeaders.cmake")

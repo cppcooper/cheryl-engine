@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <filesystem>
 #include <string>
 #include <unordered_map>
@@ -17,7 +19,7 @@ namespace CE::Files {
     class FileIndex {
     public:
         /** Scan root_path using search_directory(); missing/non-directory roots add nothing. */
-        FileIndex(const std::filesystem::path& root_path);
+        CE_API FileIndex(const std::filesystem::path& root_path);
 
         /** Append regular files beneath an unvisited directory and mark encountered
      * directories as visited. Keys use path equality without canonicalization;
@@ -26,7 +28,7 @@ namespace CE::Files {
      * Enumeration is unsorted. Filesystem/allocation errors propagate and can leave
      * a partial index with the root marked visited; recreate the index to retry.
      */
-        void search_directory(const std::filesystem::path& directory);
+        CE_API void search_directory(const std::filesystem::path& directory);
 
         /** Borrow the manager-owned vector for a lowercased extension key. A missing
      * key inserts an empty bucket; use ".png", not "png", or "file_no_ext".
@@ -35,7 +37,7 @@ namespace CE::Files {
      * contents and invalidate its element references/iterators.
      * Serialize this lookup with all other access; insertion can allocate/throw.
      */
-        const std::vector<::CE::Files::Path>& get_files_of_type(::CE::Files::Extension extension);
+        CE_API const std::vector<::CE::Files::Path>& get_files_of_type(::CE::Files::Extension extension);
 
         // Borrow all extension buckets without inserting missing keys. Serialize
         // access with directory indexing; the manager owns the returned index.

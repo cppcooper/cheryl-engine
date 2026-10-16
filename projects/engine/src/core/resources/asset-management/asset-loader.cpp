@@ -338,3 +338,10 @@ namespace CE::Assets::Loading {
         }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Loading::Loader>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

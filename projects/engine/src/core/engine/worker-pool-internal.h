@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/engine/worker-pool.h>
 
 #include <functional>
@@ -20,7 +22,7 @@ namespace CE::Workers::Detail {
     };
 
     struct PoolAccess {
-        [[nodiscard]] static std::unique_ptr<CE::Workers::Pool> create(std::size_t worker_count, NativeAdapter adapter);
-        [[nodiscard]] static std::unique_ptr<CE::Workers::Pool> create(CE::Workers::PoolOptions options, NativeAdapter adapter);
+        [[nodiscard]] CE_API static std::unique_ptr<CE::Workers::Pool> create(std::size_t worker_count, NativeAdapter adapter);
+        [[nodiscard]] CE_API static std::unique_ptr<CE::Workers::Pool> create(CE::Workers::PoolOptions options, NativeAdapter adapter);
     };
 }

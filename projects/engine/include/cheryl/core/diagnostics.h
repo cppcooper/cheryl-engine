@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstdint>
 
 namespace CE::Diagnostics {
@@ -7,7 +9,7 @@ namespace CE::Diagnostics {
 
     // Process-local, monotonic identities for diagnostics, never addresses/native
     // handles. Zero means exhausted/unavailable; IDs are not persistence keys.
-    [[nodiscard]] DomainId next_domain_id() noexcept;
+    [[nodiscard]] CE_API DomainId next_domain_id() noexcept;
 
     // Best-effort cumulative observations, not a scheduling/admission contract.
     struct DispatchStats {
