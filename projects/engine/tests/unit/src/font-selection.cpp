@@ -6,8 +6,10 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -26,11 +28,19 @@ namespace {
         std::filesystem::path path;
         inline static std::atomic<unsigned> next{0};
 
-        FontDirectory()
-        : path(std::filesystem::temp_directory_path() / ("cheryl-font-" +
-              std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" + std::to_string(next++))) {
-            if (!std::filesystem::create_directory(path))
-                throw std::runtime_error("Font fixture directory already exists");
+        FontDirectory() {
+            const auto root = std::filesystem::temp_directory_path();
+            std::random_device random;
+            for (unsigned attempt = 0; attempt < 64; ++attempt) {
+                path = root / ("cheryl-font-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                               std::to_string(random()) + "-" + std::to_string(next++));
+                std::error_code error;
+                if (std::filesystem::create_directory(path, error))
+                    return;
+                if (error && error != std::errc::file_exists)
+                    throw std::filesystem::filesystem_error("Unable to create font fixture directory", path, error);
+            }
+            throw std::runtime_error("Unable to create a unique font fixture directory");
         }
         ~FontDirectory() {
             std::error_code error;
