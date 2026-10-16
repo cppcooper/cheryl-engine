@@ -104,7 +104,13 @@ function(cheryl_check_option_requirements)
     endforeach()
 endfunction()
 
+function(cheryl_configure_library_options)
+    cheryl_option(CHERYL_BUILD_SHARED_LIBS
+            "Build Cheryl Engine, modules and support as shared libraries" OFF)
+endfunction()
+
 function(cheryl_configure_root_options)
+    cheryl_configure_library_options()
     cheryl_option(CHERYL_BUILD_DOCS
             "Add documentation tooling and generation targets" OFF)
     cheryl_option(CHERYL_BUILD_SDK

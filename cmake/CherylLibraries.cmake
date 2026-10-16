@@ -1,7 +1,7 @@
 include_guard(GLOBAL)
 
 include("${CMAKE_CURRENT_LIST_DIR}/CherylOptions.cmake")
-cheryl_option(CHERYL_BUILD_SHARED_LIBS "Build Cheryl Engine, modules and support as shared libraries" OFF)
+cheryl_configure_library_options()
 
 set(CHERYL_LIBRARY_TYPE STATIC)
 if(CHERYL_BUILD_SHARED_LIBS)
