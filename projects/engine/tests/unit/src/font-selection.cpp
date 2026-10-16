@@ -244,6 +244,7 @@ TEST(font_selection, corrupt) {
     }
     auto selection = isolated_selection();
     for (const auto& path : {corrupt, empty, directory.path}) {
+        SCOPED_TRACE(path.string());
         selection.preferred = {CE::Text::FontFile{path}};
         EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
     }
