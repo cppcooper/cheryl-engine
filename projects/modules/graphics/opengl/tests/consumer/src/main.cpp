@@ -1,4 +1,5 @@
 #include <cheryl/backends/opengl.h>
+#include <cheryl/core/logging/process-lifetime.h>
 
 #include <type_traits>
 
@@ -10,5 +11,6 @@ using Factory = std::unique_ptr<CE::Runtime::Context> (*)(CE::Input::System&, co
 Factory volatile factory = &CE::Application::GLFWOpenGL::make_context;
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
     return factory ? 0 : 1;
 }

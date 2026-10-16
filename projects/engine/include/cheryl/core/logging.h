@@ -3,6 +3,7 @@
 #include "logging/osink.h"
 #include "logging/log.h"
 #include "logging/logger.h"
+#include "logging/process-lifetime.h"
 
 #ifdef ST_ON_SIGNALS
 #include <backward.hpp>

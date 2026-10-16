@@ -2,6 +2,7 @@
 
 #include <cheryl/assets/resources/resource-provider.h>
 #include <cheryl/core/logging/log.h>
+#include <cheryl/core/logging/process-lifetime.h>
 #include <cheryl/core/subsystems/event-system.h>
 #include <cheryl/templates/asset-mgr.h>
 
@@ -28,6 +29,7 @@ namespace {
 }
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
     const bool singleton = sdk_event_system() == &CE::Events::EventSystem::get();
     const bool logging = sdk_logging_mutex() == &CE::Logging::Detail::default_logger_mutex;
     MemoryProvider provider;

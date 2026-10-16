@@ -73,7 +73,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="cheryl-logging-acceptance-") as temporary:
             root = Path(temporary)
             run([str(aggregate), "--gtest_filter=logging.*"], root)
-            for scenario in ("faults", "rotation", "full-reentry", "discard", "retained", "named-routing", "static", "fatal-destruction"):
+            for scenario in ("faults", "rotation", "full-reentry", "discard", "retained", "named-routing", "static", "process-lifetime", "fatal-destruction"):
                 output = root / scenario
                 output.mkdir()
                 result = run([str(executable), scenario, str(output)], root, 86 if scenario == "fatal-destruction" else 0)

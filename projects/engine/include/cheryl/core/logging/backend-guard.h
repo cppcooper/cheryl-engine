@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstddef>
 #include <exception>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -64,6 +65,15 @@ namespace CE::Logging::Detail {
     CE_API void report_queue_loss(const std::shared_ptr<QueueReports>& reports, std::size_t discards) noexcept;
     CE_API void report_backend_summary(const char* name, const std::shared_ptr<BackendCounters>& counters) noexcept;
     [[nodiscard]] CE_API std::shared_ptr<spdlog::details::thread_pool> make_owned_pool(const std::shared_ptr<QueueReports>& reports);
+
+    // A live Log owns its registration. The process registry retains weak
+    // references; this mutex serializes final shutdown with Log destruction.
+    struct ProcessLogRegistration {
+        std::mutex mutex;
+        std::function<void()> shutdown;
+    };
+
+    [[nodiscard]] CE_API std::shared_ptr<ProcessLogRegistration> register_process_log(std::function<void()> shutdown);
 
     class DestinationState final {
         const std::shared_ptr<BackendCounters> counters_;

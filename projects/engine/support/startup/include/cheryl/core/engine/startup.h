@@ -4,6 +4,7 @@
 
 #include <core/engine/engine-context.h>
 #include <core/game-framework/game-runtime.h>
+#include <core/logging/process-lifetime.h>
 
 #include <CLI/CLI.hpp>
 
@@ -61,8 +62,11 @@ namespace CE::Application {
     /** Registers command-line options and performs one synchronous initialization.
      * The object is not synchronized or movable. Initialize on the platform owner;
      * returned contexts retain their backend's lifetime and thread requirements.
+     * Owns a nested process logging guard. Keep Startup alive through the returned
+     * context/game, or retain an outer Logging::ProcessLifetime until they finish.
      */
     class Startup final {
+        ::CE::Logging::ProcessLifetime logging_lifetime_;
         StartupOptions configuration_;
         StartupBackend backend_;
         bool initialized_ = false;

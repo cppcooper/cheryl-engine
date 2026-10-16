@@ -61,7 +61,7 @@ class RunnerTests(unittest.TestCase):
         output = self.invoke("--profile", "headless", "--hwloc", "ON")
         command = next(command for command in self.commands if command[0] == "ctest")
         pattern = re.compile(command[command.index("-R") + 1])
-        for name in ("tests-engine.text_runs.pages", "acceptance-engine.frame.done",
+        for name in ("tests-engine.text_runs.pages", "acceptance-engine.frame.done", "acceptance-logging.process_lifetime",
                      "tests-worker-topology-composition.workers.config", "consumer-worker-topology"):
             self.assertIsNotNone(pattern.search(name), name)
         for name in ("all-engine.text_runs.pages", "acceptance-worker-topology-hwloc.native.binding",
@@ -96,7 +96,8 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(self.commands), 2)
         self.assertEqual(self.commands[0][:2], ["cmake", "-S"])
         self.assertEqual(self.commands[1][:2], ["cmake", "--build"])
-        for target in ("consumer-cengine", "tests-engine", "acceptance-engine", "tests-worker-topology-composition"):
+        for target in ("consumer-cengine", "tests-engine", "acceptance-engine", "acceptance-logging",
+                       "tests-worker-topology-composition"):
             self.assertIn(target, self.commands[1])
 
     def test_test_phase(self):
@@ -105,6 +106,7 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(any(command[0] == "cmake" for command in self.commands))
         pattern = re.compile(self.commands[0][-1])
         for name in ("acceptance-engine.runtime_adapter.close_before_update",
+                     "acceptance-logging.process_lifetime",
                      "tests-worker-topology-composition.workers.config", "tests-ui-coexist.case"):
             self.assertIsNotNone(pattern.search(name), name)
         self.assertEqual(len(self.commands), 7)

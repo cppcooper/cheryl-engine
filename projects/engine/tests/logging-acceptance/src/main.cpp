@@ -1,5 +1,6 @@
 #include <core/logging/logger.h>
 #include <core/logging/log-names.h>
+#include <core/logging/process-lifetime.h>
 #include <core/subsystems/event-bus.h>
 #include <internals/compile-time-logging.hpp>
 #include <internals/failure-reporting.h>
@@ -7,11 +8,14 @@
 #include <spdlog/sinks/basic_file_sink.h>
 
 #include <chrono>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <functional>
+#include <fstream>
 #include <future>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
@@ -24,6 +28,8 @@ namespace {
     constexpr char target_name[] = "isolated-target";
     constexpr char static_name[] = "isolated-static";
     constexpr char game_name[] = "app-game";
+    constexpr char process_name[] = "process-custom";
+    constexpr char process_late_name[] = "process-late";
 
     void require(const bool condition, const char* message) {
         if (!condition)
@@ -352,6 +358,84 @@ namespace {
         holder.close(2s);
         throw std::runtime_error("callback destruction did not terminate");
     }
+
+    void process_lifetime(const std::filesystem::path& directory) {
+        for (const auto* filename : {"process-custom.log", "engine.log", "isolated-static.log"})
+            std::filesystem::remove(directory / filename);
+        std::atomic<int> closes{0};
+        std::unique_ptr<CE::Logging::Log<process_name>> custom;
+        std::weak_ptr<spdlog::details::thread_pool> pool;
+        const auto host_pool = spdlog::thread_pool();
+        {
+            const CE::Logging::ProcessLifetime process;
+            spdlog::file_event_handlers handlers;
+            handlers.after_close = [&](const spdlog::filename_t&) { closes.fetch_add(1); };
+            custom = std::make_unique<CE::Logging::Log<process_name>>(handlers, configuration(directory));
+            prepare_named<CE::Logging::Categories::engine>(directory);
+            // A custom singleton is distinct from both a built-in name and a
+            // caller-owned Log, and must release its pool before DLL detach too.
+            prepare_named<static_name>(directory);
+            pool = CE::Logging::Detail::ThreadPoolInit::get().tp;
+            {
+                const CE::Logging::ProcessLifetime nested;
+                custom->warn("process-before-inner-close");
+                custom->flush();
+            }
+            require(closes.load() == 0, "a nested guard closed a live custom logger");
+            require(!pool.expired(), "a nested guard stopped the shared worker");
+            custom->warn("process-final-custom-record");
+            custom->flush();
+            CE::Logging::Logger<CE::Logging::Categories::engine>::warn("process-final-engine-record");
+            CE::Logging::Logger<static_name>::warn("process-final-singleton-record");
+            // No explicit Log::close: the outer guard must drain accepted work.
+        }
+        require(pool.expired(), "the last guard left a Log or singleton owning the worker pool");
+        require(closes.load() == 1, "the last guard did not close the caller-owned logger");
+        require(spdlog::thread_pool() == host_pool, "process shutdown replaced the host's spdlog pool");
+        require(spdlog::get(process_name) == nullptr, "process shutdown retained the native custom logger");
+        require(custom->shared_queue_stats().queued_items == 0, "terminal diagnostics retained queued work");
+        custom->report_diagnostics();
+        const auto content = [](const std::filesystem::path& path) {
+            std::ifstream file(path, std::ios::binary);
+            return std::string(std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{});
+        };
+        if constexpr (CE::Logging::Compile::enabled(CE::Logging::Compile::WARNING_)) {
+            require(
+                content(directory / "process-custom.log").find("process-final-custom-record") != std::string::npos,
+                "process shutdown lost a queued custom record or flush"
+            );
+            require(
+                content(directory / "engine.log").find("process-final-engine-record") != std::string::npos,
+                "process shutdown lost a queued built-in record"
+            );
+            require(
+                content(directory / "isolated-static.log").find("process-final-singleton-record") != std::string::npos,
+                "process shutdown lost a queued custom singleton record"
+            );
+        }
+        bool rejected = false;
+        try {
+            custom->reopen();
+        } catch (const CE::Exceptions::failed_operation&) {
+            rejected = true;
+        }
+        require(rejected, "a logger reopened after terminal process shutdown");
+        rejected = false;
+        try {
+            const CE::Logging::ProcessLifetime later;
+        } catch (const CE::Exceptions::failed_operation&) {
+            rejected = true;
+        }
+        require(rejected, "a later process guard restarted terminal logging");
+        rejected = false;
+        try {
+            const CE::Logging::Log<process_late_name> later{{}, configuration(directory)};
+        } catch (const CE::Exceptions::failed_operation&) {
+            rejected = true;
+        }
+        require(rejected, "a new logger started after terminal process shutdown");
+        custom.reset();
+    }
 }
 
 int main(const int argc, const char* const* argv) {
@@ -359,6 +443,11 @@ int main(const int argc, const char* const* argv) {
         require(argc == 3, "expected scenario and output directory");
         const std::string_view scenario = argv[1];
         const std::filesystem::path directory = argv[2];
+        if (scenario == "process-lifetime") {
+            process_lifetime(directory);
+            return 0;
+        }
+        const CE::Logging::ProcessLifetime logging;
         if (scenario == "faults")
             faults();
         else if (scenario == "rotation")
@@ -376,7 +465,7 @@ int main(const int argc, const char* const* argv) {
         else if (scenario == "static") {
             CE::Logging::Logger<static_name>::initialize(spdlog::file_event_handlers{}, configuration(directory));
             spdlog::get(static_name)->warn("static-final-record");
-            // Return normally: the singleton/pool teardown must drain this record.
+            // Return normally: the process guard must drain the singleton record.
         } else
             throw std::runtime_error("unknown logging acceptance scenario");
         return 0;

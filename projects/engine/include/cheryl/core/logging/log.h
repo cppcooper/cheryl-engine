@@ -101,16 +101,19 @@ namespace CE::Logging {
 
         std::shared_ptr<LogStateController> state_controller = std::make_shared<LogStateController>();
         const ::CE::Logging::Config configuration_;
-        const std::shared_ptr<spdlog::details::thread_pool> thread_pool_;
+        std::shared_ptr<spdlog::details::thread_pool> thread_pool_;
         const std::shared_ptr<::CE::Logging::Detail::QueueReports> queue_reports_;
         const std::shared_ptr<::CE::Logging::Detail::BackendCounters> backend_counters_ =
             std::make_shared<::CE::Logging::Detail::BackendCounters>();
         atomic_shared_ptr<::CE::Logging::Detail::BackendGeneration> backend_generation_{nullptr};
         std::shared_ptr<spdlog::logger> m_fallback_logger;
         std::optional<ReopenState> reopen_state;
+        std::size_t retired_pool_discards_ = 0;
+        const std::shared_ptr<Detail::ProcessLogRegistration> process_registration_;
 
         void construct_log();
         void release_registry_ownership() const noexcept;
+        void shutdown_process() noexcept;
 
         [[nodiscard]] static bool admits(const std::shared_ptr<spdlog::logger>& logger, const spdlog::level level) noexcept {
             return logger && level != spdlog::level::off && logger->should_log(level) &&
@@ -159,7 +162,8 @@ namespace CE::Logging {
          * Available while closed; does not reset the shared counters.
          */
         [[nodiscard]] ::CE::Logging::QueueStats shared_queue_stats() const {
-            return {thread_pool_->queue_size(), thread_pool_->discard_counter()};
+            return thread_pool_ ? ::CE::Logging::QueueStats{thread_pool_->queue_size(), thread_pool_->discard_counter()}
+                                : ::CE::Logging::QueueStats{0, retired_pool_discards_};
         }
         [[nodiscard]] ::CE::Logging::BackendStats backend_stats() const noexcept {
             const auto generation = backend_generation_.load();
@@ -176,7 +180,7 @@ namespace CE::Logging {
         void report_diagnostics() const {
             ::CE::Logging::Detail::reject_backend_reentry("report logging diagnostics");
             ::CE::Logging::Detail::report_backend_summary(name, backend_counters_);
-            ::CE::Logging::Detail::report_queue_loss(queue_reports_, thread_pool_->discard_counter());
+            ::CE::Logging::Detail::report_queue_loss(queue_reports_, shared_queue_stats().discarded_items);
         }
         [[nodiscard]] std::filesystem::path get_file_path() const;
         // Legacy wrapping 16-bit serial; do not use it as a session/domain ID.
@@ -287,6 +291,8 @@ namespace CE::State {
 namespace CE::Logging {
     template <const char* name> void Log<name>::construct_log() {
         Detail::reject_backend_reentry("construct a logger");
+        if (!thread_pool_)
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "The process logging lifetime has ended");
         auto generation = std::make_shared<Detail::BackendGeneration>();
         generation->file = std::make_shared<Detail::DestinationState>(backend_counters_, true);
         generation->console = std::make_shared<Detail::DestinationState>(backend_counters_, false);
@@ -394,7 +400,8 @@ namespace CE::Logging {
       configuration_(Detail::prepare_configuration(std::move(configuration), name)),
       thread_pool_(::CE::Logging::Detail::ThreadPoolInit::get().tp),
       queue_reports_(::CE::Logging::Detail::ThreadPoolInit::get().queue_reports),
-      m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())) {
+      m_fallback_logger(std::make_shared<spdlog::logger>(std::format("{}-closed", name), std::make_shared<spdlog::sinks::null_sink_mt>())),
+      process_registration_(Detail::register_process_log([this] { shutdown_process(); })) {
         if (!thread_pool_)
             throw ::CE::Exceptions::failed_operation(CE_HERE, "The logging thread pool is unavailable");
         m_fallback_logger->set_level(spdlog::level::off);
@@ -409,6 +416,12 @@ namespace CE::Logging {
             ::CE::Diagnostics::report_failure("logger destruction from a backend callback", {});
             std::terminate();
         }
+        const std::lock_guard lifetime_lock(process_registration_->mutex);
+        process_registration_->shutdown = {};
+        shutdown_process();
+    }
+
+    template <const char* name> void Log<name>::shutdown_process() noexcept {
         // Ordinary destruction attempts the same strong close boundary exposed by close(): under
         // normal ownership, the file sink is destroyed before shutdown completes. External spdlog
         // owners can extend that lifetime, so destruction waits at most one minute.
@@ -421,6 +434,10 @@ namespace CE::Logging {
         }
 
         release_registry_ownership();
+        if (thread_pool_) {
+            retired_pool_discards_ = thread_pool_->discard_counter();
+            thread_pool_.reset();
+        }
     }
 
     template <const char* name> void Log<name>::release_registry_ownership() const noexcept {

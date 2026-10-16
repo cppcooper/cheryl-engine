@@ -1,4 +1,5 @@
 #include <cheryl/core/engine/worker-configuration.h>
+#include <cheryl/core/logging/process-lifetime.h>
 #if CHERYL_CONSUMER_WORKER_JSON
 #include <cheryl/core/engine/worker-topology/configuration.h>
 #endif
@@ -14,6 +15,7 @@
 #endif
 
 int main() try {
+    CE::Logging::ProcessLifetime logging_lifetime;
     CE::Workers::Configuration configuration;
 #if CHERYL_CONSUMER_WORKER_JSON
     configuration = CE::Workers::Json::parse_configuration(R"({"version":"1.0","workers":1,"groups":{"simulation":{"concurrency":1}}})");

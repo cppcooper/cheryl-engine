@@ -1,4 +1,5 @@
 #include <cheryl/backends/miniaudio.h>
+#include <cheryl/core/logging/process-lifetime.h>
 
 #if defined(miniaudio_h) || defined(GLFW_VERSION_MAJOR) || defined(GL_VERSION_3_3)
     #error Audio consumers must not inherit native audio or graphics SDK headers.
@@ -182,6 +183,7 @@ namespace {
 }
 
 int main(int argc, char** argv) {
+    CE::Logging::ProcessLifetime logging_lifetime;
     try {
         bool native = false;
         bool producers = false;

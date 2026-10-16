@@ -76,7 +76,7 @@ def main(arguments=None):
     if args.sdk:
         targets.append("cheryl-sdk")
     consumers = ["cheryl-consumer"]
-    suites = ["tests-engine", "tests-logging", "acceptance-engine", "tests-worker-topology-json"]
+    suites = ["tests-engine", "tests-logging", "acceptance-engine", "acceptance-logging", "tests-worker-topology-json"]
     if testing:
         targets += suites + ["consumer-worker-topology"]
         if args.hwloc == "ON":

@@ -13,6 +13,7 @@
 bool exercise_resources();
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
     CE::Rendering::Camera2D camera;
     camera.set_framebuffer_size({640, 480});
     const bool camera_size = camera.framebuffer_size() == CE::Platform::FramebufferSize{640, 480};

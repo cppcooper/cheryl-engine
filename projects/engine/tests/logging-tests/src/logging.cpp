@@ -62,6 +62,7 @@ namespace {
     constexpr char untouched_name[] = "logging-untouched";
     constexpr char open_reentry_name[] = "logging-open-reentry";
     constexpr char graph_name[] = "logging-graph";
+    constexpr char process_name[] = "logging-process-scopes";
     constexpr std::size_t queue_capacity = 8192;
 
     struct LogDirectory {
@@ -981,6 +982,34 @@ TEST(logging, host_pool) {
         EXPECT_EQ(spdlog::thread_pool(), original);
     }
     EXPECT_EQ(spdlog::thread_pool(), original);
+}
+
+TEST(logging, process_scopes) {
+    const LogDirectory directory;
+    auto config = CE::Logging::Config::for_logger(process_name);
+    config.directory = directory.path;
+    config.console_level = spdlog::level::off;
+    TestLog<process_name> log{{}, config};
+    const std::weak_ptr<spdlog::details::thread_pool> pool = CE::Logging::Detail::ThreadPoolInit::get().tp;
+    {
+        const CE::Logging::ProcessLifetime nested;
+        {
+            const CE::Logging::ProcessLifetime inner;
+            log.warn("nested-scope-record");
+        }
+        EXPECT_NO_THROW(static_cast<void>(log.get_file_path()));
+        EXPECT_FALSE(pool.expired());
+        log.warn("after-inner-scope");
+    }
+    // The common runner owns the outermost guard until all tests finish.
+    EXPECT_NO_THROW(static_cast<void>(log.get_file_path()));
+    EXPECT_FALSE(pool.expired());
+    log.warn("after-nested-scope");
+    log.close(close_timeout);
+    const auto content = read_file(directory.path / std::format("{}.log", process_name));
+    expect_level(content, "nested-scope-record", CE::Logging::Compile::WARNING_);
+    expect_level(content, "after-inner-scope", CE::Logging::Compile::WARNING_);
+    expect_level(content, "after-nested-scope", CE::Logging::Compile::WARNING_);
 }
 
 TEST(logging, discard_queue) {
