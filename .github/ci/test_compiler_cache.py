@@ -384,7 +384,8 @@ class WorkflowTests(unittest.TestCase):
             "ab/" + "gg" + "0" * 29,
             "ab/" + "cd" + "0" * 28,
             "ab/" + "cd" + "0" * 30,
-            "AB/" + "0" * 38,
+            # Use a distinct bucket so case-insensitive filesystems preserve its uppercase name.
+            "CD/" + "0" * 38,
             "ab/CACHEDIR.TAG",
             LEGACY_ENTRY_KEY + ".tmp",
         )
