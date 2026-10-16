@@ -132,8 +132,6 @@ function(cheryl_configure_root_options)
     endif()
     cheryl_option(CHERYL_BUILD_DEBUG_TERMINAL_LINUX
             "Include the Linux output terminal in applications and test runners (defaults ON in supported Debug builds)" ${cheryl_terminal_linux_default})
-    cheryl_option(CHERYL_SANDBOX_BUILD
-            "Deprecated native GLFW null-platform selection without Gainput" OFF)
     cheryl_option(CHERYL_BUILD_OPENGL
             "Build the OpenGL backend" ON)
     cheryl_option(CHERYL_BUILD_UI_TGUI

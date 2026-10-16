@@ -84,7 +84,6 @@ declared only when RmlUi is selected.
 | `CHERYL_BUILD_SHARED_LIBS` | `OFF` | Builds Cheryl Engine, compiled modules and support as shared libraries, with matching owned source dependencies. |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input in Native GLFW. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW without X11/Wayland. Disable native input to omit Gainput/X11. |
-| `CHERYL_SANDBOX_BUILD` | `OFF` | Deprecated shorthand defaulting native input off and the null platform on. Prefer explicit options. |
 | `CHERYL_LOG_PROFILE` | `auto` | Selects `developer`, `support` or `release`; `auto` follows the build configuration. |
 | `CHERYL_LOG_COMPILED_MASK` | Empty | Overrides compiled severity bits (`0`–`63`); see [logging policy](../runtime/logging.md#compile-policy). |
 | `WARN` | `OFF` | Adds `-Wall`. |

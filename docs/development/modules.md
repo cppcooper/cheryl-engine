@@ -116,9 +116,8 @@ granular owner headers, such as `cheryl/backends/native-glfw.h`.
 
 `CHERYL_NATIVE_INPUT=OFF` omits Gainput and the default-input factory overload.
 `CHERYL_NATIVE_NULL_PLATFORM=ON` configures an owned GLFW without X11/Wayland;
-a supplied GLFW target keeps its host settings. Prefer these explicit options to
-the deprecated sandbox shorthand. The [build guide](building.md) owns their
-configuration and dependency details.
+a supplied GLFW target keeps its host settings. The [build guide](building.md)
+owns their configuration and dependency details.
 
 Selection preserves owner lifetimes: input detaches while its window is live,
 resources retire before context destruction, and runtime shutdown settles workers

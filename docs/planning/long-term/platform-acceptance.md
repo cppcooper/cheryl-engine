@@ -50,7 +50,7 @@ try {
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF `
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST `
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF `
+    -DCHERYL_LOG_PROFILE=developer `
     -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON `
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF `
     -DGAINPUT_ENABLE_HID=ON `
@@ -204,7 +204,8 @@ until those configurations are implemented and accepted.
 
 Full Wayland and other operating systems need their own runtime acceptance for
 input, rendering, UI coexistence, resizing and shutdown in sequential/concurrent
-modes and normal/sandbox configurations. Establish machines, fixtures and native
+modes and their selected `CHERYL_NATIVE_INPUT` / `CHERYL_NATIVE_NULL_PLATFORM`
+configurations. Establish machines, fixtures and native
 observation requirements when activating each platform; do not infer acceptance
 from Linux/X11 or software-driver execution. Reuse the
 [architecture procedures](../../development/architecture-validation.md) and the

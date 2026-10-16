@@ -43,7 +43,7 @@ registration.
 
 ### Engine only
 
-A fresh Release configuration provides a neutral graph without sandbox mode:
+A fresh Release configuration provides a neutral graph:
 
 ```sh
 (
@@ -60,7 +60,7 @@ A fresh Release configuration provides a neutral graph without sandbox mode:
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
-    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
+    -DCHERYL_BUILD_DEMO=OFF
   cmake --build build-validation-release --parallel --target \
     consumer-cengine tests-engine tests-logging \
     acceptance-logging acceptance-signal
@@ -130,7 +130,7 @@ caller's working directory:
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
