@@ -1,20 +1,5 @@
-if(TARGET Cheryl::Startup)
-    return()
+# Compatibility source entrypoint; Startup is a public runtime module.
+if(NOT TARGET Cheryl::Startup)
+    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/modules/runtime/startup"
+        "${CMAKE_CURRENT_BINARY_DIR}/module" EXCLUDE_FROM_ALL)
 endif()
-
-if(NOT TARGET CLI11::CLI11)
-    add_subdirectory("${CHERYL_REPOSITORY_ROOT}/extern/cli11" extern/cli11 EXCLUDE_FROM_ALL)
-endif()
-
-add_library(${TARGET_LIB_ENGINE_S_STARTUP} ${CHERYL_LIBRARY_TYPE} src/startup.cpp)
-add_library(Cheryl::Startup ALIAS ${TARGET_LIB_ENGINE_S_STARTUP})
-cheryl_register_public_component(${TARGET_LIB_ENGINE_S_STARTUP} FEATURE CHERYL_HAS_SUPPORT_STARTUP)
-set_target_properties(${TARGET_LIB_ENGINE_S_STARTUP} PROPERTIES
-    VERSION "${VERSION_PROJECT_ENGINE}"
-    OUTPUT_NAME "${OUTPUT_LIB_ENGINE_S_STARTUP}"
-    ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
-cheryl_configure_library(${TARGET_LIB_ENGINE_S_STARTUP} STARTUP)
-target_include_directories(${TARGET_LIB_ENGINE_S_STARTUP} PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
-target_link_libraries(${TARGET_LIB_ENGINE_S_STARTUP} PUBLIC ${LINKAGE_PUBLIC_LIB_ENGINE_S_STARTUP})

@@ -39,8 +39,8 @@ waits for Enter on launching stdin after viewer closure. `crash` deliberately us
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal normal
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal hold
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal normal
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal hold
   ./build/testing-terminal-Release-ON/tests-acceptance-engine-terminal normal
   ./build/testing-terminal-Release-ON/tests-acceptance-engine-terminal normal --debug-terminal
 )
@@ -49,7 +49,7 @@ waits for Enter on launching stdin after viewer closure. `crash` deliberately us
 ```sh
 (
   cd "$(git rev-parse --show-toplevel)" || exit
-  ./build/testing-terminal-Debug-AUTO/tests-acceptance-engine-terminal crash
+  ./build/testing-terminal-Debug-ON/tests-acceptance-engine-terminal crash
   terminal_status=$?
   test "$terminal_status" -eq 86
 )
@@ -65,7 +65,7 @@ For root application composition, build once and reuse:
     -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
-    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON -DCHERYL_DEBUG_TERMINAL=AUTO \
+    -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=ON -DCHERYL_DEBUG_TERMINAL_EMULATOR=auto \
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
     -DGAINPUT_ENABLE_HID=OFF -DGLFW_BUILD_X11=ON -DGLFW_BUILD_WAYLAND=OFF \
     -DCHERYL_BUILD_UI_TGUI=ON -DCHERYL_BUILD_UI_RMLUI=OFF \
@@ -158,7 +158,7 @@ commands below need an authenticated GitHub CLI and `sha256sum`; the GitHub Acti
 UI can replace run inspection and artifact download.
 
 Hosted builds, focused tests and relocated SDK consumers are accepted within the
-[CI selection and coverage limits](development/building.md#github-ci-and-sdk-artifacts).
+[CI selection and coverage limits](development/ci.md).
 This request retains only the main-push collection gate. PR, `develop` and manual
 runs intentionally skip it, so another manual dispatch cannot accept this scope.
 The existing workflow configures and checks both producer matrices before collection;
@@ -200,7 +200,7 @@ working directory and downloads into a fresh directory:
   matching SHA256 files and SDK manifests for the intended revision/configurations.
   The workflow creates no GitHub release or demo package.
 - Report the run URL, commit, configurations and collection result. Preserve the
-  [hosted Windows skipped-case limits](development/building.md#hosted-windows-coverage-limits)
+  [hosted Windows skipped-case limits](development/ci.md#hosted-windows-coverage-limits)
   independently; green matrix jobs do not accept those cases or native/device QA.
 
 ## Deferred and unfinished coverage

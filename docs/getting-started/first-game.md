@@ -30,6 +30,7 @@ first-game executable:
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCHERYL_BUILD_FIRST_GAME=ON -DCHERYL_BUILD_DEMO=OFF \
     -DCHERYL_BUILD_NATIVE_GLFW=ON -DCHERYL_BUILD_OPENGL=ON \
+    -DCHERYL_BUILD_STARTUP=ON -DCHERYL_STARTUP_OPENGL=ON -DCHERYL_BUILD_WORKERS=OFF \
     -DCHERYL_NATIVE_INPUT=ON -DCHERYL_NATIVE_NULL_PLATFORM=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
@@ -58,12 +59,12 @@ not establish those graphics and input observations.
 
 ### Startup options, including your own
 
-{cpp:func}`CE::Application::GLFWOpenGL::make_startup` is a **factory function**:
+{cpp:func}`CE::Application::make_startup` is a **factory function**:
 it constructs and returns a {cpp:class}`CE::Application::Startup` object. The
 example stores that object in the variable `startup`. It holds the command-line
 parser and the configuration used to create the engine context.
 
-This function selects GLFW for the window/input implementation and OpenGL for
+With this build's configured Startup integration, the function selects GLFW for the window/input implementation and OpenGL for
 drawing and graphics resource creation. These implementations are the
 **backends**; their objects implement the engine's window, input, rendering, and
 resource interfaces. Register your game's command-line options on `startup`
@@ -79,7 +80,7 @@ before calling `startup.initialize()`:
 
 In `make_startup("Cheryl first game", {...})`, the first argument is the text
 shown in command-line help. The second argument, `{.width = 640, ...}`, is a
-`CE::Application::GLFWOpenGL::Options` configuration value: it supplies defaults
+`CE::Application::ApplicationOptions` configuration value: it supplies defaults
 such as window size and title.
 
 The calls in `main()` act on different objects:
@@ -109,13 +110,12 @@ and keep their destination variables alive until `startup.initialize()` returns.
 ### Configure the context and run the game
 
 The second argument to `make_startup()`, the
-{cpp:struct}`CE::Application::GLFWOpenGL::Options` value,
+{cpp:struct}`CE::Application::ApplicationOptions` value,
 selects the initial window dimensions, title, window mode, and swap interval.
 Its `execution` member configures the context's CPU execution service, including
 worker count and an optional shared pool of threads for background tasks.
-`make_startup()` also accepts a {cpp:struct}`CE::Application::RuntimeOptions`
-value as an optional third argument, omitted above. It supplies loop defaults
-such as execution mode and simulation timing. Parsed command-line options
+Its `runtime` member is a {cpp:struct}`CE::Application::RuntimeOptions` value
+supplying loop defaults such as execution mode and simulation timing. Parsed command-line options
 override these defaults.
 See [application startup](../development/consuming-engine.md#command-line-startup)
 for the complete option and validation contract.
@@ -215,7 +215,7 @@ Calling a context accessor does not move execution to another thread. In
 particular, graphics uploads in concurrent `update()` would run on the wrong
 thread. Your game supplies frame data; the runtime calls the renderer and
 presents the window. The
-[runtime architecture](../runtime/runtime-architecture.md) and
+[runtime architecture](../architecture/assembling-engine.md) and
 [frame boundary](../runtime/runtime-frame-boundary.md) describe the wider design.
 
 ### Obtain, use, and stop using resources
@@ -250,7 +250,7 @@ An **action** is a game-defined input name represented by a
 `CE::Input::Actions::Id`; here, `left_`, `right_`, `next_cell_`, and `quit_` are
 those IDs. A **binding** maps a device input to an action. In the following code,
 `bindings` is the binding interface returned by `engine_.input().bindings()`.
-Its `bind_button()` calls map Gainput key codes to the game's actions and return
+Its `bind_button()` calls map Cheryl keyboard controls to the game's actions and return
 binding IDs, stored in the `bindings_` member for cleanup:
 
 ```{literalinclude} ../../projects/apps/first-game/src/first-game.cpp

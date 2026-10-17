@@ -3,9 +3,61 @@
 #include <core/controls/input-accumulator.h>
 #include <core/controls/input-bindings.h>
 #include <core/controls/tick-input.h>
+#include <internals/exceptions.h>
 
 #include <chrono>
 #include <vector>
+
+TEST(input_bindings, portable_controls) {
+    using namespace CE::Input;
+    enum BackendButton { BackendA = 50 };
+    static_assert(!std::is_constructible_v<Control, DeviceId, BackendButton>);
+    static_assert(std::is_constructible_v<Control, DeviceId, ControlId>);
+    Actions::Bindings bindings;
+    const Actions::Id jump{1};
+    const Actions::Id fire{2};
+    const Actions::Id throttle{3};
+    static_cast<void>(bindings.bind_button({1, KeyboardKey::A}, jump));
+    static_cast<void>(bindings.bind_button({3, GamepadControl::A}, jump));
+    static_cast<void>(bindings.bind_button({2, MouseButton::Left}, fire));
+    static_cast<void>(bindings.bind_axis({3, GamepadControl::LeftTrigger}, throttle));
+
+    bindings.on_button({1, KeyboardKey::A}, true);
+    bindings.on_button({2, MouseButton::Left}, true);
+    bindings.on_axis({3, GamepadControl::LeftTrigger}, 0.75f);
+    const auto first = bindings.publish_actions();
+    EXPECT_TRUE(first->button(jump).pressed());
+    EXPECT_TRUE(first->button(fire).pressed());
+    EXPECT_FLOAT_EQ(first->axis(throttle).current, 0.75f);
+
+    // Switching between alternatives keeps one semantic hold across device types.
+    bindings.on_button({3, GamepadControl::A}, true);
+    bindings.on_button({1, KeyboardKey::A}, false);
+    const auto second = bindings.publish_actions();
+    EXPECT_TRUE(second->button(jump).held());
+    EXPECT_EQ(second->button(jump).press_count, 0u);
+    EXPECT_EQ(second->button(jump).release_count, 0u);
+}
+
+TEST(input_bindings, unknown_controls) {
+    using namespace CE::Input;
+    Actions::Bindings bindings;
+    const Actions::Id action{1};
+    EXPECT_THROW(static_cast<void>(bindings.bind_button({1, KeyboardKey::Unknown}, action)), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(bindings.bind_button({1, MouseButton::Unknown}, action)), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(bindings.bind_axis({1, GamepadControl::Unknown}, action)), CE::Exceptions::invalid_args);
+    EXPECT_THROW(
+        static_cast<void>(bindings.bind_button(Actions::Chord{{{1, KeyboardKey::A}, {2, MouseButton::Unknown}}}, action)),
+        CE::Exceptions::invalid_args
+    );
+    EXPECT_THROW(
+        static_cast<void>(bindings.bind_axis(Actions::Chord{{{1, KeyboardKey::Unknown}}}, {2, GamepadControl::LeftStickX}, action)),
+        CE::Exceptions::invalid_args
+    );
+    EXPECT_EQ(control_id(static_cast<KeyboardKey>(0xFFFF)), invalid_control);
+    EXPECT_EQ(control_id(static_cast<MouseButton>(0xFF)), invalid_control);
+    EXPECT_EQ(control_id(static_cast<GamepadControl>(0xFFFF)), invalid_control);
+}
 
 TEST(input_bindings, device_routing) {
     CE::Input::Actions::Bindings bindings;

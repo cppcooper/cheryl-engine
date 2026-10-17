@@ -23,6 +23,7 @@ VERSION_SETTING = re.compile(
     r'(?m)^(?P<prefix>[ \t]*set\([ \t]*(?P<name>VERSION_PROJECT_[A-Z0-9_]+)[ \t]+)'
     r'(?P<quote>"?)(?P<version>[^"\s)]+)(?P=quote)(?P<suffix>[ \t]*\)[^\r\n]*)(?P<cr>\r?)$'
 )
+VERSION_ALIAS = re.compile(r"\$\{(VERSION_PROJECT_[A-Z0-9_]+)\}")
 COMPONENT_PATHS = {
     "projects/engine/": ENGINE,
     "projects/modules/platform/native-glfw/": "VERSION_PROJECT_MODULE_NATIVE_GLFW",
@@ -53,9 +54,15 @@ def read_versions(text):
     values = {}
     for match in VERSION_SETTING.finditer(text):
         name, value = match.group("name", "version")
-        version_tuple(value)
         if name in values:
             raise ValueError(f"Duplicate version setting: {name}")
+        alias = VERSION_ALIAS.fullmatch(value)
+        if alias:
+            referenced = alias[1]
+            if referenced not in values:
+                raise ValueError(f"Version alias must reference a previously declared version: {name}")
+            value = values[referenced]
+        version_tuple(value)
         values[name] = value
     return values
 

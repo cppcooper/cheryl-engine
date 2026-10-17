@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(cheryl_debug_terminal_linux_module VERSION ${VERSION_PROJECT_MODULE_DEBUG_TERMINAL_LINUX} LANGUAGES C CXX)
 endif()
@@ -27,7 +27,7 @@ target_compile_definitions(${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX} INTERFACE
 
 if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
     if(NOT TARGET Cheryl::DebugTerminal::Startup)
-        add_subdirectory("${CHERYL_REPOSITORY_ROOT}/projects/engine/support/debug-terminal"
+        add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/private/startup"
             "${CMAKE_CURRENT_BINARY_DIR}/startup" EXCLUDE_FROM_ALL)
     endif()
     if(NOT TARGET Threads::Threads)
@@ -56,6 +56,10 @@ if(CHERYL_BUILD_DEBUG_TERMINAL_LINUX)
         module_debug_terminal_linux_impl)
     include("${CMAKE_CURRENT_SOURCE_DIR}/tests/support/cmake/GoogleTestOutput.cmake")
     cheryl_route_test_reports("1")
+endif()
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    cheryl_select_public_component(${TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX})
 endif()
 
 if(CHERYL_BUILD_TESTS)

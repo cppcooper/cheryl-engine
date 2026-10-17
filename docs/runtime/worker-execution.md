@@ -38,12 +38,13 @@ run outside them. Submitted jobs retain their group even if its handle is droppe
 
 Neutral topology descriptions, pool/group options and scheduling live in
 `CE::Workers` and are supplied by `Cheryl::Engine`. The optional
-`Cheryl::WorkerTopology::Hwloc` target supplies
-`CE::Workers::Hwloc::make_topology_provider()`; `Cheryl::WorkerTopology::Json`
-supplies configuration loading independently of hwloc. Both live under `projects/engine/support/worker-topology/`.
-Applications link the selected support targets; Engine does not link back to them.
-Public contracts expose neither hwloc nor JSON library types. For static builds,
-the hwloc support target propagates its required final link dependency.
+[`Cheryl::Workers` module](../modules/workers.md) supplies
+`CE::Workers::Hwloc::make_topology_provider()` and independent JSON loading.
+Both features live under `projects/modules/runtime/workers/` in one implementation
+library; their existing `Cheryl::WorkerTopology::Hwloc`/`Json` names are
+capability-dependent compatibility aliases. Engine has no reverse dependency.
+Public contracts expose neither hwloc nor JSON types. The shared module owns
+its static hwloc implementation; static SDKs supply its final archive closure.
 
 Supply a `CE::Workers::TopologyProvider` through `CE::Workers::PoolOptions::topology_provider`.
 The pool retains it through worker joins. There is no global registrar, entry-point
@@ -164,7 +165,7 @@ structural checks without discovering topology, creating threads or binding CPUs
 Runtime availability and CPU/cache intersections are resolved by pool/group
 construction. Named groups match `[a-z][a-z0-9_]*`.
 
-Link `Cheryl::WorkerTopology::Json` and include
+Enable the JSON feature, link `Cheryl::Workers` and include
 `<cheryl/core/engine/worker-topology/configuration.h>` for
 `CE::Workers::Json::parse_configuration(document, source)` or `CE::Workers::Json::load_configuration(path)`;
 the latter also accepts a stream and source path. The supported version is `"1.0"`:
@@ -187,8 +188,8 @@ with distinct nonnegative OS `cpus`, `strength` (`preferred`/`required`),
 `cache_domain` and `prefer_same_worker`. Select domain IDs from the pool's
 advertised snapshot; do not assume they are portable between snapshots or machines.
 NUMA fields are not in this format.
-The [schema](../../projects/engine/support/worker-topology/schema/worker-configuration-v1.schema.json)
-and [example](../../projects/engine/support/worker-topology/examples/workers.json)
+The [schema](../../projects/modules/runtime/workers/schema/worker-configuration-v1.schema.json)
+and [example](../../projects/modules/runtime/workers/examples/workers.json)
 define the exact shape.
 
 Unknown versions/fields, duplicate JSON properties, invalid names/types/ranges and
@@ -215,7 +216,7 @@ context. Set `config.execution.worker_count` or `config.execution.shared_pool`
 there before creating the backend graph; owned and borrowed input use the same
 execution configuration.
 
-The [shared-pool example](../../projects/engine/support/worker-topology/examples/shared-pool.cpp)
+The [shared-pool example](../../projects/modules/runtime/workers/examples/shared-pool.cpp)
 composes loaded or direct settings with an application-supplied backend factory and
 named context-owned groups. It is a separately buildable example, not a global hook.
 

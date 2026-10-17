@@ -23,8 +23,8 @@ def main(arguments=None):
     parser.add_argument("--linkage", choices=("static", "shared"), default="static")
     parser.add_argument("--hwloc", choices=("ON", "OFF"), default="OFF")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
-    parser.add_argument("--vcpkg-root", type=Path)
-    parser.add_argument("--vcpkg-installed-dir", type=Path)
+    parser.add_argument("--vcpkg-root", type=Path, default=os.environ.get("CHERYL_CI_VCPKG_ROOT") if sys.platform == "win32" else None)
+    parser.add_argument("--vcpkg-installed-dir", type=Path, default=os.environ.get("CHERYL_CI_VCPKG_INSTALLED_DIR") if sys.platform == "win32" else None)
     parser.add_argument("--sdk", action="store_true")
     args = parser.parse_args(arguments)
     if args.jobs < 1:
@@ -36,7 +36,7 @@ def main(arguments=None):
     modules = args.profile == "modules"
     testing = args.profile != "consumer"
     environment = os.environ.copy()
-    if sys.platform == "win32" and args.linkage == "shared":
+    if sys.platform == "win32":
         environment["PATH"] = str(build) + os.pathsep + environment.get("PATH", "")
     if testing:
         environment.setdefault("CHERYL_STB_ALLOCATION_TTF", str(source / "assets/fonts/DejaVuSans.ttf"))
@@ -48,6 +48,7 @@ def main(arguments=None):
                  "-DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF", f"-DCHERYL_BUILD_DEMO={flag(modules)}",
                  f"-DCHERYL_BUILD_FIRST_GAME={flag(modules)}",
                  f"-DCHERYL_BUILD_NATIVE_GLFW={flag(modules)}", f"-DCHERYL_BUILD_OPENGL={flag(modules)}",
+                 "-DCHERYL_BUILD_STARTUP=ON", f"-DCHERYL_STARTUP_OPENGL={flag(modules)}",
                  f"-DCHERYL_BUILD_UI_TGUI={flag(modules)}", f"-DCHERYL_BUILD_UI_RMLUI={flag(modules)}",
                  f"-DCHERYL_BUILD_AUDIO_MINIAUDIO={flag(modules)}",
                  f"-DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC={args.hwloc}",
@@ -63,20 +64,23 @@ def main(arguments=None):
         configure += ["-DCMAKE_POLICY_DEFAULT_CMP0141=NEW",
                       "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"]
     if args.vcpkg_root:
-        features = (["hwloc"] if args.hwloc == "ON" else []) + (["native"] if modules else [])
+        features = (["hwloc"] if args.hwloc == "ON" else []) + (["native"] if modules and sys.platform == "win32" else [])
+        triplet = "x64-windows" if sys.platform == "win32" else "x64-linux-dynamic"
         configure += [f"-DCMAKE_TOOLCHAIN_FILE={args.vcpkg_root.resolve() / 'scripts/buildsystems/vcpkg.cmake'}",
-                      f"-DVCPKG_MANIFEST_DIR={source / '.github/ci'}", "-DVCPKG_TARGET_TRIPLET=x64-windows",
+                      f"-DVCPKG_MANIFEST_DIR={source / '.github/ci'}", f"-DVCPKG_TARGET_TRIPLET={triplet}",
                       "-DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON",
                       f"-DVCPKG_MANIFEST_FEATURES={';'.join(features)}",
-                      f"-DCMAKE_PROJECT_INCLUDE={source / '.github/ci/windows-hwloc.cmake'}"]
+                      f"-DCMAKE_PROJECT_INCLUDE={source / 'tools/dependencies/prepared.cmake'}"]
+        if sys.platform == "win32":
+            configure.append("-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
         if args.vcpkg_installed_dir:
             configure += [f"-DVCPKG_INSTALLED_DIR={args.vcpkg_installed_dir.resolve().as_posix()}",
                           "-DVCPKG_MANIFEST_INSTALL=OFF"]
-    targets = ["consumer-cengine", "consumer-headers-cheryl"]
+    targets = ["consumer-cengine", "consumer-headers-cheryl", "consumer-module-startup"]
     if args.sdk:
         targets.append("cheryl-sdk")
-    consumers = ["cheryl-consumer"]
-    suites = ["tests-engine", "tests-logging", "acceptance-engine", "acceptance-logging", "tests-worker-topology-json"]
+    consumers = ["cheryl-consumer", "cheryl-startup-consumer"]
+    suites = ["tests-engine", "tests-logging", "acceptance-engine", "acceptance-logging", "tests-worker-topology-json", "tests-startup"]
     if testing:
         targets += suites + ["consumer-worker-topology"]
         if args.hwloc == "ON":
@@ -86,10 +90,14 @@ def main(arguments=None):
         owners = ("native-glfw", "opengl", "ui-tgui", "ui-rmlui", "audio-miniaudio")
         module_suites = [f"tests-{owner}" for owner in owners] + ["tests-ui-coexist"]
         targets += module_suites + [f"consumer-module-{owner}" for owner in owners] + ["demo", "first-game"]
+        targets.append("consumer-module-ui-tgui-native")
         suites += module_suites
         consumers += [f"cheryl-{owner}-consumer" for owner in owners]
+        consumers.append("cheryl-ui-tgui-consumer-native")
     if args.phase != "test":
         run(configure, source, environment)
+        if modules:
+            run([sys.executable, source / "tools/input/generate_controls.py", "--check"], source, environment)
         run(["cmake", "--build", build, "--target", *targets, "--parallel", str(args.jobs)], source, environment)
     if args.phase == "build":
         return

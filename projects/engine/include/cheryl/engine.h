@@ -21,5 +21,6 @@
 #include <cheryl/math/string-numbers.h>
 #include <cheryl/templates/observed-variables.h>
 #include <cheryl/text/font-collection.h>
+#include <cheryl/text/font-rasterizer.h>
 #include <cheryl/text/layout.h>
 #include <cheryl/text/utf8.h>

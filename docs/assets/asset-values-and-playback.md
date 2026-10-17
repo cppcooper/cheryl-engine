@@ -135,6 +135,86 @@ after choosing the original target.
 
 ## Tile selection
 
+### Sample an application map
+
+This CPU example maps a small game-owned terrain grid to a four-neighbor rule.
+Rows increase southward and columns eastward; rendering placement is a separate
+game choice. Terrain `0` is empty and `1` is the terrain being connected. Include
+`<cheryl/assets/selection/tile-selection.h>`, `<array>`, `<cstdint>`,
+`<optional>` and `<variant>`:
+
+```cpp
+namespace Tiles = CE::Assets::Tilesets;
+namespace Pick = CE::Assets::Tilesets::Selection;
+using Cell = CE::Assets::Grids::CellIndex;
+
+const std::array<std::array<std::uint32_t, 3>, 3> map{{
+    {{0, 1, 0}},
+    {{1, 1, 0}},
+    {{0, 0, 0}}
+}};
+Tiles::BitmaskRule rule;
+rule.type = Tiles::BitmaskType::FourNeighbor;
+rule.bit_order = {Tiles::Direction::North, Tiles::Direction::East,
+                  Tiles::Direction::South, Tiles::Direction::West};
+rule.cases = {{0, 0}, {9, 1}, {15, 2}};
+
+const int column = 1;
+const int row = 1;
+const Pick::Sampler sampler = [&](Pick::Site site) -> Pick::Sample {
+    int x = column;
+    int y = row;
+    switch (site.direction) {
+        case Tiles::Direction::North: --y; break;
+        case Tiles::Direction::East: ++x; break;
+        case Tiles::Direction::South: ++y; break;
+        case Tiles::Direction::West: --x; break;
+        default: return {Pick::SampleState::Unknown, 0};
+    }
+    if (x < 0 || x >= 3 || y < 0 || y >= 3)
+        return {Pick::SampleState::Outside, 0};
+    return {Pick::SampleState::Known, map[y][x]};
+};
+Pick::Options options;
+options.terrain = map[row][column];
+options.outside = Pick::Fallback::Empty;
+const auto result = Pick::select(rule, sampler, options);
+std::optional<Cell> visible_cell;
+if (const auto* cell = std::get_if<Cell>(&result))
+    visible_cell = *cell;
+```
+
+For the center tile, North and West connect: bits zero and three produce mask
+`9`, selecting cell `1`. This example deliberately declares only three masks.
+Selecting the top-middle tile produces mask `4`, absent from `cases`, and returns
+`MissingRule`; `visible_cell` stays empty and the game skips that tile. Add the
+remaining authored cases for a complete terrain set. If a required neighbor is
+temporarily unavailable, return `Unknown` rather than `Outside`; the default
+unknown policy produces `IncompleteNeighborhood` instead of inventing empty land.
+
+Keep this rule and map on their simulation owner. Save the selected cell in the
+game's visible state; its sampler borrows the map only during selection. A matching
+loaded tileset must have the selected cell ranges and artwork. For that retained
+`tileset`, a nonnegative simulation time in milliseconds named `elapsed`, and the
+`pass`, `style` and `context` from ordinary frame submission:
+
+```cpp
+if (visible_cell) {
+    const auto cell = tileset.cell_at(*visible_cell, elapsed);
+    pass.add(CE::Rendering::Submission::resolve_tile(tileset, cell, style, context));
+}
+```
+
+`cell_at()` substitutes the selected target's animation once. Advance `elapsed`
+during update, so skipped frame preparation does not pause tile animation. The
+packet retains resources and copied draw values; it carries no map or sampler.
+The [Rendering system](../engine-systems/rendering.md#integration) supplies the
+pass/submission setup, and [Threads and Data Flow](../architecture/threads-data-flow.md)
+explains publication to rendering. The contracts below cover Wang sites,
+deterministic variants and direct-construction limits.
+
+### Selection contracts
+
 The CPU-only `CE::Assets::Tilesets::Selection::select(rule, sampler, options)` overloads accept Wang, bitmask or
 variant definitions and return a `CE::Assets::Tilesets::Selection::Result`: either a `CE::Assets::Grids::CellIndex` or a
 `CE::Assets::Tilesets::Selection::Failure`. `MissingRule` means the derived signature/mask has no
@@ -158,7 +238,7 @@ retained. Unused directions are not sampled. Read-only queries can run concurren
 when the supplied samplers and world support that access.
 
 `Known` samples carry an ID; zero means empty. `Outside` and `Unknown` samples ignore
-their ID and have independent fallback policies: `Empty`, `CE::Rendering::Geometry::Center` or `Unresolved`.
+their ID and have independent `Selection::Fallback` policies: `Empty`, `Center` or `Unresolved`.
 Defaults treat outside-world sites as empty and unknown sites as unresolved. A known
 Wang label absent from its terrain catalogue uses the unknown policy. A Wang center
 fallback requires `options.terrain` to be declared or zero. Bitmasks have no terrain

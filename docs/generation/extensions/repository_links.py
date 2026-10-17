@@ -17,6 +17,19 @@ from sphinx.util.nodes import make_refnode
 from pygments.lexers.special import TextLexer
 from api_rendering import namespace_identity
 from cpp_references import CppReferences
+from source_revision import source_url_at_revision
+
+
+PROJECTED_GUIDES = {
+    "projects/modules/platform/native-glfw/README.md": "modules/native-glfw",
+    "projects/modules/graphics/opengl/README.md": "modules/opengl",
+    "projects/modules/ui/tgui/README.md": "modules/tgui",
+    "projects/modules/ui/rmlui/README.md": "modules/rmlui",
+    "projects/modules/audio/miniaudio/README.md": "modules/miniaudio",
+    "projects/modules/platform/debug-terminal-linux/README.md": "modules/debug-terminal-linux",
+    "projects/modules/runtime/startup/README.md": "modules/startup",
+    "projects/modules/runtime/workers/README.md": "modules/workers",
+}
 
 
 @dataclass(frozen=True)
@@ -114,6 +127,18 @@ def reference(node: nodes.Element, url: str) -> nodes.reference:
     return replacement
 
 
+def projected_reference(app, node: nodes.Element, path: Path, fragment: str):
+    root = app._cheryl_repository_links.root
+    path = path.resolve()
+    if not path.is_relative_to(root):
+        return None
+    document = PROJECTED_GUIDES.get(path.relative_to(root).as_posix())
+    if document not in app.env.found_docs:
+        return None
+    content = nodes.inline("", "", *[child.deepcopy() for child in node.children])
+    return make_refnode(app.builder, node.get("refdoc", app.env.docname), document, fragment, content)
+
+
 def rewrite_links(app, doctree: nodes.document) -> None:
     repository = app._cheryl_repository_links
     environment = app.env
@@ -131,6 +156,10 @@ def rewrite_links(app, doctree: nodes.document) -> None:
         docname = environment.path2doc(str(path))
         if docname in environment.found_docs:
             continue
+        projected = projected_reference(app, node, path, parsed.fragment)
+        if projected is not None:
+            node.replace_self(projected)
+            continue
         url = repository.source_url(path, parsed.fragment, parsed.query)
         if url:
             node.replace_self(reference(node, url))
@@ -143,6 +172,10 @@ def rewrite_links(app, doctree: nodes.document) -> None:
                 continue
             for suffix in app.config.source_suffix:
                 path = sources / (target + suffix)
+                projected = projected_reference(app, node, path, node.get("reftargetid") or "")
+                if projected is not None:
+                    node.replace_self(projected)
+                    break
                 url = repository.source_url(path, node.get("reftargetid") or "")
                 if url:
                     node.replace_self(reference(node, url))
@@ -160,6 +193,10 @@ def rewrite_links(app, doctree: nodes.document) -> None:
         docname = environment.path2doc(str(path))
         if docname in environment.found_docs:
             continue
+        projected = projected_reference(app, node, path, parsed.fragment)
+        if projected is not None:
+            node.replace_self(projected)
+            continue
         url = repository.source_url(path, parsed.fragment, parsed.query)
         if url:
             node.replace_self(reference(node, url))
@@ -176,6 +213,10 @@ def rewrite_links(app, doctree: nodes.document) -> None:
         )
         docname = environment.path2doc(str(path))
         if docname in environment.found_docs:
+            continue
+        projected = projected_reference(app, node, path, parsed.fragment)
+        if projected is not None:
+            node.replace_self(projected)
             continue
         url = repository.source_url(path, parsed.fragment, parsed.query)
         if url:
@@ -300,7 +341,19 @@ def cpp_reference(app, environment, node, content):
     )
 
 
+def refresh_links(app, doctree, document) -> None:
+    repository = app._cheryl_repository_links
+    for node in doctree.findall(nodes.reference):
+        url = node.get("refuri")
+        if url:
+            node["refuri"] = source_url_at_revision(url, repository.revision, repository.url)
+
+
 def page_context(app, pagename, templatename, context, doctree) -> None:
+    context["source_revision"] = app.config.source_revision
+    context["github_version"] = app.config.source_revision
+    context["release"] = app.config.release or app.config.source_revision[:12]
+    context["version"] = context["release"]
     context["declaring_source_url"] = None
     if pagename.startswith("generation/generated/api/"):
         for identifier, document in app._cheryl_doxygen_documents.items():
@@ -324,11 +377,12 @@ def page_context(app, pagename, templatename, context, doctree) -> None:
 def setup(app) -> dict[str, object]:
     app.add_config_value("source_repository", "", "env")
     app.add_config_value("source_repository_root", "", "env")
-    app.add_config_value("source_revision", "", "env")
+    app.add_config_value("source_revision", "", "")
     app.connect("builder-inited", prepare)
     app.connect("missing-reference", cpp_reference)
     # Run before download collectors: source files remain links, not copied assets.
     app.connect("doctree-read", rewrite_links, priority=100)
+    app.connect("doctree-resolved", refresh_links, priority=100)
     app.connect("html-page-context", page_context)
     # Existing Mermaid fences remain readable source until a diagram renderer is
     # selected. Treat them as text explicitly instead of suppressing warnings.

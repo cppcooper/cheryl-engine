@@ -6,6 +6,7 @@ cheryl_add_test_suite(${TARGET_TEST_MODULE_UI_RMLUI}
     OUTPUT_NAME "${OUTPUT_TEST_MODULE_UI_RMLUI}"
     SOURCES ${rmlui_test_sources}
     LIBRARIES ${LINKAGE_PUBLIC_TEST_MODULE_UI_RMLUI}
+    PRIVATE_INCLUDES "${cheryl_rmlui_font_source}"
     DEFINITIONS CHERYL_RMLUI_TEST_IMAGE="${CMAKE_CURRENT_LIST_DIR}/../fixtures/rgba.png"
         CHERYL_RMLUI_TEST_BLUE_IMAGE="${CMAKE_CURRENT_LIST_DIR}/../fixtures/blue.png"
         CHERYL_RMLUI_TEST_FONT="${test_font}")

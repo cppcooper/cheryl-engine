@@ -120,6 +120,15 @@ function(cheryl_configure_opengl_options)
     set(CHERYL_NATIVE_GLFW_SOURCE "" CACHE PATH "Native GLFW module source directory when its target is not supplied")
 endfunction()
 
+function(cheryl_configure_startup_options)
+    set(opengl_default "${CHERYL_BUILD_OPENGL}")
+    if(TARGET Cheryl::OpenGL)
+        set(opengl_default ON)
+    endif()
+    cheryl_option(CHERYL_STARTUP_OPENGL "Include private GLFW/OpenGL integration in Startup" "${opengl_default}")
+    set(CHERYL_OPENGL_SOURCE "" CACHE PATH "OpenGL module source directory when its target is not supplied")
+endfunction()
+
 function(cheryl_configure_tgui_options)
     set(CHERYL_TGUI_SOURCE "" CACHE PATH "TGUI 1.13.0 source directory; empty selects the pinned source or a supplied package")
 endfunction()
@@ -182,9 +191,15 @@ function(cheryl_configure_root_options)
             "Build optional hwloc worker topology and thread placement support" ON)
     cheryl_option(CHERYL_BUILD_WORKER_TOPOLOGY_JSON
             "Build optional worker configuration JSON loading support" ON)
+    cheryl_option(CHERYL_BUILD_WORKERS
+            "Build the optional worker configuration/topology module" ON)
+    cheryl_option(CHERYL_BUILD_STARTUP
+            "Build the application bootstrap module" ON)
 
     cheryl_option(CHERYL_BUILD_NATIVE_GLFW
             "Build the native GLFW window/input integration" ON)
+    cheryl_option(CHERYL_BUILD_NATIVE_SDL3
+            "Add the Native SDL3 scaffold (runtime adapter is not implemented)" OFF)
     set(cheryl_terminal_linux_default OFF)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND
             NOT CMAKE_CONFIGURATION_TYPES AND CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -194,6 +209,7 @@ function(cheryl_configure_root_options)
             "Include the Linux output terminal in applications and test runners (defaults ON in supported Debug builds)" ${cheryl_terminal_linux_default})
     cheryl_option(CHERYL_BUILD_OPENGL
             "Build the OpenGL backend" ON)
+    cheryl_configure_startup_options()
     cheryl_option(CHERYL_BUILD_UI_TGUI
             "Build the optional TGUI UI integration" ON)
     cheryl_option(CHERYL_BUILD_UI_RMLUI
@@ -207,6 +223,9 @@ function(cheryl_configure_root_options)
     cheryl_option(CHERYL_BUILD_FIRST_GAME
             "Build the maintained getting-started game" OFF
             REQUIRES CHERYL_BUILD_NATIVE_GLFW CHERYL_BUILD_OPENGL CHERYL_NATIVE_INPUT)
+    cheryl_option(CHERYL_BUILD_TUTORIAL_GAME
+            "Build the Player/Enemy/HUD and How-to teaching game" OFF
+            REQUIRES CHERYL_BUILD_STARTUP CHERYL_STARTUP_OPENGL CHERYL_BUILD_UI_TGUI CHERYL_NATIVE_INPUT)
 
     cheryl_option(CHERYL_BUILD_TESTS
             "Build Cheryl's tests and acceptance tools" OFF)

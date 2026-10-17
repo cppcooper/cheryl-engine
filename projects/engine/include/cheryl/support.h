@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- * @brief Public support APIs selected by linked Cheryl targets.
+ * @brief Compatibility includes for APIs now owned by selected modules.
  */
 
 #if defined(CHERYL_HAS_SUPPORT_STARTUP) && CHERYL_HAS_SUPPORT_STARTUP

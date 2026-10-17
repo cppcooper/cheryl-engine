@@ -9,9 +9,20 @@
 #include <utility>
 #include <vector>
 
-class GLFWmonitor;
+struct GLFWmonitor;
 
 namespace CE::Platform::GLFW {
+    struct OpenGLContextOptions {
+        int major = 3;
+        int minor = 3;
+        bool core_profile = true;
+#ifdef __APPLE__
+        bool forward_compatible = true;
+#else
+        bool forward_compatible = false;
+#endif
+        bool visible = true;
+    };
     struct Resolution {
         int width{};
         int height{};
@@ -25,6 +36,14 @@ namespace CE::Platform::GLFW {
      */
     class CE_TYPE_API DisplaySystem final : public ::CE::Platform::DisplaySystem {
     public:
+        [[nodiscard]] CE_NATIVE_GLFW_API Window* create_opengl_window(
+            const ::CE::Platform::Monitor& monitor,
+            ::CE::Platform::WindowMode mode,
+            int width,
+            int height,
+            const std::string& title,
+            const OpenGLContextOptions& context = {}
+        );
         CE_NATIVE_GLFW_API DisplaySystem();
 
         [[nodiscard]] const std::vector<::CE::Platform::Monitor>& monitors() const override { return monitors_; }

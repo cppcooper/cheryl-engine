@@ -256,7 +256,7 @@ ownership and acceptance before promoting any candidate into the development roa
 Broader pointer capture, modal/controller routing and clipboard/cursor/IME services
 need explicit consumer requirements under the [UI capability boundaries](../../development/ui-adapters.md#routing-and-unavailable-services).
 Build-tree and [prebuilt SDK consumption](../../development/consuming-engine.md#prebuilt-development-sdks)
-are implemented. [CI](../../development/building.md#github-ci-and-sdk-artifacts)
+are implemented. [CI](../../development/ci.md)
 prepares compiled development libraries/headers as workflow artifacts; it publishes
 no GitHub releases or demo packages. Release publication requires a separate choice
 of trigger/policy and accepted platform/toolchain configurations. Pending hosted

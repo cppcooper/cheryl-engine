@@ -31,8 +31,8 @@ namespace CE::Rendering::OpenGL {
             int height,
             bool use_mipmaps,
             bool pixelate,
-            int wrap_opt = GL_CLAMP_TO_EDGE,
-            GLenum fmt = GL_RED
+            int wrap_opt = TextureWrap::ClampToEdge,
+            NativeEnum fmt = TextureFormat::Red
         );
         [[nodiscard]] CE::Rendering::Geometry::PixelSize pixel_size() const override {
             return {width > 0 ? static_cast<std::uint32_t>(width) : 0, height > 0 ? static_cast<std::uint32_t>(height) : 0};

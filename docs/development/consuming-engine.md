@@ -41,6 +41,9 @@ Replace `path/to/cheryl-engine` with the checkout path relative to your applicat
 `CMakeLists.txt`, or an absolute path. CMake builds the selected libraries and
 propagates their public include paths and dependency settings. Reload the CMake
 project in the IDE after changing selections so completion uses those settings.
+Install shared development packages on Linux or prepare the Windows dependencies
+with the toolchain/helper arguments in
+[project setup](../getting-started/project-setup.md#build-your-game-with-a-source-checkout).
 Keep `CHERYL_BUILD_SDK=OFF` for source application builds; aggregate headers and IDE
 completion do not require SDK export or installation. Enable it only when also
 producing a separate SDK. The [SDK build](building.md#development-sdk-builds)
@@ -53,32 +56,22 @@ targets below when you want to choose support and diagnostic behavior individual
 
 ### Windows source-build runtime
 
-Shared libraries must be available when the game starts. With
-`add_subdirectory(... cheryl)` and a single-configuration Ninja build in
-`build/release`, Cheryl writes its DLLs to `build/release/cheryl`; the game's
-executable can be in the parent directory. Multi-configuration generators add a
-configuration subdirectory, such as `cheryl/Release`.
+Shared libraries must be available when the game starts, including with static
+Cheryl. Source composition stages selected package DLLs into component and
+executable output directories. It also stages each executable's CMake-known
+runtime DLLs, so a game in the parent build directory can find Cheryl and its
+owned toolkit libraries from a nested `add_subdirectory(... cheryl)` build.
+This staging runs independently of SDK installation.
 
-After creating and linking `my_game`, copy CMake-known runtime DLLs beside it:
+The staging helper follows imported DLL dependencies, including optional native
+package dependencies, and reports missing or conflicting runtime files. OS and
+MSVC runtime DLLs remain platform prerequisites.
 
-```cmake
-get_target_property(cheryl_engine_type Cheryl::Engine TYPE)
-if(WIN32 AND cheryl_engine_type STREQUAL "SHARED_LIBRARY")
-    add_custom_command(TARGET my_game POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy -t "$<TARGET_FILE_DIR:my_game>"
-            "$<TARGET_RUNTIME_DLLS:my_game>"
-        COMMAND_EXPAND_LISTS
-        VERBATIM)
-endif()
-```
-
-This stages Cheryl and dependency DLLs whose runtime locations are known to CMake.
-Native FreeType, HarfBuzz or ICU packages can still require their SDK's DLL
-directories on the process `PATH`: CMake's
-[`TARGET_RUNTIME_DLLS`](https://cmake.org/cmake/help/v3.28/manual/cmake-generator-expressions.7.html#genex:TARGET_RUNTIME_DLLS)
-cannot list DLLs for imported targets without runtime-location metadata.
-Alternatively, configure the IDE/launcher `PATH` with both Cheryl's configuration
-output directory and the native SDK's DLL directories instead of copying.
+Keep the staged DLLs beside the executable when launching from an IDE or copying
+the build to another directory. The host needs the matching MSVC runtime and
+Windows 10 version 1903 or later; ICU comes from the operating system. CMake
+targets for supplied shared libraries must identify their runtime DLL and import
+library so staging can locate the runtime artifacts.
 
 ### Granular composition
 
@@ -89,6 +82,9 @@ This example selects neutral Engine alone:
 set(CHERYL_BUILD_TESTS OFF)
 set(CHERYL_BUILD_DEMO OFF)
 set(CHERYL_BUILD_NATIVE_GLFW OFF)
+set(CHERYL_BUILD_STARTUP OFF)
+set(CHERYL_STARTUP_OPENGL OFF)
+set(CHERYL_BUILD_WORKERS OFF)
 set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
 set(CHERYL_BUILD_OPENGL OFF)
 set(CHERYL_BUILD_UI_TGUI OFF)
@@ -106,8 +102,10 @@ target_link_libraries(application PRIVATE Cheryl::Engine)
 For native graphics, enable Native GLFW, OpenGL and native input, then link
 `Cheryl::Engine`, `Cheryl::NativeGLFW` and `Cheryl::OpenGL`. Select and link
 `Cheryl::UI::TGUI`, `Cheryl::UI::RmlUi` or `Cheryl::Audio::Miniaudio` when needed.
-For command-line startup, link `Cheryl::OpenGL::Startup`; it supplies the common
-startup target and the native/graphics targets transitively.
+For command-line startup, select `CHERYL_BUILD_STARTUP` and link `Cheryl::Startup`;
+`CHERYL_STARTUP_OPENGL` chooses its private configured native graphics integration.
+The compatibility `Cheryl::OpenGL::Startup` target also supplies the native/graphics
+public usage requirements.
 Consumers obtain C++23, includes, logging policy and SDK requirements through
 targets rather than compiling Engine sources or repeating dependency lists.
 The [module guide](modules.md) describes ownership, standalone composition and tests.
@@ -139,12 +137,17 @@ For a Linux Release SDK, configure the application's directory as follows:
 )
 ```
 
-The SDK contains compiled Engine, Startup and selected module/topology libraries,
-their dependency libraries or headers, the Engine crash bootstrap, public headers,
+The SDK contains compiled Engine, Startup and selected module libraries,
+their required public dependency headers, the Engine crash bootstrap, public headers,
 CMake import/version files and licenses. `.h`/`.hpp` and required `.inl`/`.ipp`/`.tpp`
 files remain included. C/C++ implementation translation units, tests, artwork,
 applications and the demo are excluded. There is no separate demo package.
-Header-based dependencies such as miniaudio still require their public header.
+Embedded implementations such as miniaudio, Gainput, GLAD and spdlog do not
+become application header or runtime-target requirements. GLFW remains a shared
+runtime used through Native GLFW. Public header/template
+frontends such as CTTI, GLM and CLI11, plus native toolkit authoring headers,
+retain their usage requirements. Static SDKs also package the private archive
+closure required by final executable linkage.
 Its `Cheryl::Cheryl` target selects the components distributed in that SDK;
 `<cheryl/cheryl.h>` exposes their public interfaces. Installed headers share the
 `include/cheryl/` namespace, including the module and support umbrellas described
@@ -178,40 +181,42 @@ mixing are outside this SDK contract.
 
 | Native dependencies | Consumer requirements |
 | --- | --- |
-| Linux | Install compatible FreeType, HarfBuzz and ICU development/runtime packages; hwloc when selected, the producer's Backward resolver libraries, and X11/OpenGL when selected. Pinned C++ and selected integration dependencies are already supplied. |
-| Windows | The `dependencies/` prefix supplies pinned vcpkg headers, import libraries, CMake files, release DLLs and licenses. Keep it with the SDK; shared Cheryl DLLs also live in the SDK's `bin/`. Both DLL directories must be on the application's search path. The MSVC runtime remains a host requirement. |
+| Linux | Install the matching shared FreeType, HarfBuzz and ICU runtimes, plus hwloc/HIDAPI when selected and a compatible graphics/display stack. Owned GLFW/UI toolkit shared libraries ship with the SDK. Static Cheryl consumers additionally need the corresponding development packages and packaged embedded archives for final linking. |
+| Windows | Deploy the SDK's selected Cheryl, toolkit and external native DLLs, and install the matching MSVC runtime. Native dependencies keep shared linkage with static Cheryl too. Windows 10 version 1903+ supplies ICU; no separate ICU DLL is distributed. |
 
-The package config discovers native libraries, checks the producer's ICU major
-version and requires the hwloc 2.5+ (2.x) API when that provider is included.
-For an HID-enabled SDK with an owned hidapi dependency, the selected backend,
-headers and licenses are packaged. Linux consumers also need pkg-config and the
-backend's libudev/libusb development libraries, plus Iconv when selected; the
-package config discovers only the dependencies that backend requires. Packaging
+Shared package configuration does not rediscover private FreeType, HarfBuzz, ICU
+or hwloc development packages, but their matching runtime ABI must be available.
+Static Linux packages discover those development packages for final linking and
+check the producer's ICU major version. Static Windows packages resolve native
+import libraries supplied with the SDK. Embedded archives and explicit system
+dependencies complete static Cheryl's link closure. Native HID system/backend
+requirements remain selected-platform requirements. Packaging
 does not resolve the [Linux controller limitations](../../projects/modules/platform/native-glfw/README.md#controller-backend-limits).
-The package exposes `Cheryl_RUNTIME_DIRECTORIES`: shared SDKs use `lib/` on Linux
-and `bin/` on Windows; Windows bundles also include `dependencies/bin/`.
+The package exposes `Cheryl_RUNTIME_DIRECTORIES` for its packaged shared libraries:
+`lib/` on Linux and `bin/` on Windows. This can be nonempty for static Cheryl SDKs.
 Use those paths for application runtime setup or deploy the required libraries
 beside your executable. Linux shared libraries find their packaged neighbors
-through an origin-relative runtime path. Windows config also prepends the bundled
-dependency prefix for CMake discovery; it does not deploy DLLs automatically.
+through an origin-relative runtime path. SDK import configuration does not copy
+DLLs beside the application's executable automatically.
 OpenGL still needs the host's graphics runtime.
 SDK relocation does not establish compatibility with another ABI or distribution.
 
-Installed-target consumers and first-include probes cover the selected SDK
-composition, including both Startup support headers, on the selected hosted Linux
-and Windows toolchains. The [CI guide](building.md#github-ci-and-sdk-artifacts)
-retains hosted skipped-case limits and the pending main-push artifact collection.
+Use installed-target consumers and first-include probes to check each selected
+SDK composition, including Startup and native toolkit authoring. The
+[CI guide](ci.md) retains hosted coverage limits.
 Desktop, GPU and physical-device coverage remain separate. The SDK does not export
 the Linux Debug terminal; that module retains its source-composition path.
 
 ## Command-line startup
 
-[`CE::Application::Startup`](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h)
+[`CE::Application::Startup`](../../projects/modules/runtime/startup/include/cheryl/application/startup.h)
 owns CLI11 parsing and validates execution, input polling and simulation timing
-before invoking a selected backend factory. Link `Cheryl::Startup` for a custom
-backend or `Cheryl::OpenGL::Startup` for the
-[GLFW/OpenGL factory and options](../../projects/modules/graphics/opengl/README.md#command-line-startup).
-The support targets expose CLI11 in their public headers; linking Engine or OpenGL
+before invoking a selected backend factory. Link `Cheryl::Startup` and include
+`<cheryl/application/startup.h>` for the standard
+`CE::Application::make_startup(description, ApplicationOptions)` path. Startup
+privately owns its configured GLFW/OpenGL integration. `Cheryl::OpenGL::Startup`
+remains a compatibility interface without another runtime binary.
+Startup exposes CLI11 in its public option frontend; linking Engine or OpenGL
 alone retains their direct context/runtime construction APIs without that public
 dependency.
 
@@ -230,8 +235,10 @@ timing together. Keep the result and game alive through runtime destruction;
 `make_runtime` requires an lvalue result. Backend construction failures propagate,
 and `CE::Runtime::GameRuntime::run()` retains the runtime's existing initialization/cleanup contract.
 
-`CE::Application::StartupOptions` supplies application defaults through `execution` and
-`runtime`. The common Engine options override those defaults:
+`CE::Application::ApplicationOptions` supplies initial window/presentation,
+`execution` and `runtime` defaults for the generic factory. The lower-level
+`Startup(StartupBackend, ..., StartupOptions)` constructor remains available for
+custom composition. Common Engine options override their runtime defaults:
 
 | Argument | Effect |
 | --- | --- |
@@ -258,10 +265,13 @@ one lazy CPU worker.
 
 A custom `CE::Application::StartupBackend` provides a required `create(const CE::Runtime::ExecutionOptions&)` factory,
 optional Backend argument definitions and optional validation. The factory must
-return an owned context; a null result fails startup. Backend selection is currently
-programmatic. CLI backend selection, application-preference/build-default resolution
-and runtime-loaded discovery remain unimplemented at the selection point after
-parsing. [The demo option helper](../../projects/apps/demo/src/demo-options.cpp)
+return an owned context; a null result fails startup. Standard selection uses
+`ApplicationOptions::backend` (`Default` or `GLFWOpenGL`) and the configured
+OpenGL integration accepts `--backend default|opengl`. A Startup binary built
+with that integration requires the module binaries even if a run never creates
+a window; omit them by building Startup without that integration. Runtime-loaded
+discovery/hot unloading is outside this contract.
+[The demo option helper](../../projects/apps/demo/src/demo-options.cpp)
 shows application-specific registration without duplicating the engine parser.
 
 ## Game hooks and ownership
@@ -292,28 +302,35 @@ when Escape is pressed. It submits no draws yet:
 
 ```cpp
 #include <cheryl/cheryl.h>
-#include <gainput/gainput.h>
+#include <cheryl/core/controls/button-codes.h>
 
 class Game final : public CE::Game::AbstractGame {
     CE::Runtime::Context& engine_;
     static constexpr CE::Input::Actions::Id quit_{1};
+    CE::Input::Actions::BindingId quit_binding_ = 0;
 
 public:
     explicit Game(CE::Runtime::Context& engine) : engine_(engine) {}
     void init() override {
         auto& input = engine_.input();
-        static_cast<void>(input.bindings().bind_button({input.keyboard_id(), gainput::KeyEscape}, quit_));
+        quit_binding_ = input.bindings().bind_button(
+            {input.keyboard_id(), CE::Input::KeyboardKey::Escape}, quit_);
     }
     void update(const CE::Game::TickContext& tick) override {
         if (tick.input.button(quit_).pressed())
             tick.request_stop();
     }
     void prepare_render_frame(CE::Rendering::FrameWriter&) const override {}
-    void deinit() override {}
+    void deinit() override {
+        if (quit_binding_ != 0) {
+            static_cast<void>(engine_.input().bindings().unbind(quit_binding_));
+            quit_binding_ = 0;
+        }
+    }
 };
 
 int main(int argc, char** argv) {
-    auto startup = CE::Application::GLFWOpenGL::make_startup("My game", {.title = "My game"});
+    auto startup = CE::Application::make_startup("My game", {.title = "My game"});
     auto result = startup.initialize(argc, argv);
     if (!result.should_start())
         return result.exit_code;
@@ -325,7 +342,7 @@ int main(int argc, char** argv) {
 ```
 
 Link this example to `Cheryl::Cheryl` with OpenGL selected, or to
-`Cheryl::OpenGL::Startup` for granular composition. Pass `--concurrent` to select the
+`Cheryl::Startup` with OpenGL integration for granular composition. Pass `--concurrent` to select the
 simulation worker, or use the common timing/polling options above. Applications
 that construct `CE::Runtime::GameRuntime` directly can still pass `RunMode::Concurrent` as its
 third argument.
@@ -360,7 +377,7 @@ SDK installation collects the roots into one physical `include/cheryl/` tree.
 | `<cheryl/cheryl.h>` | Engine plus the modules and support selected by linked targets. |
 | `<cheryl/engine.h>` | All neutral Engine public headers. |
 | `<cheryl/modules.h>` | Modules selected by linked targets. |
-| `<cheryl/support.h>` | Support libraries selected by linked targets. |
+| `<cheryl/support.h>` | Compatibility support umbrellas selected by linked targets. |
 | `<cheryl/modules/opengl.h>` and other `cheryl/modules/` umbrellas | One module's public headers. |
 | `cheryl/support/` umbrellas | One support library's public headers. |
 
@@ -371,23 +388,25 @@ or link a module: CMake target selection supplies its
 dependencies and the feature definitions used by the group umbrellas. Link
 `Cheryl::Cheryl` for all configured components, or link granular public targets
 and use the same umbrellas for that narrower selection. Additional includes such
-as `<gainput/gainput.h>` remain appropriate when directly using dependency APIs.
+as native TGUI/RmlUi headers remain available for their deliberately public
+authoring APIs; private GLFW/Gainput/GLAD/spdlog headers are not consumer requirements.
 
 | Requirement | Target scope and reason |
 | --- | --- |
 | C++23, Threads, logging configuration | Engine public requirements used by templates/runtime consumers. |
-| spdlog, CTTI, GLM | Engine public requirements; legacy `glm.hpp` spelling remains supported. |
-| Backward::Interface | Engine public trace/resolver requirements; its own global signal-handler object is not linked. |
+| CTTI, GLM | Explicit Engine public header/template requirements; legacy `glm.hpp` spelling remains supported. |
+| spdlog and Backward | Engine private logging/diagnostic implementation; callback/severity types belong to Cheryl and native sink access is private. |
 | STB and JSON | Engine private implementation include directories. |
-| FreeType, HarfBuzz, ICU uc/i18n | Engine private font/layout implementation and link requirements; no library-native types appear in public headers. |
+| FreeType, HarfBuzz, ICU | Engine private shared font/layout implementation and link requirements; Windows uses OS ICU. No library-native types appear in public headers. |
 | CLI11 | Startup support's public parsing API; reuse `CLI11::CLI11` or initialize the pinned `extern/cli11` source. Plain Engine/OpenGL consumers do not inherit CLI11 headers or linkage. |
-| GLFW | Native GLFW private implementation requirement, also used privately by the OpenGL context binding. |
-| Gainput | Native GLFW public requirement when `CHERYL_NATIVE_INPUT` is enabled; its types occur in that owner's headers. |
+| GLFW | Shared runtime used by Native GLFW; OpenGL calls exported native operations. |
+| Gainput/HID | Gainput is embedded in Native GLFW; HIDAPI is shared when selected. Public input types, binding mappings and device snapshots belong to Cheryl. |
 | X11 | Native input's Linux dependency; OpenGL acceptance also uses it for explicitly selected X11 scenarios. |
-| GLAD and OpenGL::GL | OpenGL public generated types and private system link requirement. |
+| GLAD and OpenGL::GL | GLAD is private compiled OpenGL implementation; the graphics driver/system runtime remains explicit. |
 | GoogleTest | Test-only; disabled owners do not discover their integration SDKs. |
 | miniaudio | Optional audio module's private implementation/link requirement; public Engine and module audio headers expose no SDK types. |
-| hwloc 2.5+ (2.x) | Optional WorkerTopology::Hwloc private SDK/final link requirement; Engine alone does not discover or link it. |
+| hwloc 2.5+ (2.x) | Workers module private topology implementation; its JSON feature remains independently selectable. |
+| TGUI / RmlUi | Shared toolkit libraries expose native authoring APIs. Their Cheryl adapters supply Engine font/image services through private callbacks, preserving one Engine implementation even with static Cheryl. Matching toolkit headers/ABI settings are public requirements. |
 
 The Engine umbrellas and granular contracts are neutral. Concrete window/input
 headers belong to Native GLFW; `backends/opengl` headers belong to OpenGL. Existing
@@ -448,8 +467,9 @@ The Engine-only consumer entry point is:
 )
 ```
 
-Standalone consumer entry points require
-`CHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine` for shared helpers and bootstrapping.
+Standalone consumer entry points locate their enclosing checkout automatically;
+`CHERYL_REPOSITORY_ROOT=/path/to/cheryl-engine` explicitly selects another checkout
+for shared helpers and bootstrapping.
 Engine, Native GLFW and OpenGL consumer bootstraps suppress both UI selections in
 a local variable scope, including inherited `ON` choices, without changing the
 enclosing configuration's cache.
@@ -481,7 +501,7 @@ An existing CMake/CLion profile can retain failed C++ compiler ABI discovery. Ch
 whether generated `CMakeCXXCompiler.cmake` records
 `CMAKE_CXX_ABI_COMPILED FALSE` and empty implicit include directories. This can turn
 the X11 dependency's `/usr/include` into an explicit `-isystem` argument;
-GCC can then fail to resolve `CE::Math.h` or `stdlib.h` through `#include_next` in
+GCC can then fail to resolve `math.h` or `stdlib.h` through `#include_next` in
 C++ standard headers.
 
 Refresh compiler discovery and regenerate the build files while preserving the

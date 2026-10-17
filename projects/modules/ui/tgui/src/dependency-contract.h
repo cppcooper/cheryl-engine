@@ -6,8 +6,8 @@
 #error Cheryl UI requires the reviewed TGUI 1.13.0 backend contract.
 #endif
 
-#if !TGUI_HAS_FONT_BACKEND_FREETYPE
-#error Cheryl UI requires TGUI custom backend with the FreeType font backend.
+#if TGUI_HAS_FONT_BACKEND_FREETYPE
+#error Cheryl UI requires the Engine font backend without a second FreeType implementation.
 #endif
 
 #if TGUI_HAS_WINDOW_BACKEND_SFML || TGUI_HAS_WINDOW_BACKEND_SDL || TGUI_HAS_WINDOW_BACKEND_GLFW || TGUI_HAS_WINDOW_BACKEND_RAYLIB ||       \

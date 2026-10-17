@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/texture.h>
 #include "upload-check.h"
 #include "sampling-internal.h"

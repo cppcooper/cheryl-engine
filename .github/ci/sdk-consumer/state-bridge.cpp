@@ -1,6 +1,6 @@
 #include "state-bridge.h"
 
-#include <cheryl/core/logging/log.h>
+#include <cheryl/core/logging/logger.h>
 #include <cheryl/core/subsystems/event-system.h>
 #include <cheryl/templates/asset-mgr.h>
 
@@ -8,8 +8,24 @@ const void* sdk_event_system() {
     return &CE::Events::EventSystem::get();
 }
 
-const void* sdk_logging_mutex() {
-    return &CE::Logging::Detail::default_logger_mutex;
+namespace {
+    constexpr char sdk_category[] = "sdk-custom";
+}
+
+std::uint16_t sdk_logging_id() {
+    return CE::Logging::Logger<sdk_category>::get().get_log_id();
+}
+
+const void* sdk_logging_handle() {
+    return CE::Logging::Logger<sdk_category>::get_existing();
+}
+
+void sdk_logging_quiet() {
+    CE::Logging::Logger<sdk_category>::set_level_logger(CE::Logging::Level::off);
+}
+
+bool sdk_logging_accepts_warning() {
+    return CE::Logging::Logger<sdk_category>::should_log(CE::Logging::Level::warn);
 }
 
 bool sdk_provider_bound(const CE::Rendering::Resources::Provider& provider) {

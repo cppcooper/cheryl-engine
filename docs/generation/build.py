@@ -26,19 +26,19 @@ if sys.pycache_prefix is None:
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
 
 from bootstrap import atomic_json, file_lock, read_json, validate_doxygen
+from source_revision import refresh_html_sources
 
 
 PUBLIC_INCLUDE_ROOTS = tuple(
     REPO_ROOT / name
     for name in (
         "projects/engine/include",
-        "projects/engine/support/startup/include",
-        "projects/engine/support/worker-topology/include",
-        "projects/engine/support/debug-terminal/include",
+        "projects/modules/runtime/startup/include",
+        "projects/modules/runtime/workers/include",
+        "projects/modules/platform/debug-terminal-linux/private/startup/include",
         "projects/modules/platform/native-glfw/include",
         "projects/modules/platform/debug-terminal-linux/include",
         "projects/modules/graphics/opengl/include",
-        "projects/modules/graphics/opengl/support/startup/include",
         "projects/modules/ui/tgui/include",
         "projects/modules/ui/rmlui/include",
         "projects/modules/audio/miniaudio/include",
@@ -110,6 +110,7 @@ def provenance(commit: str, doxygen_version: str, output: Path) -> dict:
         "source_repository": "https://github.com/cppcooper/cheryl-engine",
         "source_revision": commit,
         "source_ref": ref,
+        "source_dependencies": source_dependencies(commit),
         "dirty": dirty,
         "header_count": len(header_inputs()),
         "tools": {
@@ -125,6 +126,19 @@ def provenance(commit: str, doxygen_version: str, output: Path) -> dict:
             Path(__file__).with_name("native-tools.json").read_bytes()
         ).hexdigest(),
     }
+
+
+def source_dependencies(commit: str) -> dict[str, str]:
+    entries = subprocess.check_output(["git", "ls-tree", "-rz", commit], cwd=REPO_ROOT)
+    dependencies = {}
+    for entry in entries.split(b"\0"):
+        if not entry:
+            continue
+        metadata, filename = entry.split(b"\t", 1)
+        mode, _, identity = metadata.split(b" ", 2)
+        if mode == b"160000" or filename == b".gitmodules":
+            dependencies[filename.decode("utf-8")] = identity.decode("ascii")
+    return dependencies
 
 
 def doxygen_configuration(output: Path, commit: str) -> str:
@@ -163,10 +177,11 @@ def timed_stage(name: str):
         print(f"{name} took {time.monotonic() - started:.1f} seconds.", flush=True)
 
 
-def extraction_fingerprint(output: Path, doxygen: str, commit: str) -> str:
+def extraction_fingerprint(output: Path, doxygen: str) -> str:
     return fingerprint({
         "format": CACHE_FORMAT,
-        "configuration": doxygen_configuration(output, commit),
+        # PROJECT_NUMBER records extraction provenance; it does not change the API.
+        "configuration": doxygen_configuration(output, ""),
         "headers": {
             path.relative_to(REPO_ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in header_inputs()
@@ -186,7 +201,8 @@ def rendering_inputs(output: Path, metadata: dict, xml_files: dict[str, str]) ->
         "format": CACHE_FORMAT,
         "repository": str(REPO_ROOT),
         "output": str(output),
-        "revision": metadata["source_revision"],
+        # Cached source links into submodules depend on their pinned revisions.
+        "source_dependencies": metadata.get("source_dependencies", {}),
         "tools": metadata["tools"],
         "python": str(Path(sys.executable).resolve()),
         "requirements": metadata["requirements_sha256"],
@@ -344,7 +360,10 @@ def main() -> int:
     )
     parser.add_argument("--cache-dir", type=Path, help="Shared documentation tool cache directory.")
     parser.add_argument("--doxygen", help="Use this Doxygen executable explicitly.")
+    parser.add_argument("--jobs", type=int, default=1, help="Positive number of Sphinx workers (default: 1).")
     arguments = parser.parse_args()
+    if arguments.jobs < 1:
+        parser.error("--jobs must be positive.")
     force_pinned = arguments.force_pinned or os.environ.get("CHERYL_DOCS_FORCE_PINNED") == "1"
     if arguments.doxygen is not None and force_pinned:
         parser.error("An explicit Doxygen override cannot be combined with forced pinned tools.")
@@ -405,7 +424,7 @@ def main() -> int:
         state = read_json(state_path)
         if not isinstance(state, dict) or state.get("format") != CACHE_FORMAT:
             state = {}
-        extract_key = extraction_fingerprint(output, doxygen, commit)
+        extract_key = extraction_fingerprint(output, doxygen)
         xml_files = file_hashes(output / "xml")
         reuse_xml = (
             not arguments.clean
@@ -458,7 +477,7 @@ def main() -> int:
             changed = []
             if isinstance(previous, dict):
                 changed = [name for name in render_inputs if previous.get(name) != render_inputs[name]]
-            labels = ", ".join(changed or ["revision/config/tools/XML inventory"])
+            labels = ", ".join(changed or ["configuration/tools/XML inventory"])
             reasons.append(f"rendering inputs changed ({labels})")
         if not (output / "doctrees/environment.pickle").is_file():
             reasons.append("cached Sphinx environment is missing")
@@ -492,6 +511,8 @@ def main() -> int:
                     str(GENERATION_ROOT),
                     "-b",
                     "html",
+                    "-j",
+                    str(arguments.jobs),
                     "-W",
                     "--keep-going",
                     "-n",
@@ -507,6 +528,12 @@ def main() -> int:
                 env=environment,
                 check=True,
             )
+        # Sphinx writes changed pages using the current revision. Refresh links
+        # and the revision footer in retained HTML without resolving every API
+        # page and rendering the site's navigation again.
+        with timed_stage("Source revision refresh"):
+            refreshed = refresh_html_sources(output / "html", commit)
+            print(f"Updated source revision links in {refreshed} cached HTML pages.", flush=True)
         (output / "html/revision.json").write_text(
             json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )

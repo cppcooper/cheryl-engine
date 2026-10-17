@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <backward.hpp>
+#include "../../../logging-tests/backend-access.h"
 #include <internals/posh.h>
 #include <cstddef>
 
@@ -12,16 +12,7 @@
 #endif
 
 CHERYL_TEST_NOINLINE std::size_t print_stack_here() {
-    backward::StackTrace st;
-    st.load_here(6);
-    backward::Printer p;
-    p.object = true;
-    p.address = true;
-    // Compare frame names in call order without source snippets repeating them.
-    p.reverse = false;
-    p.snippet = false;
-    p.print(st, stderr);
-    return st.size();
+    return CE::Logging::Testing::print_stack() + 1;
 }
 
 // Use each result after the call so optimized builds retain the nested frames.

@@ -1,4 +1,4 @@
-#include <backends/opengl/startup.h>
+#include <cheryl/modules/startup.h>
 
 #include "demo-game.h"
 #include "demo-options.h"
@@ -8,7 +8,7 @@
 
 int main(const int argc, char** argv) {
     DemoOptions options;
-    auto startup = CE::Application::GLFWOpenGL::make_startup("Cheryl demo");
+    auto startup = CE::Application::make_startup("Cheryl demo");
     options.register_with(startup);
     auto result = startup.initialize(argc, argv);
     if (!result.should_start())

@@ -15,6 +15,7 @@ REPO_ROOT = DOCS_ROOT.parent
 if sys.pycache_prefix is None:
     sys.pycache_prefix = str(GENERATED_ROOT / "pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
+sys.path.insert(0, str(GENERATION_ROOT))
 sys.path.insert(0, str(GENERATION_ROOT / "extensions"))
 
 project = "Cheryl Engine"
@@ -23,7 +24,8 @@ copyright = "2026, Cheryl Engine contributors"
 source_revision = os.environ.get("CHERYL_DOCS_REVISION") or subprocess.check_output(
     ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
 ).strip()
-release = os.environ.get("READTHEDOCS_VERSION_NAME", source_revision[:12])
+# Revision identity is refreshed separately from Sphinx's parsed-page cache.
+release = os.environ.get("READTHEDOCS_VERSION_NAME", "")
 version = release
 source_repository = "https://github.com/cppcooper/cheryl-engine"
 source_repository_root = str(REPO_ROOT)
@@ -107,8 +109,6 @@ html_context = {
     "display_github": True,
     "github_user": "cppcooper",
     "github_repo": "cheryl-engine",
-    "github_version": source_revision,
     "conf_py_path": "/docs/",
-    "source_revision": source_revision,
     "source_dirty": os.environ.get("CHERYL_DOCS_DIRTY") == "1",
 }

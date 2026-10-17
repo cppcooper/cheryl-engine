@@ -1,5 +1,5 @@
 #pragma once
-#include <spdlog/common.h>
+#include "types.h"
 
 namespace CE::Logging::Compile {
     enum LogLevel { FATAL_ = 1 << 0, ERROR_ = 1 << 1, WARNING_ = 1 << 2, INFO_ = 1 << 3, DEBUG_ = 1 << 4, TRACE_ = 1 << 5 };
@@ -36,42 +36,44 @@ namespace CE::Logging::Compile {
     inline constexpr unsigned compiled_mask = CHERYL_LOG_COMPILED_MASK;
     inline constexpr int profile = CHERYL_LOG_PROFILE; // Developer, support, release.
 
-    [[nodiscard]] constexpr bool enabled(const unsigned levels) noexcept { return (compiled_mask & levels) != 0; }
+    [[nodiscard]] constexpr bool enabled(const unsigned levels) noexcept {
+        return (compiled_mask & levels) != 0;
+    }
 
-    [[nodiscard]] constexpr unsigned severity_bit(const spdlog::level level) noexcept {
+    [[nodiscard]] constexpr unsigned severity_bit(const ::CE::Logging::Level level) noexcept {
         switch (level) {
-            case spdlog::level::critical:
+            case ::CE::Logging::Level::critical:
                 return FATAL_;
-            case spdlog::level::err:
+            case ::CE::Logging::Level::err:
                 return ERROR_;
-            case spdlog::level::warn:
+            case ::CE::Logging::Level::warn:
                 return WARNING_;
-            case spdlog::level::info:
+            case ::CE::Logging::Level::info:
                 return INFO_;
-            case spdlog::level::debug:
+            case ::CE::Logging::Level::debug:
                 return DEBUG_;
-            case spdlog::level::trace:
+            case ::CE::Logging::Level::trace:
                 return TRACE_;
             default:
                 return 0;
         }
     }
 
-    [[nodiscard]] constexpr spdlog::level runtime_level(const LogLevel level) noexcept {
+    [[nodiscard]] constexpr ::CE::Logging::Level runtime_level(const LogLevel level) noexcept {
         switch (level) {
             case FATAL_:
-                return spdlog::level::critical;
+                return ::CE::Logging::Level::critical;
             case ERROR_:
-                return spdlog::level::err;
+                return ::CE::Logging::Level::err;
             case WARNING_:
-                return spdlog::level::warn;
+                return ::CE::Logging::Level::warn;
             case INFO_:
-                return spdlog::level::info;
+                return ::CE::Logging::Level::info;
             case DEBUG_:
-                return spdlog::level::debug;
+                return ::CE::Logging::Level::debug;
             case TRACE_:
-                return spdlog::level::trace;
+                return ::CE::Logging::Level::trace;
         }
-        return spdlog::level::off;
+        return ::CE::Logging::Level::off;
     }
 }

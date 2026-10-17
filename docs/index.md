@@ -6,87 +6,94 @@ walkthrough from startup and resource ownership to sprites and text on screen.
 Use the task guides and generated reference as you add features.
 
 ```{toctree}
+:maxdepth: 1
+:caption: API Reference
+
+C++ API <api/index>
+```
+
+```{toctree}
 :maxdepth: 2
-:caption: Getting started
+:caption: Getting Started
 
 Project setup <getting-started/project-setup>
 First game <getting-started/first-game>
+Create a... <getting-started/create-a/index>
+How to... <getting-started/how-to/index>
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Assets
+:caption: Engine Systems
 
-Loading <assets/asset-loading>
-Manifests <assets/asset-manifests>
-Types <assets/asset-values-and-playback>
-Discovery <assets/file-and-font-discovery>
-Text <assets/text-layout>
-Text encoding <assets/text-encoding>
-Packages <assets/catalog>
-Legacy fonts <resources/legacy-ffont>
+Overview <engine-systems/index>
+Runtime <engine-systems/runtime>
+Display <engine-systems/display>
+Input <engine-systems/input>
+Assets <engine-systems/assets>
+Resources <engine-systems/resources>
+Rendering <engine-systems/rendering>
+Text <engine-systems/text>
+GUI <engine-systems/gui>
+Audio <engine-systems/audio>
+Events <engine-systems/events>
+Dispatch <engine-systems/dispatch>
+Workers <engine-systems/workers>
+Memory <engine-systems/memory>
+State <engine-systems/state>
+Logging <engine-systems/logging>
+Diagnostics <engine-systems/diagnostics>
+Utilities <engine-systems/utilities>
+```
+
+```{toctree}
+:maxdepth: 3
+:caption: Detailed Guides
+
+Choose a guide <guides/index>
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Rendering
+:caption: Modules
 
-Drawing <rendering/pipelines-and-materials>
+Selection and roles <modules/index>
+Source and SDK consumption <development/consuming-engine>
+Startup <modules/startup>
+Workers <modules/workers>
+Native GLFW <modules/native-glfw>
+OpenGL <modules/opengl>
+TGUI <modules/tgui>
+RmlUi <modules/rmlui>
+miniaudio <modules/miniaudio>
+Linux Debug terminal <modules/debug-terminal-linux>
 ```
 
 ```{toctree}
 :maxdepth: 1
-:caption: Resources
+:caption: Architecture
 
-Caches <resources/resource-residency>
-Memory <resources/resource-lifetime>
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Runtime contracts
-
-Architecture <runtime/runtime-architecture>
-Lifecycle <runtime/runtime-frame-boundary>
-Timing <runtime/simulation-timing>
-Display <runtime/display-and-window-contract>
-Input <runtime/input-state-model>
-Events <runtime/event-delivery>
-Dispatch <runtime/thread-dispatch>
-Workers <runtime/worker-execution>
-Audio <runtime/audio>
-Logging <runtime/logging>
-Diagnostics <runtime/subsystem-diagnostics>
-Failures <runtime/failure-reporting>
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Reference
-
-C++ API <api/index>
-Utilities <runtime/utility-contracts>
+Overview <architecture/index>
+Interfaces and Adapters <architecture/interfaces-adapters>
+Assembling the Engine <architecture/assembling-engine>
+Ownership and Cleanup <architecture/ownership-cleanup>
+Threads and Data Flow <architecture/threads-data-flow>
 ```
 
 ```{toctree}
 :maxdepth: 1
 :caption: Development
 
-Build <development/building>
-Consuming Cheryl <development/consuming-engine>
-Modules <development/modules>
-UI adapters <development/ui-adapters>
-Documentation <development/documentation>
-Contributing <development/contributing>
-Code style <development/code-style>
-```
-
-```{toctree}
-:maxdepth: 1
-:caption: Validation
-
-Tests <development/testing>
-Architecture <development/architecture-validation>
-Logging <development/logging-acceptance>
-Desktop <development/native-desktop-checks>
+Contribute a change <development/contributing>
+Build and produce SDKs <development/building>
+Write a module <development/modules>
+Write a UI adapter <development/ui-adapters>
+Follow C++ style <development/code-style>
+Select tests <development/testing>
+Validate architecture <development/architecture-validation>
+Validate logging <development/logging-acceptance>
+Check native desktop behavior <development/native-desktop-checks>
+Generate documentation <development/documentation>
+Publish documentation <development/publishing-documentation>
+Operate CI and SDK collection <development/ci>
 ```

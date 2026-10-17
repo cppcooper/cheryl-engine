@@ -1,5 +1,5 @@
 #include <core/logging/process-lifetime.h>
-#include <core/logging/log.h>
+#include "backend-log.h"
 #include <internals/failure-reporting.h>
 
 #include <algorithm>

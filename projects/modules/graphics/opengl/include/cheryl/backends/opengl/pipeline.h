@@ -31,7 +31,7 @@ namespace CE::Rendering::OpenGL {
     class CE_TYPE_API Pipeline final : public CE::Rendering::Resources::Pipeline {
         struct BoundParameter {
             std::string key;
-            GLint location = -1;
+            NativeInteger location = -1;
             std::optional<CE::Rendering::Parameters::Value> missing_value;
         };
 

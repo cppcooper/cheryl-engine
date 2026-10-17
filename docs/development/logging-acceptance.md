@@ -53,7 +53,7 @@ compile stripping. Record these distinctions instead of claiming zero skips.
 
 Independent processes exercise standard/non-standard sink log/flush failures,
 failed rotation leaving a closed file, saturated recursive native submission,
-Block and DiscardNew loss behavior, discarded flush requests, retained clones,
+Block and DiscardNew loss behavior, discarded flush requests, retained backend ownership,
 static singleton/pool teardown, and fatal final owner destruction from a callback.
 Named-routing acceptance separately checks the five engine files, formatted/stream/
 direct named writes, category filtering and closed/reopened behavior after the

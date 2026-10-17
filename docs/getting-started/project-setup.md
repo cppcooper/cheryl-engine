@@ -22,7 +22,11 @@ your selected modules. The first game uses FreeType, HarfBuzz and ICU for text,
 plus `Cheryl::NativeGLFW` for its window/input and `Cheryl::OpenGL` for rendering.
 It needs a desktop graphics driver supporting an OpenGL 3.3 core context.
 
-For source builds, initialize the checkout's recorded recursive submodules. Python
+For source builds, initialize the checkout's recorded recursive submodules and
+[install shared development packages or prepare a dependency prefix](../development/building.md#dependency-and-toolchain-settings).
+Windows requires version 10 1903 or later and a Windows SDK with `icu.h`/`icu.lib`;
+it uses the operating system's ICU runtime.
+Python
 and Jinja2 are needed when GLAD generates OpenGL bindings. The first game supplies
 its own sprite image, shaders and `assets/graphics/graphics-manifests.json`, an
 index selecting its graphics definitions. The embedded fallback font comes from
@@ -31,8 +35,10 @@ the engine checkout's `assets/` submodule. No optional artwork download is neede
 For an SDK, install its
 [consumer prerequisites](../development/consuming-engine.md#prebuilt-development-sdks)
 instead of rebuilding Cheryl. Some native development/runtime libraries remain
-external on Linux; Windows SDKs bundle native libraries under `dependencies/`,
-whose `.dll` files must be available when your game runs.
+external on Linux. Shared native dependencies keep their linkage with either
+shared or static Cheryl. SDKs provide their owned toolkit runtimes and Windows
+external DLLs; static Cheryl SDKs also retain the embedded archive closure. The host's
+graphics/system runtime and matching C++ runtime remain requirements.
 
 ## Build your game with a source checkout
 
@@ -81,12 +87,16 @@ set(CHERYL_ENGINE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../cheryl-engine"
 block(SCOPE_FOR VARIABLES)
     set(CHERYL_BUILD_NATIVE_GLFW ON)
     set(CHERYL_BUILD_OPENGL ON)
+    set(CHERYL_BUILD_STARTUP ON)
+    set(CHERYL_STARTUP_OPENGL ON)
+    set(CHERYL_BUILD_WORKERS OFF)
     set(CHERYL_NATIVE_INPUT ON)
     set(CHERYL_NATIVE_NULL_PLATFORM OFF)
     set(CHERYL_BUILD_TESTS OFF)
     set(CHERYL_BUILD_CONSUMER_TESTS OFF)
     set(CHERYL_BUILD_DEMO OFF)
     set(CHERYL_BUILD_FIRST_GAME OFF)
+    set(CHERYL_BUILD_TUTORIAL_GAME OFF)
     set(CHERYL_BUILD_DOCS OFF)
     set(CHERYL_BUILD_SDK OFF)
     set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
@@ -149,6 +159,14 @@ selects the optimization/debug/logging configuration; module options such as
 `CHERYL_BUILD_OPENGL` select libraries. `cmake --build ... --target my_game`
 then compiles that executable and the libraries it links.
 
+These commands use Linux shared development packages. For Windows, prepare
+dependencies in the sibling Cheryl checkout with
+`python tools/dependencies/prepare.py --native --without-hwloc`. Configure the game
+with the printed toolchain and installed prefix, `VCPKG_TARGET_TRIPLET=x64-windows`,
+the manifest/project-include settings in the
+[build reference](../development/building.md#dependency-and-toolchain-settings), and
+`-DCMAKE_MSVC_RUNTIME_LIBRARY='MultiThreaded$<$<CONFIG:Debug>:Debug>DLL'`.
+The optional prepared Linux prefix uses `x64-linux-dynamic`.
 The policy setting accommodates pinned legacy dependencies on CMake 4 hosts.
 The GLFW setting chooses X11 on Linux; the Gainput setting avoids the optional
 HID backend and its dependency download. Use the
@@ -168,13 +186,13 @@ targets for fewer dependencies:
 | Link target | What the game obtains |
 | --- | --- |
 | `Cheryl::Cheryl` | Engine and the configured module/support libraries, including the Linux Debug terminal when selected in a source build. |
-| `Cheryl::OpenGL::Startup` | The `CE::Application::GLFWOpenGL::make_startup(...)` function used by `main()`, plus common startup, Native GLFW/OpenGL and their Engine requirements. |
+| `Cheryl::Startup` | Standard `CE::Application::make_startup(...)`, Engine and private configured backend integration. The runtime assembly still deploys selected module binaries. |
 | `Cheryl::Engine` | Neutral Engine interfaces and implementation, without selecting a window or graphics implementation. |
 | `Cheryl::Audio::Miniaudio` | Selected audio integration; add it when your game needs sound. |
 | `Cheryl::UI::TGUI` or `Cheryl::UI::RmlUi` | The selected UI integration. |
 
 For example, replace the `Cheryl::Cheryl` link with
-`target_link_libraries(my_game PRIVATE Cheryl::OpenGL::Startup)` for the native
+`target_link_libraries(my_game PRIVATE Cheryl::Startup)` for the native
 startup libraries alone. In source builds, names such as `Cheryl::Engine` are
 **aliases** for concrete build targets: link `Cheryl::Engine`, but use
 `cmake --build ... --target cengine` to build its library directly. SDKs expose
@@ -187,7 +205,7 @@ build option is enabled.
 
 ## Use an installed SDK instead
 
-Choose an SDK providing `Cheryl::OpenGL::Startup` and Native GLFW with native input
+Choose an SDK providing `Cheryl::Startup` and Native GLFW with native input
 for the first game. Its package must match your OS, CPU architecture,
 compiler/standard-library **ABI** (the binary conventions needed to link C++ code)
 and build configuration, such as Release. With an extracted SDK, replace the
@@ -214,8 +232,8 @@ to that directory so `find_package()` can locate it; replace both paths below:
 ```
 
 This builds your game, using the libraries already in the SDK. Keep the SDK's
-headers, libraries, CMake files and dependencies together. On Windows, also make
-the bundled dependency DLL directories available to the process; see the
+headers, libraries, CMake files and dependencies together. On Windows, make the
+selected Cheryl DLLs available to the process and use a matching MSVC runtime; see the
 [SDK consumption contract](../development/consuming-engine.md#prebuilt-development-sdks).
 The Linux Debug terminal currently requires source composition and is not exported
 in SDKs.
@@ -232,6 +250,7 @@ project. From anywhere inside the checkout, configure against engine source:
   set -e
   cd "$(git rev-parse --show-toplevel)"
   cmake -S projects/apps/first-game -B build/first-game-source -G Ninja \
+    -DCHERYL_BUILD_WORKERS=OFF \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCHERYL_FIRST_GAME_ENGINE_SOURCE="$PWD" \
     -DGLFW_BUILD_WAYLAND=OFF -DGAINPUT_ENABLE_HID=OFF
@@ -242,7 +261,7 @@ project. From anywhere inside the checkout, configure against engine source:
 
 Alternatively, leave `CHERYL_FIRST_GAME_ENGINE_SOURCE` empty to use
 `find_package(Cheryl)` and select a compatible SDK containing
-`Cheryl::OpenGL::Startup` and Native GLFW with native input:
+`Cheryl::Startup` and Native GLFW with native input:
 
 ```sh
 (
@@ -267,11 +286,12 @@ others, choose its build, install or packaging operation:
 
 | Need | Operation | Result |
 | --- | --- | --- |
-| Run the maintained tutorial | Select `CHERYL_BUILD_FIRST_GAME=ON`; build `first-game`. | The tutorial executable and its linked libraries. |
+| Run the introductory walkthrough | Select `CHERYL_BUILD_FIRST_GAME=ON`; build `first-game`. | The small sprite/text game and its linked libraries. |
+| Run Player/Enemy/HUD and How-to examples | Select `CHERYL_BUILD_TUTORIAL_GAME=ON` with Startup/OpenGL/native input/TGUI; build `tutorial-game`. | One maintained teaching game with explicit small assets. |
 | Build a library directly | Build `cengine`, `module_opengl` or another concrete library target. | The selected library and dependencies in the build tree. |
 | Build selected SDK libraries | Select `CHERYL_BUILD_SDK=ON`; build custom target `cheryl-sdk`, which builds the selected libraries together. | Compiled installable libraries; headers have not yet been collected. |
 | Collect libraries and headers | After that build, use `cmake --install` with `--component CherylSDK` and a destination `--prefix`. | One SDK directory with headers, libraries, CMake package files and licenses. |
-| Create a distributable SDK archive | Run `.github/ci/package.py` after the SDK build. | Archive, `SDK-MANIFEST.json` describing its build, and `SHA256SUMS` for archive verification; Windows also bundles its native dependencies. |
+| Create a distributable SDK archive | Run `.github/ci/package.py` after the SDK build. | Archive, `SDK-MANIFEST.json` describing its build and shared-runtime requirements, and `SHA256SUMS` for verification. |
 | Build the website and API reference | Run `./generate-docs.sh`, or build `docs` in the documentation-only project. | Generated HTML, without compiling Engine. |
 
 Use the [artifact commands](../development/building.md#choose-the-artifact) for
@@ -292,7 +312,8 @@ Cheryl defaults to shared Engine, modules and support libraries. Set
 `CHERYL_BUILD_SHARED_LIBS=OFF` when configuring a source build or producing an
 SDK to select static libraries, whose code is linked into the executable. The same
 public targets and includes work with either selection; keep their build directories and SDK
-prefixes separate. A shared game also needs its Cheryl and dependency libraries
-available at runtime. Follow the [SDK runtime-path contract](../development/consuming-engine.md#prebuilt-development-sdks)
+prefixes separate. Shared native dependencies remain required with either Cheryl
+linkage; shared Cheryl libraries also need to be available at runtime.
+Follow the [SDK runtime-path contract](../development/consuming-engine.md#prebuilt-development-sdks)
 and [linkage reference](../development/building.md#library-linkage) for deployment
 and versioned artifact names.

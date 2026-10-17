@@ -7,7 +7,7 @@ coverage; they are outside the active
 scheduled, reconcile the current source/targets/configuration first, then restore
 ready requests to that queue. Linux/X11 is the current native acceptance platform.
 Windows hosted compilation, focused tests and installed SDK consumption are
-accepted within the [CI coverage limits](../../development/building.md#github-ci-and-sdk-artifacts).
+accepted within the [CI coverage limits](../../development/ci.md).
 The remaining [TR20](../../testing-requests.md#tr20-automated-main-push-sdk-collection)
 checks main-push SDK collection; it does not activate the desktop/controller/HID
 procedures here.

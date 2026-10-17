@@ -34,9 +34,9 @@ namespace CE::Logging {
         std::size_t rotation_bytes = 10 * 1024 * 1024;
         std::size_t retained_files = 5;
         bool rotate_on_open = true;
-        spdlog::level logger_level = ::CE::Logging::Compile::profile == 2 ? spdlog::level::info : spdlog::level::debug;
-        spdlog::level file_level = ::CE::Logging::Compile::profile == 2 ? spdlog::level::info : spdlog::level::debug;
-        spdlog::level console_level = ::CE::Logging::Compile::profile == 0 ? spdlog::level::info : spdlog::level::warn;
+        ::CE::Logging::Level logger_level = ::CE::Logging::Compile::profile == 2 ? ::CE::Logging::Level::info : ::CE::Logging::Level::debug;
+        ::CE::Logging::Level file_level = ::CE::Logging::Compile::profile == 2 ? ::CE::Logging::Level::info : ::CE::Logging::Level::debug;
+        ::CE::Logging::Level console_level = ::CE::Logging::Compile::profile == 0 ? ::CE::Logging::Level::info : ::CE::Logging::Level::warn;
         ::CE::Logging::OverflowPolicy overflow_policy = ::CE::Logging::OverflowPolicy::Block;
 
         [[nodiscard]] static Config for_logger(
@@ -46,23 +46,23 @@ namespace CE::Logging {
             Config result;
             switch (profile) {
                 case ::CE::Logging::Profile::Developer:
-                    result.logger_level = result.file_level = spdlog::level::debug;
-                    result.console_level = spdlog::level::info;
+                    result.logger_level = result.file_level = ::CE::Logging::Level::debug;
+                    result.console_level = ::CE::Logging::Level::info;
                     break;
                 case ::CE::Logging::Profile::Support:
-                    result.logger_level = result.file_level = spdlog::level::debug;
-                    result.console_level = spdlog::level::warn;
+                    result.logger_level = result.file_level = ::CE::Logging::Level::debug;
+                    result.console_level = ::CE::Logging::Level::warn;
                     break;
                 case ::CE::Logging::Profile::Release:
-                    result.logger_level = result.file_level = spdlog::level::info;
-                    result.console_level = spdlog::level::warn;
+                    result.logger_level = result.file_level = ::CE::Logging::Level::info;
+                    result.console_level = ::CE::Logging::Level::warn;
                     break;
                 default:
                     throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown logging profile");
             }
             if (name && std::string_view{name} == "memory")
                 result.logger_level = result.file_level =
-                    profile == ::CE::Logging::Profile::Release ? spdlog::level::warn : spdlog::level::info;
+                    profile == ::CE::Logging::Profile::Release ? ::CE::Logging::Level::warn : ::CE::Logging::Level::info;
             return result;
         }
     };
@@ -74,7 +74,9 @@ namespace CE::Logging::Detail {
         const std::string_view logger_name = name ? name : "";
         if (logger_name.empty() || logger_name.find_first_of("/\\") != std::string_view::npos)
             throw ::CE::Exceptions::invalid_args(CE_HERE, "A logger name must be a nonempty filename component");
-        const auto valid_level = [](const spdlog::level level) { return level >= spdlog::level::trace && level <= spdlog::level::off; };
+        const auto valid_level = [](const ::CE::Logging::Level level) {
+            return level >= ::CE::Logging::Level::trace && level <= ::CE::Logging::Level::off;
+        };
         if (!valid_level(config.logger_level) || !valid_level(config.file_level) || !valid_level(config.console_level))
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown runtime logging level");
         if (config.rotation_bytes == 0 || config.retained_files > 200000)
@@ -84,8 +86,8 @@ namespace CE::Logging::Detail {
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Unknown logging overflow policy");
         // Resolve relative paths once, before any file/registry side effects.
         // Reopening must not follow an unrelated change of working directory.
-        config.directory = std::filesystem::absolute(config.directory.empty() ? std::filesystem::path{"."} : config.directory)
-                               .lexically_normal();
+        config.directory =
+            std::filesystem::absolute(config.directory.empty() ? std::filesystem::path{"."} : config.directory).lexically_normal();
         return config;
     }
 }

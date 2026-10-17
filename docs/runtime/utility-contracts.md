@@ -9,6 +9,36 @@ Allocation policy and address operations belong to `CE::Memory`; numeric text
 parsing belongs to `CE::Text::Numbers`, and drawable geometry to
 `CE::Rendering::Geometry`. Header paths remain stable across these logical owners.
 
+## Choose a state representation
+
+| Application need | Choose | Consequence |
+| --- | --- | --- |
+| Compare this update's value with the previous sample | `StateTracker<T>` | One owner supplies the sampling cadence; no synchronization is added. |
+| Let readers obtain the latest value and its revision together | `VersionedVariable<T>` | Readers copy a synchronized snapshot; intermediate updates can coalesce. |
+| Run immediate callbacks for successful setters | `ObservedVariable<T>` | Callbacks run on the setter's thread, including equal sets. |
+| Model guarded behavior changes | `StateMachine<State, Trigger>` | Application-defined rules choose transitions and enter/exit actions. |
+| Deliver each occurrence to registered consumers | A typed `EventChannel<Payload>` | An event bus preserves its delivery contract rather than only the latest value. |
+
+For a score that another owner only needs to sample, include
+`<cheryl/templates/versioned-variable.h>` and `<iostream>`:
+
+```cpp
+CE::State::VersionedVariable<int> score{0};
+const auto previous = score.snapshot();
+score.set(10);
+const auto current = score.snapshot();
+if (current.revision != previous.revision)
+    std::cout << current.value << '\n';
+```
+
+This prints `10`. Setting `10` again leaves the revision unchanged. Keep the
+variable alive through its readers; `snapshot()` owns an integer copy but would
+not extend the pointees' lifetime if `T` contained borrowed pointers. Use
+[typed events](event-delivery.md#typed-channels) when every score award matters,
+or dispatch an owned result when changing a simulation-owned model from elsewhere.
+[Threads and Data Flow](../architecture/threads-data-flow.md#choose-how-work-is-delivered)
+explains that choice across systems.
+
 ## Sampled and synchronized state
 
 `CE::State::StateTracker<T>` owns previous/current samples. It has no synchronization;
@@ -58,10 +88,14 @@ through invocation and capture destruction.
 
 ## Timing and numeric helpers
 
+### Inspect types
+
 Engine type introspection uses CTTI 1.1's `name_of` and `type_id_of` APIs.
 `TYPENAME`/`TYPENAMEOF` return fully qualified names as `std::string_view`;
 the expression-name macro preserves `decltype` qualifiers without evaluating its
 argument. Value type IDs apply decay; explicit type IDs preserve the supplied type.
+
+### Measure elapsed time
 
 `CE::Time::DeltaTime` samples its clock once per call, returns elapsed seconds and starts
 the next interval at that sample. `elapsed()` only observes; `checkin()` resets.
@@ -71,6 +105,8 @@ aliases and `CE::Time::duration_cast`/`CE::Time::to_hours`/`CE::Time::to_minutes
 integer conversions truncate toward zero and callers ensure representability.
 They add no finite-value, overflow or scheduling policy.
 
+### Parse numbers
+
 `CE::Text::Numbers::parse_floats()` requires a complete `stod` token, accepts its leading-space,
 sign, locale and nonfinite-value behavior, and rejects trailing data. Integer
 parsing uses decimal `from_chars`, without leading whitespace/plus; signed parsing
@@ -79,6 +115,8 @@ Integers choose the smallest fitting type of the selected signedness. The
 `CE::Text::Numbers::string_to_number` compatibility selector uses the floating parser only when it
 finds `.`, `e` or `E`; floating results are double. It does not auto-detect bases or
 special values without those markers. Input strings are borrowed only for the call.
+
+### Size CPU allocations
 
 `CE::Memory::format_bytes()` formats binary byte units at powers of 1024 to one decimal;
 rounding near a boundary can display 1024.0 in the preceding unit. `CE::Memory::adjust_length()`
@@ -91,11 +129,15 @@ These functions return values without allocating managed storage.
 
 ## Packed bits, addresses and geometry
 
+### Store packed bits
+
 `CE::Math::BitArray<Bits>` owns packed native words with bit zero at the least-significant
 position. Indices must be below Bits; debug assertions are not release-mode bounds
 checks. Mutable bit proxies and word spans borrow the array. Access requires caller
 synchronization even for different bits in the same word. Whole-word access may
 change unused high bits; word size/byte order is not a portable serialized format.
+
+### Calculate addresses
 
 Pointer helpers calculate byte offsets/alignment without owning storage or checking
 allocation bounds, object lifetime or overflow. Supply representable addresses and
@@ -105,6 +147,8 @@ which cannot be reused in the alignment-offset helpers. `CE::Memory::Pointers::p
 1/2/4/8-byte widths and derives a hash from the address; smaller widths reduce modulo
 the unsigned maximum. This is not a stable identity across releases or processes.
 
+### Build geometry
+
 `CE::Rendering::Geometry::Anchor` helpers build CPU quads in local Y-up pixels from top-left source rectangles.
 They require a finite normalized pivot and nonzero texture dimensions; invalid
 values throw before writing. They do not check frame size/source bounds. Pointer
@@ -112,6 +156,8 @@ overloads require six writable `CE::Rendering::Geometry::Vertex2D` entries or th
 Case-sensitive two-letter anchor names include CL/ML and CR/MR aliases; unknown
 names/enum values select center. The [asset coordinate contract](../assets/asset-values-and-playback.md#coordinates-and-grid-geometry)
 defines grid geometry and normalized UV ownership.
+
+### Retain blocks and format values
 
 Block range operations are caller-synchronized; manager transactions and retained
 release contexts have the [resource lifetime contract](../resources/resource-lifetime.md).
@@ -134,6 +180,8 @@ explicitly (or bring the overload into local scope with a using declaration):
 CE::Memory::operator<<(stream, std::align_val_t{64});
 ```
 
+### Share a constructed service
+
 `CE::State::Singleton<Type>` requires public construction;
 `CE::State::FriendSingleton<Type>` supports a constructor accessible through
 friendship. Both synchronize construction/publication. Returned pointers borrow
@@ -142,14 +190,9 @@ static storage and each Type governs its subsequent operations; the full contrac
 
 ## File discovery
 
-`CE::Files::FileIndex` indexes regular files by extension beneath explicitly
-supplied directories. It is caller-owned and unsynchronized, with no refresh or
-removal operation. Construct a new index to rescan an already visited root.
-Paths use equality without canonicalization, so alternate paths can index the
-same physical file twice. Extensions are lowercased with their leading dot;
-extensionless files use `file_no_ext`, and enumeration is unsorted.
-`get_files_of_type()` borrows an index-owned vector and inserts an empty bucket
-for an unknown key. Further indexing can change its contents and invalidate
-element references or iterators. Filesystem/allocation errors propagate and can
-leave a partial index; see
-[file-mgr.h](../../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h).
+Use `CE::Files::FileIndex` for an application-owned extension index. Construct a new
+index to rescan an already visited directory; returned vectors borrow that index
+and all access needs caller serialization. The
+[file discovery guide](../assets/file-and-font-discovery.md#file-index) owns path,
+ordering, freshness, iterator and partial-failure rules. Automatic asset preparation
+creates its own fresh index instead of refreshing an application's retained one.

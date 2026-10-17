@@ -10,7 +10,7 @@
 #include <cheryl/text/layout.h>
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <gainput/gainput.h>
+#include <cheryl/core/controls/button-codes.h>
 
 #include <algorithm>
 #include <stdexcept>
@@ -26,10 +26,10 @@ namespace FirstGame {
         auto& input = engine_.input();
         auto& bindings = input.bindings();
         const auto keyboard = input.keyboard_id();
-        bindings_[0] = bindings.bind_button({keyboard, gainput::KeyEscape}, quit_);
-        bindings_[1] = bindings.bind_button({keyboard, gainput::KeyLeft}, left_);
-        bindings_[2] = bindings.bind_button({keyboard, gainput::KeyRight}, right_);
-        bindings_[3] = bindings.bind_button({keyboard, gainput::KeySpace}, next_cell_);
+        bindings_[0] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Escape}, quit_);
+        bindings_[1] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Left}, left_);
+        bindings_[2] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Right}, right_);
+        bindings_[3] = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Space}, next_cell_);
         // [/bindings]
 
         // [assets]

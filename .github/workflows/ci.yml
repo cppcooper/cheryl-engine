@@ -84,6 +84,9 @@ jobs:
           python .github/ci/test_cache_cleanup.py
           python .github/ci/test_compiler_cache.py
           python .github/ci/test_dependencies.py
+          python .github/ci/test_components.py
+          python .github/ci/test_native_notices.py
+          python .github/ci/test_verify_sdk.py
           python .github/ci/test_vcpkg_cache.py
           python .github/ci/test_vcpkg_publication.py
           python .github/ci/test_github_api.py
@@ -226,6 +229,9 @@ jobs:
             build/sdk-consumer/junit.xml
             build/sdk-consumer/Testing/Temporary/
             build/sdk-consumer/CMakeFiles/CMakeConfigureLog.yaml
+            build/sdk-consumer-hermetic/junit.xml
+            build/ci/cheryl-dependency-ownership.json
+            build/ci/link-maps/
           if-no-files-found: warn
           retention-days: 14
 
@@ -268,6 +274,9 @@ jobs:
           python .github/ci/test_cache_cleanup.py
           python .github/ci/test_compiler_cache.py
           python .github/ci/test_dependencies.py
+          python .github/ci/test_components.py
+          python .github/ci/test_native_notices.py
+          python .github/ci/test_verify_sdk.py
           python .github/ci/test_vcpkg_cache.py
           python .github/ci/test_vcpkg_publication.py
           python .github/ci/test_github_api.py
@@ -363,6 +372,9 @@ jobs:
             build/sdk-consumer/junit.xml
             build/sdk-consumer/Testing/Temporary/
             build/sdk-consumer/CMakeFiles/CMakeConfigureLog.yaml
+            build/sdk-consumer-hermetic/junit.xml
+            build/ci/cheryl-dependency-ownership.json
+            build/ci/link-maps/
           if-no-files-found: warn
           retention-days: 14
 
@@ -441,29 +453,31 @@ jobs:
           key: ${{ steps.ccache.outputs.current-key }}
 
   sdk:
-    name: Collect accepted development SDKs
+    name: Assemble accepted SDK and source packages
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [headless, modules, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: recursive
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: candidate-sdk-*
           path: packages
-      - name: Check collected SDK checksums
-        run: |
-          for bundle in packages/candidate-sdk-*; do
-            (cd "$bundle" && sha256sum --check SHA256SUMS)
-          done
+      - name: Assemble the four checked packages
+        run: python .github/ci/release.py --assemble-only --packages packages --source . --output build/release-packages --revision "$GITHUB_SHA"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cheryl-development-sdks-${{ github.sha }}
           path: |
-            packages/**/*.tar.gz
-            packages/**/*.zip
-            packages/**/SHA256SUMS
-            packages/**/SDK-MANIFEST.json
+            build/release-packages/*.tar.gz
+            build/release-packages/*.zip
+            build/release-packages/SHA256SUMS
+            build/release-packages/SDK-MANIFESTS.json
           if-no-files-found: error
           retention-days: 90
 

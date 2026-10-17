@@ -11,7 +11,7 @@ link here. Priorities do not authorize implementation, builds or mode transition
 The selected cache-locality → positioned-text → CI/SDK source work is complete.
 Its contracts live in the [worker guide](../runtime/worker-execution.md),
 [text guide](../assets/text-layout.md#positioned-text-runs) and
-[build/CI guide](../development/building.md#github-ci-and-sdk-artifacts).
+[build/CI guide](../development/ci.md).
 
 ### Selected planned work
 
@@ -57,7 +57,7 @@ Remaining acceptance has independent prerequisites:
 | Work | Next phase and checkpoint |
 | --- | --- |
 | Main-push SDK collection | Hosted Ubuntu/Windows builds and relocated SDK consumers are accepted. Verify the first successful main-push collection gate in [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection). PR/develop/manual runs intentionally skip collection. |
-| Hosted Windows skipped cases | Supply a CFF font fixture and a temporary directory on the checkout drive, then accept the affected font-allocation and logging cases on hosted Windows. The [CI guide](../development/building.md#hosted-windows-coverage-limits) retains their scope and prerequisites. |
+| Hosted Windows skipped cases | Supply a CFF font fixture and a temporary directory on the checkout drive, then accept the affected font-allocation and logging cases on hosted Windows. The [CI guide](../development/ci.md#hosted-windows-coverage-limits) retains their scope and prerequisites. |
 | Linux Debug terminal | Complete real-desktop [TR18](../testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop) using matching binaries from the accepted configuration matrix. Observe actual emulator windows and desktop/IDE application launch. |
 | Demo material/artwork QA | Complete shader-pair failure/recovery and available artwork observations in [TR19](../testing-requests.md#tr19-qa-indexed-demo-materials-and-recovered-graphics). Missing images/showcase fixtures remain explicit blockers. |
 

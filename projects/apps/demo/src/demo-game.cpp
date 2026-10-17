@@ -10,7 +10,7 @@
 #include <internals/exceptions.h>
 
 #include <ext/matrix_transform.hpp>
-#include <gainput/gainput.h>
+#include <cheryl/core/controls/button-codes.h>
 
 #include "asset-demo.h"
 #include "audio-demo.h"
@@ -174,26 +174,26 @@ public:
         auto& input = engine_.input();
         auto& bindings = input.bindings();
         const auto keyboard = input.keyboard_id();
-        (void)bindings.bind_button({keyboard, gainput::KeyW}, DemoActions::Up);
-        (void)bindings.bind_button({keyboard, gainput::KeyA}, DemoActions::Left);
-        (void)bindings.bind_button({keyboard, gainput::KeyS}, DemoActions::Down);
-        (void)bindings.bind_button({keyboard, gainput::KeyD}, DemoActions::Right);
-        (void)bindings.bind_button({keyboard, gainput::KeyR}, DemoActions::Reset);
-        (void)bindings.bind_button({keyboard, gainput::KeyQ}, DemoActions::QuitGame);
-        (void)bindings.bind_button({keyboard, gainput::KeyF7}, DemoActions::ToggleSamples);
-        (void)bindings.bind_button({keyboard, gainput::KeyP}, DemoActions::PauseAnimations);
-        (void)bindings.bind_button({keyboard, gainput::KeySpace}, DemoActions::ReplayAttack);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::W}, DemoActions::Up);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::A}, DemoActions::Left);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::S}, DemoActions::Down);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::D}, DemoActions::Right);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::R}, DemoActions::Reset);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::Q}, DemoActions::QuitGame);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::F7}, DemoActions::ToggleSamples);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::P}, DemoActions::PauseAnimations);
+        (void)bindings.bind_button({keyboard, CE::Input::KeyboardKey::Space}, DemoActions::ReplayAttack);
 
         const auto mouse = input.mouse_id();
-        (void)bindings.bind_axis({mouse, gainput::MouseAxisX}, DemoActions::MouseX);
-        (void)bindings.bind_axis({mouse, gainput::MouseAxisY}, DemoActions::MouseY);
-        (void)bindings.bind_button({mouse, gainput::MouseButtonLeft}, DemoActions::Click);
+        (void)bindings.bind_axis({mouse, CE::Input::MouseControl::X}, DemoActions::MouseX);
+        (void)bindings.bind_axis({mouse, CE::Input::MouseControl::Y}, DemoActions::MouseY);
+        (void)bindings.bind_button({mouse, CE::Input::MouseButton::Left}, DemoActions::Click);
         (void)bindings.bind_axis(
             {mouse, CE::Input::MouseControl::ScrollY},
             DemoActions::WheelY,
             {1.0f, 0.0f, CE::Input::AxisKind::Relative}
         );
-        (void)bindings.bind_button({input.gamepad_id(), gainput::PadButtonA}, DemoActions::GamepadA);
+        (void)bindings.bind_button({input.gamepad_id(), CE::Input::GamepadControl::A}, DemoActions::GamepadA);
         events_ = input.capture(CE::Input::Capture::Channel::Events);
 #ifdef CHERYL_DEMO_TGUI
         ui_ = std::make_unique<DemoUi>(engine_, asset_root_);
@@ -282,14 +282,15 @@ public:
         // those still pending when this update requests a focus transfer.
         for (const auto& record : actions.records()) {
             const auto* button = std::get_if<CE::Input::Events::Button>(&record.data);
-            if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF5 &&
-                button->phase == CE::Input::Events::ButtonPhase::Press && !pending_shader_.valid()) {
+            if (record.to_gameplay && record.device_kind == CE::Input::DeviceKind::Keyboard && button &&
+                button->key == CE::Input::KeyboardKey::F5 && button->phase == CE::Input::Events::ButtonPhase::Press &&
+                !pending_shader_.valid()) {
                 pending_shader_ = engine_.platform_dispatcher().submit([root = asset_root_](CE::Runtime::Context& platform) {
                     return load_materials(root, platform.resources(), true);
                 });
             }
 #if !defined(CHERYL_DEMO_TGUI) && !defined(CHERYL_DEMO_RMLUI)
-            if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->button == gainput::KeyF2 &&
+            if (record.device_kind == CE::Input::DeviceKind::Keyboard && button && button->key == CE::Input::KeyboardKey::F2 &&
                 button->phase == CE::Input::Events::ButtonPhase::Press) {
                 if (focus_.owns_focus()) {
                     focus_.reset();
@@ -306,31 +307,31 @@ public:
                 text_.insert(caret_, 1, text->codepoint);
                 ++caret_;
             } else if (button && button->phase != CE::Input::Events::ButtonPhase::Release) {
-                switch (button->button) {
-                    case gainput::KeyBackSpace:
+                switch (button->key) {
+                    case CE::Input::KeyboardKey::Backspace:
                         if (caret_ > 0)
                             text_.erase(--caret_, 1);
                         break;
-                    case gainput::KeyDelete:
+                    case CE::Input::KeyboardKey::Delete:
                         if (caret_<text_.size())
                             text_.erase(caret_, 1);
                         break;
-                    case gainput::KeyLeft:
+                    case CE::Input::KeyboardKey::Left:
                         if (caret_ > 0)
                             --caret_;
                         break;
-                    case gainput::KeyRight:
+                    case CE::Input::KeyboardKey::Right:
                         if (caret_<text_.size())
                             ++caret_;
                         break;
-                    case gainput::KeyHome:
+                    case CE::Input::KeyboardKey::Home:
                         caret_ = 0;
                         break;
-                    case gainput::KeyEnd:
+                    case CE::Input::KeyboardKey::End:
                         caret_ = text_.size();
                         break;
-                    case gainput::KeyEscape:
-                    case gainput::KeyReturn:
+                    case CE::Input::KeyboardKey::Escape:
+                    case CE::Input::KeyboardKey::Enter:
                         focus_.reset();
                         text_capture_.reset();
                         break;

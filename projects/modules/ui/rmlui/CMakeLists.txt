@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(cheryl_ui_rmlui_module VERSION ${VERSION_PROJECT_MODULE_UI_RMLUI} LANGUAGES CXX)
 endif()
@@ -19,11 +19,14 @@ if(NOT TARGET RmlUi::Core)
         include(cmake/RmlUi.cmake)
         cheryl_add_rmlui_source()
     else()
-        find_package(RmlUi 6.3 EXACT CONFIG REQUIRED)
+        find_package(RmlUi 6.3 EXACT CONFIG REQUIRED GLOBAL)
     endif()
 endif()
-if(NOT RMLUI_FONT_ENGINE STREQUAL "freetype")
-    message(FATAL_ERROR "Cheryl UI requires RMLUI_FONT_ENGINE=freetype; a supplied Core target must declare this configuration")
+get_target_property(rmlui_engine_services RmlUi::Core CHERYL_RMLUI_ENGINE_SERVICES)
+if(NOT rmlui_engine_services)
+    message(FATAL_ERROR
+        "A supplied RmlUi Core target must omit its native font engine and declare CHERYL_RMLUI_ENGINE_SERVICES=TRUE. "
+        "Use CHERYL_RMLUI_SOURCE for an owned compatible build.")
 endif()
 # Owned source marks its Core target after applying the correction. Supplied
 # libraries require that provider declaration.
@@ -35,7 +38,32 @@ if(NOT placeholder_fixed)
         "CHERYL_RMLUI_PLACEHOLDER_FIX=TRUE after verifying the library includes the correction.")
 endif()
 
-cheryl_shared_dependency(RmlUi::Core)
+get_target_property(rmlui_rasterizer_abi RmlUi::Core CHERYL_RMLUI_RASTERIZER_ABI)
+if(NOT rmlui_rasterizer_abi STREQUAL "1")
+    message(FATAL_ERROR "A supplied RmlUi shared runtime must provide CHERYL_RMLUI_RASTERIZER_ABI=1")
+endif()
+
+# Retain the reviewed toolkit provider, atlas, fallback and effect behavior while
+# supplying its native font operations through the shared Engine service.
+if(CHERYL_RMLUI_SOURCE)
+    set(cheryl_rmlui_font_provider "${CHERYL_RMLUI_SOURCE}/Source/Core/FontEngineDefault")
+else()
+    set(cheryl_rmlui_font_provider "${CHERYL_REPOSITORY_ROOT}/extern/rmlui/Source/Core/FontEngineDefault")
+endif()
+if(NOT EXISTS "${cheryl_rmlui_font_provider}/FontEngineInterfaceDefault.cpp")
+    message(FATAL_ERROR "The reviewed RmlUi font integration sources are required; supply CHERYL_RMLUI_SOURCE")
+endif()
+
+# Private adapter types use the selected Core target's public header tree, also
+# when that target supplies installed headers separate from this source checkout.
+set(cheryl_rmlui_font_source "${CMAKE_CURRENT_BINARY_DIR}/rmlui-font-headers")
+foreach(header IN ITEMS FontTypes.h FreeTypeInterface.h)
+    set(input "${cheryl_rmlui_font_provider}/${header}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${input}")
+    file(READ "${input}" contents)
+    string(REGEX REPLACE "#include \"\\.\\./\\.\\./\\.\\./Include/(RmlUi/[^\"]+)\"" "#include <\\1>" contents "${contents}")
+    file(CONFIGURE OUTPUT "${cheryl_rmlui_font_source}/${header}" CONTENT "${contents}" @ONLY)
+endforeach()
 
 file(GLOB_RECURSE cheryl_rmlui_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
@@ -47,10 +75,19 @@ set_target_properties(${TARGET_LIB_MODULE_UI_RMLUI} PROPERTIES
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_UI_RMLUI}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
 cheryl_configure_library(${TARGET_LIB_MODULE_UI_RMLUI} UI_RMLUI)
+get_target_property(rmlui_owned RmlUi::Core CHERYL_OWNED_UI_DEPENDENCY)
+if(rmlui_owned)
+    cheryl_shared_dependency(RmlUi::Core OWNER ${TARGET_LIB_MODULE_UI_RMLUI} OWNED)
+else()
+    cheryl_shared_dependency(RmlUi::Core OWNER ${TARGET_LIB_MODULE_UI_RMLUI})
+endif()
 target_include_directories(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
-target_link_libraries(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC ${LINKAGE_PUBLIC_LIB_MODULE_UI_RMLUI})
+target_include_directories(${TARGET_LIB_MODULE_UI_RMLUI} PRIVATE "${cheryl_rmlui_font_source}")
+target_include_directories(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC
+    "$<BUILD_INTERFACE:$<TARGET_PROPERTY:RmlUi::Core,INTERFACE_INCLUDE_DIRECTORIES>>")
+target_link_libraries(${TARGET_LIB_MODULE_UI_RMLUI} PUBLIC Cheryl::Engine RmlUi::Core)
 
 if(CHERYL_BUILD_TESTS)
     enable_testing()

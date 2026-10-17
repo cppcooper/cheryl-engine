@@ -1,9 +1,15 @@
 # C++ API
 
 The reference is generated from the public headers in this documentation version.
-It covers Cheryl-owned engine headers, startup and worker-topology support,
-and the GLFW, OpenGL, TGUI, RmlUi and miniaudio modules. These are backend modules;
-their availability depends on the targets enabled in your build.
+It covers Cheryl-owned Engine headers, public Startup/Workers modules,
+and the GLFW, OpenGL, TGUI, RmlUi and miniaudio modules. Module
+availability depends on the targets enabled in your build.
+
+```{toctree}
+:maxdepth: 2
+
+Symbols <../generation/generated/api/library_root>
+```
 
 ## Namespaces
 
@@ -36,6 +42,12 @@ portable facilities are still provided by `Cheryl::Engine`.
 
 ## Entry points
 
+The [Engine Systems tables](../engine-systems/index.md#reading-order) group the
+public types and important enums by task, with detailed contract links. For
+physical control names, start with [Input controls](../engine-systems/input.md#controls-for-bindings);
+for backend implementations, start with the
+[adapter catalogue](../architecture/interfaces-adapters.md).
+
 Include `<cheryl/cheryl.h>` and link `Cheryl::Cheryl` for the complete selected
 assembly. Individual module umbrellas live under `cheryl/modules/`, and support
 umbrellas under `cheryl/support/`. The [consumer guide](../development/consuming-engine.md#dependencies-and-headers)
@@ -43,10 +55,12 @@ explains source-checkout and SDK target selection.
 
 | Task | Entry point | Declaring header |
 | --- | --- | --- |
-| Configure application startup | {cpp:class}`CE::Application::Startup` | [startup.h](../../projects/engine/support/startup/include/cheryl/core/engine/startup.h) |
+| Configure application startup | {cpp:class}`CE::Application::Startup` | [startup.h](../../projects/modules/runtime/startup/include/cheryl/application/startup.h) |
 | Implement game hooks | {cpp:struct}`CE::Game::AbstractGame` | [abstract-game.h](../../projects/engine/include/cheryl/core/game-framework/abstract-game.h) |
+| Choose physical input controls | {cpp:enum}`CE::Input::KeyboardKey`, {cpp:enum}`CE::Input::MouseButton`, {cpp:enum}`CE::Input::GamepadControl` | [button-codes.h](../../projects/engine/include/cheryl/core/controls/button-codes.h) |
 | Prepare and upload assets | {cpp:struct}`CE::Assets::Loading::Loader` | [asset-loader.h](../../projects/engine/include/cheryl/core/resources/asset-management/asset-loader.h) |
 | Select immutable font data | {cpp:class}`CE::Text::FontCollection` | [font-collection.h](../../projects/engine/include/cheryl/text/font-collection.h) |
+| Rasterize toolkit font glyphs on CPU | {cpp:class}`CE::Text::FontRasterizer` | [font-rasterizer.h](../../projects/engine/include/cheryl/text/font-rasterizer.h) |
 | Retain sprite resources | {cpp:struct}`CE::Assets::Sprites::Asset` | [sprite.h](../../projects/engine/include/cheryl/assets/types/2d/sprite.h) |
 | Find loaded sprites | {cpp:struct}`CE::Assets::Sprites::Manager` | [sprite-mgr.h](../../projects/engine/include/cheryl/core/resources/asset-management/sprite-mgr.h) |
 
@@ -75,9 +89,17 @@ in a maintained application.
 
 ## Migration
 
-This reorganization changes C++ source names and ABI. Rebuild consumers with the
-matching engine version. Existing include paths and CMake target names remain
-available; old names are not re-exported through compatibility aliases.
+The SDK/Engine/Startup/Workers major version is 4; Native GLFW, OpenGL, TGUI and
+RmlUi are major version 2 because their public layouts/implementation boundaries
+changed. Audio and the static terminal attachment retain their component versions.
+Rebuild consumers with one matched header/binary set. Startup/worker compatibility
+headers/targets remain available where their capability is enabled; the older
+C++ namespace names below are not re-exported as aliases.
+
+Use the generic `CE::Application::make_startup()` and Cheryl-owned logging levels,
+file callbacks, Engine input control enums/device snapshots and compiled OpenGL methods.
+Private spdlog/Gainput/GLFW/GLAD implementation headers are no longer application
+requirements. Native toolkit authoring remains part of the UI owners' public ABI.
 
 | Previous name | Current name |
 | --- | --- |
@@ -106,8 +128,24 @@ resource kind. The shader catalogue uses `find_program()` and `find_material()`;
 the image manager's decoded-image upload is `upload()`. The aggregate loading
 entry point remains `CE::Assets::Loading::Loader::load_assets()`.
 
-```{toctree}
-:maxdepth: 2
+### Input bindings
 
-Symbols <../generation/generated/api/library_root>
-```
+Bind Engine enums directly, for example
+`bindings.bind_button({input.keyboard_id(), CE::Input::KeyboardKey::Escape}, quit)`.
+The same form accepts mouse buttons and gamepad controls, including in chords.
+
+| Previous interface | Current use |
+| --- | --- |
+| `CE::Platform::GLFW::keyboard_control(key)` / `mouse_control(button)` | Pass `CE::Input::KeyboardKey` / `CE::Input::MouseButton` directly. |
+| `CE::Platform::GLFW::GamepadControl` constants | Use the scoped `CE::Input::GamepadControl` enum. Names include `DPadLeft`, `Back`, `Guide`, `LeftShoulder`, `LeftTriggerButton` and `LeftStick`; use `LeftTrigger` for its axis. Right-side equivalents follow the same naming. |
+| `CE::Platform::GLFW::MouseControl` | Use `CE::Input::MouseControl` for absolute axes and wheel pulses as well as relative movement/scroll. |
+| `CE::Platform::GLFW::InputMapper` | Access `CE::Input::Actions::Bindings` through `input.bindings()`. |
+
+Remove includes of the deleted `glfw-bindings.h` and `input-mapper.h`; include
+`<cheryl/core/controls/button-codes.h>` alongside the input interface. These
+removed interfaces have no compatibility aliases. Direct foreign-enum bindings
+fail at compile time; numeric casts of Gainput/GLFW constants do not produce
+Engine control IDs. Keep raw `ControlId` values for explicitly defined adapter
+extensions. The [binding task](../getting-started/how-to/bind-input.md) and
+[control guide](../runtime/input-state-model.md#control-identities-and-binding-tokens)
+show the current headers, validation and examples.

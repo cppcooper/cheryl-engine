@@ -1,6 +1,6 @@
 """Check release acceptance and retry behavior without network or compilation."""
 
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import copy
 import hashlib
 import importlib.util
@@ -8,6 +8,7 @@ import io
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -25,6 +26,7 @@ OTHER = "c" * 40
 TAG = "v4.0.0"
 VERSIONS = {variable: "1.0.0" for variable in release.COMPONENTS.values()}
 VERSIONS.update({"VERSION_PROJECT_CHERYL": "4.0.0", "VERSION_PROJECT_ENGINE": "4.0.0"})
+VERSIONS.update({"VERSION_PROJECT_MODULE_STARTUP": "4.0.0", "VERSION_PROJECT_MODULE_WORKERS": "4.0.0"})
 ENVIRONMENT = {"GITHUB_ACTIONS": "true", "GITHUB_REPOSITORY": release.REPOSITORY,
                "GITHUB_EVENT_NAME": "push", "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": SHA}
 
@@ -133,38 +135,66 @@ class ReleaseTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.packages = Path(temporary.name) / "packages"
-        self.packages.mkdir()
+        self.directory = Path(temporary.name)
+        self.candidates = self.directory / "candidates"
+        self.candidates.mkdir()
+        self.packages = self.directory / "packages"
         self.api = FakeApi()
         self.clock = Clock()
         self.metadata = {}
         for variant, fields in release.VARIANTS.items():
             metadata = dict(zip(("system", "linkage", "configuration", "compiler"), fields))
             metadata.update({"version": "4.0.0", "revision": SHA, "architecture": "AMD64",
+                             "submodules": {"extern/example": HEAD},
+                             "features": {name: "ON" for name in release.FEATURES},
                              "component_versions": {name: VERSIONS[release.COMPONENTS[name]]
                                                     for name in release.REQUIRED_COMPONENTS}})
             self.metadata[variant] = metadata
             self.bundle(variant)
+        self.assemble()
 
-    def bundle(self, variant, *, inside=None):
-        directory = self.packages / variant
+    def snapshot(self, source, revision, destination):
+        identity = {"revision": revision, "submodules": {"extern/example": HEAD}}
+        with release._tar_writer(destination) as archive:
+            release._tar_bytes(archive, release._archive_root(destination) + "/SOURCE-MANIFEST.json", release._json_bytes(identity))
+            release._tar_bytes(archive, release._archive_root(destination) + "/tracked.txt", b"pinned source\n")
+        return identity
+
+    def assemble(self, *, local_validation=False):
+        if self.packages.exists():
+            shutil.rmtree(self.packages)
+        with patch.object(release, "source_snapshot", side_effect=self.snapshot):
+            return release.assemble_release(self.candidates, self.directory, self.packages, SHA, VERSIONS,
+                                            local_validation=local_validation)
+
+    def bundle(self, variant, *, inside=None, release_name=False):
+        directory = self.candidates / variant
         directory.mkdir(exist_ok=True)
         for path in directory.iterdir():
             path.unlink()
         metadata = self.metadata[variant]
         platform = metadata["system"].lower()
         name = f"cheryl-4.0.0-sdk-{platform}-{metadata['linkage']}-{SHA[:12]}"
+        if release_name:
+            name = f"cheryl-SDK-v4.0.0-{platform}" + ("-static" if metadata["linkage"] == "static" else "")
         contents = (json.dumps(metadata if inside is None else inside, sort_keys=True) + "\n").encode()
+        files = {"SDK-MANIFEST.json": contents, "include/TGUI/Config.hpp": platform.encode(),
+                 "lib/cmake/Cheryl/CherylConfig.cmake": b"set(Cheryl_FOUND TRUE)\n",
+                 "lib/cmake/Cheryl/CherylConfigVersion.cmake": b'set(PACKAGE_VERSION "4.0.0")\n'}
         if metadata["system"] == "Windows":
             path = directory / (name + ".zip")
             with zipfile.ZipFile(path, "w") as archive:
-                archive.writestr(name + "/SDK-MANIFEST.json", contents)
+                for filename, data in files.items():
+                    archive.writestr(name + "/" + filename, data)
         else:
             path = directory / (name + ".tar.gz")
             with tarfile.open(path, "w:gz") as archive:
-                member = tarfile.TarInfo(name + "/SDK-MANIFEST.json")
-                member.size = len(contents)
-                archive.addfile(member, io.BytesIO(contents))
+                for filename, data in files.items():
+                    member = tarfile.TarInfo(name + "/" + filename)
+                    member.size = len(data)
+                    archive.addfile(member, io.BytesIO(data))
+                archive.addfile(release._tar_member(name + "/lib/libtest.so", link="libtest.so.1"))
+                release._tar_bytes(archive, name + "/lib/libtest.so.1", b"native library")
         (directory / "SDK-MANIFEST.json").write_text(json.dumps(metadata), encoding="utf-8")
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         (directory / "SHA256SUMS").write_text(f"{digest}  {path.name}\n", encoding="utf-8")
@@ -178,6 +208,16 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, message):
             self.publish()
         self.assertEqual(self.api.writes, [])
+
+    def candidate_rejected(self, message):
+        with self.assertRaisesRegex(RuntimeError, message):
+            self.assemble()
+        self.assertEqual(self.api.writes, [])
+
+    def update_checksums(self):
+        (self.packages / "SHA256SUMS").write_text("".join(
+            f"{release._digest(path)}  {path.name}\n" for path in sorted(self.packages.iterdir()) if path.name != "SHA256SUMS"),
+            encoding="utf-8")
 
     def test_publish(self):
         self.assertEqual(self.publish(), "published")
@@ -246,38 +286,195 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.api.writes, [])
 
     def test_missing_variant(self):
-        shutil.rmtree(self.packages / "candidate-sdk-windows-modules")
-        self.rejected("four expected")
+        shutil.rmtree(self.candidates / "candidate-sdk-windows-modules")
+        self.candidate_rejected("four expected")
 
     def test_checksum(self):
         path = self.bundle("candidate-sdk-linux-modules")
         path.write_bytes(path.read_bytes() + b"changed")
-        self.rejected("checksum mismatch")
+        self.candidate_rejected("checksum mismatch")
+
+    def test_windows_checksum_lines(self):
+        checksum = self.candidates / "candidate-sdk-windows-modules/SHA256SUMS"
+        line = checksum.read_bytes().rstrip(b"\n")
+        for ending in (b"", b"\n", b"\r\n"):
+            with self.subTest(ending=ending):
+                checksum.write_bytes(line + ending)
+                self.assemble()
+        for ending in (b"\r", b"\n\n", b"\r\nextra", b"\nextra"):
+            with self.subTest(ending=ending):
+                checksum.write_bytes(line + ending)
+                self.candidate_rejected("safe archive basename")
 
     def test_unsafe_name(self):
-        (self.packages / "candidate-sdk-linux-modules/SHA256SUMS").write_text("a" * 64 + "  ../outside.tar.gz\n", encoding="utf-8")
-        self.rejected("safe archive basename")
+        (self.candidates / "candidate-sdk-linux-modules/SHA256SUMS").write_text("a" * 64 + "  ../outside.tar.gz\n", encoding="utf-8")
+        self.candidate_rejected("safe archive basename")
 
     def test_revision(self):
         self.metadata["candidate-sdk-linux-modules"]["revision"] = OTHER
         self.bundle("candidate-sdk-linux-modules")
-        self.rejected("SDK revision or version")
+        self.candidate_rejected("SDK revision or version")
 
     def test_component(self):
         self.metadata["candidate-sdk-linux-modules"]["component_versions"]["opengl"] = "2.0.0"
         self.bundle("candidate-sdk-linux-modules")
-        self.rejected("component version")
+        self.candidate_rejected("component version")
 
     def test_missing_component(self):
         del self.metadata["candidate-sdk-linux-modules"]["component_versions"]["native_glfw"]
         self.bundle("candidate-sdk-linux-modules")
-        self.rejected("missing required component")
+        self.candidate_rejected("missing required component")
 
     def test_archive_manifest(self):
         inside = copy.deepcopy(self.metadata["candidate-sdk-linux-modules"])
         inside["revision"] = OTHER
         self.bundle("candidate-sdk-linux-modules", inside=inside)
+        self.candidate_rejected("outer manifest disagree")
+
+    def test_four_archives(self):
+        names = release.release_names("4.0.0")
+        self.assertEqual({path.name for path in self.packages.iterdir()}, set(names.values()) | release.SIDECARS)
+        root = release._archive_root(self.packages / names["static"])
+        with tarfile.open(self.packages / names["static"], "r:gz") as archive:
+            self.assertEqual(archive.extractfile(root + "/linux/include/TGUI/Config.hpp").read(), b"linux")
+            self.assertEqual(archive.extractfile(root + "/windows/include/TGUI/Config.hpp").read(), b"windows")
+            link = archive.getmember(root + "/linux/lib/libtest.so")
+            self.assertTrue(link.issym())
+            self.assertEqual(link.linkname, "libtest.so.1")
+            dispatcher = archive.extractfile(root + "/lib/cmake/Cheryl/CherylConfig.cmake").read().decode()
+            self.assertIn('CMAKE_SYSTEM_NAME STREQUAL "Linux"', dispatcher)
+            self.assertIn('CMAKE_SYSTEM_NAME STREQUAL "Windows"', dispatcher)
+            self.assertIn("../../../${_cheryl_platform}/lib/cmake/Cheryl/CherylConfig.cmake", dispatcher)
+        aggregate = json.loads((self.packages / "SDK-MANIFESTS.json").read_bytes())
+        self.assertEqual(aggregate["source"]["archive"], names["source"])
+        self.assertEqual(aggregate["sdks"]["candidate-sdk-linux-modules"]["prefix"], "linux")
+        self.assertEqual(aggregate["sdks"]["candidate-sdk-windows-modules"]["prefix"], "windows")
+
+    def test_deterministic_assembly(self):
+        before = {path.name: path.read_bytes() for path in self.packages.iterdir()}
+        self.assemble()
+        self.assertEqual(before, {path.name: path.read_bytes() for path in self.packages.iterdir()})
+
+    def test_shared_payload_identity(self):
+        inputs = [self.bundle(variant, release_name=True) for variant, fields in release.VARIANTS.items()
+                  if fields[1] == "shared"]
+        self.assemble()
+        for path in inputs:
+            self.assertEqual(path.read_bytes(), (self.packages / path.name).read_bytes())
+
+    def test_local_configuration(self):
+        variant = "candidate-sdk-windows-modules"
+        self.metadata[variant]["configuration"] = "Release"
+        self.metadata[variant]["features"]["hwloc"] = "OFF"
+        self.bundle(variant)
+        self.candidate_rejected("accepted CI variant")
+        self.assemble(local_validation=True)
+        _, aggregate = release.validate_release(self.packages, SHA, VERSIONS, local_validation=True)
+        self.assertEqual(aggregate["sdks"][variant]["manifest"], self.metadata[variant])
+        self.rejected("Local validation archives cannot be published")
+
+    def test_missing_worker_version(self):
+        del self.metadata["candidate-sdk-linux-modules"]["component_versions"]["workers"]
+        self.bundle("candidate-sdk-linux-modules")
+        self.candidate_rejected("missing required component")
+
+    def test_missing_hwloc(self):
+        self.metadata["candidate-sdk-linux-modules"]["features"]["hwloc"] = "OFF"
+        self.bundle("candidate-sdk-linux-modules")
+        self.candidate_rejected("required release features")
+
+    def test_missing_opengl_startup(self):
+        self.metadata["candidate-sdk-linux-modules"]["features"]["startup_opengl"] = "OFF"
+        self.bundle("candidate-sdk-linux-modules")
+        self.candidate_rejected("required release features")
+
+    def test_source_pins(self):
+        self.metadata["candidate-sdk-linux-modules"]["submodules"]["extern/example"] = OTHER
+        self.bundle("candidate-sdk-linux-modules")
+        self.candidate_rejected("submodule pins differ")
+
+    def test_missing_source_identity(self):
+        del self.metadata["candidate-sdk-linux-modules"]["submodules"]
+        self.bundle("candidate-sdk-linux-modules")
+        self.candidate_rejected("source identity is invalid")
+
+    def test_extra_release_file(self):
+        (self.packages / "unexpected.zip").write_bytes(b"extra")
+        self.rejected("exactly four named archives")
+
+    def test_release_checksum(self):
+        name = release.release_names("4.0.0")["source"]
+        path = self.packages / name
+        path.write_bytes(path.read_bytes() + b"changed")
+        self.rejected("checksum mismatch")
+
+    def test_duplicate_checksum(self):
+        path = self.packages / "SHA256SUMS"
+        path.write_bytes(path.read_bytes() + path.read_bytes().splitlines(keepends=True)[0])
+        self.rejected("invalid or duplicate")
+
+    def test_release_inner_manifest(self):
+        path = self.packages / "SDK-MANIFESTS.json"
+        aggregate = json.loads(path.read_bytes())
+        aggregate["sdks"]["candidate-sdk-linux-modules"]["manifest"]["compiler_version"] = "different"
+        path.write_bytes(release._json_bytes(aggregate))
+        self.update_checksums()
         self.rejected("outer manifest disagree")
+
+    def test_source_archive_manifest(self):
+        path = self.packages / release.release_names("4.0.0")["source"]
+        with release._tar_writer(path) as archive:
+            release._tar_bytes(archive, release._archive_root(path) + "/SOURCE-MANIFEST.json",
+                               release._json_bytes({"revision": OTHER, "submodules": {"extern/example": HEAD}}))
+        self.update_checksums()
+        self.rejected("source archive and its release identity disagree")
+
+    def test_unsafe_archive(self):
+        path = self.bundle("candidate-sdk-linux-modules")
+        for filename, link in (("../outside", None), ("lib/escape", "../../../outside"),
+                               ("lib/escape", "/outside")):
+            with self.subTest(filename=filename, link=link):
+                with tarfile.open(path, "w:gz") as archive:
+                    archive.addfile(release._tar_member(release._archive_root(path) + "/" + filename, link=link))
+                checksum = path.parent / "SHA256SUMS"
+                checksum.write_text(f"{release._digest(path)}  {path.name}\n", encoding="utf-8")
+                self.candidate_rejected("unsafe|escapes")
+
+    def test_duplicate_archive_member(self):
+        path = self.bundle("candidate-sdk-linux-modules")
+        with tarfile.open(path, "w:gz") as archive:
+            for _ in range(2):
+                release._tar_bytes(archive, release._archive_root(path) + "/SDK-MANIFEST.json", b"{}")
+        (path.parent / "SHA256SUMS").write_text(f"{release._digest(path)}  {path.name}\n", encoding="utf-8")
+        self.candidate_rejected("duplicate paths")
+
+    def test_symlink_ancestor(self):
+        path = self.bundle("candidate-sdk-linux-modules")
+        root = release._archive_root(path)
+        with tarfile.open(path, "w:gz") as archive:
+            archive.addfile(release._tar_member(root + "/lib", link="other"))
+            release._tar_bytes(archive, root + "/lib/child", b"unsafe")
+        (path.parent / "SHA256SUMS").write_text(f"{release._digest(path)}  {path.name}\n", encoding="utf-8")
+        self.candidate_rejected("traverses a symlink")
+
+    def test_windows_paths(self):
+        path = self.bundle("candidate-sdk-windows-modules")
+        root = release._archive_root(path)
+        for files in (("include/A.h", "include/a.h"), ("include/NUL.txt",), ("include/path. ",)):
+            with self.subTest(files=files):
+                with zipfile.ZipFile(path, "w") as archive:
+                    for name in files:
+                        archive.writestr(root + "/" + name, b"unsafe")
+                (path.parent / "SHA256SUMS").write_text(f"{release._digest(path)}  {path.name}\n", encoding="utf-8")
+                self.candidate_rejected("unsupported Windows paths")
+
+    def test_no_overwrite(self):
+        marker = self.packages / "SDK-MANIFESTS.json"
+        before = marker.read_bytes()
+        with patch.object(release, "source_snapshot", side_effect=self.snapshot):
+            with self.assertRaisesRegex(RuntimeError, "empty real output"):
+                release.assemble_release(self.candidates, self.directory, self.packages, SHA, VERSIONS)
+        self.assertEqual(marker.read_bytes(), before)
 
     def test_docs_failure(self):
         self.api.jobs[10][0]["conclusion"] = "failure"
@@ -422,6 +619,80 @@ class ReleaseTests(unittest.TestCase):
         with patch.dict(release.os.environ, {}, clear=True), redirect_stdout(output):
             self.assertEqual(release.main(["--packages", str(self.packages)]), 0)
         self.assertIn("disabled", output.getvalue())
+
+    def test_local_cli_scope(self):
+        with patch.dict(release.os.environ, {}, clear=True), redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as raised:
+                release.main(["--packages", str(self.packages), "--local-validation"])
+        self.assertEqual(raised.exception.code, 2)
+
+
+class SourceSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        self.source = self.directory / "source"
+        self.source.mkdir()
+        self.git(self.source, "init", "--quiet")
+
+    def git(self, source, *arguments):
+        return subprocess.check_output(["git", "-C", str(source), "-c", "user.name=cppcooper",
+                                        "-c", "user.email=cppcooper@users.noreply.github.com", *arguments],
+                                       stderr=subprocess.PIPE).decode().strip()
+
+    def commit(self, source, filename, contents):
+        path = source / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(contents, encoding="utf-8")
+        self.git(source, "add", "--", filename)
+        self.git(source, "commit", "--quiet", "-m", "Adds fixture")
+        return self.git(source, "rev-parse", "HEAD")
+
+    def test_pinned_recursive_objects(self):
+        child = self.source / "extern/child"
+        nested = child / "nested"
+        nested.mkdir(parents=True)
+        self.git(child, "init", "--quiet")
+        self.git(nested, "init", "--quiet")
+        nested_sha = self.commit(nested, "nested.txt", "nested pinned\n")
+        self.git(child, "update-index", "--add", "--cacheinfo", "160000," + nested_sha + ",nested")
+        child_sha = self.commit(child, "child.txt", "child pinned\n")
+        self.git(self.source, "update-index", "--add", "--cacheinfo", "160000," + child_sha + ",extern/child")
+        sha = self.commit(self.source, "tracked.txt", "root pinned\n")
+        (self.source / "tracked.txt").write_text("uncommitted change\n", encoding="utf-8")
+        (child / "child.txt").write_text("generated replacement\n", encoding="utf-8")
+        (self.source / "TRANSIENT-HANDOFF.md").write_text("private handoff\n", encoding="utf-8")
+        destination = self.directory / "cheryl-src-v4.0.0.tar.gz"
+        identity = release.source_snapshot(self.source, sha, destination)
+        self.assertEqual(identity, {"revision": sha, "submodules": {"extern/child": child_sha,
+                                                                  "extern/child/nested": nested_sha}})
+        with tarfile.open(destination, "r:gz") as archive:
+            root = release._archive_root(destination)
+            self.assertEqual(archive.extractfile(root + "/tracked.txt").read(), b"root pinned\n")
+            self.assertEqual(archive.extractfile(root + "/extern/child/child.txt").read(), b"child pinned\n")
+            self.assertEqual(archive.extractfile(root + "/extern/child/nested/nested.txt").read(), b"nested pinned\n")
+            self.assertNotIn(root + "/TRANSIENT-HANDOFF.md", archive.getnames())
+            self.assertFalse(any(".git/" in name for name in archive.getnames()))
+        first = destination.read_bytes()
+        release.source_snapshot(self.source, sha, destination)
+        self.assertEqual(first, destination.read_bytes())
+
+    def test_wrong_revision(self):
+        self.commit(self.source, "tracked.txt", "pinned\n")
+        with self.assertRaisesRegex(RuntimeError, "pinned revision"):
+            release.source_snapshot(self.source, SHA, self.directory / "source.tar.gz")
+
+    def test_wrong_submodule(self):
+        child = self.source / "child"
+        child.mkdir()
+        self.git(child, "init", "--quiet")
+        pin = self.commit(child, "tracked.txt", "pinned\n")
+        self.git(self.source, "update-index", "--add", "--cacheinfo", "160000," + pin + ",child")
+        sha = self.commit(self.source, "tracked.txt", "root\n")
+        self.commit(child, "tracked.txt", "different commit\n")
+        with self.assertRaisesRegex(RuntimeError, "pinned revision"):
+            release.source_snapshot(self.source, sha, self.directory / "source.tar.gz")
 
 
 if __name__ == "__main__":

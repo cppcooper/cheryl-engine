@@ -4,6 +4,14 @@
  * @brief Public module APIs selected by linked Cheryl targets.
  */
 
+#if defined(CHERYL_HAS_STARTUP) && CHERYL_HAS_STARTUP
+#include <cheryl/modules/startup.h>
+#endif
+
+#if defined(CHERYL_HAS_WORKERS) && CHERYL_HAS_WORKERS
+#include <cheryl/modules/workers.h>
+#endif
+
 #if defined(CHERYL_HAS_DEBUG_TERMINAL_LINUX) && CHERYL_HAS_DEBUG_TERMINAL_LINUX
 #include <cheryl/modules/debug-terminal-linux.h>
 #endif

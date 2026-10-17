@@ -17,7 +17,7 @@ namespace CE::Application::GLFWOpenGL {
      * @param runtime Initial simulation and polling defaults.
      * @return A single-use startup object; command-line options override its defaults.
      */
-    [[nodiscard]] CE_OPENGL_STARTUP_API CE::Application::Startup make_startup(
+    [[nodiscard]] CE_STARTUP_API CE::Application::Startup make_startup(
         CE::Input::System& input,
         std::string description = "Cheryl application",
         Options configuration = {},
@@ -33,7 +33,7 @@ namespace CE::Application::GLFWOpenGL {
      * @param runtime Initial simulation and polling defaults.
      * @return A single-use startup object owning its backend option state.
      */
-    [[nodiscard]] CE_OPENGL_STARTUP_API CE::Application::Startup
+    [[nodiscard]] CE_STARTUP_API CE::Application::Startup
     make_startup(std::string description = "Cheryl application", Options configuration = {}, CE::Application::RuntimeOptions runtime = {});
 #endif
 }

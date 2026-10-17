@@ -6,7 +6,10 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -377,6 +380,16 @@ class CommandTests(unittest.TestCase):
             dependencies.windows_install("docs")
         command.assert_not_called()
 
+    def test_linux_install(self):
+        environment = {"CHERYL_CI_VCPKG_ROOT": str(self.root / "vcpkg"),
+                       "CHERYL_CI_VCPKG_INSTALLED_DIR": str(self.root / "installed")}
+        with patch.object(dependencies, "ROOT", self.root), \
+             patch.dict(dependencies.os.environ, environment, clear=True), patch.object(dependencies, "run") as command:
+            dependencies.linux_install("modules")
+        arguments = command.call_args.args[0]
+        self.assertEqual(arguments[1], str(self.root / "tools/dependencies/prepare.py"))
+        self.assertNotIn("--native", arguments)
+
     def test_cache_does_not_select_packages(self):
         cache = self.root / "build/cache/vcpkg/archives"
         (cache / "aa").mkdir(parents=True)
@@ -466,6 +479,15 @@ class PreparedTests(unittest.TestCase):
         shutil.copytree(self.root, relocated)
         with patch.object(dependencies, "ROOT", relocated):
             dependencies.windows_verify("modules")
+
+    def test_linux_transfer(self):
+        (self.installed / "x64-windows").rename(self.installed / "x64-linux-dynamic")
+        self.status.write_text(self.status.read_text(encoding="utf-8").replace("x64-windows", "x64-linux-dynamic"), encoding="utf-8")
+        dependencies.native_stamp("modules", triplet=dependencies.LINUX_TRIPLET)
+        dependencies.native_verify("headless", triplet=dependencies.LINUX_TRIPLET)
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["target_triplet"], "x64-linux-dynamic")
+        self.assertEqual(state["features"], ["hwloc"])
 
     def test_headless_subset(self):
         self.status.write_text("\n\n".join(self.package(name) for name in (
@@ -566,7 +588,7 @@ class PreparedTests(unittest.TestCase):
         self.assertFalse(self.state_path.exists())
 
     def test_empty_tree(self):
-        for directory in ("include", "lib", "bin", "share", "debug/lib", "debug/bin"):
+        for directory in ("include", "lib", "share", "debug/lib", "bin", "debug/bin"):
             with self.subTest(directory=directory):
                 path = self.installed / "x64-windows" / directory
                 preserved = self.installed / "preserved"
@@ -645,6 +667,347 @@ class PreparedTests(unittest.TestCase):
                  patch.object(dependencies, name) as command:
                 dependencies.main()
             command.assert_called_once_with("modules")
+
+
+class PreparedCmakeTests(unittest.TestCase):
+    def test_harfbuzz_imports(self):
+        helper = Path(__file__).resolve().parents[2] / "tools/dependencies/prepared.cmake"
+        for debug in (False, True):
+            with self.subTest(debug=debug), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                prefix = root / "installed/x64-windows"
+                for name in ("include/harfbuzz/hb.h", "lib/harfbuzz.lib", "bin/harfbuzz.dll"):
+                    path = prefix / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"fixture")
+                if debug:
+                    for name in ("debug/lib/harfbuzz.lib", "debug/bin/harfbuzz.dll"):
+                        path = prefix / name
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_bytes(b"debug fixture")
+                (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(cheryl LANGUAGES NONE)
+set(WIN32 TRUE)
+set(CMAKE_FIND_LIBRARY_PREFIXES "")
+set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
+set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
+set(VCPKG_TARGET_TRIPLET x64-windows)
+set(CHERYL_BUILD_WORKERS OFF)
+set(CHERYL_NATIVE_INPUT OFF)
+include("{helper.as_posix()}")
+get_target_property(kind harfbuzz::harfbuzz TYPE)
+get_target_property(import_library harfbuzz::harfbuzz IMPORTED_IMPLIB_RELEASE)
+if(NOT kind STREQUAL "SHARED_LIBRARY" OR NOT import_library MATCHES "/lib/harfbuzz.lib$")
+    message(FATAL_ERROR "The prepared HarfBuzz DLL/import pair is incomplete")
+endif()
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/runtime.txt" CONTENT "$<TARGET_FILE:harfbuzz::harfbuzz>")
+''', encoding="utf-8")
+                for configuration in ("Release", "Debug", "RelWithDebInfo"):
+                    build = root / configuration
+                    result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
+                                             f"-DCMAKE_BUILD_TYPE={configuration}"], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    directory = "debug/bin" if debug and configuration == "Debug" else "bin"
+                    self.assertEqual(Path((build / "runtime.txt").read_text(encoding="utf-8")), prefix / directory / "harfbuzz.dll")
+
+    def test_harfbuzz_supplied(self):
+        helper = Path(__file__).resolve().parents[2] / "tools/dependencies/prepared.cmake"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "installed/x64-windows/lib").mkdir(parents=True)
+            (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(cheryl LANGUAGES NONE)
+set(WIN32 TRUE)
+set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
+set(VCPKG_TARGET_TRIPLET x64-windows)
+set(CHERYL_BUILD_WORKERS OFF)
+set(CHERYL_NATIVE_INPUT OFF)
+add_library(harfbuzz INTERFACE)
+set_property(TARGET harfbuzz PROPERTY SUPPLIED_MARKER preserved)
+include("{helper.as_posix()}")
+get_target_property(marker harfbuzz SUPPLIED_MARKER)
+if(TARGET cheryl_prepared_harfbuzz OR NOT marker STREQUAL "preserved")
+    message(FATAL_ERROR "A supplied HarfBuzz target was replaced")
+endif()
+''', encoding="utf-8")
+            result = subprocess.run(["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_shared_hwloc_closure(self):
+        self.check_hwloc_configurations(debug=False)
+
+    def test_debug_hwloc_closure(self):
+        self.check_hwloc_configurations(debug=True)
+
+    def check_hwloc_configurations(self, *, debug):
+        helper = Path(__file__).resolve().parents[2] / "tools/dependencies/prepared.cmake"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prefix = root / "installed/x64-linux-dynamic"
+            (prefix / "include").mkdir(parents=True)
+            (prefix / "lib/pkgconfig").mkdir(parents=True)
+            (prefix / "include/hwloc.h").write_bytes(b"fixture")
+            (prefix / "lib/libhwloc.a").write_bytes(b"wrong static fixture")
+            (prefix / "lib/libhwloc.so").write_bytes(b"shared fixture")
+            (prefix / "lib/pkgconfig/hwloc.pc").write_text("Libs: -L${libdir} -lhwloc -lm\nLibs.private: -lpthread\n", encoding="utf-8")
+            if debug:
+                (prefix / "debug/lib").mkdir(parents=True)
+                (prefix / "debug/lib/libhwloc.so").write_bytes(b"debug fixture")
+            (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(cheryl LANGUAGES NONE)
+set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
+set(VCPKG_TARGET_TRIPLET x64-linux-dynamic)
+set(CHERYL_NATIVE_INPUT OFF)
+include("{helper.as_posix()}")
+get_target_property(location cheryl_prepared_hwloc IMPORTED_LOCATION)
+get_target_property(closure cheryl_prepared_hwloc INTERFACE_LINK_LIBRARIES)
+get_target_property(configurations cheryl_prepared_hwloc IMPORTED_CONFIGURATIONS)
+if(NOT location MATCHES "libhwloc\\\\.so$" OR closure)
+    message(FATAL_ERROR "Incorrect shared prepared closure: ${{location}} / ${{closure}}")
+endif()
+if(NOT configurations STREQUAL "{'RELEASE;DEBUG' if debug else 'RELEASE'}")
+    message(FATAL_ERROR "Incorrect prepared configurations: ${{configurations}}")
+endif()
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/hwloc.txt" CONTENT "$<TARGET_FILE:cheryl_prepared_hwloc>")
+''', encoding="utf-8")
+            self.check_generated_locations(root, prefix, debug=debug)
+
+    def test_sdk_shared_export(self):
+        repository = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "source.cpp").write_text("int fixture() { return 0; }\n", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(sdk_export LANGUAGES CXX)
+set(CHERYL_REPOSITORY_ROOT "{repository.as_posix()}")
+set(CHERYL_BUILD_ROOT "${{CMAKE_BINARY_DIR}}")
+set(CHERYL_BUILD_SHARED_LIBS ON)
+set(VERSION_PROJECT_ENGINE 1.0.0)
+set(VERSION_PROJECT_CHERYL 1.0.0)
+set(TARGET_LIB_ENGINE engine)
+set(TARGET_LIB_CHERYL cheryl)
+set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG logging)
+set(CHERYL_LOG_PROFILE release)
+set(CHERYL_LOG_COMPILED_MASK "")
+add_library(engine SHARED source.cpp)
+add_library(public_native SHARED source.cpp)
+add_library(cheryl INTERFACE)
+target_link_libraries(cheryl INTERFACE engine)
+add_library(logging INTERFACE)
+target_compile_definitions(logging INTERFACE CHERYL_LOG_PROFILE=2)
+add_library(ctti INTERFACE)
+add_library(glm INTERFACE)
+add_library(glm::glm-header-only ALIAS glm)
+add_library(harfbuzz::harfbuzz SHARED IMPORTED)
+set_property(TARGET harfbuzz::harfbuzz PROPERTY IMPORTED_LOCATION "${{CMAKE_SOURCE_DIR}}/libharfbuzz.so")
+set_property(GLOBAL PROPERTY CHERYL_SHARED_DEPENDENCIES "harfbuzz::harfbuzz|engine;public_native|engine")
+target_link_libraries(engine PUBLIC public_native PRIVATE harfbuzz::harfbuzz)
+include("{(repository / 'cmake/CherylSdk.cmake').as_posix()}")
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/build-links.txt"
+    CONTENT "$<TARGET_GENEX_EVAL:engine,$<TARGET_PROPERTY:engine,LINK_LIBRARIES>>")
+''', encoding="utf-8")
+            build = root / "build"
+            result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
+                                     "-DCMAKE_BUILD_TYPE=Release"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            links = (build / "build-links.txt").read_text(encoding="utf-8")
+            self.assertIn("harfbuzz::harfbuzz", links)
+            self.assertIn("public_native", links)
+            public_export = next((build / "CMakeFiles/Export").rglob("CherylTargets.cmake")).read_text(encoding="utf-8")
+            self.assertIn("Cheryl::Dependency_public_native", public_export)
+            self.assertNotIn("harfbuzz::harfbuzz", public_export)
+            prefix = root / "sdk"
+            package = prefix / "lib/cmake/Cheryl"
+            package.mkdir(parents=True)
+            for name in ("CherylConfig.cmake", "CherylConfigVersion.cmake", "CherylNativeTargets.cmake"):
+                shutil.copy2(build / name, package / name)
+            for export in (build / "CMakeFiles/Export").rglob("CherylTargets*.cmake"):
+                shutil.copy2(export, package / export.name)
+                for name in re.findall(r'(?m)^\s+IMPORTED_(?:LOCATION|IMPLIB)[A-Z_]* "\$\{_IMPORT_PREFIX\}/([^"]+)"',
+                                       export.read_text(encoding="utf-8")):
+                    artifact = prefix / name
+                    artifact.parent.mkdir(parents=True, exist_ok=True)
+                    artifact.write_bytes(b"configured export fixture")
+            (prefix / "include/cheryl").mkdir(parents=True)
+            (prefix / "include/glm").mkdir()
+            consumer = root / "consumer"
+            consumer.mkdir()
+            (consumer / "source.cpp").write_text("int main() { return 0; }\n", encoding="utf-8")
+            (consumer / "CMakeLists.txt").write_text('''cmake_minimum_required(VERSION 3.28)
+project(sdk_consumer LANGUAGES CXX)
+find_package(Cheryl CONFIG REQUIRED)
+add_executable(consumer source.cpp)
+target_link_libraries(consumer PRIVATE Cheryl::Engine)
+if(TARGET harfbuzz::harfbuzz OR TARGET Freetype::Freetype OR TARGET ICU::uc)
+    message(FATAL_ERROR "Shared Cheryl discovered a private native package")
+endif()
+''', encoding="utf-8")
+            result = subprocess.run(["cmake", "-S", str(consumer), "-B", str(root / "consumer-build"), "-G", "Ninja",
+                                     f"-DCMAKE_PREFIX_PATH={prefix}", "-DCMAKE_DISABLE_FIND_PACKAGE_harfbuzz=TRUE",
+                                     "-DCMAKE_DISABLE_FIND_PACKAGE_Freetype=TRUE", "-DCMAKE_DISABLE_FIND_PACKAGE_ICU=TRUE",
+                                     "-DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=TRUE"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux native link inputs")
+    def test_sdk_static_native_links(self):
+        repository = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            native = root / "native.v1+prefix"
+            native.mkdir()
+            for name in ("libdw.so", "libelf.so", "libhwloc.so", "libicuuc.so", "libpthread.a"):
+                (native / name).write_bytes(b"native link fixture")
+            (root / "source.cpp").write_text("int fixture() { return 0; }\n", encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(sdk_static_export LANGUAGES CXX)
+include("{(repository / 'cmake/CherylLibraries.cmake').as_posix()}")
+set(CHERYL_REPOSITORY_ROOT "{repository.as_posix()}")
+set(CHERYL_BUILD_ROOT "${{CMAKE_BINARY_DIR}}")
+set(CHERYL_BUILD_SHARED_LIBS OFF)
+set(VERSION_PROJECT_ENGINE 1.0.0)
+set(VERSION_PROJECT_CHERYL 1.0.0)
+set(TARGET_LIB_ENGINE engine)
+set(TARGET_LIB_CHERYL cheryl)
+set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG logging)
+set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS signals)
+set(CHERYL_LOG_PROFILE release)
+set(CHERYL_LOG_COMPILED_MASK "")
+set(CHERYL_HWLOC_TARGET supplied_hwloc)
+add_library(engine STATIC source.cpp)
+add_library(cheryl INTERFACE)
+target_link_libraries(cheryl INTERFACE engine)
+foreach(target IN ITEMS logging signals ctti glm cheryl_icu backward)
+    add_library(${{target}} INTERFACE)
+endforeach()
+target_compile_definitions(logging INTERFACE CHERYL_LOG_PROFILE=2)
+add_library(glm::glm-header-only ALIAS glm)
+add_library(Threads::Threads INTERFACE IMPORTED)
+add_library(Backward::Interface ALIAS backward)
+target_link_libraries(backward INTERFACE "{native.as_posix()}/libdw.so"
+    "$<$<BOOL:{native.as_posix()}/libelf.so>:{native.as_posix()}/libelf.so>"
+    "$<$<BOOL:{native.as_posix()}/libpthread.a>:{native.as_posix()}/libpthread.a>")
+add_library(Cheryl::ICU ALIAS cheryl_icu)
+add_library(ICU::uc SHARED IMPORTED)
+set_property(TARGET ICU::uc PROPERTY IMPORTED_LOCATION "{native.as_posix()}/libicuuc.so")
+target_link_libraries(cheryl_icu INTERFACE ICU::uc)
+add_library(supplied_hwloc INTERFACE IMPORTED)
+set_property(TARGET supplied_hwloc PROPERTY INTERFACE_LINK_LIBRARIES "{native.as_posix()}/libhwloc.so")
+target_link_libraries(engine PRIVATE Backward::Interface Cheryl::ICU supplied_hwloc)
+cheryl_shared_dependency(ICU::uc OWNER engine)
+cheryl_shared_dependency(supplied_hwloc OWNER engine)
+include("{(repository / 'cmake/CherylSdk.cmake').as_posix()}")
+''', encoding="utf-8")
+            build = root / "build"
+            result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
+                                     "-DCMAKE_BUILD_TYPE=Release"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            exports = "\n".join(path.read_text(encoding="utf-8")
+                                for path in (build / "CMakeFiles/Export").rglob("CherylTargets*.cmake"))
+            self.assertNotIn(native.as_posix(), exports)
+            self.assertNotIn("supplied_hwloc", exports)
+            self.assertNotIn("ICU::uc", exports)
+            self.assertIn("Threads::Threads", exports)
+            records = json.loads((build / "cheryl-sdk.json").read_text(encoding="utf-8"))["shared_runtime_dependencies"]
+            self.assertEqual({entry["artifact"] for entry in records}, {"libdw.so", "libelf.so", "libhwloc.so", "libicuuc.so"})
+            for entry in records:
+                self.assertEqual(entry["deployment"], "sdk")
+                self.assertIn(entry["sdk_target"], exports)
+
+    def test_sdk_native_headers(self):
+        helper = Path(__file__).resolve().parents[2] / "cmake/CherylSdkHeaders.cmake"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, content in {
+                "provider/include/TGUI/TGUI.hpp": "selected native API\n",
+                "provider/include/TGUI/Config.hpp": "source configuration\n",
+                "provider/generated/TGUI/Config.hpp": "generated native configuration\n",
+                "provider/include/Unrelated/private.h": "not a toolkit header\n",
+            }.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(sdk_headers LANGUAGES NONE)
+set(CMAKE_INSTALL_INCLUDEDIR include)
+include("{helper.as_posix()}")
+add_library(provider INTERFACE IMPORTED)
+set_property(TARGET provider PROPERTY INTERFACE_INCLUDE_DIRECTORIES
+    "$<BUILD_INTERFACE:$<BUILD_INTERFACE:${{CMAKE_SOURCE_DIR}}/provider/generated>>;$<BUILD_INTERFACE:${{CMAKE_SOURCE_DIR}}/provider/include>;$<INSTALL_INTERFACE:include>")
+add_library(toolkit INTERFACE)
+target_link_libraries(toolkit INTERFACE provider)
+add_library(TGUI::TGUI ALIAS toolkit)
+cheryl_sdk_native_headers(TGUI::TGUI TGUI TGUI.hpp Config.hpp)
+''', encoding="utf-8")
+            build = root / "build"
+            result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja"],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run(["cmake", "--install", str(build), "--prefix", str(root / "sdk"),
+                                     "--component", "CherylSDK"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            installed = root / "sdk/include"
+            self.assertEqual((installed / "TGUI/TGUI.hpp").read_text(encoding="utf-8"), "selected native API\n")
+            self.assertEqual((installed / "TGUI/Config.hpp").read_text(encoding="utf-8"), "generated native configuration\n")
+            self.assertFalse((installed / "Unrelated").exists())
+
+    def test_sdk_packaged_closure(self):
+        template = Path(__file__).resolve().parents[2] / "cmake/templates/CherylConfig.cmake.in"
+        for linkage, hwloc in (("static", True), ("static", False), ("shared", True)):
+            with self.subTest(linkage=linkage, hwloc=hwloc), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                modules = root / "modules"
+                modules.mkdir()
+                (modules / "FindThreads.cmake").write_text('set(Threads_FOUND TRUE)\n', encoding="utf-8")
+                native_targets = ["Freetype", "HarfBuzz", "ICU"] + (["Hwloc"] if hwloc else [])
+                native_config = "".join(f"add_library(Cheryl::Native_{name} SHARED IMPORTED)\n"
+                                        for name in native_targets)
+                native_config = native_config.replace("\n", "\\n")
+                (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+project(sdk_fixture LANGUAGES NONE)
+list(PREPEND CMAKE_MODULE_PATH "${{CMAKE_SOURCE_DIR}}/modules")
+include(CMakePackageConfigHelpers)
+set(sdk_linkage {linkage})
+set(sdk_hwloc {'ON' if hwloc else 'OFF'})
+set(sdk_runtime_present ON)
+set(sdk_json OFF)
+set(sdk_opengl OFF)
+set(sdk_native_glfw OFF)
+set(ICU_VERSION 78.1)
+set(CMAKE_INSTALL_BINDIR bin)
+set(CMAKE_INSTALL_LIBDIR lib)
+configure_package_config_file("{template.as_posix()}" "${{CMAKE_SOURCE_DIR}}/sdk/lib/cmake/Cheryl/CherylConfig.cmake"
+    INSTALL_DESTINATION lib/cmake/Cheryl)
+file(WRITE "${{CMAKE_SOURCE_DIR}}/sdk/lib/cmake/Cheryl/CherylTargets.cmake" "")
+file(WRITE "${{CMAKE_SOURCE_DIR}}/sdk/lib/cmake/Cheryl/CherylNativeTargets.cmake" "{native_config}")
+find_package(Cheryl REQUIRED CONFIG PATHS "${{CMAKE_SOURCE_DIR}}/sdk" NO_DEFAULT_PATH)
+if(NOT TARGET Cheryl::Native_Freetype OR NOT TARGET Cheryl::Native_HarfBuzz OR NOT TARGET Cheryl::Native_ICU)
+    message(FATAL_ERROR "The packaged native runtime targets are missing")
+endif()
+if({'ON' if hwloc else 'OFF'} AND NOT TARGET Cheryl::Native_Hwloc)
+    message(FATAL_ERROR "Selected packaged hwloc was not loaded")
+elseif(NOT {'ON' if hwloc else 'OFF'} AND TARGET Cheryl::Native_Hwloc)
+    message(FATAL_ERROR "An omitted hwloc provider was discovered")
+endif()
+if(TARGET Freetype::Freetype OR TARGET ICU::uc OR TARGET harfbuzz::harfbuzz OR TARGET PkgConfig::CHERYL_HWLOC)
+    message(FATAL_ERROR "The SDK discovered a private host dependency")
+endif()
+''', encoding="utf-8")
+                result = subprocess.run(["cmake", "-S", str(root), "-B", str(root / "build"), "-G", "Ninja",
+                                         "-DCMAKE_DISABLE_FIND_PACKAGE_Freetype=TRUE", "-DCMAKE_DISABLE_FIND_PACKAGE_ICU=TRUE",
+                                         "-DCMAKE_DISABLE_FIND_PACKAGE_harfbuzz=TRUE", "-DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=TRUE"],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def check_generated_locations(self, root, prefix, *, debug):
+        for configuration in ("Release", "Debug", "RelWithDebInfo"):
+            with self.subTest(configuration=configuration):
+                build = root / configuration
+                result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
+                                         f"-DCMAKE_BUILD_TYPE={configuration}"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                expected = prefix / ("debug/lib/libhwloc.so" if debug and configuration == "Debug" else "lib/libhwloc.so")
+                self.assertEqual(Path((build / "hwloc.txt").read_text(encoding="utf-8")), expected)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
-#include <core/controls/input-mapper.h>
+#include "gainput-mapper.h"
+#include "native-controls.h"
 #include <internals/compile-time-logging.hpp>
 
-namespace CE::Platform::GLFW {
+namespace CE::Platform::GLFW::Detail {
     GainputMapper::GainputMapper(gainput::InputManager& manager)
     : manager_(manager), id_(manager_.AddListener(this)) {}
 
@@ -27,7 +28,9 @@ namespace CE::Platform::GLFW {
                             diagnostic_domain_, id_, device, source != nullptr, source && source->IsAvailable(), input, old_value, new_value
                         );
                 });
-            on_axis({device, input}, new_value);
+            const auto control = gamepad_control(input);
+            if (control != CE::Input::invalid_control)
+                on_axis({device, control}, new_value);
         }
         return true;
     }
@@ -49,7 +52,9 @@ namespace CE::Platform::GLFW {
                             diagnostic_domain_, id_, device, source != nullptr, source && source->IsAvailable(), input, old_value, new_value
                         );
                 });
-            on_button({device, input}, new_value);
+            const auto control = gamepad_control(input);
+            if (control != CE::Input::invalid_control)
+                on_button({device, control}, new_value);
         }
         return true;
     }

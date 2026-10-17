@@ -1,5 +1,5 @@
 #include <internals/exceptions.h>
-#include <internals/stack-trace-internal.h>
+#include "stack-trace-internal.h"
 #include <format>
 
 namespace {

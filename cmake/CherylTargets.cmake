@@ -7,13 +7,15 @@ set(TARGET_LIB_ENGINE cengine)
 # Engine support
 set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
 set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
-set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
+set(TARGET_LIB_ENGINE_S_STARTUP module_startup)
 set(TARGET_LIB_ENGINE_S_DEBUG_TERMINAL cengine_debug_terminal_startup)
-set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC cengine_worker_topology_hwloc)
-set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON cengine_worker_topology_json)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC module_workers)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON module_workers)
 set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE example_worker_topology)
 
 # Modules
+set(TARGET_LIB_MODULE_STARTUP module_startup)
+set(TARGET_LIB_MODULE_WORKERS module_workers)
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
 set(TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX module_debug_terminal_linux)
 set(TARGET_LIB_MODULE_OPENGL module_opengl)

@@ -18,8 +18,9 @@ its public target; the root demo and shared test-main composition do so automati
 Build the consuming executable rather than naming the interface as a build target;
 included consumers bring in the implementation and viewer dependencies.
 
-`Cheryl::DebugTerminal::Startup` is the small optional Engine support library
-(`cengine_debug_terminal_startup`). Its `CE::DebugTerminal::run(argc, argv,
+`Cheryl::DebugTerminal::Startup` names the private static attachment support
+owned by this module (`cengine_debug_terminal_startup`), located under
+`private/startup/`. It produces no startup DLL. Its `CE::Application::DebugTerminal::run(argc, argv,
 application, start)` accepts an application entry point and a module-owned startup
 callback. Without a callback it invokes the application with the original arguments
 and performs no terminal work. The support owns argument policy only; it does not
@@ -103,7 +104,7 @@ paths.
 The explicitly buildable targets `tests-acceptance-engine-terminal` and
 `tests-acceptance-engine-terminal-reports` supply raw-output/lifetime and framework
 probes. They are not ordinary standalone test runs: some scenarios deliberately
-fail or terminate. The [terminal.py driver](tests/acceptance/terminal.py) selects
+fail or terminate. The [terminal.py driver](./tests/acceptance/terminal.py) selects
 them, controls fake emulator launchers and checks output, rollback/reaping, crash
 retention, manual closure, discovery, captures, death tests and XML.
 

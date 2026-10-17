@@ -2,10 +2,6 @@
 #include <cheryl/core/logging/process-lifetime.h>
 #include <cheryl/backends/native-glfw/diagnostics.h>
 
-#if CHERYL_NATIVE_INPUT
-#include <gainput/gainput.h>
-#endif
-
 #include <type_traits>
 
 static_assert(std::is_base_of_v<CE::Platform::DisplaySystem, CE::Platform::GLFW::DisplaySystem>);
@@ -18,8 +14,8 @@ int main() {
     CE::Logging::ProcessLifetime logging_lifetime;
     CE::Platform::GLFW::Detail::report_glfw_diagnostics("consumer");
 #if CHERYL_NATIVE_INPUT
-    gainput::HashMap<gainput::DeviceId, gainput::InputDevice*> devices;
-    if (devices[gainput::DeviceId{0}] != nullptr)
+    CE::Platform::GLFW::InputSystem input;
+    if (input.device(input.keyboard_id()).known())
         return 1;
 #endif
     return 0;

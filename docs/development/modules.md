@@ -14,22 +14,25 @@ The optional Linux Debug terminal owns process output/viewer behavior outside th
 runtime adapter graph. Its Engine support attachment accepts a module callback;
 an absent implementation leaves application startup unchanged.
 
-Command-line bootstrap uses the separate `Cheryl::Startup` and
-`Cheryl::OpenGL::Startup` support targets. They add CLI11 and backend argument
-definitions to applications that select them; Engine and OpenGL do not depend
-back on those targets. See [startup composition](consuming-engine.md#command-line-startup).
+The public [Startup module](../modules/startup.md), `Cheryl::Startup`, supplies
+standard application bootstrap and privately integrates configured backends.
+`Cheryl::OpenGL::Startup` is a compatibility interface over Startup/OpenGL rather
+than another runtime library. CLI11 remains the explicit public option frontend;
+Engine and OpenGL do not depend back on Startup.
 
-Optional Engine helpers can use `projects/engine/support/` without becoming runtime
-platform modules. Preserve the same dependency direction: selected support targets
-consume Engine; Engine does not acquire their SDKs or initialization as a reverse
-dependency. `Cheryl::WorkerTopology::Hwloc` and `Cheryl::WorkerTopology::Json`
-use that boundary for independently selected discovery/binding and configuration
-helpers. [Provider composition](../runtime/worker-execution.md#topology-providers-and-capacity)
-is application-owned; neutral workers and scheduling remain in the one Engine library.
+The optional [Workers module](../modules/workers.md), `Cheryl::Workers`, groups
+configuration loading and topology integration with independent JSON/hwloc
+features. Core pool execution/scheduling remains in Engine. Its capability-specific
+`Cheryl::WorkerTopology::Hwloc` and `Cheryl::WorkerTopology::Json` compatibility
+names refer to the same selected implementation. Private support belongs inside
+its owning binary; configurable build policy alone is not a public module.
 
 ```mermaid
 flowchart LR
     Application --> Engine
+    Application --> Startup
+    Startup --> Engine
+    Startup --> OpenGL
     Application --> NativeGLFW
     Application --> OpenGL
     OpenGL --> NativeGLFW
@@ -40,6 +43,30 @@ flowchart LR
     Application --> Audio[Selected audio backend]
     Audio --> Engine
 ```
+
+## Adapter contracts
+
+Use [Interfaces and Adapters](../architecture/interfaces-adapters.md) to find the
+required runtime interfaces, optional capabilities, existing implementations and
+replacement dependencies. [Assembling the Engine](../architecture/assembling-engine.md)
+explains how factories connect them. This guide covers creating and composing the
+module that owns an implementation.
+
+### SDL3 scaffold
+
+`CHERYL_BUILD_NATIVE_SDL3=ON` adds the source-only
+`Cheryl::NativeSDL3::Scaffold` interface target from
+[`platform/native-sdl3`](../../projects/modules/platform/native-sdl3).
+The option defaults to `OFF`. Its
+[`cheryl/backends/native-sdl3.h`](../../projects/modules/platform/native-sdl3/include/cheryl/backends/native-sdl3.h)
+includes the existing Engine contracts and forward-declares
+`CE::Platform::SDL3::Window`, `DisplaySystem` and `InputSystem`.
+
+The scaffold has no runtime implementations, SDL3 dependency discovery or startup
+factory. It is not registered as an SDK component or a selectable application
+backend. Native GLFW remains the implemented platform integration. SDL3 runtime
+implementation, OpenGL/startup selection and GLFW deprecation policy remain
+future work.
 
 ## Module boundary criteria
 
@@ -72,10 +99,10 @@ because they have few callers.
 
 ## Select an assembly
 
-The root defaults to Native GLFW, OpenGL, TGUI, RmlUi and miniaudio; the demo is
+The root defaults to Startup, Workers, Native GLFW, OpenGL, TGUI, RmlUi and miniaudio; the demo is
 opt-in. UI and audio selection is independent of platform/graphics selection.
 OpenGL requires Native GLFW; the demo also requires native input. For Engine alone,
-disable every module and both worker-support options as shown in the
+disable every module, including Startup/Workers, as shown in the
 [engine-only configuration](building.md#engine-only-configuration).
 On Linux GNU/Clang this includes `CHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF`.
 The root automatically links the selected terminal interface to its demo/shared
@@ -91,7 +118,7 @@ target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::NativeGLFW Cheryl::Ope
 ```
 
 Alternatively, link `Cheryl::Cheryl` to select the complete configured assembly,
-including its available support libraries:
+including its selected public capabilities:
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::Cheryl)
@@ -120,15 +147,23 @@ granular owner headers, such as `cheryl/backends/native-glfw.h`.
 a supplied GLFW target keeps its host settings. The [build guide](building.md)
 owns their configuration and dependency details.
 
+Bundled compiled dependencies have one Cheryl binary owner: Engine owns logging,
+font/text and image implementations; Native GLFW owns GLFW/Gainput/HID; OpenGL
+owns GLAD; each UI module owns its toolkit implementation and exports its native
+authoring API. Startup owns selected integration glue and Workers owns optional
+topology/configuration adaptation. Header/template usage such as GLM, CTTI and
+CLI11 remains explicitly public. See [dependency contracts](consuming-engine.md#dependencies-and-headers).
+
 Selection preserves owner lifetimes: input detaches while its window is live,
 resources retire before context destruction, and runtime shutdown settles workers
 and recycles frames before game/adapter cleanup.
 
 ## Standalone modules
 
-Standalone entry points require an absolute `CHERYL_REPOSITORY_ROOT` for shared
-helpers and Engine bootstrapping. Each owner reuses a supplied `Cheryl::Engine`
-or adds Engine from that root. OpenGL also reuses `Cheryl::NativeGLFW` or requires
+Standalone entry points locate the enclosing checkout's shared helpers and Engine
+automatically. Set an absolute `CHERYL_REPOSITORY_ROOT` when selecting another
+checkout. Each owner reuses a supplied `Cheryl::Engine` or adds Engine from that
+root. OpenGL also reuses `Cheryl::NativeGLFW` or requires
 `CHERYL_NATIVE_GLFW_SOURCE`. Bootstrapping suppresses other owners, demo and Engine
 tests in a local variable scope, without rewriting a host's cache.
 

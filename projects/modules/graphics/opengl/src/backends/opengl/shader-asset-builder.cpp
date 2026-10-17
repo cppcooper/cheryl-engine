@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/resource-provider.h>
 
 #include "program-builder.h"

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../../../../cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(cheryl_audio_miniaudio_module VERSION ${VERSION_PROJECT_MODULE_AUDIO_MINIAUDIO} LANGUAGES C CXX)
 endif()
@@ -10,12 +10,17 @@ endif()
 cheryl_configure_module_options()
 cheryl_prepare_module()
 
+if(NOT TARGET Threads::Threads)
+    find_package(Threads REQUIRED)
+endif()
+
 cheryl_configure_miniaudio_options()
 if(TARGET miniaudio::miniaudio)
     set(cheryl_miniaudio_target miniaudio::miniaudio)
 elseif(TARGET miniaudio)
     set(cheryl_miniaudio_target miniaudio)
 else()
+    set(cheryl_miniaudio_owned TRUE)
     set(cheryl_miniaudio_source "${CHERYL_MINIAUDIO_SOURCE}")
     if(NOT cheryl_miniaudio_source)
         set(cheryl_miniaudio_source "${CHERYL_REPOSITORY_ROOT}/extern/miniaudio")
@@ -50,6 +55,11 @@ set_target_properties(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} PROPERTIES
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_AUDIO_MINIAUDIO}"
     ARCHIVE_OUTPUT_DIRECTORY "${CHERYL_BUILD_ROOT}")
 cheryl_configure_library(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} AUDIO_MINIAUDIO)
+if(cheryl_miniaudio_owned)
+    cheryl_private_dependency(${cheryl_miniaudio_target} OWNER ${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} OWNED)
+else()
+    cheryl_private_dependency(${cheryl_miniaudio_target} OWNER ${TARGET_LIB_MODULE_AUDIO_MINIAUDIO})
+endif()
 target_include_directories(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/cheryl>")
@@ -60,6 +70,9 @@ target_link_libraries(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO}
 if(CHERYL_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    cheryl_select_public_component(${TARGET_LIB_MODULE_AUDIO_MINIAUDIO})
 endif()
 if(CHERYL_BUILD_CONSUMER_TESTS)
     add_subdirectory(tests/consumer)

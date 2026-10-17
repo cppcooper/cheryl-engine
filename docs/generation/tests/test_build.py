@@ -323,6 +323,28 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(self.sphinx_runs[-1]["incremental"], "0")
         self.assertIn("--clean requested", self.last_output)
 
+    def test_jobs(self):
+        for arguments, expected in (((), "1"), (("--jobs", "4"), "4")):
+            with self.subTest(arguments=arguments):
+                self.assertEqual(self.run_build(*arguments), 0)
+                command = self.sphinx_runs[-1]["command"]
+                self.assertEqual(command[command.index("-j") + 1], expected)
+
+    def test_bootstrap_jobs(self):
+        with patch.dict(os.environ, {"CHERYL_DOCS_TOOLS_ACTIVE": ""}), \
+                patch.object(builder.subprocess, "call", return_value=0) as bootstrap:
+            self.assertEqual(self.run_build("--jobs", "4"), 0)
+        self.assertEqual(bootstrap.call_args.args[0][-2:], ["--jobs", "4"])
+        self.extractor.assert_not_called()
+
+    def test_invalid_jobs(self):
+        for jobs in ("0", "-2", "many"):
+            with self.subTest(jobs=jobs), self.assertRaises(SystemExit) as error:
+                self.run_build("--jobs", jobs)
+            self.assertEqual(error.exception.code, 2)
+        self.extractor.assert_not_called()
+        self.assertEqual(self.sphinx_runs, [])
+
     def test_xml_preserves_unchanged(self):
         self.documents["obsolete.xml"] = "<obsolete/>\n"
         self.run_build()

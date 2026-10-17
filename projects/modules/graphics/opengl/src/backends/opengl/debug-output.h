@@ -2,7 +2,7 @@
 
 #include <cheryl/export.h>
 
-#include <backends/opengl/gl.h>
+#include "gl-internal.h"
 #include <core/diagnostics.h>
 #include <chrono>
 #include <cstdint>

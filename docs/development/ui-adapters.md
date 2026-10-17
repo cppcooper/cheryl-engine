@@ -15,7 +15,12 @@ candidate; it does not define player-facing widget architecture.
 ## Module and application ownership
 
 Give the adapter one library target, `include/`, `src/` and owner-local `tests/`.
-Link its public target to `Cheryl::Engine` and the selected toolkit. Follow the
+Link its public target to `Cheryl::Engine` and select toolkit linkage according to
+that library's convention. The current TGUI and RmlUi integrations use shared
+toolkit libraries and expose their native authoring headers/API through the
+adapter target. Keep Engine-dependent service implementations in the adapter;
+private versioned callbacks let the toolkit call those services without linking
+another Engine copy when Cheryl itself is static. Follow the
 [module guide](modules.md) for supplied targets, standalone composition and
 dependency selection. Configure only an explicitly selected dependency; ordinary
 CMake configuration does not download it or change a host's toolkit settings.
@@ -65,7 +70,7 @@ The independent implementations differ where their toolkits differ:
 | --- | --- | --- |
 | Authoring | Native GUI/widgets; optional typed numeric placement and resizing. | Native context/documents; RML and RCSS layout, including percentage bounds and flex. |
 | Alpha | Straight vertex/image RGBA and `StraightAlpha` materials. | Premultiplied output and `PremultipliedAlpha` materials; file images convert once. |
-| Fonts | Guarded FreeType backend and embedded default font. | Stock Core FreeType engine and explicitly registered owned font files/bytes. |
+| Fonts | Engine rasterization through the custom TGUI font backend; embedded default font. | Module-owned interface retaining reviewed provider/atlas/effects/fallback over Engine rasterization; explicitly registered owned font bytes. |
 | Sampling | Each draw retains nearest/linear smoothing independently of pixels; UI samplers clamp, with no mipmaps or anisotropy. | Existing image upload defaults; repeating UV/effect extensions reject. |
 | Toolkit lifetime | One guarded process-global backend. | One guarded Core initialization with contexts and interfaces. |
 
@@ -161,7 +166,7 @@ supplied package needs its own applicable proof.
 
 Reuse `build/testing-native-ui` when its source, toolchain and configuration match.
 This Linux Release selection compiles both adapters, their consumers/probes, the
-coexistence suite, OpenGL startup support and the UI-enabled demo with Cheryl-owned
+coexistence suite, Startup with OpenGL integration and the UI-enabled demo with Cheryl-owned
 TGUI/RmlUi dependencies. It uses GLFW/X11/OpenGL with HID disabled. Initialize the
 pinned dependencies from the [build guide](building.md); RmlUi cases also require
 the SDK sample font or an explicit `CHERYL_RMLUI_TEST_FONT`. The executed consumers

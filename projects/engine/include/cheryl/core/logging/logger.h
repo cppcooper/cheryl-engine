@@ -1,6 +1,6 @@
 #pragma once
 #include "log.h"
-#include <templates/singleton.h>
+#include <atomic>
 
 #include <chrono>
 #include <utility>
@@ -11,30 +11,50 @@ namespace CE::Logging {
     // before any writer/lazy access;
     // repeated explicit initialization rejects. This compatibility constructor's
     // handlers/config apply only if it performs the first successful construction.
-    template <const char* name> class Logger : public ::CE::State::Singleton<Log<name>> {
+    template <const char* name> class Logger {
+        inline static std::atomic<Log<name>*> published_{nullptr};
+        struct Facade {
+            Log<name> value;
+            explicit Facade(std::shared_ptr<Detail::LogState> state)
+            : value(std::move(state)) {}
+            ~Facade() { published_.store(nullptr, std::memory_order_release); }
+        };
     protected:
         explicit Logger(
-            const spdlog::file_event_handlers& event_handlers = {},
+            const ::CE::Logging::FileEventHandlers& event_handlers = {},
             ::CE::Logging::Config config = ::CE::Logging::Config::for_logger(name)
         ) {
             get(event_handlers, std::move(config));
         }
 
     public:
-        template <typename... Args> static ::CE::Logging::Log<name>& get(Args&&... args) {
+        static ::CE::Logging::Log<name>& get() {
             ::CE::Logging::Detail::reject_backend_reentry("acquire a logger");
-            // Initialize the registry before singleton storage so it outlives
-            // facade teardown, rather than first using it inside Log construction.
-            // This establishes registry lifetime only; it does not select a write destination.
-            (void)spdlog::default_logger();
-            return ::CE::State::Singleton<::CE::Logging::Log<name>>::get(std::forward<Args>(args)...);
+            if (auto* existing = published_.load(std::memory_order_acquire))
+                return *existing;
+            return get({}, ::CE::Logging::Config::for_logger(name));
         }
 
-        template <typename... Args> static ::CE::Logging::Log<name>& initialize(Args&&... args) {
-            ::CE::Logging::Detail::reject_backend_reentry("initialize a logger");
-            (void)spdlog::default_logger();
-            return ::CE::State::Singleton<::CE::Logging::Log<name>>::initialize(std::forward<Args>(args)...);
+        static ::CE::Logging::Log<name>&
+        get(::CE::Logging::FileEventHandlers handlers, ::CE::Logging::Config config = ::CE::Logging::Config::for_logger(name)) {
+            ::CE::Logging::Detail::reject_backend_reentry("acquire a logger");
+            static Facade facade{Detail::acquire_category(name, std::move(handlers), std::move(config), false)};
+            published_.store(&facade.value, std::memory_order_release);
+            return facade.value;
         }
+
+        static ::CE::Logging::Log<name>&
+        initialize(::CE::Logging::FileEventHandlers handlers = {}, ::CE::Logging::Config config = ::CE::Logging::Config::for_logger(name)) {
+            ::CE::Logging::Detail::reject_backend_reentry("initialize a logger");
+            static_cast<void>(Detail::acquire_category(name, std::move(handlers), std::move(config), true));
+            return get();
+        }
+
+        /** Borrow the Engine-owned category handle without constructing or waiting
+         * for a logger. Null also means construction/publication is in progress.
+         * The same textual category resolves to the same handle across libraries.
+         */
+        [[nodiscard]] static LogHandle* get_existing() noexcept { return Detail::existing_category(name); }
 
         static void set_pattern(const char* fmt) { get().set_pattern(fmt); }
 
@@ -50,21 +70,19 @@ namespace CE::Logging {
 
         static void flush() { get().flush(); }
 
-        static void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {
-            get().close(timeout);
-        }
+        static void close(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) { get().close(timeout); }
 
         static void reopen() { get().reopen(); }
 
         static void make_default() { get().make_default(); }
 
-        static void set_level_logger(spdlog::level level) { get().set_level_logger(level); }
+        static void set_level_logger(::CE::Logging::Level level) { get().set_level_logger(level); }
 
-        static void set_level_filesink(spdlog::level level) { get().set_level_filesink(level); }
+        static void set_level_filesink(::CE::Logging::Level level) { get().set_level_filesink(level); }
 
-        static void set_level_stdsink(spdlog::level level) { get().set_level_stdsink(level); }
+        static void set_level_stdsink(::CE::Logging::Level level) { get().set_level_stdsink(level); }
 
-        [[nodiscard]] static bool should_log(const spdlog::level level) {
+        [[nodiscard]] static bool should_log(const ::CE::Logging::Level level) {
             if (::CE::Logging::Detail::suppress_backend_emission())
                 return false;
             return get().should_log(level);
@@ -89,7 +107,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void trace(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::TRACE_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;
@@ -97,7 +115,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void debug(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::DEBUG_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;
@@ -105,7 +123,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void info(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void info(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::INFO_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;
@@ -113,7 +131,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void warn(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::WARNING_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;
@@ -121,7 +139,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void error(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void error(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::ERROR_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;
@@ -129,7 +147,7 @@ namespace CE::Logging {
             }
         }
 
-        template <typename... Args> static void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) {
+        template <typename... Args> static void critical(std::format_string<Args...> fmt, Args&&... args) {
             if constexpr (::CE::Logging::Compile::enabled(::CE::Logging::Compile::FATAL_)) {
                 if (::CE::Logging::Detail::suppress_backend_emission())
                     return;

@@ -1,5 +1,19 @@
 # Unicode text layout and font resources
 
+## Choose a text path
+
+| Content | Use | Working sequence |
+| --- | --- | --- |
+| A game-owned label or HUD message | Engine font selection, shaped layout and retained text generations | [Display and update text](../getting-started/how-to/update-text.md): prepare on CPU, upload on platform, adopt a ready result and submit it in a frame. |
+| Text inside a native widget or RML document | The selected toolkit's authoring and font interfaces | The UI session owns layout/editing and publishes a retained scene; Engine supplies CPU font services underneath. |
+| Existing ASCII or bitmap-atlas consumers | The legacy Font interfaces and their metrics | Keep their atlas, scale and bank compatibility contract during migration. |
+
+The [Text system](../engine-systems/text.md) identifies the public types, while
+[Threads and Data Flow](../architecture/threads-data-flow.md#prepare-and-publish-a-replacement)
+explains replacing a message without changing already published frames.
+
+## Supported rendering scope
+
 The initial rendering scope is accented Latin (including English, French and German),
 Russian/Cyrillic, mixed paragraph direction and optional width-constrained wrapping.
 Glyph coverage and shaping are font/script concerns rather than a separate renderer
@@ -21,6 +35,22 @@ generations. Its public stages have separate owners:
 `CE::Text::Legacy::Font` exposes one atlas/geometry pair, which cannot represent
 that fallback model. Its `AsciiFont`/`BitmapFont` implementations and toolkit-owned
 text retain their separate roles.
+
+Engine also owns the opaque
+[`CE::Text::FontRasterizer`](../../projects/engine/include/cheryl/text/font-rasterizer.h)
+CPU service for loading copied font bytes, properties, metrics, glyph pixels and
+kerning. Copies retain and serialize native face state; returned data owns its
+storage and needs no provider/context. TGUI and RmlUi adapters use this shared
+implementation while retaining their own toolkit layout/atlas/effect logic.
+FreeType rasterization, HarfBuzz shaping and ICU Unicode processing remain
+distinct responsibilities, all implemented inside Engine. Toolkit color-glyph
+handling does not establish color-emoji acceptance for this Engine layout path.
+
+Those native libraries use shared linkage. Linux uses distribution ICU libraries;
+Windows 10 version 1903+ uses the operating system's ICU C API. Applications use
+the same Cheryl text interfaces on both platforms; see
+[dependency settings](../development/building.md#dependency-and-toolchain-settings)
+for build and runtime requirements.
 
 ## Font selection
 

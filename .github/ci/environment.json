@@ -1,5 +1,5 @@
 {
-  "cache_version": 2,
+  "cache_version": 5,
   "windows": {
     "ccache_version": "4.14",
     "ccache_package_version": "4.14.0"
@@ -9,17 +9,21 @@
       "ccache",
       "ninja-build",
       "pkg-config",
+      "patchelf",
       "g++-14",
+      "libdw-dev",
+      "libelf-dev",
+      "fonts-urw-base35",
       "libfreetype-dev",
       "libharfbuzz-dev",
       "libicu-dev",
-      "libhwloc-dev",
-      "libdw-dev",
-      "libelf-dev",
-      "fonts-urw-base35"
+      "libhwloc-dev"
     ],
     "apt_extra": {
-      "headless": ["clang-18", "clang-tools-18"],
+      "headless": [
+        "clang-18",
+        "clang-tools-18"
+      ],
       "modules": [
         "libgl-dev",
         "libx11-dev",
@@ -28,7 +32,8 @@
         "libxcursor-dev",
         "libxi-dev",
         "libxext-dev",
-        "python3-jinja2"
+        "python3-jinja2",
+        "libudev-dev"
       ]
     }
   }

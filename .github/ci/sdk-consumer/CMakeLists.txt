@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(cheryl_sdk_consumer LANGUAGES CXX)
 
-find_package(Cheryl CONFIG REQUIRED)
+find_package(Cheryl 4 CONFIG REQUIRED)
 if(NOT TARGET Cheryl::Cheryl)
     message(FATAL_ERROR "The installed SDK must provide the Cheryl::Cheryl aggregate target")
 endif()
@@ -31,6 +31,9 @@ endif()
 if(TARGET Cheryl::UI::TGUI)
     sdk_consumer(sdk-tgui projects/modules/ui/tgui/tests/consumer Cheryl::UI::TGUI
         ${TARGET_TEST_CONSUMER_MODULE_UI_TGUI_HEADERS})
+    add_executable(sdk-tgui-native standalone/native-tgui.cpp)
+    target_link_libraries(sdk-tgui-native PRIVATE Cheryl::UI::TGUI)
+    add_test(NAME sdk-tgui-native COMMAND sdk-tgui-native)
 endif()
 if(TARGET Cheryl::UI::RmlUi)
     sdk_consumer(sdk-rmlui projects/modules/ui/rmlui/tests/consumer Cheryl::UI::RmlUi
@@ -45,13 +48,18 @@ if(TARGET Cheryl::Audio::Miniaudio)
         "${CHERYL_REPOSITORY_ROOT}/projects/modules/audio/miniaudio/tests/support")
 endif()
 
-cheryl_add_header_probes(sdk-startup Cheryl::Startup NEUTRAL
-    HEADERS cheryl/core/engine/startup.h cheryl/support/startup.h)
+if(TARGET Cheryl::Startup)
+    cheryl_add_header_probes(sdk-startup Cheryl::Startup NEUTRAL
+        HEADERS cheryl/application/startup.h cheryl/modules/startup.h cheryl/core/engine/startup.h cheryl/support/startup.h)
+    add_executable(sdk-startup-consumer "${CHERYL_REPOSITORY_ROOT}/projects/modules/runtime/startup/tests/consumer/src/main.cpp")
+    target_link_libraries(sdk-startup-consumer PRIVATE Cheryl::Startup)
+    add_test(NAME sdk-startup-consumer COMMAND sdk-startup-consumer)
+endif()
 if(TARGET Cheryl::OpenGL::Startup)
     cheryl_add_header_probes(sdk-opengl-startup Cheryl::OpenGL::Startup
         HEADERS cheryl/backends/opengl/startup.h cheryl/support/opengl-startup.h)
 endif()
-add_executable(sdk-worker "${CHERYL_REPOSITORY_ROOT}/projects/engine/support/worker-topology/tests/consumer.cpp")
+add_executable(sdk-worker "${CHERYL_REPOSITORY_ROOT}/projects/modules/runtime/workers/tests/consumer.cpp")
 target_link_libraries(sdk-worker PRIVATE Cheryl::Engine)
 if(TARGET Cheryl::WorkerTopology::Hwloc)
     cheryl_add_header_probes(sdk-worker-hwloc Cheryl::WorkerTopology::Hwloc NEUTRAL

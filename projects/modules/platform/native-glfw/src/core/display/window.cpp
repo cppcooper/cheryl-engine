@@ -62,6 +62,42 @@ namespace CE::Platform::GLFW {
             ::CE::Diagnostics::report_failure("window destruction with an unconsumed callback failure", native_failure_);
     }
 
+    void Window::make_context_current(const int swap_interval) {
+        if (swap_interval < 0)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "Swap interval must not be negative");
+        glfwMakeContextCurrent(glfw_window_);
+        if (!context_current()) {
+            Detail::report_glfw_diagnostics("make_current", true);
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Could not make the window's OpenGL context current");
+        }
+        Detail::report_glfw_diagnostics("make_current");
+        glfwSwapInterval(swap_interval);
+    }
+
+    void Window::release_context() {
+        if (!context_current())
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "The window's OpenGL context is not current on this thread");
+        glfwMakeContextCurrent(nullptr);
+    }
+
+    bool Window::context_current() const {
+        return glfwGetCurrentContext() == glfw_window_;
+    }
+
+    Window::ProcAddress Window::context_proc_address(const char* name) const {
+        if (!name)
+            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL procedure name must not be null");
+        if (!context_current())
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL procedure lookup requires the current context");
+        return glfwGetProcAddress(name);
+    }
+
+    void Window::swap_buffers() {
+        if (!context_current())
+            throw ::CE::Exceptions::failed_operation(CE_HERE, "Present requires the current OpenGL context");
+        glfwSwapBuffers(glfw_window_);
+    }
+
     void Window::on_window_size(GLFWwindow* handle, const int width, const int height) noexcept {
         Detail::NativeCallbackScope callback_scope;
         auto* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));

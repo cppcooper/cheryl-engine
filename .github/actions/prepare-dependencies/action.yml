@@ -8,10 +8,10 @@ inputs:
     description: Unique matrix job name for Windows dependency contributions.
     default: worker
   windows-vcpkg:
-    description: Build dependencies once, or consume a prepared installation.
+    description: Build shared Windows dependencies once, or consume a prepared installation.
     default: build
   prepared-artifact:
-    description: Installed vcpkg artifact from this run's Windows preparation job.
+    description: Installed vcpkg artifact from this run's platform preparation job.
     default: ''
 outputs:
   dependency-cache-writer:

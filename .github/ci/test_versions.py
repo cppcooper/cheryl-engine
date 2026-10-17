@@ -157,6 +157,36 @@ class PolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             versions.replace_versions(TEXT, {"VERSION_PROJECT_UNKNOWN": "1.0.0"})
 
+    def test_aliases(self):
+        text = ("set(VERSION_PROJECT_ENGINE 5.0.0)\n"
+                "set(VERSION_PROJECT_MODULE_STARTUP ${VERSION_PROJECT_ENGINE})\n"
+                'set(VERSION_PROJECT_MODULE_WORKERS "${VERSION_PROJECT_MODULE_STARTUP}") # preserve alias\n')
+        values = versions.read_versions(text)
+        self.assertEqual(values, {"VERSION_PROJECT_ENGINE": "5.0.0", "VERSION_PROJECT_MODULE_STARTUP": "5.0.0",
+                                  "VERSION_PROJECT_MODULE_WORKERS": "5.0.0"})
+        changed = versions.replace_versions(text, {versions.ENGINE: "5.0.1"})
+        self.assertEqual(changed, text.replace("5.0.0", "5.0.1"))
+        self.assertTrue(all(value == "5.0.1" for value in versions.read_versions(changed).values()))
+
+    def test_invalid_aliases(self):
+        for value in ("${VERSION_PROJECT_UNKNOWN}", "${VERSION_PROJECT_MODULE_STARTUP}", "${ENV}",
+                      "$ENV{VERSION_PROJECT_ENGINE}", "${VERSION_PROJECT_ENGINE}.0", "${${VERSION_PROJECT_ENGINE}}"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                versions.read_versions("set(VERSION_PROJECT_ENGINE 5.0.0)\n"
+                                       f"set(VERSION_PROJECT_MODULE_STARTUP {value})\n")
+        with self.assertRaisesRegex(ValueError, "previously declared"):
+            versions.read_versions("set(VERSION_PROJECT_MODULE_STARTUP ${VERSION_PROJECT_ENGINE})\n"
+                                   "set(VERSION_PROJECT_ENGINE 5.0.0)\n")
+
+    def test_repository_versions(self):
+        text = (versions.ROOT / versions.VERSION_FILE).read_text(encoding="utf-8")
+        values = versions.read_versions(text)
+        self.assertIn(versions.PROJECT, values)
+        self.assertIn(versions.ENGINE, values)
+        self.assertEqual(values["VERSION_PROJECT_MODULE_STARTUP"], values[versions.ENGINE])
+        self.assertEqual(values["VERSION_PROJECT_MODULE_WORKERS"], values[versions.ENGINE])
+        self.assertEqual(versions.replace_versions(text, {}), text)
+
     def test_owners(self):
         expected = {versions.ENGINE, "VERSION_PROJECT_MODULE_NATIVE_GLFW", "VERSION_PROJECT_MODULE_UI_RMLUI"}
         self.assertEqual(versions.affected_components({"cmake/CherylOptions.cmake", "extern/glfw", "extern/rmlui"}), expected)

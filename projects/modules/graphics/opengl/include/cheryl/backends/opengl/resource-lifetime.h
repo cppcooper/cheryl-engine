@@ -37,7 +37,7 @@ namespace CE::Rendering::OpenGL {
         static constexpr std::size_t none = std::numeric_limits<std::size_t>::max();
         struct Entry {
             ::CE::Rendering::OpenGL::ResourceKind kind;
-            GLuint id;
+            NativeHandle id;
             std::size_t next = none;
             bool pending = false;
         };
@@ -58,12 +58,12 @@ namespace CE::Rendering::OpenGL {
         // It is queried only on the owner thread, and must not reenter the lifetime.
         CE_OPENGL_API ResourceLifetime(std::thread::id owner, std::function<bool()> is_current);
 
-        [[nodiscard]] CE_OPENGL_API std::size_t track(::CE::Rendering::OpenGL::ResourceKind kind, GLuint id);
+        [[nodiscard]] CE_OPENGL_API std::size_t track(::CE::Rendering::OpenGL::ResourceKind kind, NativeHandle id);
         CE_OPENGL_API void retire(std::size_t slot) noexcept;
         CE_OPENGL_API void collect();
         // Only for a native ID not adopted by track(). Failure cleanup must not
         // delete on a foreign/missing context or replace the original exception.
-        CE_OPENGL_API void discard_untracked(::CE::Rendering::OpenGL::ResourceKind kind, GLuint id) noexcept;
+        CE_OPENGL_API void discard_untracked(::CE::Rendering::OpenGL::ResourceKind kind, NativeHandle id) noexcept;
         CE_OPENGL_API void shutdown();
         // Failure fallback: invalidate handles without issuing calls to an unavailable context.
         // The platform's context destruction releases any remaining native resources.
@@ -76,7 +76,7 @@ namespace CE::Rendering::OpenGL {
     private:
         friend struct ::CE::Rendering::OpenGL::Detail::LifetimeAccess;
         CE_OPENGL_API ResourceLifetime(std::thread::id owner, std::function<bool()> is_current, std::shared_ptr<std::pmr::memory_resource> entry_memory);
-        CE_OPENGL_API static void delete_handle(::CE::Rendering::OpenGL::ResourceKind kind, GLuint id) noexcept;
+        CE_OPENGL_API static void delete_handle(::CE::Rendering::OpenGL::ResourceKind kind, NativeHandle id) noexcept;
         CE_OPENGL_API void require_owner_locked() const;
         CE_OPENGL_API void require_current_locked() const;
     };
@@ -85,12 +85,16 @@ namespace CE::Rendering::OpenGL {
     class Handle final {
         std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime> lifetime_;
         std::size_t slot_ = std::numeric_limits<std::size_t>::max();
-        GLuint id_ = 0;
+        NativeHandle id_ = 0;
         ::CE::Rendering::OpenGL::ResourceKind kind_ = ::CE::Rendering::OpenGL::ResourceKind::Texture;
 
     public:
         Handle() = default;
-        CE_OPENGL_API Handle(std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime> lifetime, ::CE::Rendering::OpenGL::ResourceKind kind, GLuint id);
+        CE_OPENGL_API Handle(
+            std::shared_ptr<::CE::Rendering::OpenGL::ResourceLifetime> lifetime,
+            ::CE::Rendering::OpenGL::ResourceKind kind,
+            NativeHandle id
+        );
         ~Handle() { reset(); }
 
         Handle(const Handle&) = delete;
@@ -98,7 +102,7 @@ namespace CE::Rendering::OpenGL {
         CE_OPENGL_API Handle(Handle&& other) noexcept;
         CE_OPENGL_API Handle& operator=(Handle&& other) noexcept;
 
-        [[nodiscard]] CE_OPENGL_API GLuint id() const;
+        [[nodiscard]] CE_OPENGL_API NativeHandle id() const;
         [[nodiscard]] ::CE::Rendering::OpenGL::ResourceKind kind() const noexcept { return kind_; }
         // Identity only: this does not query a context or authorize native use.
         [[nodiscard]] const ::CE::Rendering::OpenGL::ResourceLifetime* resource_domain() const noexcept { return lifetime_.get(); }

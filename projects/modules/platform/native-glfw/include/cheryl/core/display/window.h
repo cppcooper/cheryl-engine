@@ -9,8 +9,8 @@
 #include <core/diagnostics.h>
 #include <chrono>
 
-class GLFWwindow;
-class GLFWmonitor;
+struct GLFWwindow;
+struct GLFWmonitor;
 
 namespace CE::Platform::GLFW {
     class DisplaySystem;
@@ -39,6 +39,8 @@ namespace CE::Platform::GLFW {
         mutable std::chrono::steady_clock::time_point next_diagnostic_;
 
     public:
+        using ProcAddress = void (*)();
+
         CE_NATIVE_GLFW_API ~Window() override;
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
@@ -65,6 +67,14 @@ namespace CE::Platform::GLFW {
          */
         CE_NATIVE_GLFW_API void set_mode(::CE::Platform::WindowMode mode) override;
         CE_NATIVE_GLFW_API void hide_cursor(bool hide) const override;
+
+        // Context operations may run on a rendering owner after platform creation.
+        // Release a context before transferring it to another thread.
+        CE_NATIVE_GLFW_API void make_context_current(int swap_interval = 1);
+        CE_NATIVE_GLFW_API void release_context();
+        [[nodiscard]] CE_NATIVE_GLFW_API bool context_current() const;
+        [[nodiscard]] CE_NATIVE_GLFW_API ProcAddress context_proc_address(const char* name) const;
+        CE_NATIVE_GLFW_API void swap_buffers();
 
     private:
         friend class ::CE::Platform::GLFW::DisplaySystem;

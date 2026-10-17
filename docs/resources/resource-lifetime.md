@@ -1,5 +1,61 @@
 # CPU memory lifetime and reservation
 
+## Choose an allocation path
+
+| Need | Use | Lifetime |
+| --- | --- | --- |
+| Construct a batch immediately | `Objects::Pool<T>::retrieve_objects(count, args...)` | Each returned shared handle destroys and returns its object independently. |
+| Reserve capacity, then construct selected slots with different arguments | `Objects::Reservation<T>` | The reservation returns unclaimed ranges; claimed handles keep their slots. |
+| Use an ordinary allocator for one constructed batch | `Objects::Factory<T, Allocator>::create()` | Completed elements can release independently; the last element owner releases the original allocation. |
+| Implement storage bookkeeping or custom construction | Blocks, managers and construction contexts | The caller preserves the lower-level range and live-object invariants below. |
+
+### Construct a pool batch
+
+Include `<cheryl/core/resources/objects/pool.h>`:
+
+```cpp
+struct Particle {
+    float age = 0;
+};
+auto particles = CE::Memory::Objects::Pool<Particle>::get().retrieve_objects(16);
+particles.front()->age = 0.25f;
+auto retained = particles.front();
+particles.clear();
+retained.reset();
+```
+
+Clearing the vector releases fifteen objects; `retained` keeps the first alive
+until reset. The handles capture the release state rather than looking up the
+pool when they die. Share object mutation only with application synchronization.
+
+### Construct selected reserved slots
+
+Include `<cheryl/core/resources/objects/object-reservation.hpp>` and `<memory>`:
+
+```cpp
+struct Actor {
+    int id;
+    explicit Actor(int value) : id(value) {}
+};
+std::shared_ptr<Actor> actor;
+{
+    CE::Memory::Objects::Reservation<Actor> slots(4);
+    actor = slots.emplace(1, 7);
+}
+actor->id = 8;
+actor.reset();
+```
+
+Only slot one is constructed. Reservation destruction returns the other three
+slots; the actor remains valid until its handle resets. A throwing constructor
+leaves its slot reserved and available for a retry. Claiming the same slot twice
+rejects. The default pool allocator supports subrange return; substituting
+`std::allocator` does not satisfy this reservation contract.
+
+Use [Ownership and Cleanup](../architecture/ownership-cleanup.md) for the relation
+between retained CPU release state and backend lifetimes. The following sections
+define the exact bookkeeping, exception and reentrancy contracts.
+
 ## Pool ownership
 
 `CE::Memory::Block<T>` is the typed range and backing ownership primitive.

@@ -8,7 +8,9 @@ GLAD, context operations and the GLFW/OpenGL assembly factory.
 
 The root selects this owner with `CHERYL_BUILD_OPENGL=ON`, which requires
 `CHERYL_BUILD_NATIVE_GLFW=ON`. Applications link `Cheryl::OpenGL` to inherit its
-Engine, Native GLFW and generated GLAD requirements. Its build target is
+Engine and Native GLFW requirements. GLAD is private compiled implementation;
+public uniform-setting frontends call compiled OpenGL operations rather than
+emitting loader calls in application translation units. Its build target is
 `module_opengl`, with output name `cheryl-module-opengl`:
 
 ```cmake
@@ -43,22 +45,23 @@ window/input dependencies follow the selected Native GLFW configuration; see the
 
 ## Command-line startup
 
-Link `Cheryl::OpenGL::Startup` and include `cheryl/backends/opengl/startup.h` for
-`CE::Engine::make_glfw_opengl_startup`. This separate support library has build
-target `module_opengl_startup` and output name `cheryl-module-opengl-startup`.
-It links `Cheryl::Startup` and `Cheryl::OpenGL`; the ordinary OpenGL target does
-not link back to startup. The
+Link the public [Startup module](../../runtime/startup/README.md),
+`Cheryl::Startup`, and include `<cheryl/application/startup.h>` for
+`CE::Application::make_startup()`. Configured OpenGL argument/default-factory glue
+is private to Startup; ordinary OpenGL does not link back to it.
+`Cheryl::OpenGL::Startup` and the backend-specific header/factory remain
+compatibility interfaces, with no separate OpenGL-startup binary. The
 [application guide](../../../../docs/development/consuming-engine.md#command-line-startup)
 owns common parsing, configuration and result-lifetime semantics.
 
-The default-input overload takes a description, `GlfwOpenGLConfig` and
-`RuntimeConfiguration`, each with a default, and is available with
-`CHERYL_NATIVE_INPUT`. The explicit-input overload takes `iInputSystem&` first
-and borrows it through context teardown. Both use the existing
-`make_glfw_opengl_context` assembly factory after validation.
+The generic factory accepts a description and `CE::Application::ApplicationOptions`.
+Its explicit-input overload takes `CE::Input::System&` first and borrows it
+through context teardown. The standard owned-input path requires native input.
+Both use `CE::Application::GLFWOpenGL::make_context()` after validation.
 
 | Backend argument | Effect |
 | --- | --- |
+| `--backend=default` or `--backend=opengl` | Selects the included standard backend, not a runtime plugin. |
 | `--window-width=N` | Sets positive logical window width; the factory default is 1280. |
 | `--window-height=N` | Sets positive logical window height; the factory default is 720. |
 | `--window-title=TEXT` | Overrides the title; an empty configured title keeps the randomized title behavior. |
@@ -76,21 +79,21 @@ describes those records and their limits.
 
 | Engine contract | Implementation | Responsibility |
 | --- | --- | --- |
-| [`CE::RenderAPIs::iRenderer`](../../../engine/include/cheryl/core/rendering/renderer.h) | [`OpenGLRenderer`](include/cheryl/backends/opengl/renderer.h) | Consume published render frames and maintain graphics resources on their owner. |
-| [`CE::RenderAPIs::iPresentationSurface`](../../../engine/include/cheryl/core/rendering/presentation-surface.h) | [`GlfwOpenGLContext`](include/cheryl/backends/opengl/glfw-context.h), through [`iOpenGLContext`](include/cheryl/backends/opengl/context.h) | Present a completed frame using a borrowed GLFW window and its OpenGL context. |
-| [`CE::Assets::ResourceProvider`](../../../engine/include/cheryl/assets/resources/resource-provider.h) | [`OpenGLResourceProvider`](include/cheryl/backends/opengl/resource-provider.h) | Create images, font atlases, geometry and linked programs in the renderer's domain. |
-| [`CE::Assets::Image`](../../../engine/include/cheryl/assets/resources/image.h) | [`Texture`](include/cheryl/backends/opengl/texture.h) | Immutable uploaded pixel dimensions and texture binding. |
-| [`CE::Assets::Sampler`](../../../engine/include/cheryl/assets/resources/sampler.h) | [`OpenGLSampler`](include/cheryl/backends/opengl/sampler.h) | Immutable per-binding filtering/wrap/anisotropy and deferred native retirement. |
-| [`CE::Assets::Geometry2D`](../../../engine/include/cheryl/assets/resources/geometry2d.h) | [`VAO`](include/cheryl/backends/opengl/vertex-array-object.h) | Uploaded geometry metadata, binding and draw ranges. |
-| [`CE::Assets::Shader`](../../../engine/include/cheryl/assets/resources/shader.h) | [`GLSLProgram`](include/cheryl/backends/opengl/glslprogram.h) | Executable shader programs and pass/draw parameter binding. |
-| [`CE::Assets::Pipeline`](../../../engine/include/cheryl/assets/resources/pipeline.h) | [`GLSLPipeline`](include/cheryl/backends/opengl/pipeline.h) | Realize the engine's pipeline definition and semantic parameter bindings. |
+| [`CE::Rendering::Renderer`](../../../engine/include/cheryl/core/rendering/renderer.h) | [`CE::Rendering::OpenGL::Renderer`](./include/cheryl/backends/opengl/renderer.h) | Consume published render frames and maintain graphics resources on their owner. |
+| [`CE::Rendering::PresentationSurface`](../../../engine/include/cheryl/core/rendering/presentation-surface.h) | [`GLFWContext`](./include/cheryl/backends/opengl/glfw-context.h), through [`CE::Rendering::OpenGL::Context`](./include/cheryl/backends/opengl/context.h) | Present a completed frame using a borrowed GLFW window and its OpenGL context. |
+| [`CE::Rendering::Resources::Provider`](../../../engine/include/cheryl/assets/resources/resource-provider.h) | [`CE::Rendering::OpenGL::ResourceProvider`](./include/cheryl/backends/opengl/resource-provider.h) | Create images, font atlases, geometry and linked programs in the renderer's domain. |
+| [`CE::Rendering::Resources::Image`](../../../engine/include/cheryl/assets/resources/image.h) | [`Texture`](./include/cheryl/backends/opengl/texture.h) | Immutable uploaded pixel dimensions and texture binding. |
+| [`CE::Rendering::Sampling::Sampler`](../../../engine/include/cheryl/assets/resources/sampler.h) | [`CE::Rendering::OpenGL::Sampler`](./include/cheryl/backends/opengl/sampler.h) | Immutable per-binding filtering/wrap/anisotropy and deferred native retirement. |
+| [`CE::Rendering::Geometry::Buffer2D`](../../../engine/include/cheryl/assets/resources/geometry2d.h) | [`VertexArray`](./include/cheryl/backends/opengl/vertex-array-object.h) | Uploaded geometry metadata, binding and draw ranges. |
+| [`CE::Rendering::Resources::Program`](../../../engine/include/cheryl/assets/resources/shader.h) | [`Program`](./include/cheryl/backends/opengl/glslprogram.h) | Executable shader programs and pass/draw parameter binding. |
+| [`CE::Rendering::Resources::Pipeline`](../../../engine/include/cheryl/assets/resources/pipeline.h) | [`Pipeline`](./include/cheryl/backends/opengl/pipeline.h) | Realize the engine's pipeline definition and semantic parameter bindings. |
 
-`iOpenGLContext` extends the engine presentation contract with OpenGL context
+`CE::Rendering::OpenGL::Context` extends the engine presentation contract with OpenGL context
 selection and entry-point lookup. That extension belongs to this graphics owner.
 Its public headers retain the existing `backends/opengl/` spelling; implementation
 and private helpers live together under `src/backends/opengl/`.
 
-The provider also implements optional `ShaderAssetBuilder` construction for
+The provider also implements optional `CE::Assets::Shaders::Builder` construction for
 [indexed recipes](../../../../docs/assets/asset-manifests.md#shadermaterial-definitions),
 linking prepared owned source bytes and interpreting only `bindings.opengl`.
 Manual pipeline/material builders remain available. Engine image defaults request

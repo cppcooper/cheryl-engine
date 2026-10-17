@@ -8,7 +8,5 @@
 #include <cheryl/backends/native-glfw/diagnostics.h>
 
 #if defined(CHERYL_NATIVE_INPUT) && CHERYL_NATIVE_INPUT
-#include <cheryl/core/controls/glfw-bindings.h>
-#include <cheryl/core/controls/input-mapper.h>
 #include <cheryl/core/controls/input-system.h>
 #endif

@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #include <backends/opengl/resource-lifetime.h>
 #include <backends/opengl/renderer.h>
 #include <backends/opengl/glslprogram.h>
