@@ -17,12 +17,19 @@ from package import check_contents, check_runtime_imports, system_runtime
 def check_relocated_runtimes(sdk, metadata):
     if metadata["system"] != "Linux":
         return
-    libraries = {path.resolve() for path in (sdk / "lib").glob("*.so*") if path.is_file()}
+    files = {path for path in (sdk / "lib").glob("*.so*") if path.is_file()}
+    libraries = {path.resolve() for path in files}
+    required = {path.name for path in files}
     for library in sorted(libraries):
         dynamic = subprocess.run(["readelf", "-d", library], check=True, capture_output=True, text=True).stdout
         paths = re.findall(r"\((?:RUNPATH|RPATH)\).*?\[(.*?)\]", dynamic)
         if paths != ["$ORIGIN"]:
             raise ValueError(f"SDK library requires a relative runtime search path: {library.name}: {paths}")
+        required.update(re.findall(r"\(NEEDED\).*?\[([^]]+)\]", dynamic))
+    # ldd also lists the private dependencies of allowed host interfaces. Those
+    # remain host-owned, while every packaged runtime and direct SDK import must
+    # resolve within the SDK unless it is itself an allowed system interface.
+    for library in sorted(libraries):
         loaded = subprocess.run(["ldd", library], check=True, capture_output=True, text=True).stdout
         for line in loaded.splitlines():
             match = re.match(r"\s*(\S+)\s+=>\s+(.+)", line)
@@ -32,7 +39,8 @@ def check_relocated_runtimes(sdk, metadata):
             location = re.sub(r"\s+\(0x[0-9a-fA-F]+\)\s*$", "", location).strip()
             if location == "not found":
                 raise ValueError(f"Relocated SDK cannot load {name} required by {library.name}")
-            if not system_runtime(name, "Linux") and not Path(location).resolve().is_relative_to(sdk.resolve()):
+            if (name in required and not system_runtime(name, "Linux")
+                    and not Path(location).resolve().is_relative_to(sdk.resolve())):
                 raise ValueError(f"Relocated SDK loads {name} outside its package: {location}")
 
 

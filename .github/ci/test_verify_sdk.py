@@ -45,7 +45,8 @@ class RelocationTests(unittest.TestCase):
         outside.write_bytes(b"host runtime fixture")
 
         def execute(command, **kwargs):
-            output = ("(RUNPATH) Library runpath: [$ORIGIN]\n" if command[0] == "readelf"
+            output = ("(RUNPATH) Library runpath: [$ORIGIN]\n(NEEDED) Shared library: [libpng16.so.16]\n"
+                      if command[0] == "readelf"
                       else f"libpng16.so.16 => {outside} (0x123456)\n")
             return self.result(command, output)
 
@@ -72,9 +73,48 @@ class RelocationTests(unittest.TestCase):
         self.assertEqual({Path(command[1]) for command in commands if command[0] == "ldd"}, {self.library, dependency})
         self.assertEqual(len(commands), 4)
 
+    def test_system_closure(self):
+        host = self.root / "host libraries"
+        for interface, dependency in (("libudev.so.1", "libcap.so.2"), ("libXdmcp.so.6", "libbsd.so.0")):
+            def execute(command, **kwargs):
+                output = (f"(RUNPATH) Library runpath: [$ORIGIN]\n(NEEDED) Shared library: [{interface}]\n"
+                          if command[0] == "readelf" else
+                          f"{interface} => {host / interface} (0x123456)\n"
+                          f"{dependency} => {host / dependency} (0x234567)\n")
+                return self.result(command, output)
+
+            with self.subTest(interface=interface), patch.object(verify_sdk.subprocess, "run", side_effect=execute):
+                verify_sdk.check_relocated_runtimes(self.sdk, {"system": "Linux"})
+
+    def test_transitive_external(self):
+        dependency = self.library.with_name("libpng16.so.16")
+        dependency.write_bytes(b"packaged image runtime")
+        transitive = self.library.with_name("libz.so.1")
+        transitive.write_bytes(b"packaged compression runtime")
+        outside = self.root / "host libraries/libz.so.1"
+        imports = {self.library: dependency.name, dependency: transitive.name, transitive: "libc.so.6"}
+
+        def execute(command, **kwargs):
+            library = Path(command[1])
+            if command[0] == "readelf":
+                output = f"(RUNPATH) Library runpath: [$ORIGIN]\n(NEEDED) Shared library: [{imports[library]}]\n"
+            elif library == self.library:
+                output = (f"{dependency.name} => {dependency} (0x123456)\n"
+                          f"{transitive.name} => {outside} (0x234567)\n")
+            elif library == dependency:
+                output = f"{transitive.name} => {transitive} (0x123456)\n"
+            else:
+                output = "libc.so.6 => /system/libc.so.6 (0x123456)\n"
+            return self.result(command, output)
+
+        with patch.object(verify_sdk.subprocess, "run", side_effect=execute), \
+             self.assertRaisesRegex(ValueError, "loads libz.so.1 outside its package"):
+            verify_sdk.check_relocated_runtimes(self.sdk, {"system": "Linux"})
+
     def test_missing_runtime(self):
         def execute(command, **kwargs):
-            output = ("(RUNPATH) Library runpath: [$ORIGIN]\n" if command[0] == "readelf"
+            output = ("(RUNPATH) Library runpath: [$ORIGIN]\n(NEEDED) Shared library: [libpng16.so.16]\n"
+                      if command[0] == "readelf"
                       else "libpng16.so.16 => not found\n")
             return self.result(command, output)
 
