@@ -84,7 +84,7 @@ class RunnerTests(unittest.TestCase):
         pattern = re.compile(next(command for command in self.commands if command[0] == "ctest")[-1])
         for owner in ("native-glfw", "opengl", "ui-tgui", "ui-rmlui", "audio-miniaudio", "ui-coexist"):
             self.assertIsNotNone(pattern.search(f"tests-{owner}.case"), owner)
-        consumers = [Path(command[0]).name for command in self.commands if len(command) == 1]
+        consumers = [Path(command[0]).stem for command in self.commands if len(command) == 1]
         self.assertEqual(len(consumers), 8)
         self.assertIn("consumer-module-ui-tgui-native", build)
         self.assertIn("cheryl-ui-tgui-consumer-native", consumers)
