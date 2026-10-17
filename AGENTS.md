@@ -66,6 +66,14 @@ Prefer concise phase handoffs containing established decisions, relevant constra
 - Test behavior and contracts rather than mirroring implementation details. Use mocks to check orchestration, and distinguish that coverage from executing the generated commands or consuming the resulting artifacts.
 - Report what actually ran and what remains unverified. Static checks, mocked tests, and successful configuration do not establish native build, link, relocation, or runtime success. Distinguish confirmed failures, inferred causes, and fixes awaiting executable acceptance.
 
+### Local Windows tooling
+
+- On this workstation, reusable Windows tooling lives in `/mnt/projects/cheryl-windows-ci/`. Check it before downloading tools, creating another Wine environment, or reporting that Windows tooling is unavailable. If it is absent on another host, look for compatible installed tools there.
+- The `tools/` directory contains Windows Python, CMake, Ninja, Git, ccache, and vcpkg. Read `env.sh` and `run.sh` for current paths, environment settings, and supported phases before using them; inspect the selected phase before execution. MSVC and the Windows SDK are installed under `/opt/msvc/`.
+- Preserve `tools/`, `downloads/`, and `wine-prefix/` across sessions. Store additional reusable tools and isolated Wine prefixes under this disk-backed tooling root, preserving existing versions and active work.
+- `/tmp` is memory-backed on this workstation. During RAM cleanup, preserve reusable tools and cached installers; move them to disk-backed storage when needed. Stop idle agent-owned processes and remove disposable test outputs within the authorized scope.
+- These locations do not authorize builds, native tests, downloads, or changes to an active environment. The existing verification and shared-work restrictions still apply.
+
 ## Shared working tree
 
 The repository is a shared human/agent working tree. Pre-existing uncommitted changes may represent deliberate work in progress and may be incomplete, temporarily inconsistent, non-functional, transitional, preparatory for later refactoring, or difficult to reason about safely.
