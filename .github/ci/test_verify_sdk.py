@@ -95,7 +95,7 @@ class RelocationTests(unittest.TestCase):
         imports = {self.library: dependency.name, dependency: transitive.name, transitive: "libc.so.6"}
 
         def execute(command, **kwargs):
-            library = Path(command[1])
+            library = Path(command[-1])
             if command[0] == "readelf":
                 output = f"(RUNPATH) Library runpath: [$ORIGIN]\n(NEEDED) Shared library: [{imports[library]}]\n"
             elif library == self.library:
