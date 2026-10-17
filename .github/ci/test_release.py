@@ -296,12 +296,12 @@ class ReleaseTests(unittest.TestCase):
 
     def test_windows_checksum_lines(self):
         checksum = self.candidates / "candidate-sdk-windows-modules/SHA256SUMS"
-        line = checksum.read_bytes().rstrip(b"\n")
+        line = checksum.read_bytes().rstrip(b"\r\n")
         for ending in (b"", b"\n", b"\r\n"):
             with self.subTest(ending=ending):
                 checksum.write_bytes(line + ending)
                 self.assemble()
-        for ending in (b"\r", b"\n\n", b"\r\nextra", b"\nextra"):
+        for ending in (b"\r", b"\r\r\n", b"\n\n", b"\r\nextra", b"\nextra"):
             with self.subTest(ending=ending):
                 checksum.write_bytes(line + ending)
                 self.candidate_rejected("safe archive basename")
@@ -644,7 +644,7 @@ class SourceSnapshotTests(unittest.TestCase):
     def commit(self, source, filename, contents):
         path = source / filename
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(contents, encoding="utf-8")
+        path.write_bytes(contents.encode("utf-8"))
         self.git(source, "add", "--", filename)
         self.git(source, "commit", "--quiet", "-m", "Adds fixture")
         return self.git(source, "rev-parse", "HEAD")

@@ -165,7 +165,8 @@ cheryl_runtime_dependencies(actual seed-runtime)
         return self.configure(f'''
 set(WIN32 FALSE)
 include("{ROOT.as_posix()}/cmake/CherylRuntimeDependencies.cmake")
-set(CMAKE_INSTALL_PREFIX "${{CMAKE_BINARY_DIR}}/prefix")
+# This exercises Linux staging even when the host uses Windows drive paths.
+set(CMAKE_INSTALL_PREFIX "/prefix")
 set(ENV{{DESTDIR}} "${{CMAKE_BINARY_DIR}}/stage")
 set(staged "$ENV{{DESTDIR}}${{CMAKE_INSTALL_PREFIX}}")
 file(WRITE "${{CMAKE_BINARY_DIR}}/source/libfixture.so.2.7" "runtime bytes")
@@ -225,6 +226,27 @@ endif()
         result = self.runtime_install_probe(soname="../escape.so")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Unsafe SDK runtime SONAME: ../escape.so", result.stderr)
+
+    def test_windows_runtime_install(self):
+        result = self.configure(f'''
+set(WIN32 TRUE)
+unset(ENV{{DESTDIR}})
+include("{ROOT.as_posix()}/cmake/CherylRuntimeDependencies.cmake")
+set(CMAKE_INSTALL_PREFIX "${{CMAKE_BINARY_DIR}}/prefix")
+file(WRITE "${{CMAKE_BINARY_DIR}}/source/fixture.dll" "runtime bytes")
+function(cheryl_runtime_dependencies result)
+  set(${{result}} "${{ARGN}}" PARENT_SCOPE)
+endfunction()
+function(execute_process)
+  message(FATAL_ERROR "Windows runtime installation invoked a Linux tool")
+endfunction()
+cheryl_sdk_install_runtimes("${{CMAKE_INSTALL_PREFIX}}/bin" "${{CMAKE_BINARY_DIR}}/source/fixture.dll")
+file(READ "${{CMAKE_INSTALL_PREFIX}}/bin/fixture.dll" installed)
+if(NOT installed STREQUAL "runtime bytes")
+  message(FATAL_ERROR "The Windows runtime was not installed intact")
+endif()
+''')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_shared_runtime(self):
         result = self.configure('''
