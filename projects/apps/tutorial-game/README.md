@@ -1,11 +1,18 @@
 # Tutorial game
 
-This maintained example combines the [Player, Enemy and HUD tutorials](../../../docs/getting-started/create-a/index.md)
-and [six focused tasks](../../../docs/getting-started/how-to/index.md). It consumes
-the standard Startup module, Native GLFW, OpenGL and TGUI. The two-cell actor and
-base image/text shaders are copied from First Game; the colored UI shaders come
-from the main demo. Its small asset set is listed explicitly in CMake and needs
-no optional external art download.
+This maintained example combines the [Player and Enemy classes](../../../docs/getting-started/create-a/index.md)
+with input, sprite animation, camera movement, a direct text score and TGUI
+controls. The [focused tasks](../../../docs/getting-started/how-to/index.md)
+explain its input, sprite, camera and text operations. It consumes the standard
+Startup module, Native GLFW, OpenGL and TGUI. The two-cell actor and base
+image/text shaders are copied from First Game; the colored UI shaders come from
+the main demo. Its small asset set is listed explicitly in CMake and needs no
+optional external art download.
+
+The [TGUI widget HUD tutorial](../../../docs/getting-started/create-a/hud.md) and
+[RmlUi GUI guide](../../../docs/getting-started/how-to/create-gui.md) describe
+separate extensions to First Game. This executable uses its direct text `Hud` and
+TGUI `Controls` classes; it does not implement those two interfaces.
 
 The game starts with an editable field focused. Escape releases it; a later
 Escape press quits. F2 returns focus to editing. With editor focus released,

@@ -78,7 +78,7 @@ dependency-source settings may appear only when their component is selected.
 | `CHERYL_BUILD_AUDIO_MINIAUDIO` | `ON` | Selects miniaudio decoding, output and streaming. |
 | `CHERYL_BUILD_DEMO` | `OFF` | Adds `demo` with Native GLFW, OpenGL and native input selected. |
 | `CHERYL_BUILD_FIRST_GAME` | `OFF` | Adds the maintained `first-game` walkthrough application with Native GLFW, OpenGL and native input selected. |
-| `CHERYL_BUILD_TUTORIAL_GAME` | `OFF` | Adds `tutorial-game`, combining Player/Enemy/HUD and six How-to tasks; requires Startup/OpenGL, native input and TGUI. |
+| `CHERYL_BUILD_TUTORIAL_GAME` | `OFF` | Adds `tutorial-game` with Player/Enemy, a direct text score and TGUI controls; requires Startup/OpenGL, native input and TGUI. |
 | `CHERYL_BUILD_DOCS` | `ON` | Adds the optional `docs-tools`, `docs` and `docs-clean` targets; tools are selected when these targets run. |
 | `CHERYL_BUILD_TESTS` | `OFF` | Adds focused tests and explicitly buildable acceptance/aggregate runners. |
 | `CHERYL_BUILD_ALL_TESTS` | `OFF` | Includes aggregates in the default build and CTest; requires tests. |

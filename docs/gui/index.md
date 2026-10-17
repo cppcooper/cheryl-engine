@@ -10,8 +10,8 @@ widget construction, input routing, focus and a publication path.
 
 | Integration | Application authors | Guide |
 | --- | --- | --- |
-| TGUI | Native C++ widgets and layouts through the session's `gui()` object. | [TGUI owner guide](../modules/tgui.md) |
-| RmlUi | Native contexts, RML documents and RCSS styles through a document session. | [Create an editable document](../modules/rmlui.md#create-an-editable-document) |
+| TGUI | Native C++ widgets and layouts through the session's `gui()` object. | [Create a HUD](../getting-started/create-a/hud.md); [TGUI contracts](../modules/tgui.md) |
+| RmlUi | Native contexts, RML documents and RCSS styles through a document session. | [Create an interactive GUI](../getting-started/how-to/create-gui.md); [RmlUi contracts](../modules/rmlui.md) |
 
 Neither integration provides a common widget API. Select one according to the
 application's authoring needs. Both convert ordered Engine input and publish
@@ -89,8 +89,10 @@ callbacks or UI operations can still run.
 
 ## Continue
 
-Use [the GUI task guide](../getting-started/how-to/create-gui.md) for focused
-integration, [GUI system relationships](../engine-systems/gui.md) for ownership,
+Use [the TGUI HUD tutorial](../getting-started/create-a/hud.md) for a widget
+class, [the RmlUi GUI task](../getting-started/how-to/create-gui.md) for document
+authoring and editing, [GUI system relationships](../engine-systems/gui.md) for
+ownership,
 and [input focus contracts](../runtime/input-state-model.md#focus-routing-and-editing-controls)
 for routing detail. Clipboard, cursor, composition and other services depend on
 reported integration capabilities; a text field does not imply a complete IME

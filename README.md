@@ -103,7 +103,7 @@ the public aliases to inherit headers and dependencies.
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
 | `demo` | — | Example native application. |
 | `first-game` | — | Opt-in maintained game from the [walkthrough](docs/getting-started/first-game.md), with its own assets. |
-| `tutorial-game` | — | Opt-in Player/Enemy/HUD and interactive GUI example supporting the [tutorials](docs/getting-started/create-a/index.md) and [How-to guides](docs/getting-started/how-to/index.md). |
+| `tutorial-game` | — | Opt-in Player/Enemy, direct text score and TGUI controls example supporting the [tutorials](docs/getting-started/create-a/index.md) and [How-to guides](docs/getting-started/how-to/index.md). |
 | `docs`, `docs-clean`, `docs-tools` | — | Optional incremental generation, full regeneration and shared documentation tool setup; also available through the docs-only CMake project. |
 | `cheryl-sdk` | — | Builds selected installable libraries when `CHERYL_BUILD_SDK=ON`. |
 

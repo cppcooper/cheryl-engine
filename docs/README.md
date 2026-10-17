@@ -24,7 +24,7 @@ Choose an entry point for the work you are doing:
 - [First game: startup, architecture, sprites, and text](getting-started/first-game.md)
 - [Create a Player, Enemy or HUD](getting-started/create-a/index.md)
 - [How to: focused game-development tasks](getting-started/how-to/index.md)
-- [Maintained Player/Enemy/HUD and interactive UI example](../projects/apps/tutorial-game/README.md)
+- [Maintained Player/Enemy, direct text and TGUI example](../projects/apps/tutorial-game/README.md)
 
 ## Engine Systems
 

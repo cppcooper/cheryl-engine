@@ -287,7 +287,7 @@ others, choose its build, install or packaging operation:
 | Need | Operation | Result |
 | --- | --- | --- |
 | Run the introductory walkthrough | Select `CHERYL_BUILD_FIRST_GAME=ON`; build `first-game`. | The small sprite/text game and its linked libraries. |
-| Run Player/Enemy/HUD and How-to examples | Select `CHERYL_BUILD_TUTORIAL_GAME=ON` with Startup/OpenGL/native input/TGUI; build `tutorial-game`. | One maintained teaching game with explicit small assets. |
+| Run the Player/Enemy and direct text example | Select `CHERYL_BUILD_TUTORIAL_GAME=ON` with Startup/OpenGL/native input/TGUI; build `tutorial-game`. | Includes TGUI controls; the widget HUD and RmlUi guides are separate extensions. |
 | Build a library directly | Build `cengine`, `module_opengl` or another concrete library target. | The selected library and dependencies in the build tree. |
 | Build selected SDK libraries | Select `CHERYL_BUILD_SDK=ON`; build custom target `cheryl-sdk`, which builds the selected libraries together. | Compiled installable libraries; headers have not yet been collected. |
 | Collect libraries and headers | After that build, use `cmake --install` with `--component CherylSDK` and a destination `--prefix`. | One SDK directory with headers, libraries, CMake package files and licenses. |

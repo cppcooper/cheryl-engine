@@ -43,9 +43,11 @@ before selecting the module.
 
 ## Use it in a game
 
-[Create an interactive GUI](../../../../docs/getting-started/how-to/create-gui.md)
-provides the complete button/edit-field workflow, including materials and focus
-controls. Its lifecycle is:
+[Create a HUD with TGUI](../../../../docs/getting-started/create-a/hud.md)
+provides the complete score-label/health-bar workflow, including materials,
+layout and game-state updates. The
+[maintained TGUI demo](../../../apps/demo/src/tgui-demo.cpp) also supplies
+interactive buttons, editing and application focus controls. The lifecycle is:
 
 1. During platform-owned `init()`, construct application materials and a scene uploader.
 2. On the first simulation update, create a session and native widgets.

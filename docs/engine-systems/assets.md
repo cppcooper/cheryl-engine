@@ -50,7 +50,7 @@ its own font-selection/layout path.
 
 | Types | Systems |
 | --- | --- |
-| [`Tutorial::Player`](../getting-started/create-a/player.md)<br>[`Tutorial::Enemy`](../getting-started/create-a/enemy.md)<br>[`Tutorial::Hud`](../getting-started/create-a/hud.md)<br>{cpp:struct}`CE::Rendering::DrawPacket2D` | [Rendering](rendering.md)<br>[Text](text.md) |
+| [`Tutorial::Player`](../getting-started/create-a/player.md)<br>[`Tutorial::Enemy`](../getting-started/create-a/enemy.md)<br>[`FirstGame::Game`](../getting-started/first-game.md)<br>{cpp:struct}`CE::Rendering::DrawPacket2D` | [Rendering](rendering.md)<br>[Text](text.md) |
 
 ## Contracts
 

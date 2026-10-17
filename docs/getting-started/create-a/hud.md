@@ -1,94 +1,250 @@
-# Create a HUD
+# Create a HUD with TGUI
 
-Create an application-owned score display that retains the last complete text
-generation while its replacement uploads. This extends the Player/Enemy game
-with screen information and safe asynchronous resource replacement. Interactive
-widgets are covered separately in [Create an interactive GUI](../how-to/create-gui.md).
+Build an application-owned HUD from TGUI widgets: a score label at the top-left
+and a health bar at the top-right. Game logic owns the values; the HUD owns
+their presentation, layout and retained UI scene. Begin with
+[First Game](../first-game.md), then add the Player/Enemy classes if needed.
 
-## Responsibilities and state
+First Game explains direct text rendering and
+[screen-space placement](../first-game.md#keep-text-in-screen-coordinates).
+This tutorial replaces that score display with toolkit widgets. For document
+authoring, styling and interactive input through the other UI integration, see
+[Create an interactive GUI with RmlUi](../how-to/create-gui.md).
 
-HUD owns font-byte snapshots, its material handle, requested/displayed scores,
-one pending upload and the current immutable text generation. Game logic owns
-the score's meaning. HUD receives score changes and publishes drawable state;
-it does not reach into Player or own the runtime.
+## Select TGUI and prepare its materials
 
-Create `hud.h`:
+Enable `CHERYL_BUILD_UI_TGUI=ON` in First Game's source configuration, or use an
+SDK containing that module. Add the UI target to your game's existing links:
 
-```{literalinclude} ../../../projects/apps/tutorial-game/src/hud.h
+```cmake
+target_link_libraries(game PRIVATE Cheryl::UI::TGUI)
+```
+
+Use your executable's target name in place of `game`. Prepare the pinned toolkit
+through [Project setup](../project-setup.md); enabling an option does not download
+the dependency.
+
+Copy these application shaders into your asset root's `graphics/shaders/`:
+[tgui.vert](../../../assets/graphics/shaders/tgui.vert),
+[tgui-solid.frag](../../../assets/graphics/shaders/tgui-solid.frag) and
+[tgui-textured.frag](../../../assets/graphics/shaders/tgui-textured.frag).
+The existing indexed asset loader does not construct UI materials.
+
+In your game's `.cpp` file, include
+`<cheryl/backends/opengl/resource-provider.h>`, `<filesystem>`, `<stdexcept>` and
+`<utility>`, then place this helper before the game's method definitions:
+
+```{literalinclude} ../../../projects/apps/tutorial-game/src/controls.cpp
 :language: cpp
+:start-after: // [materials]
+:end-before: // [/materials]
 ```
 
-Construction runs on the graphics/platform owner because it uploads the initial
-generation. Later `set_score()`/`update()` run on simulation. The dispatched
-callback captures prepared data rather than `this`, so accepted work does not
-borrow HUD. Font snapshots are retained by layout/prepared values.
+This helper creates compatible colored-triangle materials on the graphics
+owner. TGUI uses straight alpha blending. Another graphics backend needs its
+own compatible builder; the TGUI session has no OpenGL dependency.
 
-## Construct during initialization
+## Give the HUD its own class
 
-Replace First Game's `score_` generation member with
-`std::optional<Tutorial::Hud> hud_`, add `int points_ = 0`, and retain a separate
-`CE::Rendering::Camera2D hud_camera_`. Include `hud.h`. Keep its existing font
-selection/loading and validated `text_` material, then replace initial score
-layout/upload with:
+Create `hud.h` with the following class. Its constructor saves input/upload
+dependencies on platform; the first update creates the toolkit objects on
+their simulation owner.
 
 ```cpp
-hud_.emplace(engine_, std::move(fonts), text_);
-hud_camera_.set_framebuffer_size(engine_.window().framebuffer_size());
+#pragma once
+
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/core/game-framework/tick-context.h>
+#include <cheryl/ui/tgui/scene.h>
+#include <cheryl/ui/tgui/session.h>
+
+#include <TGUI/Widgets/Label.hpp>
+#include <TGUI/Widgets/ProgressBar.hpp>
+
+#include <algorithm>
+#include <format>
+#include <future>
+#include <memory>
+#include <utility>
+
+namespace Tutorial {
+    class Hud final {
+        CE::Input::System& input_;
+        CE::Runtime::PlatformDispatcher::Submission platform_;
+        CE::UI::TGUI::SceneUploader uploader_;
+        CE::UI::TGUI::Materials materials_;
+        CE::UI::TGUI::Scene scene_;
+        std::future<CE::UI::TGUI::Scene> pending_;
+        std::unique_ptr<CE::UI::TGUI::Session> session_;
+        tgui::Label::Ptr score_;
+        tgui::ProgressBar::Ptr health_;
+        int score_value_ = 0;
+        unsigned int health_value_ = 100;
+
+    public:
+        Hud(CE::Runtime::Context& engine, CE::UI::TGUI::Materials materials)
+        : input_(engine.input()),
+          platform_(engine.platform_dispatcher().submission()),
+          uploader_(engine.resources()),
+          materials_(std::move(materials)) {}
+
+        void set_score(int value) { score_value_ = value; }
+        void set_health(unsigned int value) { health_value_ = std::min(value, 100u); }
+
+        void update(const CE::Game::TickContext& tick) {
+            if (!session_) {
+                session_ = std::make_unique<CE::UI::TGUI::Session>(input_, 2);
+                session_->set_view(tick.logical_size, tick.framebuffer_size);
+                create_widgets();
+            } else
+                session_->set_view(tick.logical_size, tick.framebuffer_size);
+
+            session_->handle_input(tick.input.records(), false);
+            session_->update_time(tick.delta_seconds);
+            score_->setText(std::format("Score: {}", score_value_));
+            health_->setValue(health_value_);
+            health_->setText(std::format("Health: {}/100", health_value_));
+
+            static_cast<void>(CE::UI::TGUI::adopt_scene(pending_, scene_));
+            if (!pending_.valid())
+                pending_ = uploader_.submit(platform_, session_->record(), materials_);
+        }
+
+        void append(CE::Rendering::FrameWriter& frame) const { scene_.write(frame); }
+
+        void close_after_quiescence() {
+            score_.reset();
+            health_.reset();
+            if (session_) {
+                session_->close_after_quiescence();
+                session_.reset();
+            }
+            scene_ = CE::UI::TGUI::Scene{};
+        }
+
+    private:
+        void create_widgets() {
+            score_ = tgui::Label::create("Score: 0");
+            score_->setTextSize(24);
+            score_->setSize({220, 32});
+            session_->gui().add(score_);
+            session_->set_layout(score_, {
+                .anchor = {0, 0},
+                .offset = {.fixed = {24, 16}},
+            });
+
+            health_ = tgui::ProgressBar::create();
+            health_->setSize({220, 32});
+            health_->setMaximum(100);
+            session_->gui().add(health_);
+            session_->set_layout(health_, {
+                .anchor = {1, 0},
+                .offset = {.fixed = {-24, 16}},
+            });
+        }
+    };
+}
 ```
 
-Keep the existing camera/input/material initialization. If construction fails,
-the optional remains empty and ordinary partial-safe game cleanup applies.
+TGUI owns font layout and widget geometry, including the health bar's background
+and filled portion. The session supplies its embedded default font through
+Cheryl's rasterization service, so this HUD needs no application font file.
+Its coordinates are logical UI units with a downward-positive Y axis.
 
-## Update content on simulation
+Add each widget to the GUI before calling `set_layout()`. The label attaches its
+top-left corner to the parent's top-left; the bar attaches its top-right corner
+to the parent's top-right. Those bindings follow view resizing without manual
+framebuffer arithmetic. See [typed layout](../../modules/tgui.md#typed-layout)
+for bounded proportional sizes and parent-relative offsets.
 
-After quit handling and the Player/Enemy updates:
+Target `2` is a chosen nonzero routing identity. This passive HUD requests no
+keyboard focus and selects no pointer delivery, so the game's movement, score
+and quit actions remain available. It still feeds the complete ordered input
+batch for session bookkeeping. An interactive HUD must explicitly choose its
+focus and pointer policy.
+
+TGUI permits one session per process. If the game already has TGUI menus or
+controls, put the HUD widgets in that session instead of constructing a second
+one. This standalone class assumes it owns the game's only TGUI session.
+
+## Connect game state to the widgets
+
+Include `hud.h`, `<optional>` and `<limits>` in the appropriate game files.
+Replace First Game's raw `score_` generation, font/layout/upload block, direct
+text draw and generation cleanup with the HUD integration below. Remove its
+`text_` material member, lookup, required-resource check and cleanup entry if
+the game has no other direct text draws.
+
+Add these game members:
 
 ```cpp
-hud_camera_.set_framebuffer_size(tick.framebuffer_size);
-if (tick.input.button(next_cell_).pressed())
-    hud_->set_score(++points_);
-hud_->update();
+std::optional<Tutorial::Hud> hud_;
+int points_ = 0;
+unsigned int health_ = 100;
 ```
 
-Here `next_cell_` is First Game's existing Space action, repurposed as the
-tutorial's score increment. Real game rules decide when to award points. Use an
-appropriate bounded score type/policy if the application can approach integer
-limits.
-
-HUD keeps at most one upload pending and coalesces later changes into the next
-request. This example performs small-label CPU preparation on simulation; larger
-content can move that stage to a tracked worker group. Ready upload failures
-propagate to the runtime's normal failure handling rather than disappearing in
-an unread future.
-
-## Publish a screen-space pass
-
-After the world pass containing Player/Enemy:
+During platform-owned `init()`, after graphics initialization:
 
 ```cpp
-auto hud_pass = frame.begin_pass(hud_camera_.projection_matrix(), hud_camera_.view_matrix());
-hud_->append(hud_pass, {24.0f, static_cast<float>(hud_camera_.framebuffer_size().height) - 48.0f});
+hud_.emplace(engine_, materials(engine_.resources(), asset_root_));
 ```
 
-The HUD camera keeps its identity view, so world scrolling does not move the
-score. It still follows framebuffer resize observations. Its text packets retain
-the chosen generation; a later replacement cannot alter an already published
-frame. Remove the old direct score draw block to avoid drawing both versions.
+After quit handling and gameplay updates, publish current game values to the
+HUD. Here First Game's Space action also increments the example score:
+
+```cpp
+if (tick.input.button(next_cell_).pressed() && points_ < std::numeric_limits<int>::max())
+    ++points_;
+hud_->set_score(points_);
+hud_->set_health(health_);
+hud_->update(tick);
+```
+
+Actual game rules award points and change `health_`. HUD clamps health to its
+0–100 display range; it does not decide when damage or healing occurs.
+
+## Append the retained UI scene
+
+After the world pass containing the sprite or Player/Enemy draws, in
+`prepare_render_frame()`:
+
+```cpp
+hud_->append(frame);
+```
+
+The UI scene supplies its own screen projection, so world-camera movement does
+not move the HUD. It needs no separate `Camera2D` or manual text draw. The first
+scene can be empty until its upload completes. Later updates retain the last
+complete scene while at most one replacement uploads; subsequent widget changes
+are recorded when that request finishes. Ready upload failures propagate through
+the runtime's normal failure handling.
+
+Record and mutate widgets only on simulation. The upload captures owned scene
+data and materials; published frames retain their selected graphics resources
+without accessing the live widgets.
 
 ## Release and observe
 
-Replace `score_.reset()` with `hud_.reset()` in `deinit()`, before dropping the
-game's materials. Runtime settles accepted context work and recycles frames
-before that hook. HUD's saved endpoint retains no borrowed context pointer and
-its upload captures retain only owned preparation data.
+During `deinit()`, after simulation has joined and accepted work has settled:
 
-The score should start at zero and change after Space presses, remain visible
-while an upload waits, and stay in screen coordinates as the world view changes.
-Repeated unchanged updates should not submit replacement uploads. Run both
-runtime modes when checking a game's integration; visual smoothness alone does
-not establish correct teardown.
+```cpp
+if (hud_)
+    hud_->close_after_quiescence();
+hud_.reset();
+```
 
-Read [text updates](../how-to/update-text.md),
-[dispatch ownership](../../engine-systems/dispatch.md),
-[text contracts](../../assets/text-layout.md) and
-[shutdown ordering](../../runtime/runtime-frame-boundary.md#shutdown).
+The class drops its external widget handles before session closure. Keep the
+input adapter and graphics dependencies alive through this cleanup, including
+after partial initialization.
+
+Expect `Score: 0` and a full health bar. Space advances the score; setting
+`health_` to `25` shows a quarter-full bar. Resize the window and move the world
+camera: score and health should remain at their screen corners, while gameplay
+keys continue to work. Check both runtime modes for input and teardown behavior.
+
+The current [tutorial-game executable](../../../projects/apps/tutorial-game/README.md)
+uses a direct text score and a separate TGUI controls panel; it does not implement
+this widget HUD. Its controls source supplies the material helper above.
+The [TGUI demo](../../../projects/apps/demo/src/tgui-demo.cpp) also demonstrates
+interactive widgets. Read [TGUI contracts](../../modules/tgui.md) and
+[GUI ownership](../../gui/index.md) for the integration boundaries.

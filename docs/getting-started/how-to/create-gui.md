@@ -1,119 +1,263 @@
-# Create an interactive GUI
+# Create an interactive GUI with RmlUi
 
-Add a TGUI button and edit field to the game, route keyboard/pointer input and
-publish a retained UI scene. Start with [First Game](../first-game.md). This task
-uses native TGUI widgets and Cheryl's existing session/uploader interfaces; the
-[RmlUi owner guide](../../modules/rmlui.md) describes the alternative document
-authoring path.
+Add a styled RML document with an editable player name and an Apply button.
+Connect its event listener to game state, route keyboard/pointer input, and
+publish a retained UI scene. Start with [First Game](../first-game.md).
+For the C++ widget approach, [Create a HUD with TGUI](../create-a/hud.md)
+uses the other UI integration.
 
-## Select the module and prepare materials
+## Select the module and prepare assets
 
-Enable/link `Cheryl::UI::TGUI` alongside the native graphics setup. Include:
+Enable `CHERYL_BUILD_UI_RMLUI=ON` in your source configuration, or consume an
+SDK containing that module. Add it to the game's existing target links:
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::UI::RmlUi)
+```
+
+Use your executable's target name in place of `game`. Prepare the pinned
+dependency through [Project setup](../project-setup.md). TGUI is optional for
+this guide; a game using the TGUI HUD can select both modules.
+
+Add these files under First Game's asset root:
+
+```text
+assets/
+├── fonts/
+│   ├── DejaVuSans.ttf
+│   └── DejaVuSansLicense.txt
+└── graphics/
+    ├── shaders/
+    │   ├── tgui.vert
+    │   ├── tgui-solid.frag
+    │   └── tgui-textured.frag
+    └── ui/
+        ├── tutorial.rml
+        └── tutorial.rcss
+```
+
+Copy the [font](../../../assets/fonts/DejaVuSans.ttf) and
+[its license](../../../assets/fonts/DejaVuSansLicense.txt), and the
+[vertex](../../../assets/graphics/shaders/tgui.vert),
+[solid](../../../assets/graphics/shaders/tgui-solid.frag) and
+[textured](../../../assets/graphics/shaders/tgui-textured.frag) shaders from the
+checkout. The shader filenames are shared with the TGUI integration; RmlUi uses
+its own materials and premultiplied blending.
+
+The existing First Game assets are still used. RmlUi loads its documents, styles
+and fonts explicitly, outside the graphics manifest loader.
+
+## Author the document and stylesheet
+
+Create `graphics/ui/tutorial.rml`:
+
+```xml
+<rml>
+<head>
+    <title>Player settings</title>
+    <link type="text/rcss" href="tutorial.rcss" />
+</head>
+<body>
+    <div id="panel">
+        <h1>Player settings</h1>
+        <div>Player name</div>
+        <input id="name" type="text" />
+        <button id="apply">Apply</button>
+    </div>
+</body>
+</rml>
+```
+
+Create `graphics/ui/tutorial.rcss`:
+
+```css
+body {
+    width: 100%; height: 100%; margin: 0;
+    font-family: tutorial; font-size: 18px; color: #edf2fa;
+}
+#panel {
+    position: absolute; left: 16px; top: 16px;
+    width: 65%; min-width: 280px; max-width: 420px;
+    height: 200px; box-sizing: border-box; padding: 16px;
+    background-color: #26394be8; overflow: hidden;
+}
+h1 { font-size: 24px; margin: 0 0 12px; }
+input {
+    display: block; width: 100%; height: 32px;
+    box-sizing: border-box; padding: 6px; margin: 4px 0 12px;
+    background-color: #edf2fa; color: #172532;
+}
+button {
+    display: inline-block; padding: 7px 12px;
+    background-color: #477989; color: #ffffff;
+}
+button:hover { background-color: #5b92a0; }
+button:active { background-color: #365b6b; }
+```
+
+RML supplies native elements; RCSS supplies their layout and appearance. The
+stylesheet path resolves relative to the document. The `tutorial` font family
+matches the explicit registration below. UI coordinates use logical window
+units with a downward-positive Y axis; the adapter handles framebuffer scaling.
+The panel follows the window within its width bounds.
+
+This example uses rectangular drawing and clipping. Check the
+[RmlUi capability contract](../../modules/rmlui.md#recording-and-publication)
+before adding transforms, masks or effects.
+
+## Prepare compatible materials on platform
+
+Add these includes to the appropriate game header/source files:
 
 ```cpp
 #include <cheryl/backends/opengl/resource-provider.h>
-#include <cheryl/ui/tgui/scene.h>
-#include <cheryl/ui/tgui/session.h>
-#include <TGUI/Widgets/Button.hpp>
-#include <TGUI/Widgets/EditBox.hpp>
+#include <cheryl/core/controls/button-codes.h>
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/core/game-framework/tick-context.h>
+#include <cheryl/ui/rmlui/scene.h>
+#include <cheryl/ui/rmlui/session.h>
+
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <RmlUi/Core/EventListener.h>
+
+#include <filesystem>
 #include <future>
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <variant>
 ```
 
-The teaching game's UI material builder requires these shaders under your asset root's
-`graphics/shaders/` directory:
-[tgui.vert](../../../assets/graphics/shaders/tgui.vert),
-[tgui-solid.frag](../../../assets/graphics/shaders/tgui-solid.frag) and
-[tgui-textured.frag](../../../assets/graphics/shaders/tgui-textured.frag).
-Copy those three files when extending First Game's smaller asset set. This
-builder is a manual pipeline path; the asset index does not load it automatically.
+Place this helper in your game's `.cpp` file before its method definitions:
 
-Use the maintained teaching game's platform-owned material construction helper:
-
-```{literalinclude} ../../../projects/apps/tutorial-game/src/controls.cpp
-:language: cpp
-:start-after: // [materials]
-:end-before: // [/materials]
+```cpp
+CE::UI::RmlUi::Materials make_rmlui_materials(
+    CE::Rendering::Resources::Provider& provider, const std::filesystem::path& root
+) {
+    auto* native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider*>(&provider);
+    if (!native)
+        throw std::runtime_error("This UI material builder requires OpenGL");
+    CE::Rendering::Pipelines::Definition definition;
+    definition.vertex_layout = CE::Rendering::Geometry::Layout2D::Position3UV2Color4;
+    definition.topology = CE::Rendering::Geometry::Topology::Triangles;
+    definition.state = {
+        CE::Rendering::Pipelines::Blend::PremultipliedAlpha, CE::Rendering::Pipelines::Depth::Disabled, false,
+        CE::Rendering::Pipelines::Cull::None
+    };
+    definition.parameters = {
+        {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection}
+    };
+    definition.program_sources = {root / "graphics/shaders/tgui.vert", root / "graphics/shaders/tgui-solid.frag"};
+    const CE::Rendering::OpenGL::PipelineBindings solid{{{"projection", "projectionMatrix"}}};
+    CE::UI::RmlUi::Materials result;
+    result.solid = native->build_material({native->build_pipeline(definition, solid), {}});
+    definition.program_sources[1] = root / "graphics/shaders/tgui-textured.frag";
+    definition.parameters.push_back({"image", CE::Rendering::Parameters::Type::Sampler2D});
+    const CE::Rendering::OpenGL::PipelineBindings textured{{{"projection", "projectionMatrix"}, {"image", "mytexture"}}};
+    result.textured = native->build_material({native->build_pipeline(std::move(definition), textured), {}});
+    return result;
+}
 ```
 
-Put that helper in your game's `.cpp` file before its method definitions. It
-uses the selected OpenGL resource provider to create the solid/textured colored
-triangle pipelines with compatible blending and sampler semantics. A different
-renderer needs its own compatible builder; the session itself has no OpenGL
-dependency.
+RmlUi supplies premultiplied pixels and vertex colors. These shaders multiply
+image RGBA by vertex RGBA, and the material blends with `PremultipliedAlpha`.
+Using the TGUI helper's straight alpha state would violate this contract.
+Another renderer needs an equivalent builder on its graphics owner.
 
-## Retain the integration state
+## Retain application state and an event listener
 
-Add these game members. Declare native widget handles after the session so
-ordinary member destruction releases the external handles first:
+Define this small listener before the game class in its header. It records an
+intent for the update hook to consume:
+
+```cpp
+class ApplyListener final : public Rml::EventListener {
+    bool& requested_;
+
+public:
+    explicit ApplyListener(bool& requested) : requested_(requested) {}
+    void ProcessEvent(Rml::Event&) override { requested_ = true; }
+};
+```
+
+Add these game members, alongside First Game's `engine_` and `asset_root_`:
 
 ```cpp
 CE::Runtime::PlatformDispatcher::Submission ui_platform_;
-std::optional<CE::UI::TGUI::SceneUploader> ui_uploader_;
-CE::UI::TGUI::Materials ui_materials_;
-CE::UI::TGUI::Scene ui_scene_;
-std::future<CE::UI::TGUI::Scene> ui_pending_;
-std::unique_ptr<CE::UI::TGUI::Session> ui_;
-tgui::EditBox::Ptr field_;
+std::optional<CE::UI::RmlUi::SceneUploader> ui_uploader_;
+CE::UI::RmlUi::Materials ui_materials_;
+CE::UI::RmlUi::Scene ui_scene_;
+std::future<CE::UI::RmlUi::Scene> ui_pending_;
+std::unique_ptr<CE::UI::RmlUi::Session> ui_;
+Rml::ElementDocument* document_ = nullptr;
+Rml::Element* apply_button_ = nullptr;
+Rml::ElementFormControlInput* field_ = nullptr;
+std::string player_name_;
 bool apply_requested_ = false;
 bool ignore_quit_until_release_ = false;
+std::unique_ptr<ApplyListener> apply_listener_;
 ```
 
-During `init()` on platform, after graphics is initialized:
+The session owns the document and elements. Their pointers are borrowed aliases;
+the application owns the listener and detaches it before closing the session.
+Keep native objects after the session in member declaration order.
+
+During platform-owned `init()`, after graphics initialization:
 
 ```cpp
 ui_platform_ = engine_.platform_dispatcher().submission();
 ui_uploader_.emplace(engine_.resources());
-ui_materials_ = materials(engine_.resources(), asset_root_);
+ui_materials_ = make_rmlui_materials(engine_.resources(), asset_root_);
 ```
 
-Do not create native toolkit objects there when concurrent mode will update UI
-on simulation. The uploader is constructed on its provider's owner; its saved
-handle can then be used to submit owned recordings from the UI owner.
+The uploader belongs to the resource provider's platform owner. Upload work
+uses owned recordings; live document operations stay on the UI owner.
 
-## Create native widgets on the first update
+## Load the document on the first update
 
-After the game's quit handling, initialize the session from the simulation hook:
+Create the session on the owner that will update its UI. In concurrent mode
+that is simulation, so run this block in `update()` after quit handling:
 
 ```cpp
 if (!ui_) {
-    ui_ = std::make_unique<CE::UI::TGUI::Session>(engine_.input(), 2);
+    ui_ = std::make_unique<CE::UI::RmlUi::Session>(engine_.input(), 7);
+    if (!ui_->load_font(asset_root_ / "fonts/DejaVuSans.ttf", "tutorial"))
+        throw std::runtime_error("Cannot load the UI font");
     ui_->set_view(tick.logical_size, tick.framebuffer_size);
-
-    auto button = tgui::Button::create("Apply");
-    button->setSize({120, 32});
-    button->setPosition({16, 16});
-    button->onPress([this] { apply_requested_ = true; });
-    ui_->gui().add(button);
-
-    field_ = tgui::EditBox::create();
-    field_->setSize({240, 32});
-    field_->setPosition({16, 60});
-    field_->setDefaultText("Type a name");
-    ui_->gui().add(field_);
+    const auto source = (asset_root_ / "graphics/ui/tutorial.rml").u8string();
+    document_ = ui_->context().LoadDocument(Rml::String(source.begin(), source.end()));
+    if (!document_)
+        throw std::runtime_error("Cannot load the UI document");
+    apply_button_ = document_->GetElementById("apply");
+    field_ = dynamic_cast<Rml::ElementFormControlInput*>(document_->GetElementById("name"));
+    if (!apply_button_ || !field_)
+        throw std::runtime_error("The UI document requires an Apply button and a text input");
+    apply_listener_ = std::make_unique<ApplyListener>(apply_requested_);
+    apply_button_->AddEventListener("click", apply_listener_.get());
+    document_->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
     ui_->request_keyboard_focus();
-    field_->setFocused(true);
-} else {
+    if (!field_->Focus()) {
+        ui_->release_keyboard_focus();
+        throw std::runtime_error("Cannot focus the UI field");
+    }
+} else
     ui_->set_view(tick.logical_size, tick.framebuffer_size);
-}
 ```
 
-Target `2` is a chosen nonzero routing identity. Reserve distinct IDs for other
-sessions in the application. Session construction requests Events capture;
-keyboard focus requests Text capture. The widget's own focused state and the
-session's routed keyboard ownership are related but separate.
+Target `7` is a chosen nonzero routing identity; reserve a distinct target for
+every other session. RmlUi permits one session owning Core's process globals.
+Add more documents to that session when extending the interface.
 
-The session and all native toolkit objects remain on this UI owner. The
-`engine_.input()` getter borrows the adapter; it does not poll or mutate bindings.
-Keep that adapter alive through the session's final closure.
+Font registration retains owned bytes through Core shutdown. Showing a document,
+focusing its field and acquiring routed keyboard focus are distinct operations.
+Routing requests affect later platform polls; already captured text keeps its
+original target and epoch.
 
 ## Feed records and control focus
 
-At the beginning of `update()`, guard the existing quit check before creating
-widgets or processing records:
+At the beginning of `update()`, replace First Game's quit check with:
 
 ```cpp
 if (tick.input.button(quit_).pressed() && !ignore_quit_until_release_) {
@@ -137,46 +281,53 @@ ui_->handle_input(tick.input.records(), true, [&](const CE::Input::Events::Recor
         } else if (button->key == CE::Input::KeyboardKey::F2 &&
                    button->phase == CE::Input::Events::ButtonPhase::Press) {
             ui_->request_keyboard_focus();
-            field_->setFocused(true);
+            if (!field_->Focus(true)) {
+                ui_->release_keyboard_focus();
+                throw std::runtime_error("Cannot focus the UI field");
+            }
         }
     }
     return true;
 });
 ui_->update_time(tick.delta_seconds);
-if (std::exchange(apply_requested_, false))
-    field_->setText("Applied");
+if (std::exchange(apply_requested_, false)) {
+    player_name_ = field_->GetValue();
+    field_->SetValue("Applied");
+}
 ```
 
-The `true` values explicitly give this visible interface pointer delivery for
-the task. A real overlay must decide hit testing and gameplay pointer ownership;
-exclusive keyboard focus does not automatically capture/gate mouse gameplay.
-Feed the whole batch once, including releases needed by modifier tracking.
+The listener runs on this UI owner. Apply copies the edited value into
+game-owned `player_name_`; changing the field to `Applied` confirms the action.
+Application text should go through native text/value setters. `SetInnerRML()`
+parses markup, so escape user text before inserting it as RML.
 
-Escape releases routed focus and F2 requests it again. Requests take effect on
-later platform polls; the session retains its entry epoch for the current batch
-rather than relabeling records. While exclusive focus is active, First Game's
-keyboard quit/movement actions are gated. When focus ends, a still-held key can
-resume as a semantic press. Keep the game's quit check before this record handling
-and require `!ignore_quit_until_release_` in addition to the quit action's
-`pressed()` result. The releasing Escape stays suppressed through its physical
-release batch; a later Escape press can reach the ordinary quit action. The
-maintained Controls class exposes this decision through `permits_quit()`.
+The `true` values explicitly select pointer delivery for this visible interface.
+A game must choose hit testing and gameplay pointer ownership separately;
+keyboard focus does not gate mouse gameplay. Feed the whole batch once,
+including releases used for modifier tracking.
+
+Escape releases editing and F2 restores it. While exclusive focus is active,
+First Game's keyboard movement and quit actions are gated. Ending focus can
+resume a held key as a semantic press, so the quit check stays before record
+handling and its guard remains set through the releasing Escape's physical key
+release. A later Escape press can quit. The session keeps the entry epoch for
+the entire batch; the callback does not relabel existing records.
 
 ## Upload without queue growth and publish
 
 At the end of update:
 
 ```cpp
-static_cast<void>(CE::UI::TGUI::adopt_scene(ui_pending_, ui_scene_));
+static_cast<void>(CE::UI::RmlUi::adopt_scene(ui_pending_, ui_scene_));
 if (!ui_pending_.valid())
     ui_pending_ = ui_uploader_->submit(ui_platform_, ui_->record(), ui_materials_);
 ```
 
 Adoption does not wait on pending work. Keep the previous complete scene while
-one replacement waits; only owned recording/material data crosses to graphics,
-never live widgets. Ready upload errors propagate here for the game's selected
-failure policy. The maintained demo catches them to retain/report its previous
-scene; allowing propagation uses runtime's normal failure cleanup.
+one replacement waits; only owned recording/material data crosses to graphics.
+Ready upload errors propagate here through runtime's normal failure cleanup.
+The maintained demo instead catches them to report the error and keep its last
+complete scene.
 
 After your world/HUD passes in `prepare_render_frame()`:
 
@@ -184,43 +335,46 @@ After your world/HUD passes in `prepare_render_frame()`:
 ui_scene_.write(frame);
 ```
 
-This writes retained packet values, not native toolkit operations. The first
-scene may be empty until upload completes. Authored pass order puts the UI after
-the world. Runtime publishes and renders it without accessing your live widget
-tree.
+This appends retained draw packets using the scene's screen projection. The
+first scene can be empty until upload completes. Later document edits cannot
+alter resources already retained by an earlier published frame.
 
 ## Close after UI quiescence
 
-In `deinit()`, after simulation has joined and accepted platform dependencies
-settled:
+In `deinit()`, after simulation has joined and accepted dependencies have settled:
 
 ```cpp
-field_.reset();
+if (apply_button_ && apply_listener_)
+    apply_button_->RemoveEventListener("click", apply_listener_.get());
+apply_listener_.reset();
+apply_button_ = nullptr;
+field_ = nullptr;
+document_ = nullptr;
 if (ui_) {
     ui_->close_after_quiescence();
     ui_.reset();
 }
-ui_scene_ = CE::UI::TGUI::Scene{};
+ui_scene_ = CE::UI::RmlUi::Scene{};
 ui_uploader_.reset();
-ui_materials_ = CE::UI::TGUI::Materials{};
+ui_materials_ = CE::UI::RmlUi::Materials{};
 ```
 
-Keep the game's other partial-safe cleanup. Drop every application-held native
-widget/font/texture reference before session closure; the GUI releases its own
-hierarchy during shutdown. Do not race closure with input, callbacks or UI
-mutation. Retained Cheryl scenes can outlive toolkit objects while their
-graphics domain remains live.
+Keep the game's other partial-safe cleanup. The listener must detach and die
+while Core is still alive. Drop application-held document/element/resource
+references before session closure; the session releases its documents. Retained
+Cheryl scenes can outlive the toolkit while their graphics domain remains live.
 
-The field should accept committed text, arrows and Backspace while focused.
-Clicking Apply should display `Applied`; Escape releases editing and F2 restores
-it. Resizing should update layout/view dimensions, and both runtime modes should
-preserve input and teardown boundaries. Clipboard, cursor and IME services remain
-limited by reported capabilities, regardless of what widgets normally support
-on another backend.
+Expect a styled panel with a focused field. Type a name and click Apply; the
+game value should receive that name and the field should show `Applied`.
+Check arrows, Backspace, Escape releasing editing, F2 restoring it, and a later
+Escape quitting gameplay. Resize the window and check both runtime modes.
+Clipboard, cursor and IME services retain the reported capability limits.
 
-Read [GUI construction](../../gui/index.md),
-[TGUI contracts](../../modules/tgui.md),
+The [maintained RmlUi demo](../../../projects/apps/demo/src/rmlui-demo.cpp)
+demonstrates native document loading, listeners, hit testing and recoverable
+uploads; it uses [its own RML document](../../../assets/graphics/ui/demo.rml).
+The `tutorial-game` executable uses TGUI controls and does not implement this
+RmlUi example. Read [RmlUi contracts](../../modules/rmlui.md),
+[GUI construction](../../gui/index.md) and
 [focus routing](../../runtime/input-state-model.md#focus-routing-and-editing-controls)
-and [the maintained Controls implementation](../../../projects/apps/tutorial-game/src/controls.cpp)
-for the complete maintained task. [The larger demo](../../../projects/apps/demo/src/tgui-demo.cpp)
-also illustrates layout, pointer hit testing, coexistence and recoverable uploads.
+for the underlying boundaries.

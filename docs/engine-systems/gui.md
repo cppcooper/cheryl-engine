@@ -52,7 +52,7 @@ playback.
 
 | Types | Systems |
 | --- | --- |
-| [`DemoGame`](../../projects/apps/demo/src/demo-game.h)<br>[Application-owned UI views](../gui/index.md#construct-widgets-on-the-ui-owner) | [Rendering](rendering.md) |
+| [`DemoGame`](../../projects/apps/demo/src/demo-game.h)<br>[TGUI HUD](../getting-started/create-a/hud.md)<br>[Application-owned UI views](../gui/index.md#construct-widgets-on-the-ui-owner) | [Rendering](rendering.md) |
 
 ## Contracts
 
@@ -97,7 +97,9 @@ session_->request_keyboard_focus();
 The application retains `session_` and the callback target. It must also select
 pointer delivery, feed records and publish the recorded scene. The
 [GUI construction guide](../gui/index.md) explains those surrounding steps;
-[the focused task](../getting-started/how-to/create-gui.md) connects them to a game.
+[the HUD tutorial](../getting-started/create-a/hud.md) connects TGUI widgets to a
+game, and [the focused GUI task](../getting-started/how-to/create-gui.md) shows
+the RmlUi document approach.
 
 ## Limits and further reading
 

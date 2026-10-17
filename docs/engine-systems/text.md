@@ -49,7 +49,7 @@ text path to use.
 
 | Types | Systems |
 | --- | --- |
-| [`Tutorial::Hud`](../getting-started/create-a/hud.md)<br>{cpp:class}`CE::UI::TGUI::Session`<br>{cpp:class}`CE::UI::RmlUi::Session` | [Rendering](rendering.md)<br>[GUI](gui.md) |
+| [`FirstGame::Game`](../getting-started/first-game.md#put-text-on-screen)<br>{cpp:class}`CE::UI::TGUI::Session`<br>{cpp:class}`CE::UI::RmlUi::Session` | [Rendering](rendering.md)<br>[GUI](gui.md) |
 
 ## Contracts
 

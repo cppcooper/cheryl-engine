@@ -6,10 +6,10 @@ The score stays at zero while you establish the application and resource flow.
 
 Start with setup and `main()`, then learn which parts of the engine your game
 uses and who owns its state. The sprite and text walkthroughs apply those rules
-from initialization through drawing and cleanup. All excerpts come from the
-maintained [first-game application](../../projects/apps/first-game/); they are
-parts of the same implementation, with the enclosing function and thread named
-above each excerpt.
+from initialization through drawing and cleanup. The main walkthrough excerpts
+come from the maintained [first-game application](../../projects/apps/first-game/),
+with the enclosing function and thread named above each excerpt. The text
+replacement and screen-coordinate sections explain extensions to that example.
 
 ## Setup
 
@@ -514,10 +514,28 @@ adopt the completed replacement generation. Changing the original string alone
 does not update an uploaded label.
 
 For a small initial label, synchronous `init()` is enough. For text that changes
-during play, use the [background-loading handoff](#load-or-replace-resources-during-play)
-below: prepare CPU data, dispatch upload to the graphics owner, then adopt its
-result during `update()`. Keep the previous generation while the replacement is
-pending; published frames retain the version they already selected.
+during play, retain the font collection and requested/displayed values with the
+game, plus one pending upload future:
+
+1. Game rules change the requested score. Skip replacement while it matches the
+   displayed score.
+2. When no upload is pending, lay out and prepare the latest requested value on
+   simulation, then submit owned prepared data to the platform dispatcher.
+3. Keep drawing the current `score_` while the replacement uploads. Check the
+   future without waiting; a ready exception follows the game's failure policy.
+4. Adopt a successful generation during `update()`. If the requested value
+   changed while upload waited, prepare the latest value next.
+
+This bounds the queue and coalesces intermediate changes. The upload callback
+returns a generation instead of capturing `this` to mutate live game state.
+Prepared/layout values retain their font snapshots, and each published frame
+retains the generation it selected. Small-label preparation can run on
+simulation; move expensive CPU preparation to a tracked worker group while
+keeping upload on graphics.
+
+[Display and update text](how-to/update-text.md) supplies the complete member,
+initialization, update and cleanup changes. That guide extends this raw text
+path; the [TGUI HUD tutorial](create-a/hud.md) teaches toolkit widgets.
 
 ### Prepare a frame: place and publish the label
 
@@ -539,6 +557,46 @@ performs CPU packet construction; it does not upload or draw. `pass.add()`
 retains the selected resources and copies parameters into the frame. After the
 hook returns, the runtime publishes the complete frame for the platform renderer
 to draw and present.
+
+### Keep text in screen coordinates
+
+The example's camera has an identity view, so the sprite and text can share one
+pass. If a later game pans the world view, give direct screen text a separate
+`CE::Rendering::Camera2D hud_camera_` member and keep its identity view.
+Initialize its size during platform-owned `init()`:
+
+```cpp
+hud_camera_.set_framebuffer_size(engine_.window().framebuffer_size());
+```
+
+Keep the copied size current during `update()`:
+
+```cpp
+hud_camera_.set_framebuffer_size(tick.framebuffer_size);
+```
+
+Replace the existing direct text draw with a separate pass after the world draw
+in `prepare_render_frame()`:
+
+```cpp
+auto text_pass = frame.begin_pass(hud_camera_.projection_matrix(), hud_camera_.view_matrix());
+const CE::Rendering::Submission::Context2D text_context{
+    text_pass.semantics(), text_pass.parameters(), text_pass.constraints(),
+    CE::Rendering::Submission::ImageParameter2D{"image", 0}
+};
+CE::Rendering::DrawStyle2D text_style;
+text_style.material = text_;
+text_style.model_matrix =
+    glm::translate(glm::mat4(1.0f), glm::vec3(24.0f, static_cast<float>(hud_camera_.framebuffer_size().height) - 48.0f, 0.0f));
+text_pass.add(CE::Rendering::Submission::resolve_text(*score_, text_style, text_context));
+```
+
+The label remains 24 pixels from the left and 48 below the framebuffer's top
+while the world camera moves. Resize observations update the projection and
+placement. The separate camera changes where text is drawn; text content still
+uses the generation replacement flow above. Toolkit scenes provide their own
+screen projection, as shown in [Create a HUD with TGUI](create-a/hud.md) and
+[Create an interactive GUI with RmlUi](how-to/create-gui.md).
 
 ### Deinit: release the uploaded label
 
