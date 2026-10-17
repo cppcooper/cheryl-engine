@@ -33,11 +33,25 @@ function(cheryl_runtime_dependencies result)
         cmake_policy(POP)
         return()
     endif()
+    set(system_paths)
     if(WIN32)
         set(system_patterns "^[Aa][Pp][Ii]-[Mm][Ss]-" "^[Ee][Xx][Tt]-[Mm][Ss]-"
             "^[Ii][Cc][Uu]\\.[Dd][Ll][Ll]$" "^[Oo][Pp][Ee][Nn][Gg][Ll]32\\.[Dd][Ll][Ll]$"
             "^[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee]" "^[Mm][Ss][Vv][Cc][PpRr]"
             "^[Cc][Oo][Nn][Cc][Rr][Tt]" "^[Uu][Cc][Rr][Tt][Bb][Aa][Ss][Ee]")
+        file(TO_CMAKE_PATH "$ENV{SystemRoot}" system_root)
+        if(system_root)
+            string(TOLOWER "${system_root}" system_pattern)
+            string(REGEX REPLACE "/+$" "" system_pattern "${system_pattern}")
+            string(REGEX REPLACE "([][+.*()^$?|\\\\])" "\\\\\\1" system_pattern "${system_pattern}")
+            string(REGEX MATCHALL "[a-z]" system_letters "${system_pattern}")
+            list(REMOVE_DUPLICATES system_letters)
+            foreach(letter IN LISTS system_letters)
+                string(TOUPPER "${letter}" upper)
+                string(REPLACE "${letter}" "[${letter}${upper}]" system_pattern "${system_pattern}")
+            endforeach()
+            list(APPEND system_paths "^${system_pattern}/")
+        endif()
     else()
         set(system_patterns "^(ld-linux|ld64|ld-musl)"
             "^lib(c|m|mvec|dl|pthread|rt|resolv|util|anl|BrokenLocale|nss_[A-Za-z0-9_]+|stdc\\+\\+|gcc_s)\\.so(\\.|$)"
@@ -47,6 +61,8 @@ function(cheryl_runtime_dependencies result)
     file(GET_RUNTIME_DEPENDENCIES LIBRARIES ${libraries} DIRECTORIES ${directories}
         RESOLVED_DEPENDENCIES_VAR resolved UNRESOLVED_DEPENDENCIES_VAR unresolved
         PRE_EXCLUDE_REGEXES ${system_patterns}
+        # Filtering the finished list still follows private Windows imports.
+        POST_EXCLUDE_REGEXES ${system_paths}
         CONFLICTING_DEPENDENCIES_PREFIX conflicts)
     # Source builds can resolve the same DLL beside Engine and in its original
     # dependency prefix. Copies are compatible only when their bytes match.
@@ -57,17 +73,7 @@ function(cheryl_runtime_dependencies result)
     if(unresolved)
         message(FATAL_ERROR "Cannot resolve required native runtime dependencies: ${unresolved}")
     endif()
-    file(TO_CMAKE_PATH "$ENV{SystemRoot}" system_root)
-    string(TOLOWER "${system_root}/" system_prefix)
-    foreach(library IN LISTS resolved)
-        file(TO_CMAKE_PATH "${library}" normalized)
-        string(TOLOWER "${normalized}" normalized)
-        string(FIND "${normalized}" "${system_prefix}" system_location)
-        if(system_root AND system_location EQUAL 0)
-            continue()
-        endif()
-        list(APPEND libraries "${library}")
-    endforeach()
+    list(APPEND libraries ${resolved})
     list(REMOVE_DUPLICATES libraries)
     set(${result} "${libraries}" PARENT_SCOPE)
     cmake_policy(POP)
