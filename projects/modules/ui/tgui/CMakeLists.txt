@@ -58,7 +58,7 @@ target_include_directories(${TARGET_LIB_MODULE_UI_TGUI} PUBLIC
 target_link_libraries(${TARGET_LIB_MODULE_UI_TGUI} PUBLIC Cheryl::Engine TGUI::TGUI)
 # Native-only authors need the adapter's decoder registration even when no
 # Session or other Cheryl symbol is referenced. Retain its C ABI anchor before
-# static archive scanning and when linking with --as-needed or import libraries.
+# static archive or import library scanning.
 set(tgui_decoder_anchor cheryl_tgui_retain_image_loader)
 if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     string(PREPEND tgui_decoder_anchor "_")
@@ -69,6 +69,12 @@ elseif(APPLE)
     target_link_options(${TARGET_LIB_MODULE_UI_TGUI} INTERFACE "LINKER:-u,_${tgui_decoder_anchor}")
 else()
     target_link_options(${TARGET_LIB_MODULE_UI_TGUI} INTERFACE "LINKER:-u,${tgui_decoder_anchor}")
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CHERYL_BUILD_SHARED_LIBS)
+    # A command-line undefined symbol does not retain a shared library under
+    # --as-needed. Keep this adapter without changing the state for other inputs.
+    target_link_options(${TARGET_LIB_MODULE_UI_TGUI} INTERFACE
+        "LINKER:SHELL:--push-state --no-as-needed \"$<TARGET_FILE:Cheryl::UI::TGUI>\" --pop-state")
 endif()
 
 if(CHERYL_BUILD_TESTS)
