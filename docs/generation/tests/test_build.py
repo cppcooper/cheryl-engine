@@ -68,6 +68,7 @@ class BuildTests(unittest.TestCase):
         }
         self.metadata = {
             "source_revision": "1" * 40,
+            "source_dependencies": {},
             "dirty": False,
             "tools": {"python": "fixture", "python_source": "system", "packages": {"Sphinx": "8.2.3"}},
             "requirements_sha256": "fixture requirements",
@@ -281,14 +282,61 @@ class BuildTests(unittest.TestCase):
                        "Doxygen extraction took", "Sphinx rendering took", "Documentation checks took"):
             self.assertIn(reason, self.last_output)
 
-    def test_revision_reason(self):
+    def test_revision_reuse(self):
         self.run_build()
-        self.metadata["source_revision"] = "2" * 40
+        self.retain_markers()
+        previous = self.metadata["source_revision"]
+        source = "https://github.com/cppcooper/cheryl-engine"
 
-        with patch.object(builder, "revision", return_value=self.metadata["source_revision"]):
-            self.run_build()
+        def page(revision):
+            return (
+                '<html><body>Retained API page\n'
+                f'<a class="reference external" href="{source}/blob/{revision}/'
+                'projects/engine/include/cheryl/fixture.h?plain=1&amp;view=source#L12">Header</a>\n'
+                f"<a href='{source}/tree/{revision}'>{revision[:12]}</a>\n"
+                f'<a href="{source}/blob/{revision}/docs/guide.md" class="fa fa-github">Edit on GitHub</a>\n'
+                f'<a href="https://github.com/example/dependency/blob/{previous}/header.h#L7">Dependency</a>\n'
+                f'<pre>{previous}</pre>\n'
+                '</body></html>\n'
+            )
 
-        self.assertIn("rendering inputs changed (revision)", self.last_output)
+        self.html_marker.write_text(page(previous), encoding="utf-8")
+        unrelated = self.output / "html/unrelated.html"
+        unrelated.write_text("<html><body>Unchanged page</body></html>\n", encoding="utf-8")
+        os.utime(unrelated, ns=(1_600_000_000_000_000_000, 1_600_000_000_000_000_000))
+        unchanged_time = unrelated.stat().st_mtime_ns
+        revision = "2" * 40
+        self.metadata["source_revision"] = revision
+
+        with patch.object(builder, "revision", return_value=revision):
+            self.assertEqual(self.run_build(), 0)
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertEqual(self.sphinx_runs[-1]["environment"], b"environment-1")
+        self.assertTrue(self.sphinx_runs[-1]["html_retained"])
+        self.assertTrue(self.sphinx_runs[-1]["doctrees_retained"])
+        self.assertNotIn("-a", self.sphinx_runs[-1]["command"])
+        self.assertEqual(self.html_marker.read_text(encoding="utf-8"), page(revision))
+        self.assertEqual(self.doctree_marker.read_text(encoding="utf-8"), "Existing doctree\n")
+        self.assertEqual(unrelated.stat().st_mtime_ns, unchanged_time)
+        metadata = json.loads((self.output / "html/revision.json").read_text(encoding="utf-8"))
+        self.assertEqual(metadata["source_revision"], revision)
+        self.assertEqual(len(self.check_runs), 2)
+        self.assertIn("Updating Sphinx output incrementally.", self.last_output)
+
+    def test_submodule_change(self):
+        self.metadata["source_dependencies"] = {"external/dependency": "a" * 40}
+        self.run_build()
+        self.retain_markers()
+        self.metadata["source_dependencies"]["external/dependency"] = "b" * 40
+
+        self.run_build()
+
+        self.assertEqual(self.extractor.call_count, 1)
+        self.assertIsNone(self.sphinx_runs[-1]["environment"])
+        self.assertFalse(self.sphinx_runs[-1]["html_retained"])
+        self.assertFalse(self.sphinx_runs[-1]["doctrees_retained"])
+        self.assertIn("rendering inputs changed (source_dependencies)", self.last_output)
 
     def test_missing_environment(self):
         self.run_build()
