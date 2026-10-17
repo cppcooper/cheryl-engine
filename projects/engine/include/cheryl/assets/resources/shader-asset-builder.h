@@ -1,12 +1,14 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/shader-assets.h>
 #include <assets/resources/pipeline.h>
 
 namespace CE::Assets::Shaders {
     // Optional provider-owned capability. Validation is CPU-only; construction
     // runs on that provider's loading owner and returns complete native candidates.
-    struct Builder {
+    struct CE_API Builder {
         virtual ~Builder() = default;
         virtual void validate_program(const ProgramRecipe& recipe) const = 0;
         virtual void validate_material(const MaterialRecipe& recipe, const ProgramRecipe& program) const = 0;

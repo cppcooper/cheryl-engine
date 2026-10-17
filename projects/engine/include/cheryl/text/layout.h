@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <text/font-collection.h>
 #include <text/utf8.h>
 
@@ -58,8 +60,8 @@ namespace CE::Text {
         std::vector<::CE::Text::TextLine> lines_;
         float line_height_{};
 
-        ShapedText(::CE::Text::FontCollection fonts, ::CE::Text::LayoutOptions options);
-        friend ShapedText layout_text(const FontCollection&, std::string_view, const LayoutOptions&);
+        CE_API ShapedText(::CE::Text::FontCollection fonts, ::CE::Text::LayoutOptions options);
+        friend CE_API ShapedText layout_text(const FontCollection&, std::string_view, const LayoutOptions&);
 
     public:
         [[nodiscard]] const ::CE::Text::FontCollection& fonts() const noexcept { return fonts_; }
@@ -83,5 +85,5 @@ namespace CE::Text {
      * @param options Font size, paragraph direction, optional width and language hint.
      * @return Owned immutable layout, with scalar/byte mappings and retained font bytes.
      */
-    [[nodiscard]] ShapedText layout_text(const FontCollection& fonts, std::string_view text, const LayoutOptions& options = {});
+    [[nodiscard]] CE_API ShapedText layout_text(const FontCollection& fonts, std::string_view text, const LayoutOptions& options = {});
 }

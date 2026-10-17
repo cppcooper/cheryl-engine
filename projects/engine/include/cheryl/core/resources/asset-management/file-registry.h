@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <filesystem>
 #include <optional>
 #include <shared_mutex>
@@ -24,23 +26,27 @@ namespace CE::Assets::Loading {
         // Append files without replacing earlier registrations. Paths become
         // lexically normalized absolute paths; identical paths are deduplicated.
         // Allocation failure can leave completed insertions registered.
-        void register_files(const std::vector<std::filesystem::path>& files);
+        CE_API void register_files(const std::vector<std::filesystem::path>& files);
 
         // Append a prepared registry using the same path-deduplication policy.
-        void register_files(const FileRegistry& files);
+        CE_API void register_files(const FileRegistry& files);
 
         // Returns an owned, sorted snapshot for this exact basename. Later
         // registration cannot invalidate it; missing names return an empty vector.
-        [[nodiscard]] std::vector<std::filesystem::path> get_files_named(std::string_view name) const;
+        [[nodiscard]] CE_API std::vector<std::filesystem::path> get_files_named(std::string_view name) const;
 
         // Returns the lexically first matching absolute path, if any.
-        [[nodiscard]] std::optional<std::filesystem::path> get_file_named(std::string_view name) const;
+        [[nodiscard]] CE_API std::optional<std::filesystem::path> get_file_named(std::string_view name) const;
 
         // Resolve an exact registered path, not the first matching basename.
         // Relative input is interpreted against the current working directory.
-        [[nodiscard]] std::optional<std::filesystem::path> get_file_at(const std::filesystem::path& path) const;
+        [[nodiscard]] CE_API std::optional<std::filesystem::path> get_file_at(const std::filesystem::path& path) const;
 
     private:
-        void insert_file(const std::filesystem::path& path);
+        CE_API void insert_file(const std::filesystem::path& path);
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Assets::Loading::FileRegistry>::storage() -> Storage&;
 }

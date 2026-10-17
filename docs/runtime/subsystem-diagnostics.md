@@ -14,6 +14,46 @@ domain. IDs are neither addresses nor native handles and are not persistent keys
 Zero indicates identity exhaustion. Session failures keep the original exception
 and phase while distinct cleanup failures retain their own emergency context.
 
+## Investigate a runtime symptom
+
+Enable the relevant [logging category](logging.md#enable-useful-output), keep the
+failure's operation/domain context, then select the observation below. Read runtime
+statistics after synchronizing with `run()` returning or throwing; live sampling
+rejects. Queue and resource snapshots have their own access rules.
+
+| Symptom | Evidence | Next action |
+| --- | --- | --- |
+| Input is delayed while rendering continues | Polling-capacity WARN/recovery records, completed-session peak backlog and update counts | Check whether a slow simulation fills lockstep/finite capacity. Reduce blocking update work; choose a polling policy and spacing appropriate to the application. Increasing capacity cannot reconstruct native observations that were never pumped. |
+| Updates and rendered frames differ | Published, rendered, superseded and skipped-publication counts | Account for independent pacing, reused frames and backpressure. Keep gameplay progression in update, since preparation can be skipped. |
+| An upload fails after some assets become available | Loader batch/provider identity, completion flag and publication/replacement counters | Retain the original upload error. Retry from fresh or preserved CPU preparation; do not assume rollback or that a reused key replaced existing content. |
+| Worker work fails or falls back | Job future, group policy/status and its pool/group domains | Inspect effective eligibility and available capabilities. Required unsupported policy rejects; a preferred fallback is observable rather than a promised placement or speedup. |
+| Shutdown waits | Futures, dispatcher/group observations and producer lifetimes | Remove same-owner waits and settle external producers while dependencies are alive. An empty queue does not prove that its detached batch finished. |
+| A resource appears to remain allocated | Cache/application/frame owners and native live/pending statistics | Follow the ownership sequence below; handle counts do not measure physical GPU bytes. |
+
+The [timing guide](simulation-timing.md), [polling contract](input-state-model.md#polling-backlog-and-scheduling)
+and [Threads and Data Flow](../architecture/threads-data-flow.md) explain the
+corresponding scheduling decisions. A counter establishes its documented operation,
+not a completion barrier or a diagnosis by itself.
+
+### Trace retained resource owners
+
+1. Release the application's handles that no longer need the resource. Inspect
+   materials and uploaded text/UI scenes as well as the original sprite/image.
+2. Check the relevant strong caches. Clearing a sprite cache drops that cache's
+   ownership; an image or shader catalogue can independently retain its resources.
+   Serialize clear/replacement with loading and teardown on the provider owner.
+3. Allow published frames to finish or be superseded and recycled. The platform
+   retains its latest complete frame between publications, so dropping the game's
+   handle alone does not release that frame's copy.
+4. Compare native live and pending retirement observations. Final logical release
+   queues retirement; runtime owner-thread maintenance collects it with the correct
+   context current. Long presentation/update work or OS scheduling can delay that
+   opportunity.
+
+The [residency guide](../resources/resource-residency.md) defines cache ownership,
+maintenance and shutdown. No unused-asset eviction or residency budget is supplied.
+Do not issue native deletion from another thread to force an observed count down.
+
 ## Runtime statistics
 
 `CE::Runtime::RuntimeStats` is published after the simulation worker joins. Callers synchronize

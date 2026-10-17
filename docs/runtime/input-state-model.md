@@ -10,10 +10,10 @@ and routing serve gameplay, tools and UI without requiring a widget toolkit. The
 native implementation is `CE::Platform::GLFW::InputSystem`; optional toolkit
 adapters live separately under `CE::UI`.
 
-Cheryl collects physical input on the platform thread. `CE::Input::Actions::Bindings` can map one control or a simultaneous `CE::Input::Actions::Chord` to a game-defined `CE::Input::Actions::Id`. Several button bindings for the same action combine with OR; controls inside one chord combine with AND. Axis bindings add their scaled values and can be gated by a chord. Negative scale inverts an axis, and an optional dead zone rescales the remaining input range. An action cannot be both a button and an axis while bound. A returned `CE::Input::Actions::BindingId` can remove one mapping; `unbind_action` removes all of its mappings. A physical `CE::Input::Control` stores the device ID in `device` and that device's control token in `control`.
+Cheryl collects physical input on the platform thread. `CE::Input::Actions::Bindings` can map one control or a simultaneous `CE::Input::Actions::Chord` to a game-defined `CE::Input::Actions::Id`. Several button bindings for the same action combine with OR; controls inside one chord combine with AND. Axis bindings add their scaled values and can be gated by a chord. Negative scale inverts an axis, and an optional dead zone rescales the remaining input range. An action cannot be both a button and an axis while bound. A returned `CE::Input::Actions::BindingId` can remove one mapping; `unbind_action` removes all of its mappings. A physical `CE::Input::Control` stores the adapter's device ID in `device` and a Cheryl control ID in `control`.
 
-This binding example uses Gainput control tokens supplied by the GLFW backend.
-The `context` is the runtime context available during game initialization.
+Pass Cheryl control enums directly when registering bindings. The `context` is
+the runtime context available during game initialization.
 
 ```cpp
 constexpr CE::Input::Actions::Id Jump{1};
@@ -22,15 +22,87 @@ constexpr CE::Input::Actions::Id Save{2};
 auto& input = context.input();
 auto& bindings = input.bindings();
 const auto keyboard = input.keyboard_id(); // The adapter is initialized before game init.
-(void)bindings.bind_button({keyboard, gainput::KeySpace}, Jump);
-(void)bindings.bind_button(
-    CE::Input::Actions::Chord{{{keyboard, gainput::KeyCtrlL}, {keyboard, gainput::KeyS}}}, Save
-);
+const auto jump_binding = bindings.bind_button({keyboard, CE::Input::KeyboardKey::Space}, Jump);
+const auto save_binding = bindings.bind_button(
+    CE::Input::Actions::Chord{{{keyboard, CE::Input::KeyboardKey::LeftControl},
+                              {keyboard, CE::Input::KeyboardKey::S}}}, Save);
 ```
+
+Include `<cheryl/core/controls/input-interface.h>` and
+`<cheryl/core/controls/button-codes.h>`, and retain these registration IDs for
+platform-owned cleanup. Keyboard, mouse and gamepad bindings use the same
+Engine-owned control interface. Native GLFW keeps its Gainput state and native
+code translation private.
+
+## Control identities and binding tokens
+
+Pair a control enum with the corresponding device ID in
+{cpp:struct}`CE::Input::Control`. Its constructors convert the enum to a Cheryl
+`ControlId`; binding calls accept that pair directly. Standard control IDs belong
+to Engine, while device IDs belong to the adapter. Both are separate from a
+game-defined {cpp:struct}`CE::Input::Actions::Id` and from the
+{cpp:type}`CE::Input::Actions::BindingId` returned by registration.
+
+| Control family | Purpose and details |
+| --- | --- |
+| Keyboard | {cpp:enum}`CE::Input::KeyboardKey`: letters, `Digit0`–`Digit9`, navigation/editing keys, `F1`–`F25`, keypad and left/right modifiers. Pair the enum directly with `keyboard_id()`. [Complete enum](../../projects/engine/include/cheryl/core/controls/button-codes.h). |
+| Mouse buttons | {cpp:enum}`CE::Input::MouseButton`: `Left`, `Right`, `Middle`, `Extra1`–`Extra5`, plus `Unknown`. Pair the enum directly with `mouse_id()`. [Complete enum](../../projects/engine/include/cheryl/core/controls/button-codes.h). |
+| Relative pointer/scroll | `CE::Input::MouseControl::DeltaX`, `DeltaY`, `ScrollX`, `ScrollY`. These are portable reserved `ControlId` constants. Pair with `mouse_id()` and bind an axis using `AxisKind::Relative`. [Constant declarations](../../projects/engine/include/cheryl/core/controls/input-types.h); [relative observation behavior](#ordered-events-and-os-text). |
+| Absolute pointer and wheel buttons | `CE::Input::MouseControl::X`, `Y`, `WheelUp`, `WheelDown`, paired with `mouse_id()`. Bind position as an absolute axis; Native GLFW reports logical cursor coordinates divided by logical window size. Wheel buttons are one-poll pulses; use relative scroll axes or records for fractional/repeated movement. [Constant declarations](../../projects/engine/include/cheryl/core/controls/input-types.h). |
+| Gamepad | {cpp:enum}`CE::Input::GamepadControl`: named buttons such as `A`, `Start`, `LeftShoulder`, `DPadUp`, and axes such as `LeftStickX`, `RightStickY`, `LeftTrigger`. Pair the enum directly with `gamepad_id()`. `A`/`B`/`X`/`Y` identify Xbox-style physical positions; printed labels may differ. [Complete enum](../../projects/engine/include/cheryl/core/controls/button-codes.h); [controller mapping and limits](../modules/native-glfw.md#linux-controller-mapping). |
+
+Include `<cheryl/core/controls/button-codes.h>` for all three enums and
+`<cheryl/core/controls/input-types.h>` for mouse axis/wheel constants. These
+Engine headers are independent of Native GLFW and `CHERYL_NATIVE_INPUT`.
+Adapters normalize native observations to the same standard IDs before binding
+evaluation. Application bindings need neither a translation helper nor native
+library enums. An adapter can also expose raw `ControlId` extensions under its
+own documented contract.
+
+Adapter and record-processing code can use `CE::Input::control_id(enum)` to
+obtain the same ID stored by `Control`. Casting an enum to an integer does not
+perform that conversion. `Unknown` and out-of-range enum values convert to
+`CE::Input::invalid_control`; registration rejects that ID, including in chord
+modifiers, with `CE::Exceptions::invalid_args`. Passing a foreign enum, such as
+a Gainput enum, directly to `Control` fails at compile time.
+
+Keyboard letter and punctuation names identify US keyboard positions. They do
+not identify the character produced under the user's layout. Read committed
+characters from `Events::Text`. `Unknown` means an identity is unavailable or
+inapplicable. Native GLFW can bind all named keyboard controls, including
+`F20`–`F25`, without relying on Gainput's keyboard enum. A valid ID does not
+establish hardware support: adapters report gamepad axes, sensors and buttons
+only when their backend and the attached device provide them.
+
+{cpp:enum}`CE::Input::AxisKind` selects `Absolute` (retain the final value) or
+`Relative` (accumulate changes). Set it through
+{cpp:struct}`CE::Input::Actions::AxisOptions`, alongside scale and dead zone.
+Use button bindings for gamepad buttons and absolute axis bindings for sampled
+sticks/triggers. Names and IDs are shared across adapters; supported controls
+and physical layout remain subject to the selected controller backend.
+
+For example, with the initialized `input` and `bindings` above, and distinct
+application-defined action IDs `Fire`, `Move` and `Look`:
+
+```cpp
+const auto fire_binding = bindings.bind_button(
+    {input.mouse_id(), CE::Input::MouseButton::Left}, Fire);
+const auto move_binding = bindings.bind_axis(
+    {input.gamepad_id(), CE::Input::GamepadControl::LeftStickX}, Move,
+    {.dead_zone = 0.15f});
+const auto look_binding = bindings.bind_axis(
+    {input.mouse_id(), CE::Input::MouseControl::DeltaX}, Look,
+    {.kind = CE::Input::AxisKind::Relative});
+```
+
+Retain each returned registration ID and unbind it on the platform owner during
+cleanup, including partial initialization. Read `Move` as an absolute value and
+`Look` as accumulated relative delta during update; the
+[binding task](../getting-started/how-to/bind-input.md) shows that lifecycle.
 
 ## Poll snapshots
 
-Each adapter processes its physical changes and publishes one complete poll. The GLFW adapter feeds State from key/mouse callbacks in their shared observation order, then updates Gainput and publishes the State/record pair through `publish_input()`. Gainput notifications for those externally mapped devices are ignored to prevent replay and cross-device reordering. Gainput-owned devices still use the mapper; the adapter also reconciles the gamepad's current state for reattachment/disconnection when no delta was delivered. Readers receive a `std::shared_ptr<const CE::Input::Actions::Snapshot>` through `CE::Input::System::action_snapshot()`. The published pointer is replaced atomically; an earlier handle keeps its complete sample while later polls proceed.
+Each adapter processes its physical changes and publishes one complete poll. The GLFW adapter feeds State from key/mouse callbacks in their shared observation order, then updates Gainput and publishes the State/record pair through `publish_input()`. It mirrors key/mouse state into private Gainput devices, but ignores their notifications to prevent replay and cross-device reordering. Gamepad notifications are normalized to Engine control IDs before reaching Cheryl bindings; the adapter also reconciles the gamepad's current state for reattachment/disconnection when no delta was delivered. Readers receive a `std::shared_ptr<const CE::Input::Actions::Snapshot>` through `CE::Input::System::action_snapshot()`. The published pointer is replaced atomically; an earlier handle keeps its complete sample while later polls proceed.
 
 ## Tick input
 
@@ -111,12 +183,12 @@ through the neutral `CE::Input::KeyboardKey` and `CE::Input::MouseButton` enums.
 recognize editing keys, shortcuts and pointer buttons without interpreting GLFW or
 Gainput constants. Letter/punctuation names refer to US keyboard positions, not
 localized characters. `CE::Input::Events::Text` remains the sole committed-character source.
-`button` remains an opaque per-device State binding ID; portable identity does not
-change existing bindings or imply that a binding token exists. For example, GLFW
-F20 has portable identity even though the current Gainput mapping has no token.
+Native GLFW sets `button` to the normalized `ControlId` used by bindings. For a
+known key or mouse button, it equals `CE::Input::control_id()` of that identity;
+an unknown native control uses `CE::Input::invalid_control`.
 Adapters leave unrecognized/inapplicable identities `Unknown` and retain available
-native/scancode diagnostics. Older aggregate construction defaults the added fields
-to `Unknown`; numeric enum values are not a persisted or native-code interchange.
+native/scancode diagnostics. Numeric enum values and control IDs are not a
+persisted or native-code interchange.
 
 Mouse button and scroll records carry optional observation-time logical `position`.
 Native GLFW captures it in the corresponding callback, so a first click after
@@ -129,7 +201,15 @@ GLFW's Unicode character callback supplies `CE::Input::Events::Text::codepoint` 
 
 The GLFW adapter also reports relative State axes under `CE::Input::MouseControl::DeltaX`, `DeltaY`, `ScrollX`, and `ScrollY`. Bind these with `CE::Input::AxisKind::Relative` and read `delta()` once per update. Relative movement is scaled and gated by the modifiers active when it arrives, then accumulated until publication; releasing a modifier or unbinding afterwards does not erase already mapped movement. A newly installed relative binding receives subsequent movement. Absolute axes still use the final sampled value and modifier state. Changing an action's axis kind requires a consumption boundary; mixing kinds in one State batch is rejected explicitly. Existing wheel-button pulse bindings remain available, while fractional/repeated wheel movement uses the relative axis or ordered scroll records.
 
+## Adapter publication
+
 Custom adapters use `begin_input_poll()` before collection and `publish_input()` once afterwards to publish the State/record pair. Existing State-only adapters can still publish actions directly. Adapters advertising Events/Text must publish the complete poll; a mismatched State-only publication fails rather than silently omitting captured data. `supports_focus()` separately declares routing support; an unsupported routing request fails explicitly. Focus-capable adapters call `begin_input_poll()` even when only State capture is used. A host managing GLFW pumping explicitly calls `CE::Platform::GLFW::InputSystem::begin_poll()`, pumps events, then calls `update()`. Polling, bindings, collection, and publication remain platform-thread operations; capture handles and immutable delivered data cross the thread boundary. Deinitialization detaches all callbacks and discards pending records without invalidating already delivered handles.
+
+The [adapter catalogue](../architecture/interfaces-adapters.md) places input
+alongside the display, presentation and graphics obligations of a platform
+replacement. Semantic action IDs belong to the application. A replacement
+adapter normalizes native codes to Engine control IDs and supplies its device
+IDs; standard control names in application bindings remain the same.
 
 ## Focus, routing, and editing controls
 

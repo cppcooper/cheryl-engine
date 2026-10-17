@@ -36,9 +36,8 @@ void DemoOptions::register_with(CE::Application::Startup& startup) {
             ->trigger_on_parse();
         options
             .add_option_function<std::string>(
-                "--font-family",
-                [this](const std::string& family) { font_selection.preferred.push_back(CE::Text::SystemFontFamily{family}); },
-                "Preferred system font family; repeat to add ordered fallbacks"
+                "--font-family", [this](const std::string& family) { font_selection.preferred.push_back(family); },
+                "Preferred font family or asset filename; repeat to add ordered fallbacks"
             )
             ->trigger_on_parse();
         options

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <glm.hpp>
 
 namespace CE::Rendering::Parameters {
@@ -22,7 +24,7 @@ namespace CE::Rendering::Resources {
     // Mutable executable-program access on the backend owner/current context.
     // Retain the program through use; uniform names/matrices are borrowed for each
     // call. Native type/name validation and failure state belong to the backend.
-    struct Program {
+    struct CE_API Program {
         virtual ~Program() = default;
         // Bind semantic engine parameters; concrete backends choose their representation.
         virtual void bind_pass(const CE::Rendering::Parameters::PassSemantics& pass) = 0;

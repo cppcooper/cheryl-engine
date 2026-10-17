@@ -1,3 +1,4 @@
+#include "../internal/unicode.h"
 #include <text/layout.h>
 
 #include "font-internal.h"
@@ -5,11 +6,6 @@
 
 #include <hb.h>
 #include <hb-ot.h>
-#include <unicode/ubidi.h>
-#include <unicode/ubrk.h>
-#include <unicode/uchar.h>
-#include <unicode/uloc.h>
-#include <unicode/uscript.h>
 
 #include <algorithm>
 #include <cmath>

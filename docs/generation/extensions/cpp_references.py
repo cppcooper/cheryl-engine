@@ -78,6 +78,20 @@ class CppReferences:
                 if member.get("prot") != "private":
                     qualified = member.findtext("qualifiedname") or "::".join(part for part in (name, member.findtext("name")) if part)
                     self.symbols[plain_name(qualified)].add(target)
+                    if member_kind == "enum":
+                        enum_name = member.findtext("name", "")
+                        scope = qualified.rpartition("::")[0]
+                        for value in member.findall("enumvalue"):
+                            value_name = value.findtext("name", "")
+                            value_id = value.get("id")
+                            if value.get("prot") == "private" or not value_name or not value_id:
+                                continue
+                            value_target = (target[0], value_id)
+                            if enum_name and not enum_name.startswith("@"):
+                                self.symbols[plain_name(qualified + "::" + value_name)].add(value_target)
+                            if member.get("strong") != "yes":
+                                qualified_value = "::".join(part for part in (scope, value_name) if part)
+                                self.symbols[plain_name(qualified_value)].add(value_target)
         for filename in directory.glob("*.xml"):
             if filename.name in {"index.xml", "Doxyfile.xml"}:
                 continue

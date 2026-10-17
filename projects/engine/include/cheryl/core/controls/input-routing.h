@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "input-types.h"
 
 #include <atomic>
@@ -30,19 +32,19 @@ namespace CE::Input::Routing {
 
     public:
         Lease() = default;
-        ~Lease();
-        Lease(Lease&& other) noexcept;
-        Lease& operator=(Lease&& other) noexcept;
+        CE_API ~Lease();
+        CE_API Lease(Lease&& other) noexcept;
+        CE_API Lease& operator=(Lease&& other) noexcept;
         Lease(const Lease&) = delete;
         Lease& operator=(const Lease&) = delete;
-        void reset() noexcept;
+        CE_API void reset() noexcept;
         // Snapshot only; ownership can change immediately after this observation.
-        [[nodiscard]] bool owns_focus() const;
+        [[nodiscard]] CE_API bool owns_focus() const;
         [[nodiscard]] TargetId target() const { return focus_ ? focus_->target : 0; }
         [[nodiscard]] std::uint64_t epoch() const { return focus_ ? focus_->epoch : 0; }
 
     private:
-        Lease(std::shared_ptr<Detail::State> state, std::shared_ptr<const Focus> focus);
+        CE_API Lease(std::shared_ptr<Detail::State> state, std::shared_ptr<const Focus> focus);
         std::shared_ptr<Detail::State> state_;
         std::shared_ptr<const Focus> focus_;
     };
@@ -58,7 +60,7 @@ namespace CE::Input::Routing {
         Manager& operator=(const Manager&) = delete;
         // Nonzero target/valid policy required; atomic publication wins among concurrent
         // requests. Epoch identifies a request, not a widget's lifetime or capture lease.
-        [[nodiscard]] Lease focus(TargetId target, KeyboardPolicy routing = KeyboardPolicy::Exclusive);
+        [[nodiscard]] CE_API Lease focus(TargetId target, KeyboardPolicy routing = KeyboardPolicy::Exclusive);
         [[nodiscard]] std::shared_ptr<const Focus> current() const { return state_->current.load(); }
         // Clear current ownership without changing capture activation or published records.
         void clear() { state_->current.store(state_->empty); }

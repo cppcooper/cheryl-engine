@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #include <core/display/monitor.h>
 #include <core/display/window-interface.h>
 
@@ -7,8 +9,8 @@
 #include <core/diagnostics.h>
 #include <chrono>
 
-class GLFWwindow;
-class GLFWmonitor;
+struct GLFWwindow;
+struct GLFWmonitor;
 
 namespace CE::Platform::GLFW {
     class DisplaySystem;
@@ -20,7 +22,7 @@ namespace CE::Platform::GLFW {
      * resize/mode queries; they neither pump events nor synchronize cross-thread reads.
      * Input and graphics users release this borrowed native window before destruction.
      */
-    class Window final : public ::CE::Platform::Window {
+    class CE_TYPE_API Window final : public ::CE::Platform::Window {
         ::CE::Platform::Dimensions<int> logical_size_;
         ::CE::Platform::FramebufferSize framebuffer_size_{};
         ::CE::Platform::WindowMode window_mode_;
@@ -37,7 +39,9 @@ namespace CE::Platform::GLFW {
         mutable std::chrono::steady_clock::time_point next_diagnostic_;
 
     public:
-        ~Window() override;
+        using ProcAddress = void (*)();
+
+        CE_NATIVE_GLFW_API ~Window() override;
         Window(const Window&) = delete;
         Window& operator=(const Window&) = delete;
         Window(Window&&) = delete;
@@ -50,23 +54,31 @@ namespace CE::Platform::GLFW {
         [[nodiscard]] ::CE::Platform::FramebufferSize framebuffer_size() const override { return framebuffer_size_; }
         // Selected mode; a later callback failure does not roll this value back.
         [[nodiscard]] ::CE::Platform::WindowMode mode() const override { return window_mode_; }
-        [[nodiscard]] bool should_close() const override;
-        void check_native_failure() const override;
+        [[nodiscard]] CE_NATIVE_GLFW_API bool should_close() const override;
+        CE_NATIVE_GLFW_API void check_native_failure() const override;
 
         /** Request positive logical dimensions and refresh observed logical/pixel sizes.
          * Listener failures can propagate after dimensions change; mutation is not atomic.
          */
-        void resize(int width, int height) override;
+        CE_NATIVE_GLFW_API void resize(int width, int height) override;
         /** NORMAL restores saved windowed placement; BORDERLESS uses it undecorated;
          * FULLSCREEN attaches the selected monitor at its captured dimensions. Refresh
          * observed sizes afterward. Unknown modes fail; callback failures do not roll back.
          */
-        void set_mode(::CE::Platform::WindowMode mode) override;
-        void hide_cursor(bool hide) const override;
+        CE_NATIVE_GLFW_API void set_mode(::CE::Platform::WindowMode mode) override;
+        CE_NATIVE_GLFW_API void hide_cursor(bool hide) const override;
+
+        // Context operations may run on a rendering owner after platform creation.
+        // Release a context before transferring it to another thread.
+        CE_NATIVE_GLFW_API void make_context_current(int swap_interval = 1);
+        CE_NATIVE_GLFW_API void release_context();
+        [[nodiscard]] CE_NATIVE_GLFW_API bool context_current() const;
+        [[nodiscard]] CE_NATIVE_GLFW_API ProcAddress context_proc_address(const char* name) const;
+        CE_NATIVE_GLFW_API void swap_buffers();
 
     private:
         friend class ::CE::Platform::GLFW::DisplaySystem;
-        Window(
+        CE_NATIVE_GLFW_API Window(
             const ::CE::Platform::Monitor& monitor,
             GLFWmonitor* native_monitor,
             ::CE::Platform::WindowMode mode,
@@ -75,8 +87,8 @@ namespace CE::Platform::GLFW {
             const std::string& title
         );
 
-        static void on_window_size(GLFWwindow* window, int width, int height) noexcept;
-        static void on_framebuffer_size(GLFWwindow* window, int width, int height) noexcept;
-        void update_framebuffer_size(int width, int height);
+        CE_NATIVE_GLFW_API static void on_window_size(GLFWwindow* window, int width, int height) noexcept;
+        CE_NATIVE_GLFW_API static void on_framebuffer_size(GLFWwindow* window, int width, int height) noexcept;
+        CE_NATIVE_GLFW_API void update_framebuffer_size(int width, int height);
     };
 }

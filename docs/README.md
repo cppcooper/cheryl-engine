@@ -4,73 +4,86 @@ Choose an entry point for the work you are doing:
 
 | Task | Start here |
 | --- | --- |
-| Check implemented, partial, planned or deferred capabilities | [Status inventory and review baseline](STATUS.md) |
-| Understand the engine | [Runtime architecture](runtime/runtime-architecture.md) and [module roles](../projects/modules/README.md) |
-| Write a game | [First-game walkthrough](getting-started/first-game.md), then [application composition and game hooks](development/consuming-engine.md) |
-| Browse the generated API or build the manual | [API entry points](api/index.md) and [documentation tooling and publishing](development/documentation.md) |
+| Look up a declaration | [C++ API](api/index.md) |
+| Write a game | [Project setup](getting-started/project-setup.md), then [First Game](getting-started/first-game.md) |
+| Choose a system or public type | [Engine Systems](engine-systems/index.md) |
+| Perform an operation | [Detailed Guides](guides/index.md) |
+| Select a concrete integration | [Modules](modules/index.md) |
+| Connect, extend or replace components | [Architecture](architecture/index.md) |
 | Configure, build or troubleshoot | [Setup](../README.md#setup) and [build reference](development/building.md) |
 | Run checks | [Test selection](development/testing.md) and [pending checks and QA](testing-requests.md) |
-| Extend the repository | [Module authoring](development/modules.md), [UI adapters](development/ui-adapters.md) and [contributing](development/contributing.md) |
-| Pick up planned work | [Planning catalogue](planning/README.md) |
+| Check current capabilities or pick up planned work | [Status inventory](STATUS.md) and [planning catalogue](planning/README.md) |
 
-The system references below describe API contracts, ownership, units and failure
-behavior. Read the relevant subject rather than the whole documentation tree.
+## API Reference
 
-## Runtime
+- [Generated C++ symbols, entry points and migration](api/index.md)
 
-- [Runtime architecture and backend boundaries](runtime/runtime-architecture.md)
-- [Frame ownership and runtime lifecycle](runtime/runtime-frame-boundary.md)
-- [Display and window ownership](runtime/display-and-window-contract.md)
-- [Native callbacks and failure reporting](runtime/failure-reporting.md)
-- [Input actions, state, events, text, and focus](runtime/input-state-model.md)
-- [Audio ownership and playback](runtime/audio.md)
-- [Simulation timing and recovery](runtime/simulation-timing.md)
-- [State, timing and math utilities](runtime/utility-contracts.md)
-- [Thread dispatch](runtime/thread-dispatch.md)
-- [Event buses and persistent registration](runtime/event-delivery.md)
-- [Worker pools, topology providers and C++/JSON settings](runtime/worker-execution.md)
-- [Logging configuration and emission](runtime/logging.md)
-- [Subsystem diagnostics](runtime/subsystem-diagnostics.md)
-- [Linux Debug output terminal and process lifetime](../projects/modules/platform/debug-terminal-linux/README.md)
+## Getting Started
 
-## Assets
+- [Project setup, CMake, and source/SDK choices](getting-started/project-setup.md)
+- [First game: startup, architecture, sprites, and text](getting-started/first-game.md)
+- [Create a Player, Enemy or HUD](getting-started/create-a/index.md)
+- [How to: focused game-development tasks](getting-started/how-to/index.md)
+- [Maintained Player/Enemy/HUD and interactive UI example](../projects/apps/tutorial-game/README.md)
 
-- [Asset package downloads and image placement](assets/catalog.md)
-- [Asset loading](assets/asset-loading.md)
-- [Asset values, playback and CPU submission](assets/asset-values-and-playback.md)
-- [Text encoding and source indices](assets/text-encoding.md)
-- [Unicode text layout and font resources](assets/text-layout.md)
-- [File indexing and font discovery](assets/file-and-font-discovery.md)
-- [Asset manifest format](assets/asset-manifests.md)
+## Engine Systems
 
-## Rendering
+[Start with the ownership and execution overview](engine-systems/index.md), then
+read a system's purpose, type/operation tables, important enums, relationships,
+contracts and lifecycle. Table entries link to the detailed guides and API:
 
-- [Pipelines, materials, and render submission](rendering/pipelines-and-materials.md)
+- [Runtime](engine-systems/runtime.md), [Display](engine-systems/display.md) and [Input](engine-systems/input.md)
+- [Assets](engine-systems/assets.md), [Resources](engine-systems/resources.md), [Rendering](engine-systems/rendering.md) and [Text](engine-systems/text.md)
+- [GUI](engine-systems/gui.md) and [Audio](engine-systems/audio.md)
+- [Events](engine-systems/events.md), [Dispatch](engine-systems/dispatch.md) and [Workers](engine-systems/workers.md)
+- [Memory](engine-systems/memory.md), [State](engine-systems/state.md), [Logging](engine-systems/logging.md), [Diagnostics](engine-systems/diagnostics.md) and [Utilities](engine-systems/utilities.md)
 
-## Resources
+## Detailed Guides
 
-- [Cache ownership, immutable publication and native retirement](resources/resource-residency.md)
-- [CPU memory lifetime and reservation](resources/resource-lifetime.md)
-- [Legacy bitmap font inputs and migration](resources/legacy-ffont.md)
+- [Assets](assets/index.md): loading, manifests, animation and tile selection.
+- [Text](text/index.md): font selection, shaping, encoding and legacy compatibility.
+- [Rendering and Resources](rendering/index.md): frames, materials, sampling and retirement.
+- [Input](input/index.md): actions, records, capture and focus.
+- [GUI](gui/index.md): interface construction, publication and cleanup.
+- [Audio](audio/index.md): clips, voices, streams and output lifetime.
+- [Runtime and Concurrency](runtime/index.md): lifecycle, timing, windows, dispatch, events and workers.
+- [Memory, State and Utilities](utilities/index.md): object allocation, state choices and CPU helpers.
+- [Diagnostics](diagnostics/index.md): logging, observations and failure reporting.
+
+## Modules
+
+- [Selection and roles](modules/index.md)
+- [Source/SDK consumption and startup](development/consuming-engine.md)
+- [Adapter contracts required by Engine and optional integrations](architecture/interfaces-adapters.md)
+- [Startup](modules/startup.md) and [Workers](modules/workers.md)
+- [Native GLFW](modules/native-glfw.md) and [OpenGL](modules/opengl.md)
+- [TGUI](modules/tgui.md) and [RmlUi](modules/rmlui.md)
+- [miniaudio](modules/miniaudio.md)
+- [Linux Debug terminal](modules/debug-terminal-linux.md)
+
+The module pages publish the owner guides; the original owner READMEs remain
+available beside their source and in the [repository module index](../projects/modules/README.md).
+[Module authoring](development/modules.md) and
+[UI adapter authoring](development/ui-adapters.md) belong to Development.
+
+## Architecture
+
+- [Interfaces and Adapters](architecture/interfaces-adapters.md): contracts, implementations and replacement dependencies.
+- [Assembling the Engine](architecture/assembling-engine.md): facades, factories and compatible context composition.
+- [Ownership and Cleanup](architecture/ownership-cleanup.md): borrowed objects, retained handles, leases and shutdown.
+- [Threads and Data Flow](architecture/threads-data-flow.md): execution owners, delivery choices and publication.
 
 ## Development
 
-- [First-game walkthrough](getting-started/first-game.md)
-- [Generated C++ API entry points](api/index.md)
-- [Documentation generation and versioned Read the Docs publishing](development/documentation.md)
+- [Generate documentation](development/documentation.md) and [publish versioned documentation](development/publishing-documentation.md)
 - [Pending automated and QA testing requests](testing-requests.md)
-- [Build reference, CI and SDK production](development/building.md)
+- [Build and produce SDKs](development/building.md) and [operate CI and SDK collection](development/ci.md)
 - [Test selection](development/testing.md)
 - [Contributing](development/contributing.md)
 - [C++ code style](development/code-style.md)
 - [Architecture validation procedures](development/architecture-validation.md)
 - [Logging acceptance](development/logging-acceptance.md)
-- [Source/SDK consumption and command-line startup](development/consuming-engine.md)
 - [Engine and integration modules](development/modules.md)
-- [Module index and owner guides](../projects/modules/README.md)
-- [Linux Debug terminal module](../projects/modules/platform/debug-terminal-linux/README.md)
-- [TGUI adapter and session](../projects/modules/ui/tgui/README.md)
-- [RmlUi adapter and native documents](../projects/modules/ui/rmlui/README.md)
 - [RmlUi placeholder investigation and contribution guidance](external-work/rmlui-placeholder-issue.md)
 - [Writing a UI adapter](development/ui-adapters.md)
 - [Neutral UI consumer checks](development/architecture-validation.md#neutral-ui-consumer)

@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #if CHERYL_NATIVE_INPUT
 
 #include <gtest/gtest.h>
@@ -14,7 +15,7 @@
 #include <core/display/window.h>
 #include <core/display/display-system.h>
 #include <core/controls/input-system.h>
-#include <core/controls/glfw-bindings.h>
+#include <core/controls/button-codes.h>
 #include <core/game-framework/game-runtime.h>
 #include <core/game-framework/abstract-game.h>
 #include <core/rendering/render-frame.h>
@@ -28,6 +29,7 @@
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
+#include "backends/native-glfw/test-access.h"
 #include <GLFW/glfw3.h>
 #if defined(__linux__) && defined(CHERYL_NATIVE_X11_TESTS)
 #define GLFW_EXPOSE_NATIVE_X11
@@ -202,7 +204,7 @@ void main() { color = u_color.grba * vec4(shade, 1.0); }
 
     std::shared_ptr<const CE::Rendering::Resources::Material> legacy_font_material(CE::Rendering::Resources::Provider& resources) {
         auto& native = dynamic_cast<CE::Rendering::OpenGL::ResourceProvider&>(resources);
-        const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/shaders/shader2d";
+        const auto shaders = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/graphics/shaders/shader2d";
         CE::Rendering::Pipelines::Definition definition;
         definition.program_sources = {shaders.string() + ".vert", shaders.string() + ".frag"};
         definition.parameters = {
@@ -679,27 +681,56 @@ TEST(native_opengl, debug_output) {
         GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
     auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
     auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& context = dynamic_cast<CE::Rendering::OpenGL::Context&>(engine->surface());
+    void* previous_callback = nullptr;
+    void* previous_user = nullptr;
+    GLboolean previous_enabled = GL_FALSE;
+    GLboolean previous_synchronous = GL_FALSE;
+    bool supported = false;
+    {
+        CE::Rendering::OpenGL::Renderer probe(context);
+        probe.initialize();
+        supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
+        if (supported) {
+            glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &previous_callback);
+            glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &previous_user);
+            previous_enabled = glIsEnabled(GL_DEBUG_OUTPUT);
+            previous_synchronous = glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        }
+        EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        probe.deinitialize();
+    }
     renderer.set_native_diagnostics(true);
     renderer.initialize();
-    const bool supported = GLAD_GL_VERSION_4_3 || GLAD_GL_KHR_debug;
     if (supported) {
         void* callback = nullptr;
         void* user = nullptr;
         glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
         glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &user);
         EXPECT_NE(callback, nullptr);
-        EXPECT_EQ(user, nullptr);
-        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), GL_TRUE);
+        if (previous_callback) {
+            EXPECT_EQ(callback, previous_callback);
+            EXPECT_EQ(user, previous_user);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT), previous_enabled);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), previous_synchronous);
+        } else {
+            EXPECT_EQ(user, nullptr);
+            EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), GL_TRUE);
+        }
     }
     renderer.clear();
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     renderer.deinitialize();
-    auto& context = dynamic_cast<CE::Rendering::OpenGL::Context&>(engine->surface());
     context.make_current();
     if (supported) {
         void* callback = nullptr;
+        void* user = nullptr;
         glGetPointerv(GL_DEBUG_CALLBACK_FUNCTION, &callback);
-        EXPECT_EQ(callback, nullptr);
+        glGetPointerv(GL_DEBUG_CALLBACK_USER_PARAM, &user);
+        EXPECT_EQ(callback, previous_callback);
+        EXPECT_EQ(user, previous_user);
+        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT), previous_enabled);
+        EXPECT_EQ(glIsEnabled(GL_DEBUG_OUTPUT_SYNCHRONOUS), previous_synchronous);
     }
     EXPECT_EQ(glGetError(), GL_NO_ERROR);
     context.release_current();
@@ -1217,6 +1248,7 @@ namespace {
 
     struct NativeRuntimeGame : CE::Game::AbstractGame {
         CE::Runtime::Context& engine;
+        const CE::Platform::FramebufferSize expected_framebuffer_size;
         NativeShaderFiles files;
         std::shared_ptr<CE::Rendering::Geometry::Buffer2D> geometry;
         std::shared_ptr<const CE::Rendering::Resources::Material> material;
@@ -1227,7 +1259,10 @@ namespace {
         std::optional<CE::Input::Actions::Id> observed_action;
 
         explicit NativeRuntimeGame(CE::Runtime::Context& context)
-        : engine(context) {}
+        : engine(context), expected_framebuffer_size(context.display().active_window()->framebuffer_size()) {
+            EXPECT_GT(expected_framebuffer_size.width, 0);
+            EXPECT_GT(expected_framebuffer_size.height, 0);
+        }
         void init() override {
             geometry = fullscreen_triangle(engine.resources());
             material = material_builder(files.stages(), {1, 0, 0, 1})(engine.resources());
@@ -1241,7 +1276,7 @@ namespace {
             ticks.back().records.assign(tick.input.records().begin(), tick.input.records().end());
             if (observed_action)
                 ticks.back().observed_button = tick.input.button(*observed_action);
-            EXPECT_EQ(tick.framebuffer_size, (CE::Platform::FramebufferSize{64, 64}));
+            EXPECT_EQ(tick.framebuffer_size, expected_framebuffer_size);
             after_update();
         }
         void prepare_render_frame(CE::Rendering::FrameWriter& frame) const override {
@@ -1780,8 +1815,8 @@ TEST(native_opengl, x11_input_recovery) {
             std::future<void> gate;
             game.after_init = [&] {
                 auto& native = observed->native();
-                for (const auto key : {GLFW_KEY_A, GLFW_KEY_B, GLFW_KEY_C})
-                    (void)native.bindings().bind_button({native.keyboard_id(), CE::Platform::GLFW::gainput_key(key)}, typing_action);
+                for (const auto key : {KeyboardKey::A, KeyboardKey::B, KeyboardKey::C})
+                    (void)native.bindings().bind_button({native.keyboard_id(), key}, typing_action);
                 old_events = native.capture(CE::Input::Capture::Channel::Events);
                 old_text = native.capture(CE::Input::Capture::Channel::Text);
                 old_focus = native.routing().focus(7);
@@ -1927,24 +1962,24 @@ TEST(native_opengl, input_reattach) {
     const auto keyboard = input.keyboard_id();
     const auto mouse = input.mouse_id();
     const auto gamepad = input.gamepad_id();
-    auto* keyboard_device = input.manager().GetDevice(keyboard);
-    ASSERT_NE(keyboard_device, nullptr);
-    ASSERT_NE(input.manager().GetDevice(mouse), nullptr);
-    ASSERT_NE(input.manager().GetDevice(gamepad), nullptr);
+    const auto keyboard_device = input.device(keyboard).identity;
+    ASSERT_NE(keyboard_device, 0u);
+    ASSERT_NE(input.device(mouse).identity, 0u);
+    ASSERT_NE(input.device(gamepad).identity, 0u);
     EXPECT_NO_THROW(input.poll());
-    const auto gainput_time = input.manager().GetTime();
+    const auto gainput_time = input.backend_time_ms();
     std::this_thread::sleep_for(std::chrono::milliseconds{2});
     EXPECT_NO_THROW(input.poll());
-    EXPECT_GT(input.manager().GetTime(), gainput_time);
+    EXPECT_GT(input.backend_time_ms(), gainput_time);
     input.deinitialize();
     input.deinitialize();
     EXPECT_THROW(input.poll(), CE::Exceptions::failed_operation);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    EXPECT_EQ(input.device(keyboard).identity, keyboard_device);
     input.initialize(window);
     EXPECT_EQ(input.keyboard_id(), keyboard);
     EXPECT_EQ(input.mouse_id(), mouse);
     EXPECT_EQ(input.gamepad_id(), gamepad);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), keyboard_device);
+    EXPECT_EQ(input.device(keyboard).identity, keyboard_device);
     EXPECT_NO_THROW(input.poll());
     // Context destruction detaches from the live window and releases Gainput once.
 }
@@ -1984,7 +2019,7 @@ TEST(native_opengl, input_window) {
     ASSERT_NE(other_window, nullptr);
     input.initialize(engine->window());
     const auto keyboard = input.keyboard_id();
-    auto* device = input.manager().GetDevice(keyboard);
+    const auto device = input.device(keyboard).identity;
     input.deinitialize();
 #if defined(_WIN32)
     EXPECT_THROW(input.initialize(*other_window), CE::Exceptions::failed_operation);
@@ -1993,7 +2028,7 @@ TEST(native_opengl, input_window) {
     EXPECT_NO_THROW(input.initialize(*other_window));
 #endif
     EXPECT_EQ(input.keyboard_id(), keyboard);
-    EXPECT_EQ(input.manager().GetDevice(keyboard), device);
+    EXPECT_EQ(input.device(keyboard).identity, device);
     EXPECT_NO_THROW(input.poll());
 }
 

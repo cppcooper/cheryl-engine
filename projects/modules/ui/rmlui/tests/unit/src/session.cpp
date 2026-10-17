@@ -1,10 +1,12 @@
 #include <ui/rmlui/session.h>
+#include <text/font-rasterizer.h>
 #include <internals/exceptions.h>
 #include "../../support/document.h"
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/SystemInterface.h>
 #include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/FontEngineInterface.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -77,6 +79,32 @@ TEST(ui_rmlui_session, lifecycle) {
     EXPECT_TRUE(input.emit(key(KeyboardKey::A))->records.empty());
     Session next(input, 9);
     EXPECT_NE(Rml::GetSystemInterface(), nullptr);
+}
+
+TEST(ui_rmlui_session, engine_font) {
+    Input input;
+    Session session(input, 7);
+    std::ifstream file(CHERYL_RMLUI_TEST_FONT, std::ios::binary);
+    std::vector<unsigned char> bytes{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    ASSERT_FALSE(bytes.empty());
+    const auto face = CE::Text::FontRasterizer::load(bytes);
+    const auto expected = face.metrics({24, CE::Text::FontSizing::Characters});
+    const auto glyph = face.rasterize(U'A', {24, CE::Text::FontSizing::Characters}, {.color = true});
+    ASSERT_TRUE(expected);
+    ASSERT_TRUE(glyph);
+    ASSERT_TRUE(session.load_font(bytes, "engine-font"));
+    std::fill(bytes.begin(), bytes.end(), 0);
+    auto* fonts = Rml::GetFontEngineInterface();
+    ASSERT_NE(fonts, nullptr);
+    const auto handle = fonts->GetFontFaceHandle("engine-font", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, 24);
+    ASSERT_NE(handle, 0u);
+    const auto& metrics = fonts->GetFontMetrics(handle);
+    EXPECT_EQ(metrics.ascent, expected->ascent);
+    EXPECT_EQ(metrics.descent, -expected->descent);
+    EXPECT_EQ(metrics.line_spacing, expected->line_spacing);
+    EXPECT_EQ(metrics.x_height, expected->x_height);
+    const Rml::String language;
+    EXPECT_EQ(fonts->GetStringWidth(handle, "A", {language}), static_cast<int>(glyph->advance));
 }
 
 TEST(ui_rmlui_session, routing) {

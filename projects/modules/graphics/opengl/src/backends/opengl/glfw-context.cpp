@@ -1,14 +1,10 @@
+#include "gl-internal.h"
 #include <backends/opengl/glfw-context.h>
 
 #include <core/display/window.h>
 #include <backends/native-glfw/diagnostics.h>
 #include <internals/exceptions.h>
 #include <internals/compile-time-logging.hpp>
-
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
 
 namespace CE::Rendering::OpenGL {
     GLFWContext::GLFWContext(::CE::Platform::GLFW::Window& window, const int swap_interval)
@@ -22,36 +18,22 @@ namespace CE::Rendering::OpenGL {
     }
 
     void GLFWContext::make_current() {
-        glfwMakeContextCurrent(window_.native_handle());
-        if (!is_current()) {
-            ::CE::Platform::GLFW::Detail::report_glfw_diagnostics("make_current", true);
-            throw ::CE::Exceptions::failed_operation(CE_HERE, "Could not make the window's OpenGL context current");
-        }
-        ::CE::Platform::GLFW::Detail::report_glfw_diagnostics("make_current");
-        glfwSwapInterval(swap_interval_);
+        window_.make_context_current(swap_interval_);
     }
 
     void GLFWContext::release_current() {
-        if (!is_current())
-            throw ::CE::Exceptions::failed_operation(CE_HERE, "The window's OpenGL context is not current on this thread");
-        glfwMakeContextCurrent(nullptr);
+        window_.release_context();
     }
 
     bool GLFWContext::is_current() const {
-        return glfwGetCurrentContext() == window_.native_handle();
+        return window_.context_current();
     }
 
     GLFWContext::ProcAddress GLFWContext::proc_address(const char* name) const {
-        if (!name)
-            throw ::CE::Exceptions::invalid_args(CE_HERE, "OpenGL procedure name must not be null");
-        if (!is_current())
-            throw ::CE::Exceptions::failed_operation(CE_HERE, "OpenGL procedure lookup requires the current context");
-        return glfwGetProcAddress(name);
+        return window_.context_proc_address(name);
     }
 
     void GLFWContext::present() {
-        if (!is_current())
-            throw ::CE::Exceptions::failed_operation(CE_HERE, "Present requires the current OpenGL context");
-        glfwSwapBuffers(window_.native_handle());
+        window_.swap_buffers();
     }
 }

@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include "program-builder.h"
 #include "resource-lifetime-internal.h"
 #include "upload-check.h"

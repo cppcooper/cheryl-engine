@@ -1,18 +1,21 @@
 # Reload declarations into the caller's scope, including standalone entry points.
 
 # Engine
+set(TARGET_LIB_CHERYL cheryl_assembly)
 set(TARGET_LIB_ENGINE cengine)
 
 # Engine support
 set(TARGET_LIB_ENGINE_S_LOGGING_CONFIG cengine_logging_config)
 set(TARGET_LIB_ENGINE_S_SIGNAL_HANDLERS cengine_signal_handlers)
-set(TARGET_LIB_ENGINE_S_STARTUP cengine_startup)
+set(TARGET_LIB_ENGINE_S_STARTUP module_startup)
 set(TARGET_LIB_ENGINE_S_DEBUG_TERMINAL cengine_debug_terminal_startup)
-set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC cengine_worker_topology_hwloc)
-set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON cengine_worker_topology_json)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_HWLOC module_workers)
+set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_JSON module_workers)
 set(TARGET_LIB_ENGINE_S_WORKER_TOPOLOGY_EXAMPLE example_worker_topology)
 
 # Modules
+set(TARGET_LIB_MODULE_STARTUP module_startup)
+set(TARGET_LIB_MODULE_WORKERS module_workers)
 set(TARGET_LIB_MODULE_NATIVE_GLFW module_native_glfw)
 set(TARGET_LIB_MODULE_DEBUG_TERMINAL_LINUX module_debug_terminal_linux)
 set(TARGET_LIB_MODULE_OPENGL module_opengl)
@@ -78,6 +81,7 @@ set(TARGET_TEST_CONSUMER_MODULE_UI_RMLUI consumer-module-ui-rmlui)
 set(TARGET_TEST_CONSUMER_MODULE_AUDIO_MINIAUDIO consumer-module-audio-miniaudio)
 
 # Header probes
+set(TARGET_TEST_CONSUMER_CHERYL_HEADERS consumer-headers-cheryl)
 set(TARGET_TEST_CONSUMER_ENGINE_HEADERS consumer-headers-cengine)
 set(TARGET_TEST_CONSUMER_MODULE_NATIVE_GLFW_HEADERS consumer-module-headers-native-glfw)
 set(TARGET_TEST_CONSUMER_MODULE_OPENGL_HEADERS consumer-module-headers--opengl)

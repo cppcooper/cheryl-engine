@@ -1,10 +1,10 @@
 #include <ui/tgui/session.h>
 
 #include "dependency-contract.h"
+#include "font.h"
 #include <ui/tgui/input.h>
 #include <internals/exceptions.h>
 
-#include <TGUI/Backend/Font/FreeType/BackendFontFreeType.hpp>
 #include <TGUI/Backend/Window/Backend.hpp>
 #include <TGUI/Container.hpp>
 #include <TGUI/Keyboard.hpp>
@@ -44,7 +44,7 @@ namespace CE::UI::TGUI {
                     throw Exceptions::failed_operation(CE_HERE, "TGUI already has an active backend/session");
                 backend_ = std::make_shared<Backend>();
                 backend_->setRenderer(std::make_shared<Renderer>(options.maximum_texture_size));
-                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<tgui::BackendFontFreeType>>());
+                backend_->setFontBackend(std::make_shared<tgui::BackendFontFactoryImpl<Detail::FontBackend>>());
                 backend_->setFontScale(options.font_scale);
                 tgui::setBackend(backend_);
             }

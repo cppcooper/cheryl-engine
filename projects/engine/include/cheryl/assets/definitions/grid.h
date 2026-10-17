@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/types/primitives/pixel.h>
 #include <cstddef>
 #include <cstdint>
@@ -22,11 +24,11 @@ namespace CE::Assets::Grids {
         std::size_t columns{};
 
         // Count rejects size_t multiplication overflow; addressing rejects out-of-range cells.
-        [[nodiscard]] std::size_t cell_count() const;
-        [[nodiscard]] CellIndex cell_index(std::size_t row, std::size_t column) const;
-        [[nodiscard]] CE::Rendering::Geometry::PixelRect cell_rect(CellIndex cell) const;
-        [[nodiscard]] std::uint64_t occupied_right() const;
-        [[nodiscard]] std::uint64_t occupied_bottom() const;
+        [[nodiscard]] CE_API std::size_t cell_count() const;
+        [[nodiscard]] CE_API CellIndex cell_index(std::size_t row, std::size_t column) const;
+        [[nodiscard]] CE_API CE::Rendering::Geometry::PixelRect cell_rect(CellIndex cell) const;
+        [[nodiscard]] CE_API std::uint64_t occupied_right() const;
+        [[nodiscard]] CE_API std::uint64_t occupied_bottom() const;
     };
 
     struct View {

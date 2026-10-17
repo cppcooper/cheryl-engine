@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/glfw-backend.h>
 
 #include <backends/opengl/glfw-context.h>
@@ -6,11 +7,6 @@
 #include <core/controls/input-system.h>
 #include <core/display/display-system.h>
 #include <internals/exceptions.h>
-
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
 
 #include <memory>
 #include <utility>
@@ -24,15 +20,7 @@ namespace CE::Application::GLFWOpenGL {
         // Constructing the GLFW display initializes GLFW; its windows are destroyed before
         // the display releases that library lifetime, even if a later step throws.
         auto display = std::make_unique<CE::Platform::GLFW::DisplaySystem>();
-        glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#ifdef __APPLE__
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-#endif
-        auto* window = display->create_window(display->primary_monitor(), config.mode, config.width, config.height, config.title);
+        auto* window = display->create_opengl_window(display->primary_monitor(), config.mode, config.width, config.height, config.title);
         display->activate_window(*window);
 
         auto surface = std::make_unique<CE::Rendering::OpenGL::GLFWContext>(*window, config.swap_interval);

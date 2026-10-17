@@ -1,3 +1,4 @@
+#include "backends/opengl/gl-test.h"
 #include <backends/opengl/pipeline.h>
 #include <backends/opengl/texture.h>
 #include <backends/opengl/sampler.h>

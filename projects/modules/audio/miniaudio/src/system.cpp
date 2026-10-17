@@ -15,8 +15,12 @@ namespace CE::Audio::Miniaudio::Detail {
         std::optional<::CE::Audio::Clip> clip;
         std::optional<std::filesystem::path> file;
         ma_audio_buffer buffer{};
+        ma_resource_manager_data_stream stream{};
+        ma_async_notification_event stream_notification{};
         ma_sound sound{};
         bool buffer_initialized = false;
+        bool stream_initialized = false;
+        bool stream_notification_initialized = false;
         bool sound_initialized = false;
         ::CE::Audio::PlaybackState requested = ::CE::Audio::PlaybackState::Paused;
         float volume = 1;
@@ -27,6 +31,14 @@ namespace CE::Audio::Miniaudio::Detail {
             if (sound_initialized) {
                 ma_sound_uninit(&sound);
                 sound_initialized = false;
+            }
+            if (stream_initialized) {
+                static_cast<void>(ma_resource_manager_data_stream_uninit(&stream));
+                stream_initialized = false;
+            }
+            if (stream_notification_initialized) {
+                static_cast<void>(ma_async_notification_event_uninit(&stream_notification));
+                stream_notification_initialized = false;
             }
             if (buffer_initialized) {
                 ma_audio_buffer_uninit(&buffer);
@@ -114,14 +126,53 @@ namespace CE::Audio::Miniaudio::Detail {
     [[nodiscard]] std::shared_ptr<VoiceData> make_voice(SystemState& system, const std::filesystem::path& file) {
         auto data = std::make_shared<VoiceData>();
         data->file = file;
-        constexpr auto flags = MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT | MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
-        #if defined(_WIN32)
-            check(ma_sound_init_from_file_w(&system.engine, file.c_str(), flags, nullptr, nullptr, &data->sound),
-                "Open streamed audio voice");
-        #else
-            check(ma_sound_init_from_file(&system.engine, file.c_str(), flags, nullptr, nullptr, &data->sound),
-                "Open streamed audio voice");
-        #endif
+        auto* manager = ma_engine_get_resource_manager(&system.engine);
+        constexpr auto flags = MA_SOUND_FLAG_NO_SPATIALIZATION | MA_SOUND_FLAG_NO_PITCH;
+        if ((manager->config.flags & MA_RESOURCE_MANAGER_FLAG_NO_THREADING) != 0) {
+            // Without a worker, synchronous initialization finishes the load job
+            // before returning and needs no thread-backed notification event.
+            constexpr auto stream_flags = flags | MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_WAIT_INIT;
+#if defined(_WIN32)
+            check(
+                ma_sound_init_from_file_w(&system.engine, file.c_str(), stream_flags, nullptr, nullptr, &data->sound),
+                "Open streamed audio voice"
+            );
+#else
+            check(
+                ma_sound_init_from_file(&system.engine, file.c_str(), stream_flags, nullptr, nullptr, &data->sound),
+                "Open streamed audio voice"
+            );
+#endif
+        } else {
+            check(ma_async_notification_event_init(&data->stream_notification), "Initialize streamed audio notification");
+            data->stream_notification_initialized = true;
+            auto notifications = ma_resource_manager_pipeline_notifications_init();
+            notifications.init.pNotification = &data->stream_notification;
+            auto config = ma_resource_manager_data_source_config_init();
+#if defined(_WIN32)
+            config.pFilePathW = file.c_str();
+#else
+            config.pFilePath = file.c_str();
+#endif
+            config.flags = MA_RESOURCE_MANAGER_DATA_SOURCE_FLAG_STREAM | MA_RESOURCE_MANAGER_DATA_SOURCE_FLAG_ASYNC;
+            config.pNotifications = &notifications;
+            check(ma_resource_manager_data_stream_init_ex(manager, &config, &data->stream), "Queue streamed audio initialization");
+            data->stream_initialized = true;
+            // The init notification precedes the load job's final access. Keep both
+            // objects alive until ordered stream uninitialization joins that work.
+            check(ma_async_notification_event_wait(&data->stream_notification), "Wait for streamed audio initialization");
+            const auto result = ma_resource_manager_data_stream_result(&data->stream);
+            if (result == MA_OUT_OF_MEMORY && data->stream.isDecoderInitialized && data->stream.pPageData == nullptr) {
+                // miniaudio already uninitializes the decoder when page allocation
+                // fails, but leaves this flag set. Ordered cleanup must not repeat it.
+                data->stream.isDecoderInitialized = MA_FALSE;
+            }
+            check(result, "Open streamed audio voice");
+            check(
+                ma_sound_init_from_data_source(&system.engine, &data->stream, flags, nullptr, &data->sound),
+                "Initialize streamed audio voice"
+            );
+        }
         data->sound_initialized = true;
         float seconds = 0;
         if (ma_sound_get_length_in_seconds(&data->sound, &seconds) == MA_SUCCESS)

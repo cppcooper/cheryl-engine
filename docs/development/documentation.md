@@ -1,24 +1,35 @@
-# Generating and publishing documentation
+# Generating documentation
 
 The manual and C++ reference share one generation command. Doxygen extracts the
 selected public headers to XML; Breathe and Exhale turn that XML into Sphinx pages,
 and MyST includes the Markdown guides. Documentation generation does not configure
 or compile the engine.
 
+The generated artifact is an HTML site rooted at
+`docs/generation/generated/html/index.html`, containing both the manual and API
+reference. For an explicit CMake artifact target, use
+[`docs` in the docs-only project](#cmake-entry-points); the repository-root
+[`generate-docs.sh`](../../generate-docs.sh) script provides the direct command.
+Both update documentation incrementally by default; `docs-clean` or
+`./generate-docs.sh --clean` requests full regeneration. Enabling
+`CHERYL_BUILD_DOCS` makes the same targets available in an engine build;
+documentation is never part of the default build.
+
 ## Generate locally
 
 Use a Git checkout and Python 3.11 or newer with the standard `venv` module. You
 do not need to install Sphinx, Doxygen or pip manually. The first fallback setup
 needs network access to PyPI and the official Doxygen release assets, and a writable
-user cache. Use `python3` in the commands below if that is your interpreter's name.
-Run the shell blocks from any directory inside the checkout; the subshell locates
-the repository root and preserves your starting directory.
+user cache. The shell entry point requires Bash and selects `python3`, falling
+back to `python`; set `CHERYL_DOCS_PYTHON` to choose another interpreter. Run this
+block from any directory inside the checkout; the subshell preserves your starting
+directory:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/build.py
+  ./generate-docs.sh
 )
 ```
 
@@ -26,10 +37,25 @@ Open `docs/generation/generated/html/index.html`. The output directory also
 contains Doxygen XML, Sphinx doctrees and `sphinx-warnings.log`.
 `--output /path/to/output` selects another
 output root outside the authored documentation, or another directory beneath
-`docs/generation/generated/`; its `api/` and `pycache/` directories are reserved.
+`docs/generation/generated/`; its `api/`, `pycache/`, `.api-previous/` and
+`.xml-previous/` directories are reserved.
 The generated tree is ignored by Git. Edit the declaring
 headers or authored guides, then regenerate. Generation is serialized within a
 checkout because all output profiles share the generated API source directory.
+
+The script locates the repository independently of the current directory. You
+can also invoke `/path/to/cheryl-engine/generate-docs.sh` from elsewhere. It
+preserves that working directory, so relative `--output` and `--cache-dir` paths
+resolve from where you invoke it. Use `--help` for the available generation and
+tool-selection options. `--extract-only` generates only Doxygen XML; `--output`
+and `--doxygen` select an output root and explicit Doxygen executable.
+
+The Python entry point remains supported, including on Windows without Bash:
+invoke `python docs/generation/build.py` from the checkout root, or use its
+absolute path from another directory. It accepts the same generation flags and
+selects tools through bootstrap. Tool-only `status` and `setup` operations remain
+available through `docs/generation/bootstrap.py`; the shell script handles
+documentation generation.
 
 The generation scripts, Sphinx configuration, extensions, styles, templates and
 dependency manifests live under `docs/generation/`. Sphinx reads the authored
@@ -64,6 +90,56 @@ declaration notes, and includes concept definitions. Each declaration page links
 to its header at the recorded source revision. Consult that header for the full C++
 declaration. Existing Mermaid fences are displayed as plain text until a diagram
 renderer is selected; they are not rendered diagrams.
+
+### Incremental rebuilds and full regeneration
+
+The first generation performs the complete extraction and site build. Existing
+output created before incremental support also needs one complete generation to
+establish its cache state; the normal command handles this automatically.
+Later runs reuse completed stages:
+
+- Editing a guide reuses Doxygen XML, unchanged API pages and Sphinx doctrees.
+  Sphinx rebuilds the affected pages. CSS/template changes rewrite HTML using
+  the cached doctrees and update the site assets.
+- Editing public headers reruns Doxygen and rebuilds affected reference pages;
+  a changed XML file inventory starts a fresh Sphinx build.
+- Changes to generation tools, configuration or the recorded source revision can
+  invalidate reuse and require a full rebuild.
+
+Each run retains the warning, link, API-inventory and source-revision checks.
+A Sphinx failure preserves successful Doxygen extraction but requires fresh
+rendering on retry. A later link or source-revision check failure preserves both
+completed stages; fixing the cause and rerunning still performs all checks.
+Cached rendering does not mean the output passed validation. Tool-installation
+caches are separate from generated-site caches and survive clean generation.
+
+Use `--jobs 4` to let Sphinx read and write documents with up to four workers.
+The default is one; the count must be a positive integer. This selects rendering
+parallelism without changing the generated content or validation requirements.
+
+The log explains why XML or Sphinx output needs regeneration and reports the
+time spent extracting, rendering and checking. `Generating fresh Sphinx output`
+means the saved environment is being replaced; Sphinx then reports every guide
+and generated API page as added. A changed Git revision requires fresh rendering
+because source links are embedded in the cached document trees.
+
+Authored guides and included examples use Sphinx's normal modification-time
+tracking. If an external tool changes their contents while preserving or
+backdating timestamps, request a clean generation.
+
+To force full extraction and site generation:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./generate-docs.sh --clean
+)
+```
+
+`--extract-only` still limits the command to Doxygen XML; combine it with `--clean`
+when you need fresh extraction without generating HTML. CI and Read the Docs use
+`--clean` explicitly so publication does not depend on a previous generated site.
 
 ## Tool selection and reuse
 
@@ -103,23 +179,25 @@ also requires matching binary wheels. The pinned Python lock has wheel metadata
 coverage for CPython 3.11–3.14 on these platforms. Linux fallback has been exercised;
 Windows and macOS native setup still require execution acceptance.
 
-`status` reports tool readiness without installing anything. `setup` prepares tools
-without generating documentation. Use `exec --force-pinned` for reproducible
-generation, including CI and Read the Docs:
+Bootstrap's `status` reports tool readiness without installing anything; `setup`
+prepares tools without generating documentation. The shell script's
+`--force-pinned` selects the locked tools. Combine it with `--clean` for the full
+generation used by CI and Read the Docs:
 
 ```sh
 (
   set -e
   cd "$(git rev-parse --show-toplevel)"
-  python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py
+  ./generate-docs.sh --force-pinned --clean
 )
 ```
 
-Set `CHERYL_DOCS_CACHE_DIR` or pass bootstrap `--cache-dir /path/to/cache` to choose
-another shared cache. To select another interpreter, invoke bootstrap with that
-interpreter. `build.py --doxygen /path/to/doxygen` supplies an explicit executable,
-which must meet the minimum and takes precedence over automatic native tool
-selection. Keep local overrides out of publication configuration.
+Set `CHERYL_DOCS_CACHE_DIR` or pass `./generate-docs.sh --cache-dir /path/to/cache`
+to choose another shared cache. `CHERYL_DOCS_PYTHON=/path/to/python` selects the
+script's interpreter; the Python and CMake entry points also support explicit
+interpreter selection. `./generate-docs.sh --doxygen /path/to/doxygen` supplies an
+executable that must meet the minimum and takes precedence over automatic native
+tool selection. Keep local overrides out of publication configuration.
 
 ## CMake entry points
 
@@ -135,13 +213,29 @@ It enables no compiler languages and does not discover engine dependencies:
 )
 ```
 
-This writes `docs/generation/generated/html/index.html`. The optional `docs-tools`
-target prepares tools; the `docs` target also selects them, so running `docs-tools`
-first is unnecessary. Neither target belongs to the default build.
+This incrementally updates `docs/generation/generated/html/index.html`. Select
+`docs-clean` instead of `docs` in the build command to force full regeneration.
+The optional `docs-tools` target prepares tools; both generation targets also
+select them, so running `docs-tools` first is unnecessary. None of these targets
+belongs to the default build.
 
-For an engine build, configure `CHERYL_BUILD_DOCS=ON` and explicitly build `docs`.
-The root project still has its usual compiler and dependency requirements; use the
-[building guide](building.md) for that configuration. Both CMake entry points expose
+To add documentation to an existing root engine build, reconfigure that same build
+directory and explicitly select the target:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S . -B build/debug -G Ninja -DCHERYL_BUILD_DOCS=ON
+  cmake --build build/debug --target docs
+)
+```
+
+Use your existing build directory in place of `build/debug`; its other cached
+settings are retained. The root project still has its usual compiler and dependency
+requirements; use the [building guide](building.md) for an initial engine
+configuration. Building `docs` or `docs-clean` runs documentation generation
+without compiling the engine. Both CMake entry points expose
 `CHERYL_DOCS_PYTHON`, `CHERYL_DOCS_CACHE_DIR` and `CHERYL_DOCS_FORCE_PINNED`:
 
 ```sh
@@ -176,127 +270,8 @@ changing one direct version and accepting whatever an installer resolves:
    when changing Doxygen, Breathe or Exhale. A new requirements hash selects a new
    cache identity; old caches do not need to be overwritten.
 
-## Publishing contract
+## Publish the generated site
 
-The publishing configuration is
-[.readthedocs.yaml](../../.readthedocs.yaml),
-[documentation.yml](../../.github/workflows/documentation.yml) and
-[sync-docs-stable.py](../../.github/scripts/sync-docs-stable.py). Hosted publication
-still requires the account and repository setup below. Both `develop` and `main`
-must contain the engine headers and documentation implementation before their
-respective sites can build.
-
-GitHub Actions generates and checks HTML for pull requests, pushes to `develop`
-and `main`, `v*` tags, and manual runs. It retains checked HTML and build diagnostics
-as downloadable artifacts for 30 days. Read the Docs independently clones the
-selected Git ref, runs the same pinned generator, and hosts the resulting HTML.
-Actions artifacts are not the website's source and do not need an upload token for
-Read the Docs. Engine compilation belongs to the existing code CI; the documentation
-job does not compile examples.
-
-The Read the Docs configuration uses Ubuntu 24.04 and Python 3.13, with one custom
-`build.jobs.build.html` command:
-
-```yaml
-version: 2
-build:
-  os: ubuntu-24.04
-  tools:
-    python: "3.13"
-  jobs:
-    build:
-      html:
-        - python docs/generation/bootstrap.py exec --force-pinned -- python docs/generation/build.py --output "$READTHEDOCS_OUTPUT"
-```
-
-Keep `sphinx`, `mkdocs` and a separate Python installation step out of this custom
-configuration: bootstrap owns setup and generation. Read the Docs publishes the
-`html/` directory beneath `$READTHEDOCS_OUTPUT`. Its
-[custom build documentation](https://docs.readthedocs.com/platform/stable/build-customization.html)
-and [configuration reference](https://docs.readthedocs.com/platform/stable/config-file/v2.html#build-jobs)
-describe this contract. PDF and other builders are outside the current configuration.
-
-### Version policy
-
-| Website version | Git source | Policy |
-| --- | --- | --- |
-| `latest` | `develop` | Current development documentation. |
-| `stable` | Explicit `stable` branch | Fast-forward mirror of a checked commit on `main`. |
-| Release version, such as `vX.Y.Z` | Matching release tag | Historical documentation, activated individually or by an agreed tag rule. |
-
-Set the Read the Docs default branch to `develop`. An explicit Git branch named
-`stable` supplies the stable version instead of Read the Docs automatically choosing
-the greatest stable semantic version tag. Do not create a conflicting `stable` tag.
-Activate desired historical tags and leave them visible for the version selector;
-tags predating the documentation tooling cannot generate a site without a separate
-backport policy. See [Read the Docs versions](https://docs.readthedocs.com/platform/stable/versions.html).
-
-The stable sync job is disabled unless the repository variable
-`CHERYL_DOCS_PUBLISH_STABLE` equals the literal string `true`. Enable it only after
-approval, the documentation merge into `main`, and account setup. The job must run
-only for canonical-repository pushes to `main`, after documentation checks succeed;
-it must never check out pull-request code with write credentials. Serialize stable
-updates and compare the checked revision with the live `main` ref before updating.
-Create `stable` if absent, otherwise fast-forward it without force. Reject divergence
-and respect repository rules; do not delete, reset or force-update the branch to
-bypass a rejection. GitHub's [ref API](https://docs.github.com/en/rest/git/refs#update-a-reference)
-supports the required non-forced update.
-
-Read the Docs builds `latest` directly from `develop`; that build is independent of
-the Actions result. The stable mirror advances only after the documentation job
-succeeds. Branch protection and release policy determine which engine checks must
-pass before a change reaches `main`.
-
-### First account and site setup
-
-1. Merge the documentation configuration into `develop`. Create an account at
-   [Read the Docs Community](https://app.readthedocs.org/), install its GitHub App
-   with access to `cppcooper/cheryl-engine`, and import that repository. Importing
-   requires repository administration access. The App subscribes to the required
-   events, so no additional manual webhook is needed. If the project was imported
-   manually, connect the repository in project settings. See the
-   [Git integration instructions](https://docs.readthedocs.com/platform/stable/reference/git-integration.html#adding-a-project-from-a-repository).
-2. Record the actual project slug and public URL returned by Read the Docs; do not
-   assume the slug from the repository name. Set its default branch to `develop`,
-   activate `latest`, and check that version using the publication checks below.
-3. Merge the approved release into `main`. Enable `CHERYL_DOCS_PUBLISH_STABLE=true`
-   only when stable publication is approved. Enabling the variable does not
-   trigger a workflow, and manual dispatch runs only the documentation checks.
-   The next qualifying `main` push creates or advances the `stable` branch; let
-   Read the Docs sync versions, then activate `stable`. Trigger a build to refresh
-   versions if it has not appeared yet.
-4. After a successful stable build and revision check, choose `stable` as the
-   project's default website version. Activate existing release tags manually;
-   a future-tag activation rule does not replace that initial selection.
-
-### Publication verification and recovery
-
-Every full build writes `html/revision.json`. Its
-`source_revision` is the full checked Git commit, `source_ref` identifies the build
-ref, and `dirty` records whether the source checkout differs from that commit.
-The marker also records selected tool versions and lock/manifest hashes, without
-machine-specific executable or cache paths. Source links must use the same full
-commit; an overridden revision must match Git `HEAD`.
-
-For the first site and each publication investigation, fetch `revision.json` from
-the actual version URL, for example `<version-url>/revision.json`. Compare
-`source_revision` exactly with the expected commit and the Read the Docs build's
-reported commit; a successful build status or plausible page content is insufficient.
-For `stable`, also compare the Git `stable` and intended checked `main` revisions.
-Publication requires a clean source marker, successful internal links and fragments,
-and Git source links resolving to objects at that commit.
-
-First-site acceptance also includes opening the manual and API entry points,
-following an inherited base link and a declaring-header link, checking navigation
-and search, and switching between `latest` and `stable` once both are active.
-Check historical-version selection when a release tag containing the documentation
-tooling is available; do not count that coverage before such a tag exists. Confirm
-the GitHub App triggers the expected branch rebuilds. Local HTML checks do not
-establish that the hosted version selector, search or webhook delivery works.
-
-To pause stable updates, set `CHERYL_DOCS_PUBLISH_STABLE` to `false`. Correct a bad
-publication with a new reviewed commit on `main`, including a revert when restoring
-earlier content, then let the normal fast-forward path rebuild `stable`. Do not move
-the stable branch backward. If a ref diverges or repository rules reject an update,
-inspect the refs and resolve the cause before retrying; do not force the mirror.
-After recovery, repeat the exact revision and page checks against the public URL.
+The [publishing guide](publishing-documentation.md) owns account setup, version
+policy, stable promotion and hosted recovery. Local generation and link checks
+prepare the artifact; they do not publish a website.

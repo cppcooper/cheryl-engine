@@ -15,14 +15,15 @@ backend; UI selection is independent. The library's build target is
 target_link_libraries(game PRIVATE Cheryl::NativeGLFW)
 ```
 
-Engine and the public Gainput headers propagate through the target. GLFW stays a
-private dependency. Selection options for a fresh module configuration are:
+Engine usage settings propagate through the target. GLFW, Gainput and selected
+HID implementations are privately owned by this module; consumer headers expose
+Cheryl-owned types and binding/query operations. Selection options are:
 
 | Option | Default | Effect |
 | --- | --- | --- |
 | `CHERYL_NATIVE_INPUT` | `ON` | Includes Gainput-backed input and its Linux X11 requirement. |
 | `CHERYL_NATIVE_NULL_PLATFORM` | `OFF` | Configures an owned GLFW target without X11/Wayland. Disable native input as well to omit Gainput/X11. |
-| `CHERYL_BUILD_TESTS` | `OFF` standalone; `ON` at root | Selects this owner's implementation checks. |
+| `CHERYL_BUILD_TESTS` | `OFF` | Selects this owner's implementation checks. |
 
 From the repository root, a standalone build can bootstrap an explicit Engine
 checkout without selecting other integration owners:
@@ -50,13 +51,41 @@ On Linux, bundled GLFW enables both X11 and Wayland; use
 [build guide](../../../../docs/development/building.md) for system requirements and
 Gainput's optional HID fetch.
 
+## Use with an application
+
+For a GLFW/OpenGL game, use the [standard Startup path](../../runtime/startup/README.md#standard-application-path)
+to assemble the compatible display, input, presentation, renderer and resources.
+Link `Cheryl::Cheryl` for the configured assembly, or select granular targets as
+shown in [Assembling the Engine](../../../../docs/architecture/assembling-engine.md).
+The runtime initializes input before the game's `init()` and detaches it while
+its display-owned window is still live.
+
+Bind controls during platform-owned initialization. During simulation, use the
+tick's action state and copied logical/framebuffer dimensions instead of polling
+or querying a live window. For a platform-only application, link Native GLFW and
+use its display/window interfaces directly; graphics/presentation setup belongs
+to the selected graphics implementation.
+
+### Choose a controller path
+
+| Configuration | Current usable scope |
+| --- | --- |
+| Linux with `GAINPUT_ENABLE_HID=OFF` | The joydev path reads `/dev/input/js0`; physical acceptance covers Bluetooth DualSense ordinary controls. It needs a readable device node. |
+| Direct HID selection | Integration is unfinished. Enabling the CMake option alone does not establish active polling, correct report identity or retained pad state. |
+| Windows or macOS controllers | Backend-specific gaps remain and the Linux observation does not accept those platforms. |
+
+[Linux controller mapping](#linux-controller-mapping) explains supported reports
+and fixed device selection; [controller backend limits](#controller-backend-limits)
+retains the source diagnosis for extending the integration. To investigate a
+missing press, start with [controller diagnostics](#controller-diagnostics).
+
 ## Engine contracts
 
 | Engine contract | Implementation | Responsibility |
 | --- | --- | --- |
-| [`CE::iDisplaySystem`](../../../engine/include/cheryl/core/display/display-system-interface.h) | [`CE::DisplaySystem`](include/cheryl/core/display/display-system.h) | Monitor snapshots, owned windows and active-window selection. |
-| [`CE::iWindow`](../../../engine/include/cheryl/core/display/window-interface.h) | [`CE::Window`](include/cheryl/core/display/window.h) | Window sizes/modes, resizing, cursor visibility and deferred callback failures. |
-| [`CE::Input::iInputSystem`](../../../engine/include/cheryl/core/controls/input-interface.h) | [`CE::Input::InputSystem`](include/cheryl/core/controls/input-system.h) | Device bindings and published State/Events/Text polls with capture and focus routing. Selected by `CHERYL_NATIVE_INPUT`. |
+| [`CE::Platform::DisplaySystem`](../../../engine/include/cheryl/core/display/display-system-interface.h) | [`CE::Platform::GLFW::DisplaySystem`](./include/cheryl/core/display/display-system.h) | Monitor snapshots, owned windows and active-window selection. |
+| [`CE::Platform::Window`](../../../engine/include/cheryl/core/display/window-interface.h) | [`CE::Platform::GLFW::Window`](./include/cheryl/core/display/window.h) | Window sizes/modes, resizing, cursor visibility and deferred callback failures. |
+| [`CE::Input::System`](../../../engine/include/cheryl/core/controls/input-interface.h) | [`CE::Platform::GLFW::InputSystem`](./include/cheryl/core/controls/input-system.h) | Device bindings and published State/Events/Text polls with capture and focus routing. Selected by `CHERYL_NATIVE_INPUT`. |
 
 The graphics owner selects its window client API and supplies rendering and
 presentation. GLFW/OpenGL context selection, buffer swapping and the native graphics
@@ -66,17 +95,23 @@ platform window/input facilities with its own API-specific setup.
 The [display/window contract](../../../../docs/runtime/display-and-window-contract.md)
 defines platform affinity, borrowed lifetimes, construction-time monitor snapshots,
 size observations and scale/cursor capability limits. Framebuffer changes publish
-the typed `CE::window_resized_event` channel alongside the legacy named notification;
+the typed `CE::Platform::window_resized_event` channel alongside the legacy named notification;
 the contract defines their ordering and failure boundary.
 
 With native input enabled, the owner reuses a supplied `gainput::gainput`,
 `gainputstatic` or `gainput` target, in that order, or adds the selected
-`extern/gainput` source. Gainput's public headers propagate through that target;
-the owner supplies the missing usage requirement for an owned legacy source build.
+`extern/gainput` source. Supplied compiled implementations must be compatible
+static inputs owned by Native GLFW; they do not propagate another implementation
+copy or upstream public headers to application consumers.
 Supplied dependency targets keep their host's settings. Owned source composition
 suppresses Gainput samples/tests locally, including cached `ON` choices, without
 rewriting the host cache. The selected fork's `GAINPUT_ENABLE_HID` setting remains
 available; its HID support brings hidapi and the platform's HID development libraries.
+GLFW and enabled HIDAPI use shared runtimes independently of Cheryl's own linkage.
+HIDAPI selection reuses a supplied target, a package or Linux pkg-config before
+fetching the pinned source. Linux defaults to HID disabled; when enabled, its
+default backend is hidraw. Windows forces HID support and needs a shared HIDAPI
+DLL in addition to the OS HID APIs.
 
 ## Input lifetime and mapping
 
@@ -85,8 +120,30 @@ The adapter claims ownership before `Init`, creates devices on its first window
 attachment, and calls `Exit` at destruction. Another native adapter's initialization
 fails explicitly while that owner exists, including while its callbacks are detached.
 Failed ownership acquisition leaves the existing adapter intact; an exception from
-`Init` releases the claim. Applications must not call `Init` or `Exit` through `manager()`
-or run an independently initialized Gainput manager alongside this adapter.
+`Init` releases the claim. Native manager state is private; applications must
+not run an independently initialized Gainput implementation alongside this adapter.
+
+Application bindings accept `CE::Input::KeyboardKey`, `MouseButton` and
+`GamepadControl` directly, paired with this adapter's device IDs. Pointer axes
+and wheel-button pulses use `CE::Input::MouseControl`. Include
+`<cheryl/core/controls/button-codes.h>`; no public GLFW translation helper is
+required. The [control guide](../../../../docs/runtime/input-state-model.md#control-identities-and-binding-tokens)
+lists the families and binding examples.
+
+Private native translation tables are generated from the Engine enums and pinned
+GLFW/Gainput headers. After changing those declarations, run
+`python3 tools/input/generate_controls.py` from the checkout root and commit its
+output; `--check` verifies freshness and runs in CI before module builds.
+The [generator](../../../../tools/input/generate_controls.py) keeps semantic naming
+exceptions separate from mechanically derived mappings. Consumers use the
+committed implementation and need neither the generator nor upstream headers.
+
+`InputSystem::device()` returns a copied
+device snapshot and `backend_time_ms()` observes the backend clock. These APIs
+replace public Gainput inheritance, manager members and SDK object access.
+Window/context-current, procedure lookup, swap interval and buffer swapping are
+exported native operations used by OpenGL, so OpenGL uses Native GLFW's integration
+with the shared GLFW runtime.
 
 When HID is compiled in, the selected Gainput fork discards the HID backend's
 initialization return code.
@@ -107,10 +164,12 @@ Reusable controller automation with HID disabled is in the
 Windows acceptance is shelved in the
 [platform plan](../../../../docs/planning/long-term/platform-acceptance.md).
 
-The input mapper uses Gainput's five-argument `OnDeviceButtonFloat` callback.
-It forwards `newValue` as the current axis state; the elapsed-time argument does
-not scale that value. Externally driven devices retain their callback-order state
-without replaying Gainput notifications.
+The private controller listener uses Gainput's five-argument
+`OnDeviceButtonFloat` callback. It normalizes the native control ID and forwards
+`newValue` as the current Cheryl axis state; the elapsed-time argument does not
+scale that value. Key/mouse callbacks feed Cheryl bindings directly in their
+shared observation order, including `F20`–`F25`. Those devices also retain a
+private Gainput state mirror without replaying its notifications into bindings.
 
 Target selection and standalone paths are in
 [the module guide](../../../../docs/development/modules.md).
@@ -122,7 +181,8 @@ pad. Existing named PS3 and Xbox 360 dialects retain their mappings. Other
 controllers use `JSIOCGBTNMAP` and `JSIOCGAXMAP` to translate driver event slots into
 gamepad controls following the
 [Linux gamepad specification](https://docs.kernel.org/input/gamepad.html).
-DualSense Cross maps from `BTN_SOUTH` to `PadButtonA`; right-stick and trigger axes
+DualSense Cross maps from `BTN_SOUTH` through Gainput's `PadButtonA` to
+`CE::Input::GamepadControl::A`; right-stick and trigger axes
 use their kernel codes, and hat axes produce directional button state. Unsupported
 codes are ignored. If mapping ioctls fail, the previous raw-axis fallback remains;
 button support is unavailable for an unrecognized dialect.

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -12,7 +14,7 @@ namespace CE::Audio {
         std::uint32_t sample_rate = 48000;
 
         // Initial scope: mono/stereo, 8–192 kHz. Throws for unsupported values.
-        void validate() const;
+        CE_API void validate() const;
         bool operator==(const Format&) const = default;
     };
 
@@ -25,17 +27,17 @@ namespace CE::Audio {
         struct Storage;
         std::shared_ptr<const Storage> storage_;
 
-        explicit Clip(std::shared_ptr<const Storage> storage);
+        CE_API explicit Clip(std::shared_ptr<const Storage> storage);
 
     public:
         Clip(const Clip&) = default;
         Clip& operator=(const Clip&) = default;
 
         // Rejects empty data, incomplete frames and non-finite samples.
-        [[nodiscard]] static Clip from_samples(::CE::Audio::Format format, std::vector<float> samples);
-        [[nodiscard]] ::CE::Audio::Format format() const noexcept;
-        [[nodiscard]] std::uint64_t frame_count() const noexcept;
-        [[nodiscard]] std::chrono::duration<double> duration() const noexcept;
-        [[nodiscard]] std::span<const float> samples() const noexcept;
+        [[nodiscard]] CE_API static Clip from_samples(::CE::Audio::Format format, std::vector<float> samples);
+        [[nodiscard]] CE_API ::CE::Audio::Format format() const noexcept;
+        [[nodiscard]] CE_API std::uint64_t frame_count() const noexcept;
+        [[nodiscard]] CE_API std::chrono::duration<double> duration() const noexcept;
+        [[nodiscard]] CE_API std::span<const float> samples() const noexcept;
     };
 }

@@ -15,9 +15,9 @@ separate from source completion.
 | Engine + Native GLFW + OpenGL | OpenGL consumer/probes, module implementation cases and selected owner/combined runner registration are correct. Native startup, presentation, retained-resource cleanup, input backpressure and concurrent shutdown require their explicit opt-ins. |
 | Standalone and supplied targets | Each module reuses one Engine; OpenGL reuses one Native GLFW. Dependency bootstrapping does not recursively enable root modules, tests or demo. Consumers link their actual owners and CTest discovers module-local cases. |
 | Crash bootstrap | An Engine-only consumer referencing no Engine entry point receives the automatic bootstrap object. Check the consumer's actual `NDEBUG` scope independently of exception/explicit traces or standalone Backward tests. |
-| Startup support | Explicitly compile `cengine_startup` in Engine-only composition and `module_opengl_startup` through the native demo. Installed SDK checks compile both support headers independently. Plain Engine/OpenGL links remain free of CLI11 usage requirements; dedicated parser/factory regressions remain pending. |
+| Startup module | Compile `module_startup` with OpenGL integration omitted for neutral composition and enabled for native composition. Check the generic and compatibility headers/factories plus selected-backend options. Plain Engine/OpenGL links remain free of CLI11 usage requirements. |
 | Worker support | Engine-only/JSON-only selection omits hwloc discovery/linkage. Controlled fixtures check owned snapshots, sparse/asymmetric topology, placement, fairness/caps and failure safety; native hwloc checks additionally require real eligible CPUs and binding support. |
-| Installed SDK | Extract into a different prefix, reject producer-path leakage, compile public/Startup header probes and run consumers linked only to installed Cheryl libraries. Windows must use bundled dependency DLLs; source-tree consumers alone do not prove this path. |
+| Installed SDK | Extract into another prefix, reject producer-path leakage, compile public/Startup/native-toolkit probes and link only installed owners. Check packaged and system shared runtimes with both Cheryl linkages. Static consumers also resolve embedded archives and native final-link requirements. Source-tree consumers alone do not prove relocation. |
 
 Controlled Engine tests establish runtime, publication and failure behavior against
 predictable dependencies. Implementing modules own checks of their actual behavior
@@ -41,9 +41,31 @@ avoids C++ language-module scanning; Cheryl integration modules are libraries.
 build execution. [Runner selection](testing.md) explains focused and aggregate
 registration.
 
+### Configure component combinations
+
+After [preparing an optional shared dependency prefix](building.md#dependency-and-toolchain-settings),
+the configure-only matrix checks fresh Engine-only, neutral/native Startup,
+Native GLFW, OpenGL, TGUI, RmlUi, audio, JSON-only/native Workers and supplied-Engine
+compositions:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  python3 .github/ci/configure_components.py \
+    --vcpkg-root build/tools/vcpkg --installed-dir build/dependencies \
+    --build-root build/component-validation
+)
+```
+
+It selects Ninja, creates fresh `sdk-config-<case>` directories and refuses to
+overwrite existing ones. Use `--case NAME` to select a case and `--triplet` to
+select another prepared target. The matrix performs no source builds; it checks
+configuration and composition without establishing symbol linkage or execution.
+
 ### Engine only
 
-A fresh Release configuration provides a neutral graph without sandbox mode:
+A fresh Release configuration provides a neutral graph:
 
 ```sh
 (
@@ -58,9 +80,11 @@ A fresh Release configuration provides a neutral graph without sandbox mode:
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+    -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=OFF \
-    -DCHERYL_BUILD_DEMO=OFF -DCHERYL_SANDBOX_BUILD=OFF
+    -DCHERYL_BUILD_DEMO=OFF
   cmake --build build-validation-release --parallel --target \
     consumer-cengine tests-engine tests-logging \
     acceptance-logging acceptance-signal
@@ -95,7 +119,7 @@ probes while omitting optional topology helpers, modules, tests and SDK exports:
     -DCHERYL_BUILD_SDK=OFF -DCHERYL_BUILD_TESTS=OFF \
     -DCHERYL_BUILD_CONSUMER_TESTS=ON
   cmake --build build/testing-engine-isolation --parallel --target \
-    cengine_startup consumer-cengine
+    module_startup consumer-cengine
   ./build/testing-engine-isolation/cheryl-consumer
   ninja -C build/testing-engine-isolation -t commands consumer-cengine
 )
@@ -130,16 +154,18 @@ caller's working directory:
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_DEBUG_TERMINAL_LINUX=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=OFF \
+    -DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF -DCHERYL_BUILD_WORKER_TOPOLOGY_JSON=OFF \
+    -DCHERYL_BUILD_DOCS=OFF -DCHERYL_BUILD_SDK=OFF \
     -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON \
     -DCHERYL_BUILD_ALL_TESTS=OFF -DCHERYL_BUILD_ACCEPTANCE_TESTS=ON \
     -DCHERYL_BUILD_DEMO=OFF
   cmake --build build/testing-engine --parallel "$(nproc)" --target \
-    cengine_startup tests-engine consumer-cengine
+    module_startup tests-engine consumer-cengine
   ./build/testing-engine/cheryl-consumer
   ctest --test-dir build/testing-engine --parallel "$(nproc)" --output-on-failure \
     --no-tests=error \
@@ -215,7 +241,7 @@ Correct masks/progress do not establish cache residency or a workload speedup.
 
 ### Installed SDK consumers
 
-The [CI producer profile](building.md#github-ci-and-sdk-artifacts) configures Ninja
+The [CI producer profile](ci.md) configures Ninja
 with the selected modules/helpers, explicit owner targets and `CHERYL_BUILD_SDK=ON`.
 Use a clean pinned checkout and the producer's dependencies/toolchain. Supply the
 font fixtures for complete allocation coverage; missing CFF coverage is reported
@@ -234,14 +260,17 @@ separately. On Linux, a local equivalent is:
 
 Reuse `build/ci` only when its recorded source/toolchain/configuration/features match;
 omit the producer step when the matching build/checks are already accepted. The
-consumer directory and its sibling `sdk-consumer-relocated-sdk` must be fresh.
-The verifier checks SHA256, archive contents, producer paths and seven selected
-consumer programs plus first-include and Startup probes. It uses checkout test
-fixtures but imports installed Cheryl libraries, rebuilding none of their source.
-Windows CI uses the same steps under its MSVC Developer PowerShell with the
-manifest's vcpkg toolchain and DLL prefix. The selected hosted Ubuntu and Windows
-producer/relocated-consumer paths are accepted within the
-[CI coverage limits](building.md#github-ci-and-sdk-artifacts). The first main-push
+consumer directory and its sibling `sdk-consumer-relocated-sdk` must be fresh;
+the verifier also creates sibling hermetic and standalone-source directories.
+It checks SHA256, archive contents, producer paths, independent consumers and
+first-include/Startup/native-toolkit probes. Its hermetic composition clears
+ambient package discovery and builds a standalone teaching application against
+the relocated SDK. Test fixtures come from the checkout; Cheryl implementation
+sources are not rebuilt. A JUnit report records verifier results.
+The Linux producer uses distribution development packages. Windows CI uses the
+same steps under its MSVC Developer PowerShell with the prepared shared dependency
+toolchain. Platform acceptance remains subject to the
+[CI coverage limits](ci.md). The first main-push
 artifact collection remains [TR20](../testing-requests.md#tr20-automated-main-push-sdk-collection).
 This reusable procedure does not assert acceptance of unexecuted new cases.
 
@@ -320,9 +349,15 @@ enable_testing()
 set(CHERYL_BUILD_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
 block(SCOPE_FOR VARIABLES)
     set(CHERYL_BUILD_NATIVE_GLFW OFF)
+    set(CHERYL_BUILD_DEBUG_TERMINAL_LINUX OFF)
     set(CHERYL_BUILD_OPENGL OFF)
     set(CHERYL_BUILD_UI_TGUI OFF)
     set(CHERYL_BUILD_UI_RMLUI OFF)
+    set(CHERYL_BUILD_AUDIO_MINIAUDIO OFF)
+    set(CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC OFF)
+    set(CHERYL_BUILD_WORKER_TOPOLOGY_JSON OFF)
+    set(CHERYL_BUILD_DOCS OFF)
+    set(CHERYL_BUILD_SDK OFF)
     set(CHERYL_BUILD_TESTS OFF)
     set(CHERYL_BUILD_CONSUMER_TESTS OFF)
     set(CHERYL_BUILD_DEMO OFF)

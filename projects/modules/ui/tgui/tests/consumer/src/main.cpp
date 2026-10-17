@@ -1,4 +1,5 @@
 #include <cheryl/ui/tgui/input.h>
+#include <cheryl/core/logging/process-lifetime.h>
 #include <cheryl/ui/tgui/layout.h>
 #include <cheryl/ui/tgui/rendering.h>
 #include <cheryl/ui/tgui/scene.h>
@@ -24,6 +25,7 @@ namespace {
 }
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
     const CE::Input::Events::Record record{
         1, CE::Input::ObservationClock::now(), 7, CE::Input::DeviceKind::Keyboard, CE::Input::Events::Text{U'A'}
     };

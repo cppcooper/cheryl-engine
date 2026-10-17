@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <text/layout.h>
 #include <assets/resources/geometry2d.h>
 #include <assets/resources/image.h>
@@ -51,9 +53,9 @@ namespace CE::Text::Rendering {
         std::vector<DrawRun> runs_;
         bool positioned_runs_ = false;
 
-        explicit Prepared(ShapedText layout);
-        friend Prepared prepare(ShapedText, RasterOptions);
-        friend Generation upload(Prepared, CE::Rendering::Resources::Provider&);
+        CE_API explicit Prepared(ShapedText layout);
+        friend CE_API Prepared prepare(ShapedText, RasterOptions);
+        friend CE_API Generation upload(Prepared, CE::Rendering::Resources::Provider&);
 
     public:
         [[nodiscard]] const ShapedText& layout() const noexcept { return layout_; }
@@ -78,7 +80,7 @@ namespace CE::Text::Rendering {
         std::vector<DrawRun> runs_;
         bool positioned_runs_ = false;
 
-        Generation(
+        CE_API Generation(
             ShapedText layout,
             std::vector<PageResources> pages,
             std::vector<GlyphDraw> draws,
@@ -86,7 +88,7 @@ namespace CE::Text::Rendering {
             std::vector<DrawRun> runs,
             bool positioned_runs
         );
-        friend Generation upload(Prepared, CE::Rendering::Resources::Provider&);
+        friend CE_API Generation upload(Prepared, CE::Rendering::Resources::Provider&);
 
     public:
         [[nodiscard]] const ShapedText& layout() const noexcept { return layout_; }
@@ -107,7 +109,7 @@ namespace CE::Text::Rendering {
      * @param options Maximum atlas-page extent and optional positioned-run geometry.
      * @return Complete CPU preparation ready for upload_text(), with no native resources.
      */
-    [[nodiscard]] Prepared prepare(ShapedText layout, RasterOptions options = {});
+    [[nodiscard]] CE_API Prepared prepare(ShapedText layout, RasterOptions options = {});
     /** Upload one immutable text generation on the provider's owner/current context.
      * Failure returns no generation; earlier successful transient uploads retire
      * through their backend rather than an atomic native rollback. Mismatched
@@ -117,5 +119,5 @@ namespace CE::Text::Rendering {
      * @param provider Backend receiving the atlas and geometry uploads, borrowed for this call.
      * @return Owned layout and resource handles; native use retains the provider-domain limits.
      */
-    [[nodiscard]] Generation upload(Prepared prepared, CE::Rendering::Resources::Provider& provider);
+    [[nodiscard]] CE_API Generation upload(Prepared prepared, CE::Rendering::Resources::Provider& provider);
 }

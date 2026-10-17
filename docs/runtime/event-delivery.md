@@ -1,53 +1,13 @@
 # Event buses and persistent registration
 
-`CE::Events::EventSystem` provides the global default access layer. Its owned
-`CE::Events::EventBus` contains registrations. A subsystem may instead own a bus to isolate its channels and
-lifecycle; a bus is a registry, not a thread or worker pool.
+Use a typed channel to notify registered consumers about an occurrence. Own a
+`CE::Events::EventBus` to isolate a subsystem's channels and lifetime, or use
+`CE::Events::EventSystem::get()` for the global default bus. Include
+`<cheryl/core/subsystems/event-bus.h>`.
 
-```cpp
-CE::Events::EventBus local_bus;
-auto id = local_bus.register_listener("level-loaded", callback);
-local_bus.dispatch("level-loaded", payload);
-// CE::Events::EventSystem::get() exposes the same API through its default bus.
-```
-
-## Registrations
-
-Registration is persistent. The bus strongly owns its callback until explicit
-unregister or bus destruction; throwing away `id` does not remove it. Identifiers
-include bus identity, so an ID from a different bus cannot remove a local listener.
-
-## Immediate delivery
-
-Immediate delivery runs on dispatch's caller, in registration order within that
-dispatch. Overlapping producers can overlap callbacks; immediate listeners must
-be safe on each producer thread. Nested dispatch is synchronous and completes
-inside the outer callback. Exceptions propagate to the immediate caller.
-
-The registry lock is released before callbacks run. Registration during dispatch
-joins the next snapshot, not the already detached one. String channel names and
-`std::any` payload typing retain their current application-level contract.
-
-## Removal and shutdown
-
-`unregister_listener(id)` invalidates invocation entry before it returns. A
-listener already running may finish. For a callback borrowing an object (for
-example `[this]`), call `unregister_and_wait(id)` before destroying that object, or
-unregister then call `wait_for_listener(id)`. The barrier waits only for invocations
-already entered, not for queued tasks which can safely discard invalid entries.
-Do not wait while holding a lock needed by the callback. Self-unregister works;
-waiting from the same listener, including nested invocation, rejects instead of
-deadlocking. Callback exceptions still release in-flight accounting.
-
-`close()` invalidates all registrations and rejects subsequent registration and
-dispatch. Concurrent close/removal calls serialize invalidation with registry
-removal: every returning closer has closed all remaining invocation gates.
-Callback captures are still released outside both locks, so their destructors may
-reenter the bus. Close does not wait for running callbacks. Bus destruction closes
-without blocking; callers must settle any
-in-flight callbacks that borrow a bus or other target before destroying it.
-Registry snapshots and invocation guards retain callback ownership as needed,
-without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.
+The example below records level `3` synchronously in `last_level`, then removes
+its listener before the borrowed variable goes away. Registrations persist until
+explicit removal or bus closure; dropping an ID does not unregister a callback.
 
 ## Typed channels
 
@@ -59,6 +19,7 @@ channels retain their application-defined type contract and are separate from ty
 channels. Type identity is in-process; names and RTTI are not a serialized protocol.
 
 ```cpp
+CE::Events::EventBus local_bus;
 struct LevelLoaded {
     int level;
 };
@@ -99,7 +60,96 @@ borrowed and cannot be dereferenced on simulation. The
 [display/window contract](display-and-window-contract.md#sizes-modes-and-observation)
 defines observation, ordering and native failure behavior.
 
+## Registrations
+
+Registration is persistent. The bus strongly owns its callback until explicit
+unregister or bus destruction; throwing away `id` does not remove it. Identifiers
+include bus identity, so an ID from a different bus cannot remove a local listener.
+
+## Immediate delivery
+
+Immediate delivery runs on dispatch's caller, in registration order within that
+dispatch. Overlapping producers can overlap callbacks; immediate listeners must
+be safe on each producer thread. Nested dispatch is synchronous and completes
+inside the outer callback. Exceptions propagate to the immediate caller.
+
+The registry lock is released before callbacks run. Registration during dispatch
+joins the next snapshot, not the already detached one. String channel names and
+`std::any` payload typing retain their current application-level contract.
+
+## Removal and shutdown
+
+`unregister_listener(id)` invalidates invocation entry before it returns. A
+listener already running may finish. For a callback borrowing an object (for
+example `[this]`), call `unregister_and_wait(id)` before destroying that object, or
+unregister then call `wait_for_listener(id)`. The barrier waits only for invocations
+already entered, not for queued tasks which can safely discard invalid entries.
+Do not wait while holding a lock needed by the callback. Self-unregister works;
+waiting from the same listener, including nested invocation, rejects instead of
+deadlocking. Callback exceptions still release in-flight accounting.
+
+`close()` invalidates all registrations and rejects subsequent registration and
+dispatch. Concurrent close/removal calls serialize invalidation with registry
+removal: every returning closer has closed all remaining invocation gates.
+Callback captures are still released outside both locks, so their destructors may
+reenter the bus. Close does not wait for running callbacks. Bus destruction closes
+without blocking; callers must settle any
+in-flight callbacks that borrow a bus or other target before destroying it.
+Registry snapshots and invocation guards retain callback ownership as needed,
+without permitting a fresh invocation after invalidation. Queued delivery is optional and described below.
+
+## Named channels
+
+Existing string/`std::any` channels retain their application-defined payload
+contract. For those producers, the same bus accepts:
+
+```cpp
+auto named_id = local_bus.register_listener("level-loaded", callback);
+local_bus.dispatch("level-loaded", payload);
+local_bus.unregister_and_wait(named_id);
+```
+
+Here `callback` interprets the application's `std::any` payload. Named and typed
+channels remain separate even when their text names match. Prefer the typed form
+for a new channel so registration and submission agree on its payload type.
+
 ## Optional queued delivery
+
+To change simulation-owned state from another producer, include
+`<cheryl/core/engine/event-delivery.h>`, `<atomic>` and `<memory>`. With the bus,
+channel and `last_level` above, and an application-owned `runtime`, register a
+simulation-delivered listener before starting its producers:
+
+```cpp
+auto delivery_errors = std::make_shared<std::atomic<unsigned>>(0);
+auto queued_id = local_bus.register_listener(
+    loaded,
+    [&](const LevelLoaded& event) { last_level = event.level; },
+    CE::Events::simulation_delivery(runtime.simulation_dispatcher().submission()),
+    [delivery_errors](std::exception_ptr) noexcept {
+        delivery_errors->fetch_add(1, std::memory_order_relaxed);
+    }
+);
+// A producer during the live session:
+local_bus.dispatch(loaded, LevelLoaded{4});
+```
+
+The callback runs at a scheduled simulation boundary; dispatch does not wait for
+its completion. Keep `last_level` on that owner and alive through listener removal. The error
+sink owns its counter independently, so cancellation reporting remains valid even
+when the callback's target is being removed. A production sink can retain an owned
+reporting object instead; it must remain nonthrowing. During producer quiescence:
+
+```cpp
+local_bus.unregister_and_wait(queued_id);
+```
+
+This prevents new entry and waits for callbacks already running; an invalidated
+queued callback may be discarded. It does not wait for every queued error ticket
+to be destroyed. See [Ownership and Cleanup](../architecture/ownership-cleanup.md#shut-down-in-dependency-order)
+for where this removal belongs in game shutdown, and
+[Threads and Data Flow](../architecture/threads-data-flow.md#choose-how-work-is-delivered)
+for choosing dispatch versus events.
 
 Pass a delivery callable and error sink to `register_listener`. The bus accepts
 only the small `bool(Work)` delivery contract, with move-owned `Work`; its header

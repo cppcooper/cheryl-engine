@@ -1,12 +1,14 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/rendering/presentation-surface.h>
 
 namespace CE::Rendering::OpenGL {
     /** OpenGL context supplied by a compatible platform adapter, not by the renderer.
      * Context operations and resource uploads must run on the thread owning this context.
      */
-    class Context : public ::CE::Rendering::PresentationSurface {
+    class CE_OPENGL_API Context : public ::CE::Rendering::PresentationSurface {
     public:
         using ProcAddress = void (*)();
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/grid.h>
 #include <assets/types/primitives/vertex.h>
 #include <math/anchor.h>
@@ -18,6 +20,6 @@ namespace CE::Assets::Grids {
     // Local Y-up pixels around the normalized top-left pivot, normalized UVs. Throws
     // for empty texture dimensions, out-of-image bounds or an excessive vertex count.
     // Direct grid/pivot values must satisfy the manifest's representability constraints.
-    [[nodiscard]] GeometryData
+    [[nodiscard]] CE_API GeometryData
     make_geometry(const Definition& grid, CE::Rendering::Geometry::Pivot pivot, CE::Rendering::Geometry::PixelSize texture_size);
 }

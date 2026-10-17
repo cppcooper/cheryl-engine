@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <cstddef>
 
 namespace CE::Rendering::Geometry {
@@ -8,7 +10,7 @@ namespace CE::Rendering::Geometry {
 
     // Retained immutable upload, independent of material/image bindings. Logical
     // ownership can outlive shutdown; native operations require its live backend domain.
-    struct Buffer2D {
+    struct CE_API Buffer2D {
         virtual ~Buffer2D() = default;
         // Immutable upload metadata; safe to inspect during CPU frame preparation.
         [[nodiscard]] virtual Layout2D vertex_layout() const noexcept = 0;

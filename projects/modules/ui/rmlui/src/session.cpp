@@ -1,6 +1,8 @@
 #include <ui/rmlui/session.h>
 #include <ui/rmlui/input.h>
 
+#include "font.h"
+
 #include <internals/compile-time-logging.hpp>
 #include <internals/exceptions.h>
 
@@ -46,6 +48,8 @@ namespace CE::UI::RmlUi {
         };
 
         class LibraryLease final {
+            std::unique_ptr<Rml::FontEngineInterface> fonts_ = Detail::make_font_engine();
+
         public:
             LibraryLease(System& system, RenderTarget& renderer) {
                 const std::lock_guard lock(library_mutex);
@@ -54,17 +58,17 @@ namespace CE::UI::RmlUi {
                     throw Exceptions::failed_operation(CE_HERE, "RmlUi already has an active session or host-installed interfaces");
                 Rml::SetSystemInterface(&system);
                 Rml::SetRenderInterface(&renderer);
+                Rml::SetFontEngineInterface(fonts_.get());
                 try {
                     if (!Rml::Initialise())
-                        throw Exceptions::failed_operation(
-                            CE_HERE, "RmlUi initialization failed; verify the required stock FreeType configuration"
-                        );
+                        throw Exceptions::failed_operation(CE_HERE, "RmlUi initialization failed with the Engine font service");
                 } catch (...) {
                     // Core 6.3 cannot Shutdown a partially initialized SDK. Its
                     // dependency contract prevents missing default interfaces;
                     // never leave our failed constructor's storage installed.
                     Rml::SetSystemInterface(nullptr);
                     Rml::SetRenderInterface(nullptr);
+                    Rml::SetFontEngineInterface(nullptr);
                     throw;
                 }
                 library_owned = true;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "image.h"
 #include "sampler.h"
 #include "shader.h"
@@ -44,22 +46,22 @@ namespace CE::Rendering::Parameters {
 
     using Contract = std::vector<Definition>;
 
-    [[nodiscard]] Type type_of(const Value& value);
+    [[nodiscard]] CE_API Type type_of(const Value& value);
     // Throws invalid_args for malformed keys/types/semantics/defaults. Does not
     // reflect a program or validate image domains, unit limits or numeric ranges.
-    void validate_contract(const Contract& contract);
+    CE_API void validate_contract(const Contract& contract);
     // Validate one partial custom layer: rejects unknown/semantic keys, wrong types
     // and null images; does not require complete values or distinct sampler units.
-    void validate_values(const Contract& contract, const Set& values);
+    CE_API void validate_values(const Contract& contract, const Set& values);
     // Validate a complete packet, including already resolved engine values. Requires
     // all required keys and distinct sampler units; does not verify semantic provenance.
-    void validate_resolved(const Contract& contract, const Set& values);
+    CE_API void validate_resolved(const Contract& contract, const Set& values);
 
     // Copies defaults < pass < material < draw. Engine semantics have a single owner
     // and cannot be overridden by a custom-value layer. Validate every input layer,
     // even overridden entries, then the complete result. Optional missing keys are
     // absent. Failure leaves inputs unchanged and returns no partially resolved set.
-    [[nodiscard]] Set resolve(
+    [[nodiscard]] CE_API Set resolve(
         const Contract& contract,
         const PassSemantics& pass_semantics,
         const DrawSemantics& draw_semantics,

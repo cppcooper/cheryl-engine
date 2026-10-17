@@ -2,7 +2,7 @@
 #include "renderer-internal.h"
 #include "upload-check.h"
 #include "debug-output.h"
-#include <backends/opengl/gl.h>
+#include "gl-internal.h"
 #include <backends/opengl/pipeline.h>
 
 #include <internals/exceptions.h>

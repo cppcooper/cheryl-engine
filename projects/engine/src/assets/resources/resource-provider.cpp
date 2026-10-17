@@ -58,3 +58,10 @@ namespace CE::Rendering::Resources {
         CE::Assets::Cache::Context::release_provider(*this);
     }
 }
+
+namespace CE::Assets::Cache {
+    std::mutex Context::provider_mutex_;
+    const CE::Rendering::Resources::Provider* Context::bound_provider_ = nullptr;
+    std::thread::id Context::owner_;
+    bool Context::releasing_ = false;
+}

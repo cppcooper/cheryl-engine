@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/resource-lifetime.h>
 #include "resource-lifetime-internal.h"
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "poll-snapshot.h"
 
 #include <cstddef>
@@ -22,20 +24,20 @@ namespace CE::Input {
     class PollingBacklog final {
     public:
         // Finite capacity must be positive; spacing nonnegative and policy known.
-        explicit PollingBacklog(PollingOptions options = {});
+        CE_API explicit PollingBacklog(PollingOptions options = {});
 
-        [[nodiscard]] bool can_poll() const;
-        [[nodiscard]] bool poll_due(ObservationClock::time_point now) const;
+        [[nodiscard]] CE_API bool can_poll() const;
+        [[nodiscard]] CE_API bool poll_due(ObservationClock::time_point now) const;
         // max() when capacity is full; consumption restores capacity without resetting spacing.
-        [[nodiscard]] ObservationClock::time_point next_poll_at() const;
+        [[nodiscard]] CE_API ObservationClock::time_point next_poll_at() const;
         [[nodiscard]] std::size_t completed_polls() const { return polls_.size(); }
         // Requires eligible spacing/capacity, nonnull poll/State, a newer poll ID,
         // and observation time no later than completion. Invalid inputs throw;
         // allocation failure is not a rollback/retry guarantee for mutable staging.
-        void complete(std::shared_ptr<const PollSnapshot> poll, ObservationClock::time_point completed_at);
-        void complete(std::shared_ptr<const Actions::Snapshot> state, ObservationClock::time_point completed_at);
+        CE_API void complete(std::shared_ptr<const PollSnapshot> poll, ObservationClock::time_point completed_at);
+        CE_API void complete(std::shared_ptr<const Actions::Snapshot> state, ObservationClock::time_point completed_at);
         // Transfers the whole batch and immediately leaves a fresh empty backlog.
-        [[nodiscard]] std::vector<std::shared_ptr<const PollSnapshot>> consume();
+        [[nodiscard]] CE_API std::vector<std::shared_ptr<const PollSnapshot>> consume();
 
     private:
         PollingOptions options_;

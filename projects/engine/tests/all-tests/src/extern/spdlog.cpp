@@ -1,20 +1,14 @@
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
+#include "../../../logging-tests/backend-access.h"
 
 TEST(externlibs, spdlog_console_streams) {
     testing::internal::CaptureStdout();
     testing::internal::CaptureStderr();
-    auto console = spdlog::stdout_color_mt("console");
-    auto err_logger = spdlog::stderr_color_mt("stderr");
-    console->set_pattern("%v");
-    err_logger->set_pattern("%v");
 
     // print messages
     std::string in_str_stdout = "hello world";
     std::string in_str_stderr = "goodbye world";
-    console->info(in_str_stdout);
-    err_logger->error(in_str_stderr);
+    CE::Logging::Testing::console_probe(in_str_stdout, in_str_stderr);
 
     // retrieve messages
     std::string out_str_stdout = testing::internal::GetCapturedStdout();

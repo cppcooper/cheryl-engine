@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/display/framebuffer-size.h>
 #include <core/rendering/render-frame.h>
 #include <glm.hpp>
@@ -13,7 +15,7 @@ namespace CE::Rendering {
      * brackets native use with backend initialization/teardown and retains its context.
      * A backend failure may leave native state changed or part of a frame drawn.
      */
-    class Renderer {
+    class CE_API Renderer {
     public:
         virtual ~Renderer() = default;
 

@@ -1,6 +1,6 @@
 # Contributing
 
-Start with the [architecture overview](../runtime/runtime-architecture.md) and the
+Start with the [architecture overview](../architecture/assembling-engine.md) and the
 guide for the subsystem you are changing. Choose the owning library before adding
 code: neutral contracts belong in Engine, runtime integration SDKs in their
 modules, optional Engine helpers in support targets, and game mechanics in the

@@ -3,13 +3,14 @@ include("${CHERYL_REPOSITORY_ROOT}/cmake/CherylModules.cmake")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     project(@MODULE_NAME@ VERSION ${VERSION_PROJECT_MODULE_@MODULE_ID@} LANGUAGES CXX)
 endif()
-cheryl_option(CHERYL_BUILD_TESTS "Build module-local checks" OFF)
+cheryl_configure_module_options()
 cheryl_prepare_module()
 
 file(GLOB_RECURSE module_sources CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_library(${TARGET_LIB_MODULE_@MODULE_ID@} STATIC ${module_sources})
 add_library(Cheryl::@MODULE_ALIAS@ ALIAS ${TARGET_LIB_MODULE_@MODULE_ID@})
+cheryl_register_public_component(${TARGET_LIB_MODULE_@MODULE_ID@} FEATURE CHERYL_HAS_@MODULE_ID@)
 set_target_properties(${TARGET_LIB_MODULE_@MODULE_ID@} PROPERTIES
     VERSION "${VERSION_PROJECT_MODULE_@MODULE_ID@}"
     OUTPUT_NAME "${OUTPUT_LIB_MODULE_@MODULE_ID@}"

@@ -5,8 +5,11 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <random>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -16,6 +19,7 @@ namespace {
     CE::Text::FontSelection isolated_selection() {
         CE::Text::FontSelection selection;
         selection.automatic_system_fonts = false;
+        selection.asset_directories.clear();
         selection.system_directories = std::vector<std::filesystem::path>{};
         return selection;
     }
@@ -24,11 +28,19 @@ namespace {
         std::filesystem::path path;
         inline static std::atomic<unsigned> next{0};
 
-        FontDirectory()
-        : path(std::filesystem::temp_directory_path() / ("cheryl-font-" +
-              std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" + std::to_string(next++))) {
-            if (!std::filesystem::create_directory(path))
-                throw std::runtime_error("Font fixture directory already exists");
+        FontDirectory() {
+            const auto root = std::filesystem::temp_directory_path();
+            std::random_device random;
+            for (unsigned attempt = 0; attempt < 64; ++attempt) {
+                path = root / ("cheryl-font-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                               std::to_string(random()) + "-" + std::to_string(next++));
+                std::error_code error;
+                if (std::filesystem::create_directory(path, error))
+                    return;
+                if (error && error != std::errc::file_exists)
+                    throw std::filesystem::filesystem_error("Unable to create font fixture directory", path, error);
+            }
+            throw std::runtime_error("Unable to create a unique font fixture directory");
         }
         ~FontDirectory() {
             std::error_code error;
@@ -88,6 +100,92 @@ TEST(font_selection, families) {
     EXPECT_EQ(automatic.faces()[0].path, renamed);
 }
 
+TEST(font_selection, names) {
+    FontDirectory assets;
+    FontDirectory system;
+    const auto nested = assets.path / "nested";
+    ASSERT_TRUE(std::filesystem::create_directory(nested));
+    const auto application = nested / "GameFont.TTF";
+    const auto installed = system.path / "installed.ttf";
+    std::filesystem::copy_file(fixture, application);
+    std::filesystem::copy_file(fixture, installed);
+    auto selection = isolated_selection();
+    selection.asset_directories = {assets.path};
+    selection.system_directories = std::vector{system.path};
+    selection.preferred = {"Absent Cheryl Test Family", "dEjAvU sAnS", "gamefont.ttf", "Absent.ttf"};
+    const auto fonts = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fonts.faces().size(), 2u);
+    EXPECT_EQ(fonts.faces()[0].path, application);
+    EXPECT_EQ(fonts.faces()[0].family, "DejaVu Sans");
+    EXPECT_TRUE(fonts.faces()[1].builtin);
+
+    selection.preferred = {"GameFont"};
+    const auto no_stem = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(no_stem.faces().size(), 1u);
+    EXPECT_TRUE(no_stem.faces()[0].builtin);
+
+    selection.preferred = {CE::Text::SystemFontFamily{"dEjAvU sAnS"}};
+    const auto system_only = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(system_only.faces().size(), 2u);
+    EXPECT_EQ(system_only.faces()[0].path, installed);
+}
+
+TEST(font_selection, name_order) {
+    FontDirectory assets;
+    const auto first = assets.path / "First.ttf";
+    const auto second = assets.path / "Second.ttf";
+    std::filesystem::copy_file(fixture, first);
+    std::filesystem::copy_file(fixture, second);
+    auto selection = isolated_selection();
+    selection.asset_directories = {assets.path};
+    selection.preferred = {"Second.ttf", "Absent.ttf", "FIRST.TTF", "second.ttf"};
+    const auto fonts = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fonts.faces().size(), 3u);
+    EXPECT_EQ(fonts.faces()[0].path, second);
+    EXPECT_EQ(fonts.faces()[1].path, first);
+    EXPECT_TRUE(fonts.faces()[2].builtin);
+
+    selection.preferred = {"DejaVu Sans"};
+    const auto family = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(family.faces().size(), 2u);
+    EXPECT_EQ(family.faces()[0].path, first);
+}
+
+TEST(font_selection, named_system) {
+    FontDirectory directory;
+    const auto installed = directory.path / "installed.ttf";
+    std::filesystem::copy_file(fixture, installed);
+    auto selection = isolated_selection();
+    selection.system_directories = std::vector{directory.path};
+    selection.preferred = {"dEjAvU sAnS"};
+    const auto fonts = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fonts.faces().size(), 2u);
+    EXPECT_EQ(fonts.faces()[0].path, installed);
+    EXPECT_TRUE(fonts.faces()[1].builtin);
+
+    selection.system_directories = std::vector<std::filesystem::path>{};
+    const auto missing = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(missing.faces().size(), 1u);
+    EXPECT_TRUE(missing.faces()[0].builtin);
+}
+
+TEST(font_selection, automatic_assets) {
+    FontDirectory assets;
+    FontDirectory system;
+    const auto application = assets.path / "application.ttf";
+    const auto installed = system.path / "installed.ttf";
+    std::filesystem::copy_file(fixture, application);
+    std::filesystem::copy_file(fixture, installed);
+    auto selection = isolated_selection();
+    selection.asset_directories = {assets.path};
+    selection.system_directories = std::vector{system.path};
+    selection.automatic_system_fonts = true;
+    const auto fonts = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fonts.faces().size(), 2u);
+    EXPECT_EQ(fonts.faces()[0].path, application);
+    EXPECT_TRUE(fonts.faces()[1].builtin);
+}
+
 TEST(font_selection, snapshot) {
     FontDirectory directory;
     const auto file = directory.path / "font.ttf";
@@ -101,14 +199,74 @@ TEST(font_selection, snapshot) {
     EXPECT_TRUE(fonts.covers(U'\u00e9'));
 }
 
+TEST(font_selection, missing) {
+    FontDirectory directory;
+    const auto first = directory.path / "first.ttf";
+    const auto second = directory.path / "second.ttf";
+    std::filesystem::copy_file(fixture, first);
+    std::filesystem::copy_file(fixture, second);
+    auto selection = isolated_selection();
+    selection.preferred = {
+        CE::Text::FontFile{directory.path / "absent-before.ttf"}, CE::Text::FontFile{first},
+        CE::Text::FontFile{directory.path / "absent-between.ttf"}, CE::Text::FontFile{second},
+        CE::Text::FontFile{directory.path / "absent-after.ttf"}
+    };
+    const auto fonts = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fonts.faces().size(), 3u);
+    EXPECT_EQ(fonts.faces()[0].path, first);
+    EXPECT_EQ(fonts.faces()[1].path, second);
+    EXPECT_TRUE(fonts.faces()[2].builtin);
+
+    selection.preferred = {
+        CE::Text::FontFile{directory.path / "absent-before.ttf"}, CE::Text::FontFile{directory.path / "absent-after.ttf"}
+    };
+    const auto fallback = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(fallback.faces().size(), 1u);
+    EXPECT_TRUE(fallback.faces()[0].builtin);
+}
+
 TEST(font_selection, invalid) {
     auto selection = isolated_selection();
     selection.preferred = {CE::Text::FontFile{fixture, 9999}};
-    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
-    selection.preferred = {CE::Text::FontFile{fixture.parent_path() / "absent.ttf"}};
     EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
     selection.preferred = {CE::Text::SystemFontFamily{""}};
     EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
     selection.preferred = {CE::Text::SystemFontFamily{std::string{"DejaVu\0Sans", 11}}};
     EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
+    selection.preferred = {""};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
+    selection.preferred = {std::string{"DejaVu\0Sans", 11}};
+    EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::invalid_args);
+}
+
+TEST(font_selection, corrupt) {
+    FontDirectory directory;
+    const auto corrupt = directory.path / "corrupt.ttf";
+    {
+        std::ofstream output(corrupt, std::ios::binary);
+        output << "Not a font";
+        ASSERT_TRUE(output.good());
+    }
+    const auto empty = directory.path / "empty.ttf";
+    {
+        std::ofstream output(empty, std::ios::binary);
+        ASSERT_TRUE(output.good());
+    }
+    auto selection = isolated_selection();
+    for (const auto& path : {corrupt, empty, directory.path}) {
+        SCOPED_TRACE(path.string());
+        selection.preferred = {CE::Text::FontFile{path}};
+        EXPECT_THROW(static_cast<void>(CE::Text::FontCollection::load(selection)), CE::Exceptions::runtime_exception);
+    }
+
+    FontDirectory system;
+    const auto installed = system.path / "installed.ttf";
+    std::filesystem::copy_file(fixture, installed);
+    selection.asset_directories = {directory.path};
+    selection.system_directories = std::vector{system.path};
+    selection.preferred = {"corrupt.ttf", "empty.ttf", "DejaVu Sans"};
+    const auto discovered = CE::Text::FontCollection::load(selection);
+    ASSERT_EQ(discovered.faces().size(), 2u);
+    EXPECT_EQ(discovered.faces()[0].path, installed);
+    EXPECT_TRUE(discovered.faces()[1].builtin);
 }

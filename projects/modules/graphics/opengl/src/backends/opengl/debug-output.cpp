@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include "debug-output.h"
 #include <internals/compile-time-logging.hpp>
 

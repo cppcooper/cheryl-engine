@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "platform-dispatcher.h"
 #include "worker-pool.h"
 
@@ -69,7 +71,7 @@ namespace CE::Runtime {
         bool destroying_ = false;
 
     public:
-        Context(
+        CE_API Context(
             std::unique_ptr<CE::Platform::DisplaySystem> display,
             std::unique_ptr<CE::Rendering::PresentationSurface> surface,
             std::unique_ptr<CE::Rendering::Renderer> renderer,
@@ -77,7 +79,7 @@ namespace CE::Runtime {
             CE::Input::System& input,
             ExecutionOptions execution = ExecutionOptions{}
         );
-        Context(
+        CE_API Context(
             std::unique_ptr<CE::Platform::DisplaySystem> display,
             std::unique_ptr<CE::Rendering::PresentationSurface> surface,
             std::unique_ptr<CE::Rendering::Renderer> renderer,
@@ -85,33 +87,33 @@ namespace CE::Runtime {
             std::unique_ptr<CE::Input::System> input,
             ExecutionOptions execution = ExecutionOptions{}
         );
-        ~Context();
+        CE_API ~Context();
 
         Context(const Context&) = delete;
         Context& operator=(const Context&) = delete;
 
         // Borrowed adapters, not ownership transfer; getters do not marshal work.
         // window() requires the display owner and throws if there is no active window.
-        [[nodiscard]] CE::Platform::DisplaySystem& display() const;
-        [[nodiscard]] CE::Platform::Window& window() const;
-        [[nodiscard]] CE::Rendering::PresentationSurface& surface() const;
-        [[nodiscard]] CE::Rendering::Renderer& renderer() const;
-        [[nodiscard]] CE::Rendering::Resources::Provider& resources() const;
-        [[nodiscard]] CE::Input::System& input() const;
+        [[nodiscard]] CE_API CE::Platform::DisplaySystem& display() const;
+        [[nodiscard]] CE_API CE::Platform::Window& window() const;
+        [[nodiscard]] CE_API CE::Rendering::PresentationSurface& surface() const;
+        [[nodiscard]] CE_API CE::Rendering::Renderer& renderer() const;
+        [[nodiscard]] CE_API CE::Rendering::Resources::Provider& resources() const;
+        [[nodiscard]] CE_API CE::Input::System& input() const;
         [[nodiscard]] PlatformDispatcher& platform_dispatcher() { return platform_dispatcher_; }
         [[nodiscard]] CE::Diagnostics::DomainId diagnostic_id() const noexcept { return domain_; }
         // Groups created here are part of this context's shutdown domain, even
         // when their physical capacity comes from an application-supplied pool.
         // Synchronized across producers; closed context/pool or invalid options throw.
-        [[nodiscard]] CE::Workers::Group make_worker_group(CE::Workers::GroupOptions options = CE::Workers::GroupOptions{});
+        [[nodiscard]] CE_API CE::Workers::Group make_worker_group(CE::Workers::GroupOptions options = CE::Workers::GroupOptions{});
 
     private:
         friend class GameRuntime;
         friend struct Detail::ContextAccess;
-        void validate() const;
-        void begin_session();
-        void close_worker_submissions();
-        [[nodiscard]] bool workers_idle() const;
-        void finish_workers();
+        CE_API void validate() const;
+        CE_API void begin_session();
+        CE_API void close_worker_submissions();
+        [[nodiscard]] CE_API bool workers_idle() const;
+        CE_API void finish_workers();
     };
 }

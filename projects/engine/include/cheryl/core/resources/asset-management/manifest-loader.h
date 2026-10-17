@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/definitions/manifest.h>
 #include <assets/definitions/shader-assets.h>
 
@@ -21,18 +23,18 @@ namespace CE::Assets::Manifests {
      * documents and image bounds are checked by Loader after it has collected the full asset set.
      */
     struct Reader {
-        [[nodiscard]] static Graphics load(const std::filesystem::path& file);
-        [[nodiscard]] static Graphics parse(std::istream& input, const std::filesystem::path& source);
-        [[nodiscard]] static CE::Assets::Shaders::Manifest load_shader(const std::filesystem::path& file);
-        [[nodiscard]] static CE::Assets::Shaders::Manifest parse_shader(std::istream& input, const std::filesystem::path& source);
+        [[nodiscard]] CE_API static Graphics load(const std::filesystem::path& file);
+        [[nodiscard]] CE_API static Graphics parse(std::istream& input, const std::filesystem::path& source);
+        [[nodiscard]] CE_API static CE::Assets::Shaders::Manifest load_shader(const std::filesystem::path& file);
+        [[nodiscard]] CE_API static CE::Assets::Shaders::Manifest parse_shader(std::istream& input, const std::filesystem::path& source);
 
         // Open only registered graphics-manifests.json indexes and the graphics
         // documents they list. References are graphics-relative exact registered
         // paths; repeated references are parsed once across the entire batch.
-        [[nodiscard]] static std::vector<Graphics> load_graphics(const CE::Assets::Loading::FileRegistry& files);
+        [[nodiscard]] CE_API static std::vector<Graphics> load_graphics(const CE::Assets::Loading::FileRegistry& files);
         // Empty selection uses every registered index. Explicit indexes permit a
         // focused batch while references still resolve against the full registry.
-        [[nodiscard]] static Definitions
+        [[nodiscard]] CE_API static Definitions
         load_graphics_definitions(const CE::Assets::Loading::FileRegistry& files, const std::vector<std::filesystem::path>& indexes = {});
     };
 }

@@ -14,7 +14,7 @@ new build/test/native results.
 
 Independent Engine-only graph inspection and the Linux terminal configuration
 matrix are accepted. Hosted Linux/Windows builds and relocated SDK consumers are
-accepted within the [CI coverage limits](development/building.md#github-ci-and-sdk-artifacts).
+accepted within the [CI coverage limits](development/ci.md).
 The first main-push SDK collection remains
 [TR20](testing-requests.md#tr20-automated-main-push-sdk-collection); terminal desktop
 and demo material/artwork observations remain pending. These acceptance updates do
@@ -128,7 +128,7 @@ within each phase.
 | Typed EventChannel | Implemented | Compile-time payload typing in addition to event-name identity, using the persistent bus. | [event-channel.h](../projects/engine/include/cheryl/core/subsystems/event-channel.h) |
 | Runtime/worker diagnostics | Implemented | Domain IDs and counts for updates, input polls, backpressure, dispatch, work queues and failures. | [game-runtime.h](../projects/engine/include/cheryl/core/game-framework/game-runtime.h) |
 | Logging subsystem | Implemented | Structured spdlog-backed logging, sink management and synchronized logger open/close behavior. | [log.h](../projects/engine/include/cheryl/core/logging/log.h) |
-| Failure/crash reporting | Implemented | Custom exception classes, best-effort failure reports, stack traces and optional native Debug handlers. | [signal-handlers/](../projects/engine/support/signal-handlers/) |
+| Failure/crash reporting | Implemented | Custom exception classes, best-effort failure reports, stack traces and optional native Debug handlers. | [crash bootstrap](../projects/engine/private/diagnostics/src/main.cpp) |
 | **Input and display** | | | |
 | Neutral input system API | Implemented | Defines native adapter lifecycle, device IDs, capabilities and immutable published input views. | [input-interface.h](../projects/engine/include/cheryl/core/controls/input-interface.h) |
 | Action/chord binding | Implemented | Maps physical controls to game-defined buttons and axes; supports chords and binding changes. | [input-bindings.h](../projects/engine/include/cheryl/core/controls/input-bindings.h) |
@@ -203,10 +203,10 @@ within each phase.
 | Pivot/anchor geometry | Implemented | Pivot presets, anchor conversion, quad/strip generation and Y-up geometry. | [anchor.h](../projects/engine/include/cheryl/math/anchor.h) |
 | General math utilities | Implemented | Byte, pointer, binary, fitting, numeric and time helper functions. | [math/](../projects/engine/include/cheryl/math/) |
 | File manager and path I/O | Implemented | Core file-manager interface and path-oriented file operations, distinct from installed font discovery. | [file-mgr.h](../projects/engine/include/cheryl/core/resources/fileio/file-mgr.h) |
-| External Debug terminal | Implemented · Linux desktop acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. The configuration matrix is accepted; AUTO links actual Debug only and non-Debug inclusion needs a runtime enable option. Engine supplies an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [desktop QA](testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop) |
+| External Debug terminal | Implemented · Linux desktop acceptance pending | Optional Linux module owns process capture/viewer and test-report routing. Selection defaults on for supported single-configuration Debug builds; explicit ON includes every configuration, with non-Debug startup requiring a runtime enable option. Engine supplies an optional startup callback attachment. | [module guide](../projects/modules/platform/debug-terminal-linux/README.md), [desktop QA](testing-requests.md#tr18-qa-linux-debug-terminal-on-a-real-desktop) |
 | **Build and verification** | | | |
-| Installed CMake package | Implemented | Opt-in CherylSDK component exports prebuilt selected libraries, headers, dependency targets and licenses; selected hosted Linux and Windows installed consumers are accepted. Windows bundles native dependencies. | [SDK consumption](development/consuming-engine.md#prebuilt-development-sdks) |
-| GitHub CI and SDK artifacts | Implemented | Linux GCC/Clang and Windows MSVC focused builds/tests plus relocated SDK consumers; successful main validation collects compiled development SDK artifacts without applications or release publication. Hosted builds and relocated consumers are accepted with explicit Windows skipped-case limits; first main-push artifact collection remains pending. | [CI matrix](development/building.md#github-ci-and-sdk-artifacts), [TR20](testing-requests.md#tr20-automated-main-push-sdk-collection) |
+| Installed CMake package | Implemented | CherylSDK component exports prebuilt selected libraries, headers, dependency targets and licenses; selected hosted Linux and Windows installed consumers are accepted. Windows bundles native dependencies. | [SDK consumption](development/consuming-engine.md#prebuilt-development-sdks) |
+| GitHub CI and SDK artifacts | Implemented | Linux GCC/Clang and Windows MSVC focused builds/tests plus relocated SDK consumers; successful main validation collects compiled development SDK artifacts without applications or release publication. Hosted builds and relocated consumers are accepted with explicit Windows skipped-case limits; first main-push artifact collection remains pending. | [CI matrix](development/ci.md), [TR20](testing-requests.md#tr20-automated-main-push-sdk-collection) |
 | Modular CMake root | Implemented | C++23 build splits Engine and native graphics/platform/UI/audio owners. | [CMakeLists.txt](../CMakeLists.txt) |
 | CMake option selection | Implemented | Root switches for GLFW, OpenGL, TGUI, RmlUi, miniaudio, native input, demo and test modes. | [CherylOptions.cmake](../cmake/CherylOptions.cmake) |
 | Named library target aliases | Implemented | Consistent identities such as Cheryl::Engine, Cheryl::NativeGLFW and Cheryl::Audio::Miniaudio. | [CherylTargets.cmake](../cmake/CherylTargets.cmake) |
@@ -248,7 +248,7 @@ coverage limits, including bidi observations, compressed streaming, shader-failu
 recovery and simultaneous close/resize. Dedicated new regressions and supplied-SDK
 composition gaps remain in their owning plans; they are not blanket pending QA.
 
-The [runtime architecture](runtime/runtime-architecture.md) explains system composition;
+The [assembly guide](architecture/assembling-engine.md) explains system composition;
 [subject guides](README.md) own detailed contracts. The
 [roadmap](planning/develop-review-and-development-plan.md) owns sequencing,
 [long-term plans](planning/long-term/README.md) retain platform/consumer prerequisites,

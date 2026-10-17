@@ -14,26 +14,10 @@ Select `CHERYL_BUILD_AUDIO_MINIAUDIO=ON` at the repository root and link:
 target_link_libraries(game PRIVATE Cheryl::Engine Cheryl::Audio::Miniaudio)
 ```
 
-This module defaults to `OFF`, preserving existing Engine-only and graphical
-assemblies until their applications select audio. It has a standalone entry point:
-set `CHERYL_REPOSITORY_ROOT` to an absolute checkout path before adding the owner.
+This module defaults to `ON` at the repository root. Disable it for assemblies
+that do not need audio. Its standalone entry point locates the enclosing checkout;
+set `CHERYL_REPOSITORY_ROOT` to select another absolute checkout path.
 It reuses `Cheryl::Engine` or bootstraps Engine through the common module helper.
-
-Miniaudio is selected for its available source, permissive licensing and support
-for decoding, mixing and streaming.
-
-The owner reuses a supplied `miniaudio::miniaudio` or `miniaudio` target. Otherwise
-it uses `CHERYL_MINIAUDIO_SOURCE` or the pinned `extern/miniaudio` submodule at
-0.11.25 (`9634bedb5b5a2ca38c1ee7108a9358a4e233f14d`). Supplied dependencies must
-provide the high-level engine, resource manager, decoding and device APIs with
-matching public compile definitions. The private SDK support target compiles only
-`miniaudio.c`; it does not configure upstream extra nodes, codecs, examples or
-installation, and it does not rewrite host cache options.
-
-Miniaudio offers the Unlicense and MIT No Attribution; its notices remain in
-[LICENSE](../../../../extern/miniaudio/LICENSE). Linux output loads supported native
-audio backends dynamically and links Threads, the platform loader and the math
-library. Engine-only selection neither discovers nor compiles miniaudio.
 
 ## Preparation and output
 
@@ -76,6 +60,29 @@ A native start failure leaves it stopped. Control changes take effect at backend
 processing boundaries. Buffered decoded PCM can delay a looping-policy change;
 already queued device output cannot be withdrawn.
 
+## Dependency configuration
+
+Miniaudio is selected for its available source, permissive licensing and support
+for decoding, mixing and streaming.
+
+The owner reuses a supplied `miniaudio::miniaudio` or `miniaudio` target. Otherwise
+it uses `CHERYL_MINIAUDIO_SOURCE` or the pinned `extern/miniaudio` submodule at
+0.11.25 (`9634bedb5b5a2ca38c1ee7108a9358a4e233f14d`). Supplied dependencies must
+provide the high-level engine, resource manager, decoding and device APIs with
+matching public compile definitions. The private SDK support target compiles only
+`miniaudio.c`; it does not configure upstream extra nodes, codecs, examples or
+installation, and it does not rewrite host cache options.
+
+The static implementation is incorporated only by this audio owner. Shared SDK
+consumers receive its Cheryl interfaces rather than a separate miniaudio target,
+implementation or public miniaudio header requirement; static SDKs retain the
+required archive closure.
+
+Miniaudio offers the Unlicense and MIT No Attribution; its notices remain in
+[LICENSE](../../../../extern/miniaudio/LICENSE). Linux output loads supported native
+audio backends dynamically and links Threads, the platform loader and the math
+library. Engine-only selection neither discovers nor compiles miniaudio.
+
 ## Repeating root-assembly validation
 
 Reuse `build/testing-audio` when its toolchain matches; it
@@ -96,7 +103,7 @@ narrow it for a focused change and avoid repeating cases through aggregates.
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_CXX_SCAN_FOR_MODULES=OFF \
     -DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST \
-    -DCHERYL_LOG_PROFILE=developer -DCHERYL_SANDBOX_BUILD=OFF \
+    -DCHERYL_LOG_PROFILE=developer \
     -DCHERYL_BUILD_NATIVE_GLFW=OFF -DCHERYL_BUILD_OPENGL=OFF \
     -DCHERYL_BUILD_UI_TGUI=OFF -DCHERYL_BUILD_UI_RMLUI=OFF \
     -DCHERYL_BUILD_AUDIO_MINIAUDIO=ON -DCHERYL_MINIAUDIO_SOURCE= \
@@ -144,7 +151,7 @@ byte-budget boundaries, missing/corrupt paths and owned PCM after source-file re
 Short-stream offline cases use an initially buffered WAV and do not establish
 sustained decode-ahead, native latency,
 audible channel routing or device shutdown. Owned
-[codec fixtures](tests/fixtures/README.md) cover whole-clip FLAC/MP3 decoding;
+[codec fixtures](./tests/fixtures/README.md) cover whole-clip FLAC/MP3 decoding;
 the native QA baseline uses a long WAV and does not establish compressed-stream
 seek/loop behavior. Supplied-SDK and standalone configurations remain unaccepted
 composition variants until explicitly selected and built. Other platforms remain deferred under the

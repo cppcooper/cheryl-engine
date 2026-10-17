@@ -1,3 +1,4 @@
+#include "gl-internal.h"
 #include <backends/opengl/sampler.h>
 
 #include "sampling-internal.h"

@@ -2,23 +2,27 @@
 
 `Cheryl::UI::TGUI` is an optional UI owner. It translates selected Cheryl input
 records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
-owns the custom backend, GUI, FreeType fonts and input leases. The
+owns the custom backend, GUI, Engine-backed fonts and input leases. The
 [selected demo](../../../apps/demo/README.md) supplies a representative panel and
 application materials.
 
-The module links `Cheryl::Engine` and TGUI 1.13.0, configured with a custom backend
-and FreeType font support only. It has no Native GLFW/OpenGL/Gainput link. Public
-headers expose TGUI's native GUI/widget API; Engine headers never include TGUI.
+The module uses a shared TGUI 1.13.0 runtime configured with the custom backend.
+Its Cheryl adapter supplies Engine font rasterization and image decoding, so TGUI
+compiles neither another FreeType backend nor its bundled stb decoder. TGUI itself
+does not link Engine, Native GLFW, OpenGL or Gainput. Public headers expose the
+native GUI/widget API exported by the shared toolkit; Engine headers never include TGUI.
 The [adapter-author guide](../../../../docs/development/ui-adapters.md) describes
 the engine boundaries used by independently implemented UI modules.
 
 ## Contents
 
 - [Selection and dependency](#selection-and-dependency)
+- [Use it in a game](#use-it-in-a-game)
 - [Session ownership](#session-ownership)
 - [Typed layout](#typed-layout)
 - [Input translation](#input-translation)
 - [Recording and publication](#recording-and-publication)
+- [Dependency configuration](#dependency-configuration)
 - [Focused checks](#focused-checks)
 
 ## Selection and dependency
@@ -26,33 +30,34 @@ the engine boundaries used by independently implemented UI modules.
 At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently of
 native/graphics selection. Set it to `OFF` to omit the toolkit; Engine retains its
 own text dependencies. Link the application to
-`Cheryl::UI::TGUI`; its Engine and toolkit requirements propagate through the target.
+`Cheryl::UI::TGUI`; its Engine and native-toolkit header/ABI settings propagate.
 The build target is `module_ui_tgui`, with output name `cheryl-module-ui-tgui`.
 
 ```cmake
 target_link_libraries(game PRIVATE Cheryl::UI::TGUI)
 ```
 
-The module reuses an existing `TGUI::TGUI` target. Otherwise it uses an explicit
-`CHERYL_TGUI_SOURCE`, an explicit package location in `TGUI_DIR`, the pinned
-`extern/tgui` submodule, or that exact version's discovered CMake package, in that
-order. Initialize the bundled dependency with
-`git submodule update --init extern/tgui`; CMake never downloads it. Source
-composition requires FreeType development files and selects only the
-custom/FreeType backend and excludes upstream tools, examples and tests. Conflicting
-backend settings fail explicitly; supplied targets/settings are not rewritten.
-Compiled version/feature checks also reject a supplied package/target with an
-unreviewed version or native toolkit backend.
+Initialize the pinned dependency through the checkout's setup instructions.
+For supplied targets or packages, check [dependency configuration](#dependency-configuration)
+before selecting the module.
 
-Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
-to `ON` and reload CMake to expose `module_ui_tgui` and its selected test targets.
+## Use it in a game
 
-For a standalone module, set `CHERYL_REPOSITORY_ROOT` to the Cheryl checkout.
-The module reuses a supplied `Cheryl::Engine` or bootstraps Engine from that root,
-suppressing UI/native/graphics/demo/test selection in its local scope.
-For an independently configured consumer, use `tests/consumer/` as the source
-directory with the same dependency arguments; it links only this module and checks
-its public header as the first include.
+[Create an interactive GUI](../../../../docs/getting-started/how-to/create-gui.md)
+provides the complete button/edit-field workflow, including materials and focus
+controls. Its lifecycle is:
+
+1. During platform-owned `init()`, construct application materials and a scene uploader.
+2. On the first simulation update, create a session and native widgets.
+3. Supply copied sizes, simulation time and the complete input batch each update.
+4. Record CPU scene data and keep one upload pending while retaining the previous scene.
+5. Append the uploaded scene during frame preparation, after world/HUD passes.
+6. After UI quiescence, release application-held toolkit objects and close the session.
+
+Use [typed layout](#typed-layout) to add anchoring and bounded resizing to that
+working interface. Committed text and editing depend on input/focus support;
+clipboard, cursor changes and IME remain unavailable services. The contracts below
+cover session, layout and publication behavior.
 
 ## Session ownership
 
@@ -60,8 +65,8 @@ Create `Session(input, nonzero_focus_id, options)` on the simulation/UI thread,
 before creating toolkit objects. A session installs TGUI's process-global backend;
 an already active toolkit backend/session rejects explicitly. Use `session.gui()`
 and TGUI's native widgets on that same owner. The session keeps Events capture
-active, uses the toolkit's embedded default font and selects guarded FreeType
-rasterization. `SessionOptions` supplies a texture bound of at least 128 and an
+active and uses the toolkit's embedded default font through Engine rasterization.
+`SessionOptions` supplies a texture bound of at least 128 and an
 explicit positive font scale; this is not a hardware or monitor-scale query.
 
 For each update, pass the tick's copied `logical_size` and `framebuffer_size` to
@@ -93,7 +98,7 @@ selection. See the [adapter routing guide](../../../../docs/development/ui-adapt
 `capabilities()` reports the input source's committed-text/focus support and
 unavailable OS clipboard, cursor and IME services. Clipboard calls reject; standard
 toolkit copy/cut/paste shortcuts are skipped before widgets can delete a selection.
-Cursor requests leave the platform cursor alone. Texture and FreeType font
+Cursor requests leave the platform cursor alone. Texture and Engine-backed font
 smoothing can select either nearest or linear filtering; the selected value is
 copied into each recording rather than changing an uploaded shared image.
 
@@ -182,12 +187,12 @@ Invalid Unicode scalars or nonfinite/unrepresentable wheel offsets reject explic
 `Renderer(maximum_size)` creates CPU-only `Texture` objects. The configured limit
 is an application-supported bound, not a hardware query. Each texture load copies
 top-to-bottom RGBA pixels into a fresh immutable snapshot, including the transient
-FreeType atlas path. Old recordings retain their original snapshot. Base toolkit
+font-atlas path. Old recordings retain their original snapshot. Base toolkit
 image loading also retains its pixels for transparent-pixel hit testing.
 
 `setSmooth` changes the toolkit's sampling selection without replacing its immutable
 pixel snapshot. Every recorded textured draw copies that selection, including
-FreeType atlas draws. Upload requests a retained nearest or linear sampler through
+font-atlas draws. Upload requests a retained nearest or linear sampler through
 `ResourceProvider::create_sampler`; both policies clamp to edge, disable mipmaps
 and disable anisotropy for toolkit atlas/pixel semantics. Engine image defaults
 remain anisotropic elsewhere. A provider without explicit sampler support rejects
@@ -242,6 +247,41 @@ writing the current scene while it is pending. `current.write(frame_writer)` add
 a UI pass at the caller's chosen point in pass order. Packets own uploaded images,
 geometry, materials, parameters and clips, independent of subsequent widget changes
 or adapter destruction; native playback still requires the original live domain.
+
+## Dependency configuration
+
+The module reuses an existing `TGUI::TGUI` target. Otherwise it uses an explicit
+`CHERYL_TGUI_SOURCE`, an explicit package location in `TGUI_DIR`, the pinned
+`extern/tgui` submodule, or that exact version's discovered CMake package, in that
+order. Initialize the bundled dependency with
+`git submodule update --init extern/tgui`; CMake never downloads it. Source
+composition selects `TGUI_BACKEND=Custom` and
+`TGUI_CUSTOM_BACKEND_HAS_FONT_FREETYPE=OFF`, excluding upstream tools, examples and tests. Conflicting
+backend settings fail explicitly; supplied targets/settings are not rewritten.
+Compiled version/feature checks also reject a supplied package/target with an
+unreviewed version or native toolkit backend. Supplied shared targets declare
+`CHERYL_TGUI_ENGINE_SERVICES=TRUE` and `CHERYL_TGUI_IMAGE_DECODER_ABI=1` after
+implementing the reviewed private decoder bridge and preserving native API exports. Metadata
+declares a verified configuration; it does not repair incompatible binaries.
+
+The toolkit decoder calls a versioned callback table installed by the Cheryl
+adapter. Engine owns the decoded pixels until TGUI copies them into toolkit-owned
+storage and invokes the supplied release callback. The adapter's CMake target
+retains decoder registration even when an application uses only native TGUI APIs
+and creates no Cheryl session. This boundary also keeps Engine out of the toolkit
+DLL when Cheryl itself is static; keep both libraries loaded while their objects
+and callbacks are in use.
+
+Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
+to `ON` and reload CMake to expose `module_ui_tgui` and its selected test targets.
+
+The standalone module locates its enclosing checkout; set
+`CHERYL_REPOSITORY_ROOT` to select another absolute checkout path.
+The module reuses a supplied `Cheryl::Engine` or bootstraps Engine from that root,
+suppressing UI/native/graphics/demo/test selection in its local scope.
+For an independently configured consumer, use `tests/consumer/` as the source
+directory with the same dependency arguments; it links only this module and checks
+its public header as the first include.
 
 ## Focused checks
 
@@ -322,4 +362,5 @@ and [global lifetime](https://github.com/texus/TGUI/blob/v1.13.0/src/Backend/Win
 when upgrading. Recheck unindexed glyph geometry, clip rounding, atlas replacement,
 clipboard suppression and teardown before native consumers depend on new behavior.
 The [upstream backend guide](https://tgui.eu/tutorials/latest-stable/backends/)
-explains feature selection; supplied targets must retain the custom/FreeType scope.
+explains feature selection; supplied targets must retain the reviewed Engine
+font/image configuration, private decoder ABI and shared runtime policy.

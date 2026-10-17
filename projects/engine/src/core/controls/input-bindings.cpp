@@ -30,6 +30,8 @@ namespace CE::Input::Actions {
             throw Exceptions::invalid_args(CE_HERE, "Publish pending relative input before rebinding its action as a button");
         if (chord.required.empty())
             throw Exceptions::invalid_args(CE_HERE, "A button action needs at least one physical control");
+        if (std::ranges::any_of(chord.required, [](const auto control) { return control.control == CE::Input::invalid_control; }))
+            throw Exceptions::invalid_args(CE_HERE, "A button action requires known controls");
         if (std::ranges::any_of(axis_bindings_, [action](const auto& binding) { return binding.action == action; }))
             throw Exceptions::invalid_args(CE_HERE, "An action cannot be bound as both a button and an axis");
         const BindingId id = next_binding_++;
@@ -42,6 +44,9 @@ namespace CE::Input::Actions {
     }
 
     BindingId Bindings::bind_axis(Chord modifiers, const CE::Input::Control axis, const Id action, const AxisOptions options) {
+        if (axis.control == CE::Input::invalid_control ||
+            std::ranges::any_of(modifiers.required, [](const auto control) { return control.control == CE::Input::invalid_control; }))
+            throw Exceptions::invalid_args(CE_HERE, "An axis action requires known controls");
         if (relative_actions_.contains(action) && options.kind != CE::Input::AxisKind::Relative)
             throw Exceptions::invalid_args(CE_HERE, "Publish pending relative input before changing its axis kind");
         if (!std::isfinite(options.scale) || !std::isfinite(options.dead_zone) || options.dead_zone < 0.0f || options.dead_zone >= 1.0f ||

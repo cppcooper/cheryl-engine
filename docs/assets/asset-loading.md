@@ -68,11 +68,40 @@ auto preparing = workers.submit([loader, platform] {
 // returned upload future. Check that future's readiness before reading metadata.
 ```
 
+Retain the preparation future as game state. Also keep the upload future and the
+last accepted metadata snapshot between updates; include `<chrono>` and `<future>`:
+
+```cpp
+using Metadata = decltype(loader->manifests());
+std::future<Metadata> uploading;
+Metadata published_definitions = loader->manifests();
+```
+
+During later `update()` calls:
+
+```cpp
+if (preparing.valid() && preparing.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
+    uploading = preparing.get();
+if (uploading.valid() && uploading.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
+    published_definitions = uploading.get();
+```
+
+The first `get()` transfers the platform-upload future; the second adopts the
+successful metadata snapshot. Exceptions reach the update's selected failure
+policy and leave the prior snapshot unchanged. Retrieve the required new asset
+handles before making application state depend on that content. Ordinary loading
+preserves existing keys; this sequence does not turn it into image/sprite hot reload.
+Start another batch only after both futures are invalid, keeping one batch pending.
+
 An owned root or injected shared root supplies physical capacity; this group
 belongs to the context shutdown domain. Accepted CPU jobs finish while the
 platform dispatcher remains available. Any final unexecuted upload is cancelled
 before resource teardown, so its future reports failure instead of hanging.
 Use platform submission endpoints rather than borrowed dispatcher pointers.
+
+[Threads and Data Flow](../architecture/threads-data-flow.md#prepare-and-publish-a-replacement)
+explains this handoff across systems. Keep CPU inputs and upload dependencies
+alive through completion or cancellation instead of blocking their execution owner.
 
 ## Publication and retry
 

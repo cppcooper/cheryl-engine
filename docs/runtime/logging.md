@@ -18,12 +18,14 @@ input capability/focus records go to os-platform, while session records stay in
 engine. engine.log is the runtime/execution timeline; other categories contain
 their own subsystem details, with no automatic aggregate mirror.
 
-`CE::Logging::Log<name>` owns a named logger; `CE::Logging::Logger<name>` supplies
-singleton access to one. Below, Log and Logger refer to these types.
-Every engine write selects its category explicitly. Changing spdlog's default
-logger, including through an application's Log::make_default(), does not redirect
-engine records. Logger::get/initialize reads default_logger solely to establish
-registry lifetime before singleton storage; emission uses its own named resource.
+`CE::Logging::Log<name>` owns a facade over compiled Engine logging state;
+`CE::Logging::Logger<name>` supplies lazy named access. Below, Log and Logger
+refer to these types. Built-in and custom `Logger` categories share one Engine registry
+keyed by textual name across libraries. `Logger::get_existing()` borrows the
+central `LogHandle*` without constructing or waiting; null also covers a category
+not yet published. Published central handles remain until Engine static teardown.
+Every engine write selects its category explicitly. `make_default()` affects
+Engine's private registry, not an application's independent native logger.
 Required native/noexcept/logger failures use bounded stderr independently of any
 default or file destination.
 
@@ -35,8 +37,50 @@ file destinations remain stable; changing public namespace names does not move,
 merge, delete or rename existing files and backups. Normal configured rotation
 and retention still apply.
 
+## Enable useful output
+
+Configure the category before its first use and before starting writers. For a
+build whose logging policy retains DEBUG, this records platform diagnostics in
+a chosen directory while leaving the console at WARN:
+
+```cpp
+#include <cheryl/core/logging.h>
+
+using PlatformLog = CE::Logging::Logger<CE::Logging::Categories::platform>;
+auto config = CE::Logging::Config::for_logger(CE::Logging::Categories::platform);
+config.directory = "investigation";
+config.logger_level = CE::Logging::Level::debug;
+config.file_level = CE::Logging::Level::debug;
+config.console_level = CE::Logging::Level::warn;
+PlatformLog::initialize(CE::Logging::FileEventHandlers{}, config);
+CE_LOG_DEBUG(CE::Logging::Categories::platform, "Platform diagnostics enabled");
+```
+
+After the session's producers settle, close each category on the logging owner;
+for this category call `PlatformLog::close()`. Then inspect
+`investigation/os-platform.log`: the DEBUG record belongs there and is absent from
+the WARN console. Submission is asynchronous, so a write or queued flush is not
+an immediate file-completion acknowledgement. Configure other categories explicitly
+when they should use the same directory. A developer/support compile profile retains
+DEBUG; changing runtime thresholds cannot restore it in a build that stripped it.
+
+## Investigate missing or delayed records
+
+| Symptom | Inspect | Next action |
+| --- | --- | --- |
+| DEBUG/TRACE never appears | Compiled mask, logger level and the relevant destination level | Retain the severity in one target-consistent build policy, then admit it at both runtime gates. |
+| A file has records but the terminal does not | Console threshold and optional terminal attachment | Lower the console gate when needed; the terminal captures process output independently of file configuration. |
+| Logs appear in an unexpected directory | `initial_configuration()` or `get_file_path()` on the category's handle | Configure that category before first use. Relative directories resolve once; changing the working directory later does not move the destination. |
+| Accepted output is delayed or new records disappear | Shared queue statistics and the Log's backend degradation statistics | Identify slow/failed destinations. Block waits for capacity; DiscardNew can lose new records and flush requests. Stop producers before close/reopen recovery. |
+| Close waits or times out | Active producers, retained backend work and callbacks/native I/O | Settle producers and dependencies before waiting for completion. A timeout leaves Closing intact; do not call lifecycle operations from a backend/file callback. |
+| A required native/cleanup failure is absent from files | Process stderr and the original exception/future | Use the bounded emergency report and owning operation's failure. File thresholds or degradation do not suppress that independent reporting path. |
+
+[Subsystem diagnostics](subsystem-diagnostics.md#investigate-a-runtime-symptom)
+connects those records to runtime, resource and work-queue behavior. The remaining
+sections define the exact filtering, queue, lifecycle and failure guarantees.
+
 Configure each used logger on its owner before starting writers. Lazy named access
-remains available, and explicit singleton initialization rejects a second configuration.
+remains available, and explicit named initialization rejects a second configuration.
 Backend/file callbacks suppress recursive ordinary writes and reject logger
 acquisition, initialization, and lifecycle reentry before entering locks.
 
@@ -53,8 +97,10 @@ manual closure, fallback and abnormal-exit retention.
 
 ## Compile policy
 
-The cengine target publicly propagates cengine_logging_config. The test target
-consumes the actual library and inherits that same configuration. CMake's
+Engine propagates the usage policy declared in
+[`projects/engine/cmake/Logging.cmake`](../../projects/engine/cmake/Logging.cmake).
+This is build policy rather than another public runtime library. Consumers
+and tests inherit the same definitions. CMake's
 CHERYL_LOG_PROFILE selects auto, developer, support, or release. Auto selects
 developer for Debug, support for RelWithDebInfo, and release for other configurations.
 
@@ -111,7 +157,7 @@ them explicitly before first use when selecting a shared directory or overrides:
 
 auto config = CE::Logging::Config::for_logger(CE::Logging::Categories::platform);
 config.directory = "logs";
-CE::Logging::Logger<CE::Logging::Categories::platform>::initialize(spdlog::file_event_handlers{}, config);
+CE::Logging::Logger<CE::Logging::Categories::platform>::initialize(CE::Logging::FileEventHandlers{}, config);
 ```
 
 Use the corresponding name for engine, rendering, assets and memory, allowing
@@ -122,8 +168,8 @@ on the host's logging owner. Completed close and retained-resource behavior are
 unchanged. Additional categories share the same pool/worker and can delay one
 another; separate files do not isolate queue saturation or slow destinations.
 
-Owned logs accept Log(handlers, config). Singleton users can call
-Logger<name>::initialize(spdlog::file_event_handlers{}, config) before starting
+Owned logs accept Log(handlers, config). Named logger users can call
+Logger<name>::initialize(CE::Logging::FileEventHandlers{}, config) before starting
 writers; repeated explicit initialization rejects. The returned
 initial_configuration reference is immutable and borrowed for that Log's lifetime.
 It reports startup settings; live level changes remain on the current resources
@@ -167,8 +213,8 @@ retains its normal lazy-initialization behavior. Filtered/closed writes do not
 count as queue-capacity discards.
 
 The file sink remains the close-completion boundary. Successful close means accepted
-queued owners and retained file owners have released that sink and its close callback
-has completed. A retained native logger/file sink can delay close; timed failure
+queued owners and private retained file owners have released that sink and its close callback
+has completed. Retained backend work can delay close; timed failure
 leaves Closing intact. Stop producers before asking for a completed shutdown.
 An off file threshold still creates the file. Console-only/custom destinations
 require a separate completion contract before being supported.
@@ -210,7 +256,7 @@ future aggregate diagnostics must use a copied snapshot after releasing locks.
 
 The shared async pool belongs to Cheryl and does not replace spdlog's process-global
 pool. Each Log retains it through its own destruction, independently of the
-internal `CE::Logging::Detail::ThreadPoolInit` singleton's destruction order. The current default remains
+internal pool-initialization object's destruction order. The current default remains
 8192 queued items and one worker. The bundled pool creates threads in a loop
 without unwinding already-started threads if a later thread creation fails. The
 single-worker default avoids that partial-startup path and parallel backend
@@ -246,31 +292,29 @@ degradation participate in should_log. File/console level restoration still uses
 the actual destinations. Retained native file owners still delay completed close.
 Direct delegate log/flush bypasses these guards and is unsupported.
 
-Published spdlog owners now retain a guarded frontend and a private asynchronous
-backend with the same guarded destinations. The backend borrows the shared pool;
-no queued owner acquires a strong pool reference. Native submissions and clones
-preserve queue/retained-file ownership and pass through the recursion check.
-Changing their concrete type to spdlog::async_logger is unsupported. Native setters
-must not replace error handlers or the fixed sink graph. Pattern/formatter setters
-on guarded destinations reject callback reentry before delegate locks.
+The compiled Engine backend owns guarded native loggers and destinations.
+Public `Level`, `FileEventHandlers`, configuration and thin formatting/filtering
+frontends contain no spdlog types or native sink handles. Applications cannot
+retain/clone native loggers or replace their sink graph. Internal queued owners
+borrow the pool to avoid a queue-owner lifetime cycle. Pattern operations retain
+the callback reentry guard.
 
 A shared thread-local backend scope covers both destination operations and file
 callbacks, including startup on the logging owner. Recursive writes through owned,
-facade, stream, guarded formatted, and published native paths are suppressed and
+facade, stream and guarded formatted paths are suppressed and
 counted on the active callback's Log. Guarded argument expressions are not evaluated
-and unopened categories are not initialized. Lifecycle, native flush/clone, and
-singleton acquisition/initialization reject with bad_request before waiting.
-Facade acquisition initializes the native registry before its singleton storage,
-so supported static teardown closes facade logs before destroying that registry.
+and unopened categories are not initialized. Lifecycle and category acquisition/
+initialization reject with bad_request before waiting. Engine centralizes registry
+and backend ownership; templates do not create private native registries in each
+consumer library.
 Callbacks must not synchronously wait for work on another thread that itself needs
 the logging backend: a thread-local guard cannot resolve application wait cycles.
 
-The final release of an owned Log, published native logger, or file destination
+The final release of an owned Log or private file destination
 must occur outside backend/file callbacks. Destruction cannot return a rejection
 or preserve already-destroyed storage; violating this contract terminates through
 an emergency report before a worker can wait/join itself. Isolated acceptance
-sources must exercise this fatal contract. Raw native delegates and explicit casts
-to the singleton base are outside the guarded API.
+sources exercise this fatal contract; native delegates are private implementation.
 
 backend_stats also exposes recursive_submissions and rejected_reentry. report_diagnostics
 emits bounded coalesced cumulative counters through stdio outside lifecycle locks;
@@ -283,7 +327,6 @@ Use the [logging acceptance procedures](../development/logging-acceptance.md) fo
 compile-profile, callback/failure and teardown coverage limits.
 Stop producers before closing. A close timeout bounds the sink-completion wait,
 not arbitrary user callbacks, native I/O, or the final pool's thread joins.
-External native owners must not continue producing after facade teardown.
 Final facade destruction belongs to the logging owner, outside the async backend;
 sink/file callbacks must not close, destroy, or wait for their logger/pool.
 

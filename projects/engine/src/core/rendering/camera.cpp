@@ -7,6 +7,8 @@
 #include <cmath>
 
 namespace CE::Rendering {
+    CameraBase::~CameraBase() = default;
+
     void CameraBase::set_framebuffer_size(const ::CE::Platform::FramebufferSize size) {
         if (size.width < 0 || size.height < 0) {
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Framebuffer dimensions must not be negative");

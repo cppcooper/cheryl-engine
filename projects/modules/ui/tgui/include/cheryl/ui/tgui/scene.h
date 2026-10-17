@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "rendering.h"
 
 #include <assets/resources/resource-provider.h>
@@ -36,7 +38,7 @@ namespace CE::UI::TGUI {
     public:
         [[nodiscard]] std::span<const CE::Rendering::DrawPacket2D> draws() const { return draws_; }
         // Append one UI pass at the caller's chosen position in frame order.
-        void write(CE::Rendering::FrameWriter& frame) const;
+        CE_UI_TGUI_API void write(CE::Rendering::FrameWriter& frame) const;
     };
 
     // Construct on the provider's platform owner, then copy the handle to UI.
@@ -47,15 +49,15 @@ namespace CE::UI::TGUI {
         std::shared_ptr<State> state_;
 
     public:
-        explicit SceneUploader(const CE::Rendering::Resources::Provider& provider);
-        [[nodiscard]] Scene
+        CE_UI_TGUI_API explicit SceneUploader(const CE::Rendering::Resources::Provider& provider);
+        [[nodiscard]] CE_UI_TGUI_API Scene
         upload(CE::Rendering::Resources::Provider& provider, const RecordedScene& recording, const Materials& materials) const;
-        [[nodiscard]] std::future<Scene>
+        [[nodiscard]] CE_UI_TGUI_API std::future<Scene>
         submit(const CE::Runtime::PlatformDispatcher::Submission& platform, RecordedScene recording, Materials materials) const;
     };
 
     // Call during update. Returns false without waiting while work is pending.
     // A ready error (including dispatcher cancellation) propagates and leaves
     // current unchanged. Success replaces it with one complete retained scene.
-    bool adopt_scene(std::future<Scene>& completion, Scene& current);
+    CE_UI_TGUI_API bool adopt_scene(std::future<Scene>& completion, Scene& current);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <core/controls/polling-backlog.h>
 #include <core/engine/simulation-dispatcher.h>
 #include <core/diagnostics.h>
@@ -88,7 +90,7 @@ namespace CE::Runtime {
         std::function<std::thread(std::function<void()>)> simulation_thread_factory_;
 
     public:
-        GameRuntime(
+        CE_API GameRuntime(
             ::CE::Runtime::Context& engine,
             ::CE::Game::AbstractGame& game,
             ::CE::Runtime::RunMode mode = ::CE::Runtime::RunMode::Sequential,
@@ -99,25 +101,25 @@ namespace CE::Runtime {
         // One blocking session on the platform owner. Borrowed engine/game must remain
         // alive through return/throw; cleanup preserves the first failure. Do not destroy
         // the runtime while run() or another operation is using it.
-        void run();
+        CE_API void run();
         // Thread-safe request; run() performs normal teardown after simulation stops.
-        void stop();
+        CE_API void stop();
         // Caller synchronizes with run start/return. Query before run or after
         // its return/throw; live sampling rejects. Counters publish after join.
-        [[nodiscard]] ::CE::Runtime::RuntimeStats diagnostics() const;
+        [[nodiscard]] CE_API ::CE::Runtime::RuntimeStats diagnostics() const;
         [[nodiscard]] ::CE::Runtime::SimulationDispatcher& simulation_dispatcher() { return simulation_dispatcher_; }
 
     private:
         friend struct ::CE::Runtime::Detail::GameRuntimeAccess;
-        void run_sequential();
-        void run_concurrent();
-        void finish_unstarted_session();
-        void pump_shutdown_requests(std::exception_ptr& failure);
-        void finish_worker_shutdown(std::exception_ptr& failure);
-        void preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next);
-        void report_session(bool failed) const noexcept;
-        void observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept;
-        void observe_timing(const ::CE::Runtime::Simulation::Batch& batch) noexcept;
-        void observe_platform(bool pressure) noexcept;
+        CE_API void run_sequential();
+        CE_API void run_concurrent();
+        CE_API void finish_unstarted_session();
+        CE_API void pump_shutdown_requests(std::exception_ptr& failure);
+        CE_API void finish_worker_shutdown(std::exception_ptr& failure);
+        CE_API void preserve_failure(std::exception_ptr& first, const char* phase, std::exception_ptr next);
+        CE_API void report_session(bool failed) const noexcept;
+        CE_API void observe_input(const std::shared_ptr<const Input::PollSnapshot>& snapshot) noexcept;
+        CE_API void observe_timing(const ::CE::Runtime::Simulation::Batch& batch) noexcept;
+        CE_API void observe_platform(bool pressure) noexcept;
     };
 }

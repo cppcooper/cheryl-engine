@@ -1,0 +1,45 @@
+@media screen {
+    /* Keep the theme's 800px content width when space permits, then grow with
+       the viewport. The parent already reserves space for the sidebar. */
+    .wy-nav-content {
+        width: max(800px, 75vw);
+        max-width: 100%;
+    }
+
+    /* Reference prose and long API names wrap inside the available page width. */
+    .rst-content .wy-table-responsive table.docutils {
+        width: 100%;
+    }
+
+    .rst-content .wy-table-responsive table.docutils :is(th, td) {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        vertical-align: top;
+    }
+
+    .rst-content .wy-table-responsive table.docutils :is(code, span.pre) {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    /* The theme reserves at least 80% for values, leaving too little room for
+       field labels in nested API descriptions on narrow viewports. */
+    html.writer-html5 .rst-content dl.field-list {
+        grid-template-columns: max-content minmax(0, 1fr);
+    }
+
+    .rst-content dl.field-list > dd {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    /* Keep narrow tables from squeezing type names into a sliver. */
+    .rst-content .wy-table-responsive table.docutils {
+        table-layout: fixed;
+    }
+
+    .rst-content .wy-table-responsive table.docutils :is(th, td) {
+        padding: 8px;
+    }
+}

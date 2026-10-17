@@ -81,7 +81,7 @@ separates enabled/disabled dependency selections and controlled/native coverage.
 
 ## CI and installed SDK checks
 
-[GitHub CI](building.md#github-ci-and-sdk-artifacts) selects owner prefixes rather
+[GitHub CI](ci.md) selects owner prefixes rather
 than aggregate duplicates. Headless jobs select Engine, logging, Engine acceptance,
 JSON/composition and the worker consumer. Modules jobs additionally select Native
 GLFW, OpenGL, both UI owners, miniaudio and coexistence, and run their independent

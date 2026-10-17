@@ -20,6 +20,11 @@ renderer/context lifetime and cannot be used after that lifetime closes.
 
 ## Immutable resource publication
 
+`CE::Assets::Images::decode(path)` and `decode(encoded_bytes)` are CPU-only
+operations returning owned, tightly packed top-to-bottom RGBA pixels. They do
+not publish native handles or retain an encoded byte span. Toolkit decoding uses
+the same Engine implementation; each UI module does not embed another stb decoder.
+
 `CE::Rendering::Resources::Provider::create_image()` copies owned RGBA pixels into a new backend handle.
 Changed images or geometry use fresh immutable handles and replacement materials
 or frames. Published packets retain their selected geometry, material, program and

@@ -7,6 +7,62 @@ and [shaders/materials](../../assets/schemas/graphics/shader-manifest-2.0.schema
 Earlier versions are rejected rather than implicitly upgraded. `$schema` is an
 editor hint; the runtime neither fetches it nor discovers schemas as assets.
 
+## Add a sprite sheet
+
+Start with the maintained [First Game asset root](../../projects/apps/first-game/assets/).
+Copy that directory into your application's assets so its image, shader sources
+and material recipe stay together. Its relevant layout is:
+
+```text
+assets/
+  graphics/
+    graphics-manifests.json
+    definitions/sprites.json
+    textures/actor.png
+    shaders/materials.json
+    shaders/first-game.vert
+    shaders/first-game.frag
+```
+
+The complete index selects the sprite definition and its drawing materials:
+
+```{literalinclude} ../../projects/apps/first-game/assets/graphics/graphics-manifests.json
+:language: json
+```
+
+The complete sprite document describes the actor's two 16-by-16 cells:
+
+```{literalinclude} ../../projects/apps/first-game/assets/graphics/definitions/sprites.json
+:language: json
+```
+
+Both `definitions/sprites.json` and `textures/actor.png` resolve from `graphics/`,
+even though the definition itself is in `graphics/definitions/`. The namespace
+and sprite map key combine into `first-game:actor`. During platform-owned game
+initialization, after the provider is ready:
+
+```cpp
+CE::Assets::Loading::Loader loader(asset_root);
+loader.load_assets(engine.resources());
+auto actor = CE::Assets::Sprites::Manager::get().get_asset("first-game", "actor");
+if (!actor)
+    throw std::runtime_error("The actor definition was not loaded");
+```
+
+Include the loader and sprite-manager headers plus `<stdexcept>`; `asset_root`
+is the copied assets directory and `engine` is the initialized runtime context.
+The [sprite task](../getting-started/how-to/draw-sprite.md) supplies the matching
+material and frame submission. Cell zero selects the left frame and cell one
+the right. The image must contain both cells; preparation rejects a grid whose
+occupied bounds exceed its decoded image.
+
+To add your own sheet, copy a definition entry, choose a unique namespace/name,
+and change its texture path, frame size, rows, columns, spacing and pivot. Add the
+document to the index. If retrieval returns null, check the qualified identity and
+index selection; unlisted JSON is not loaded. Keep `shaders/materials.json` and
+its source files when using the maintained image/text materials. The field
+contracts below cover larger atlases, clips, autotiles and custom shaders.
+
 ## Index selection and paths
 
 Only the exact basename `graphics-manifests.json` selects definition documents.

@@ -15,6 +15,7 @@ REPO_ROOT = DOCS_ROOT.parent
 if sys.pycache_prefix is None:
     sys.pycache_prefix = str(GENERATED_ROOT / "pycache")
 os.environ["PYTHONPYCACHEPREFIX"] = sys.pycache_prefix
+sys.path.insert(0, str(GENERATION_ROOT))
 sys.path.insert(0, str(GENERATION_ROOT / "extensions"))
 
 project = "Cheryl Engine"
@@ -23,12 +24,13 @@ copyright = "2026, Cheryl Engine contributors"
 source_revision = os.environ.get("CHERYL_DOCS_REVISION") or subprocess.check_output(
     ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
 ).strip()
-release = os.environ.get("READTHEDOCS_VERSION_NAME", source_revision[:12])
+# Revision identity is refreshed separately from Sphinx's parsed-page cache.
+release = os.environ.get("READTHEDOCS_VERSION_NAME", "")
 version = release
 source_repository = "https://github.com/cppcooper/cheryl-engine"
 source_repository_root = str(REPO_ROOT)
 
-extensions = ["myst_parser", "breathe", "exhale", "api_rendering", "repository_links", "inline_api"]
+extensions = ["myst_parser", "breathe", "exhale", "api_rendering", "repository_links", "inline_api", "incremental_api"]
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 root_doc = "index"
 exclude_patterns = [
@@ -41,6 +43,7 @@ exclude_patterns = [
     # Ignore generated pages left behind by older checkouts.
     "generated/**",
     "api/generated/**",
+    "generation/generated/.api-previous/**",
     "**/.DS_Store",
 ]
 # Only generated API pages participate in source discovery inside this area.
@@ -55,6 +58,8 @@ for directory, included in ((GENERATION_ROOT, "generated"), (GENERATED_ROOT, "ap
             for path in sorted(directory.iterdir())
             if path.name != included
         )
+# Cold and warm output directories must produce the same Sphinx cache settings.
+exclude_patterns = sorted(set(exclude_patterns))
 myst_heading_anchors = 6
 myst_ref_domains = ["std", "cpp"]
 nitpicky = True
@@ -95,7 +100,8 @@ exhale_args = {
 html_theme = "sphinx_rtd_theme"
 templates_path = ["templates"]
 html_static_path = ["static"]
-html_css_files = ["hierarchy.css"]
+html_css_files = ["hierarchy.css", "typography.css", "layout.css", "theme.css"]
+html_js_files = ["appearance.js"]
 html_title = "Cheryl Engine documentation"
 html_theme_options = {"navigation_depth": 4, "collapse_navigation": False}
 html_show_sourcelink = True
@@ -103,8 +109,6 @@ html_context = {
     "display_github": True,
     "github_user": "cppcooper",
     "github_repo": "cheryl-engine",
-    "github_version": source_revision,
     "conf_py_path": "/docs/",
-    "source_revision": source_revision,
     "source_dirty": os.environ.get("CHERYL_DOCS_DIRTY") == "1",
 }

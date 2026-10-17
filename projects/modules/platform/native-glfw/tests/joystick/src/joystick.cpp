@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <core/controls/input-mapper.h>
+#include "core/controls/gainput-mapper.h"
 #include <gainput/GainputInputDeltaState.h>
 
 #include <cerrno>
@@ -37,7 +37,7 @@ namespace {
 
     struct PadSession {
         gainput::InputManager manager;
-        CE::Platform::GLFW::GainputMapper bindings{manager};
+        CE::Platform::GLFW::Detail::GainputMapper bindings{manager};
         gainput::InputDevicePad* pad = nullptr;
         gainput::InputDeltaState delta{manager.GetAllocator()};
 
@@ -157,7 +157,7 @@ TEST(linux_joystick, cross) {
     Joystick joystick;
     PadSession session;
     const CE::Input::Actions::Id action{1};
-    static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), gainput::PadButtonA}, action));
+    static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), CE::Input::GamepadControl::A}, action));
     ASSERT_EQ(session.pad->GetDeviceId(), 2u);
     ASSERT_TRUE(session.pad->IsAvailable());
     ASSERT_TRUE(session.pad->IsValidButtonId(gainput::PadButtonA));
@@ -262,7 +262,7 @@ TEST(linux_joystick, reconnect) {
     {
         PadSession session;
         const CE::Input::Actions::Id action{1};
-        static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), gainput::PadButtonA}, action));
+        static_cast<void>(session.bindings.bind_button({session.pad->GetDeviceId(), CE::Input::GamepadControl::A}, action));
         joystick.push(JS_EVENT_BUTTON, 0, 1);
         joystick.push(JS_EVENT_AXIS, 0, 32767);
         session.poll();

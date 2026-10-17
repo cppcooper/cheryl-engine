@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <chrono>
 #include <cstddef>
 #include <vector>
@@ -48,13 +50,13 @@ namespace CE::Runtime::Simulation {
         ::CE::Runtime::Simulation::Clock::duration accumulated_{};
 
     public:
-        explicit Scheduler(
+        CE_API explicit Scheduler(
             ::CE::Runtime::Simulation::TimingOptions options = ::CE::Runtime::Simulation::TimingOptions{},
             ::CE::Runtime::Simulation::Clock::time_point start = ::CE::Runtime::Simulation::Clock::now()
         );
 
         [[nodiscard]] const ::CE::Runtime::Simulation::TimingOptions& options() const { return options_; }
-        [[nodiscard]] ::CE::Runtime::Simulation::Batch advance(::CE::Runtime::Simulation::Clock::time_point now);
-        [[nodiscard]] ::CE::Runtime::Simulation::Clock::time_point next_update_at() const;
+        [[nodiscard]] CE_API ::CE::Runtime::Simulation::Batch advance(::CE::Runtime::Simulation::Clock::time_point now);
+        [[nodiscard]] CE_API ::CE::Runtime::Simulation::Clock::time_point next_update_at() const;
     };
 }

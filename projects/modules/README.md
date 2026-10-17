@@ -6,8 +6,12 @@ organize those owners; engine interfaces remain in `projects/engine/`.
 
 ```text
 modules/
+  runtime/
+    startup/        # Application bootstrap and selected-module integration
+    workers/        # Optional topology and JSON settings
   platform/
     native-glfw/    # Display, windows and input
+    native-sdl3/    # Source-only scaffold; runtime adapters not implemented
     debug-terminal-linux/ # Optional process output viewer
   graphics/
     opengl/         # Rendering, presentation and graphics resources
@@ -20,30 +24,36 @@ modules/
 
 | Owner | Build target | Public alias | Root selection | Engine contracts |
 | --- | --- | --- | --- | --- |
-| [platform/native-glfw](platform/native-glfw/README.md) | `module_native_glfw` | `Cheryl::NativeGLFW` | `CHERYL_BUILD_NATIVE_GLFW` | [`core/display`](../engine/include/cheryl/core/display): `iDisplaySystem`, `iWindow`; [`core/controls`](../engine/include/cheryl/core/controls): `iInputSystem`. |
+| [runtime/startup](runtime/startup/README.md) | `module_startup` | `Cheryl::Startup` | `CHERYL_BUILD_STARTUP` | Standard application bootstrap over Engine, with private configured backend integration. |
+| [runtime/workers](runtime/workers/README.md) | `module_workers` | `Cheryl::Workers` | `CHERYL_BUILD_WORKERS` | Optional topology/JSON capabilities over Engine's core worker pools. |
+| [platform/native-glfw](platform/native-glfw/README.md) | `module_native_glfw` | `Cheryl::NativeGLFW` | `CHERYL_BUILD_NATIVE_GLFW` | [`core/display`](../engine/include/cheryl/core/display): `CE::Platform::DisplaySystem`, `Window`; [`core/controls`](../engine/include/cheryl/core/controls): `CE::Input::System`. |
 | [platform/debug-terminal-linux](platform/debug-terminal-linux/README.md) | `module_debug_terminal_linux` (interface) | `Cheryl::DebugTerminal::Linux` | `CHERYL_BUILD_DEBUG_TERMINAL_LINUX` | Optional startup callback through `Cheryl::DebugTerminal::Startup`; owns native process capture/viewer lifetime. |
-| [graphics/opengl](graphics/opengl/README.md) | `module_opengl` | `Cheryl::OpenGL` | `CHERYL_BUILD_OPENGL` | [`core/rendering`](../engine/include/cheryl/core/rendering): `iRenderer`, `iPresentationSurface`; [`assets/resources`](../engine/include/cheryl/assets/resources): `ResourceProvider`, `Image`, `Geometry2D`, `Shader`, `Pipeline`. |
+| [graphics/opengl](graphics/opengl/README.md) | `module_opengl` | `Cheryl::OpenGL` | `CHERYL_BUILD_OPENGL` | [`core/rendering`](../engine/include/cheryl/core/rendering): `CE::Rendering::Renderer`, `PresentationSurface`; [`assets/resources`](../engine/include/cheryl/assets/resources): `Provider`, `Image`, `Buffer2D`, `Program`, `Pipeline`. |
 | [ui/tgui](ui/tgui/README.md) | `module_ui_tgui` | `Cheryl::UI::TGUI` | `CHERYL_BUILD_UI_TGUI` | Translates input and records/uploads retained scenes through Engine contracts. The toolkit owns its widget API. |
 | [ui/rmlui](ui/rmlui/README.md) | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | `CHERYL_BUILD_UI_RMLUI` | Native document sessions, routed input and premultiplied retained rendering through Engine contracts. |
 | [audio/miniaudio](audio/miniaudio/README.md) | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | `CHERYL_BUILD_AUDIO_MINIAUDIO` | [`audio`](../engine/include/cheryl/audio): immutable `Clip`, synchronized `Voice` and application-owned `System`. |
 
-Native GLFW, OpenGL and TGUI are selected by default. RmlUi defaults to `OFF`.
-Miniaudio is independently selectable and defaults to `OFF`; it links only Engine
-and its private SDK, with no window or graphics requirement.
-The Linux Debug terminal is selected by default on Linux GNU/Clang; its `AUTO`
-policy links the implementation only in Debug. Application/test composition selects
-it without adding a reverse Engine dependency. Other platforms omit it.
+Startup, Workers, Native GLFW, OpenGL, TGUI, RmlUi and miniaudio are selected by default.
+The opt-in `Cheryl::NativeSDL3::Scaffold` interface target declares a future
+platform boundary; it provides no runtime implementation or SDK component.
+See the [SDL3 scaffold notes](../../docs/development/modules.md#sdl3-scaffold).
+Miniaudio links only Engine and its private SDK, with no window or graphics
+requirement.
+The Linux Debug terminal defaults to `ON` for single-configuration Linux GNU/Clang
+Debug builds. Explicit `ON` includes it in every configuration from that build
+directory. Application/test composition selects it without adding a reverse Engine
+dependency. Other platforms omit it.
 OpenGL requires Native GLFW. Each UI owner links only Engine and its own toolkit;
-either or both can be selected. Disable all module selection options for
-Engine alone. Link the public targets to inherit their include directories and
+either or both can be selected. For Engine alone, disable all modules, including
+Startup and Workers; see the [engine-only configuration](../../docs/development/building.md#engine-only-configuration). Link the public targets to inherit their include directories and
 dependency requirements; each owner also supplies a standalone CMake entry point.
 
-Command-line applications can also link `Cheryl::Startup` or
-`Cheryl::OpenGL::Startup`. These are support libraries registered by Engine and
-OpenGL respectively, with build targets `cengine_startup` and
-`module_opengl_startup`. They keep CLI11 outside plain Engine/OpenGL consumers'
-public requirements. The [application guide](../../docs/development/consuming-engine.md#command-line-startup)
-describes their use.
+Command-line applications link `Cheryl::Startup` and use the generic
+`CE::Application::make_startup()` factory. `Cheryl::OpenGL::Startup` remains a
+compatibility interface and produces no extra runtime binary. CLI11 remains
+Startup's public header frontend; plain Engine/OpenGL consumers do not inherit
+it. The [application guide](../../docs/development/consuming-engine.md#command-line-startup)
+describes configuration and lifetimes.
 
 An owner can fulfill several related contracts. Native GLFW couples display and
 input lifetimes; OpenGL couples rendering and resource ownership with its context.

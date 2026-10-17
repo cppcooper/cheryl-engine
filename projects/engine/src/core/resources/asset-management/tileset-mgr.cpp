@@ -57,3 +57,10 @@ namespace CE::Assets::Tilesets {
         }
     }
 }
+
+namespace CE::State {
+    template <> auto Singleton<CE::Assets::Tilesets::Manager>::storage() -> Storage& {
+        static Storage value;
+        return value;
+    }
+}

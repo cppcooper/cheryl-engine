@@ -1,42 +1,83 @@
 # Pipelines, materials, and render submission
 
-`CE::Rendering::Pipelines::Definition` describes owned program source paths, position3/UV2 or
-position3/UV2/color4 vertex layout, triangle/strip topology, fixed blend/depth/cull
-intent, and a public parameter contract. `CE::Rendering::Materials::Definition` references a
-specific shared pipeline generation and supplies defaults, including retained
-image handles and zero-based texture-unit requests. Neither definition contains
-GLSL uniform names. Backend mappings are supplied to explicit OpenGL builders.
+Prepare complete draw packets from retained assets and copied game state, append
+them to an ordered frame, and let the runtime render and recycle that frame.
+[Rendering](../engine-systems/rendering.md) introduces the interfaces;
+[Ownership and Cleanup](../architecture/ownership-cleanup.md) explains why packets
+can retain resources without keeping a closed graphics backend usable.
 
-`CE::Rendering::Resources::Pipeline` is a backend base with a validated definition snapshot and no value
-copying/slicing. Its backend subclass must retain the linked executable program;
-compiled stages remain transient. `CE::Rendering::Resources::Material` copies its
-`CE::Rendering::Materials::Definition` on construction.
-Definition/default access is read-only. Building another pipeline/material
-instance preserves the old logical generation while its readers retain it.
-`CE::Assets::Materials::Manager` publishes complete immutable materials, including
-their pipeline generation, through explicit application-supplied builders. Indexed
-recipes use `CE::Assets::Shaders::Manager` and the optional provider-owned
-`CE::Assets::Shaders::Builder`. Both paths preserve immutable generations. `CE::Rendering::Frame` packets
-retain those generations for low-level renderer playback.
-
-## API domains
-
-Portable resource interfaces live in `CE::Rendering::Resources`. `Geometry`
-owns coordinates, vertex layouts and uploaded buffers; `Pipelines` owns fixed-state
-definitions and pass constraints; `Materials` owns retained material construction
-inputs. `Parameters`, `Sampling` and `Submission` describe copied draw values,
-immutable sampling and CPU packet resolution. Concrete native implementations
-belong to `CE::Rendering::OpenGL`.
-
-The shader asset family preserves a separate distinction between recipes and
-their retained results:
-
-| API | Role |
+| Task | Path |
 | --- | --- |
-| `CE::Assets::Shaders::ProgramRecipe`, `MaterialRecipe` | Owned CPU sources, identities, literals, contracts and backend payloads. |
-| `CE::Assets::Shaders::Program`, `Material` | Immutable catalogue entries pairing a recipe with its executable or material generation; a material entry also retains its selected program entry. |
-| `CE::Rendering::Resources::Program`, `Material` | Executable-program access and retained material resources used for drawing. |
-| `CE::Rendering::OpenGL::Program`, `Pipeline` | Concrete linked OpenGL resources and validated native playback. |
+| Draw a sprite with the maintained assets/materials | [Load and draw a sprite](../getting-started/how-to/draw-sprite.md), then the CPU submission contract below. |
+| Load authored shader/material recipes | [Shader/material manifests](../assets/asset-manifests.md#shadermaterial-definitions) through the asset loader. |
+| Construct application-specific UI materials | [Manual material construction](#manual-material-construction), on the graphics owner. |
+| Change filtering for one image binding | [Nearest-sampling example](#choose-nearest-sampling-for-pixel-art), retaining a sampler separately from image pixels. |
+
+## CPU submission
+
+`CE::Rendering::DrawPacket2D` retains geometry, an immutable material generation, and copied resolved
+parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
+and laid-out font glyphs before rendering, without binding native resources.
+`CE::Rendering::Submission::ImageParameter2D` selects a public sampler key and unit explicitly. Text layout is
+const and returns glyph placements; deprecated BitmapFont bank selection remains typed.
+Resolved glyph packets retain the geometry/atlas even after the Font object is released.
+`CE::Rendering::PassWriter` validates individual packets or a whole glyph group before publication
+and assigns stable authored order. `CE::Rendering::Frame` keeps reusable vector capacity and
+releases packet/pass handles on recycle. The OpenGL renderer checks its native
+pipeline domain, then calls the validated fixed-state draw path in authored order.
+Whole-image graphics, tiles, tile-animation values and text use
+`CE::Rendering::Submission` CPU helpers.
+Their [asset/playback contract](../assets/asset-values-and-playback.md) defines
+metadata and glyph units, direct-construction limits and image-key insertion.
+The [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
+provides retained shaped glyph pages through its `CE::Text::Rendering::Generation` submission overload.
+Opt-in [positioned text runs](../assets/text-layout.md#positioned-text-runs) prepare
+placements once and submit contiguous atlas-page ranges with a whole-text transform.
+They preserve order, clipping, sampling and retained generations. General packet
+merging and reorder-safe sorting remain separate extensions; the renderer still
+plays authored packets in order.
+
+### Frame storage and writers
+
+Frame writers borrow a slot; they do not lock it or publish it across threads.
+The runtime's [frame boundary](../runtime/runtime-frame-boundary.md) owns that transfer.
+Only active passes are visible through `passes()`, whose span borrows the slot and
+is invalidated by outer-vector growth. A pass writer uses an index that survives
+that growth, but references from `parameters()`/`constraints()` do not. Keep every
+writer within one exclusive preparation phase, before publication or recycling.
+
+Each `add()` validates before inserting. The group overload validates all packets
+and reserves capacity before appending any of them. Validation/allocation failure
+leaves that pass's earlier draws intact; it does not roll back an entire frame or
+other application side effects. Writer destruction performs no commit or rollback.
+Recycle a partially prepared frame before reuse. `begin_pass()` owns its values and
+copies matrices; a pass's constraints are immutable during its preparation through
+this writer API. Authored pass/draw order is the playback order regardless of the
+packet's `order_sensitive` metadata.
+
+Recycle only after playback or supersession excludes readers, on the resource
+release owner required by the backend. It releases active packet/pass handles and
+keeps vector capacity for later preparation. Native render/presentation failures
+can leave partial output or changed native state; CPU validation is not a transaction
+over backend execution.
+
+### Camera observations
+
+`CE::Rendering::CameraBase` is unsynchronized mutable CPU state. Setters and matrix references belong
+to one owner; a revision is a change counter, not an atomic publication mechanism.
+Copy matrices into a pass before sharing them with playback. Changed framebuffer
+size, view or perspective advances the revision once, while equal configurations
+leave it unchanged. View equality is exact per component; view matrices are not
+checked for finiteness or invertibility.
+
+Framebuffer dimensions are pixels. Negative dimensions throw before changing the
+camera; zero dimensions are retained while projection clamps each axis to at least
+one. `CE::Rendering::Camera2D` uses GLM orthographic bounds `[0, width]` and `[0, height]`, Y-up, with
+near/far 0/1. `CE::Rendering::Camera3D` uses vertical FOV in degrees and framebuffer aspect; finite
+`0 < FOV < 180` and `0 < near < far` are required, with plane distances in view units.
+Invalid perspective values leave the old configuration unchanged. Neither camera
+selects renderer depth policy or converts logical window coordinates to framebuffer
+pixels; that choice belongs to the consumer.
 
 ## Parameters and ownership
 
@@ -109,6 +150,30 @@ frames remain unchanged when another binding selects different sampling.
 For exact nearest sampling, disable anisotropy explicitly. Grid UVs still address cell edges;
 sampling support does not supply atlas padding or prevent every adjacent-cell bleed.
 
+### Choose nearest sampling for pixel art
+
+On the provider's platform/loading owner, with its graphics context current:
+
+```cpp
+namespace Sampling = CE::Rendering::Sampling;
+Sampling::Options options;
+options.minification = Sampling::Filter::Nearest;
+options.magnification = Sampling::Filter::Nearest;
+options.mipmaps = Sampling::MipmapFilter::None;
+options.anisotropy = Sampling::Anisotropy::Disabled;
+auto nearest = provider.create_sampler(options);
+style.parameters["image"] = CE::Rendering::Parameters::ImageBinding{image, 0, nearest};
+```
+
+Include `<cheryl/assets/resources/sampler.h>` and the draw/submission headers.
+Here `image` is a retained image from that provider and `style.material` declares
+its public sampler parameter as `image`. When this explicit binding supplies the
+image, leave the submission context's automatic `image` insertion unset; inserting
+the same draw-layer key twice rejects. The frame retains the sampler with the
+binding. Other draws using the same pixels can keep their original filtering.
+Nearest sampling still requires suitable atlas padding and placement to avoid
+adjacent-cell bleed or unintended boundary pixels.
+
 ## Frame and recipe integration
 
 OpenGL pipeline builders validate explicit mappings/reflection, required/optional
@@ -161,6 +226,8 @@ frame clears also disable scissor, so a preceding clipped packet cannot restrict
 the next clear. The renderer viewport supplies the framebuffer extent.
 Direct clipped `CE::Rendering::OpenGL::Pipeline::draw()` calls also supply that extent explicitly.
 
+## Material replacement
+
 `CE::Assets::Shaders::ProgramCache` publishes executable program handles for explicit
 program access; `CE::Rendering::DrawStyle2D` stores an immutable material handle.
 `CE::Assets::Materials::Manager::load()` retains an existing key; `reload()` builds a full
@@ -184,6 +251,53 @@ owns catalogue ordering, preserve-existing loads and incremental replacement.
 
 Use [architecture validation](../development/architecture-validation.md) for native
 state/reload, retained-packet and fixture checks.
+
+## API domains
+
+`CE::Rendering::Pipelines::Definition` describes owned program source paths, position3/UV2 or
+position3/UV2/color4 vertex layout, triangle/strip topology, fixed blend/depth/cull
+intent, and a public parameter contract. `CE::Rendering::Materials::Definition` references a
+specific shared pipeline generation and supplies defaults, including retained
+image handles and zero-based texture-unit requests. Neither definition contains
+GLSL uniform names. Backend mappings are supplied to explicit OpenGL builders.
+
+`CE::Rendering::Resources::Pipeline` is a backend base with a validated definition snapshot and no value
+copying/slicing. Its backend subclass must retain the linked executable program;
+compiled stages remain transient. `CE::Rendering::Resources::Material` copies its
+`CE::Rendering::Materials::Definition` on construction.
+Definition/default access is read-only. Building another pipeline/material
+instance preserves the old logical generation while its readers retain it.
+`CE::Assets::Materials::Manager` publishes complete immutable materials, including
+their pipeline generation, through explicit application-supplied builders. Indexed
+recipes use `CE::Assets::Shaders::Manager` and the optional provider-owned
+`CE::Assets::Shaders::Builder`. Both paths preserve immutable generations. `CE::Rendering::Frame` packets
+retain those generations for low-level renderer playback.
+
+Portable resource interfaces live in `CE::Rendering::Resources`. `Geometry`
+owns coordinates, vertex layouts and uploaded buffers; `Pipelines` owns fixed-state
+definitions and pass constraints; `Materials` owns retained material construction
+inputs. `Parameters`, `Sampling` and `Submission` describe copied draw values,
+immutable sampling and CPU packet resolution. Concrete native implementations
+belong to `CE::Rendering::OpenGL`.
+
+The shader asset family preserves a separate distinction between recipes and
+their retained results:
+
+| API | Role |
+| --- | --- |
+| `CE::Assets::Shaders::ProgramRecipe`, `MaterialRecipe` | Owned CPU sources, identities, literals, contracts and backend payloads. |
+| `CE::Assets::Shaders::Program`, `Material` | Immutable catalogue entries pairing a recipe with its executable or material generation; a material entry also retains its selected program entry. |
+| `CE::Rendering::Resources::Program`, `Material` | Executable-program access and retained material resources used for drawing. |
+| `CE::Rendering::OpenGL::Program`, `Pipeline` | Concrete linked OpenGL resources and validated native playback. |
+
+### Legacy submission
+
+Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
+BitmapFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
+place and rotate text through `CE::Rendering::DrawStyle2D::model_matrix`. Legacy AsciiFont uses a supplied
+font file and an ASCII atlas.
+
+See [BitmapFont deprecation](../resources/legacy-ffont.md).
 
 ## Native bootstrap and binding
 
@@ -275,73 +389,3 @@ A future indexed UI migration targets TGUI first. If RmlUi also migrates, retain
 this manual example and an independently usable manual consumer. Other shader
 files are not indexed merely because they exist; their purposes and native behavior
 remain unverified.
-
-## CPU submission
-
-`CE::Rendering::DrawPacket2D` retains geometry, an immutable material generation, and copied resolved
-parameters. Asset submission helpers select sprite/tile ranges, whole graphics,
-and laid-out font glyphs before rendering, without binding native resources.
-`CE::Rendering::Submission::ImageParameter2D` selects a public sampler key and unit explicitly. Text layout is
-const and returns glyph placements; deprecated BitmapFont bank selection remains typed.
-Resolved glyph packets retain the geometry/atlas even after the Font object is released.
-`CE::Rendering::PassWriter` validates individual packets or a whole glyph group before publication
-and assigns stable authored order. `CE::Rendering::Frame` keeps reusable vector capacity and
-releases packet/pass handles on recycle. The OpenGL renderer checks its native
-pipeline domain, then calls the validated fixed-state draw path in authored order.
-Whole-image graphics, tiles, tile-animation values and text use
-`CE::Rendering::Submission` CPU helpers.
-Their [asset/playback contract](../assets/asset-values-and-playback.md) defines
-metadata and glyph units, direct-construction limits and image-key insertion.
-Draw2D/iDraw/DrawInfo and the font formatting pointer contract are retired. Deprecated
-BitmapFont keeps immutable width metrics and typed normal/alternate-bank layout; callers
-place and rotate text through `CE::Rendering::DrawStyle2D::model_matrix`. Legacy AsciiFont uses a supplied
-font file and an ASCII atlas. The [Unicode service](../assets/text-layout.md#preparation-upload-and-retained-submission)
-provides retained shaped glyph pages through its `CE::Text::Rendering::Generation` submission overload.
-Opt-in [positioned text runs](../assets/text-layout.md#positioned-text-runs) prepare
-placements once and submit contiguous atlas-page ranges with a whole-text transform.
-They preserve order, clipping, sampling and retained generations. General packet
-merging and reorder-safe sorting remain separate extensions; the renderer still
-plays authored packets in order.
-See [BitmapFont deprecation](../resources/legacy-ffont.md).
-
-### Frame storage and writers
-
-Frame writers borrow a slot; they do not lock it or publish it across threads.
-The runtime's [frame boundary](../runtime/runtime-frame-boundary.md) owns that transfer.
-Only active passes are visible through `passes()`, whose span borrows the slot and
-is invalidated by outer-vector growth. A pass writer uses an index that survives
-that growth, but references from `parameters()`/`constraints()` do not. Keep every
-writer within one exclusive preparation phase, before publication or recycling.
-
-Each `add()` validates before inserting. The group overload validates all packets
-and reserves capacity before appending any of them. Validation/allocation failure
-leaves that pass's earlier draws intact; it does not roll back an entire frame or
-other application side effects. Writer destruction performs no commit or rollback.
-Recycle a partially prepared frame before reuse. `begin_pass()` owns its values and
-copies matrices; a pass's constraints are immutable during its preparation through
-this writer API. Authored pass/draw order is the playback order regardless of the
-packet's `order_sensitive` metadata.
-
-Recycle only after playback or supersession excludes readers, on the resource
-release owner required by the backend. It releases active packet/pass handles and
-keeps vector capacity for later preparation. Native render/presentation failures
-can leave partial output or changed native state; CPU validation is not a transaction
-over backend execution.
-
-### Camera observations
-
-`CE::Rendering::CameraBase` is unsynchronized mutable CPU state. Setters and matrix references belong
-to one owner; a revision is a change counter, not an atomic publication mechanism.
-Copy matrices into a pass before sharing them with playback. Changed framebuffer
-size, view or perspective advances the revision once, while equal configurations
-leave it unchanged. View equality is exact per component; view matrices are not
-checked for finiteness or invertibility.
-
-Framebuffer dimensions are pixels. Negative dimensions throw before changing the
-camera; zero dimensions are retained while projection clamps each axis to at least
-one. `CE::Rendering::Camera2D` uses GLM orthographic bounds `[0, width]` and `[0, height]`, Y-up, with
-near/far 0/1. `CE::Rendering::Camera3D` uses vertical FOV in degrees and framebuffer aspect; finite
-`0 < FOV < 180` and `0 < near < far` are required, with plane distances in view units.
-Invalid perspective values leave the old configuration unchanged. Neither camera
-selects renderer depth policy or converts logical window coordinates to framebuffer
-pixels; that choice belongs to the consumer.

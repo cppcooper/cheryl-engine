@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include "event-bus.h"
 #include <templates/singleton.h>
 
@@ -20,13 +22,13 @@ namespace CE::Events {
 
         EventSystem() = default;
         [[nodiscard]] ::CE::Events::EventBus& bus() { return bus_; }
-        Registration register_listener(
+        CE_API Registration register_listener(
             const std::string& event,
             Callback callback,
             Delivery delivery = Delivery{},
             ErrorHandler errors = ErrorHandler{}
         );
-        void dispatch(const std::string& event, const std::any& payload);
+        CE_API void dispatch(const std::string& event, const std::any& payload);
         template <::CE::Events::EventPayload Payload>
         Registration register_listener(
             const ::CE::Events::EventChannel<Payload>& event,
@@ -45,4 +47,8 @@ namespace CE::Events {
         void wait_for_listener(const Registration& registration) const { bus_.wait_for_listener(registration); }
         bool unregister_and_wait(const Registration& registration) { return bus_.unregister_and_wait(registration); }
     };
+}
+
+namespace CE::State {
+    template <> CE_API auto Singleton<CE::Events::EventSystem>::storage() -> Storage&;
 }

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <cheryl/export.h>
 #ifndef CEFONT_H
 #define CEFONT_H
 #include "base/asset2d.h"
@@ -24,10 +26,10 @@ namespace CE::Text::Legacy {
     /** Retains glyph geometry/atlas; direct base construction does not validate them.
      * Immutable implementations support CPU layout without a graphics context.
      */
-    struct Font : protected CE::Assets::Content2D {
+    struct CE_TYPE_API Font : protected CE::Assets::Content2D {
         explicit Font(const FontResources& data)
         : CE::Assets::Content2D(std::get<0>(data), std::get<1>(data)) {}
-        virtual ~Font() = default;
+        CE_API virtual ~Font();
         // Returns owned placements without retaining text. Encoding/metrics and
         // option support belong to the implementation; this interface promises no shaping.
         [[nodiscard]] virtual std::vector<GlyphPlacement> layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const = 0;

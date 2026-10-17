@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cheryl/export.h>
+
 #include <assets/types/2d/base/asset2d.h>
 #include <core/resources/memory/shared.h>
 #include <assets/definitions/sprite.h>
@@ -24,21 +26,21 @@ namespace CE::Assets::Sprites {
      */
     class Animation final {
     public:
-        Animation& operator[](std::size_t frame);
+        CE_API Animation& operator[](std::size_t frame);
         // Wrap looping clips, clamp nonlooping clips, and reset time within the frame.
-        void set_frame(std::size_t frame);
+        CE_API void set_frame(std::size_t frame);
         // Finite nonnegative seconds; invalid time throws without changing the cursor.
         // Exact duration boundaries advance; nonlooping clips stop at their last frame.
-        void advance(std::chrono::duration<double> elapsed);
+        CE_API void advance(std::chrono::duration<double> elapsed);
         [[nodiscard]] std::size_t index() const { return index_; }
-        [[nodiscard]] CE::Assets::Grids::CellIndex cell() const;
+        [[nodiscard]] CE_API CE::Assets::Grids::CellIndex cell() const;
         [[nodiscard]] const Clip& definition() const { return *definition_; }
-        [[nodiscard]] std::chrono::milliseconds frame_duration() const;
+        [[nodiscard]] CE_API std::chrono::milliseconds frame_duration() const;
         [[nodiscard]] bool loops() const { return definition_->loop; }
 
     private:
         friend struct Asset;
-        explicit Animation(std::shared_ptr<const Clip> definition);
+        CE_API explicit Animation(std::shared_ptr<const Clip> definition);
 
         std::shared_ptr<const Clip> definition_;
         std::size_t index_ = 0;
@@ -51,20 +53,20 @@ namespace CE::Assets::Sprites {
      * fields or backend compatibility. Read concurrently only while inputs are stable.
      */
     struct Asset final : Content2D {
-        explicit Asset(Data data);
+        CE_API explicit Asset(Data data);
 
-        Animation operator[](const std::string& animation) const;
+        CE_API Animation operator[](const std::string& animation) const;
         // Prefer an exact name/facing. Without a facing, one matching clip is allowed;
         // missing/ambiguous requests throw. operator[] uses this faceless lookup.
-        Animation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
-        [[nodiscard]] bool has_animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
+        CE_API Animation animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
+        [[nodiscard]] CE_API bool has_animation(const std::string& animation, std::optional<std::string> facing = std::nullopt) const;
         // Metadata references borrow this CE::Assets::Sprites::Asset's lifetime; missing names throw out_of_range.
-        [[nodiscard]] const CE::Assets::Grids::View& view(const std::string& name) const;
-        [[nodiscard]] CE::Assets::Grids::CellIndex orientation(const std::string& name) const;
+        [[nodiscard]] CE_API const CE::Assets::Grids::View& view(const std::string& name) const;
+        [[nodiscard]] CE_API CE::Assets::Grids::CellIndex orientation(const std::string& name) const;
         [[nodiscard]] const Definition& definition() const { return *definition_; }
 
     private:
-        [[nodiscard]] static std::string animation_key(const std::string& animation, const std::optional<std::string>& facing);
+        [[nodiscard]] CE_API static std::string animation_key(const std::string& animation, const std::optional<std::string>& facing);
 
         std::shared_ptr<const Definition> definition_;
         std::unordered_map<std::string, std::size_t> animation_indices_;

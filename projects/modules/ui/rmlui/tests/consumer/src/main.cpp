@@ -1,4 +1,5 @@
 #include <cheryl/ui/rmlui/input.h>
+#include <cheryl/core/logging/process-lifetime.h>
 #include <cheryl/ui/rmlui/scene.h>
 #include <cheryl/ui/rmlui/session.h>
 #include "../../support/document.h"
@@ -28,6 +29,7 @@ namespace {
 }
 
 int main() {
+    CE::Logging::ProcessLifetime logging_lifetime;
     Input input;
     CE::UI::RmlUi::RecordedScene retained;
     {
