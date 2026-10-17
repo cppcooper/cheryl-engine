@@ -73,6 +73,10 @@ function(cheryl_runtime_dependencies result)
     cmake_policy(POP)
 endfunction()
 
+# Generated install scripts do not inherit the project's policy version.
+# Functions capture policies at definition, including IN_LIST support.
+cmake_policy(PUSH)
+cmake_policy(SET CMP0057 NEW)
 function(cheryl_sdk_install_runtimes destination)
     cheryl_runtime_dependencies(libraries ${ARGN})
     if(NOT libraries)
@@ -150,3 +154,4 @@ function(cheryl_sdk_install_runtimes destination)
         message(FATAL_ERROR "Cannot collect SDK redistribution notices: ${output}${diagnostic}")
     endif()
 endfunction()
+cmake_policy(POP)
