@@ -4,6 +4,7 @@ from contextlib import redirect_stdout
 import importlib.util
 import hashlib
 import io
+from itertools import product
 import json
 from pathlib import Path
 import re
@@ -54,11 +55,86 @@ class RunnerTests(unittest.TestCase):
                 '<testsuite><testcase name="passed"/><testcase name="fixture"><skipped/></testcase></testsuite>',
                 encoding="utf-8")
 
-    def invoke(self, *arguments):
+    def invoke(self, *arguments, environment=None):
         output = io.StringIO()
-        with patch.object(ci, "run", self.execute), patch.dict(ci.os.environ, {}, clear=True), redirect_stdout(output):
+        with patch.object(ci, "run", self.execute), \
+             patch.dict(ci.os.environ, environment or {}, clear=True), redirect_stdout(output):
             ci.main(["--source", str(self.source), "--build-dir", str(self.build), "--jobs", "2", *arguments])
         return output.getvalue()
+
+    def test_platform_matrix(self):
+        cases = product(("linux", "win32"), ("headless", "modules", "consumer"), ("all", "build", "test"),
+                        ("static", "shared"), ("ON", "OFF"), (False, True), ("Release", "Debug", "RelWithDebInfo"))
+        for index, (platform, profile, phase, linkage, hwloc, sdk, configuration) in enumerate(cases):
+            with self.subTest(platform=platform, profile=profile, phase=phase, linkage=linkage,
+                              hwloc=hwloc, sdk=sdk, configuration=configuration), \
+                 patch.object(ci.sys, "platform", platform):
+                self.build = self.root / f"build {index}"
+                self.commands.clear()
+                self.environments.clear()
+                self.invoke("--profile", profile, "--phase", phase, "--linkage", linkage, "--hwloc", hwloc,
+                            "--build-type", configuration, *(["--sdk"] if sdk else []))
+                configure = [command for command in self.commands if command[:2] == ["cmake", "-S"]]
+                builds = [command for command in self.commands if command[:2] == ["cmake", "--build"]]
+                checks = [command for command in self.commands if command[0] == "ctest"]
+                controls = [command for command in self.commands if "--check" in command]
+                consumers = [command for command in self.commands if len(command) == 1]
+                self.assertEqual(len(configure), int(phase != "test"))
+                self.assertEqual(len(builds), int(phase != "test"))
+                self.assertEqual(len(controls), int(phase != "test" and profile == "modules"))
+                self.assertEqual(len(checks), int(phase != "build" and profile != "consumer"))
+                if configure:
+                    self.assertIn(f"-DCHERYL_BUILD_SHARED_LIBS={'ON' if linkage == 'shared' else 'OFF'}", configure[0])
+                    self.assertIn(f"-DCHERYL_BUILD_SDK={'ON' if sdk else 'OFF'}", configure[0])
+                    self.assertIn(f"-DCHERYL_BUILD_TESTS={'OFF' if profile == 'consumer' else 'ON'}", configure[0])
+                    self.assertIn(f"-DCHERYL_BUILD_WORKER_TOPOLOGY_HWLOC={hwloc}", configure[0])
+                    self.assertIn(f"-DCMAKE_BUILD_TYPE={configuration}", configure[0])
+                    self.assertEqual(configure[0][2:8],
+                                     [str(self.source), "-B", str(self.build), "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={configuration}"])
+                    self.assertEqual("cheryl-sdk" in builds[0], sdk)
+                    self.assertEqual("tests-worker-topology-composition" in builds[0], hwloc == "ON" and profile != "consumer")
+                if checks:
+                    pattern = re.compile(checks[0][checks[0].index("-R") + 1])
+                    self.assertIsNotNone(pattern.search("consumer-worker-topology"))
+                    self.assertEqual(bool(pattern.search("tests-worker-topology-composition.case")), hwloc == "ON")
+                    self.assertEqual(bool(pattern.search("tests-ui-coexist.case")), profile == "modules")
+                    self.assertIsNone(pattern.search("acceptance-worker-topology-hwloc.native.binding"))
+                    self.assertIsNone(pattern.search("all-engine.case"))
+                expected = [] if phase == "build" else ["cheryl-consumer", "cheryl-startup-consumer"]
+                if phase != "build" and profile == "modules":
+                    expected += ["cheryl-native-glfw-consumer", "cheryl-opengl-consumer", "cheryl-ui-tgui-consumer",
+                                 "cheryl-ui-rmlui-consumer", "cheryl-audio-miniaudio-consumer", "cheryl-ui-tgui-consumer-native"]
+                suffix = ".exe" if platform == "win32" else ""
+                self.assertEqual(consumers, [[str(self.build / (name + suffix))] for name in expected])
+                if platform == "win32":
+                    self.assertTrue(all(environment["PATH"].split(ci.os.pathsep)[0] == str(self.build)
+                                        for environment in self.environments))
+
+    def test_prepared_environment(self):
+        for platform, profile, hwloc in product(("linux", "win32"), ("headless", "modules", "consumer"), ("ON", "OFF")):
+            with self.subTest(platform=platform, profile=profile, hwloc=hwloc), patch.object(ci.sys, "platform", platform):
+                self.commands.clear()
+                self.environments.clear()
+                installed = self.root / "prepared with spaces"
+                vcpkg = self.root / "vcpkg with spaces"
+                arguments = ["--vcpkg-root", str(vcpkg), "--vcpkg-installed-dir", str(installed)] if platform == "linux" else []
+                self.invoke("--profile", profile, "--phase", "build", "--hwloc", hwloc, *arguments, environment={
+                    "CHERYL_CI_VCPKG_ROOT": str(vcpkg), "CHERYL_CI_VCPKG_INSTALLED_DIR": str(installed),
+                    "CMAKE_CXX_COMPILER_LAUNCHER": "ccache", "PATH": "existing search path"})
+                configure = self.commands[0]
+                features = (["hwloc"] if hwloc == "ON" else []) + (["native"] if platform == "win32" and profile == "modules" else [])
+                self.assertIn(f"-DVCPKG_MANIFEST_FEATURES={';'.join(features)}", configure)
+                self.assertIn(f"-DVCPKG_INSTALLED_DIR={installed.as_posix()}", configure)
+                self.assertIn("-DVCPKG_MANIFEST_INSTALL=OFF", configure)
+                self.assertIn(f"-DCMAKE_PROJECT_INCLUDE={self.source / 'tools/dependencies/prepared.cmake'}", configure)
+                self.assertIn(f"-DVCPKG_TARGET_TRIPLET={'x64-windows' if platform == 'win32' else 'x64-linux-dynamic'}", configure)
+                self.assertEqual("-DCMAKE_POLICY_DEFAULT_CMP0141=NEW" in configure, platform == "win32")
+                embedded = "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
+                self.assertEqual(embedded in configure, platform == "win32")
+                python = f"-DPython_EXECUTABLE:FILEPATH={Path(ci.sys.executable).resolve().as_posix()}"
+                self.assertEqual(python in configure, platform == "win32" and profile == "modules")
+                search = self.environments[0]["PATH"].split(ci.os.pathsep)
+                self.assertEqual(search, [str(self.build), "existing search path"] if platform == "win32" else ["existing search path"])
 
     def test_headless(self):
         output = self.invoke("--profile", "headless", "--hwloc", "ON")
@@ -169,6 +245,15 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("--vcpkg-installed-dir requires --vcpkg-root", errors.getvalue())
         self.assertEqual(self.commands, [])
 
+    def test_invalid_jobs(self):
+        for jobs in ("0", "-1"):
+            with self.subTest(jobs=jobs), patch("sys.stderr", new_callable=io.StringIO) as errors, \
+                 self.assertRaises(SystemExit) as raised:
+                self.invoke("--profile", "headless", "--jobs", jobs)
+            self.assertEqual(raised.exception.code, 2)
+            self.assertIn("--jobs must be positive", errors.getvalue())
+            self.assertEqual(self.commands, [])
+
     def test_build_failure(self):
         calls = []
 
@@ -180,6 +265,42 @@ class RunnerTests(unittest.TestCase):
         with patch.object(ci, "run", fail_build), self.assertRaises(subprocess.CalledProcessError):
             ci.main(["--source", str(self.source), "--build-dir", str(self.build), "--profile", "headless"])
         self.assertEqual(len(calls), 2)
+
+    def test_phase_failures(self):
+        for platform, stage in product(("linux", "win32"), ("configure", "controls", "build", "ctest", "consumer")):
+            with self.subTest(platform=platform, stage=stage), patch.object(ci.sys, "platform", platform):
+                self.commands.clear()
+                self.build = self.root / f"{platform} {stage}"
+                suffix = ".exe" if platform == "win32" else ""
+                failure = {
+                    "configure": lambda command: command[:2] == ["cmake", "-S"],
+                    "controls": lambda command: "--check" in command,
+                    "build": lambda command: command[:2] == ["cmake", "--build"],
+                    "ctest": lambda command: command[0] == "ctest",
+                    "consumer": lambda command: command == [str(self.build / ("cheryl-consumer" + suffix))],
+                }[stage]
+
+                def execute(command, source, environment):
+                    if failure(list(map(str, command))):
+                        self.commands.append(list(map(str, command)))
+                        raise subprocess.CalledProcessError(7, command)
+                    self.execute(command, source, environment)
+
+                with patch.object(ci, "run", execute), patch.dict(ci.os.environ, {}, clear=True), \
+                     redirect_stdout(io.StringIO()), self.assertRaises(subprocess.CalledProcessError) as raised:
+                    ci.main(["--source", str(self.source), "--build-dir", str(self.build), "--profile", "modules"])
+                self.assertEqual(raised.exception.returncode, 7)
+                self.assertTrue(failure(self.commands[-1]))
+
+    def test_command_failure(self):
+        command = ["cmake", "--build", self.build]
+        environment = {"PATH": "prepared runtime search"}
+        failure = subprocess.CalledProcessError(3, command)
+        with patch.object(ci.subprocess, "run", side_effect=failure) as execute, redirect_stdout(io.StringIO()), \
+             self.assertRaises(subprocess.CalledProcessError) as raised:
+            ci.run(command, self.source, environment)
+        self.assertIs(raised.exception, failure)
+        execute.assert_called_once_with(command, cwd=self.source, env=environment, check=True)
 
 
 class SdkPhaseTests(unittest.TestCase):

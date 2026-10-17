@@ -686,8 +686,8 @@ class PreparedCmakeTests(unittest.TestCase):
                         path.parent.mkdir(parents=True, exist_ok=True)
                         path.write_bytes(b"debug fixture")
                 (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+set(CMAKE_SYSTEM_NAME Windows)
 project(cheryl LANGUAGES NONE)
-set(WIN32 TRUE)
 set(CMAKE_FIND_LIBRARY_PREFIXES "")
 set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
 set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
@@ -701,14 +701,16 @@ if(NOT kind STREQUAL "SHARED_LIBRARY" OR NOT import_library MATCHES "/lib/harfbu
     message(FATAL_ERROR "The prepared HarfBuzz DLL/import pair is incomplete")
 endif()
 file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/runtime.txt" CONTENT "$<TARGET_FILE:harfbuzz::harfbuzz>")
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/link.txt" CONTENT "$<TARGET_LINKER_FILE:harfbuzz::harfbuzz>")
 ''', encoding="utf-8")
                 for configuration in ("Release", "Debug", "RelWithDebInfo"):
                     build = root / configuration
                     result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
                                              f"-DCMAKE_BUILD_TYPE={configuration}"], capture_output=True, text=True)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                    directory = "debug/bin" if debug and configuration == "Debug" else "bin"
-                    self.assertEqual(Path((build / "runtime.txt").read_text(encoding="utf-8")), prefix / directory / "harfbuzz.dll")
+                    directory = prefix / "debug" if debug and configuration == "Debug" else prefix
+                    self.assertEqual(Path((build / "runtime.txt").read_text(encoding="utf-8")), directory / "bin/harfbuzz.dll")
+                    self.assertEqual(Path((build / "link.txt").read_text(encoding="utf-8")), directory / "lib/harfbuzz.lib")
 
     def test_harfbuzz_supplied(self):
         helper = Path(__file__).resolve().parents[2] / "tools/dependencies/prepared.cmake"
@@ -716,8 +718,8 @@ file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/runtime.txt" CONTENT "$<TARGET_FILE:
             root = Path(temporary)
             (root / "installed/x64-windows/lib").mkdir(parents=True)
             (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+set(CMAKE_SYSTEM_NAME Windows)
 project(cheryl LANGUAGES NONE)
-set(WIN32 TRUE)
 set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
 set(VCPKG_TARGET_TRIPLET x64-windows)
 set(CHERYL_BUILD_WORKERS OFF)
@@ -735,43 +737,78 @@ endif()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_shared_hwloc_closure(self):
-        self.check_hwloc_configurations(debug=False)
+        for system in ("Linux", "Windows"):
+            with self.subTest(system=system):
+                self.check_hwloc_configurations(system, debug=False)
 
     def test_debug_hwloc_closure(self):
-        self.check_hwloc_configurations(debug=True)
+        for system in ("Linux", "Windows"):
+            with self.subTest(system=system):
+                self.check_hwloc_configurations(system, debug=True)
 
-    def check_hwloc_configurations(self, *, debug):
+    def test_windows_hwloc_debug_pair(self):
+        for debug in ("library", "runtime"):
+            with self.subTest(debug=debug):
+                self.check_hwloc_configurations("Windows", debug=debug)
+
+    def test_windows_hwloc_names(self):
+        for runtime in ("hwloc-15.dll", "libhwloc-15.dll", "libhwloc.dll"):
+            with self.subTest(runtime=runtime):
+                self.check_hwloc_configurations("Windows", debug=True, runtime=runtime)
+
+    def check_hwloc_configurations(self, system, *, debug, runtime=None):
         helper = Path(__file__).resolve().parents[2] / "tools/dependencies/prepared.cmake"
+        windows = system == "Windows"
+        triplet = "x64-windows" if windows else "x64-linux-dynamic"
+        runtime = runtime or ("hwloc.dll" if windows else "libhwloc.so")
+        runtime_directory = "bin" if windows else "lib"
+        library = "hwloc.lib" if windows else "libhwloc.so"
+        complete_debug = debug is True
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            prefix = root / "installed/x64-linux-dynamic"
+            prefix = root / "installed" / triplet
             (prefix / "include").mkdir(parents=True)
             (prefix / "lib/pkgconfig").mkdir(parents=True)
+            (prefix / runtime_directory).mkdir(exist_ok=True)
             (prefix / "include/hwloc.h").write_bytes(b"fixture")
             (prefix / "lib/libhwloc.a").write_bytes(b"wrong static fixture")
-            (prefix / "lib/libhwloc.so").write_bytes(b"shared fixture")
+            (prefix / "lib" / library).write_bytes(b"shared link fixture")
+            (prefix / runtime_directory / runtime).write_bytes(b"shared runtime fixture")
             (prefix / "lib/pkgconfig/hwloc.pc").write_text("Libs: -L${libdir} -lhwloc -lm\nLibs.private: -lpthread\n", encoding="utf-8")
-            if debug:
+            if windows:
+                (prefix / "include/harfbuzz").mkdir()
+                (prefix / "include/harfbuzz/hb.h").write_bytes(b"fixture")
+                (prefix / "lib/harfbuzz.lib").write_bytes(b"import fixture")
+                (prefix / "bin/harfbuzz.dll").write_bytes(b"runtime fixture")
+            if complete_debug or debug == "library":
                 (prefix / "debug/lib").mkdir(parents=True)
-                (prefix / "debug/lib/libhwloc.so").write_bytes(b"debug fixture")
+                (prefix / "debug/lib" / library).write_bytes(b"debug link fixture")
+            if complete_debug or debug == "runtime":
+                (prefix / "debug" / runtime_directory).mkdir(parents=True, exist_ok=True)
+                (prefix / "debug" / runtime_directory / runtime).write_bytes(b"debug runtime fixture")
             (root / "CMakeLists.txt").write_text(f'''cmake_minimum_required(VERSION 3.28)
+set(CMAKE_SYSTEM_NAME {system})
 project(cheryl LANGUAGES NONE)
+set(CMAKE_FIND_LIBRARY_PREFIXES "{'' if windows else 'lib'}")
+set(CMAKE_FIND_LIBRARY_SUFFIXES "{'.lib' if windows else '.so;.a'}")
 set(VCPKG_INSTALLED_DIR "{(root / 'installed').as_posix()}")
-set(VCPKG_TARGET_TRIPLET x64-linux-dynamic)
+set(VCPKG_TARGET_TRIPLET {triplet})
 set(CHERYL_NATIVE_INPUT OFF)
 include("{helper.as_posix()}")
 get_target_property(location cheryl_prepared_hwloc IMPORTED_LOCATION)
 get_target_property(closure cheryl_prepared_hwloc INTERFACE_LINK_LIBRARIES)
 get_target_property(configurations cheryl_prepared_hwloc IMPORTED_CONFIGURATIONS)
-if(NOT location MATCHES "libhwloc\\\\.so$" OR closure)
+if(NOT location STREQUAL "{(prefix / runtime_directory / runtime).as_posix()}" OR closure)
     message(FATAL_ERROR "Incorrect shared prepared closure: ${{location}} / ${{closure}}")
 endif()
-if(NOT configurations STREQUAL "{'RELEASE;DEBUG' if debug else 'RELEASE'}")
+if(NOT configurations STREQUAL "{'RELEASE;DEBUG' if complete_debug else 'RELEASE'}")
     message(FATAL_ERROR "Incorrect prepared configurations: ${{configurations}}")
 endif()
 file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/hwloc.txt" CONTENT "$<TARGET_FILE:cheryl_prepared_hwloc>")
+file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/hwloc-link.txt" CONTENT "$<TARGET_LINKER_FILE:cheryl_prepared_hwloc>")
 ''', encoding="utf-8")
-            self.check_generated_locations(root, prefix, debug=debug)
+            self.check_generated_locations(root, prefix, debug=complete_debug,
+                                           runtime=f"{runtime_directory}/{runtime}", library=f"lib/{library}")
 
     def test_sdk_shared_export(self):
         repository = Path(__file__).resolve().parents[2]
@@ -800,7 +837,13 @@ add_library(ctti INTERFACE)
 add_library(glm INTERFACE)
 add_library(glm::glm-header-only ALIAS glm)
 add_library(harfbuzz::harfbuzz SHARED IMPORTED)
-set_property(TARGET harfbuzz::harfbuzz PROPERTY IMPORTED_LOCATION "${{CMAKE_SOURCE_DIR}}/libharfbuzz.so")
+if(WIN32)
+    set_target_properties(harfbuzz::harfbuzz PROPERTIES
+        IMPORTED_LOCATION "${{CMAKE_SOURCE_DIR}}/harfbuzz.dll"
+        IMPORTED_IMPLIB "${{CMAKE_SOURCE_DIR}}/harfbuzz.lib")
+else()
+    set_property(TARGET harfbuzz::harfbuzz PROPERTY IMPORTED_LOCATION "${{CMAKE_SOURCE_DIR}}/libharfbuzz.so")
+endif()
 set_property(GLOBAL PROPERTY CHERYL_SHARED_DEPENDENCIES "harfbuzz::harfbuzz|engine;public_native|engine")
 target_link_libraries(engine PUBLIC public_native PRIVATE harfbuzz::harfbuzz)
 include("{(repository / 'cmake/CherylSdk.cmake').as_posix()}")
@@ -999,15 +1042,16 @@ endif()
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def check_generated_locations(self, root, prefix, *, debug):
+    def check_generated_locations(self, root, prefix, *, debug, runtime, library):
         for configuration in ("Release", "Debug", "RelWithDebInfo"):
             with self.subTest(configuration=configuration):
                 build = root / configuration
                 result = subprocess.run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
                                          f"-DCMAKE_BUILD_TYPE={configuration}"], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                expected = prefix / ("debug/lib/libhwloc.so" if debug and configuration == "Debug" else "lib/libhwloc.so")
-                self.assertEqual(Path((build / "hwloc.txt").read_text(encoding="utf-8")), expected)
+                directory = prefix / "debug" if debug and configuration == "Debug" else prefix
+                self.assertEqual(Path((build / "hwloc.txt").read_text(encoding="utf-8")), directory / runtime)
+                self.assertEqual(Path((build / "hwloc-link.txt").read_text(encoding="utf-8")), directory / library)
 
 
 if __name__ == "__main__":
