@@ -146,6 +146,11 @@ endif()
         result = self.configure(f'''
 include("{ROOT.as_posix()}/cmake/CherylRuntimeDependencies.cmake")
 function(file operation)
+  if(operation STREQUAL "TO_CMAKE_PATH")
+    _file(TO_CMAKE_PATH "${{ARGV1}}" converted)
+    set(${{ARGV2}} "${{converted}}" PARENT_SCOPE)
+    return()
+  endif()
   cmake_parse_arguments(probe "" "RESOLVED_DEPENDENCIES_VAR;UNRESOLVED_DEPENDENCIES_VAR"
     "LIBRARIES;DIRECTORIES;PRE_EXCLUDE_REGEXES;POST_EXCLUDE_REGEXES;CONFLICTING_DEPENDENCIES_PREFIX" ${{ARGN}})
   set(${{probe_RESOLVED_DEPENDENCIES_VAR}} "" PARENT_SCOPE)
