@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -167,7 +168,9 @@ set(WIN32 FALSE)
 include("{ROOT.as_posix()}/cmake/CherylRuntimeDependencies.cmake")
 # This exercises Linux staging even when the host uses Windows drive paths.
 set(CMAKE_INSTALL_PREFIX "/prefix")
-set(ENV{{DESTDIR}} "${{CMAKE_BINARY_DIR}}/stage")
+# Match the runtime patcher's canonical paths, including Windows 8.3 names.
+file(REAL_PATH "${{CMAKE_BINARY_DIR}}" build_root)
+set(ENV{{DESTDIR}} "${{build_root}}/stage")
 set(staged "$ENV{{DESTDIR}}${{CMAKE_INSTALL_PREFIX}}")
 file(WRITE "${{CMAKE_BINARY_DIR}}/source/libfixture.so.2.7" "runtime bytes")
 if({"TRUE" if conflict else "FALSE"})
@@ -216,6 +219,21 @@ endif()
     def test_runtime_destdir(self):
         result = self.runtime_install_probe()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_runtime_alias(self):
+        with tempfile.TemporaryDirectory(prefix="cheryl-alias-") as directory:
+            root = Path(directory).resolve()
+            workspace = root / "real workspace"
+            workspace.mkdir()
+            alias = root / "alias workspace"
+            try:
+                alias.symlink_to(workspace, target_is_directory=True)
+            except (NotImplementedError, OSError) as error:
+                self.skipTest(f"Directory-link fixture unavailable: {error}")
+            with patch.object(tempfile, "TemporaryDirectory") as temporary:
+                temporary.return_value.__enter__.return_value = str(alias)
+                result = self.runtime_install_probe()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_runtime_soname_conflict(self):
         result = self.runtime_install_probe(conflict=True)
