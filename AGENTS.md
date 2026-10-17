@@ -4,8 +4,6 @@
 
 ### Work modes and progression
 
-This section applies when in a model mode where multiple sub-agents cant be used frequently. When in such a mode this section provides valuable information worth considering, but documentation (to take an example) should not be deferred.
-
 Each task has one primary work mode:
 
 - Review and planning
@@ -19,62 +17,23 @@ Each task has one primary work mode:
 - Documentation audit
 - Documentation maintenance
 
-Keep independent work objectives separated by mode. Do not automatically transition into another mode merely because related work is discovered or the next phase seems obvious.
+Keep independent work objectives separated by mode. A request for review or investigation does not authorize implementation merely because a fix becomes apparent.
 
-Reading code, inspecting dependencies, checking Git state, and performing other necessary supporting operations do not constitute a mode transition. Keep supporting work proportional to the primary objective.
+A request to implement or fix behavior includes necessary investigation, updates to affected tests, focused regression coverage where useful, and verification permitted below. These supporting activities belong to the same development unit. Independent test design, broader verification campaigns, and documentation work remain separate objectives unless authorized.
 
-#### Progression control
+User-directed progression is the default: complete the requested objective and stop before starting an independent objective. When a bounded sequence would benefit from plan-directed progression, propose its phases and decision checkpoints before adopting it. An approved plan may authorize progression across modes without further permission for each coherent subtask.
 
-User-directed progression is the default. Complete the requested work mode and stop at its boundary unless further work has been explicitly authorized.
+Stop when:
 
-When a bounded sequence of work is predictable, reasonably well-defined, and likely to benefit from fewer interruptions, recommend plan-directed progression. Explain the proposed phases and decision checkpoints. Do not adopt the sequence without user approval.
-
-An approved plan may authorize progression across work modes. Complete each phase before advancing to the next, preserving their boundaries and respecting existing authorization restrictions.
-
-Neither progression model requires permission for every coherent subtask within an already authorized phase.
-
-#### Boundary handling
-
-A boundary is a point where continuing work may require a new decision, a change in scope, or a transition between work modes. Completing a subtask or encountering a dependency does not automatically constitute a stopping point.
-
-**Continue without interruption when:**
-
-- Work remains within the authorized mode, scope, and approved plan.
-- A necessary dependency can be resolved without exceeding that authorization or introducing an unresolved architectural decision.
-- The next subtask requires no additional user decision.
-- Supporting operations are necessary to complete the authorized work.
-
-**Stop at the boundary when:**
-
-- The requested phase or scope is complete under user-directed progression.
-- An approved plan reaches a mandatory decision checkpoint.
-- Continuing requires an unauthorized work mode, scope expansion, or operation.
-- An unresolved architectural decision, requirement ambiguity, or materially invalidated assumption requires user direction.
-- Continuing would depend on unfinished user work or risk modifying protected changes in the shared working tree.
+- The requested scope is complete or an approved plan reaches a mandatory decision checkpoint.
+- A material requirement, architectural decision, or invalidated assumption requires user direction.
+- A necessary operation or scope expansion is not already authorized.
+- Continuing would depend on unfinished user work or risk modifying protected changes.
 - A blocking condition prevents safe or correct completion.
 
-When a boundary is encountered, complete any remaining independent, authorized work that can safely proceed. Report the boundary, its implications, and the recommended next action.
+A completed subtask or necessary supporting activity is not itself a stopping point. Continue authorized work that can safely proceed, including independent work unaffected by a blocked portion. Report any boundary, its implications, and the recommended next action.
 
-Advisory checkpoints, including documentation-maintenance recommendations, do not require stopping or independently authorize additional work.
-
-During plan-directed progression, advance through approved phases without interruption unless a mandatory decision checkpoint or unexpected blocking condition is encountered.
-
-Existing repository safety and authorization restrictions always take precedence.
-
-#### Phase completion and task completion
-
-A work phase and the overall development task are distinct.
-
-Completing a phase means its authorized objectives have been satisfied or its remaining work has been explicitly identified as blocked or deferred. It does not imply that the broader development task is complete.
-
-At phase completion:
-
-- Summarize completed work and any outstanding, blocked, or deferred work.
-- Identify the recommended next phase when applicable.
-- Recommend documentation maintenance when accumulated changes warrant it, without initiating maintenance automatically.
-- Stop under user-directed progression, or continue according to an approved plan-directed sequence.
-
-Do not declare the overall task complete while known required work remains unfinished. Do not treat optional improvements or deferred documentation maintenance as blockers unless they are explicitly required by the task's acceptance criteria.
+At handoff, distinguish implemented changes, observed verification, and outstanding or deferred work. Completing an implementation phase does not establish executable acceptance or complete a broader task with required work remaining. Optional improvements and advisory documentation checkpoints neither block completion nor authorize further work.
 
 ### Source authority and context
 
@@ -91,18 +50,21 @@ Prefer concise phase handoffs containing established decisions, relevant constra
 ## Repository safety
 
 - Do not push commits or branches to any remote unless explicitly requested.
-- Do not build or compile the project unless explicitly requested.
-- Avoid requesting permission to build or test until reaching a blocking point.
-- When building is permitted, make an attempt to avoid running consecutive builds.
-- Do not run tests unless explicitly requested.
-- When testing is permitted, make an attempt to avoid running consecutive tests.
-- Instead of consecutive builds and tests, make efforts to achieve the same end result in as few steps as possible.
-- If consecutive agent-run builds must be used, then reduce the process priority and or thread count involved to avoid melting the CPU.
-- Resource-sharing limits apply to agent-run work. Commands supplied for the user run at normal priority with available parallelism; do not add low-priority wrappers or single-job limits to user-run commands.
-- Static analysis and other checks that do not require compilation are permitted.
+- Do not build or compile the project or its dependencies unless explicitly authorized by the user's request or an approved plan.
+- Preserve active user runs and their outputs. Do not change their configuration, clean their build directories, or invalidate their caches as a routine preparation step.
 - Do not perform opportunistic refactoring, cleanup, formatting, or API changes merely because they are convenient while working nearby.
-- If the task reveals additional work that is related but not required for the current development unit, identify it as discovered work and defer it to an appropriate phase boundary. Incorporate it into the active plan only when it falls within the authorized scope and work mode; otherwise report it for user direction.
-- If newly discovered work is required for correctness or for the planned work to proceed, revise the plan within the authorized scope. If it requires an unauthorized work mode, stop at that boundary and request direction unless an approved plan already covers the transition.
+- Report related work outside the current development unit as discovered work. Resolve necessary dependencies within the authorized scope; use the progression boundaries above when further work requires user direction.
+
+## Verification and resource use
+
+- Run the smallest relevant permitted checks before handing off an implementation. Update affected tests with the behavior they cover, and add focused regression coverage when existing checks do not adequately exercise a material change.
+- Static analysis and focused script or tooling tests using mocks or disposable fixtures are permitted without separate authorization when they do not compile project or dependency code, run native project executables, install or download tools or dependencies, generate full documentation, or access devices or external services. CMake script and configuration probes that enable no compiled languages may qualify.
+- Inspect an unfamiliar check before executing it, including the subprocesses it launches. A Python filename or a description such as "tooling check" does not establish that a check is lightweight. Configuration that invokes compiler or linker probes requires build authorization.
+- Project or dependency builds, native test execution, full documentation generation, dependency or tool downloads or installation, and tests using devices or external services require explicit authorization. Existing authorization persists for relevant fixes and reruns within its scope. When additional authorization is necessary to establish the requested outcome, identify the missing verification and request it together rather than waiting for an unrelated blocker.
+- Batch related checks and reuse compatible builds and caches. After fixing a failed check, rerun the affected checks when permitted. Broaden or repeat successful checks only when changed inputs, failures, or unresolved concerns justify it.
+- Share machine resources during authorized heavy work by bounding agent-run parallelism or reducing process priority as needed. Commands supplied for the user run at normal priority with available parallelism; do not add low-priority wrappers or single-job limits to user-run commands.
+- Test behavior and contracts rather than mirroring implementation details. Use mocks to check orchestration, and distinguish that coverage from executing the generated commands or consuming the resulting artifacts.
+- Report what actually ran and what remains unverified. Static checks, mocked tests, and successful configuration do not establish native build, link, relocation, or runtime success. Distinguish confirmed failures, inferred causes, and fixes awaiting executable acceptance.
 
 ## Shared working tree
 
@@ -135,17 +97,19 @@ When committing:
 
 ## Planning and execution
 
-Before beginning non-trivial implementation work, establish a concise, mode-scoped implementation plan containing coherent tasks and subtasks. Keep the plan in the working context unless a persistent planning artifact is explicitly requested.
+Before beginning non-trivial implementation work, establish a concise plan containing coherent tasks, risky assumptions, dependency boundaries, and any required decision checkpoints. Keep it in the working context unless a persistent planning artifact is explicitly requested.
 
-Order the work deliberately so foundational decisions, architectural constraints, risky assumptions, and dependency boundaries are resolved as early as practical. Prefer sequencing that reduces the likelihood of later refactoring, prevents avoidable bugs, and allows later tasks to build on stable completed work.
+Resolve foundational decisions and uncertain boundaries before accumulating dependent work. Follow the plan within its authorized scope, revising it when implementation reveals material new information. A plan does not authorize operations or independent work outside its approved scope.
 
-Identify boundaries where completing one task may expose additional required work or invalidate an assumption, and structure the plan so those discoveries occur before large amounts of dependent implementation accumulate.
+Complete and commit coherent development units independently after appropriate permitted checks. State any outstanding executable acceptance rather than implying that a committed implementation has been fully verified.
 
-Follow the established plan within the authorized work scope unless implementation reveals information that materially changes the design or invalidates part of the plan.
+### Build, tooling, SDK, and CI changes
 
-A plan does not independently authorize transitions into other work modes. When a new dependency or architectural decision requires work outside that scope, identify the boundary and request direction unless the transition was previously approved.
-
-Complete and commit coherent development units independently so the commit history reflects the progression of the implementation and preserves completed work as later development proceeds.
+- Identify the affected contract, its owner, and the path from producer to consumer before changing behavior. Include relevant artifact creation, installation, packaging, relocation, runtime loading, cache reuse, and workflow activation boundaries; inspect only the portions affected by the task.
+- Locate the existing authority for each policy before adding another implementation. Prefer extending that owner over duplicating policy in another wrapper, classifier, cache rule, fallback, or compatibility branch. When CMake, Python, or workflow code must express the same policy, keep their semantics aligned and cover their agreement with focused checks.
+- Review the execution contexts affected by the change. Examples include project configuration versus generated CMake install or script execution, source versus installed SDK consumption, static versus shared linkage, Linux versus Windows, cold versus warm caches, and default-branch workflow prerequisites. Select relevant coverage; do not run the entire matrix for every edit.
+- Preserve the intended contract when correcting a check. Trace dependency ownership before changing bundling rules or system-library exceptions. Distinguish correcting a verifier from changing what the SDK promises to supply.
+- For repeated failures, revisit the shared assumption or boundary before adding another local exception. Remove superseded paths when that is part of the requested change; report larger simplification work separately rather than turning a fix into an unrequested redesign.
 
 ## Testing requests
 
@@ -153,7 +117,7 @@ Testing-request documentation is maintained only when explicitly authorized. Do 
 
 Preserve discovered testing requirements in the task handoff until a testing-request maintenance phase is authorized. At that point, reconcile accumulated requirements against existing requests.
 
-Separate test design, test implementation, and test execution according to the authorized work mode.
+These rules govern testing-request documentation. They do not defer directly related test maintenance or permitted verification from an implementation task.
 
 During authorized testing-request maintenance:
 
@@ -170,7 +134,7 @@ During authorized testing-request maintenance:
 - Mark requests blocked when fixtures, hardware or an observation harness are unavailable, and identify the next action. Do not invent commands or count skipped, unselected or device-free checks as the missing acceptance.
 - When the user reports results, reconcile requests and owning plans during the next authorized maintenance phase against the actual tested revision, configuration, platforms and coverage. Remove accepted requests, preserve unresolved portions and repair affected links; retain durable coverage limits in the relevant subject guide rather than appending routine execution logs.
 
-Submitting a request does not authorize agents to configure/build the project or execute tests. Existing repository authorization rules still apply.
+Submitting a testing request does not authorize operations that require explicit permission under Verification and resource use.
 
 ## Documentation discipline
 
