@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -49,6 +50,7 @@ namespace {
         style.model_matrix = model;
         CE::Rendering::Submission::Context2D context;
         context.pass = pass;
+        context.image = std::nullopt; // This fixture's pipeline has no image parameter.
         return CE::Rendering::Submission::resolve_sprite(sprite, cell, style, context);
     }
 
@@ -194,6 +196,7 @@ TEST(render_frame, conflicting_pass_state) {
     CE::Rendering::Pipelines::PassConstraints2D constraints;
     constraints.blend = CE::Rendering::Pipelines::Blend::Opaque;
     auto pass = writer.begin_pass(glm::mat4{1.0f}, glm::mat4{1.0f}, constraints);
-    EXPECT_THROW(pass.add(make_packet(*sprite, 0)), CE::Exceptions::invalid_args);
+    auto packet = make_packet(*sprite, 0);
+    EXPECT_THROW(pass.add(std::move(packet)), CE::Exceptions::invalid_args);
     EXPECT_TRUE(frame.passes()[0].draws.empty());
 }

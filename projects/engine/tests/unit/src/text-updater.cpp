@@ -32,6 +32,9 @@ namespace {
     using namespace CE::Text::Rendering;
     using Mode = CE::Runtime::RunMode;
 
+    // Hang guard only: constructing failure diagnostics can resolve Debug symbols.
+    constexpr auto timeout = std::chrono::seconds{30};
+
     struct Geometry final : CE::Rendering::Geometry::Buffer2D {
         std::size_t count;
         explicit Geometry(const std::size_t count)
@@ -80,7 +83,7 @@ namespace {
     };
 
     struct Window final : CE::Platform::Window {
-        const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::seconds{5};
+        const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + timeout;
         CE::Platform::Dimensions<int> logical_size() const override { return {64, 64}; }
         CE::Platform::FramebufferSize framebuffer_size() const override { return {64, 64}; }
         CE::Platform::WindowMode mode() const override { return CE::Platform::WindowMode::NORMAL; }
@@ -175,10 +178,10 @@ namespace {
     }
 
     bool settle(Updater& updater) {
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{3};
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
         while (updater.pending() && std::chrono::steady_clock::now() < deadline) {
             static_cast<void>(updater.update());
-            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds{1});
         }
         return !updater.pending();
     }
@@ -317,9 +320,10 @@ TEST(text_updater, preparation_failure) {
     const auto previous = updater.current();
     Request bad{.text = "Bad", .layout = {.maximum_width = std::numeric_limits<float>::quiet_NaN()}};
     updater.request(bad);
-    EXPECT_TRUE(settle(updater));
+    ASSERT_TRUE(settle(updater));
     ASSERT_TRUE(updater.failure());
     EXPECT_EQ(updater.failure()->stage, FailureStage::Preparation);
+    EXPECT_THROW(std::rethrow_exception(updater.failure()->error), CE::Exceptions::invalid_args);
     const auto revision = updater.failure()->revision;
     updater.request(bad);
     EXPECT_FALSE(updater.pending());
@@ -329,7 +333,7 @@ TEST(text_updater, preparation_failure) {
     updater.retry();
     EXPECT_TRUE(updater.pending());
     EXPECT_FALSE(updater.failure());
-    EXPECT_TRUE(settle(updater));
+    ASSERT_TRUE(settle(updater));
     ASSERT_TRUE(updater.failure());
     EXPECT_GT(updater.failure()->revision, revision);
     EXPECT_EQ(updater.current(), previous);
@@ -456,7 +460,7 @@ TEST(text_updater, destroy_pending) {
     auto blocker = host.engine.make_worker_group();
     std::promise<void> release;
     auto gate = release.get_future().share();
-    auto blocked = blocker.submit([gate] { return gate.wait_for(std::chrono::seconds{3}); });
+    auto blocked = blocker.submit([gate] { return gate.wait_for(timeout); });
     {
         CE::Text::FontService fonts;
         fonts.configure(CE::Text::FontConfiguration{});
