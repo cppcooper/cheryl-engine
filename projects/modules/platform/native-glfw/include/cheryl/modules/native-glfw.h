@@ -1,7 +1,9 @@
 #pragma once
 
 /** @file
- * @brief Native GLFW window, display, diagnostics and enabled input APIs.
+ * @brief Native GLFW display/window and enabled input APIs; link Cheryl::NativeGLFW.
+ * CHERYL_NATIVE_INPUT gates input declarations; diagnostic Detail helpers are internal.
+ * @see [Native GLFW setup](cheryl-guide:modules/native-glfw)
  */
 
 #include <cheryl/backends/native-glfw.h>

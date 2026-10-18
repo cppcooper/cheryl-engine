@@ -2,6 +2,8 @@
 
 /** @file
  * @brief Compatibility includes for APIs now owned by selected modules.
+ * CHERYL_HAS_SUPPORT_* flags gate compatibility includes supplied by selected canonical module targets. New code uses the module headers and their owning target.
+ * @see [Selection and integration](cheryl-guide:api/index)
  */
 
 #if defined(CHERYL_HAS_SUPPORT_STARTUP) && CHERYL_HAS_SUPPORT_STARTUP

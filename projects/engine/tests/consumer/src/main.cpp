@@ -11,6 +11,7 @@
 #endif
 
 bool exercise_resources();
+bool exercise_fonts();
 
 int main() {
     CE::Logging::ProcessLifetime logging_lifetime;
@@ -41,5 +42,7 @@ int main() {
                            std::string_view{CE::Logging::Categories::assets} == "assets" &&
                            std::string_view{CE::Logging::Categories::memory} == "memory" &&
                            std::string_view{CE::Logging::Categories::cheryl} == "cheryl";
-    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && log_names && camera_size ? 0 : 1;
+    return observed == 7 && typed_observed == 9 && value.get() == 11 && exercise_resources() && exercise_fonts() && log_names && camera_size
+               ? 0
+               : 1;
 }

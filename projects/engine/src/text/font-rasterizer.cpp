@@ -1,4 +1,5 @@
 #include <text/font-rasterizer.h>
+#include "font-internal.h"
 
 #include <internals/exceptions.h>
 
@@ -97,6 +98,16 @@ namespace CE::Text {
 
     FontRasterizer::FontRasterizer(std::shared_ptr<State> state)
     : state_(std::move(state)) {}
+
+    FontRasterizer FontRasterizer::load(const Font& font, const FontStyle style, const bool unicode_only) {
+        const auto collection = font.collection(style);
+        const auto& face = Detail::FontAccess::data(collection).faces.front();
+        return load(*face.bytes, face.index, 0, unicode_only);
+    }
+
+    FontRasterizer FontRasterizer::load(const FontFace& face, const bool unicode_only) {
+        return load(face.bytes, face.face_index, 0, unicode_only);
+    }
 
     FontRasterizer FontRasterizer::load(
         const std::span<const unsigned char> bytes,

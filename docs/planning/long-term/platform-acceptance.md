@@ -7,26 +7,32 @@ coverage; they are outside the active
 scheduled, reconcile the current source/targets/configuration first, then restore
 ready requests to that queue. Linux/X11 is the current native acceptance platform.
 Windows hosted compilation, focused tests and installed SDK consumption are
-accepted within the [CI coverage limits](../../development/ci.md).
+accepted within the [CI coverage limits](../../site/development/ci.md).
 The remaining [TR20](../../testing-requests.md#tr20-automated-main-push-sdk-collection)
 checks main-push SDK collection; it does not activate the desktop/controller/HID
 procedures here.
 
 ## Scope and prerequisites
 
-Windows acceptance includes native input ownership and consumer/header probes,
-typed-event and resize delivery, desktop resize, controller reports and HID
-notification lifetime. TR3–TR5 below retain their request IDs for later activation.
-They are **deferred**. The hosted MSVC configuration is accepted for the focused
-CI selection; desktop and physical-device behavior remain unaccepted.
+Remaining Windows acceptance covers native-window input ownership and resize
+delivery, desktop resize, controller reports and HID notification lifetime.
+TR3–TR5 retain their request IDs for later activation and are **deferred**.
+Hosted MSVC already covers consumer/header probes, tile-animation, typed-event
+delivery and the native input-lifetime unit suite in its selected configuration;
+the [CI runner](../../../.github/ci/run.py) selects those owners. Treat their runs
+below as baseline prerequisites for the chosen configuration, not new unfinished
+features. The six native OpenGL cases in TR3 and the desktop/physical-device
+observations remain outside that hosted selection.
 A configuration/build failure is an unresolved prerequisite, not an
 accepted or skipped case.
 
 Commands locate the checkout root with Git and preserve the caller's starting
 directory. Use a Windows Developer PowerShell with Ninja, CMake 3.28 or newer,
 a C++23 toolchain and initialized pinned submodules; native builds also need OpenGL
-and Python with Jinja2. Engine text also requires FreeType, HarfBuzz and ICU uc/i18n;
-the demo now has a builtin font fallback. Reuse a matching
+and Python with Jinja2. Engine text requires FreeType and HarfBuzz; Windows uses
+the operating system's ICU C API on Windows 10 version 1903 or newer, as described
+in the [text dependency contract](../../site/assets/text-layout.md#supported-rendering-scope).
+The demo has a builtin font fallback. Reuse a matching
 build directory when its compiler/configuration agree. Builds and CTest use normal
 priority and available parallelism. Stop on failures and require nonempty test
 selection without skips. Record revision, configuration, platform and coverage;
@@ -36,8 +42,11 @@ automation does not establish separate desktop or physical-controller observatio
 
 Accept native input integration and resize callback cases on Windows, particularly
 rejection of reattachment to a different notification window and successful
-reattachment to the original live window. Include tile-animation and typed-event
-regressions and consumer probes on this platform.
+reattachment to the original live window. Rerun the tile-animation, typed-event,
+input-lifetime and consumer baseline in the selected native configuration before
+the six OpenGL cases. The commands request `GAINPUT_ENABLE_HID=ON`; recheck actual
+HID source/compiler selection before activation. The dependency can override that
+option on Windows, and these checks do not establish HID readiness.
 Use a usable Windows desktop session. These native observations extend beyond the
 accepted hosted CI dependency/toolchain selection.
 
@@ -126,7 +135,7 @@ try {
   normally. Report the platform and mode for any failure.
 
 This request does not establish per-window scale transitions or GPU reset recovery.
-The reusable [desktop checks](../../development/native-desktop-checks.md) retain the
+The reusable [desktop checks](../../site/development/native-desktop-checks.md) retain the
 Linux resize procedure.
 
 ## TR5: QA controller reports and reconnection
@@ -156,7 +165,7 @@ or establish the Windows notification route.
 
 **TR6 · QA — Linux/X11 and Windows; deferred and blocked on backend work and an
 observation harness.** Preserve the
-[single initialized native-owner contract](../../../projects/modules/platform/native-glfw/README.md#input-lifetime-and-mapping).
+[single initialized native-owner contract](../../site/modules/native-glfw.md#input-lifetime-and-mapping).
 The [HID plan](README.md#deferred-hid-integration) owns backend corrections.
 Successful Gainput initialization does not prove HID readiness: HID can be compiled
 out, and the dependency discards its initialization return code when enabled.
@@ -199,7 +208,7 @@ DirectInput fallback and notification corrections accompany future platform work
 macOS needs source/dependency selection and native/HID fallback ownership resolved
 before desktop and USB/Bluetooth controller acceptance. The current Apple source
 selection omits the shared HID runtime/parsers. Preserve the
-[native module's capability limits](../../../projects/modules/platform/native-glfw/README.md#hid-capability-and-platform-scope)
+[native module's capability limits](../../site/modules/native-glfw.md#hid-capability-and-platform-scope)
 until those configurations are implemented and accepted.
 
 Full Wayland and other operating systems need their own runtime acceptance for
@@ -208,5 +217,5 @@ modes and their selected `CHERYL_NATIVE_INPUT` / `CHERYL_NATIVE_NULL_PLATFORM`
 configurations. Establish machines, fixtures and native
 observation requirements when activating each platform; do not infer acceptance
 from Linux/X11 or software-driver execution. Reuse the
-[architecture procedures](../../development/architecture-validation.md) and the
-[desktop checks](../../development/native-desktop-checks.md) where applicable.
+[architecture procedures](../../site/development/architecture-validation.md) and the
+[desktop checks](../../site/development/native-desktop-checks.md) where applicable.

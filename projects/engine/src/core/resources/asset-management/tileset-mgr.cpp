@@ -2,6 +2,7 @@
 
 #include <assets/geometry/grid-geometry.h>
 #include <assets/resources/resource-provider.h>
+#include <assets/resources/shader-asset-builder.h>
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/shader-asset-mgr.h>
 #include <core/resources/objects/object-construction.hpp>
@@ -36,7 +37,10 @@ namespace CE::Assets::Tilesets {
             if (texture_size.width == 0 || texture_size.height == 0) {
                 throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' has an empty texture");
             }
-            const auto material = definition.shader ? CE::Assets::Shaders::Manager::get().find_material(*definition.shader) : nullptr;
+            const auto material =
+                definition.shader
+                    ? CE::Assets::Shaders::Manager::get().find_material(*definition.shader)
+                    : CE::Assets::Shaders::build_builtin_material(provider, CE::Rendering::Materials::Builtin2D::TexturedStrip);
             if (definition.shader && !material)
                 throw Exceptions::runtime_exception(CE_HERE, "Tileset '" + id + "' references an unloaded shader '" + *definition.shader + "'");
             // Translate each grid cell into vertices, upload once, then retain geometry and

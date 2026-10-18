@@ -190,8 +190,8 @@ class PolicyTests(unittest.TestCase):
     def test_owners(self):
         expected = {versions.ENGINE, "VERSION_PROJECT_MODULE_NATIVE_GLFW", "VERSION_PROJECT_MODULE_UI_RMLUI"}
         self.assertEqual(versions.affected_components({"cmake/CherylOptions.cmake", "extern/glfw", "extern/rmlui"}), expected)
-        self.assertEqual(versions.affected_components({"projects/engine/tests/unit/src/test.cpp", "docs/runtime/logging.md",
-                                                       "projects/modules/ui/rmlui/README.md", ".github/workflows/ci.yml"}), set())
+        self.assertEqual(versions.affected_components({"projects/engine/tests/unit/src/test.cpp", "docs/site/runtime/logging.md",
+                                                       "docs/site/modules/rmlui.md", ".github/workflows/ci.yml"}), set())
         self.assertEqual(versions.affected_components({"projects/apps/first-game/src/first-game.cpp"}), set())
 
     def test_release_target(self):
@@ -288,7 +288,7 @@ class AutomationTests(unittest.TestCase):
         self.assertEqual(self.automation.planned_versions(state(B, newer), C), newer)
 
     def test_docs(self):
-        self.git.paths[B] = {"docs/development/building.md"}
+        self.git.paths[B] = {"docs/site/development/building.md"}
         planned = self.automation.planned_versions(state(), B)
         self.assertEqual(planned[versions.PROJECT], "4.0.1")
         self.assertEqual(planned[versions.ENGINE], "4.0.0")

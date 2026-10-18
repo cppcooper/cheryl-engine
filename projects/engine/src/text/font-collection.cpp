@@ -63,8 +63,19 @@ namespace CE::Text {
         FontFaceInfo face_info(FT_Face face, std::optional<std::filesystem::path> path, const std::uint32_t index) {
             if (face->num_glyphs <= 0 || static_cast<unsigned long>(face->num_glyphs) > std::numeric_limits<std::uint32_t>::max())
                 throw ::CE::Exceptions::runtime_exception(CE_HERE, "Font has an unsupported glyph count");
-            return {face->family_name ? face->family_name : "", face->style_name ? face->style_name : "", std::move(path),
-                index, static_cast<std::uint32_t>(face->num_glyphs), false};
+            auto weight = static_cast<std::uint16_t>((face->style_flags & FT_STYLE_FLAG_BOLD) ? 700 : 400);
+            if (const auto* table = static_cast<const TT_OS2*>(FT_Get_Sfnt_Table(face, FT_SFNT_OS2)); table && table->usWeightClass)
+                weight = table->usWeightClass;
+            return {
+                face->family_name ? face->family_name : "",
+                face->style_name ? face->style_name : "",
+                std::move(path),
+                index,
+                static_cast<std::uint32_t>(face->num_glyphs),
+                false,
+                weight,
+                (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0
+            };
         }
 
         struct StyleScore {
@@ -91,13 +102,13 @@ namespace CE::Text {
             StyleScore style_score;
         };
 
-        std::map<std::string, Candidate> discover_families(
+        std::map<std::string, std::vector<Candidate>> discover_families(
             FT_Library library,
             const FontSelection& selection,
             const std::vector<std::string>& requested,
             const bool application_assets
         ) {
-            std::map<std::string, Candidate> result;
+            std::map<std::string, std::vector<Candidate>> result;
             if (requested.empty())
                 return result;
             const auto files = application_assets             ? find_system_fonts(selection.asset_directories)
@@ -128,10 +139,16 @@ namespace CE::Text {
                         const auto retain = [&](const std::string& name) {
                             if (std::ranges::find(requested, name) == requested.end())
                                 return;
-                            const auto old = result.find(name);
-                            if (old != result.end() && old->second.style_score <= score)
-                                return; // Equal styles keep sorted path/face order.
-                            result.insert_or_assign(name, Candidate{{bytes, face_index}, face_info(face.get(), file, face_index), score});
+                            auto& candidates = result[name];
+                            if (!selection.include_family_styles && !candidates.empty()) {
+                                if (candidates.front().style_score <= score)
+                                    return; // Equal styles keep sorted path/face order.
+                                candidates.clear();
+                            }
+                            candidates.push_back(Candidate{{bytes, face_index}, face_info(face.get(), file, face_index), score});
+                            std::stable_sort(candidates.begin(), candidates.end(), [](const auto& left, const auto& right) {
+                                return left.style_score < right.style_score;
+                            });
                         };
                         retain(key);
                         if (application_assets && filename != key)
@@ -217,7 +234,7 @@ namespace CE::Text {
         }
         const auto assets = discover_families(library.get(), selection, asset_requested, true);
         const auto installed = discover_families(library.get(), selection, requested, false);
-        const auto named_candidate = [&](const std::string_view name) -> const Candidate* {
+        const auto named_candidates = [&](const std::string_view name) -> const std::vector<Candidate>* {
             const auto key = family_key(name);
             if (const auto entry = assets.find(key); entry != assets.end())
                 return &entry->second;
@@ -235,19 +252,23 @@ namespace CE::Text {
                 const auto face = Detail::open_face(library.get(), data);
                 append_face(*result, data, face_info(face.get(), path, file->face_index));
             } else if (const auto* name = std::get_if<std::string>(&source)) {
-                if (const auto* entry = named_candidate(*name))
-                    append_face(*result, entry->data, entry->info);
+                if (const auto* entries = named_candidates(*name)) {
+                    for (const auto& entry : *entries)
+                        append_face(*result, entry.data, entry.info);
+                }
             } else {
                 const auto entry = installed.find(family_key(std::get<SystemFontFamily>(source).name));
-                if (entry != installed.end())
-                    append_face(*result, entry->second.data, entry->second.info);
+                if (entry != installed.end()) {
+                    for (const auto& candidate : entry->second)
+                        append_face(*result, candidate.data, candidate.info);
+                }
             }
         }
         if (selection.automatic_system_fonts) {
             for (const auto name : automatic_families) {
-                const auto* entry = named_candidate(name);
-                if (entry && !entry->style_score.heavy)
-                    append_face(*result, entry->data, entry->info);
+                const auto* entries = named_candidates(name);
+                if (entries && !entries->front().style_score.heavy)
+                    append_face(*result, entries->front().data, entries->front().info);
             }
         }
         const auto embedded = Detail::builtin_font_bytes();

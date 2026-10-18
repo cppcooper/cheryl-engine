@@ -5,15 +5,20 @@
 
 #include <internals/compile-time-logging.hpp>
 #include <internals/exceptions.h>
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/text/font-service.h>
 
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/StringUtilities.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -21,6 +26,31 @@ namespace CE::UI::RmlUi {
     namespace {
         std::mutex library_mutex;
         bool library_owned = false;
+
+        void load_faces(
+            const std::vector<const CE::Text::FontFace*>& faces, const Rml::String& family, const bool fallback
+        ) {
+            const bool normal = std::any_of(faces.begin(), faces.end(), [](const auto* face) { return !face->style.italic; });
+            const bool italic = std::any_of(faces.begin(), faces.end(), [](const auto* face) { return face->style.italic; });
+            const auto load = [&](const CE::Text::FontFace& face, const bool slanted) {
+                if (face.face_index > static_cast<std::uint32_t>(std::numeric_limits<int>::max()) ||
+                    !Rml::LoadFontFace(
+                        {face.bytes.data(), face.bytes.size()}, family,
+                        slanted ? Rml::Style::FontStyle::Italic : Rml::Style::FontStyle::Normal,
+                        static_cast<Rml::Style::FontWeight>(face.style.weight), fallback, static_cast<int>(face.face_index)
+                    ))
+                    throw Exceptions::failed_operation(CE_HERE, "Cannot register the Engine font with RmlUi");
+            };
+            for (const auto* face : faces) {
+                load(*face, face->style.italic);
+                // Core requires an exact style match before it can choose weight.
+                // Complete an absent style with the available family's faces.
+                if (!normal)
+                    load(*face, false);
+                if (!italic)
+                    load(*face, true);
+            }
+        }
 
         class System final : public Rml::SystemInterface {
         public:
@@ -117,6 +147,13 @@ namespace CE::UI::RmlUi {
     }
 
     struct Session::State {
+        enum class FontOwner { Engine, Explicit, Fallback };
+        struct FontRegistration {
+            FontOwner owner;
+            CE::Text::Font source;
+            bool complete = false;
+        };
+
         CE::Input::System& input;
         const CE::Input::Routing::TargetId target;
         const std::thread::id thread = std::this_thread::get_id();
@@ -132,6 +169,9 @@ namespace CE::UI::RmlUi {
         // Reverse destruction shuts down contexts/fonts before renderer/system
         // storage and memory-loaded font bytes disappear.
         std::vector<std::vector<unsigned char>> font_bytes;
+        std::unordered_map<Rml::String, FontRegistration> engine_fonts;
+        std::size_t fallback_family = 0;
+        bool fallbacks_loaded = false;
         System system;
         RenderTarget renderer;
         LibraryLease library;
@@ -150,6 +190,69 @@ namespace CE::UI::RmlUi {
             context->SetDensityIndependentPixelRatio(1);
             context->EnableMouseCursor(false);
         }
+
+        FontRegistration& reserve_font(const CE::Text::Font& selected) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi needs a resolved Engine font");
+            const auto& reference = selected.reference();
+            const auto lower = Rml::StringUtilities::ToLower(reference);
+            const auto [registration, inserted] = engine_fonts.try_emplace(lower, FontRegistration{FontOwner::Engine, selected});
+            if (!inserted) {
+                if (registration->second.owner != FontOwner::Engine || registration->second.source.reference() != reference ||
+                    registration->second.source.faces().data() != selected.faces().data())
+                    throw Exceptions::invalid_args(CE_HERE, "RmlUi font-family names must identify one Engine font without case collisions");
+            }
+            return registration->second;
+        }
+
+        Rml::String font_family(const CE::Text::Font& selected) {
+            auto& registration = reserve_font(selected);
+            const auto& reference = selected.reference();
+            if (registration.complete)
+                return reference;
+            // Retain the immutable memory before publishing views to Core.
+            std::vector<const CE::Text::FontFace*> faces;
+            for (const auto& face : selected.faces()) {
+                if (!face.fallback)
+                    faces.push_back(&face);
+            }
+            load_faces(faces, reference, false);
+            registration.complete = true;
+            return reference;
+        }
+
+        void load_fallbacks(const CE::Text::Font& selected, const bool primary_only = false) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi needs a resolved Engine fallback font");
+            Rml::String family;
+            std::size_t family_index = 0;
+            std::vector<const CE::Text::FontFace*> faces;
+            for (const auto& face : selected.faces()) {
+                if (primary_only ? face.fallback : (!face.fallback && !face.builtin))
+                    continue;
+                if (family.empty() || face.family_index != family_index) {
+                    if (!faces.empty())
+                        load_faces(faces, family, true);
+                    faces.clear();
+                    family_index = face.family_index;
+                    do {
+                        family = "__cheryl_fallback_" + std::to_string(fallback_family++);
+                    } while (engine_fonts.contains(family));
+                    engine_fonts.emplace(family, FontRegistration{FontOwner::Fallback, selected});
+                }
+                faces.push_back(&face);
+            }
+            if (!faces.empty())
+                load_faces(faces, family, true);
+            fallbacks_loaded = true;
+        }
+
+        void reserve_explicit(const Rml::String& family) {
+            const auto lower = Rml::StringUtilities::ToLower(family);
+            const auto [registration, inserted] = engine_fonts.try_emplace(lower, FontRegistration{FontOwner::Explicit, {}});
+            if (!inserted && registration->second.owner != FontOwner::Explicit)
+                throw Exceptions::invalid_args(CE_HERE, "RmlUi explicit font loading conflicts with an Engine font family");
+        }
     };
 
     Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
@@ -159,6 +262,27 @@ namespace CE::UI::RmlUi {
             throw Exceptions::invalid_args(CE_HERE, "RmlUi's stock font atlas needs a texture bound of at least 1024");
         state_ = std::make_unique<State>(input, target, options);
     }
+
+    Session::Session(
+        CE::Input::System& input,
+        const CE::Text::FontService& fonts,
+        const CE::Input::Routing::TargetId target,
+        const SessionOptions options
+    ) : Session(input, target, options) {
+        auto& state = owner();
+        const auto catalogue = fonts.all();
+        for (const auto& font : catalogue)
+            static_cast<void>(state.reserve_font(font));
+        const auto default_font = fonts.default_font();
+        for (const auto& fallback : fonts.fallbacks())
+            state.load_fallbacks(fallback, true);
+        for (const auto& font : catalogue)
+            static_cast<void>(state.font_family(font));
+        set_font(*state.context->GetRootElement(), default_font);
+    }
+
+    Session::Session(CE::Runtime::Context& engine, const CE::Input::Routing::TargetId target, const SessionOptions options)
+    : Session(engine.input(), engine.fonts(), target, options) {}
 
     Session::~Session() = default;
 
@@ -176,9 +300,10 @@ namespace CE::UI::RmlUi {
     }
 
     bool Session::load_font(const std::filesystem::path& file, const Rml::String& family, const bool fallback) {
-        (void)owner();
+        auto& state = owner();
         if (family.empty())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi font registration needs a family name");
+        state.reserve_explicit(family);
         const auto utf8 = file.u8string();
         return Rml::LoadFontFace(
             Rml::String(utf8.begin(), utf8.end()), family, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Auto, fallback
@@ -189,9 +314,26 @@ namespace CE::UI::RmlUi {
         auto& state = owner();
         if (bytes.empty() || family.empty())
             throw Exceptions::invalid_args(CE_HERE, "RmlUi memory font registration needs bytes and a family name");
+        state.reserve_explicit(family);
         state.font_bytes.emplace_back(bytes.begin(), bytes.end());
         const auto& copy = state.font_bytes.back();
         return Rml::LoadFontFace({copy.data(), copy.size()}, family, Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Auto, fallback);
+    }
+
+    Rml::String Session::font_family(const CE::Text::Font& selected) {
+        auto& state = owner();
+        static_cast<void>(state.reserve_font(selected));
+        if (!state.fallbacks_loaded)
+            state.load_fallbacks(selected);
+        return state.font_family(selected);
+    }
+
+    void Session::set_font(Rml::Element& element, const CE::Text::Font& selected) {
+        auto& state = owner();
+        if (&element != state.context->GetRootElement() && element.GetContext() != state.context)
+            throw Exceptions::invalid_args(CE_HERE, "RmlUi font assignment needs an element in this session");
+        if (!element.SetProperty("font-family", font_family(selected)))
+            throw Exceptions::failed_operation(CE_HERE, "Cannot assign the Engine font to the RmlUi element");
     }
 
     void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {

@@ -14,4 +14,4 @@ else
     exit 127
 fi
 
-exec "$docs_python" "$script_directory/docs/generation/build.py" "$@"
+exec "$docs_python" "$script_directory/docs/site/generation/build.py" "$@"

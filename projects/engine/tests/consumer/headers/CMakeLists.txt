@@ -15,6 +15,7 @@ set(consumer_headers
     cheryl/core/subsystems/event-bus.h
     cheryl/core/subsystems/event-system.h
     cheryl/core/controls/input-interface.h
+    cheryl/core/controls/action-context.h
     cheryl/core/controls/button-codes.h
     cheryl/core/controls/input-record.h
     cheryl/core/display/display-system-interface.h
@@ -30,7 +31,11 @@ set(consumer_headers
     cheryl/assets/types/2d/stbfont.h
     cheryl/text/utf8.h
     cheryl/text/font-collection.h
+    cheryl/text/font.h
+    cheryl/text/font-service.h
+    cheryl/text/font-rasterizer.h
     cheryl/text/layout.h
+    cheryl/text/text-updater.h
     cheryl/audio.h
     cheryl/audio/clip.h
     cheryl/audio/system.h

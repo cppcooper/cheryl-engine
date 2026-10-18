@@ -1,0 +1,131 @@
+# Simulation timing
+
+Choose how much simulation time an update advances when real time passes or the
+application stalls. Start with the default variable policy, then select fixed
+steps or bounded recovery when the game needs their specific rules for accounting
+for time. Input observation time remains separate from all three choices.
+
+`CE::Runtime::GameRuntime(engine, game, mode, polling, timing)` uses the same
+`CE::Runtime::Simulation::TimingOptions` in sequential and concurrent execution. `CE::Runtime::RunMode`
+selects the owning thread; it does not select a different timing policy.
+`CE::Runtime::Simulation::Scheduler` receives monotonic clock values through `advance(now)` and
+`next_update_at()`. It never polls input, calls the game, or sleeps. Regression
+sources can therefore describe clock advances without depending on OS scheduling.
+
+## Choose a timing policy
+
+| Policy | Choose it when | Consequence after a stall |
+| --- | --- | --- |
+| Variable, the default | Each update should receive the elapsed interval and the game can handle changing deltas. | The next delta includes the stall; it can be large. |
+| Fixed with `DropExcessLag` | Normal updates must use one fixed delta and update count per cycle must be bounded. | Run at most `max_fixed_updates`, discard excess whole-step time and retain the fractional remainder. Simulated time can fall behind wall time. |
+| Fixed with `VariableCatchUp` | The game accepts a larger recovery delta to consume more elapsed time in bounded update count. | Use the configured fixed prefix plus one capped recovery update, then discard remaining debt. A cap limits simulation delta, not callback execution time. |
+
+`RunMode::Sequential` versus `Concurrent` selects the owners, independently of
+this policy. Fixed stepping alone supplies neither render interpolation nor
+physics substeps; see [suspension and limits](#suspension-and-limits).
+
+## Defaults and pacing
+
+The default is variable simulation with a nominal 1/60-second pacing interval.
+Its delta is the full elapsed time between selected updates, including time spent
+updating, preparing a frame, or waiting. A zero variable interval permits unpaced
+updates. The independent fixed step defaults to 16,666,667 ns, the nearest integer
+nanosecond to 1/60 second. Input polling spacing/capacity remain separate options.
+Runtime observation and simulation clocks start after game initialization.
+Sequential execution still shares a thread with presentation, so blocking graphics
+or simulation can delay eligible polls; concurrent execution can poll during an update.
+
+## Fixed steps
+
+With `CE::Runtime::Simulation::Mode::Fixed` the scheduler accumulates observed elapsed time. A normal update
+always uses `fixed_step`, regardless of the duration reported by its input view.
+`max_fixed_updates` bounds the fixed sequence selected in one scheduler cycle;
+the default is one. `CE::Runtime::Simulation::LagRecovery::DropExcessLag` discards excess whole steps and retains only
+the sub-step remainder. With a 30 ms step, two allowed updates, and a 500 ms stall,
+the batch uses 60 ms, drops 420 ms, and retains 20 ms for the next deadline.
+
+## Catch-up recovery
+
+`CE::Runtime::Simulation::LagRecovery::VariableCatchUp` applies when the due whole-step count exceeds
+`max_fixed_updates`. `fixed_updates_before_recovery` selects an explicit fixed
+prefix, between zero and that limit. Zero requests one larger update directly.
+The prefix is followed by exactly one `CE::Runtime::Simulation::UpdateKind::VariableCatchUp` update using
+the remaining accumulated time, capped at `recovery_cap` (100 ms by default).
+A zero cap explicitly disables that limit. The rest is dropped; no lingering debt
+or fractional remainder remains after this larger recovery. The total hybrid
+batch can contain at most the configured prefix plus one update.
+
+For a 20 ms fixed step, a 500 ms stall, and a 100 ms cap: direct recovery uses
+100 ms and drops 400 ms. A two-step prefix uses 40 ms, then 100 ms, and drops
+360 ms. The stall never implicitly requests all 25 fixed updates. Time spent
+executing the chosen batch enters the next cycle, rather than extending the
+current batch while it is running.
+
+## Input and tick time
+
+Every actual update first drains a detached simulation-mailbox batch, then
+transfers the whole currently available polling backlog. With no due update,
+input remains pending. Later recovery updates get newly completed polls or
+persistent State; edges, counts, relative motion, Events, and Text from an earlier
+update are never replayed. Mailbox work posted during its drain belongs to a later
+actual update, which can be another update in the same bounded recovery batch.
+
+`CE::Game::TickContext::delta_seconds` is simulation time. `update_kind` explains whether
+that delta is variable, fixed, or larger recovery. `observed_seconds()` and all raw
+`CE::Input::Tick` durations use the real consumption interval. `dropped_seconds` reports
+the batch's discarded time once, on its final selected update; sum it across ticks
+instead of multiplying it by the number of updates. An interrupted batch has no
+guaranteed final timing report because simulation is ending.
+
+`CE::Game::TickContext::button_simulation_seconds(action)` is a derived movement policy. It multiplies
+the observed down-time fraction by the selected simulation delta. A 50 ms tap
+inside a 500 ms observation interval contributes 2 ms to a 20 ms fixed update,
+or 10 ms to a 100 ms recovery update. The raw down duration remains 50 ms. With a
+zero observation interval it uses current held State. This does not reconstruct
+when a tap happened within past fixed steps. A released tap is not replayed by a
+later recovery call; applications needing a different control policy can inspect
+the unchanged raw State/records. The demo uses this named helper explicitly.
+
+## Frame preparation
+
+Frame preparation occurs at most once after a bounded update sequence, from its
+final useful state. Sequential mode retains one complete frame; concurrent mode
+retains the platform's current slot while publishing through the remaining slots.
+Rendering can reuse that complete frame on a cycle without a new publication.
+Platform resource maintenance may wake every 10 ms while idle; these wakeups do
+not change the simulation deadline or consume input without an actual update.
+Superseded frames recycle on the graphics owner. Simulation never waits for a free
+render slot; publication may be skipped while updates continue.
+
+## Suspension and limits
+
+Long suspension is elapsed time under this policy, rather than an implicit pause.
+Fixed recovery can therefore slow simulated time or drop it; variable mode can
+produce a large delta. A recovery cap bounds one update, not the total wall time
+or duration of a fixed prefix. Large deltas can skip collisions, triggers, or
+intermediate animations: physics/substepping and render interpolation remain
+separate concerns. Applications wanting pause semantics must implement that policy
+explicitly. Clock inputs moving backwards, negative pacing/caps, nonpositive fixed
+steps, zero fixed-update limits, and prefixes larger than the limit are rejected
+before runtime initialization. Clock-range overflow is rejected or deadlines saturate.
+
+## Configuration and validation
+
+The [startup option reference](../development/consuming-engine.md#command-line-startup)
+maps these policies to the demo's timing switches. For example:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/release/demo --concurrent --fixed-step-ms=20 --variable-catch-up --max-fixed-updates=2 --recovery-prefix=2 --recovery-cap-ms=100
+)
+```
+
+Scheduler and tick-input regressions use explicit clocks. Recording and native
+runtime cases exercise both modes, bounded recovery, slow updates/presentation,
+full polling backlogs, and ordered input without replay. Procedures and
+platform limits are in [architecture-validation.md](../development/architecture-validation.md).
+
+A possible timing adviser remains in the
+[mid-term plan](../../planning/mid-term/README.md#measured-optimization).

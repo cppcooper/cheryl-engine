@@ -1,4 +1,5 @@
 #include <core/controls/input-bindings.h>
+#include "action-context-internal.h"
 #include <internals/exceptions.h>
 
 #include <algorithm>
@@ -21,6 +22,98 @@ namespace {
 }
 
 namespace CE::Input::Actions {
+    Bindings::~Bindings() {
+        if (!contexts_)
+            return;
+        const std::lock_guard lock(contexts_->mutex);
+        contexts_->closed = true;
+        for (const auto* entries : {&contexts_->pending, &contexts_->active})
+            for (const auto& [id, entry] : *entries) {
+                static_cast<void>(id);
+                if (const auto token = entry.token.lock())
+                    token->requested.store(false, std::memory_order_release);
+            }
+        contexts_->pending.clear();
+        contexts_->active.clear();
+    }
+
+    ContextSubmission Bindings::action_contexts() {
+        if (!contexts_)
+            contexts_ = std::make_shared<Detail::ContextsState>();
+        return ContextSubmission(contexts_);
+    }
+
+    void Bindings::begin_poll() {
+        if (poll_started_)
+            return;
+        if (contexts_) {
+            const std::lock_guard lock(contexts_->mutex);
+            // Latch departures before installing new namespaces. A reset racing
+            // a successful new installation belongs to the following boundary.
+            for (auto& [id, entry] : contexts_->active) {
+                static_cast<void>(id);
+                const auto token = entry.token.lock();
+                if (!token || !token->requested.load(std::memory_order_acquire)) {
+                    entry.removing = true;
+                    // Policy setup can change a device gate before this boundary.
+                    // Departures resolve from the last publication, without a
+                    // transient resumed press from that policy prelude.
+                    entry.bindings->pending_buttons_.clear();
+                    entry.bindings->relative_actions_.clear();
+                    entry.bindings->button_bindings_.clear();
+                    entry.bindings->axis_bindings_.clear();
+                }
+            }
+            for (auto it = contexts_->pending.begin(); it != contexts_->pending.end();) {
+                const auto token = it->second.token.lock();
+                if (!token || !token->requested.load(std::memory_order_acquire)) {
+                    it = contexts_->pending.erase(it);
+                    continue;
+                }
+                auto& mapper = *it->second.bindings;
+                mapper.held_buttons_ = held_buttons_;
+                mapper.physical_axes_ = physical_axes_;
+                mapper.disabled_devices_ = disabled_devices_;
+                // A new namespace starts from an inactive sample at this mapper's
+                // previous poll, never from already observed relative activity.
+                auto baseline = std::make_shared<Snapshot>();
+                baseline->poll_ = action_snapshot()->poll();
+                baseline->observed_at_ = action_snapshot()->observed_at();
+                mapper.published_.store(std::move(baseline), std::memory_order_release);
+                mapper.pending_buttons_.clear();
+                mapper.relative_actions_.clear();
+                for (const auto& [action, held] : mapper.evaluate_buttons())
+                    if (held)
+                        mapper.refresh_button(action);
+                contexts_->active.emplace(it->first, it->second);
+                it = contexts_->pending.erase(it);
+            }
+        }
+        poll_started_ = true;
+    }
+
+    void Bindings::clear_contexts() {
+        if (!contexts_)
+            return;
+        const std::lock_guard lock(contexts_->mutex);
+        for (auto* entries : {&contexts_->pending, &contexts_->active})
+            for (auto& [id, entry] : *entries) {
+                static_cast<void>(id);
+                if (const auto token = entry.token.lock())
+                    token->requested.store(false, std::memory_order_release);
+                entry.removing = true;
+                auto& mapper = *entry.bindings;
+                mapper.button_bindings_.clear();
+                mapper.axis_bindings_.clear();
+                mapper.held_buttons_.clear();
+                mapper.physical_axes_.clear();
+                mapper.disabled_devices_.clear();
+                mapper.relative_actions_.clear();
+                mapper.pending_buttons_.clear();
+            }
+        contexts_->pending.clear();
+    }
+
     BindingId Bindings::bind_button(const CE::Input::Control control, const Id action) {
         return bind_button(Chord{{control}}, action);
     }
@@ -75,6 +168,7 @@ namespace CE::Input::Actions {
     }
 
     void Bindings::clear() {
+        clear_contexts();
         button_bindings_.clear();
         axis_bindings_.clear();
         held_buttons_.clear();
@@ -86,6 +180,13 @@ namespace CE::Input::Actions {
     }
 
     void Bindings::set_device_enabled(const CE::Input::DeviceId device, const bool enabled) {
+        if (contexts_)
+            for (auto& [id, entry] : contexts_->active) {
+                static_cast<void>(id);
+                const auto token = entry.token.lock();
+                if (!entry.removing && (poll_started_ || (token && token->requested.load(std::memory_order_acquire))))
+                    entry.bindings->set_device_enabled(device, enabled);
+            }
         const bool changed = enabled ? disabled_devices_.erase(device) != 0 : disabled_devices_.insert(device).second;
         if (!changed)
             return;
@@ -139,7 +240,7 @@ namespace CE::Input::Actions {
         return result;
     }
 
-    std::shared_ptr<const Snapshot> Bindings::publish_actions(const std::chrono::steady_clock::time_point observed_at) {
+    std::shared_ptr<Snapshot> Bindings::make_snapshot(const std::chrono::steady_clock::time_point observed_at) {
         const auto prior = action_snapshot();
         if (observed_at < prior->observed_at())
             throw Exceptions::invalid_args(CE_HERE, "Input poll observation times must be monotonic");
@@ -206,11 +307,33 @@ namespace CE::Input::Actions {
             );
         }
 
+        return next;
+    }
+
+    void Bindings::commit_snapshot(std::shared_ptr<const Snapshot> snapshot) noexcept {
         pending_buttons_.clear();
         relative_actions_.clear();
-        std::shared_ptr<const Snapshot> completed = std::move(next);
-        published_.store(completed, std::memory_order_release);
-        return completed;
+        published_.store(std::move(snapshot), std::memory_order_release);
+        poll_started_ = false;
+    }
+
+    std::shared_ptr<const Snapshot> Bindings::publish_actions(const std::chrono::steady_clock::time_point observed_at) {
+        begin_poll();
+        auto next = make_snapshot(observed_at);
+        if (contexts_) {
+            // Build every namespace before committing any pending transitions.
+            // A failed candidate leaves the complete previous publication intact.
+            for (const auto& [id, entry] : contexts_->active) {
+                auto sample = entry.bindings->make_snapshot(observed_at);
+                sample->poll_ = next->poll_;
+                next->contexts_.emplace(id, std::move(sample));
+            }
+            for (const auto& [id, entry] : contexts_->active)
+                entry.bindings->commit_snapshot(next->contexts_.at(id));
+            std::erase_if(contexts_->active, [](const auto& item) { return item.second.removing; });
+        }
+        commit_snapshot(next);
+        return next;
     }
 
     std::shared_ptr<const Snapshot> Bindings::action_snapshot() const {
@@ -218,8 +341,15 @@ namespace CE::Input::Actions {
     }
 
     void Bindings::on_axis(const CE::Input::Control binding, const float value) {
+        begin_poll();
         if (!std::isfinite(value))
             throw Exceptions::invalid_args(CE_HERE, "Input axes must have finite values");
+        if (contexts_)
+            for (auto& [id, entry] : contexts_->active) {
+                static_cast<void>(id);
+                if (!entry.removing)
+                    entry.bindings->on_axis(binding, value);
+            }
         if (value == 0.0f)
             physical_axes_.erase(binding);
         else
@@ -227,8 +357,15 @@ namespace CE::Input::Actions {
     }
 
     void Bindings::on_delta(const CE::Input::Control binding, const float delta) {
+        begin_poll();
         if (!std::isfinite(delta))
             throw Exceptions::invalid_args(CE_HERE, "Input deltas must have finite values");
+        if (contexts_)
+            for (auto& [id, entry] : contexts_->active) {
+                static_cast<void>(id);
+                if (!entry.removing)
+                    entry.bindings->on_delta(binding, delta);
+            }
         if (disabled_devices_.contains(binding.device))
             return;
         // Apply modifiers at the observation, not at the end of a later poll:
@@ -258,6 +395,13 @@ namespace CE::Input::Actions {
     }
 
     void Bindings::on_button(const CE::Input::Control control, const bool held) {
+        begin_poll();
+        if (contexts_)
+            for (auto& [id, entry] : contexts_->active) {
+                static_cast<void>(id);
+                if (!entry.removing)
+                    entry.bindings->on_button(control, held);
+            }
         if (held_buttons_.contains(control) == held)
             return;
         if (held)

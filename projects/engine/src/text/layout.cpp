@@ -407,6 +407,10 @@ namespace CE::Text {
     ShapedText::ShapedText(FontCollection fonts, LayoutOptions options)
     : fonts_(std::move(fonts)), options_(std::move(options)) {}
 
+    ShapedText layout_text(const Font& font, const std::string_view text, const LayoutOptions& options) {
+        return layout_text(font.collection(options.font_style), text, options);
+    }
+
     ShapedText layout_text(const FontCollection& fonts, const std::string_view text, const LayoutOptions& options) {
         if (!options.pixel_height || options.pixel_height > static_cast<unsigned>(std::numeric_limits<int>::max() / 64))
             throw ::CE::Exceptions::invalid_args(CE_HERE, "Text size must be positive and fit shaping metrics");

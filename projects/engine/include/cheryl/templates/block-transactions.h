@@ -12,11 +12,17 @@ namespace CE::Memory {
  * Included by block.h after its CE::Memory::Block hash specialization.
  */
     template <typename T> struct BlockTransactions {
+        /** Range metadata; lengths count T objects, or bytes for void. */
         using BlockType = ::CE::Memory::Block<T>;
+        /** Shared per-T collections retained independently of manager facades. */
         using State = typename ::CE::Memory::BlockManagement<T>::State;
+        /** Reusable free-range collection, ordered by checkout suitability. */
         using Pool = std::set<BlockType, ::CE::Memory::Ordering::PoolOrder<T>>;
+        /** Address-ordered partition sections for split backing allocations. */
         using Sections = std::set<BlockType, ::CE::Memory::Ordering::HeadOrder<T>>;
+        /** Complete backing-allocation metadata retaining underlying owners. */
         using Registry = std::set<BlockType, ::CE::Memory::Ordering::RegistryOrder<T>>;
+        /** Timestamps of complete free owners; not timestamps for every free section. */
         using Stale = std::unordered_map<BlockType, typename ::CE::Memory::BlockManagement<T>::tpoint>;
 
     private:
@@ -333,3 +339,99 @@ namespace CE::Memory {
     };
 
 }
+
+/**
+ * @fn template<typename T> template<typename Allocate> CE::Memory::Block<T> CE::Memory::BlockTransactions<T>::checkout(const std::shared_ptr<State>& state, std::size_t count, std::align_val_t alignment, Allocate allocate)
+ * @brief Claim/split one compatible free range, allocating backing outside all collection locks when needed.
+ * @tparam Allocate Callable returning a complete valid owned Block<T> with sufficient count/alignment.
+ * @param state Nonnull retained per-T bookkeeping state.
+ * @param count Positive representable element count, or bytes for void; callers validate policy/overflow before this primitive.
+ * @param alignment Nonzero valid requested byte alignment.
+ * @param allocate Synchronous fallback invoked outside locks; its returned owner survives rollback until locks release.
+ * @return Checked-out head range, possibly enlarged for an aligned void tail.
+ * All five collections commit together after replacement-node allocation succeeds. Concurrent returns may satisfy the request after backing allocation; unused fresh backing is released outside locks. Allocation/user-callback failures propagate without a partially published partition; no T object is constructed.
+ * @see [Block transactions](cheryl-guide:resources/resource-lifetime#block-transactions)
+ */
+
+/**
+ * @fn template<typename T> CE::Memory::OptionalBlock<T> CE::Memory::BlockTransactions<T>::return_block(const std::shared_ptr<State>& state, const BlockType& block)
+ * @brief Return an exact current checked-out range and coalesce adjacent free sections.
+ * @param state Nonnull retained bookkeeping domain matching the range.
+ * @param block Valid owner/head/alignment/length; all users and live-object obligations must already be finished.
+ * @return Merged free range, or nullopt for unknown, zero, already-free or inconsistent range metadata.
+ * Replacement-node allocation occurs before partition mutation; failures propagate without partial logical change. Returning a whole owner starts its stale age, but does not immediately free backing or destroy T.
+ */
+
+/**
+ * @fn template<typename T> CE::Memory::OptionalBlock<T> CE::Memory::BlockTransactions<T>::return_range(const std::shared_ptr<State>& state, T* ptr, std::optional<std::size_t> count)
+ * @brief Return a current containing range or an exact element-aligned subrange.
+ * @param state Nonnull matching per-T domain.
+ * @param ptr Address in a checked-out section or complete owner.
+ * @param count Positive in-bounds element count; nullopt returns the whole containing section, not only its suffix.
+ * @return Merged returned range, or nullopt for absent, pooled, misaligned or invalid bounds.
+ * No constructed-object tracking/destruction occurs; stop users and end object lifetimes first. Collection locks protect transactional partitioning, not accesses to storage.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::BlockTransactions<T>::register_free(const std::shared_ptr<State>& state, const BlockType& block)
+ * @brief Register one fresh complete backing owner as immediately reusable and stale.
+ * @param state Nonnull per-T domain.
+ * @param block New complete owned allocation with valid representable count/alignment; it must not overlap an existing registration.
+ * Builds replacement records before coordinated publication. Allocation failure leaves live collections unchanged; final backing release stays outside locks. Caller retains responsibility for valid metadata and nonoverlap.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::BlockTransactions<T>::record_new(const std::shared_ptr<State>& state, const BlockType& block)
+ * @brief Record only a complete backing owner in the registry under its write lock.
+ * @param state Nonnull per-T domain.
+ * @param block Valid owned allocation; this primitive does not add it to pool/stale/sections.
+ * Allocation failure propagates. Callers using this low-level operation maintain the surrounding multi-collection invariants.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::BlockTransactions<T>::mark_stale(const std::shared_ptr<State>& state, const BlockType& block)
+ * @brief Timestamp an exact complete free owner if no stale record exists.
+ * @param state Nonnull per-T domain.
+ * @param block Complete owner present in both registry and pool; other metadata is ignored.
+ * All collections are locked for validation; an existing timestamp is preserved rather than refreshing its age. Allocation failure propagates before a new stale record is visible.
+ */
+
+/**
+ * @fn template<typename T> CE::Memory::OptionalBlock<T> CE::Memory::BlockTransactions<T>::find_section(const std::shared_ptr<State>& state, T* ptr)
+ * @brief Copy split-section metadata containing an address under the section read lock.
+ * @param state Nonnull retained domain.
+ * @param ptr Candidate address in valid representable backing storage.
+ * @return Retained containing range, or nullopt. This observation is not a checkout/live-object guarantee and cannot replace a compound transaction.
+ */
+
+/**
+ * @fn template<typename T> CE::Memory::OptionalBlock<T> CE::Memory::BlockTransactions<T>::find_owner(const std::shared_ptr<State>& state, T* ptr)
+ * @brief Copy complete backing-owner metadata containing an address under the registry read lock.
+ * @param state Nonnull retained domain.
+ * @param ptr Candidate address.
+ * @return Retained owner metadata, or nullopt; it does not prove a currently constructed or exclusively owned object.
+ */
+
+/**
+ * @fn template<typename T> CE::Memory::OptionalBlock<T> CE::Memory::BlockTransactions<T>::fill_request(const std::shared_ptr<State>& state, std::size_t count, std::align_val_t alignment)
+ * @brief Claim the first whole free range meeting count/alignment without splitting or allocating backing.
+ * @param state Nonnull per-T domain.
+ * @param count Positive minimum element/byte count supplied by the caller.
+ * @param alignment Required valid byte alignment.
+ * @return Claimed whole range or nullopt when none fits. Removes matching pool/stale/release records atomically; no user T construction occurs.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::BlockTransactions<T>::cull(const std::shared_ptr<State>& state, std::chrono::minutes age)
+ * @brief Move sufficiently old whole-free-owner stale records to the pending-release set.
+ * @param state Nonnull domain; callers retain it through the operation.
+ * @param age Minimum monotonic stale duration; negative age makes current stale entries eligible.
+ * Preparation allocations precede record removal. This queues retirement only; release_culled() rechecks current registry/pool/partition state before freeing backing.
+ */
+
+/**
+ * @fn template<typename T> void CE::Memory::BlockTransactions<T>::release_culled(const std::shared_ptr<State>& state)
+ * @brief Remove queued owners only while still complete and free, then release final backing outside every collection lock.
+ * @param state Nonnull retained per-T domain.
+ * Checked-out/split owners are not forcibly released; pending records are drained after the eligibility pass. Final owner cleanup may destroy tracked T objects or return byte backing, so user destruction never runs while bookkeeping locks are held. Caller must preserve valid domain invariants.
+ */

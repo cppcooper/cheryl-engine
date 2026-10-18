@@ -4,10 +4,13 @@
 #include "font.h"
 #include <ui/tgui/input.h>
 #include <internals/exceptions.h>
+#include <cheryl/core/engine/engine-context.h>
+#include <cheryl/text/font-service.h>
 
 #include <TGUI/Backend/Window/Backend.hpp>
 #include <TGUI/Container.hpp>
 #include <TGUI/Keyboard.hpp>
+#include <TGUI/Loading/Deserializer.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -95,6 +98,23 @@ namespace CE::UI::TGUI {
             }
         };
 
+        class FontAliases final {
+            tgui::Deserializer::DeserializeFunc previous_ = tgui::Deserializer::getFunction(tgui::ObjectConverter::Type::Font);
+
+        public:
+            explicit FontAliases(const std::function<std::optional<tgui::Font>(const std::string&)>& resolve) {
+                tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, [resolve, previous = previous_](const tgui::String& value) {
+                    const auto name = tgui::Deserializer::deserialize(tgui::ObjectConverter::Type::String, value).getString().toStdString();
+                    if (const auto font = resolve(name))
+                        return tgui::ObjectConverter{*font};
+                    return previous(value);
+                });
+            }
+            ~FontAliases() { tgui::Deserializer::setFunction(tgui::ObjectConverter::Type::Font, previous_); }
+            FontAliases(const FontAliases&) = delete;
+            FontAliases& operator=(const FontAliases&) = delete;
+        };
+
         bool normalized(const tgui::Vector2f point) {
             return std::isfinite(point.x) && std::isfinite(point.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1;
         }
@@ -140,6 +160,11 @@ namespace CE::UI::TGUI {
             bool width = false;
             bool height = false;
         };
+        struct NativeFont {
+            CE::Text::Font source;
+            CE::Text::FontStyle style;
+            tgui::Font font;
+        };
 
         CE::Input::System& input;
         const CE::Input::Routing::TargetId target;
@@ -156,6 +181,9 @@ namespace CE::UI::TGUI {
         BackendLease backend;
         std::shared_ptr<RenderTarget> render_target = std::make_shared<RenderTarget>();
         Gui gui{render_target};
+        std::vector<NativeFont> native_fonts;
+        std::unordered_map<std::string, CE::Text::Font> engine_fonts;
+        std::optional<FontAliases> font_aliases;
 
         State(CE::Input::System& source, const CE::Input::Routing::TargetId id, const SessionOptions options)
         : input(source),
@@ -163,6 +191,21 @@ namespace CE::UI::TGUI {
           capabilities{source.supports_focus(), source.supports(CE::Input::Capture::Channel::Text)},
           events(source.capture(CE::Input::Capture::Channel::Events)),
           backend(options) {}
+
+        tgui::Font font(const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+            if (!selected)
+                throw Exceptions::invalid_args(CE_HERE, "TGUI needs a resolved Engine font");
+            for (const auto& cached : native_fonts)
+                if (cached.source.faces().data() == selected.faces().data() && cached.style.weight == style.weight &&
+                    cached.style.italic == style.italic)
+                    return cached.font;
+            auto native = std::make_shared<Detail::FontBackend>();
+            native->load(selected, style);
+            native->setFontScale(tgui::getBackend()->getFontScale());
+            tgui::Font result(native, selected.reference());
+            native_fonts.push_back({selected, style, result});
+            return result;
+        }
     };
 
     Session::Session(CE::Input::System& input, const CE::Input::Routing::TargetId target, const SessionOptions options) {
@@ -170,6 +213,27 @@ namespace CE::UI::TGUI {
             throw Exceptions::invalid_args(CE_HERE, "TGUI requires a nonzero focus target");
         state_ = std::make_unique<State>(input, target, options);
     }
+
+    Session::Session(
+        CE::Input::System& input,
+        const CE::Text::FontService& fonts,
+        const CE::Input::Routing::TargetId target,
+        const SessionOptions options
+    ) : Session(input, target, options) {
+        auto& state = owner();
+        for (const auto& font : fonts.all())
+            state.engine_fonts.emplace(font.reference(), font);
+        const auto default_font = state.font(fonts.default_font(), {});
+        tgui::Font::setGlobalFont(default_font);
+        state.gui.setFont(default_font);
+        state.font_aliases.emplace([&state](const std::string& reference) -> std::optional<tgui::Font> {
+            const auto found = state.engine_fonts.find(reference);
+            return found == state.engine_fonts.end() ? std::nullopt : std::optional{state.font(found->second, {})};
+        });
+    }
+
+    Session::Session(CE::Runtime::Context& engine, const CE::Input::Routing::TargetId target, const SessionOptions options)
+    : Session(engine.input(), engine.fonts(), target, options) {}
 
     Session::~Session() = default;
 
@@ -185,6 +249,18 @@ namespace CE::UI::TGUI {
 
     Capabilities Session::capabilities() const {
         return owner().capabilities;
+    }
+
+    tgui::Font Session::font(const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+        return owner().font(selected, style);
+    }
+
+    void Session::set_font(tgui::Widget::Ptr widget, const CE::Text::Font& selected, const CE::Text::FontStyle style) {
+        auto& state = owner();
+        if (!widget)
+            throw Exceptions::invalid_args(CE_HERE, "TGUI font assignment needs a widget");
+        const auto native = state.font(selected, style);
+        widget->getRenderer()->setFont(native);
     }
 
     void Session::set_view(const CE::Platform::Dimensions<int> logical, const CE::Platform::FramebufferSize framebuffer) {

@@ -31,10 +31,10 @@ with `std::format` support. The default root configuration also requires Python
 3.11 or newer for documentation targets and hwloc 2.5+ (2.x) for worker support.
 Set `CHERYL_BUILD_DOCS=OFF` or `CHERYL_BUILD_WORKER_TOPOLOGY_HWLOC=OFF` to omit
 the corresponding requirement. Install the selected modules'
-[system dependencies](docs/development/building.md#system-dependencies).
+[system dependencies](docs/site/development/building.md#system-dependencies).
 Linux builds use ordinary shared development packages. Windows requires Windows
 10 version 1903+ and the SDK's ICU C API; prepare its external shared dependencies
-using the [dependency helper](docs/development/building.md#dependency-and-toolchain-settings).
+using the [dependency helper](docs/site/development/building.md#dependency-and-toolchain-settings).
 
 ```sh
 git clone https://github.com/cppcooper/cheryl-engine.git
@@ -79,7 +79,7 @@ After changing branches or updating the checkout, restore its pinned dependencie
 )
 ```
 
-The [build guide](docs/development/building.md) lists configuration options,
+The [build guide](docs/site/development/building.md) lists configuration options,
 dependency settings, Debug/Release behavior and common setup failures. Existing
 build directories retain cached options; reload CMake after changing selections.
 
@@ -102,15 +102,15 @@ the public aliases to inherit headers and dependencies.
 | `module_ui_rmlui` | `Cheryl::UI::RmlUi` | RML/RCSS documents and retained scene bridge. |
 | `module_audio_miniaudio` | `Cheryl::Audio::Miniaudio` | Audio decoding, mixing, native output and streaming. |
 | `demo` | — | Example native application. |
-| `first-game` | — | Opt-in maintained game from the [walkthrough](docs/getting-started/first-game.md), with its own assets. |
-| `tutorial-game` | — | Opt-in Player/Enemy, direct text score and TGUI controls example supporting the [tutorials](docs/getting-started/create-a/index.md) and [How-to guides](docs/getting-started/how-to/index.md). |
+| `first-game` | — | Opt-in maintained game from the [walkthrough](docs/site/getting-started/first-game.md), with its own assets. |
+| `tutorial-game` | — | Opt-in Controller/Character, joining players, patrol and TGUI HUD example supporting the [tutorials](docs/site/getting-started/create-a/index.md) and [task index](docs/site/getting-started/how-to/index.md). |
 | `docs`, `docs-clean`, `docs-tools` | — | Optional incremental generation, full regeneration and shared documentation tool setup; also available through the docs-only CMake project. |
 | `cheryl-sdk` | — | Builds selected installable libraries when `CHERYL_BUILD_SDK=ON`. |
 
 See the [module index](projects/modules/README.md) for each owner's API and the
-[consumption guide](docs/development/consuming-engine.md) for application CMake
+[consumption guide](docs/site/development/consuming-engine.md) for application CMake
 composition. Applications can also use an installed prebuilt SDK through
-[`find_package(Cheryl 4 CONFIG REQUIRED)`](docs/development/consuming-engine.md#prebuilt-development-sdks).
+[`find_package(Cheryl 4 CONFIG REQUIRED)`](docs/site/development/consuming-engine.md#prebuilt-development-sdks).
 
 ## Tests
 
@@ -127,14 +127,14 @@ With tests enabled, build and run the combined GoogleTest runner for selected ow
 )
 ```
 
-The [test guide](docs/development/testing.md) explains focused runners, aggregates,
+The [test guide](docs/site/development/testing.md) explains focused runners, aggregates,
 CTest selection, consumers and environment opt-ins. Native graphics and real-font
 checks need their stated prerequisites; skipped cases leave that coverage pending.
 The [testing queue](docs/testing-requests.md) contains pending automated checks and QA.
 
 ## CI and development SDKs
 
-[GitHub CI](docs/development/ci.md) selects Linux
+[GitHub CI](docs/site/development/ci.md) selects Linux
 GCC/Clang and Windows MSVC builds, focused tests and installed SDK consumers.
 Successful main-push validation collects prebuilt development SDKs as workflow
 artifacts. They contain compiled libraries, public/inline/template headers, CMake
@@ -157,7 +157,7 @@ root CMake file selects owners; `cmake/` supplies shared metadata and compositio
 helpers. `extern/` holds pinned dependencies and the `assets/` submodule holds
 definitions, textures, shader recipes, UI documents and font inputs. Initialize it
 alongside the dependencies; optional package images still follow the
-[catalog](docs/assets/catalog.md). See [module authoring](docs/development/modules.md)
+[catalog](docs/site/assets/catalog.md). See [module authoring](docs/site/development/modules.md)
 for the steps required to add an owner.
 
 ## Documentation and development
@@ -165,33 +165,34 @@ for the steps required to add an owner.
 From the checkout root, run `./generate-docs.sh` to update the local manual and API
 reference. Add `--clean` for full regeneration, `--extract-only` for Doxygen XML,
 or `--help` for output and tool-selection options. The
-[generation guide](docs/development/documentation.md) also covers Python and CMake
+[generation guide](docs/site/development/documentation.md) also covers Python and CMake
 entry points and hosted publication.
+The generated entry point is `docs/site/generation/generated/html/index.html`.
 
 | Topic                                  | Documentation |
 |----------------------------------------| --- |
 | Complete documentation index           | [All guides and system references](docs/README.md) |
-| Engine architecture                    | [Engine assembly and backend boundaries](docs/architecture/assembling-engine.md), [frame lifecycle](docs/runtime/runtime-frame-boundary.md) and [module roles](projects/modules/README.md) |
-| Engine systems                         | [Purpose, ownership, execution and integration by system](docs/engine-systems/index.md) |
-| **CMake configuration** and **builds** | [Options and defaults](docs/development/building.md#configuration-options), [build configurations](docs/development/building.md#build-configurations) and [engine-only builds](docs/development/building.md#engine-only-configuration) |
-| Dependencies                           | [SDK selection and toolchain settings](docs/development/building.md#dependency-and-toolchain-settings), [system requirements](docs/development/building.md#system-dependencies) and [public headers and link requirements](docs/development/consuming-engine.md#dependencies-and-headers) |
-| Targets and artifacts                  | [Module targets and aliases](projects/modules/README.md), [test targets](docs/development/testing.md#runner-selection) and [artifact name definitions](cmake/CherylOutputs.cmake) |
-| Writing a game                         | [Project setup](docs/getting-started/project-setup.md), [First-game walkthrough](docs/getting-started/first-game.md), [Player/Enemy/HUD](docs/getting-started/create-a/index.md), [How-to guides](docs/getting-started/how-to/index.md) and [consumption reference](docs/development/consuming-engine.md) |
-| Documentation generation and hosting   | [Local generation, shared tools and versioned Read the Docs setup](docs/development/documentation.md), [generated API entry points](docs/api/index.md) |
-| Adding a module                        | [Module authoring](docs/development/modules.md#add-a-module), [standalone composition](docs/development/modules.md#standalone-modules) and [UI adapters](docs/development/ui-adapters.md) |
-| Platform and graphics APIs             | [Native GLFW](projects/modules/platform/native-glfw/README.md) and [OpenGL](projects/modules/graphics/opengl/README.md) |
-| UI APIs                                | [TGUI](projects/modules/ui/tgui/README.md) and [RmlUi](projects/modules/ui/rmlui/README.md) |
-| Audio APIs                             | [Engine audio contracts](docs/runtime/audio.md) and [miniaudio integration](projects/modules/audio/miniaudio/README.md) |
-| Input, timing and concurrency          | [Input state and events](docs/runtime/input-state-model.md), [simulation timing](docs/runtime/simulation-timing.md) and [thread dispatch](docs/runtime/thread-dispatch.md) |
-| Assets and text                        | [Asset loading](docs/assets/asset-loading.md), [manifest format](docs/assets/asset-manifests.md) and [Unicode text layout](docs/assets/text-layout.md) |
-| Rendering and resources                | [Pipelines and materials](docs/rendering/pipelines-and-materials.md), [CPU memory lifetime](docs/resources/resource-lifetime.md) and [resource residency](docs/resources/resource-residency.md) |
-| Logging and crash handling             | [Compile-time logging policy](docs/runtime/logging.md#compile-policy), [runtime logging](docs/runtime/logging.md#runtime-settings-and-ownership) and [crash bootstrap and exception traces](docs/development/consuming-engine.md#crash-and-exception-traces) |
-| Native output terminal                 | [Linux module, activation and viewer lifetime](projects/modules/platform/debug-terminal-linux/README.md) |
-| Demo                                   | [Controls](projects/apps/demo/README.md#controls), [command-line options](projects/apps/demo/README.md#command-line-options) and [asset packages](docs/assets/catalog.md) |
-| Automated tests                        | [Runners and CTest selection](docs/development/testing.md), [acceptance checks](docs/development/testing.md#acceptance-and-consumers) and [logging acceptance](docs/development/logging-acceptance.md) |
-| Consumers and header probes            | [Selection and targets](docs/development/testing.md#acceptance-and-consumers) and [independent consumer builds](docs/development/consuming-engine.md#independent-consumers-and-header-probes) |
-| Development SDKs and CI                | [SDK production](docs/development/building.md#development-sdk-builds), [prebuilt consumption](docs/development/consuming-engine.md#prebuilt-development-sdks) and [hosted CI matrix](docs/development/ci.md) |
-| Architecture validation and QA         | [Validation procedures](docs/development/architecture-validation.md), [desktop checks](docs/development/native-desktop-checks.md) and [pending testing requests](docs/testing-requests.md) |
-| Troubleshooting                        | [Build and dependency issues](docs/development/building.md#troubleshooting) and [compiler discovery and standard headers](docs/development/consuming-engine.md#standard-headers-in-an-existing-build) |
-| Contributing                           | [Development workflow](docs/development/contributing.md), [C++ style](docs/development/code-style.md) and [agent instructions](AGENTS.md) |
-| Planning                               | [Planning catalogue](docs/planning/README.md) and [development roadmap](docs/planning/develop-review-and-development-plan.md) |
+| Engine systems and integration         | [System relationships](docs/site/engine-systems/index.md), [application integration](docs/site/development/consuming-engine.md), [frame lifecycle](docs/site/runtime/runtime-frame-boundary.md) and [module selection](docs/site/modules/index.md) |
+| Engine systems                         | [Purpose, ownership, execution and integration by system](docs/site/engine-systems/index.md) |
+| **CMake configuration** and **builds** | [Options and defaults](docs/site/development/building.md#configuration-options), [build configurations](docs/site/development/building.md#build-configurations) and [engine-only builds](docs/site/development/building.md#engine-only-configuration) |
+| Dependencies                           | [SDK selection and toolchain settings](docs/site/development/building.md#dependency-and-toolchain-settings), [system requirements](docs/site/development/building.md#system-dependencies) and [public headers and link requirements](docs/site/development/consuming-engine.md#dependencies-and-headers) |
+| Targets and artifacts                  | [Module targets and aliases](projects/modules/README.md), [test targets](docs/site/development/testing.md#runner-selection) and [artifact name definitions](cmake/CherylOutputs.cmake) |
+| Writing a game                         | [Project setup](docs/site/getting-started/project-setup.md), [Tutorials](docs/site/getting-started/create-a/index.md), [Task index](docs/site/getting-started/how-to/index.md) and [Guides by topic](docs/site/guides/index.md) |
+| Documentation generation and hosting   | [Local generation, shared tools and versioned Read the Docs setup](docs/site/development/documentation.md), [generated API entry points](docs/site/api/index.md) |
+| Adding a module                        | [Module authoring](docs/site/development/modules.md#add-a-module), [standalone composition](docs/site/development/modules.md#standalone-modules) and [UI adapters](docs/site/development/ui-adapters.md) |
+| Platform and graphics APIs             | [Native GLFW](docs/site/modules/native-glfw.md) and [OpenGL](docs/site/modules/opengl.md) |
+| UI APIs                                | [TGUI](docs/site/modules/tgui.md) and [RmlUi](docs/site/modules/rmlui.md) |
+| Audio APIs                             | [Engine audio contracts](docs/site/runtime/audio.md) and [miniaudio integration](docs/site/modules/miniaudio.md) |
+| Input, timing and concurrency          | [Input state and events](docs/site/runtime/input-state-model.md), [simulation timing](docs/site/runtime/simulation-timing.md) and [thread dispatch](docs/site/runtime/thread-dispatch.md) |
+| Assets and text                        | [Asset loading](docs/site/assets/asset-loading.md), [manifest format](docs/site/assets/asset-manifests.md) and [Unicode text layout](docs/site/assets/text-layout.md) |
+| Rendering and resources                | [Pipelines and materials](docs/site/rendering/pipelines-and-materials.md), [CPU memory lifetime](docs/site/resources/resource-lifetime.md) and [resource residency](docs/site/resources/resource-residency.md) |
+| Logging and crash handling             | [Compile-time logging policy](docs/site/runtime/logging.md#compile-policy), [runtime logging](docs/site/runtime/logging.md#runtime-settings-and-ownership) and [crash bootstrap and exception traces](docs/site/development/consuming-engine.md#crash-and-exception-traces) |
+| Native output terminal                 | [Linux module, activation and viewer lifetime](docs/site/modules/debug-terminal-linux.md) |
+| Demo                                   | [Controls](projects/apps/demo/README.md#controls), [command-line options](projects/apps/demo/README.md#command-line-options) and [asset packages](docs/site/assets/catalog.md) |
+| Automated tests                        | [Runners and CTest selection](docs/site/development/testing.md), [acceptance checks](docs/site/development/testing.md#acceptance-and-consumers) and [logging acceptance](docs/site/development/logging-acceptance.md) |
+| Consumers and header probes            | [Selection and targets](docs/site/development/testing.md#acceptance-and-consumers) and [independent consumer builds](docs/site/development/architecture-validation.md#independent-consumers-and-header-probes) |
+| Development SDKs and CI                | [SDK production](docs/site/development/building.md#development-sdk-builds), [prebuilt consumption](docs/site/development/consuming-engine.md#prebuilt-development-sdks) and [hosted CI matrix](docs/site/development/ci.md) |
+| Architecture validation and QA         | [Validation procedures](docs/site/development/architecture-validation.md), [desktop checks](docs/site/development/native-desktop-checks.md) and [pending testing requests](docs/testing-requests.md) |
+| Troubleshooting                        | [Build and dependency issues](docs/site/development/building.md#troubleshooting) and [compiler discovery and standard headers](docs/site/development/building.md#standard-headers-in-an-existing-build) |
+| Contributing                           | [Development workflow](docs/site/development/contributing.md), [C++ style](docs/site/development/code-style.md) and [agent instructions](AGENTS.md) |
+| Planning                               | [Status and selected work](docs/STATUS.md) and [planning catalogue](docs/planning/README.md) |

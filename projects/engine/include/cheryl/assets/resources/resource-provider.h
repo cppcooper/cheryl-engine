@@ -78,3 +78,105 @@ namespace CE::Rendering::Resources {
         [[nodiscard]] virtual std::shared_ptr<Program> link_program(const std::vector<std::filesystem::path>& stages) = 0;
     };
 }
+
+/**
+ * @fn CE::Rendering::Resources::Provider::Provider()
+ * @brief Create a distinct diagnostic provider identity without binding the global asset-cache domain.
+ */
+
+/**
+ * @fn CE::Rendering::Resources::Provider::Provider(const Provider&) noexcept
+ * @brief Copy adapter configuration with a new diagnostic identity; no asset-cache domain is shared by this operation.
+ */
+
+/**
+ * @fn CE::Rendering::Resources::Provider& CE::Rendering::Resources::Provider::operator=(const Provider&) noexcept
+ * @brief Preserve this provider's diagnostic identity during base assignment.
+ * @return This provider. Derived adapter configuration follows the derived type's assignment contract.
+ */
+
+/**
+ * @fn CE::Rendering::Resources::Provider::~Provider()
+ * @brief Release global typed caches if this provider owns their active domain.
+ * Cache handles are dropped before releasing the binding; external retained handles survive logically in their original backend domain. Quiesce loading/publication and arrange backend teardown in the owning runtime; this is not native resource migration.
+ */
+
+/**
+ * @fn CE::Diagnostics::DomainId CE::Rendering::Resources::Provider::diagnostic_id() const noexcept
+ * @return Stable identity for this provider instance; copying creates another identity, assignment preserves the destination.
+ */
+
+/**
+ * @fn CE::Assets::Shaders::Builder* CE::Rendering::Resources::Provider::shader_asset_builder() noexcept
+ * @return Borrowed optional material/program builder, or null when unsupported. Retain this provider through use; the base implementation returns null.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Resources::Image> CE::Rendering::Resources::Provider::load_image(const std::filesystem::path& file)
+ * @brief Decode a file on the CPU, then create a fresh immutable backend image.
+ * @param file File opened during this call; no path/cache entry is published here.
+ * @return Retained image from create_image().
+ * The upload portion obeys backend owner/current-context requirements. Decode/upload/allocation failures propagate without returning a partial handle.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Resources::Image> CE::Rendering::Resources::Provider::create_image(const CE::Assets::Images::Decoded& image)
+ * @brief Upload fresh top-to-bottom RGBA8 contents on the backend loading owner.
+ * @param image Nonzero dimensions and exactly four bytes per pixel, borrowed only through this call.
+ * @return Independent immutable image; caller may immediately reuse/release CPU pixels.
+ * Backend validation/upload failures propagate; this operation publishes no cache entry.
+ */
+
+/**
+ * @fn std::shared_ptr<const CE::Rendering::Sampling::Sampler> CE::Rendering::Resources::Provider::create_sampler(const CE::Rendering::Sampling::Options& options)
+ * @brief Create or reuse an immutable backend sampler on its owner/current context.
+ * @param options Valid filtering/wrap/anisotropy request.
+ * @return Retained sampler; MaximumSupported may resolve to isotropic filtering.
+ * The base validates options then throws failed_operation because sampling overrides are optional. Concrete caching does not promise residency after final release.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Resources::Image> CE::Rendering::Resources::Provider::create_font_atlas(std::span<const unsigned char> alpha, CE::Rendering::Geometry::PixelSize size)
+ * @brief Upload one-channel glyph alpha without changing the font baker's row/UV order.
+ * @param alpha One byte per pixel, borrowed until this upload returns.
+ * @param size Nonzero dimensions matching alpha.size().
+ * @return Independent immutable atlas handle.
+ * Requires backend owner/current context; malformed input and upload/allocation failures reject without cache publication.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Geometry::Buffer2D> CE::Rendering::Resources::Provider::upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2D> vertices, CE::Rendering::Geometry::Topology topology)
+ * @brief Copy transient position/UV vertices into immutable backend geometry.
+ * @param vertices Nonempty contiguous CPU vertices, borrowed only through the call.
+ * @param topology Primitive interpretation retained by the upload.
+ * @return Independent retained geometry with matching layout/count/topology.
+ * Requires backend upload affinity; validation/native/allocation errors propagate. Atlas cells use strips; whole images/glyphs use independent triangles.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Geometry::Buffer2D> CE::Rendering::Resources::Provider::upload_geometry(std::span<const CE::Rendering::Geometry::Vertex2DColor> vertices, CE::Rendering::Geometry::Topology topology)
+ * @brief Copy transient position/UV/RGBA vertices into immutable backend geometry.
+ * @param vertices Nonempty contiguous CPU vertices, borrowed only through the call.
+ * @param topology Primitive interpretation retained by the upload.
+ * @return Independent retained geometry with matching layout/count/topology.
+ * Requires backend upload affinity; validation/native/allocation errors propagate. The base throws failed_operation: unsupported adapters must reject rather than discard color.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Geometry::Buffer2D> CE::Rendering::Resources::Provider::upload_geometry(std::shared_ptr<CE::Rendering::Geometry::Vertex2D> vertices, std::uint32_t vertex_count, CE::Rendering::Geometry::Topology topology)
+ * @brief Compatibility wrapper borrowing a retained CPU array for the transient span upload.
+ * @param vertices Owner of at least vertex_count contiguous vertices.
+ * @param vertex_count Nonzero array count, not bytes.
+ * @param topology Uploaded primitive interpretation.
+ * @return Backend geometry independent of the CPU array.
+ * Null/zero input throws invalid_args. The CPU owner is retained only until the delegated upload returns; normal backend affinity/failures apply.
+ */
+
+/**
+ * @fn std::shared_ptr<CE::Rendering::Resources::Program> CE::Rendering::Resources::Provider::link_program(const std::vector<std::filesystem::path>& stages)
+ * @brief Compile stage files and return a linked executable on the backend owner/current context.
+ * @param stages Stage paths borrowed through the call; backend extension/stage support applies.
+ * @return Complete executable handle, never an unlinked recipe.
+ * File/compile/link/allocation failures propagate; this primitive performs no cache publication.
+ * @see [Resource residency](cheryl-guide:resources/resource-residency)
+ */

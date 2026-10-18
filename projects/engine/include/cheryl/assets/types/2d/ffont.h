@@ -19,7 +19,9 @@ namespace CE::Rendering::Resources {
 
 namespace CE::Text::Legacy {
     struct CE_TYPE_API BitmapFont;
+    /** Number of fixed legacy atlas slots, including the alternate bank. */
     constexpr uint16_t bitmap_character_count = 256;
+    /** Owned width table plus retained geometry/atlas handles for BitmapFont construction. */
     using BitmapFontData = std::tuple<
         std::array<float, bitmap_character_count>,
         std::shared_ptr<CE::Rendering::Geometry::Buffer2D>,
@@ -42,11 +44,6 @@ namespace CE::Text::Legacy {
         ~BitmapFont() override = default;
         [[nodiscard]] CE_API std::vector<GlyphPlacement>
         layout(std::string_view text, LayoutOptions options = LayoutOptions{}) const override;
-        /** Read 256 native shorts from a binary input file before any provider upload.
-         * Incomplete reads fail; legacy trailing bytes are ignored. Metadata/endian
-         * semantics remain unverified; see docs/resources/legacy-ffont.md for
-         * the deprecation decision and preserved legacy behavior.
-         */
         CE_API static BitmapFontData load_ffont(const std::filesystem::path& path, CE::Rendering::Resources::Provider& provider);
     };
 }
@@ -68,3 +65,24 @@ namespace CE::State {
 #endif
 
 #endif
+
+/** @fn CE::Text::Legacy::BitmapFont::BitmapFont(const BitmapFontData& data)
+ * Copy the width table and retain geometry/atlas. Configure the singleton once with initialize(load_ffont(...)) before readers start; get() only retrieves the published instance.
+ */
+
+/** @fn CE::Text::Legacy::BitmapFont::~BitmapFont()
+ * Release this legacy font's logical resource handles; retained draw packets keep their own handles.
+ */
+
+/** @fn std::vector<CE::Text::Legacy::GlyphPlacement> CE::Text::Legacy::BitmapFont::layout(std::string_view text, LayoutOptions options) const
+ * Interpret bytes as printable ASCII, replacing other bytes with ?. Newline resets X and moves Y by -1/128; CR is ignored. Widths are divided by 128. alternate_bank adds128 to glyph indices; spaces advance without draws. This deprecated path does not decode UTF-8 or shape text; allocation failures propagate.
+ */
+
+/** @fn CE::Text::Legacy::BitmapFontData CE::Text::Legacy::BitmapFont::load_ffont(const std::filesystem::path& path, CE::Rendering::Resources::Provider& provider)
+ * Read256 native shorts before uploading geometry. Incomplete reads fail; trailing bytes are ignored. Requires whitefont.png already present in the image manager. Metadata/endian semantics remain unverified. Uses the provider loading owner/current context; file/provider/allocation failures propagate and partial native resources retire normally.
+ * @see [Legacy format limits](cheryl-guide:resources/legacy-ffont)
+ */
+
+/** @fn template <> auto CE::State::Singleton<CE::Text::Legacy::BitmapFont>::storage() -> Storage&
+ * Return the process-local singleton storage for this deprecated font specialization. Use initialize/get rather than modifying storage directly.
+ */

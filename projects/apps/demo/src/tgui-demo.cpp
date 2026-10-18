@@ -50,7 +50,7 @@ namespace {
 }
 
 struct DemoUi::TguiState {
-    CE::Input::System& input;
+    CE::Runtime::Context& engine;
     CE::Runtime::PlatformDispatcher::Submission platform;
     CE::UI::TGUI::SceneUploader uploader;
     // External widget handles are declared after session and destroyed first.
@@ -68,12 +68,12 @@ struct DemoUi::TguiState {
     bool alternate_image = false;
 
     explicit TguiState(CE::Runtime::Context& engine)
-    : input(engine.input()), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()) {}
+    : engine(engine), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()) {}
 
     void create_widgets(const CE::Game::TickContext& tick) {
         using CE::UI::TGUI::Scalable;
 
-        session = std::make_unique<CE::UI::TGUI::Session>(input, 2);
+        session = std::make_unique<CE::UI::TGUI::Session>(engine, 2);
         session->set_view(tick.logical_size, tick.framebuffer_size);
         auto& gui = session->gui();
         gui.setTextSize(16);

@@ -111,3 +111,72 @@ namespace CE::Runtime {
         CE_API void invalidate();
     };
 }
+
+/**
+ * @fn CE::Runtime::SimulationDispatcher::SimulationDispatcher()
+ * @brief Create a closed request queue. GameRuntime opens and binds its single execution session.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn CE::Runtime::SimulationDispatcher::~SimulationDispatcher()
+ * @brief Invalidate submission state and cancel unexecuted requests.
+ * Runtime normally performs owner-thread cancellation before teardown; do not destroy while operations use this object. Retained Submission values remain safe and reject later work.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn CE::Runtime::SimulationDispatcher::SimulationDispatcher(const SimulationDispatcher&)
+ * @brief Copy construction is disabled; retain a copyable Submission endpoint instead.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn SimulationDispatcher& CE::Runtime::SimulationDispatcher::operator=(const SimulationDispatcher&)
+ * @brief Copy assignment is disabled; queue/session ownership cannot be replaced.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn CE::Runtime::SimulationDispatcher::Submission CE::Runtime::SimulationDispatcher::submission() const
+ * @brief Retain a copyable producer endpoint independent of dispatcher lifetime.
+ * @return Endpoint owning shared queue state, without a borrowed game/context pointer.
+ * Obtaining it does not open the queue; concurrent submission requires a live endpoint.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn bool CE::Runtime::SimulationDispatcher::has_pending() const
+ * @brief Observe whether requests remain in the shared queue.
+ * @return Synchronized queue snapshot; false does not establish closure or completion of an already detached batch.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn CE::Diagnostics::DispatchStats CE::Runtime::SimulationDispatcher::diagnostics() const
+ * @brief Copy synchronized queue/counter observations.
+ * @return Best-effort stats, including detached-batch running counts. Callback exceptions remain owned by their futures; this is not a completion barrier.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn template<typename Work> auto CE::Runtime::SimulationDispatcher::submit(Work&& work) -> std::future<std::invoke_result_t<std::decay_t<Work>&>>
+ * @brief Queue an owned callable for deferred simulation-owner execution.
+ * @tparam Work Callable invocable without arguments; move-only captures and void/value/reference results are supported.
+ * @param work Callable forwarded into owned queue storage; borrowed captures/results remain the caller's lifetime responsibility.
+ * @return Future holding the invocation result or its exception; cancellation before entry produces broken_promise.
+ * @throws CE::Exceptions::failed_operation If no active accepting runtime queue exists. Allocation/callable construction failures can propagate before acceptance.
+ * Always queues, even from the owner thread. Do not wait on this future from the execution owner. Delivery precedes input transfer at an actual update boundary in either execution mode; capture game state only with its simulation-owner lifetime protected.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */
+
+/**
+ * @fn template<typename Work> auto CE::Runtime::SimulationDispatcher::Submission::submit(Work&& work) const -> std::future<std::invoke_result_t<std::decay_t<Work>&>>
+ * @brief Queue an owned callable for deferred simulation-owner execution.
+ * @tparam Work Callable invocable without arguments; move-only captures and void/value/reference results are supported.
+ * @param work Callable forwarded into owned queue storage; borrowed captures/results remain the caller's lifetime responsibility.
+ * @return Future holding the invocation result or its exception; cancellation before entry produces broken_promise.
+ * @throws CE::Exceptions::failed_operation If no active accepting runtime queue exists. Allocation/callable construction failures can propagate before acceptance.
+ * Always queues, even from the owner thread. Do not wait on this future from the execution owner. Delivery precedes input transfer at an actual update boundary in either execution mode; capture game state only with its simulation-owner lifetime protected.
+ * @see [Detailed guide](cheryl-guide:runtime/thread-dispatch)
+ */

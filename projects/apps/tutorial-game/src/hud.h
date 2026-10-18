@@ -1,71 +1,92 @@
 #pragma once
 
-#include <cheryl/assets/submission/draw2d.h>
 #include <cheryl/core/engine/engine-context.h>
-#include <cheryl/core/rendering/render-frame.h>
-#include <cheryl/text/font-collection.h>
-#include <cheryl/text/layout.h>
+#include <cheryl/core/game-framework/tick-context.h>
+#include <cheryl/ui/tgui/scene.h>
+#include <cheryl/ui/tgui/session.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <chrono>
+#include <TGUI/Widgets/Label.hpp>
+#include <TGUI/Widgets/ProgressBar.hpp>
+
+#include <algorithm>
 #include <format>
 #include <future>
 #include <memory>
-#include <optional>
-#include <stdexcept>
-#include <utility>
 
 namespace Tutorial {
     class Hud final {
-        CE::Text::FontCollection fonts_;
-        std::shared_ptr<const CE::Rendering::Resources::Material> material_;
+        CE::Runtime::Context& engine_;
         CE::Runtime::PlatformDispatcher::Submission platform_;
-        std::optional<CE::Text::Rendering::Generation> current_;
-        std::future<CE::Text::Rendering::Generation> pending_;
-        int requested_ = 0;
-        int displayed_ = 0;
-        int submitted_ = 0;
+        CE::UI::TGUI::SceneUploader uploader_;
+        CE::UI::TGUI::Scene scene_;
+        std::future<CE::UI::TGUI::Scene> pending_;
+        std::unique_ptr<CE::UI::TGUI::Session> session_;
+        tgui::Label::Ptr score_;
+        tgui::ProgressBar::Ptr health_;
+        int score_value_ = 0;
+        unsigned int health_value_ = 100;
 
     public:
-        Hud(CE::Runtime::Context& engine,
-            CE::Text::FontCollection fonts,
-            std::shared_ptr<const CE::Rendering::Resources::Material> material)
-        : fonts_(std::move(fonts)), material_(std::move(material)), platform_(engine.platform_dispatcher().submission()) {
-            if (!material_)
-                throw std::invalid_argument("HUD requires a text material");
-            current_.emplace(CE::Text::Rendering::upload(prepare(0), engine.resources()));
+        explicit Hud(CE::Runtime::Context& engine)
+        : engine_(engine), platform_(engine.platform_dispatcher().submission()), uploader_(engine.resources()) {}
+
+        void set_score(int value) { score_value_ = value; }
+        void set_health(unsigned int value) { health_value_ = std::min(value, 100u); }
+
+        void update(const CE::Game::TickContext& tick) {
+            if (!session_) {
+                session_ = std::make_unique<CE::UI::TGUI::Session>(engine_, 2);
+                session_->set_view(tick.logical_size, tick.framebuffer_size);
+                create_widgets();
+            } else
+                session_->set_view(tick.logical_size, tick.framebuffer_size);
+
+            session_->handle_input(tick.input.records(), false);
+            session_->update_time(tick.delta_seconds);
+            score_->setText(std::format("Score: {}", score_value_));
+            health_->setValue(health_value_);
+            health_->setText(std::format("Health: {}/100", health_value_));
+
+            static_cast<void>(CE::UI::TGUI::adopt_scene(pending_, scene_));
+            if (!pending_.valid())
+                pending_ = uploader_.submit(platform_, session_->record());
         }
 
-        void set_score(int value) { requested_ = value; }
+        void append(CE::Rendering::FrameWriter& frame) const { scene_.write(frame); }
 
-        void update() {
-            if (pending_.valid() && pending_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                auto replacement = pending_.get();
-                current_.emplace(std::move(replacement));
-                displayed_ = submitted_;
+        void close_after_quiescence() {
+            score_.reset();
+            health_.reset();
+            if (session_) {
+                session_->close_after_quiescence();
+                session_.reset();
             }
-            if (!pending_.valid() && requested_ != displayed_) {
-                auto prepared = prepare(requested_);
-                pending_ = platform_.submit([prepared = std::move(prepared)](CE::Runtime::Context& owner) mutable {
-                    return CE::Text::Rendering::upload(std::move(prepared), owner.resources());
-                });
-                submitted_ = requested_;
-            }
-        }
-
-        void append(CE::Rendering::PassWriter& pass, glm::vec2 origin) const {
-            const CE::Rendering::Submission::Context2D context{
-                pass.semantics(), pass.parameters(), pass.constraints(), CE::Rendering::Submission::ImageParameter2D{"image", 0}
-            };
-            CE::Rendering::DrawStyle2D style;
-            style.material = material_;
-            style.model_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(origin, 0.0f));
-            pass.add(CE::Rendering::Submission::resolve_text(*current_, style, context));
+            scene_ = CE::UI::TGUI::Scene{};
         }
 
     private:
-        [[nodiscard]] CE::Text::Rendering::Prepared prepare(int score) const {
-            return CE::Text::Rendering::prepare(CE::Text::layout_text(fonts_, std::format("Score: {}", score), {.pixel_height = 24}));
+        void create_widgets() {
+            score_ = tgui::Label::create("Score: 0");
+            score_->setTextSize(24);
+            score_->setSize({220, 32});
+            session_->gui().add(score_);
+            session_->set_layout(
+                score_, {
+                            .anchor = {0, 0},
+                            .offset = {.fixed = {24, 16}},
+                        }
+            );
+
+            health_ = tgui::ProgressBar::create();
+            health_->setSize({220, 32});
+            health_->setMaximum(100);
+            session_->gui().add(health_);
+            session_->set_layout(
+                health_, {
+                             .anchor = {1, 0},
+                             .offset = {.fixed = {-24, 16}},
+                         }
+            );
         }
     };
 }

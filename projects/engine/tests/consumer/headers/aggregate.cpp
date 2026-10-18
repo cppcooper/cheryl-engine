@@ -7,8 +7,13 @@
 
 static_assert(sizeof(CE::Workers::Pool) > 0);
 static_assert(sizeof(CE::Text::FontSelection) > 0);
+static_assert(sizeof(CE::Text::Font) > 0);
+static_assert(sizeof(CE::Text::FontService) > 0);
+static_assert(sizeof(CE::Text::Rendering::Updater) > 0);
 static_assert(sizeof(CE::Audio::Clip) > 0);
 static_assert(sizeof(CE::Rendering::Frame) > 0);
+static_assert(sizeof(CE::Input::Actions::Context) > 0);
+static_assert(sizeof(CE::Input::Actions::ContextSubmission) > 0);
 
 #if defined(CHERYL_CONSUMER_NATIVE_GLFW)
 static_assert(sizeof(CE::Platform::GLFW::DisplaySystem) > 0);

@@ -33,3 +33,16 @@ namespace CE::Input {
         ObservationClock::time_point consumed_at_;
     };
 }
+
+/** @fn CE::Input::Accumulator::Accumulator(std::shared_ptr<const Actions::Snapshot> baseline, ObservationClock::time_point start)
+ * Retain a baseline and initial consumption boundary on one synchronized owner. The constructor stores inputs; consume operations validate nonnull baseline and monotonic intervals.
+ */
+
+/** @fn CE::Input::Tick CE::Input::Accumulator::consume(ObservationClock::time_point until, std::vector<std::shared_ptr<const Actions::Snapshot>> polls)
+ * Summarize State-only polls into an owned Tick over the previous boundary..until interval. Validate newer IDs/nondecreasing observation times before advancing the baseline/boundary; failure preserves them. Empty polls preserve current levels while hold durations advance.
+ */
+
+/** @fn CE::Input::Tick CE::Input::Accumulator::consume_polls(ObservationClock::time_point until, std::vector<std::shared_ptr<const PollSnapshot>> polls)
+ * Summarize complete polls and copy their records in publication order without consuming another reader's stream. Null polls/state, invalid order/intervals and allocation failures throw before changing the baseline. Return independent Tick storage and retained samples.
+ * @see [Tick input](cheryl-guide:runtime/input-state-model#tick-input)
+ */

@@ -13,21 +13,28 @@ namespace CE::Memory::Objects {
       */
     template <typename T, typename Allocator> struct Factory {
         static_assert(std::is_class_v<T>, "The Factory template is only for creating objects of classes.");
+        /** Allocator traits used for allocation, per-object construction/destruction and final original-range deallocation. */
         using AAloc = std::allocator_traits<Allocator>;
 
-        /** Allocate one batch and return a handle for each constructed object. */
         template <typename... Args> static std::vector<std::shared_ptr<T>> create(size_t N, Args... args);
 
-        /** Construct N objects in caller-owned storage; roll back on failure. */
         template <typename... Args> static void construct(T* p, size_t N, Args... args);
 
-        /** Destroy N objects without releasing their backing allocation. */
         static void destroy(T* p, size_t N = 1);
 
     private:
         static std::unordered_map<void*, bool> constructed;
     };
 
+    /** Allocate one contiguous batch and construct independent per-object handles.
+     * @param N Number of objects; zero returns an empty vector without allocation.
+     * @param args Stored arguments reused as lvalues for each object's constructor.
+     * @return Separate object owners retaining a shared allocation owner; only the
+     * last one deallocates the original pointer/count through its copied allocator.
+     * A later construction/handle allocation failure destroys completed objects and
+     * releases the backing batch. Final deleters are noexcept: throwing destroy or
+     * deallocate operations terminate. Object access itself is unsynchronized.
+     */
     template <typename T, typename Allocator>
     template <typename... Args>
     std::vector<std::shared_ptr<T>> Factory<T, Allocator>::create(size_t N, Args... args) {
@@ -53,6 +60,14 @@ namespace CE::Memory::Objects {
         return objects;
     }
 
+    /** Construct N objects in caller-owned contiguous storage, rolling back the completed prefix on failure.
+     * @param p Aligned writable storage for N unconstructed T objects, kept valid through rollback.
+     * @param N Number of objects; zero does nothing.
+     * @param args Stored arguments reused as lvalues for every constructor.
+     * Constructor exceptions propagate after reverse destruction of the completed
+     * prefix. This does not allocate, track slots or return storage; callers exclude
+     * overlapping access and supply nonthrowing rollback destruction.
+     */
     template <typename T, typename Allocator>
     template <typename... Args>
     void Factory<T, Allocator>::construct(T* p, size_t N, Args... args) {
@@ -71,6 +86,13 @@ namespace CE::Memory::Objects {
         }
     }
 
+    /** Destroy a contiguous live range without returning its backing allocation.
+     * @param p First valid live object, borrowed through the call.
+     * @param N Object count, one by default; zero does nothing.
+     * Uses a default allocator instance and destroys in increasing address order;
+     * a destructor failure propagates with earlier destructions already applied.
+     * Callers synchronize access and ensure every selected slot is live.
+     */
     template <typename T, typename Allocator> void Factory<T, Allocator>::destroy(T* p, size_t N) {
         Allocator allocator;
         for (std::size_t i = 0; i < N; ++i)

@@ -1,6 +1,8 @@
 #include <ui/rmlui/session.h>
 #include <text/font-rasterizer.h>
+#include <text/font-service.h>
 #include <internals/exceptions.h>
+#include <testing/font-fixture.h>
 #include "../../support/document.h"
 
 #include <RmlUi/Core/Core.h>
@@ -77,7 +79,7 @@ TEST(ui_rmlui_session, lifecycle) {
     }
     EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
     EXPECT_TRUE(input.emit(key(KeyboardKey::A))->records.empty());
-    Session next(input, 9);
+    Session next(input, 9, {});
     EXPECT_NE(Rml::GetSystemInterface(), nullptr);
 }
 
@@ -105,6 +107,174 @@ TEST(ui_rmlui_session, engine_font) {
     EXPECT_EQ(metrics.x_height, expected->x_height);
     const Rml::String language;
     EXPECT_EQ(fonts->GetStringWidth(handle, "A", {language}), static_cast<int>(glyph->advance));
+}
+
+TEST(ui_rmlui_session, font_catalogue) {
+    Input input;
+    CE::Testing::FontFixture files;
+    const auto regular = files.path / "regular.ttf";
+    const auto bold = files.path / "bold.ttf";
+    const auto italic = files.path / "italic.ttf";
+    CE::Testing::styled_file(regular, 400, false);
+    CE::Testing::styled_file(bold, 700, false);
+    CE::Testing::styled_file(italic, 400, true);
+    auto fonts = std::make_unique<CE::Text::FontService>();
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {
+        {"book-print", {CE::Text::FontFile{regular}}},
+        {"handwriting", {CE::Text::FontFile{regular}, CE::Text::FontFile{bold}, CE::Text::FontFile{italic}}}
+    };
+    configuration.default_font = "book-print";
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts->configure(configuration);
+    const auto chosen = fonts->get("handwriting");
+    std::filesystem::remove(regular);
+    std::filesystem::remove(bold);
+    std::filesystem::remove(italic);
+    Session session(input, *fonts, 7);
+    fonts.reset();
+    session.set_view({320, 240}, {320, 240});
+    auto* document = session.context().LoadDocumentFromMemory(
+        "<rml><head><style>body { font-size: 24px; }</style></head><body><div id='text'>A book</div></body></rml>"
+    );
+    ASSERT_NE(document, nullptr);
+    document->Show();
+    session.update_time(0);
+    auto* child = document->GetElementById("text");
+    ASSERT_NE(child, nullptr);
+    EXPECT_EQ(child->GetProperty<Rml::String>("font-family"), "book-print");
+    EXPECT_FALSE(session.record().draws().empty());
+    EXPECT_EQ(session.font_family(chosen), "handwriting");
+    session.set_font(*document, chosen);
+    session.update_time(0);
+    EXPECT_EQ(child->GetProperty<Rml::String>("font-family"), "handwriting");
+    auto* engine = Rml::GetFontEngineInterface();
+    const auto normal = engine->GetFontFaceHandle("handwriting", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, 24);
+    const auto heavy = engine->GetFontFaceHandle("handwriting", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Bold, 24);
+    const auto slanted = engine->GetFontFaceHandle("handwriting", Rml::Style::FontStyle::Italic, Rml::Style::FontWeight::Normal, 24);
+    ASSERT_NE(normal, 0u);
+    ASSERT_NE(heavy, 0u);
+    ASSERT_NE(slanted, 0u);
+    EXPECT_NE(heavy, normal);
+    EXPECT_NE(slanted, normal);
+    EXPECT_THROW(static_cast<void>(session.load_font(chosen.faces().front().bytes, "HANDWRITING")), CE::Exceptions::invalid_args);
+    EXPECT_THROW(static_cast<void>(session.font_family({})), CE::Exceptions::invalid_args);
+}
+
+TEST(ui_rmlui_session, embedded_default) {
+    Input input;
+    CE::Text::FontService fonts;
+    Session session(input, fonts, 7);
+    session.set_view({320, 240}, {320, 240});
+    auto* document = session.context().LoadDocumentFromMemory("<rml><body>Engine default without registration</body></rml>");
+    ASSERT_NE(document, nullptr);
+    document->Show();
+    EXPECT_FALSE(session.record().draws().empty());
+    EXPECT_EQ(document->GetProperty<Rml::String>("font-family"), fonts.default_font().reference());
+}
+
+TEST(ui_rmlui_session, font_index) {
+    Input input;
+    CE::Testing::FontFixture files;
+    const auto path = files.path / "book.ttc";
+    CE::Testing::collection_file(path);
+    CE::Text::FontService fonts;
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {{"book-print", {CE::Text::FontFile{path, 1}}}};
+    configuration.default_font = "book-print";
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts.configure(configuration);
+    const auto selected = fonts.default_font();
+    ASSERT_EQ(selected.reference(), "book-print");
+    ASSERT_EQ(selected.faces().front().face_index, 1u);
+    const auto& source = selected.faces().front();
+    const auto expected = CE::Text::FontRasterizer::load(source.bytes, 1).metrics({24, CE::Text::FontSizing::Characters});
+    const auto other = CE::Text::FontRasterizer::load(source.bytes, 0).metrics({24, CE::Text::FontSizing::Characters});
+    ASSERT_TRUE(expected);
+    ASSERT_TRUE(other);
+    ASSERT_NE(expected->ascent, other->ascent);
+    Session session(input, fonts, 7);
+    const auto handle = Rml::GetFontEngineInterface()->GetFontFaceHandle(
+        "book-print", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Bold, 24
+    );
+    ASSERT_NE(handle, 0u);
+    EXPECT_EQ(Rml::GetFontEngineInterface()->GetFontMetrics(handle).ascent, expected->ascent);
+}
+
+TEST(ui_rmlui_session, font_aliases) {
+    Input input;
+    CE::Text::FontService fonts;
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {
+        {"book-print", {CE::Text::FontFile{CE::Testing::font_fixture_source}}},
+        {"BOOK-PRINT", {CE::Text::FontFile{CE::Testing::font_fixture_source}}}
+    };
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts.configure(configuration);
+    EXPECT_THROW(Session(input, fonts, 7), CE::Exceptions::invalid_args);
+    EXPECT_EQ(Rml::GetSystemInterface(), nullptr);
+    Session standalone(input, 7);
+    ASSERT_TRUE(standalone.load_font(CE::Testing::font_fixture_source, "book-print"));
+    EXPECT_THROW(static_cast<void>(standalone.font_family(fonts.get("book-print"))), CE::Exceptions::invalid_args);
+}
+
+TEST(ui_rmlui_session, missing_style) {
+    Input input;
+    CE::Testing::FontFixture files;
+    for (const bool italic : {false, true}) {
+        const auto path = files.path / (italic ? "italic.ttf" : "regular.ttf");
+        CE::Testing::styled_file(path, 400, italic);
+        CE::Text::FontService fonts;
+        CE::Text::FontConfiguration configuration;
+        configuration.families = {{"book-print", {CE::Text::FontFile{path}}}};
+        configuration.default_font = "book-print";
+        configuration.fallbacks = {"book-print"};
+        configuration.asset_directories.clear();
+        configuration.system_directories = std::vector<std::filesystem::path>{};
+        fonts.configure(configuration);
+        Session session(input, fonts, 7);
+        auto* engine = Rml::GetFontEngineInterface();
+        EXPECT_NE(engine->GetFontFaceHandle("book-print", Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, 24), 0u);
+        EXPECT_NE(engine->GetFontFaceHandle("book-print", Rml::Style::FontStyle::Italic, Rml::Style::FontWeight::Normal, 24), 0u);
+        session.set_view({320, 240}, {320, 240});
+        auto* document = session.context().LoadDocumentFromMemory(
+            "<rml><head><style>body { font-size: 24px; } .slanted { font-style: italic; }</style></head>"
+            "<body>Normal request<div class='slanted'>Italic request</div></body></rml>"
+        );
+        ASSERT_NE(document, nullptr);
+        document->Show();
+        EXPECT_FALSE(session.record().draws().empty());
+    }
+}
+
+TEST(ui_rmlui_session, fallback_names) {
+    Input input;
+    CE::Text::FontService fonts;
+    CE::Text::FontConfiguration configuration;
+    configuration.families = {{"__cheryl_fallback_0", {CE::Text::FontFile{CE::Testing::font_fixture_source}}}};
+    configuration.asset_directories.clear();
+    configuration.system_directories = std::vector<std::filesystem::path>{};
+    fonts.configure(configuration);
+    const auto selected = fonts.get("__cheryl_fallback_0");
+    ASSERT_EQ(selected.reference(), "__cheryl_fallback_0");
+    {
+        Session session(input, 7);
+        EXPECT_EQ(session.font_family(selected), selected.reference());
+        EXPECT_NE(Rml::GetFontEngineInterface()->GetFontFaceHandle(
+                      selected.reference(), Rml::Style::FontStyle::Normal, Rml::Style::FontWeight::Normal, 24
+                  ),
+                  0u);
+    }
+    {
+        Session session(input, 7);
+        ASSERT_TRUE(session.load_font(CE::Testing::font_fixture_source, "__cheryl_fallback_0"));
+        const auto fallback = fonts.default_font();
+        EXPECT_EQ(session.font_family(fallback), fallback.reference());
+        EXPECT_THROW(static_cast<void>(session.font_family(selected)), CE::Exceptions::invalid_args);
+    }
 }
 
 TEST(ui_rmlui_session, routing) {

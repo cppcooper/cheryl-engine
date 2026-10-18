@@ -2,6 +2,8 @@
 
 /** @file
  * @brief Public module APIs selected by linked Cheryl targets.
+ * CHERYL_HAS_* flags come from linked module targets. False/absent flags omit the corresponding header; this umbrella does not build or select a backend.
+ * @see [Selection and integration](cheryl-guide:modules/index)
  */
 
 #if defined(CHERYL_HAS_STARTUP) && CHERYL_HAS_STARTUP

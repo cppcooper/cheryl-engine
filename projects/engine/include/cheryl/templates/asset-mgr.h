@@ -25,11 +25,12 @@ namespace CE::Rendering::Resources {
 }
 
 namespace CE::Assets::Cache {
+    /** Synchronized cache counters; entries count strong map owners, not all external handles. */
     struct Stats {
-        CE::Diagnostics::DomainId domain = 0;
-        std::uint64_t entries = 0;
-        std::uint64_t publications = 0;
-        std::uint64_t replacements = 0;
+        CE::Diagnostics::DomainId domain = 0; ///< Stable diagnostic cache identity.
+        std::uint64_t entries = 0; ///< Keys currently retained by this cache.
+        std::uint64_t publications = 0; ///< New-key publication count over this cache lifetime.
+        std::uint64_t replacements = 0; ///< Replacements of previously present keys.
     };
 
     /** Guards the single active provider/loading-owner domain shared by all caches.
@@ -103,15 +104,17 @@ namespace CE::Assets::Cache {
         typename Key = std::filesystem::path,
         typename Allocator = std::allocator<std::pair<const Key, std::shared_ptr<AssetType>>>>
     struct Store : Context {
+        /** Independent retained asset owner copied under the cache lock. */
         using Handle = std::shared_ptr<AssetType>;
+        /** Exact unordered-map identity; normalization/aliases belong to a derived manager. */
         using key_type = Key;
 
     protected:
-        mutable std::shared_mutex assets_mutex_;
-        std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{};
-        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id();
-        std::uint64_t publications_ = 0;
-        std::uint64_t replacements_ = 0;
+        mutable std::shared_mutex assets_mutex_; ///< Protects map/counters; user construction/final release occurs outside it.
+        std::unordered_map<Key, Handle, std::hash<Key>, std::equal_to<Key>, Allocator> loaded_assets{}; ///< Strong key-to-generation owners; direct access requires the corresponding lock.
+        const CE::Diagnostics::DomainId domain_ = CE::Diagnostics::next_domain_id(); ///< Identity of this cache facade and its counters.
+        std::uint64_t publications_ = 0; ///< New-key count protected by assets_mutex_.
+        std::uint64_t replacements_ = 0; ///< Existing-key replacement count protected by assets_mutex_.
 
     public:
         Store() = default;
@@ -220,3 +223,114 @@ namespace CE::Assets::Cache {
         }
     };
 }
+
+/**
+ * @fn void CE::Assets::Cache::Context::verify_provider(const CE::Rendering::Resources::Provider& provider)
+ * @brief Check compatibility with the active global provider/loading owner under its mutex.
+ * @param provider Candidate domain.
+ * Throws failed_operation for another bound provider, a foreign loading thread or teardown. An unbound context validates without binding; no resource/cache entry is created.
+ */
+
+/**
+ * @fn bool CE::Assets::Cache::Context::is_bound_to(const CE::Rendering::Resources::Provider& provider) noexcept
+ * @return Whether the exact provider address is currently bound, observed under the domain mutex. This observation does not pin its lifetime or authorize concurrent teardown/publication.
+ */
+
+/**
+ * @fn void CE::Assets::Cache::Context::bind_provider(const CE::Rendering::Resources::Provider& provider)
+ * @brief Verify the global domain and, if absent, bind it to this provider/current loading thread.
+ * @param provider Borrowed provider retained by the surrounding runtime until loading is quiescent.
+ * Conflicting provider/owner or teardown throws failed_operation; distinct Loader objects do not create independent domains.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> CE::Assets::Cache::Store<AssetType, Key, Allocator>::Store()
+ * @brief Create an empty synchronized strong-handle cache with its own diagnostic identity; global provider binding is deferred until a derived loading operation.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> CE::Assets::Cache::Store<AssetType, Key, Allocator>::Store(const Allocator& allocator)
+ * @brief Create an empty cache using the supplied map allocator identity.
+ * @param allocator Copied allocator retained by the map; clear_assets() preserves this identity.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> CE::Assets::Cache::Store<AssetType, Key, Allocator>::~Store()
+ * @brief Clear this cache outside final-deleter lock scopes. Quiesce users before facade destruction; independently retained handles may outlive it.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> typename CE::Assets::Cache::Store<AssetType, Key, Allocator>::Handle CE::Assets::Cache::Store<AssetType, Key, Allocator>::get_asset(const Key& key) const
+ * @brief Copy an exact-key strong owner under a shared lock.
+ * @param key Stable exact map key; base lookup performs no normalization, load or fallback.
+ * @return Retained handle or null when missing, independent of later replacement/clear.
+ * Derived managers may define explicit alias policies; native use retains backend-domain limits.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> bool CE::Assets::Cache::Store<AssetType, Key, Allocator>::contains(const Key& key) const
+ * @brief Test exact-key presence under a shared lock without retaining/loading the asset.
+ * @param key Exact key; no derived get_asset() fallback is invoked.
+ * @return Presence at this observation, not a reservation against later changes.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> std::size_t CE::Assets::Cache::Store<AssetType, Key, Allocator>::size() const
+ * @return Copied current key count under a shared lock, not external owner/resource residency count.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> CE::Assets::Cache::Stats CE::Assets::Cache::Store<AssetType, Key, Allocator>::diagnostics() const
+ * @return Consistent copied map/count statistics under a shared lock, without logging/native calls.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> void CE::Assets::Cache::Store<AssetType, Key, Allocator>::clear_assets() noexcept
+ * @brief Detach every map entry under its write lock, then release retired handles after unlocking.
+ * Preserves allocator identity and cumulative publication/replacement counters. Independent readers retain old assets. Because the operation is noexcept, allocator/locking failures cannot escape and terminate rather than report partial success.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> typename CE::Assets::Cache::Store<AssetType, Key, Allocator>::Handle CE::Assets::Cache::Store<AssetType, Key, Allocator>::publish_asset(const Key& key, Handle asset)
+ * @brief Publish a nonnull complete candidate only if the exact key is absent.
+ * @param key Exact publication key.
+ * @param asset Retained candidate built before taking the cache write lock.
+ * @return Existing winner or newly published handle. Null input throws failed_operation; allocation failure leaves existing entries unchanged and final candidate destruction outside the write lock.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> template<typename Published> typename CE::Assets::Cache::Store<AssetType, Key, Allocator>::Handle CE::Assets::Cache::Store<AssetType, Key, Allocator>::publish_asset(const Key& key, Handle asset, Published&& published)
+ * @brief Publish-or-observe a key, then commit prepared derived metadata while holding the write lock.
+ * @tparam Published Statically nothrow-invocable callback; it must not reenter this cache.
+ * @param key Exact identity.
+ * @param asset Nonnull completed candidate.
+ * @param published Invoked after successful map lookup/insertion, including when an entry already existed.
+ * @return Existing or newly inserted retained owner. Candidate construction and final release remain outside the lock; allocation failure occurs before the metadata callback.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> typename CE::Assets::Cache::Store<AssetType, Key, Allocator>::Handle CE::Assets::Cache::Store<AssetType, Key, Allocator>::replace_asset(const Key& key, Handle asset)
+ * @brief Atomically replace/insert one exact key under the cache write lock.
+ * @param key Exact identity.
+ * @param asset Nonnull completed candidate built before publication.
+ * @return Retained new owner; old readers retain old generations.
+ * Null candidates throw failed_operation; map allocation failure preserves the previous entry. Final retired-owner release occurs after unlocking; no multi-key transaction is provided.
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> template<typename Derived> auto CE::Assets::Cache::Store<AssetType, Key, Allocator>::reserve(std::size_t N)
+ * @brief Reserve unconstructed pool slots for selective construction with Reservation::emplace().
+ * @tparam Derived AssetType-derived object type.
+ * @param N Slot count, zero creates an empty reservation.
+ * @return Move-only reservation retaining its release context; constructed handles may outlive the cache/reservation. No cache key is published.
+ * @see [Reservations](cheryl-guide:resources/resource-lifetime#reservations)
+ */
+
+/**
+ * @fn template<typename AssetType, typename Key, typename Allocator> template<typename Derived> auto CE::Assets::Cache::Store<AssetType, Key, Allocator>::allocate(std::size_t N) -> std::vector<std::shared_ptr<Derived>>
+ * @brief Legacy raw-slot allocation for callers that explicitly construct each object.
+ * @tparam Derived AssetType-derived class.
+ * @param N Requested slot count; zero returns an empty vector.
+ * @return Independent per-slot handles retaining pool release context; this helper does not construct objects or publish cache entries.
+ * Callers must use the compatible construction tracker before dereferencing live objects. Final release destroys a tracked live slot and returns exactly that slot; allocation failures propagate. Prefer reserve()/emplace() for safe selective construction.
+ */

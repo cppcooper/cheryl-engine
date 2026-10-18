@@ -31,23 +31,27 @@ namespace CE::Runtime {
         struct GameRuntimeAccess;
     }
 
-    enum class RunMode { Sequential, Concurrent };
+    /** Placement of simulation relative to the calling platform owner. */
+    enum class RunMode { Sequential, ///< Run update, frame preparation and native rendering on the caller.
+        Concurrent ///< Run update/frame preparation on one simulation worker; native work remains on the caller.
+    };
 
+    /** Completed/unstarted session observations, copied after synchronization; never a live admission policy. */
     struct RuntimeStats {
-        ::CE::Diagnostics::DomainId domain = 0;
-        std::uint64_t updates = 0;
-        std::uint64_t polls = 0;
-        std::uint64_t published = 0;
-        std::uint64_t rendered = 0;
-        std::uint64_t superseded = 0;
-        std::uint64_t skipped_publication = 0;
-        std::uint64_t dropped_batches = 0;
-        std::uint64_t dropped_nanoseconds = 0;
-        std::uint64_t peak_polls = 0;
-        std::uint64_t resizes = 0;
-        std::uint64_t input_records = 0;
-        std::uint64_t focus_changes = 0;
-        std::uint64_t backpressure = 0;
+        ::CE::Diagnostics::DomainId domain = 0; ///< Process-local runtime identity.
+        std::uint64_t updates = 0; ///< Actual game update invocations.
+        std::uint64_t polls = 0; ///< Completed platform input polls.
+        std::uint64_t published = 0; ///< Completed render frames published for consumption.
+        std::uint64_t rendered = 0; ///< Frames consumed by the renderer.
+        std::uint64_t superseded = 0; ///< Published frames replaced before rendering.
+        std::uint64_t skipped_publication = 0; ///< Frame preparations skipped because no publication slot was free.
+        std::uint64_t dropped_batches = 0; ///< Recovery batches with discarded simulation lag.
+        std::uint64_t dropped_nanoseconds = 0; ///< Total simulation lag discarded by scheduling policy, in nanoseconds.
+        std::uint64_t peak_polls = 0; ///< Maximum retained poll backlog observed.
+        std::uint64_t resizes = 0; ///< Observed framebuffer-size changes.
+        std::uint64_t input_records = 0; ///< Ordered input records observed across published polls.
+        std::uint64_t focus_changes = 0; ///< Observed focus-ownership epoch changes.
+        std::uint64_t backpressure = 0; ///< Observed cycles where bounded input admission prevented another poll.
     };
 
     /** Coordinates platform input, game simulation, rendering, presentation, and teardown.
@@ -123,3 +127,48 @@ namespace CE::Runtime {
         CE_API void observe_platform(bool pressure) noexcept;
     };
 }
+
+/**
+ * @fn CE::Runtime::GameRuntime::GameRuntime(Context& engine, CE::Game::AbstractGame& game, RunMode mode, Input::PollingOptions polling, Simulation::TimingOptions timing)
+ * @brief Retain a context/game and validate execution, polling and timing policy.
+ * @param engine Borrowed compatible context, alive through runtime use and cleanup.
+ * @param game Borrowed game hooks, alive through runtime use and cleanup.
+ * @param mode Sequential caller-owned or concurrent simulation-worker execution.
+ * @param polling Input observation/backlog policy, independent of simulation delta.
+ * @param timing Variable/fixed and bounded recovery policy.
+ * @throws CE::Exceptions::invalid_args For invalid mode, polling or timing settings.
+ * Construction starts no session; run() reserves the context's single session.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Runtime::GameRuntime::run()
+ * @brief Execute one blocking session on the platform/graphics owner.
+ * Initializes adapters/game, pumps input/dispatch/rendering, then quiesces, settles work and tears down in dependency order.
+ * Context/game must remain alive through return or throw. Reuse or another runtime session on the same context rejects. Hook/native failures trigger cleanup and preserve the first exception. Do not destroy the runtime while this or another operation uses it.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Runtime::GameRuntime::stop()
+ * @brief Request normal shutdown from any producer thread while this runtime lives.
+ * Does not join, interrupt a hook or synchronously release resources. run() observes the shared request and completes normal teardown.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn CE::Runtime::RuntimeStats CE::Runtime::GameRuntime::diagnostics() const
+ * @brief Copy counters before a session or after run() returns/throws.
+ * @return Owned observations published after simulation join.
+ * @throws CE::Exceptions::failed_operation During an active session.
+ * Caller synchronizes with run start/return; the rejection check does not authorize racing a new run or live object destruction.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn CE::Runtime::SimulationDispatcher& CE::Runtime::GameRuntime::simulation_dispatcher()
+ * @brief Borrow the simulation request queue without opening it.
+ * @return Runtime-owned dispatcher; retain its submission() endpoint for independent producer lifetime.
+ * Callbacks run at actual update boundaries. Request acceptance requires the runtime's active queue and is separate from execution.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */

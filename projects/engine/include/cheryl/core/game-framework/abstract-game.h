@@ -23,32 +23,54 @@ namespace CE::Game {
      */
     struct CE_API AbstractGame {
         virtual ~AbstractGame() = default;
-        /** Initialize game state after rendering and input adapters are ready.
-         * Register bindings and upload resources on the platform/graphics owner.
-         * Cleanup hooks must tolerate this call failing after partial initialization.
-         */
         virtual void init() = 0;
-        /** Stop external producers after simulation stops on the platform owner.
-         * Invalidate borrowed event registrations, but retain dependencies until
-         * deinit(): accepted CPU work has not yet settled. Do not wait here for
-         * callbacks/jobs requiring platform dispatch. The default implementation is empty.
-         */
         virtual void quiesce() {}
-        /** Release game resources and bindings on the platform/graphics owner.
-         * Called after accepted CPU work settles and frame handles are recycled,
-         * including when init() failed partway; backend adapters remain alive.
-         */
         virtual void deinit() = 0;
-        /** Advance authoritative game state on the selected simulation owner.
-         * @param tick Borrowed update context and input view valid for this call;
-         * its delta belongs to simulation policy, not raw input observation time.
-         */
         virtual void update(const ::CE::Game::TickContext& tick) = 0;
-        /** Copy render state into a free frame after simulation updates.
-         * This runs on the simulation owner and can be skipped when no slot is free.
-         * @param frame Borrowed writer valid only during this preparation; retain
-         * neither it nor pass writers, and perform no backend graphics operations.
-         */
         virtual void prepare_render_frame(::CE::Rendering::FrameWriter& frame) const = 0;
     };
 }
+
+/**
+ * @fn CE::Game::AbstractGame::~AbstractGame()
+ * @brief Destroy the hook object after its runtime session and borrowed use have finished.
+ * Destruction is not a replacement for runtime-controlled quiesce()/deinit().
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::init()
+ * @brief Initialize game state after renderer/input initialization on the platform owner.
+ * Register bindings and upload graphics resources here. Cleanup hooks must tolerate partial initialization if this throws.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::quiesce()
+ * @brief Stop external producers after simulation stops on the platform owner.
+ * Invalidate borrowed event registrations while retaining their dependencies through deinit(). Accepted CPU work has not yet settled: do not wait for jobs/callbacks requiring platform dispatch. The default is a no-op.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::deinit()
+ * @brief Release game resources and bindings on the platform/graphics owner.
+ * Runtime calls this after accepted CPU work settles and frame handles are recycled, including after partial init() failure; backend adapters are still alive.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::update(const CE::Game::TickContext& tick)
+ * @brief Advance authoritative state on the selected simulation owner.
+ * @param tick Borrowed context/input valid only during this invocation; simulation and observation deltas have different meanings.
+ * Do not mutate platform-owned bindings or perform graphics uploads from the concurrent simulation worker. Exceptions stop the session and preserve the first failure through cleanup.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */
+
+/**
+ * @fn void CE::Game::AbstractGame::prepare_render_frame(CE::Rendering::FrameWriter& frame) const
+ * @brief Copy render values/resources into a free frame after updates on the simulation owner.
+ * @param frame Borrowed writer valid for this call; retain neither it nor derived pass writers.
+ * No backend graphics calls belong here. Concurrent execution can skip preparation when no slot is free; simulation still advances.
+ * @see [Detailed guide](cheryl-guide:runtime/runtime-frame-boundary)
+ */

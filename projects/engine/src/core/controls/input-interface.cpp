@@ -9,6 +9,7 @@ namespace CE::Input {
         const auto focus = routing_.current();
         capture_.begin_poll(*focus);
         bindings().set_device_enabled(keyboard_id(), focus->target == 0 || focus->routing == Routing::KeyboardPolicy::PassThrough);
+        bindings().begin_poll();
     }
 
     Capture::Lease System::capture(const Capture::Channel mode) {

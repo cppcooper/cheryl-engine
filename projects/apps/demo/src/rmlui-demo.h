@@ -19,7 +19,7 @@ class DemoRmlUi final {
     std::unique_ptr<RmlUiState> rmlui_state_;
 
 public:
-    DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root, std::filesystem::path font);
+    DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root);
     ~DemoRmlUi();
     DemoRmlUi(const DemoRmlUi&) = delete;
     DemoRmlUi& operator=(const DemoRmlUi&) = delete;

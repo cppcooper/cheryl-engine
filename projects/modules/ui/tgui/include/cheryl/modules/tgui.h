@@ -1,7 +1,9 @@
 #pragma once
 
 /** @file
- * @brief TGUI input, layout, recording, scene upload and session APIs.
+ * @brief TGUI native authoring, input, CPU recording and retained upload APIs.
+ * Link Cheryl::UI::TGUI.
+ * @see [Adapter integration](cheryl-guide:modules/tgui)
  */
 
 #include <cheryl/ui/tgui/input.h>

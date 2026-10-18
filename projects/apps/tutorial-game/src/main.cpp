@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
         CE::Application::ApplicationOptions options;
         options.width = 960;
         options.height = 540;
-        options.title = "Tutorial: Esc releases editor; F2 edits; arrows move; A/D pan; Space scores";
+        options.title = "Tutorial: arrows move; F2 joins J/L player; F3 leaves; A/D pan; Space scores; Esc quits";
         auto startup = CE::Application::make_startup("Cheryl tutorial game", options);
         auto result = startup.initialize(argc, argv);
         if (!result.should_start())

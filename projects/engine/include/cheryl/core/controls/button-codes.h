@@ -5,11 +5,14 @@
 #include <cstdint>
 
 namespace CE::Input {
-    // Portable key positions/functions, independent of native tokens.
-    // Letter/punctuation names refer to a US keyboard position;
-    // committed characters always come from Events::Text instead.
+    /** Portable physical key positions/functions, independent of native tokens.
+     * Letter/punctuation names describe US keyboard positions, not typed text.
+     * Named keys retain their ordinary keyboard meaning; Unknown is unmapped.
+     * Committed characters come from Events::Text, including non-US layouts.
+     * @see [Control identities](cheryl-guide:runtime/input-state-model#control-identities-and-binding-tokens)
+     */
     enum class KeyboardKey : std::uint16_t {
-        Unknown,
+        Unknown, ///< Unmapped or unsupported portable identity.
         A,
         B,
         C,
@@ -130,12 +133,21 @@ namespace CE::Input {
         Menu
     };
 
-    enum class MouseButton : std::uint8_t { Unknown, Left, Right, Middle, Extra1, Extra2, Extra3, Extra4, Extra5 };
+    /** Portable left/right/middle and five extra mouse buttons; Unknown is unmapped. */
+    enum class MouseButton : std::uint8_t { Unknown /**< Unmapped button. */, Left /**< Primary left button. */, Right /**< Right button. */, Middle /**< Middle/wheel button. */, Extra1 /**< First adapter-mapped extra button. */, Extra2 /**< Second extra button. */, Extra3 /**< Third extra button. */, Extra4 /**< Fourth extra button. */, Extra5 /**< Fifth extra button. */ };
 
-    // Named controls are reported only when the adapter/device supports them.
-    // A/B/X/Y identify Xbox-style positions; printed controller labels may differ.
+    /** Portable gamepad controls, reported only when supported by the device/adapter.
+     * A/B/X/Y identify Xbox-style positions, not necessarily printed labels.
+     * Axis6..31 and Button17..31 retain generic extension slots; sensor names
+     * identify their axis and quantity without promising device availability.
+     * Analog values are delivered without Engine clamping or unit conversion;
+     * ranges/calibration and sensor units belong to the reporting adapter/device.
+     * Button entries report held state; trigger axes and trigger buttons remain
+     * separate controls. No universal sensor SI units or axis support are promised.
+     * Unknown is unmapped.
+     */
     enum class GamepadControl : std::uint16_t {
-        Unknown,
+        Unknown, ///< Unmapped or unsupported portable identity.
         LeftStickX,
         LeftStickY,
         RightStickX,
@@ -230,3 +242,15 @@ namespace CE::Input {
                                                                                         : invalid_control;
     }
 }
+
+/** @fn constexpr CE::Input::ControlId CE::Input::control_id(KeyboardKey key) noexcept
+ * Map a known portable key into the keyboard control range. Unknown and values beyond Menu return invalid_control; no native SDK token or committed character is produced.
+ */
+
+/** @fn constexpr CE::Input::ControlId CE::Input::control_id(MouseButton button) noexcept
+ * Map a known mouse button into a range distinct from keys/gamepads. Unknown and out-of-range values return invalid_control.
+ */
+
+/** @fn constexpr CE::Input::ControlId CE::Input::control_id(GamepadControl control) noexcept
+ * Map a known named/generic gamepad control into its portable family range. Unknown/out-of-range returns invalid_control; availability is still adapter/device-dependent.
+ */

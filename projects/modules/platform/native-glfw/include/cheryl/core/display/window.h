@@ -39,6 +39,7 @@ namespace CE::Platform::GLFW {
         mutable std::chrono::steady_clock::time_point next_diagnostic_;
 
     public:
+        /** Native graphics procedure pointer; lifetime follows the native context/library. */
         using ProcAddress = void (*)();
 
         CE_NATIVE_GLFW_API ~Window() override;
@@ -57,14 +58,7 @@ namespace CE::Platform::GLFW {
         [[nodiscard]] CE_NATIVE_GLFW_API bool should_close() const override;
         CE_NATIVE_GLFW_API void check_native_failure() const override;
 
-        /** Request positive logical dimensions and refresh observed logical/pixel sizes.
-         * Listener failures can propagate after dimensions change; mutation is not atomic.
-         */
         CE_NATIVE_GLFW_API void resize(int width, int height) override;
-        /** NORMAL restores saved windowed placement; BORDERLESS uses it undecorated;
-         * FULLSCREEN attaches the selected monitor at its captured dimensions. Refresh
-         * observed sizes afterward. Unknown modes fail; callback failures do not roll back.
-         */
         CE_NATIVE_GLFW_API void set_mode(::CE::Platform::WindowMode mode) override;
         CE_NATIVE_GLFW_API void hide_cursor(bool hide) const override;
 
@@ -92,3 +86,68 @@ namespace CE::Platform::GLFW {
         CE_NATIVE_GLFW_API void update_framebuffer_size(int width, int height);
     };
 }
+
+/** @fn CE::Platform::GLFW::Window::~Window()
+ * Destroy the native window on platform after input and graphics owners release their borrowed handle/context use. No external native reference may survive.
+ */
+
+/** @fn GLFWwindow* CE::Platform::GLFW::Window::native_handle() const
+ * Borrow the native window until destruction. Preserve its user pointer and installed callbacks; application replacement can invalidate Engine integration.
+ */
+
+/** @fn CE::Diagnostics::DomainId CE::Platform::GLFW::Window::diagnostic_id() const noexcept
+ * Return this window's diagnostic lifetime identity, not a stable monitor/window configuration ID.
+ */
+
+/** @fn CE::Platform::Dimensions<int> CE::Platform::GLFW::Window::logical_size() const
+ * Copy cached logical window dimensions on platform; no event pump/native query or cross-thread synchronization occurs.
+ */
+
+/** @fn CE::Platform::FramebufferSize CE::Platform::GLFW::Window::framebuffer_size() const
+ * Copy cached drawable pixel dimensions, distinct from logical size. Callbacks/explicit boundaries refresh them; minimized windows may have zero extent.
+ */
+
+/** @fn CE::Platform::WindowMode CE::Platform::GLFW::Window::mode() const
+ * Return selected mode; a subsequent callback failure does not roll it back.
+ */
+
+/** @fn bool CE::Platform::GLFW::Window::should_close() const
+ * Query native close intent on platform; does not pump events or perform teardown.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::check_native_failure() const
+ * Consume/rethrow the first retained callback failure at a normal engine boundary. Callback failure capture avoids throwing through the native callback ABI; a second check does not rethrow the consumed exception.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::resize(int width, int height)
+ * Request positive logical dimensions and refresh cached logical/framebuffer observations. Invalid sizes reject; listeners/native callbacks may fail after dimensions have changed. This mutation is not atomic.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::set_mode(CE::Platform::WindowMode mode)
+ * NORMAL restores saved windowed placement; BORDERLESS uses it undecorated; FULLSCREEN attaches the selected monitor at captured dimensions. Refresh observed sizes. Unknown modes/native errors fail; callback failure does not roll back mode/dimensions.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::hide_cursor(bool hide) const
+ * Set native cursor hidden/normal mode on platform; this does not supply toolkit OS cursor services or relative pointer capture.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::make_context_current(int swap_interval)
+ * Bind this OpenGL context to the rendering owner and set nonnegative swap interval. Negative interval or unsuccessful binding throws. Release from the prior thread before transfer; initial window creation remains platform-owned.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::release_context()
+ * Unbind this context from the calling rendering owner; throws if it is not current on that thread.
+ */
+
+/** @fn bool CE::Platform::GLFW::Window::context_current() const
+ * Return whether this native context is current on the calling thread; no transfer or synchronization is performed.
+ */
+
+/** @fn CE::Platform::GLFW::Window::ProcAddress CE::Platform::GLFW::Window::context_proc_address(const char* name) const
+ * Look up a native graphics procedure with this context current. Null name or absent current context rejects; an unknown procedure can return null. The name is borrowed only during lookup.
+ */
+
+/** @fn void CE::Platform::GLFW::Window::swap_buffers()
+ * Present this window on its rendering owner with its context current; absent current context throws. Framebuffer clearing/drawing is owned separately.
+ * @see [OpenGL context integration](cheryl-guide:modules/opengl)
+ */

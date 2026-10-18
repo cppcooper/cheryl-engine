@@ -7,6 +7,8 @@
 #include <core/rendering/camera.h>
 #include <core/resources/asset-management/asset-loader.h>
 #include <core/resources/asset-management/shader-asset-mgr.h>
+#include <text/font-service.h>
+#include <text/text-updater.h>
 #include <internals/exceptions.h>
 
 #include <ext/matrix_transform.hpp>
@@ -84,14 +86,10 @@ class GameImpl : public CE::Game::AbstractGame {
     CE::Text::LayoutOptions text_options_;
     bool unicode_preview_;
     CE::Text::Rendering::RasterOptions raster_options_;
-    std::optional<CE::Text::FontCollection> fonts_;
-    std::optional<CE::Workers::Group> text_workers_;
+    std::optional<CE::Text::Font> fonts_;
     std::shared_ptr<const CE::Text::Rendering::Generation> target_text_;
-    std::shared_ptr<const CE::Text::Rendering::Generation> hud_text_;
-    std::future<CE::Text::Rendering::Prepared> pending_text_preparation_;
-    std::future<std::shared_ptr<const CE::Text::Rendering::Generation>> pending_text_upload_;
-    std::string requested_hud_;
-    float requested_width_ = 0;
+    std::optional<CE::Text::Rendering::Updater> hud_text_;
+    std::uint64_t text_error_revision_ = 0;
     std::shared_ptr<const CE::Rendering::Resources::Material> font_shader_;
     std::shared_ptr<const CE::Rendering::Resources::Material> image_shader_;
     std::future<Materials> pending_shader_;
@@ -163,12 +161,12 @@ public:
         image_shader_ = std::move(materials.images);
         // Font bytes/layout are CPU values; initial uploads run on this platform owner.
         font_selection_.asset_directories = {asset_root_};
-        fonts_.emplace(CE::Text::FontCollection::load(font_selection_));
-        text_workers_.emplace(engine_.make_worker_group({.max_concurrency = 1}));
+        engine_.fonts().configure(font_selection_, "demo");
+        fonts_.emplace(engine_.fonts().default_font());
         target_text_ = std::make_shared<const CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
             CE::Text::Rendering::prepare(CE::Text::layout_text(*fonts_, "Camera target", text_options_), raster_options_), resources
         ));
-        assets_.load(asset_root_, resources, *fonts_, raster_options_);
+        assets_.load(asset_root_, resources, fonts_->collection(), raster_options_);
         audio_.load();
 
         auto& input = engine_.input();
@@ -199,22 +197,14 @@ public:
         ui_ = std::make_unique<DemoUi>(engine_);
 #endif
 #ifdef CHERYL_DEMO_RMLUI
-        // RmlUi retains its separate file-based font service.
-        auto toolkit_font = std::filesystem::path(CHERYL_SOURCE_DIR) / "assets/fonts/DejaVuSans.ttf";
-        for (const auto& face : fonts_->faces()) {
-            if (face.path) {
-                toolkit_font = *face.path;
-                break;
-            }
-        }
-        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_, std::move(toolkit_font));
+        rml_ui_ = std::make_unique<DemoRmlUi>(engine_, asset_root_);
 #endif
-        requested_hud_ = hud_message();
-        auto options = hud_options();
-        requested_width_ = *options.maximum_width;
-        hud_text_ = std::make_shared<const CE::Text::Rendering::Generation>(CE::Text::Rendering::upload(
-            CE::Text::Rendering::prepare(CE::Text::layout_text(*fonts_, requested_hud_, options), raster_options_), resources
-        ));
+        hud_text_.emplace(
+            engine_,
+            CE::Text::Rendering::Request{
+                .font = *fonts_, .text = hud_message(), .layout = hud_options(), .raster = raster_options_, .material = font_shader_
+            }
+        );
     }
 
     void deinit() override {
@@ -230,12 +220,9 @@ public:
 #endif
         events_.reset();
         engine_.input().bindings().clear();
-        pending_text_preparation_ = {};
-        pending_text_upload_ = {};
         hud_text_.reset();
         target_text_.reset();
         assets_.reset();
-        text_workers_.reset();
         fonts_.reset();
         pending_shader_ = {};
         image_shader_.reset();
@@ -391,9 +378,10 @@ public:
         // Compensate for the view translation so these controls stay fixed on screen.
         text.model_matrix =
             glm::translate(glm::mat4(1.0f), glm::vec3(pan_.x + 24.0f, pan_.y + static_cast<float>(size.height) - 56.0f, 0.0f));
+        const auto hud = hud_text_->current();
         pass.add(
-            raster_options_.positioned_runs ? CE::Rendering::Submission::resolve_text_runs(*hud_text_, text, context)
-                                            : CE::Rendering::Submission::resolve_text(*hud_text_, text, context)
+            raster_options_.positioned_runs ? CE::Rendering::Submission::resolve_text_runs(*hud, text, context)
+                                            : CE::Rendering::Submission::resolve_text(*hud, text, context)
         );
 #ifdef CHERYL_DEMO_TGUI
         ui_->write(frame);
@@ -442,40 +430,19 @@ private:
     }
 
     void refresh_hud() {
-        // Only owned values cross worker/platform boundaries. One replacement at a
-        // time coalesces changing counters/text without blocking simulation.
-        try {
-            if (pending_text_upload_.valid() &&
-                pending_text_upload_.wait_for(std::chrono::seconds{0}) == std::future_status::ready)
-                hud_text_ = pending_text_upload_.get();
-            if (pending_text_preparation_.valid() &&
-                pending_text_preparation_.wait_for(std::chrono::seconds{0}) == std::future_status::ready) {
-                pending_text_upload_ =
-                    engine_.platform_dispatcher().submit([prepared =
-                                                              pending_text_preparation_.get()](CE::Runtime::Context& platform) mutable {
-                        return std::make_shared<const CE::Text::Rendering::Generation>(
-                            CE::Text::Rendering::upload(std::move(prepared), platform.resources())
-                        );
-                    });
+        hud_text_->request(
+            {.font = *fonts_, .text = hud_message(), .layout = hud_options(), .raster = raster_options_, .material = font_shader_}
+        );
+        static_cast<void>(hud_text_->update());
+        if (const auto failure = hud_text_->failure(); failure && failure->revision != text_error_revision_) {
+            text_error_revision_ = failure->revision;
+            try {
+                std::rethrow_exception(failure->error);
+            } catch (const std::exception& error) {
+                std::cerr << "Text replacement failed; keeping the previous text: " << error.what() << '\n';
+            } catch (...) {
+                std::cerr << "Text replacement failed; keeping the previous text\n";
             }
-        } catch (const std::exception& error) {
-            std::cerr << "Text replacement failed; keeping the previous text: " << error.what() << '\n';
-        }
-        if (pending_text_preparation_.valid() || pending_text_upload_.valid())
-            return;
-        auto message = hud_message();
-        auto options = hud_options();
-        if (message == requested_hud_ && *options.maximum_width == requested_width_)
-            return;
-        requested_hud_ = message;
-        requested_width_ = *options.maximum_width;
-        try {
-            pending_text_preparation_ = text_workers_->submit([fonts = *fonts_, message = std::move(message), options = std::move(options),
-                                                               raster = raster_options_] {
-                return CE::Text::Rendering::prepare(CE::Text::layout_text(fonts, message, options), raster);
-            });
-        } catch (const std::exception& error) {
-            std::cerr << "Text preparation failed; keeping the previous text: " << error.what() << '\n';
         }
     }
 

@@ -25,11 +25,11 @@ add_executable(tutorial-game
     src/main.cpp
     src/game.cpp
     src/game.h
-    src/player.h
-    src/enemy.h
-    src/hud.h
-    src/controls.cpp
-    src/controls.h)
+    src/character-command.h
+    src/character.h
+    src/player-controller.h
+    src/patrol-controller.h
+    src/hud.h)
 target_compile_features(tutorial-game PRIVATE cxx_std_23)
 target_compile_definitions(tutorial-game PRIVATE
     CHERYL_TUTORIAL_GAME_ASSETS="${CMAKE_CURRENT_SOURCE_DIR}/assets")
@@ -42,7 +42,11 @@ endif()
 target_sources(tutorial-game PRIVATE
     assets/graphics/graphics-manifests.json
     assets/graphics/definitions/sprites.json
-    assets/graphics/shaders/materials.json
-    assets/graphics/shaders/first-game.vert
-    assets/graphics/shaders/first-game.frag
     assets/graphics/textures/actor.png)
+
+if(CHERYL_BUILD_TESTS AND TARGET "${TARGET_TEST_ALL_TESTS}")
+    set(CHERYL_TEST_AGGREGATE ${TARGET_TEST_ALL_TESTS})
+    cheryl_add_test_suite(tests-tutorial-game
+        SOURCES tests/gameplay.cpp
+        LIBRARIES Cheryl::Engine)
+endif()

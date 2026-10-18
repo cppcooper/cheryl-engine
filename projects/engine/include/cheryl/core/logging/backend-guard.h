@@ -10,13 +10,13 @@ namespace CE::Logging {
      * Suppressed operations were already queued when their destination failed.
      */
     struct BackendStats {
-        std::size_t failed_operations = 0;
-        std::size_t callback_failures = 0;
-        std::size_t suppressed_operations = 0;
-        bool file_degraded = false;
-        bool console_degraded = false;
-        std::size_t recursive_submissions = 0;
-        std::size_t rejected_reentry = 0;
+        std::size_t failed_operations = 0; ///< Cumulative destination operations that failed, including opening/generations.
+        std::size_t callback_failures = 0; ///< Cumulative exceptions from file-lifecycle callbacks.
+        std::size_t suppressed_operations = 0; ///< Already queued operations suppressed after destination degradation.
+        bool file_degraded = false; ///< Whether the last published file generation degraded; clears after completed close/reopen.
+        bool console_degraded = false; ///< Whether the last published console generation degraded.
+        std::size_t recursive_submissions = 0; ///< Recursive ordinary submissions suppressed inside backend activity.
+        std::size_t rejected_reentry = 0; ///< Rejected blocking/lifecycle reentry attempts from backend callbacks.
     };
 }
 

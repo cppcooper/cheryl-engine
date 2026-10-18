@@ -1,0 +1,416 @@
+(tgui-ui-integration)=
+# TGUI reference
+
+`Cheryl::UI::TGUI` is an optional UI owner. It translates selected Cheryl input
+records and records/uploads toolkit draws as retained Cheryl scenes. A `Session`
+owns the custom backend, GUI, Engine-backed fonts and input leases. The
+[selected demo](../../../projects/apps/demo/README.md) supplies a representative panel using
+automatic rendering defaults.
+
+The module uses a shared TGUI 1.13.0 runtime configured with the custom backend.
+Its Cheryl adapter supplies Engine font rasterization and image decoding, so TGUI
+compiles neither another FreeType backend nor its bundled stb decoder. TGUI itself
+does not link Engine, Native GLFW, OpenGL or Gainput. Public headers expose the
+native GUI/widget API exported by the shared toolkit; Engine headers never include TGUI.
+The [adapter-author guide](../development/ui-adapters.md) describes
+the engine boundaries used by independently implemented UI modules.
+
+## Contents
+
+- [Selection and dependency](#selection-and-dependency)
+- [Use it in a game](#use-it-in-a-game)
+- [Session ownership](#session-ownership)
+- [Fonts](#fonts)
+- [Typed layout](#typed-layout)
+- [Input translation](#input-translation)
+- [Recording and publication](#recording-and-publication)
+- [Dependency configuration](#dependency-configuration)
+- [Focused checks](#focused-checks)
+
+## Selection and dependency
+
+At the repository root, `CHERYL_BUILD_UI_TGUI=ON` is the default, independently of
+native/graphics selection. Set it to `OFF` to omit the toolkit; Engine retains its
+own text dependencies. Link the application to
+`Cheryl::UI::TGUI`; its Engine and native-toolkit header/ABI settings propagate.
+The build target is `module_ui_tgui`, with output name `cheryl-module-ui-tgui`.
+
+```cmake
+target_link_libraries(game PRIVATE Cheryl::UI::TGUI)
+```
+
+Initialize the pinned dependency through the checkout's setup instructions.
+For supplied targets or packages, check [dependency configuration](#dependency-configuration)
+before selecting the module.
+
+## Use it in a game
+
+[Create a HUD with TGUI](../getting-started/create-a/hud.md)
+provides the complete score-label/health-bar workflow, including layout,
+game-state updates and scene publication. The
+[maintained TGUI demo](../../../projects/apps/demo/src/tgui-demo.cpp) also supplies
+interactive buttons, editing and application focus controls. The lifecycle is:
+
+1. During platform-owned `init()`, construct a scene uploader from the resource provider.
+2. On the first simulation update, create a session and native widgets.
+3. Supply copied sizes, simulation time and the complete input batch each update.
+4. Record CPU scene data and keep one upload pending while retaining the previous scene.
+5. Append the uploaded scene during frame preparation, after world/HUD passes.
+6. After UI quiescence, release application-held toolkit objects and close the session.
+
+Use [typed layout](#typed-layout) to add anchoring and bounded resizing to that
+working interface. Committed text and editing depend on input/focus support;
+clipboard, cursor changes and IME remain unavailable services. The contracts below
+cover session, layout and publication behavior.
+
+## Session ownership
+
+Create `Session(engine_context, nonzero_focus_id, options)` on the simulation/UI thread,
+before creating toolkit objects. A session installs TGUI's process-global backend;
+an already active toolkit backend/session rejects explicitly. Use `session.gui()`
+and TGUI's native widgets on that same owner. The session keeps Events capture
+active and uses the Engine context's configured default font.
+`SessionOptions` supplies a texture bound of at least 128 and an
+explicit positive font scale; this is not a hardware or monitor-scale query.
+
+For each update, pass the tick's copied `logical_size` and `framebuffer_size` to
+`set_view`, then pass simulation seconds to `update_time` and the entire immutable
+record stream to `handle_input`. GUI input/layout use logical units; the recording
+target uses physical ratios only for pixel rounding. Zero framebuffer dimensions
+record an empty scene. Drawing does not advance a separate wall clock or run a
+toolkit loop. `record()` returns owned CPU data for the uploader below.
+
+`request_keyboard_focus` acquires routed focus and Text capture; release drops
+those leases and unfocuses widgets. Keyboard/text delivery requires this session's
+target and requested epoch saved at call entry. A newer lease with the same target
+rejects obsolete epochs. On external preemption, already collected records drain before
+the session releases its old lease; that release cannot erase the newer owner.
+The complete stream updates modifier snapshots, including unselected releases.
+The caller explicitly selects pointer delivery; pointer capture, modal arbitration
+and controller navigation are not implied. A routed keyboard lease does not
+fabricate an OS window-focus event.
+
+Pass the complete immutable tick record batch once, including empty batches that
+acknowledge external preemption. The three-argument `handle_input` overload calls
+`before_record(record)` before each delivery and uses the returned pointer-selection
+value for that record. Application focus/show/hide controls can run there while
+keyboard/text selection retains the entry epoch throughout the batch. New polls
+observe new leases; splitting a batch into individual calls would change its epoch
+and preemption boundaries. The two-argument overload retains constant pointer
+selection. See the [adapter routing guide](../development/ui-adapters.md#routing-and-unavailable-services).
+
+`capabilities()` reports the input source's committed-text/focus support and
+unavailable OS clipboard, cursor and IME services. Clipboard calls reject; standard
+toolkit copy/cut/paste shortcuts are skipped before widgets can delete a selection.
+Cursor requests leave the platform cursor alone. Texture and Engine-backed font
+smoothing can select either nearest or linear filtering; the selected value is
+copied into each recording rather than changing an uploaded shared image.
+
+Release application-held widgets, fonts and toolkit textures before session
+destruction. The input source must outlive it. After simulation has joined,
+`close_after_quiescence()` permits serial final destruction on the platform thread;
+no toolkit calls or references may race or survive it. GUI resources are destroyed
+before TGUI's global font, theme, timers and backend. Retained CPU recordings and
+uploaded Cheryl frames remain independent of the toolkit lifetime.
+
+## Fonts
+
+Configure `engine.fonts()` before creating the session; see the
+[Engine font service](../text/index.md). The context constructor
+imports its font catalogue and default once. Widgets inherit the default through
+their containers. Native theme/font declarations can use registered references,
+such as `book-print`, without reopening font files. Unknown declarations continue
+through the previous TGUI font loader, preserving native file loading. The session
+restores that loader when it closes.
+
+For an explicit Engine choice, use the same retained `CE::Text::Font` handle as
+direct text. This uses the `books` group from the
+[catalogue configuration example](../assets/text-layout.md#configure-fonts-once):
+
+```cpp
+auto selected = engine.fonts().choose_random("books");
+session.set_font(book_label, selected);
+// Equivalent native styling:
+book_label->getRenderer()->setFont(session.font(selected));
+```
+
+Save `selected.reference()` in application data to reuse the choice later; rendering
+does not select another font. The adapter retains the loaded bytes and face indices,
+uses a real bold face when available, and uses the configured family chain for
+missing glyphs. `session.font(selected, {400, true})` selects an actual italic face.
+TGUI's native `TextStyle::Italic` applies its own geometric slant; its backend API
+does not request an italic face. Use the explicit style with normal native text
+style when an authored italic face is required.
+
+`Session(input, fonts, target, options)` injects an independent Engine font service.
+`Session(input, target, options)` preserves standalone toolkit-default behavior.
+Both also accept explicit Engine handles through `font`/`set_font`. Native fonts
+and widgets must be released before session teardown. Service reconfiguration
+does not rebind an existing session or retained font.
+
+## Typed layout
+
+`layout.h` defines three configuration values: `WidgetLayout`, `Offset` and
+`Scalable`. Add a native TGUI widget to this session's GUI hierarchy, then call
+`session.set_layout(widget, rules)` on the UI owner. The adapter installs numeric
+TGUI bindings; TGUI maintains them when the window, parent size, border or padding
+changes. The adapter does not parse layout strings or create a separate widget
+hierarchy. Native toolkit authoring and styling remain available.
+
+| Configuration | Contract |
+|---|---|
+| `WidgetLayout.anchor` | A finite point in `[0, 1]` within the parent's content area; `{1, 0}` selects top-right. The default is top-left. |
+| `WidgetLayout.origin` | The normalized attachment point on the widget. Omission uses `anchor`. |
+| `Offset.fixed` | Signed displacement in logical UI units. |
+| `Offset.relative` | Signed fractions of parent content width/height, added to the fixed displacement. Omission defaults both parts to zero. |
+| `WidgetLayout.scalable` | Optional sizing rules. Without them, a newly configured widget keeps its native sizing. |
+| `Scalable.width`, `.height` | Optional finite fractions in `[0, 1]` of parent content dimensions. At least one must be supplied. Only selected axes resize. |
+| `Scalable.min_width`, `.max_width`, `.min_height`, `.max_height` | Bounds in logical units for the selected axes. Minimums are finite and nonnegative; maximums cannot be below them. Defaults are zero and an unbounded positive maximum. |
+
+The widget's attachment point is `anchor * parent_content_size + fixed_offset +
+relative_offset * parent_content_size`. Origin determines which point of the widget
+sits there. Resizing is a separate optional component and does not change the
+meaning of offsets. Logical sizes map to framebuffer pixels through `set_view`.
+
+```cpp
+using CE::UI::TGUI::Scalable;
+
+session.gui().add(panel);
+session.set_layout(panel, {
+    .anchor = {1, 0},
+    .offset = {.fixed = {-8, 24}, .relative = {-0.02f, 0}},
+    .scalable = Scalable{.width = 0.35f, .min_width = 320, .max_width = 600},
+});
+```
+
+Changing rules replaces placement and any selected sizing bindings. An axis
+previously managed by `Scalable` freezes at its current size when its fraction is
+removed; other native size bindings remain in place. Omit `scalable` to release
+both managed axes. A minimum can exceed a small parent's available space: the
+containing UI chooses scrolling or a different arrangement. This API does not
+silently shrink below the minimum. Scaling uses TGUI's native `setSize` semantics,
+including each widget's own automatic-sizing behavior; text and padding follow
+native styling.
+
+Typed placement requires TGUI's `AutoLayout::Manual`. Native automatic alignment
+can be used separately. Invalid rules, unparented widgets and foreign hierarchies
+reject before widget mutation. Reapply after moving a widget to a different parent;
+bindings refer to the parent selected by that call. Weak sizing bookkeeping does
+not retain widgets, parents or toolkit resources, and expires with the session.
+The call retains its target while native change signals run, so a callback may
+remove the widget and release the caller's handle safely.
+
+## Input translation
+
+`translate_event(record)` reads portable keyboard/mouse identities and committed
+text, preserving the original record for other readers. It does not choose focus,
+capture or pointer routing. The application selects the eligible records and
+dispatches translated events in their original order on the simulation owner.
+
+Press and Repeat become TGUI `KeyPressed`; keyboard releases produce no toolkit
+event because TGUI's event API has none. A GUI integration still updates its
+modifier snapshot from the complete original stream, including releases.
+Unsupported keys/devices/buttons return no event. Gamepad State remains available
+to gameplay and does not become invented keyboard input.
+
+Pointer coordinates are logical window coordinates floored to integer values;
+negative fractional coordinates remain outside the window. Clicks and vertical
+wheel events use their own observation-time positions and reject missing, nonfinite
+or unrepresentable coordinates. Configure the GUI's input view in those units.
+Fractional vertical wheel offsets are preserved; TGUI has no horizontal-wheel
+event, so the original Cheryl record remains the source for another consumer.
+Invalid Unicode scalars or nonfinite/unrepresentable wheel offsets reject explicitly.
+
+## Recording and publication
+
+`Renderer(maximum_size)` creates CPU-only `Texture` objects. The configured limit
+is an application-supported bound, not a hardware query. Each texture load copies
+top-to-bottom RGBA pixels into a fresh immutable snapshot, including the transient
+font-atlas path. Old recordings retain their original snapshot. Base toolkit
+image loading also retains its pixels for transparent-pixel hit testing.
+
+`setSmooth` changes the toolkit's sampling selection without replacing its immutable
+pixel snapshot. Every recorded textured draw copies that selection, including
+font-atlas draws. Upload requests a retained nearest or linear sampler through
+`ResourceProvider::create_sampler`; both policies clamp to edge, disable mipmaps
+and disable anisotropy for toolkit atlas/pixel semantics. Engine image defaults
+remain anisotropic elsewhere. A provider without explicit sampler support rejects
+the upload rather than dropping the setting.
+
+The uploader weakly reuses live samplers and images independently. Two draws can
+share one uploaded pixel generation with different smoothing; old recordings and
+scenes retain their original policy. Changing smoothing does not mutate another
+scene or require copying the image. The
+[sampling contract](../rendering/pipelines-and-materials.md#immutable-sampling)
+owns backend filtering, native validation and retirement.
+
+`RenderTarget` receives a view, viewport and target extent in logical window units.
+Supply copied framebuffer/logical ratios through `set_pixel_scale` for toolkit
+pixel rounding. The target bakes transforms and view mapping into copied colored
+triangles, accepting both indexed geometry and unindexed triangle lists used for
+glyphs. It flips textured V coordinates to Cheryl's image convention and retains
+intersected logical clips in draw order. Clip edges map directly from the toolkit's
+intersected view rectangle in double precision; an intermediate float viewport
+must not add a pixel to an exact edge. Genuine fractional edges still use Cheryl's
+conservative outward rounding during playback. Arbitrary rotated clipping rejects;
+rectangular/right-angle clipping follows the pinned toolkit's supported algorithm.
+Zero-sized views and empty clips record no draws. Changing a view/scale during
+recording or finishing unmatched clip layers rejects explicitly.
+
+Use `begin_recording`/`finish_recording` for direct drawing. `drawGui(root)` starts
+a recording and discards it if a widget throws; call `finish_recording` after it
+succeeds. `discard_recording` releases incomplete data and clip state. Platform
+clearing remains with the application; TGUI's `mainLoop`/clear functions are not
+part of this bridge.
+
+Construct `SceneUploader(provider)` on the platform owner during initialization,
+then copy its handle to simulation. Use `submit(platform_submission, recording)`
+for automatic materials, or `upload(provider, recording)` when already on the
+platform owner. Defaults are created lazily for the first nonempty recording
+through the provider's generic shader builder. OpenGL embeds their shaders and
+reuses live matching materials; the application needs no UI shader files or
+native graphics builder. An unsupported provider rejects the default request.
+
+The optional third argument supplies explicit `Materials` handles, including
+materials loaded from [JSON recipes](../rendering/pipelines-and-materials.md#custom-ui-materials).
+Those overrides require colored triangles, straight alpha, disabled
+depth/write/culling and Cheryl's projection semantic. A textured material
+declares the named custom `Sampler2D`; its shader multiplies sampled RGBA by
+vertex RGBA. Other custom values come from material defaults or a copied pass
+layer accepted by each used pipeline. Passing `Materials{}` explicitly selects
+an empty override; it does not request defaults for nonempty draws.
+
+`submit` transfers owned data through the existing dispatcher and returns a
+future. Uploads require the original provider
+domain and platform thread. The uploader reuses a live uploaded image for the same
+CPU generation; its weak cache does not retain abandoned CPU images or GPU handles.
+Changed pixels always produce another image. Geometry remains separately uploaded
+per draw; the adapter introduces no sorting or batching policy.
+
+During update, `adopt_scene(future, current)` checks readiness without waiting.
+It replaces `current` only with a complete successful scene; an upload error or
+cancelled dispatcher future propagates while `current` remains usable. Keep at
+most one outstanding replacement per GUI in the initial integration and continue
+writing the current scene while it is pending. `current.write(frame_writer)` adds
+a UI pass at the caller's chosen point in pass order. Packets own uploaded images,
+geometry, materials, parameters and clips, independent of subsequent widget changes
+or adapter destruction; native playback still requires the original live domain.
+
+## Dependency configuration
+
+The module reuses an existing `TGUI::TGUI` target. Otherwise it uses an explicit
+`CHERYL_TGUI_SOURCE`, an explicit package location in `TGUI_DIR`, the pinned
+`extern/tgui` submodule, or that exact version's discovered CMake package, in that
+order. Initialize the bundled dependency with
+`git submodule update --init extern/tgui`; CMake never downloads it. Source
+composition selects `TGUI_BACKEND=Custom` and
+`TGUI_CUSTOM_BACKEND_HAS_FONT_FREETYPE=OFF`, excluding upstream tools, examples and tests. Conflicting
+backend settings fail explicitly; supplied targets/settings are not rewritten.
+Compiled version/feature checks also reject a supplied package/target with an
+unreviewed version or native toolkit backend. Supplied shared targets declare
+`CHERYL_TGUI_ENGINE_SERVICES=TRUE` and `CHERYL_TGUI_IMAGE_DECODER_ABI=1` after
+implementing the reviewed private decoder bridge and preserving native API exports. Metadata
+declares a verified configuration; it does not repair incompatible binaries.
+
+The toolkit decoder calls a versioned callback table installed by the Cheryl
+adapter. Engine owns the decoded pixels until TGUI copies them into toolkit-owned
+storage and invokes the supplied release callback. The adapter's CMake target
+retains decoder registration even when an application uses only native TGUI APIs
+and creates no Cheryl session. This boundary also keeps Engine out of the toolkit
+DLL when Cheryl itself is static; keep both libraries loaded while their objects
+and callbacks are in use.
+
+Existing CMake/CLion profiles with `CHERYL_BUILD_UI_TGUI=OFF` cached must change it
+to `ON` and reload CMake to expose `module_ui_tgui` and its selected test targets.
+
+The standalone module locates its enclosing checkout; set
+`CHERYL_REPOSITORY_ROOT` to select another absolute checkout path.
+The module reuses a supplied `Cheryl::Engine` or bootstraps Engine from that root,
+suppressing UI/native/graphics/demo/test selection in its local scope.
+For an independently configured consumer, use `tests/consumer/` as the source
+directory with the same dependency arguments; it links only this module and checks
+its public header as the first include.
+
+## Focused checks
+
+| Target | Output / kind | Selection / coverage |
+| --- | --- | --- |
+| `tests-ui-tgui` | `tests-ui-tgui` | `CHERYL_BUILD_TESTS`: input, recording, sessions, layouts and controlled runtime cases. |
+| `all-ui-tgui` | `tests-all-ui-tgui` | All owner GoogleTests; `CHERYL_BUILD_ALL_TESTS` adds it to the default build/CTest. |
+| `consumer-module-ui-tgui` | `cheryl-ui-tgui-consumer` | `CHERYL_BUILD_CONSUMER_TESTS`: real label creation/recording in an independent consumer. |
+| `consumer-module-headers--ui-tgui` | Object library | Consumer's first-include header probes; built with the consumer. |
+
+Its cases join `all-tests` only when this module is selected. Input/recording
+checks and controlled-provider scene checks require no
+window, graphics context, font file or installed toolkit-global backend. They cover
+index expansion, transforms, clips, immutable texture generations, resource reuse,
+retained frames, failed/cancelled adoption and owner/domain rejection. Session checks
+create their own custom backend and embedded font. They cover widget text routing,
+focus epochs/preemption, modifier releases, pointer selection, unsupported clipboard
+shortcuts, copied view sizes, FreeType atlas growth/immutable generations and serial
+teardown after the UI owner stops. Font catalogue checks cover default inheritance,
+native aliases and loader restoration, bold/italic faces, collection face indices,
+and retained bytes after source files and the service disappear. The independent
+consumer creates and records a real label.
+
+`ui_tgui_layout.*` checks edge anchors, mixed fixed/relative offsets, parent
+border/padding changes, bounded per-axis resizing, rule replacement, native size
+bindings, owner/hierarchy rejection, weak lifetime and anchored recording. The
+consumer and first-include probes also cover the typed layout header.
+
+`ui_tgui_runtime.sequential` and `ui_tgui_runtime.concurrent` use the real
+`GameRuntime`, TGUI session and platform queue with controlled window/input,
+presentation, renderer and memory-resource implementations. They mutate the widget's
+image after recording, publish the old and replacement generations, copy published
+packets into owned retained frames and release them after toolkit/game/provider
+teardown. Window reads and uploads require the platform owner; GUI recording and
+frame preparation require the simulation owner. Renderer observations coordinate
+replacement and shutdown, with a bounded window deadline rather than sleeps.
+These cases do not establish native GPU resource retirement or compositor behavior.
+The [demo interaction guide](../../../projects/apps/demo/README.md#interaction-checks)
+owns native observations and platform limits. A root build does not establish
+standalone composition.
+
+From the repository root, configure the focused checks in a standalone source
+composition:
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake -S projects/modules/ui/tgui -B build/ui-tgui -G Ninja \
+    -DCHERYL_REPOSITORY_ROOT="$PWD" \
+    -DCHERYL_TGUI_SOURCE=/path/to/TGUI-1.13.0 \
+    -DCHERYL_BUILD_TESTS=ON -DCHERYL_BUILD_CONSUMER_TESTS=ON
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  cmake --build build/ui-tgui --parallel \
+    --target tests-ui-tgui consumer-module-ui-tgui
+)
+```
+
+```sh
+(
+  set -e
+  cd "$(git rev-parse --show-toplevel)"
+  ./build/ui-tgui/tests-ui-tgui
+  ./build/ui-tgui/cheryl-ui-tgui-consumer
+)
+```
+
+## Toolkit upgrades
+
+Review the pinned toolkit's [render target](https://github.com/texus/TGUI/blob/v1.13.0/include/TGUI/Backend/Renderer/BackendRenderTarget.hpp),
+[texture](https://github.com/texus/TGUI/blob/v1.13.0/include/TGUI/Backend/Renderer/BackendTexture.hpp),
+[FreeType backend](https://github.com/texus/TGUI/blob/v1.13.0/src/Backend/Font/FreeType/BackendFontFreeType.cpp)
+and [global lifetime](https://github.com/texus/TGUI/blob/v1.13.0/src/Backend/Window/Backend.cpp)
+when upgrading. Recheck unindexed glyph geometry, clip rounding, atlas replacement,
+clipboard suppression and teardown before native consumers depend on new behavior.
+The [upstream backend guide](https://tgui.eu/tutorials/latest-stable/backends/)
+explains feature selection; supplied targets must retain the reviewed Engine
+font/image configuration, private decoder ABI and shared runtime policy.

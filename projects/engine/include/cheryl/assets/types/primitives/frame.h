@@ -7,7 +7,10 @@
 #include <internals/exceptions.h>
 
 namespace CE::Assets::Animation {
-    enum class IndexPolicy { Wrap, Clamp };
+    /** Ordinal selection beyond the end of a nonempty sequence. */
+    enum class IndexPolicy { Wrap, ///< Reduce a later selection modulo limit.
+        Clamp ///< Hold the last ordinal for a later selection at or above limit.
+    };
 
     /** Unsynchronized ordinal cursor, independent of elapsed time or grid cells.
      * A zero limit throws; the initial index must be below the limit. set_frame()
@@ -30,10 +33,10 @@ namespace CE::Assets::Animation {
         }
 
     protected:
-        std::size_t offset_ = 0;
-        std::size_t index_ = 0;
-        std::size_t limit_ = 0;
-        IndexPolicy index_policy_;
+        std::size_t offset_ = 0; ///< Derived-type metadata offset; never automatically added to index().
+        std::size_t index_ = 0; ///< Current ordinal; derived implementations preserve index_ < limit_.
+        std::size_t limit_ = 0; ///< Nonzero sequence length after successful construction; preserve for all modulo/clamp operations.
+        IndexPolicy index_policy_; ///< Valid wrapping or clamping choice for subsequent set_frame() calls.
 
     public:
         Cursor(std::size_t offset, std::size_t index, std::size_t limit, IndexPolicy index_policy = IndexPolicy::Wrap)
@@ -53,3 +56,86 @@ namespace CE::Assets::Animation {
 }
 
 #endif
+
+/**
+ * @fn template<typename Derived> CE::Assets::Animation::Cursor<Derived>::Cursor(std::size_t offset, std::size_t index, std::size_t limit, IndexPolicy index_policy)
+ * @brief Store independent ordinal state for a nonempty sequence.
+ * @param offset Derived metadata retained without arithmetic or validation.
+ * @param index Initial ordinal; caller must ensure index < limit. It is not wrapped/clamped or checked here.
+ * @param limit Positive sequence length.
+ * @param index_policy Valid Wrap/Clamp policy for later selections.
+ * @throws CE::Exceptions::bad_request Only when limit is zero.
+ * No wall clock, grid, animation durations or resource ownership is created; mutation is unsynchronized.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> std::size_t CE::Assets::Animation::Cursor<Derived>::offset() const noexcept
+ * @brief Read metadata offset without adding it to the current ordinal.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> std::size_t CE::Assets::Animation::Cursor<Derived>::index() const noexcept
+ * @brief Read the current sequence ordinal, not necessarily a grid-cell ID.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> std::size_t CE::Assets::Animation::Cursor<Derived>::limit() const noexcept
+ * @brief Read the positive ordinal limit retained by this cursor.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> CE::Assets::Animation::IndexPolicy CE::Assets::Animation::Cursor<Derived>::index_policy() const noexcept
+ * @brief Read the wrapping/clamping rule used by later selections.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> Derived& CE::Assets::Animation::Cursor<Derived>::operator[](std::size_t frame)
+ * @brief Apply set_frame() and return the derived cursor object.
+ * @param frame Requested ordinal, wrapped or clamped by policy.
+ * @pre Derived inherits from this Cursor specialization.
+ * No duration-based advancement or resource lookup occurs.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> void CE::Assets::Animation::Cursor<Derived>::set_frame(std::size_t frame) noexcept
+ * @brief Update the ordinal using modulo Wrap or last-entry Clamp policy.
+ * @param frame Requested ordinal, including values at/above limit.
+ * The derived type must preserve positive limit and valid policy. Offset metadata is unchanged and no timeline is advanced.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> CE::Assets::Animation::Cursor<Derived>::Cursor(const Cursor&)
+ * @brief Copy ordinal, limit, policy and offset values; playback state becomes independent.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> CE::Assets::Animation::Cursor<Derived>::Cursor(Cursor&&) noexcept
+ * @brief Move the scalar state; this base retains no owned resource or clock.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> Cursor<Derived>& CE::Assets::Animation::Cursor<Derived>::operator=(const Cursor&)
+ * @brief Copy cursor metadata/state without advancing either sequence.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> Cursor<Derived>& CE::Assets::Animation::Cursor<Derived>::operator=(Cursor&&) noexcept
+ * @brief Move scalar cursor state; resource ownership belongs to the derived value.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn template<typename Derived> CE::Assets::Animation::Cursor<Derived>::~Cursor()
+ * @brief Destroy the base cursor through its derived owner; destruction advances no timeline.
+ * @see [Detailed guide](cheryl-guide:assets/asset-values-and-playback)
+ */

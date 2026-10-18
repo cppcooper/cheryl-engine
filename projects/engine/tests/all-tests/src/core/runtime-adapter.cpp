@@ -24,6 +24,7 @@
 #include <core/resources/asset-management/texture-mgr.h>
 #include <core/resources/asset-management/tileset-mgr.h>
 #include <internals/exceptions.h>
+#include <testing/material-builder.h>
 
 #include <array>
 #include <atomic>
@@ -398,7 +399,10 @@ namespace {
         std::vector<CE::Rendering::Geometry::Vertex2D> uploaded_geometry;
         std::shared_ptr<MemoryGeometry> geometry = std::make_shared<MemoryGeometry>();
         std::shared_ptr<MemoryShader> shader = std::make_shared<MemoryShader>();
+        CE::Testing::MaterialBuilder builder = CE::Testing::ordinary_materials();
+        bool builtin_support = true;
 
+        CE::Assets::Shaders::Builder* shader_asset_builder() noexcept override { return builtin_support ? &builder : nullptr; }
         [[nodiscard]] std::shared_ptr<CE::Rendering::Resources::Image> load_image(const std::filesystem::path&) override {
             if (on_load_image)
                 return on_load_image();
@@ -1349,6 +1353,11 @@ TEST(runtime_adapter, shared_sprite_grid) {
     auto shader = CE::Assets::Shaders::ProgramCache::get().get_asset(program);
     ASSERT_TRUE(sprite);
     ASSERT_TRUE(shader);
+    ASSERT_TRUE(sprite->material);
+    const auto standard = CE::Rendering::Submission::resolve_sprite(*sprite, 1, {}, {});
+    EXPECT_EQ(standard.material, sprite->material);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(standard.parameters.at("image")).unit, 0u);
+    EXPECT_EQ(provider.builder.requests.size(), 1u);
 
     CE::Rendering::Frame frame;
     CE::Rendering::FrameWriter writer(frame);
@@ -1358,7 +1367,7 @@ TEST(runtime_adapter, shared_sprite_grid) {
         std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::TriangleStrip, true),
         {{"image", CE::Rendering::Parameters::ImageBinding{sprite->texture, 3}}}
     });
-    const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+    const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints(), std::nullopt};
     pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 0, style, context));
     pass.add(CE::Rendering::Submission::resolve_sprite(*sprite, 1, style, context));
 
@@ -1384,6 +1393,12 @@ TEST(graphic, whole_image) {
     // Loading one image gives the graphic a pixel-sized six-vertex quad and
     // covers the complete texture, including its top-right UV corner.
     auto graphic = CE::Assets::Graphics::Asset::load(std::filesystem::path{"ui/panel.png"}, provider);
+    ASSERT_TRUE(graphic.material);
+    EXPECT_EQ(graphic.material, provider.builder.values.at(CE::Rendering::Materials::Builtin2D::Textured));
+    const auto standard = CE::Rendering::Submission::resolve_graphic(graphic, {}, {});
+    EXPECT_EQ(standard.material, graphic.material);
+    EXPECT_EQ(std::get<CE::Rendering::Parameters::ImageBinding>(standard.parameters.at("image")).unit, 0u);
+    EXPECT_EQ(provider.builder.requests.size(), 1u); // CPU submission creates no resources.
     ASSERT_EQ(provider.uploaded_vertices, 6u);
     EXPECT_EQ(provider.uploaded_topology, CE::Rendering::Geometry::Topology::Triangles);
     ASSERT_EQ(provider.uploaded_geometry.size(), std::size_t{6});
@@ -1398,7 +1413,7 @@ TEST(graphic, whole_image) {
         std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true),
         {{"image", CE::Rendering::Parameters::ImageBinding{graphic.texture, 0}}}
     });
-    const auto packet = CE::Rendering::Submission::resolve_graphic(graphic, style, {});
+    const auto packet = CE::Rendering::Submission::resolve_graphic(graphic, style, {.image = std::nullopt});
     EXPECT_EQ(packet.first_vertex, 0u);
     EXPECT_EQ(packet.vertex_count, 6u);
     EXPECT_EQ(packet.geometry, graphic.geometry);
@@ -1408,6 +1423,35 @@ TEST(graphic, whole_image) {
     EXPECT_TRUE(image->bound_units.empty());
     EXPECT_EQ(provider.geometry->bind_count(), 0u);
     EXPECT_EQ(provider.shader->uses, 0);
+}
+
+TEST(graphic, material_override) {
+    MemoryProvider provider;
+    const auto custom = std::make_shared<CE::Rendering::Resources::Material>(
+        CE::Rendering::Materials::Definition{std::make_shared<MemoryPipeline>(1.0f, CE::Rendering::Geometry::Topology::Triangles, true), {}}
+    );
+    auto image = std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{8, 8});
+    provider.builtin_support = false; // Explicit handles also work without a built-in builder.
+    const auto graphic = CE::Assets::Graphics::Asset::from_image(image, provider, {}, custom);
+    EXPECT_TRUE(provider.builder.requests.empty());
+    const auto selected = CE::Rendering::Submission::resolve_graphic(graphic, {}, {});
+    EXPECT_EQ(selected.material, custom);
+    CE::Rendering::DrawStyle2D style;
+    style.material = provider.builder.values.at(CE::Rendering::Materials::Builtin2D::Textured);
+    EXPECT_EQ(CE::Rendering::Submission::resolve_graphic(graphic, style, {}).material, style.material);
+    EXPECT_EQ(graphic.material, custom);
+}
+
+TEST(graphic, default_failure) {
+    MemoryProvider provider;
+    auto image = std::make_shared<MemoryImage>(CE::Rendering::Geometry::PixelSize{8, 8});
+    provider.builtin_support = false;
+    EXPECT_THROW(static_cast<void>(CE::Assets::Graphics::Asset::from_image(image, provider)), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.uploaded_vertices, 0u);
+    provider.builtin_support = true;
+    provider.builder.missing = true;
+    EXPECT_THROW(static_cast<void>(CE::Assets::Graphics::Asset::from_image(image, provider)), CE::Exceptions::failed_operation);
+    EXPECT_EQ(provider.uploaded_vertices, 0u);
 }
 
 TEST(material_cache, program_reload_lifetime) {

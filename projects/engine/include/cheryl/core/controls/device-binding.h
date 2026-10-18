@@ -6,9 +6,10 @@
 #include <type_traits>
 
 namespace CE::Input {
+    /** Physical (device, control) identity for bindings. Initialize both fields before using a default-initialized Control; no device lifetime is retained. Typed constructors accept only supported control enums; unrelated enums are deleted. */
     struct Control {
-        DeviceId device;
-        ControlId control;
+        DeviceId device; ///< Adapter-owned device token.
+        ControlId control; ///< Portable or adapter extension control token; invalid_control is rejected by binding APIs.
 
         constexpr Control() = default;
         constexpr Control(const DeviceId device, const ControlId control) noexcept
@@ -38,3 +39,35 @@ namespace std {
         }
     };
 }
+
+/** @fn constexpr CE::Input::Control::Control()
+ * Default construction supplies no explicit member values; initialize device/control before querying or binding.
+ */
+
+/** @fn constexpr CE::Input::Control::Control(DeviceId device, ControlId control) noexcept
+ * Store raw tokens without validation. Binding evaluation later validates control identities; this value does not own a device.
+ */
+
+/** @fn constexpr CE::Input::Control::Control(DeviceId device, KeyboardKey key) noexcept
+ * Store device with control_id(key); Unknown becomes invalid_control for later rejection.
+ */
+
+/** @fn constexpr CE::Input::Control::Control(DeviceId device, MouseButton button) noexcept
+ * Store device with control_id(button), independently of native mouse SDK tokens.
+ */
+
+/** @fn constexpr CE::Input::Control::Control(DeviceId device, GamepadControl gamepad) noexcept
+ * Store device with control_id(gamepad); the named control may still be unavailable on that device.
+ */
+
+/** @fn bool CE::Input::Control::operator==(const Control& o) const
+ * Compare both physical tokens by value; neither device availability nor current held state is queried.
+ */
+
+/** @struct std::hash<CE::Input::Control>
+ * Hash the device/control pair for physical-state maps. Equal Control values have equal hashes; this is not a persistence identifier.
+ */
+
+/** @fn std::size_t std::hash<CE::Input::Control>::operator()(const CE::Input::Control& k) const noexcept
+ * Combine both initialized physical tokens without querying a live device.
+ */

@@ -73,3 +73,48 @@ namespace CE::Input::Capture {
         CE::Input::Routing::Focus focus_;
     };
 }
+
+/** @fn CE::Input::Capture::Lease::Lease()
+ * Create an empty lease requesting no channel.
+ */
+
+/** @fn CE::Input::Capture::Lease::~Lease()
+ * Release this channel request without erasing pending/published records or another request.
+ */
+
+/** @fn CE::Input::Capture::Lease::Lease(Lease&& other) noexcept
+ * Transfer retained channel-request state, leaving other empty. Handle access must be exclusive.
+ */
+
+/** @fn CE::Input::Capture::Lease& CE::Input::Capture::Lease::operator=(Lease&& other) noexcept
+ * Reset this request then transfer other; no collector/adapter lifetime is retained.
+ */
+
+/** @fn void CE::Input::Capture::Lease::reset() noexcept
+ * Idempotently release this request from any thread with exclusive handle access. Counts affect the next begin_poll latch, not already captured records.
+ */
+
+/** @fn CE::Input::Capture::Collector::Collector()
+ * Create empty capture staging with independent shared request counts. Allocation may throw; recording/publication stays on the platform owner.
+ */
+
+/** @fn CE::Input::Capture::Lease CE::Input::Capture::Collector::request(Channel mode)
+ * Request Events/Text concurrently with other producers. State is always collected and its lease is a no-op request; invalid modes throw invalid_args. Returned state can outlive this collector without retaining its adapter.
+ */
+
+/** @fn void CE::Input::Capture::Collector::begin_poll(CE::Input::Routing::Focus focus)
+ * Latch current request counts and copied focus for the next platform pump. Requests/focus changes during that pump affect a later latch; existing pending records are not cleared.
+ */
+
+/** @fn void CE::Input::Capture::Collector::record(CE::Input::DeviceId device, CE::Input::DeviceKind kind, CE::Input::Events::Payload data, CE::Input::ObservationClock::time_point observed_at)
+ * Append an owned active-channel payload in collector order. Inactive channels ignore records; active Text must be a Unicode scalar. Keyboard/Text routing uses latched target/epoch; PassThrough admits gameplay too. Observation time/other payloads are not normalized. Invalid Text/allocation failure throws; staging is not transactional.
+ */
+
+/** @fn std::vector<CE::Input::Events::Record> CE::Input::Capture::Collector::complete()
+ * Transfer the whole pending vector in collector order and leave it empty; channel request counts and sequence history remain.
+ */
+
+/** @fn void CE::Input::Capture::Collector::discard_pending()
+ * Drop staged records and clear the current activation/focus latch without revoking leases. The next begin_poll() relatches live request counts.
+ * @see [Ordered capture](cheryl-guide:runtime/input-state-model#ordered-events-and-os-text)
+ */

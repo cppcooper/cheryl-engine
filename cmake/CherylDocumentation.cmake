@@ -19,19 +19,19 @@ function(cheryl_add_documentation_targets repository_root)
         list(APPEND tool_arguments --force-pinned)
     endif()
     add_custom_target(docs-tools
-        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" setup ${tool_arguments}
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/site/generation/bootstrap.py" setup ${tool_arguments}
         WORKING_DIRECTORY "${repository_root}"
         COMMENT "Preparing shared documentation tools"
         USES_TERMINAL VERBATIM)
     add_custom_target(docs
-        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" exec ${tool_arguments}
-            -- python "${repository_root}/docs/generation/build.py"
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/site/generation/bootstrap.py" exec ${tool_arguments}
+            -- python "${repository_root}/docs/site/generation/build.py"
         WORKING_DIRECTORY "${repository_root}"
         COMMENT "Updating Cheryl documentation"
         USES_TERMINAL VERBATIM)
     add_custom_target(docs-clean
-        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/generation/bootstrap.py" exec ${tool_arguments}
-            -- python "${repository_root}/docs/generation/build.py" --clean
+        COMMAND "${CHERYL_DOCS_PYTHON}" "${repository_root}/docs/site/generation/bootstrap.py" exec ${tool_arguments}
+            -- python "${repository_root}/docs/site/generation/build.py" --clean
         WORKING_DIRECTORY "${repository_root}"
         COMMENT "Regenerating Cheryl documentation from scratch"
         USES_TERMINAL VERBATIM)

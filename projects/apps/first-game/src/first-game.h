@@ -40,7 +40,6 @@ namespace FirstGame {
         std::optional<Actor> actor_;
         std::optional<CE::Text::Rendering::Generation> score_;
         std::shared_ptr<const CE::Rendering::Resources::Material> images_;
-        std::shared_ptr<const CE::Rendering::Resources::Material> text_;
 
     public:
         Game(CE::Runtime::Context& engine, std::filesystem::path asset_root);

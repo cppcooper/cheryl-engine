@@ -1,7 +1,9 @@
 #pragma once
 
 /** @file
- * @brief RmlUi input, recording, scene upload and session APIs.
+ * @brief RmlUi native authoring, input, CPU recording and retained upload APIs.
+ * Link Cheryl::UI::RmlUi.
+ * @see [Adapter integration](cheryl-guide:modules/rmlui)
  */
 
 #include <cheryl/ui/rmlui/input.h>

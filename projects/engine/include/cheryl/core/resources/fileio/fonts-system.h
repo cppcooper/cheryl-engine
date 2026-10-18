@@ -6,7 +6,8 @@
 #include <vector>
 
 namespace CE::Text {
-    /** Return owned candidate roots from built-in Unix/macOS paths and nonempty
+    /** @see [File and font discovery](cheryl-guide:assets/file-and-font-discovery)
+     * Return owned candidate roots from built-in Unix/macOS paths and nonempty
      * HOME/XDG_DATA_HOME/WINDIR/LOCALAPPDATA values. No existence check or deduplication
      * occurs here. Keep environment mutation serialized with this call.
      */
@@ -26,7 +27,7 @@ namespace CE::Text {
     [[nodiscard]] CE_API std::vector<std::filesystem::path> find_system_fonts(const std::vector<std::filesystem::path>& directories);
 
     /** Choose a candidate by the filename preference order documented in
-     * docs/assets/file-and-font-discovery.md. Filename matching ignores case;
+     * docs/site/assets/file-and-font-discovery.md. Filename matching ignores case;
      * equal preferred names use the supplied order. Without a preferred name,
      * return the minimum path; an empty list returns nullopt. No I/O, font-family
      * inspection or load-failure fallback is performed. The path is an owned copy.

@@ -99,7 +99,10 @@ namespace CE::Rendering::Submission {
         const CE::Text::Legacy::LayoutOptions options
     ) {
         const auto glyphs = font.layout(text, options);
-        const auto base = image_style(style, font.glyph_atlas_handle(), context);
+        auto selected = style;
+        if (!selected.material)
+            selected.material = font.material_handle();
+        const auto base = image_style(selected, font.glyph_atlas_handle(), context);
         std::vector<DrawPacket2D> result;
         result.reserve(glyphs.size());
         for (const auto& glyph : glyphs) {
@@ -117,11 +120,14 @@ namespace CE::Rendering::Submission {
     resolve_text(const CE::Text::Rendering::Generation& text, const DrawStyle2D& style, const Context2D& context) {
         if (!context.image || context.image->key.empty() || style.parameters.contains(context.image->key))
             throw Exceptions::invalid_args(CE_HERE, "Unicode text submission needs a page image parameter");
+        auto selected = style;
+        if (!selected.material)
+            selected.material = text.material();
         std::vector<DrawPacket2D> result;
         result.reserve(text.draws().size());
         for (const auto& glyph : text.draws()) {
             const auto& page = text.pages()[glyph.page];
-            auto placed = image_style(style, page.atlas, context);
+            auto placed = image_style(selected, page.atlas, context);
             placed.model_matrix = glm::translate(style.model_matrix, glm::vec3(glyph.x * style.scale, glyph.y * style.scale, 0));
             result.push_back(resolve_draw_packet(
                 page.geometry, range_start(glyph.index, CE::Rendering::Geometry::vertices_per_quad),
@@ -137,10 +143,13 @@ namespace CE::Rendering::Submission {
             throw Exceptions::invalid_args(CE_HERE, "Text run submission requires positioned geometry preparation");
         if (!context.image || context.image->key.empty() || style.parameters.contains(context.image->key))
             throw Exceptions::invalid_args(CE_HERE, "Unicode text submission needs a page image parameter");
+        auto material_style = style;
+        if (!material_style.material)
+            material_style.material = text.material();
         std::vector<DrawPacket2D> result;
         result.reserve(text.runs().size());
         for (const auto& run : text.runs()) {
-            const auto selected = image_style(style, text.pages()[run.page].atlas, context);
+            const auto selected = image_style(material_style, text.pages()[run.page].atlas, context);
             result.push_back(resolve_draw_packet(
                 text.positioned_geometry(), run.first_vertex, run.vertex_count, selected, context.pass, context.parameters,
                 context.constraints

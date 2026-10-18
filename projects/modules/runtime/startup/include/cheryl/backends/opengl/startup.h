@@ -15,6 +15,8 @@ namespace CE::Application::GLFWOpenGL {
      * @param description Application description for command-line help.
      * @param configuration Initial window, presentation and execution defaults.
      * @param runtime Initial simulation and polling defaults.
+     * @see [Startup composition](cheryl-guide:development/consuming-engine#command-line-startup)
+     * Validation occurs before native construction; allocation/backend failures propagate.
      * @return A single-use startup object; command-line options override its defaults.
      */
     [[nodiscard]] CE_STARTUP_API CE::Application::Startup make_startup(
@@ -31,6 +33,8 @@ namespace CE::Application::GLFWOpenGL {
      * @param description Application description for command-line help.
      * @param configuration Initial window, presentation and execution defaults.
      * @param runtime Initial simulation and polling defaults.
+     * @see [Startup composition](cheryl-guide:development/consuming-engine#command-line-startup)
+     * Validation occurs before native construction; allocation/backend failures propagate.
      * @return A single-use startup object owning its backend option state.
      */
     [[nodiscard]] CE_STARTUP_API CE::Application::Startup

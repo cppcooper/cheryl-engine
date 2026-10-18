@@ -49,7 +49,7 @@ namespace CE::Text::Legacy {
         }
         // This deprecated loader preserves native-short encoding and ignored
         // trailing data. The original atlas is unavailable; semantic format
-        // recovery is no longer required work (docs/resources/legacy-ffont.md).
+        // recovery is no longer required work (docs/site/resources/legacy-ffont.md).
         std::array<short, bitmap_character_count> buffer{};
         constexpr auto byte_count = static_cast<std::streamsize>(sizeof(buffer));
         file.read(reinterpret_cast<char*>(buffer.data()), byte_count);

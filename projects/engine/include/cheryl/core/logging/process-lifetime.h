@@ -23,3 +23,41 @@ namespace CE::Logging {
         ProcessLifetime& operator=(ProcessLifetime&&) = delete;
     };
 }
+
+/**
+ * @fn CE::Logging::ProcessLifetime::ProcessLifetime()
+ * @brief Acquire a shared process logging guard on an application thread.
+ * Nested/overlapping guards share one lifetime. Construction after the final lifetime ended rejects; do not acquire from backend callbacks or a DLL entry point.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn CE::Logging::ProcessLifetime::~ProcessLifetime() noexcept
+ * @brief Release this guard; the last release closes every live log and joins the shared logging worker.
+ * Stop all producers/diagnostics readers and release native logger/sink references first. Shutdown is terminal; later guards, logs and reopen reject. Do not destroy on a backend callback or DLL entry point.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn CE::Logging::ProcessLifetime::ProcessLifetime(const ProcessLifetime&)
+ * @brief Copy/move ownership is disabled; create an independent nested guard instead.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn ProcessLifetime& CE::Logging::ProcessLifetime::operator=(const ProcessLifetime&)
+ * @brief Copy/move ownership is disabled; create an independent nested guard instead.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn CE::Logging::ProcessLifetime::ProcessLifetime(ProcessLifetime&&)
+ * @brief Copy/move ownership is disabled; create an independent nested guard instead.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */
+
+/**
+ * @fn ProcessLifetime& CE::Logging::ProcessLifetime::operator=(ProcessLifetime&&)
+ * @brief Copy/move ownership is disabled; create an independent nested guard instead.
+ * @see [Detailed guide](cheryl-guide:runtime/logging)
+ */

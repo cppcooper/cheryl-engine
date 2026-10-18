@@ -18,6 +18,7 @@ namespace CE::Text::Legacy::Detail {
         std::span<const unsigned char> alpha,
         CE::Rendering::Geometry::PixelSize atlas_size,
         const std::array<float, ascii_character_count>& advances,
-        float line_height
+        float line_height,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material = {}
     );
 }

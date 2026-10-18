@@ -2,6 +2,8 @@
 
 /** @file
  * @brief All backend-neutral public Engine headers.
+ * Use Cheryl::Engine for neutral APIs; native GL/GLFW/UI/audio choices require their module targets.
+ * @see [Selection and integration](cheryl-guide:development/consuming-engine)
  */
 
 #include <cheryl/assets.h>
@@ -21,6 +23,9 @@
 #include <cheryl/math/string-numbers.h>
 #include <cheryl/templates/observed-variables.h>
 #include <cheryl/text/font-collection.h>
+#include <cheryl/text/font.h>
+#include <cheryl/text/font-service.h>
 #include <cheryl/text/font-rasterizer.h>
 #include <cheryl/text/layout.h>
+#include <cheryl/text/text-updater.h>
 #include <cheryl/text/utf8.h>

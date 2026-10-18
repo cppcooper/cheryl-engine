@@ -1,25 +1,31 @@
 # Tutorial game
 
-This maintained example combines the [Player and Enemy classes](../../../docs/getting-started/create-a/index.md)
-with input, sprite animation, camera movement, a direct text score and TGUI
-controls. The [focused tasks](../../../docs/getting-started/how-to/index.md)
-explain its input, sprite, camera and text operations. It consumes the standard
-Startup module, Native GLFW, OpenGL and TGUI. The two-cell actor and base
-image/text shaders are copied from First Game; TGUI uses the selected provider's
-automatic materials with embedded OpenGL shaders. Its small asset set is listed
-explicitly in CMake and needs no optional external art download.
+This maintained example follows [Controller → Character → HUD](../../../docs/site/getting-started/create-a/index.md).
+A player controller translates scoped input actions into a game-owned movement
+command; a patrol controller produces the same command without input. Both drive
+one Character class. The HUD uses TGUI score and health widgets. The
+[task index](../../../docs/site/getting-started/how-to/index.md) links the engine
+operations behind these examples.
 
-The [TGUI widget HUD tutorial](../../../docs/getting-started/create-a/hud.md) and
-[RmlUi GUI guide](../../../docs/getting-started/how-to/create-gui.md) describe
-separate extensions to First Game. This executable uses its direct text `Hud` and
-TGUI `Controls` classes; it does not implement those two interfaces.
+It consumes Startup, Native GLFW, OpenGL and TGUI. The two-cell actor image comes
+from First Game. Sprites and TGUI use the selected provider's automatic materials
+with embedded OpenGL shaders; TGUI uses the engine's configured default font.
+The small asset set is listed explicitly in CMake and needs no optional art download.
+[First Game](../../../docs/site/getting-started/first-game.md) retains the simple direct
+input and text path; the [RmlUi guide](../../../docs/site/getting-started/how-to/create-gui.md)
+teaches interactive document authoring.
 
-The game starts with an editable field focused. Escape releases it; a later
-Escape press quits. F2 returns focus to editing. With editor focus released,
-Left/Right move Player, A/D position the world view and Space increments the HUD.
-Enemy patrols independently and a third sprite alternates cells on simulation
-time. Clicking Apply changes the field and increments the HUD. The HUD and UI
-remain in screen coordinates while the world view moves.
+Left/Right move the first character. F2 joins a second player using J/L; F3 removes
+that player. Both player controllers reuse the same local action IDs, with
+independent binding lifetimes. A/D move the world view, Space increments the HUD
+score, and Escape quits. A second character patrols between fixed bounds and a
+third sprite alternates cells on simulation time. The widget HUD stays attached
+to the screen corners while the world view moves. The HUD is passive and requests
+no keyboard focus.
+
+The engine accepts independent action contexts for supplied device IDs. The
+current GLFW adapter exposes one gamepad; this example uses separate keys on one
+keyboard and does not establish multiple-gamepad discovery or physical-device QA.
 
 The `tutorial-game` CMake target requires selected `Cheryl::Startup`,
 `Cheryl::NativeGLFW`, `Cheryl::OpenGL` and `Cheryl::UI::TGUI` targets, native input,
@@ -28,7 +34,7 @@ finds a matching installed SDK through `find_package(Cheryl 4 CONFIG REQUIRED)`.
 The source-root build selects it through the repository's application options.
 Its default asset root is this source directory's `assets/` folder.
 
-After [preparing the source dependencies](../../../docs/development/building.md#dependency-and-toolchain-settings),
+After [preparing the source dependencies](../../../docs/site/development/building.md#dependency-and-toolchain-settings),
 configure and run the Linux x64 example from anywhere inside the checkout:
 
 ```sh

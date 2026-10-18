@@ -9,6 +9,7 @@
 
 namespace CE::UI::TGUI {
     /** Translate one application-selected record without changing its source.
+     * @see [Input translation](cheryl-guide:modules/tgui#input-translation)
      * The caller owns capture/focus/routing and passes keyboard/Text records only
      * to their selected consumer. Coordinates remain logical window units, floored
      * to TGUI's integer coordinates; configure the GUI's input view accordingly.

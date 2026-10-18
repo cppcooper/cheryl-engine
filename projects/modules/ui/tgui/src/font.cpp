@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <tuple>
 
 namespace CE::UI::TGUI::Detail {
     CE::Text::FontRasterSize FontBackend::size(const unsigned int character_size) const {
@@ -41,7 +42,57 @@ namespace CE::UI::TGUI::Detail {
     }
 
     std::optional<CE::Text::FontRasterMetrics> FontBackend::metrics(const unsigned int character_size) const {
-        return face_.metrics(size(character_size));
+        const auto* selected = primary();
+        return selected ? selected->rasterizer.metrics(size(character_size)) : std::nullopt;
+    }
+
+    const FontBackend::Face* FontBackend::primary(const bool bold) const {
+        const Face* result = nullptr;
+        const auto weight = bold ? std::max<std::uint16_t>(style_.weight, 700) : style_.weight;
+        const auto rank = [&](const Face& candidate) {
+            return std::tuple{candidate.style.italic != style_.italic, std::abs(static_cast<int>(candidate.style.weight) - weight)};
+        };
+        for (const auto& candidate : faces_) {
+            if (candidate.family_index != 0)
+                continue;
+            if (!result || rank(candidate) < rank(*result))
+                result = &candidate;
+        }
+        return result;
+    }
+
+    const FontBackend::Face* FontBackend::face(const char32_t code, const bool bold) const {
+        const auto weight = bold ? std::max<std::uint16_t>(style_.weight, 700) : style_.weight;
+        const auto rank = [&](const Face& candidate) {
+            return std::tuple{candidate.style.italic != style_.italic, std::abs(static_cast<int>(candidate.style.weight) - weight)};
+        };
+        const Face* selected = nullptr;
+        std::size_t family = 0;
+        for (const auto& candidate : faces_) {
+            if (candidate.family_index != family) {
+                if (selected && selected->rasterizer.covers(code))
+                    return selected;
+                family = candidate.family_index;
+                selected = nullptr;
+            }
+            if (!selected || rank(candidate) < rank(*selected))
+                selected = &candidate;
+        }
+        if (selected && selected->rasterizer.covers(code))
+            return selected;
+        return primary(bold);
+    }
+
+    void FontBackend::load(const CE::Text::Font& font, const CE::Text::FontStyle style) {
+        if (font.faces().empty())
+            throw tgui::Exception{U"Cannot use an empty Engine font"};
+        std::vector<Face> faces;
+        for (const auto& source : font.faces())
+            faces.push_back({CE::Text::FontRasterizer::load(source.bytes, source.face_index, 0, true), source.style, source.family_index});
+        std::stable_sort(faces.begin(), faces.end(), [](const Face& left, const Face& right) { return left.family_index < right.family_index; });
+        faces_ = std::move(faces);
+        style_ = style;
+        reset();
     }
 
     bool FontBackend::loadFromMemory(std::unique_ptr<std::uint8_t[]> data, const std::size_t bytes) {
@@ -53,7 +104,14 @@ namespace CE::UI::TGUI::Detail {
         } catch (const std::exception& error) {
             throw tgui::Exception{error.what()};
         }
-        const auto scalable = face.properties().scalable;
+        const auto properties = face.properties();
+        faces_ = {{std::move(face), {properties.weight, properties.italic}, 0}};
+        style_ = {};
+        reset();
+        return true;
+    }
+
+    void FontBackend::reset() {
         constexpr unsigned int initial_size = 128;
         std::vector<std::uint8_t> pixels(initial_size * initial_size * 4, 255);
         for (std::size_t i = 3; i < pixels.size(); i += 4)
@@ -61,8 +119,8 @@ namespace CE::UI::TGUI::Detail {
         for (unsigned int y = 0; y < 2; ++y)
             for (unsigned int x = 0; x < 2; ++x)
                 pixels[(y * initial_size + x) * 4 + 3] = 255;
-        face_ = std::move(face);
-        scalable_ = scalable;
+        const auto* selected = primary();
+        scalable_ = selected && selected->rasterizer.properties().scalable;
         pixels_ = std::move(pixels);
         glyphs_.clear();
         rows_.clear();
@@ -70,11 +128,11 @@ namespace CE::UI::TGUI::Detail {
         texture_size_ = initial_size;
         texture_version_ = 0;
         next_row_ = 3;
-        return true;
     }
 
     bool FontBackend::hasGlyph(const char32_t code) const {
-        return face_.covers(code);
+        const auto* selected = face(code, false);
+        return selected && selected->rasterizer.covers(code);
     }
 
     const FontBackend::Glyph&
@@ -84,7 +142,10 @@ namespace CE::UI::TGUI::Detail {
         if (const auto found = glyphs_.find(key); found != glyphs_.end())
             return found->second;
         Glyph value;
-        const auto raster = face_.rasterize(code, raster_size, {true, bold, outline * m_fontScale});
+        const auto* selected = face(code, bold);
+        const bool synthetic_bold = bold && selected && selected->style.weight < 600;
+        const auto raster = selected ? selected->rasterizer.rasterize(code, raster_size, {true, synthetic_bold, outline * m_fontScale})
+                                     : std::nullopt;
         if (raster) {
             value.value.advance = raster->advance;
             value.value.bounds = {
@@ -120,12 +181,13 @@ namespace CE::UI::TGUI::Detail {
     }
 
     float FontBackend::getKerning(const char32_t left, const char32_t right, const unsigned int character_size, const bool bold) {
-        if (!left || !right || !face_)
+        const auto* selected = face(left, bold);
+        if (!left || !right || !selected || selected != face(right, bold))
             return 0;
         const float first_delta = glyph(left, character_size, bold, 0).right_delta;
         const float second_delta = glyph(right, character_size, bold, 0).left_delta;
-        const auto offset = face_.kerning(left, right, size(character_size), true);
-        if (!scalable_)
+        const auto offset = selected->rasterizer.kerning(left, right, size(character_size), true);
+        if (!selected->rasterizer.properties().scalable)
             return offset * 64 / m_fontScale;
         return std::floor(second_delta - first_delta + offset + .5f) / m_fontScale;
     }

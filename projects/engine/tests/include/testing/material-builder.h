@@ -44,4 +44,36 @@ namespace CE::Testing {
             return missing ? nullptr : values.at(kind);
         }
     };
+
+    // Backend-free material contracts for testing standard asset upload and CPU
+    // submission. Native shader behavior is covered by backend acceptance tests.
+    inline MaterialBuilder ordinary_materials() {
+        class Pipeline final : public CE::Rendering::Resources::Pipeline {
+        public:
+            explicit Pipeline(CE::Rendering::Pipelines::Definition definition)
+            : CE::Rendering::Resources::Pipeline(std::move(definition)) {}
+        };
+        MaterialBuilder builder;
+        for (const auto kind : {CE::Rendering::Materials::Builtin2D::Textured, CE::Rendering::Materials::Builtin2D::TexturedStrip}) {
+            CE::Rendering::Pipelines::Definition definition;
+            definition.program_sources = {"test-builtin.vert", "test-builtin.frag"};
+            definition.topology = kind == CE::Rendering::Materials::Builtin2D::TexturedStrip
+                                      ? CE::Rendering::Geometry::Topology::TriangleStrip
+                                      : CE::Rendering::Geometry::Topology::Triangles;
+            definition.parameters = {
+                {"projection", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Projection},
+                {"view", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::View},
+                {"model", CE::Rendering::Parameters::Type::Mat4, true, CE::Rendering::Parameters::Semantic::Model},
+                {"alpha", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Alpha},
+                {"scale", CE::Rendering::Parameters::Type::Float, true, CE::Rendering::Parameters::Semantic::Scale},
+                {"image", CE::Rendering::Parameters::Type::Sampler2D}
+            };
+            builder.values.emplace(
+                kind, std::make_shared<CE::Rendering::Resources::Material>(
+                          CE::Rendering::Materials::Definition{std::make_shared<Pipeline>(std::move(definition)), {}}
+                      )
+            );
+        }
+        return builder;
+    }
 }

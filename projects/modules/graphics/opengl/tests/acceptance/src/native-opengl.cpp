@@ -10,6 +10,7 @@
 #include <assets/resources/shader-asset-builder.h>
 #include <assets/submission/draw2d.h>
 #include <assets/types/2d/unicode-text.h>
+#include <assets/types/2d/graphic.h>
 #include <assets/types/2d/ffont.h>
 #include <backends/opengl/resource-provider.h>
 #include <backends/opengl/texture.h>
@@ -573,6 +574,90 @@ TEST(native_opengl, builtin_materials) {
     EXPECT_THROW(
         static_cast<void>(builder->build_builtin_material(Kind::SolidColor, Blend::StraightAlpha)), CE::Exceptions::failed_operation
     );
+}
+
+TEST(native_opengl, asset_materials) {
+    if (!native_checks_requested())
+        GTEST_SKIP() << "Set CHERYL_NATIVE_GL_TESTS=1 with a real GLFW display to run native acceptance";
+    auto engine = CE::Application::GLFWOpenGL::make_context(small_window());
+    auto& renderer = dynamic_cast<CE::Rendering::OpenGL::Renderer&>(engine->renderer());
+    auto& resources = engine->resources();
+    renderer.initialize();
+    renderer.set_clear_colour(0, 0, 0, 1);
+    using Kind = CE::Rendering::Materials::Builtin2D;
+    using Blend = CE::Rendering::Pipelines::Blend;
+    std::vector<std::shared_ptr<const CE::Rendering::Resources::Material>> retained;
+    std::array<GLuint, 2> programs{};
+    for (const auto blend : {Blend::StraightAlpha, Blend::PremultipliedAlpha}) {
+        const bool premultiplied = blend == Blend::PremultipliedAlpha;
+        for (const auto kind : {Kind::Textured, Kind::TexturedStrip}) {
+            const auto material = CE::Assets::Shaders::build_builtin_material(resources, kind, blend);
+            ASSERT_TRUE(material);
+            EXPECT_EQ(CE::Assets::Shaders::build_builtin_material(resources, kind, blend), material);
+            EXPECT_TRUE(material->definition().sampling.empty());
+            retained.push_back(material);
+            const auto image = resources.create_image(
+                {{1, 1}, premultiplied ? std::vector<unsigned char>{64, 32, 128, 128} : std::vector<unsigned char>{128, 64, 255, 128}}
+            );
+            CE::Rendering::DrawStyle2D style;
+            style.scale = 16;
+            style.alpha = 0.5f;
+            style.model_matrix = glm::translate(glm::mat4{1}, glm::vec3{8, 52, 0});
+            CE::Rendering::Frame frame;
+            {
+                CE::Rendering::FrameWriter writer(frame);
+                auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 0.0f, 64.0f), glm::translate(glm::mat4{1}, glm::vec3{16, -12, 0}));
+                const CE::Rendering::Submission::Context2D context{pass.semantics(), pass.parameters(), pass.constraints()};
+                if (kind == Kind::Textured) {
+                    const auto graphic = CE::Assets::Graphics::Asset::from_image(image, resources, {0, 0}, material);
+                    pass.add(CE::Rendering::Submission::resolve_graphic(graphic, style, context));
+                } else {
+                    const std::array<CE::Rendering::Geometry::Vertex2D, 4> vertices{
+                        {{0, -1, 0, 0, 0}, {1, -1, 0, 1, 0}, {0, 0, 0, 0, 1}, {1, 0, 0, 1, 1}}
+                    };
+                    auto geometry = resources.upload_geometry(vertices, CE::Rendering::Geometry::Topology::TriangleStrip);
+                    CE::Assets::Sprites::Definition definition;
+                    definition.grid.frame = {1, 1};
+                    definition.grid.rows = definition.grid.columns = 1;
+                    const CE::Assets::Sprites::Asset sprite({std::move(geometry), image, definition, material});
+                    pass.add(CE::Rendering::Submission::resolve_sprite(sprite, 0, style, context));
+                }
+            }
+            const auto pixel = draw_pixel(renderer, frame);
+            EXPECT_NEAR(pixel[0], 32, 1);
+            EXPECT_NEAR(pixel[1], 16, 1);
+            EXPECT_NEAR(pixel[2], 64, 1);
+            EXPECT_EQ(pixel[3], 255);
+            std::array<unsigned char, 4> outside{};
+            glReadPixels(48, 48, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, outside.data());
+            EXPECT_EQ(outside, (std::array<unsigned char, 4>{0, 0, 0, 255}));
+            GLint program = 0;
+            glGetIntegerv(GL_CURRENT_PROGRAM, &program);
+            if (kind == Kind::Textured)
+                programs[premultiplied ? 1 : 0] = static_cast<GLuint>(program);
+            else
+                EXPECT_EQ(static_cast<GLuint>(program), programs[premultiplied ? 1 : 0]);
+            EXPECT_EQ(glGetError(), GL_NO_ERROR);
+        }
+    }
+    EXPECT_NE(programs[0], programs[1]);
+    {
+        const std::array<unsigned char, 1> coverage{128};
+        auto atlas = resources.create_font_atlas(coverage, {1, 1});
+        const auto graphic = CE::Assets::Graphics::Asset::from_image(atlas, resources, {0, 0});
+        CE::Rendering::DrawStyle2D style;
+        style.scale = 64;
+        style.model_matrix = glm::translate(glm::mat4{1}, glm::vec3{0, 64, 0});
+        CE::Rendering::Frame frame;
+        CE::Rendering::FrameWriter writer(frame);
+        auto pass = writer.begin_pass(glm::ortho(0.0f, 64.0f, 0.0f, 64.0f), glm::mat4{1});
+        pass.add(CE::Rendering::Submission::resolve_graphic(graphic, style, {pass.semantics(), pass.parameters(), pass.constraints()}));
+        const auto pixel = draw_pixel(renderer, frame);
+        for (std::size_t channel = 0; channel < 3; ++channel)
+            EXPECT_NEAR(pixel[channel], 128, 1);
+        EXPECT_EQ(pixel[3], 255);
+    }
+    renderer.deinitialize();
 }
 
 TEST(native_opengl, ui_clipping_color) {

@@ -9,6 +9,7 @@
 #include <string_view>
 
 namespace CE::Assets::Sprites {
+    /** Strong sprites cache keyed by exact qualified namespace:name identities. */
     using Store = CE::Assets::Cache::Store<CE::Assets::Sprites::Asset, std::string>;
 }
 
@@ -26,25 +27,8 @@ namespace CE::Assets::Sprites {
         Manager() = default;
         ~Manager() override = default;
         using Store::get_asset;
-        /** Look up an exact namespace/name without loading assets.
-         * @param name_space Asset definition namespace, copied into the lookup key.
-         * @param name Local asset name, copied into the lookup key.
-         * @return Retained sprite handle, or null if absent; it survives cache clearing.
-         */
         [[nodiscard]] CE_API Handle get_asset(std::string_view name_space, std::string_view name) const;
-        /** Snapshot published sprites in one exact namespace without loading entries.
-         * @param name_space Namespace matched against each retained definition.
-         * @return Owned map keyed by local name in lexical order, empty if absent;
-         * copied handles survive cache clears.
-         */
         [[nodiscard]] CE_API std::map<std::string, Handle, std::less<>> get_assets(std::string_view name_space) const;
-        /** Construct and publish sprites whose IDs are not already cached.
-         * Missing textures/materials, invalid definitions or upload failures can
-         * leave earlier sprites published; existing IDs retain their original handles.
-         * @param definitions Stable sprite definitions; referenced textures and
-         * optional shader materials must already be loaded.
-         * @param provider Active backend used on its loading owner/current context.
-         */
         CE_API void load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider);
     };
 }
@@ -52,3 +36,37 @@ namespace CE::Assets::Sprites {
 namespace CE::State {
     template <> CE_API auto Singleton<CE::Assets::Sprites::Manager>::storage() -> Storage&;
 }
+
+/**
+ * @fn CE::Assets::Sprites::Manager::Manager()
+ * @brief Create an empty sprites cache sharing the active provider/loading-owner domain.
+ */
+
+/**
+ * @fn CE::Assets::Sprites::Manager::~Manager()
+ * @brief Drop cache ownership; retained sprites values/frames keep their own resources.
+ */
+
+/**
+ * @fn void CE::Assets::Sprites::Manager::load(const std::vector<Definition>& definitions, CE::Rendering::Resources::Provider& provider)
+ * @brief Build and publish absent qualified sprites IDs after their textures and explicit materials are loaded.
+ * @param definitions Stable CPU definitions with referenced grid/animation metadata.
+ * @param provider Active loading-owner backend/current context for geometry/default-material upload.
+ * Existing IDs retain their original handles without rebuilding. Explicit shader selections are retained; absent selections use the backend TexturedStrip default. Invalid definitions, missing image/materials, backend or allocation failures may leave earlier entries published. Reads retain immutable resources across cache clears.
+ * @see [Asset values](cheryl-guide:assets/asset-values-and-playback)
+ */
+
+/**
+ * @fn CE::Assets::Sprites::Manager::Handle CE::Assets::Sprites::Manager::get_asset(std::string_view name_space, std::string_view name) const
+ * @brief Look up one exact namespace/local-name pair without loading.
+ * @param name_space Exact definition namespace, copied into the qualified lookup key.
+ * @param name Exact local asset name.
+ * @return Strong retained handle, or null when absent; shared cache locking protects lookup and later clears do not invalidate the returned owner.
+ */
+
+/**
+ * @fn auto CE::Assets::Sprites::Manager::get_assets(std::string_view name_space) const -> std::map<std::string, Handle, std::less<>>
+ * @brief Copy published sprites from one exact definition namespace under the cache read lock.
+ * @param name_space Namespace matched against each retained definition.
+ * @return Owned local-name map in lexical order, empty if absent; copied handles survive later clearing. No native work or loading occurs.
+ */

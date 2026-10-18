@@ -185,6 +185,7 @@ TEST(runtime_contract, frame) {
         std::make_unique<ContractInput>(observations)
     );
     ContractGame game(engine, observations);
+    EXPECT_EQ(engine.fonts().default_font().reference(), "cheryl:embedded");
     CE::Runtime::GameRuntime runtime(engine, game);
     runtime.run();
     EXPECT_TRUE(observations.pressed);

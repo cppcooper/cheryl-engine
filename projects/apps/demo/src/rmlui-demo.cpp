@@ -36,11 +36,10 @@ namespace {
 }
 
 struct DemoRmlUi::RmlUiState {
-    CE::Input::System& input;
+    CE::Runtime::Context& engine;
     CE::Runtime::PlatformDispatcher::Submission platform;
     CE::UI::RmlUi::SceneUploader uploader;
     const std::filesystem::path root;
-    const std::filesystem::path font;
     std::unique_ptr<CE::UI::RmlUi::Session> session;
     Rml::ElementDocument* document = nullptr;
     Rml::Element* panel = nullptr;
@@ -56,12 +55,8 @@ struct DemoRmlUi::RmlUiState {
     bool reset_requested = false;
     bool alternate_image = false;
 
-    RmlUiState(CE::Runtime::Context& engine, const std::filesystem::path& root, std::filesystem::path font)
-    : input(engine.input()),
-      platform(engine.platform_dispatcher().submission()),
-      uploader(engine.resources()),
-      root(root),
-      font(std::move(font)) {}
+    RmlUiState(CE::Runtime::Context& engine, const std::filesystem::path& root)
+    : engine(engine), platform(engine.platform_dispatcher().submission()), uploader(engine.resources()), root(root) {}
 
     ~RmlUiState() {
         // Runtime has joined simulation. Listeners use SDK observer storage and
@@ -82,9 +77,7 @@ struct DemoRmlUi::RmlUiState {
     }
 
     void create_widgets(const CE::Game::TickContext& tick) {
-        session = std::make_unique<CE::UI::RmlUi::Session>(input, 3);
-        if (!session->load_font(font, "demo"))
-            throw CE::Exceptions::failed_operation(CE_HERE, "Cannot load the demo RmlUi font");
+        session = std::make_unique<CE::UI::RmlUi::Session>(engine, 3);
         session->set_view(tick.logical_size, tick.framebuffer_size);
         const auto source = (root / "graphics/ui/demo.rml").u8string();
         document = session->context().LoadDocument(Rml::String(source.begin(), source.end()));
@@ -157,8 +150,8 @@ struct DemoRmlUi::RmlUiState {
     }
 };
 
-DemoRmlUi::DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root, std::filesystem::path font)
-: rmlui_state_(std::make_unique<RmlUiState>(engine, asset_root, std::move(font))) {}
+DemoRmlUi::DemoRmlUi(CE::Runtime::Context& engine, const std::filesystem::path& asset_root)
+: rmlui_state_(std::make_unique<RmlUiState>(engine, asset_root)) {}
 
 DemoRmlUi::~DemoRmlUi() = default;
 

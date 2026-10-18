@@ -12,6 +12,7 @@ namespace CE::Text::Legacy::Detail {
         const std::filesystem::path& path,
         int font_size,
         CE::Rendering::Resources::Provider& provider,
-        std::pmr::memory_resource& memory
+        std::pmr::memory_resource& memory,
+        std::shared_ptr<const CE::Rendering::Resources::Material> material = {}
     );
 }

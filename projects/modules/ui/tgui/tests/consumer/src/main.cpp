@@ -4,6 +4,7 @@
 #include <cheryl/ui/tgui/rendering.h>
 #include <cheryl/ui/tgui/scene.h>
 #include <cheryl/ui/tgui/session.h>
+#include <cheryl/text/font-service.h>
 
 #include <TGUI/Widgets/Label.hpp>
 
@@ -39,6 +40,17 @@ int main() {
     CE::Rendering::FrameWriter writer(frame);
     CE::UI::TGUI::Scene{}.write(writer);
     Input input;
+    {
+        CE::Text::FontService fonts;
+        const auto selected = fonts.default_font();
+        CE::UI::TGUI::Session catalogue_session(input, fonts, 9);
+        catalogue_session.set_view({320, 240}, {320, 240});
+        const auto label = tgui::Label::create("Engine font consumer");
+        catalogue_session.gui().add(label);
+        catalogue_session.set_font(label, selected);
+        if (!catalogue_session.font(selected).getBackendFont() || catalogue_session.record().draws().empty())
+            return 1;
+    }
     CE::UI::TGUI::Session session(input, 1);
     session.set_view({320, 240}, {640, 480});
     const auto label = tgui::Label::create("Independent consumer");

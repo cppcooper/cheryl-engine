@@ -38,3 +38,18 @@ namespace CE::Memory {
         }
     };
 }
+
+/**
+ * @fn void CE::Memory::ByteReleaseContext::return_chunk(const CE::Memory::HeapBlock& returned)
+ * @brief Return a complete checked-out byte range under shared-domain transaction locks.
+ * @param returned Exact current range, with valid backing owner/head/length metadata.
+ * Unknown/already-pooled/invalid ranges throw failed_operation after unlocked diagnostics. No objects are destroyed by this byte operation; backing ownership remains pooled until culling releases it.
+ */
+
+/**
+ * @fn void CE::Memory::ByteReleaseContext::release_owned(const CE::Memory::HeapBlock& returned) noexcept
+ * @brief Final-owner return independent of a Manager facade or singleton lookup.
+ * @param returned Known valid checked-out byte range, returned exactly once after all users stop.
+ * Invalid bookkeeping or allocation/locking failure is reported and terminates instead of escaping a shared_ptr deleter. Never use this to hide recoverable arbitrary-pointer validation.
+ * @see [CPU memory lifetime](cheryl-guide:resources/resource-lifetime)
+ */

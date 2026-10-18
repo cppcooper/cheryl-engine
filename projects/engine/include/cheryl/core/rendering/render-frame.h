@@ -17,11 +17,11 @@ namespace CE::Rendering {
      * renderer never observes a live CameraBase or animation playback cursor.
      */
     struct Pass {
-        glm::mat4 projection{1.0f};
-        glm::mat4 view{1.0f};
-        ::CE::Rendering::Parameters::Set parameters;
-        ::CE::Rendering::Pipelines::PassConstraints2D constraints;
-        std::vector<::CE::Rendering::DrawPacket2D> draws;
+        glm::mat4 projection{1.0f}; ///< Copied pass projection; no live camera is consulted.
+        glm::mat4 view{1.0f}; ///< Copied pass world-to-view transform.
+        ::CE::Rendering::Parameters::Set parameters; ///< Owned custom layer used when resolving draws.
+        ::CE::Rendering::Pipelines::PassConstraints2D constraints; ///< Required pipeline fixed-state choices, not state overrides.
+        std::vector<::CE::Rendering::DrawPacket2D> draws; ///< Owned resolved packets played in authored order.
     };
 
     class FrameWriter;
@@ -30,6 +30,7 @@ namespace CE::Rendering {
     /** One reusable storage slot. Only the active passes are published; inactive pass
      * objects keep their draw-vector capacity for later ticks. Runtime ownership must
      * prevent writing or recycling while the renderer reads this frame.
+     * Frames are neither copyable nor movable; transfer slot ownership, not this object.
      */
     class Frame final {
     private:
@@ -84,10 +85,6 @@ namespace CE::Rendering {
             return frame_.passes_[index_].constraints;
         }
 
-        /** Validate and append one owned packet in authored order.
-         * Validation/allocation failure leaves the existing draw list intact.
-         * @param draw Packet retaining the resources needed for later rendering.
-         */
         void add(::CE::Rendering::DrawPacket2D draw) {
             auto& pass = frame_.passes_[index_];
             ::CE::Rendering::validate_draw_packet(draw, pass.constraints);
@@ -95,10 +92,6 @@ namespace CE::Rendering {
             pass.draws.push_back(std::move(draw));
         }
 
-        /** Validate a complete group before inserting any glyph/asset packets.
-         * Validation/storage-limit failures leave existing draws intact.
-         * @param draws Owned packet group appended in its existing order.
-         */
         void add(std::vector<::CE::Rendering::DrawPacket2D> draws) {
             auto& pass = frame_.passes_[index_];
             for (const auto& draw : draws)
@@ -136,15 +129,6 @@ namespace CE::Rendering {
 
         void reserve_passes(std::size_t count) { frame_.passes_.reserve(count); }
 
-        /** Append an active pass in authored order, copying matrices and owning values.
-         * Keep the returned writer within this preparation phase, before recycling
-         * or publication. No backend calls or cross-thread publication occur here.
-         * @param projection Projection matrix copied into pass semantics.
-         * @param view View matrix copied into pass semantics.
-         * @param constraints Pass requirements used to validate submitted packets.
-         * @param parameters Owned pass parameter values.
-         * @return Writer borrowing this frame's new pass.
-         */
         [[nodiscard]] ::CE::Rendering::PassWriter begin_pass(
             const glm::mat4& projection,
             const glm::mat4& view,
@@ -164,3 +148,82 @@ namespace CE::Rendering {
         }
     };
 }
+
+/**
+ * @fn CE::Rendering::Frame::Frame()
+ * @brief Create an empty unpublished reusable slot; it owns no active passes.
+ */
+
+/**
+ * @fn std::span<const CE::Rendering::Pass> CE::Rendering::Frame::passes() const
+ * @return Borrowed active passes only. Retain this frame and exclude writers/recycling for the entire read; outer-vector growth invalidates the span.
+ */
+
+/**
+ * @fn void CE::Rendering::Frame::recycle()
+ * @brief Release active draw handles/custom values and mark the slot empty while retaining vector capacity.
+ * Call only after rendering or supersession excludes readers, on the resource-release owner required by the runtime/backend. Writers must not still use this slot; this operation does not synchronize or publish it.
+ */
+
+/**
+ * @fn void CE::Rendering::PassWriter::reserve_draws(std::size_t count)
+ * @brief Reserve packet capacity for this active preparation pass.
+ * @param count Desired vector capacity, measured in packets.
+ * Allocation/length failures propagate without changing existing draws; no frame publication occurs.
+ */
+
+/**
+ * @fn CE::Rendering::Parameters::PassSemantics CE::Rendering::PassWriter::semantics() const
+ * @return Independent copy of this pass's projection/view matrices for CPU packet resolution.
+ */
+
+/**
+ * @fn const CE::Rendering::Parameters::Set& CE::Rendering::PassWriter::parameters() const
+ * @return Borrowed custom pass values. Outer-vector growth or recycling invalidates the reference; keep the writer in its preparation phase.
+ */
+
+/**
+ * @fn const CE::Rendering::Pipelines::PassConstraints2D& CE::Rendering::PassWriter::constraints() const
+ * @return Borrowed pass requirements, invalidated by outer-vector growth/recycling; no state override or synchronization occurs.
+ */
+
+/**
+ * @fn void CE::Rendering::PassWriter::add(CE::Rendering::DrawPacket2D draw)
+ * @brief Validate and append one owned packet in authored order.
+ * @param draw Resolved values retaining resources required for later playback.
+ * Assigns authored_order from the current draw count. Validation/allocation failures leave existing draws intact; no backend calls or cross-thread publication occur.
+ */
+
+/**
+ * @fn void CE::Rendering::PassWriter::add(std::vector<::CE::Rendering::DrawPacket2D> draws)
+ * @brief Validate an entire group before appending any packets in its existing order.
+ * @param draws Owned glyph/asset packet group.
+ * Validation/storage-limit/allocation failures leave prior draws intact. Appended packets receive consecutive authored_order values; empty groups do nothing. No backend call/publication occurs.
+ */
+
+/**
+ * @fn CE::Rendering::FrameWriter::FrameWriter(CE::Rendering::Frame& frame)
+ * @brief Borrow one free slot for exclusive CPU preparation.
+ * @param frame Live frame excluded from all other readers/writers.
+ * @throws CE::Exceptions::failed_operation If active passes have not been recycled.
+ * Destruction neither publishes nor rolls back preparation; after a failed preparation recycle the partial frame before reuse.
+ */
+
+/**
+ * @fn void CE::Rendering::FrameWriter::reserve_passes(std::size_t count)
+ * @brief Reserve outer pass capacity before preparing draws.
+ * @param count Desired pass capacity.
+ * Growth invalidates borrowed pass references/spans, while PassWriter indices remain usable. Allocation/length failures propagate; no synchronization/publication occurs.
+ */
+
+/**
+ * @fn CE::Rendering::PassWriter CE::Rendering::FrameWriter::begin_pass(const glm::mat4& projection, const glm::mat4& view, CE::Rendering::Pipelines::PassConstraints2D constraints, CE::Rendering::Parameters::Set parameters)
+ * @brief Append an active pass, copying matrices and owning parameter/constraint values.
+ * @param projection Projection copied into pass semantics.
+ * @param view World-to-view matrix copied into pass semantics.
+ * @param constraints Fixed-state requirements checked against submitted pipelines.
+ * @param parameters Owned lower-priority custom parameter layer.
+ * @return Writer borrowing the new pass through this preparation phase, before recycle/publication.
+ * Allocation failures propagate; no backend call or cross-thread publication occurs.
+ * @see [Rendering guide](cheryl-guide:rendering/pipelines-and-materials)
+ */

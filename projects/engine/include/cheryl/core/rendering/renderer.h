@@ -33,3 +33,71 @@ namespace CE::Rendering {
         virtual void set_camera_matrices(const glm::mat4& projection, const glm::mat4& view) = 0;
     };
 }
+
+/**
+ * @fn CE::Rendering::Renderer::~Renderer()
+ * @brief Destroy the renderer adapter; backend-specific teardown requirements still apply to borrowed contexts.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::initialize()
+ * @brief Initialize native rendering on the graphics/context owner before uploads or draws.
+ * Concrete backends define capability validation, repeat-call behavior and failure cleanup; this interface does not promise restart after deinitialize().
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::deinitialize()
+ * @brief Stop native rendering and retire backend resources before the borrowed context/window is destroyed.
+ * Call on the graphics/context owner after frame consumption and loading are quiescent. Concrete backend cleanup errors may propagate.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::maintain_resources()
+ * @brief Perform owner-thread maintenance even when no new frame is available.
+ * Deferred-release backends collect retired resources here; other adapters may do nothing. Requires initialized live backend state as defined by the adapter.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::render(const CE::Rendering::Frame& frame)
+ * @brief Consume active passes and draw packets in authored order without accessing mutable game state.
+ * @param frame Published frame borrowed through the call; exclude writes/recycle until completion.
+ * Requires graphics owner/current context and retained compatible resource domains. A backend failure may leave partial rendering/native state changes; no rollback or presentation is implied.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::clear()
+ * @brief Clear the current rendering target on the graphics owner under backend-specific color/depth rules. Does not present or publish a frame.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::set_viewport(CE::Platform::FramebufferSize size)
+ * @brief Set backend viewport extent in framebuffer pixels.
+ * @param size Pixel dimensions; validity/minimized-window behavior belongs to the concrete backend.
+ * Requires its native graphics owner; does not mutate a camera or frame.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::set_depth_test(bool enabled)
+ * @brief Select a legacy backend depth-test primitive.
+ * @param enabled Requested comparison enable state.
+ * Retained pipeline draws apply their own fixed state; camera dimensionality does not choose this policy.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::set_clear_colour(float r, float g, float b, float a)
+ * @brief Set the backend clear color on its graphics owner.
+ * @param r Red component.
+ * @param g Green component.
+ * @param b Blue component.
+ * @param a Alpha component.
+ * Range/conversion behavior belongs to the backend; this operation does not issue a clear or alter draw-material alpha.
+ */
+
+/**
+ * @fn void CE::Rendering::Renderer::set_camera_matrices(const glm::mat4& projection, const glm::mat4& view)
+ * @brief Supply copied legacy backend pass matrices without retaining a camera.
+ * @param projection Stable projection borrowed through the call.
+ * @param view Stable view borrowed through the call.
+ * Does not select depth policy or publish immutable pass storage.
+ * @see [Rendering guide](cheryl-guide:rendering/pipelines-and-materials)
+ */
